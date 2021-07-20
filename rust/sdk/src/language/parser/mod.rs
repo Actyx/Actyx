@@ -216,9 +216,7 @@ fn r_cases(p: P) -> NonEmptyVec<(SimpleExpr, SimpleExpr)> {
 }
 
 fn r_not(p: P) -> P {
-    let mut p = p.inner();
-    p.next();
-    p.next().unwrap()
+    p.single()
 }
 
 fn r_simple_expr(p: P) -> SimpleExpr {
@@ -275,9 +273,10 @@ fn r_simple_expr(p: P) -> SimpleExpr {
     })
 }
 
-fn r_query(p: P) -> Query {
+fn r_query(features: Vec<String>, p: P) -> Query {
     let mut p = p.inner();
     let mut q = Query {
+        features,
         from: r_tag_expr(p.next().unwrap()),
         ops: vec![],
     };
@@ -298,8 +297,16 @@ impl FromStr for Query {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let p = Aql::parse(Rule::main_query, s)?.single().single();
-        Ok(r_query(p))
+        let mut p = Aql::parse(Rule::main_query, s)?.single().inner();
+        let mut f = p.next().unwrap();
+        let features = if f.rule() == Rule::features {
+            let features = f.inner().map(|mut ff| ff.string()).collect();
+            f = p.next().unwrap();
+            features
+        } else {
+            vec![]
+        };
+        Ok(r_query(features, f))
     }
 }
 

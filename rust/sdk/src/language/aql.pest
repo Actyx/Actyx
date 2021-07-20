@@ -1,4 +1,4 @@
-main_query = { SOI ~ query ~ EOI }
+main_query = { SOI ~ features? ~ query ~ EOI }
 main_tag_expr = { SOI ~ tag_expr ~ EOI }
 main_simple_expr = { SOI ~ simple_expr ~ EOI }
 
@@ -7,6 +7,8 @@ query = { "FROM" ~ tag_expr ~ query_op* ~ "END"? }
 query_op = _{ filter | select }
 filter = { "FILTER" ~ simple_expr }
 select = { "SELECT" ~ simple_expr ~ ( "," ~ simple_expr )* }
+features = { "FEATURES(" ~ feature_word* ~ ")" }
+feature_word = @{ ( ASCII_ALPHANUMERIC | "ø" )+ }
 
 // strings
 single_quoted = @{ "'" ~ ( !"'" ~ ANY | "''" )+ ~ "'" }

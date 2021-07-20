@@ -11,6 +11,7 @@ use crate::{
     rejections::ApiError,
     util::{self, Result},
 };
+use runtime::features::FeatureError;
 use swarm::event_store_ref;
 
 pub async fn offsets(_app_id: AppId, event_service: EventService) -> Result<impl Reply> {
@@ -67,6 +68,12 @@ fn reject(err: anyhow::Error) -> Rejection {
             event_store_ref::Error::InvalidUpperBounds => reject::custom(ApiError::BadRequest { cause }),
         }
     } else {
-        util::reject(err) // internal server errors
+        match err.downcast::<FeatureError>() {
+            Ok(e) => reject::custom(ApiError::from(e)),
+            Err(err) => {
+                tracing::warn!("internal error: {:?}", err);
+                util::reject(err)
+            }
+        }
     }
 }

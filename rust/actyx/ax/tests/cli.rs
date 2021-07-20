@@ -79,8 +79,8 @@ fn cli_users_keygen_err_on_existing_file() {
     cli()
         .args(&["users", "keygen", "--output", &*identity_path])
         .assert()
-        .stdout(predicate::str::contains(expected))
-        .stderr(predicate::eq("Generating public/private key pair ..\n"))
+        .stderr(predicate::str::contains(expected))
+        .stderr(predicate::str::contains("Generating public/private key pair ..\n"))
         .failure();
 }
 
@@ -96,7 +96,7 @@ fn cli_fail_on_missing_identity() {
     cli()
         .args(&["nodes", "ls", "localhost", "-i", &*identity_path])
         .assert()
-        .stdout(predicate::str::contains(expected))
+        .stderr(predicate::str::contains(expected))
         .failure();
 }
 

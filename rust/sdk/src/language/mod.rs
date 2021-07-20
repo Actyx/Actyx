@@ -7,6 +7,7 @@ use crate::{tags::Tag, AppId, LamportTimestamp, Timestamp};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Query {
+    pub features: Vec<String>,
     pub from: TagExpr,
     pub ops: Vec<Operation>,
 }
@@ -205,20 +206,25 @@ impl SimpleExpr {
 #[cfg(test)]
 mod for_tests {
     use super::*;
+    use once_cell::sync::OnceCell;
     use quickcheck::{Arbitrary, Gen, QuickCheck};
     use std::{cell::RefCell, convert::TryInto, str::FromStr};
 
     impl Query {
         pub fn new(from: TagExpr) -> Self {
-            Self { from, ops: vec![] }
+            Self {
+                features: vec![],
+                from,
+                ops: vec![],
+            }
         }
         pub fn push(&mut self, op: Operation) {
             self.ops.push(op);
         }
         pub fn with_op(self, op: Operation) -> Self {
-            let Self { from, mut ops } = self;
+            let mut ops = self.ops;
             ops.push(op);
-            Self { from, ops }
+            Self { ops, ..self }
         }
     }
 
@@ -471,23 +477,37 @@ mod for_tests {
 
     impl Arbitrary for Query {
         fn arbitrary(g: &mut Gen) -> Self {
+            fn word(g: &mut Gen) -> String {
+                static CHOICES: OnceCell<Vec<char>> = OnceCell::new();
+                let choices = CHOICES.get_or_init(|| ('a'..='z').chain('A'..='Z').chain('0'..='9').collect());
+                let len = Vec::<()>::arbitrary(g).len().max(1);
+                (0..len).map(|_| g.choose(choices).unwrap()).collect()
+            }
             Self {
+                features: Vec::<bool>::arbitrary(g).into_iter().map(|_| word(g)).collect(),
                 from: TagExpr::arbitrary(g),
                 ops: Arbitrary::arbitrary(g),
             }
         }
 
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            let features = self.features.clone();
+            let features2 = self.features.clone();
             let from = self.from.clone();
             let ops = self.ops.clone();
             Box::new(
                 self.ops
                     .shrink()
                     .map(move |ops| Self {
+                        features: features.clone(),
                         from: from.clone(),
                         ops,
                     })
-                    .chain(self.from.shrink().map(move |from| Self { from, ops: ops.clone() })),
+                    .chain(self.from.shrink().map(move |from| Self {
+                        features: features2.clone(),
+                        from,
+                        ops: ops.clone(),
+                    })),
             )
         }
     }

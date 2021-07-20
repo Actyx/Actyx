@@ -218,6 +218,16 @@ fn render_tag_atom(w: &mut impl Write, e: &TagAtom) -> Result {
 }
 
 pub fn render_query(w: &mut impl Write, e: &Query) -> Result {
+    if !e.features.is_empty() {
+        w.write_str("FEATURES(")?;
+        for (i, f) in e.features.iter().enumerate() {
+            if i > 0 {
+                w.write_char(' ')?;
+            }
+            w.write_str(f)?;
+        }
+        w.write_str(") ")?;
+    }
     w.write_str("FROM ")?;
     render_tag_expr(w, &e.from, None)?;
     for op in &e.ops {

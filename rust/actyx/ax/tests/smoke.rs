@@ -307,3 +307,58 @@ fn query() -> anyhow::Result<()> {
     }
     result
 }
+
+#[test]
+fn bad_query() -> anyhow::Result<()> {
+    let log = Log::default();
+    let result = with_api(log.clone(), |api, identity| {
+        let out = run("ax")?
+            .args(&[
+                o("events"),
+                o("query"),
+                o("-i"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+                o("FROM from(2021-07-20) END"),
+            ])
+            .output()?;
+        eprintln!(
+            "out:\n{}\nerr:\n{}\n---",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        ensure!(!out.status.success());
+        ensure!(
+            String::from_utf8(out.stderr)?
+                == "[ERR_INVALID_INPUT] Error: The query uses beta features that are not enabled: timeRange.\n"
+        );
+
+        let out = run("ax")?
+            .args(&[
+                o("events"),
+                o("query"),
+                o("-ji"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+                o("FROM from(2021-07-20) END"),
+            ])
+            .output()?;
+        eprintln!(
+            "out:\n{}\nerr:\n{}\n---",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        ensure!(!out.status.success());
+        ensure!(
+            String::from_utf8(out.stdout)?
+                == r#"{"code":"ERR_INVALID_INPUT","message":"The query uses beta features that are not enabled: timeRange."}
+"#
+        );
+
+        Ok(())
+    });
+    if result.is_err() {
+        eprintln!("{}", log);
+    }
+    result
+}

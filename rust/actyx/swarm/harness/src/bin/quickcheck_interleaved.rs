@@ -44,7 +44,11 @@ fn main() {
             .map(TagExpr::Atom)
             .reduce(|a, b| a.and(b))
             .unwrap_or(TagExpr::Atom(TagAtom::AllEvents));
-        Query { from, ops: vec![] }
+        Query {
+            features: vec![],
+            from,
+            ops: vec![],
+        }
     }
     fn cnt_per_tag(cmds: &[TestCommand]) -> BTreeMap<TagSet, usize> {
         let mut map: BTreeMap<TagSet, usize> = Default::default();

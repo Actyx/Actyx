@@ -1,6 +1,7 @@
 use crate::{eval::Context, value::Value};
 use actyx_sdk::language::SimpleExpr;
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Operation {
     Filter(Filter),
     Select(Select),
@@ -15,8 +16,9 @@ impl Operation {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Filter {
-    expr: SimpleExpr,
+    pub expr: SimpleExpr,
 }
 
 impl Filter {
@@ -33,8 +35,9 @@ impl Filter {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Select {
-    exprs: Vec<SimpleExpr>,
+    pub exprs: Vec<SimpleExpr>,
 }
 
 impl Select {

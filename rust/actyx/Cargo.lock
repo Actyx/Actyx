@@ -4834,6 +4834,8 @@ dependencies = [
  "actyx_sdk",
  "anyhow",
  "cbor-data",
+ "derive_more",
+ "itertools 0.10.1",
  "quickcheck",
  "spectral",
  "tracing",

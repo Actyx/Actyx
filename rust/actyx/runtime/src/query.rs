@@ -5,10 +5,11 @@ use crate::{
 };
 use actyx_sdk::language;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Query {
-    #[allow(dead_code)]
-    from: language::TagExpr,
-    stages: Vec<Operation>,
+    pub features: Vec<String>,
+    pub from: language::TagExpr,
+    pub stages: Vec<Operation>,
 }
 
 impl Query {
@@ -38,13 +39,14 @@ impl From<language::Query> for Query {
     fn from(q: language::Query) -> Self {
         let mut stages = vec![];
         let from = q.from;
+        let features = q.features;
         for op in q.ops {
             match op {
                 language::Operation::Filter(f) => stages.push(Operation::Filter(Filter::new(f))),
                 language::Operation::Select(s) => stages.push(Operation::Select(Select::new(s.into_inner()))),
             }
         }
-        Self { from, stages }
+        Self { features, from, stages }
     }
 }
 
