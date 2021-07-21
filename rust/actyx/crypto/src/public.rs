@@ -57,10 +57,10 @@ impl std::str::FromStr for PublicKey {
 
 impl PublicKey {
     /// Gets the underlying ed25519 public key for interop with rust crypto libs
-    pub fn to_ed25519(&self) -> ed25519_dalek::PublicKey {
+    pub fn to_ed25519(self) -> ed25519_dalek::PublicKey {
         ed25519_dalek::PublicKey::from_bytes(&self.0[..]).unwrap()
     }
-    pub fn to_bytes(&self) -> [u8; ed25519_dalek::PUBLIC_KEY_LENGTH] {
+    pub fn to_bytes(self) -> [u8; ed25519_dalek::PUBLIC_KEY_LENGTH] {
         let mut bytes = [0u8; ed25519_dalek::PUBLIC_KEY_LENGTH];
         bytes[..].copy_from_slice(&self.0[..]);
         bytes

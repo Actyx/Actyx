@@ -21,7 +21,6 @@ use crypto::PublicKey;
 use formats::NodesRequest;
 use futures::{
     future::{ready, AbortHandle, Abortable, BoxFuture},
-    pin_mut,
     stream::{self, BoxStream, FuturesUnordered},
     task::{self, Poll},
     Future, FutureExt, Stream, StreamExt,
@@ -620,10 +619,8 @@ impl SwarmFuture {
     }
 
     /// Poll the swarm once
-    pub(crate) fn poll_swarm(&mut self, cx: &mut task::Context) -> std::task::Poll<SwarmEvent<(), TConnErr>> {
-        let fut = self.swarm().next_event();
-        pin_mut!(fut);
-        fut.poll(cx)
+    pub(crate) fn poll_swarm(&mut self, cx: &mut task::Context) -> std::task::Poll<Option<SwarmEvent<(), TConnErr>>> {
+        self.swarm().poll_next_unpin(cx)
     }
 }
 
@@ -632,22 +629,23 @@ impl Future for SwarmFuture {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut task::Context) -> Poll<Self::Output> {
         // poll the swarm until pending
-        while let Poll::Ready(event) = self.poll_swarm(cx) {
+        while let Poll::Ready(Some(event)) = self.poll_swarm(cx) {
             match event {
-                SwarmEvent::NewListenAddr(addr) => {
-                    tracing::info!(target: "ADMIN_API_BOUND", "Admin API bound to {}.", addr);
+                SwarmEvent::NewListenAddr { address, .. } => {
+                    tracing::info!(target: "ADMIN_API_BOUND", "Admin API bound to {}.", address);
                     self.0
                         .behaviour_mut()
                         .state
                         .admin_sockets
-                        .transform_mut(|set| set.insert(addr));
+                        .transform_mut(|set| set.insert(address));
                 }
-                SwarmEvent::ListenerError { error } => {
+                SwarmEvent::ListenerError { error, .. } => {
                     error!("SwarmEvent::ListenerError {}", error)
                 }
                 SwarmEvent::ListenerClosed {
                     reason: Err(error),
                     addresses,
+                    ..
                 } => {
                     error!("SwarmEvent::ListenerClosed {} for {:?}", error, addresses);
                     for addr in addresses {

@@ -556,7 +556,13 @@ fn blob_upload(source_file: impl AsRef<Path>, name: &str) -> anyhow::Result<()> 
     let stderr = String::from_utf8(out.stderr).context("decoding az stderr")?;
     log::trace!("stdout {}", stdout);
     log::trace!("stderr {}", stderr);
-    anyhow::ensure!(out.status.success(), "stdout: {}, stderr: {}", stdout, stderr);
+    anyhow::ensure!(
+        out.status.success(),
+        "command: az {:?},\nstdout: {},\nstderr: {}",
+        args,
+        stdout,
+        stderr
+    );
     Ok(())
 }
 

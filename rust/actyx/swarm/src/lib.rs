@@ -151,6 +151,7 @@ pub struct SwarmConfig {
     pub listen_addresses: Vec<Multiaddr>,
     pub bootstrap_addresses: Vec<Multiaddr>,
     pub ephemeral_event_config: EphemeralEventsConfig,
+    pub enable_loopback: bool,
     pub enable_fast_path: bool,
     pub enable_slow_path: bool,
     pub enable_mdns: bool,
@@ -164,6 +165,7 @@ pub struct SwarmConfig {
 impl SwarmConfig {
     pub fn basic() -> Self {
         Self {
+            enable_loopback: false,
             topic: String::from("default"),
             index_store: None,
             keypair: None,
@@ -205,6 +207,7 @@ impl Default for BanyanConfig {
 impl SwarmConfig {
     pub fn test(node_name: &str) -> Self {
         Self {
+            enable_loopback: true,
             topic: "topic".into(),
             enable_mdns: false,
             node_name: Some(node_name.into()),
@@ -230,6 +233,7 @@ impl PartialEq for SwarmConfig {
             && self.listen_addresses == other.listen_addresses
             && self.bootstrap_addresses == other.bootstrap_addresses
             && self.ephemeral_event_config == other.ephemeral_event_config
+            && self.enable_loopback == other.enable_loopback
             && self.enable_fast_path == other.enable_fast_path
             && self.enable_slow_path == other.enable_slow_path
             && self.enable_root_map == other.enable_root_map
@@ -592,6 +596,7 @@ impl BanyanStore {
 
         let ipfs = Ipfs::new(IpfsConfig {
             network: NetworkConfig {
+                enable_loopback: cfg.enable_loopback,
                 node_key,
                 node_name,
                 psk: cfg.psk,
@@ -614,6 +619,8 @@ impl BanyanStore {
                 },
                 ping: Some(
                     PingConfig::new()
+                        .with_interval(Duration::from_secs(20))
+                        .with_timeout(Duration::from_secs(3))
                         .with_keep_alive(true)
                         .with_max_failures(NonZeroU32::new(2).unwrap()),
                 ),
@@ -637,6 +644,7 @@ impl BanyanStore {
                     request_timeout: Duration::from_secs(10),
                     connection_keep_alive: Duration::from_secs(10),
                 }),
+                streams: None,
             },
             storage: StorageConfig {
                 path: cfg.db_path,
@@ -1101,16 +1109,19 @@ impl BanyanStore {
                 // it must not hang indefinitely. It should ideally fail as quickly as possible
                 // when not making progress (but a fixed and short timeout would make it impossible
                 // to work on a slow network connection).
-                state2.downgrade(root);
                 match res {
                     Err(err) => {
+                        state2.downgrade(root, true);
                         if let Some(err) = err.downcast_ref::<BlockNotFound>() {
                             tracing::debug!("careful_ingestion: {}", err)
                         } else {
                             tracing::warn!("careful_ingestion: {}", err)
                         }
                     }
-                    Ok(outcome) => tracing::trace!("sync completed {:?}", outcome),
+                    Ok(outcome) => {
+                        tracing::trace!("sync completed {:?}", outcome);
+                        state2.downgrade(root, false);
+                    }
                 }
                 future::ready(())
             })

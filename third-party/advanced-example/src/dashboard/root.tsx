@@ -14,7 +14,7 @@ function Loading() {
   const [time, setTime] = React.useState(0)
 
   React.useEffect(() => {
-    setInterval(() => setTime(time => time + 1), 1000)
+    setInterval(() => setTime((time) => time + 1), 1000)
   }, [])
 
   return (
@@ -23,7 +23,13 @@ function Loading() {
       <p>Connecting to Actyx … (since {time}sec)</p>
       {
         /* showing the error is essential for useful failure response */
-        error ? <p>Error: {error}<br/>Is Actyx running?</p> : undefined
+        error ? (
+          <p>
+            Error: {error}
+            <br />
+            Is Actyx running?
+          </p>
+        ) : undefined
       }
     </div>
   )
@@ -33,7 +39,11 @@ function Loading() {
 ReactDOM.render(
   <React.StrictMode>
     {/* Pond initializes the connection to ActyxOS and draws the children when the connection is established */}
-    <Pond loadComponent={<Loading />} onError={onError}>
+    <Pond
+      loadComponent={<Loading />}
+      onError={onError}
+      manifest={{ appId: 'com.example.dashboard', displayName: 'Dashboard App', version: '2.0' }}
+    >
       {/* App that can use usePond, useFish, useRegistryFish, ... */}
       <App />
     </Pond>

@@ -20,9 +20,11 @@ import { Tag, Fish, FishId } from '@actyx/pond'
 // |                                                                    |
 // ----------------------------------------------------------------------
 
+// [[start:states]]
 export type UndefineState = {
   stateType: 'undefined'
 }
+
 /**
  * complete lifecycle of the order in one type definition with different stateTypes
  */
@@ -32,6 +34,7 @@ export type DefinedState = {
   duration: number
   machine: string
 }
+// [[end:states]]
 
 export type State = UndefineState | DefinedState
 
@@ -46,6 +49,7 @@ export type RegState = Record<string, boolean>
 // ! see importend note about events in the machineFish.ts file
 // !
 
+// [[start:events]]
 /**
  * Event when a new order is placed
  */
@@ -70,7 +74,7 @@ export type FinishedEvent = {
   eventType: 'finished'
   name: string
 }
-
+// [[end:events]]
 /**
  * union type All expected events the MachineFish will get from the store
  */
@@ -156,6 +160,7 @@ export const OrderFish = {
      * transmission to the next stage. The old state transferred to the
      * new state, but the stateType gets updated.
      */
+    // [[start:onevent]]
     onEvent: (state, event) => {
       switch (event.eventType) {
         case 'placed':
@@ -187,6 +192,7 @@ export const OrderFish = {
       }
       return state
     },
+    // [[end:onevent]]
     isReset: (event) => event.eventType === 'placed',
   }),
   /**

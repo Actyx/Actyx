@@ -21,11 +21,11 @@
     "pondVersion": 2
   },
   "dependencies": {
-    "@actyx-contrib/react-pond": "^2.0.0-rc4",
-    "@actyx-contrib/rx-pond": "^0.1.0",
+    "@actyx-contrib/react-pond": "^3.0.0",
+    "@actyx-contrib/rx-pond": "^1.0.0",
     "@actyx/industrial-ui": "^1.0.5",
-    "@actyx/os-sdk": "^0.3.1",
-    "@actyx/pond": "^2.2.0",
+    "@actyx/sdk": "^0.1.2",
+    "@actyx/pond": "^3.0.1",
     "@capacitor/android": "^2.4.7",
     "@capacitor/cli": "^2.4.7",
     "@capacitor/core": "^2.4.7",

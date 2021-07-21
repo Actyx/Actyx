@@ -260,9 +260,9 @@ validate-netsim: diagnostics
 	rust/actyx/target/release/gossip --n-nodes 8 --enable-slow-path
 	rust/actyx/target/release/gossip --n-nodes 8 --enable-root-map
 	rust/actyx/target/release/root_map --n-nodes 8 --enable-root-map
-	# rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
-	# rust/actyx/target/release/discovery_multi_net
-	# rust/actyx/target/release/discovery_external
+	rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
+	rust/actyx/target/release/discovery_multi_net
+	rust/actyx/target/release/discovery_external
 	rust/actyx/target/release/subscribe --n-nodes 8
 	rust/actyx/target/release/query --n-nodes 8
 	rust/actyx/target/release/quickcheck_subscribe

@@ -92,7 +92,7 @@ stages:
                     echo "We are going to do a dry-run of artifact publication since this is DRAFT release"
                     ./target/release/cosmos-release publish "$p" --dry-run
                   else
-                    ./target/release/cosmos-release publish "$p"
+                    RUST_LOG=debug ./target/release/cosmos-release publish "$p"
                   fi
                 done
                 echo ""
@@ -109,12 +109,13 @@ stages:
                 fi
                 source ~/.nvm/nvm.sh
                 cd ../../web/developer.actyx.com
-                export NETLIFY_ACCESS_TOKEN=***REMOVED***
+                export NETLIFY_AUTH_TOKEN=***REMOVED***
+                export NETLIFY_SITE_ID=fffa1022-c8a0-4238-97c4-dd80979bf887
                 echo "Setting up node version"
                 nvm install
                 nvm use
                 echo "Installing doc dependencies"
-                npm install
+                npm ci
                 echo "Building docs"
                 npm run build
                 echo "Deploying docs"

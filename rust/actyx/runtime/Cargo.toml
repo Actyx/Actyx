@@ -6,11 +6,11 @@ edition = "2018"
 
 [dependencies]
 actyx_sdk = { version = "0.1", path = "../../sdk" }
-anyhow = "1.0.38"
+anyhow = "1.0.42"
 cbor-data = "0.5.0"
 derive_more = "0.99.16"
 itertools = "0.10.1"
-tracing = "0.1.25"
+tracing = "0.1.26"
 
 [dev-dependencies]
 quickcheck = "1.0.3"

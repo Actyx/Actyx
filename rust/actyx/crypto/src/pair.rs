@@ -79,7 +79,7 @@ impl KeyPair {
     /// implementation](https://github.com/agl/ed25519/)).
     ///
     /// Copied from ed2559_dalek::KeyPair::to_bytes
-    pub fn to_bytes(&self) -> [u8; ed25519_dalek::PUBLIC_KEY_LENGTH + ed25519_dalek::SECRET_KEY_LENGTH] {
+    pub fn to_bytes(self) -> [u8; ed25519_dalek::PUBLIC_KEY_LENGTH + ed25519_dalek::SECRET_KEY_LENGTH] {
         let mut bytes: [u8; 64] = [0u8; 64];
 
         bytes[..ed25519_dalek::SECRET_KEY_LENGTH].copy_from_slice(&self.private.0);

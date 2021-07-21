@@ -12,8 +12,8 @@
     "pondVersion": 2
   },
   "dependencies": {
-    "@actyx/pond": "^2.2.0",
-    "@actyx-contrib/rx-pond": "^0.1.0",
+    "@actyx/pond": "^3.0.1",
+    "@actyx-contrib/rx-pond": "^1.0.0",
     "rxjs": "^6.6.3",
     "netvar": "1.0"
   }
