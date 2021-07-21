@@ -208,7 +208,7 @@ impl TryInto<BindTo> for BindToOpts {
         )?;
         let admin = fold(SocketAddrHelper::unspecified, self.bind_admin)?;
         let swarm = fold(SocketAddrHelper::unspecified, self.bind_swarm)?;
-        Ok(BindTo { api, admin, swarm })
+        Ok(BindTo { admin, swarm, api })
     }
 }
 

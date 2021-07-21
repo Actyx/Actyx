@@ -29,7 +29,7 @@ struct Opt {
 }
 
 #[derive(Debug)]
-#[allow(clippy::clippy::large_enum_variant)]
+#[allow(clippy::large_enum_variant)]
 enum CommandsOpt {
     // structopt will use the enum variant name in lowercase as a subcommand
     Apps(AppsOpts),

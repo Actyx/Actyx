@@ -1,9 +1,9 @@
 use derive_more::{Add, Deref, Display, Sub};
 use futures::{
     future::BoxFuture,
-    io::{AsyncRead, AsyncWrite},
+    io::{AsyncRead, AsyncWrite, AsyncWriteExt},
 };
-use libp2p::core::{upgrade, InboundUpgrade, OutboundUpgrade, SimOpenRole, UpgradeInfo};
+use libp2p::core::{upgrade, InboundUpgrade, OutboundUpgrade, UpgradeInfo};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     io::{self, Error, ErrorKind, Result},
@@ -97,15 +97,9 @@ where
 
     fn upgrade_inbound(self, mut socket: TSocket, _info: Self::Info) -> Self::Future {
         Box::pin(async move {
-            let packet = upgrade::read_one(&mut socket, self.max_buf_size).await.map_err(|err| {
-                use upgrade::ReadOneError::*;
-                match err {
-                    Io(err) => err,
-                    TooLarge { .. } => Error::new(ErrorKind::InvalidData, format!("{}", err)),
-                }
-            })?;
+            let packet = upgrade::read_length_prefixed(&mut socket, self.max_buf_size).await?;
             let request = serde_cbor::from_slice(&packet).map_err(|e| io::Error::new(ErrorKind::InvalidInput, e))?;
-
+            socket.close().await?;
             Ok(request)
         })
     }
@@ -132,10 +126,11 @@ where
     type Error = Error;
     type Future = BoxFuture<'static, Result<Self::Output>>;
 
-    fn upgrade_outbound(self, mut socket: TSocket, _info: Self::Info, _: SimOpenRole) -> Self::Future {
+    fn upgrade_outbound(self, mut socket: TSocket, _info: Self::Info) -> Self::Future {
         Box::pin(async move {
             let bytes = serde_cbor::to_vec(&self).map_err(|e| io::Error::new(ErrorKind::InvalidInput, e))?;
-            upgrade::write_one(&mut socket, bytes).await?;
+            upgrade::write_length_prefixed(&mut socket, bytes).await?;
+            socket.close().await?;
             Ok(())
         })
     }

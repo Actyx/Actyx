@@ -8,15 +8,15 @@ edition = "2018"
 settings = { path = "../settings" }
 node = { path = "../node" }
 
-anyhow = "1.0.40"
-crossbeam = "0.8.0"
-ffi-support = "0.4.2"
-futures = { version = "0.3.14", package = "futures" }
+anyhow = "1.0.42"
+crossbeam = "0.8.1"
+ffi-support = "0.4.3"
+futures = { version = "0.3.15", package = "futures" }
 lazy_static = "1.4.0"
 parking_lot = "0.11.1"
 serde_json = "1.0.64"
-tokio = { version = "1.5.0", features = ["full"], package = "tokio" }
-tracing = "0.1.25"
+tokio = { version = "1.8.2", features = ["full"], package = "tokio" }
+tracing = "0.1.26"
 
 [lib]
 crate-type = ["cdylib"]

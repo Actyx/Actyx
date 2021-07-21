@@ -6,19 +6,19 @@ edition = "2018"
 
 [dependencies]
 actyx_sdk = { path = "../../../sdk" }
-anyhow = "1.0.40"
+anyhow = "1.0.42"
 async-process = "1.1.0"
 api = { path = "../../api" }
 crypto = { path = "../../crypto" }
-futures = { version = "0.3.14", package = "futures" }
-ipfs-embed = { version = "0.21.0", default-features = false, features = ["tokio"] }
-libp2p = { version = "0.38.0", default-features = false }
+futures = { version = "0.3.15", package = "futures" }
+ipfs-embed = { version = "0.22.0", default-features = false, features = ["tokio"] }
+libp2p = { version = "0.39.1", default-features = false }
 serde_json = "1.0.64"
-structopt = "0.3.21"
+structopt = "0.3.22"
 swarm = { path = ".." }
-tokio = { version = "1.5.0", package = "tokio" }
-tracing = "0.1.25"
-tracing-subscriber = "0.2.17"
+tokio = { version = "1.8.2", package = "tokio" }
+tracing = "0.1.26"
+tracing-subscriber = "0.2.19"
 trees = { path = "../../trees" }
 util = { path = "../../util" }
 crossbeam = "0.8.1"

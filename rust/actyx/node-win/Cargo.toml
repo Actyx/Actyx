@@ -12,12 +12,12 @@ path = "src/main.rs"
 util = { path = "../util" }
 
 [target."cfg(target_os = \"windows\")".dependencies]
-anyhow = "1.0.40"
+anyhow = "1.0.42"
 clap = "2.33.3"
-crossbeam = "0.8.0"
-structopt = "0.3.21"
+crossbeam = "0.8.1"
+structopt = "0.3.22"
 systray2 = "0.5.0"
-tracing = "0.1.25"
+tracing = "0.1.26"
 winapi = "0.3.9"
 wintrap = "0.3.1"
 

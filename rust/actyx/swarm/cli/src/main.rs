@@ -42,7 +42,7 @@ async fn run() -> Result<()> {
         config.enable_metrics,
         config.enable_api
     );
-    let listen_addresses = std::mem::replace(&mut config.listen_on, vec![]);
+    let listen_addresses = std::mem::take(&mut config.listen_on);
     let swarm = if let Some(addr) = config.enable_api {
         let cfg = SwarmConfig::from(config.clone());
         let mut key_store = KeyStore::default();

@@ -149,10 +149,8 @@ fn with_api(
     let _ = writeln!(log, "found port {}", api);
     let mut log2 = log.clone();
     let handle = spawn(move || {
-        for line in lines {
-            if let Ok(line) = line {
-                let _ = writeln!(log2, "line: {}", line);
-            }
+        for line in lines.flatten() {
+            let _ = writeln!(log2, "line: {}", line);
         }
     });
 

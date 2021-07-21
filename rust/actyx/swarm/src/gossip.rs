@@ -6,6 +6,7 @@ use futures::{
     channel::mpsc::{unbounded, UnboundedSender},
     prelude::*,
 };
+use ipfs_embed::GossipEvent;
 use libipld::{
     cbor::DagCborCodec,
     codec::{Codec, Decode, Encode},
@@ -232,7 +233,12 @@ impl Gossip {
         let mut subscription = store.ipfs().subscribe(&topic)?;
         Ok(async move {
             loop {
-                while let Some(message) = subscription.next().await {
+                while let Some(event) = subscription.next().await {
+                    let message = if let GossipEvent::Message(_, message) = event {
+                        message
+                    } else {
+                        continue;
+                    };
                     match DagCborCodec.decode::<GossipMessage>(&message) {
                         Ok(GossipMessage::RootUpdate(root_update)) => {
                             let _s = tracing::debug_span!("root update", root = display(root_update.root));

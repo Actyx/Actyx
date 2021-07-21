@@ -114,7 +114,7 @@ mod tests {
             validity: 1,
             app_mode: AppMode::Signed,
         };
-        assert_eq!(token.is_expired(), true);
+        assert!(token.is_expired());
 
         let token = BearerToken {
             created: Timestamp::now(),
@@ -124,7 +124,7 @@ mod tests {
             validity: 300,
             app_mode: AppMode::Signed,
         };
-        assert_eq!(token.is_expired(), false);
+        assert!(!token.is_expired());
     }
 
     #[test]

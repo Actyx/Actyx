@@ -116,7 +116,7 @@ impl NodeConnection {
 
     async fn await_identify(swarm: &mut Swarm<RequestBehaviour>) -> Vec<String> {
         loop {
-            let message = swarm.next_event().await;
+            let message = swarm.next().await.expect("swarm exited");
             tracing::debug!("waiting for identify: {:?}", message);
             match message {
                 SwarmEvent::Behaviour(OutEvent::Identify(IdentifyEvent::Error { .. })) => {
@@ -183,8 +183,7 @@ impl NodeConnection {
         swarm: &mut Swarm<RequestBehaviour>,
         node_info: &NodeInfo,
     ) -> ActyxOSResult<AdminResponse> {
-        loop {
-            let message = swarm.next_event().await;
+        while let Some(message) = swarm.next().await {
             match message {
                 SwarmEvent::Behaviour(OutEvent::Admin(StreamingResponseEvent::ResponseReceived {
                     payload, ..
@@ -209,6 +208,8 @@ impl NodeConnection {
                 }
             }
         }
+        error!("Swarm exited unexpectedly");
+        ax_err(ActyxOSCode::ERR_INTERNAL_ERROR, "Swarm exited unexpectedly".into())
     }
 
     pub async fn request_events(
@@ -226,7 +227,7 @@ impl NodeConnection {
         Self::send(&mut conn, Either::Right(request)).await;
         Ok(stream::unfold(conn.swarm, |mut s| {
             async move {
-                let ev = s.next_event().await;
+                let ev = s.next().await.expect("swarm exited");
                 tracing::debug!("got swarm event {:?}", ev);
                 match ev {
                     SwarmEvent::Behaviour(OutEvent::Events(e)) => match e {
@@ -306,8 +307,8 @@ async fn poll_until_connected(
         Swarm::dial_addr(&mut swarm, addr).expect("Connection limit exceeded");
         to_try += 1;
     }
-    loop {
-        match swarm.next_event().await {
+    while let Some(event) = swarm.next().await {
+        match event {
             SwarmEvent::ConnectionEstablished { endpoint, peer_id, .. } => {
                 let addr = match endpoint {
                     ConnectedPoint::Dialer { address } => address,
@@ -315,15 +316,15 @@ async fn poll_until_connected(
                 };
 
                 info!("connected to {} ({})", peer_id, addr);
-                break Ok((peer_id, addr));
+                return Ok((peer_id, addr));
             }
-            SwarmEvent::NewListenAddr(x) => {
-                debug!("Listening on {}", x);
+            SwarmEvent::NewListenAddr { address, .. } => {
+                debug!("Listening on {}", address);
             }
             SwarmEvent::UnknownPeerUnreachableAddr { address, .. } | SwarmEvent::UnreachableAddr { address, .. } => {
                 to_try -= 1;
                 if to_try == 0 {
-                    break ax_err(ActyxOSCode::ERR_NODE_UNREACHABLE, format!("{} is unreachable", address));
+                    return ax_err(ActyxOSCode::ERR_NODE_UNREACHABLE, format!("{} is unreachable", address));
                 } else {
                     info!(
                         "{} is unreachable, still got {} other connections to try",
@@ -336,4 +337,6 @@ async fn poll_until_connected(
             }
         }
     }
+    error!("Swarm exited unexpectedly");
+    ax_err(ActyxOSCode::ERR_INTERNAL_ERROR, "Swarm exited unexpectedly".into())
 }
