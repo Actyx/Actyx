@@ -141,7 +141,7 @@ const Screen: React.FC<{}> = () => {
       ]}
     >
       {/* <div className="grid gap-6 grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"> */}
-      <div className="grid gap-4 grid-cols-nodes grid-cols-nodes">
+      <div className="grid gap-4 grid-cols-nodes">
         {nodes.map((node) => (
           <NodeCard
             key={node.addr}
