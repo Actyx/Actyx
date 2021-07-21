@@ -71,7 +71,7 @@ const Initial: WizardInput<Input> = ({ execute, executing }) => {
   return (
     <>
       <p>Generate a user key pair to authenticate yourself to Actyx nodes.</p>
-      <div className="p-2">
+      <div>
         <SimpleInput
           className="mt-4"
           label="Name of key pair"
@@ -118,7 +118,7 @@ const Success: WizardSuccess<Success> = ({
   <>
     <p className="mb-2">Successfully generated user key pair.</p>
     <p>You can now use this key pair to interact with Actyx nodes.</p>
-    <div className="p-2">
+    <div>
       <SimpleInput
         className="mt-4"
         label="Your private key was saved at"
