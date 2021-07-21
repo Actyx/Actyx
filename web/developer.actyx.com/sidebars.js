@@ -150,6 +150,15 @@ module.exports = {
             'how-to/migration/migrate-app-logs-and-settings',
           ],
         },
+        {
+          type: 'category',
+          label: 'Nodes',
+          items: [
+            'how-to/migration/migrate-bootstrap-nodes',
+            'how-to/migration/migrate-production-nodes',
+            'how-to/migration/migrate-externally-stored-offset-maps',
+          ],
+        },
       ],
     },
   ],

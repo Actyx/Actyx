@@ -48,7 +48,7 @@ This section contains a list of breaking changes from 1.x:
 
 ## Migrating your apps
 
-There is the recommended approach for migrating your apps to work with Actyx 2.x:
+This is the recommended approach for migrating your apps to work with Actyx 2.x:
 
 - [Migrate business logic](./migrate-business-logic)
 - [Migrate your Actyx app manifest](./migrate-app-manifest)
@@ -56,9 +56,13 @@ There is the recommended approach for migrating your apps to work with Actyx 2.x
 
 ## Migrating your production deployment
 
-:::info Migrating your production deployment to version 2?
-If you want to migrate your production deployment to version 2, we strongly recommend waiting for version 2.1.
-It will contain dedicated functionality to enable a smooth migration.
-However, it still makes sense to already start migrating your apps.
-If you have any questions, please [get in touch with us and the Actyx community](https://community.actyx.com/), or contact us directly.
+Once your apps are migrated to work with Actyx 2.x, this is the recommended approach for migrating your nodes to Actyx 2.x:
+
+:::tip Plan appropriate system downtime
+Please consider that you must not emit events during the migration, i.e. your apps on all nodes should be stopped.
+The migration is performed on a node-by-node basis, so please plan appropriate downtime depending on the size of your deployment.
 :::
+
+- [Migrate bootstrap nodes](./migrate-bootstrap-nodes)
+- [Migrate production nodes](./migrate-production-nodes)
+- [Migrate externally stored offset maps](./migrate-externally-stored-offset-maps)

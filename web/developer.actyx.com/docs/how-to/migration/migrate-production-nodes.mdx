@@ -1,0 +1,246 @@
+---
+title: Migrate production nodes
+id: migrate-production-nodes
+sidebar_label: Production nodes
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+This guide explains how to migrate Actyx production nodes.
+
+## Before you start the migration
+
+### Prepare your PC
+
+Make sure that you have the latest version of the Node Manager or CLI installed on a computer with which you can access all nodes via the local network.
+
+### Prepare your deployment
+
+For a successful migration, no v1 nodes must emit events during and after the migration.
+This means that you have to close all apps before you start migrating a node.
+After all nodes have been migrated, you can start the v2-compatible apps again.
+
+### Prepare the migration
+
+Before you start with the migration, start ActyxOS on your 
+
+## Procedure
+
+For the migration, it is important to distinguish two types of nodes:
+
+- **Live nodes**: These are nodes that have emitted events and still exist, i.e. they are currently running in your v1 deployment
+- **Deleted nodes**: These are nodes that have emitted events and do not exist anymore, e.g. because hardware was exchanged or Actyx deleted and re-installed
+
+Before you start with the migration, make a copy of the data directory of a node and move it onto your PC.
+You will need it later when you start migrating deleted nodes.
+
+:::info TODO
+How to make sure that the directory contains all events from deleted sources or is in sync with other nodes?
+:::
+
+After you have made the copy, you can start migrating all live nodes.
+
+### Migrate live nodes
+
+In order for your apps to keep working as intended after the migration, every live node must rewrite its own events.
+This means you have to migrate your deployment node-by-node.
+Additionally to rewriting its own events, your node takes over the following settings:
+
+- Display name
+- Swarm key
+- Topic
+- Read only
+
+As you already set up a new discovery helper node (previously called _bootstrap node_), you need to manually set it again as described below.
+
+The migration procedure depends on the operating system of your node–it does not matter in which order you migrate your nodes:
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<Tabs
+  groupId="OS"
+  defaultValue={"windows"}
+  values={[
+    { label: 'Windows', value: 'windows' },
+    { label: 'Android', value: 'android' },
+    { label: 'Docker', value: 'docker' },
+    { label: 'Linux/macOS', value: 'linux' },
+  ]}
+>
+
+<TabItem value="windows">
+
+Migrating a Windows node works as follows:
+
+1. Stop your v1 node
+2. Download and install the latest Actyx 2.x release (only works from 2.x onwards TODO)
+3. Stop your v2 node
+4. Copy your v1 data directory
+5. Start your v2 node and migrate
+6. Check if the migration worked
+
+<h4>1. Stop your v1 node</h4>
+
+Stop your Actyx v1 node by clicking on the tray icon and `exit`:
+
+![migration-01](../../../static/images/how-to/migration/migration-01.png)
+
+<h4>2. Download and install the latest Actyx 2.x release</h4>
+
+You can find installation instructions [here](../local-development/install-actyx.mdx).
+
+<h4>3. Stop your v2 node</h4>
+
+After installation, Actyx automatically starts.
+In order to stop it, open the Windows Services Manager, and right click on Actyx to stop it:
+
+![migration-02](../../../static/images/how-to/migration/migration-02.png)
+
+<h4>4. Copy your v1 data directory</h4>
+
+First, open the file explorer and go to the v1 directory under `TODO`, and copy the `TODO` directory:
+
+TODO: Screenshot
+
+Then navigate to your v2 directory `TODO` and paste the `TODO` directory you copied before:
+
+Finally, delete the `TODO` directory, and rename the directory you copied as `TODO`.
+
+<h4>5. Start your v2 node and migrate</h4>
+
+Go back to the Windows Service Manager and start the Actyx Service:
+
+TODO: Screenshot
+
+<h4>5. Ensure that the migration worked</h4>
+
+Open the Windows Event Viewer to get the Actyx logs:
+
+TODO: Screenshot
+
+Filter for the TODO logs:
+
+If you see these logs, the migration was successful:
+
+You can now uninstall Actyx v1.
+
+<h4></h4>
+
+</TabItem>
+<TabItem value="android">
+
+Migrating an Android node works as follows:
+
+1. Install and run the v1 migration app
+2. Download and install the latest Actyx 2.x release (only works from 2.x onwards TODO)
+5. Start your v2 node and migrate
+6. Clean up your v1 installation
+
+<h4>Install and run the v1 migration app</h4>
+
+On Android, different apps cannot access each others directories.
+You therefore need to update your v1 app with a dedicated migration app first.
+The migration app does not contain any functionality other than copying your v1 data directory to a public directory so that your v2 app can access it.
+
+
+TODO
+
+You can download the apk here:
+
+import { DownloadLink } from '../../../src/components/DownloadLink.tsx'
+
+<h4>Install and run the v1 migration app</h4>
+
+<DownloadLink cta="Download" link="https://actyx.com" />
+
+</TabItem>
+<TabItem value="docker">
+
+Migrating a Docker node works as follows:
+
+1. Stop your v1 node
+2. Change the permissions of the mounted v1 volume
+2. Start your v2 node
+
+<h4>Stop your v1 node</h4>
+
+For stopping your v1 Docker node, just stop the Actyx v1 docker container.
+
+<h4>Change the permissions of the mounted v1 volume</h4>
+
+Actyx was running as the `root` user within the v1 docker image.
+This is not the case in the v2 docker image anymore and therefore you need to change the permissions of the mounted volume.
+Assuming your v1 volume was `actyxos-data:/data`, execute the following command:
+
+```text
+docker run --rm -v actyxos-data:/data -u root alpine chown -R 1000:1000 /data
+```
+
+<h4>Start your v2 node</h4>
+
+As Actyx v2 is published on DockerHub, you can just download and run the latest version with the previous v1 volume:
+
+```text
+docker run --name actyx -it --rm -v actyxos-data:/data -p 4001:4001 -p 4458:4458 -p 127.0.0.1:4454:4454 actyx/actyx
+Jul 20 15:21:34.053  INFO MIGRATION: Migrating from an earlier version (1 to 2) ..
+Jul 20 15:21:34.126  INFO MIGRATION: Created backup of v1 files at /data/actyx-data/1626855481_v1_data_files.tar.gz
+Jul 20 15:21:34.127  INFO MIGRATION: Migration succeeded.
+Jul 20 15:21:34.163  INFO NODE_STARTED_BY_HOST: Actyx 2.1.0_dev-4fe5eec475e1188561b476703ddff61d988843db-macos-x86_64-release is running.
+```
+
+After you see the above logs, the migration was successful.
+Your Actyx v2 node is now running and successfully migrated events and settings.
+
+</TabItem>
+<TabItem value="linux">
+
+Migrating a Linux or macOS node works as follows:
+
+1. Stop your v1 node
+2. Download the latest Actyx 2.x release (only works from 2.x onwards TODO)
+3. Start your v2 node
+
+<h4>Stop your v1 node</h4>
+
+For stopping your v1 node, just stop the Actyx v1 binary.
+
+<h4>Download the latest Actyx 2.x release</h4>
+
+Download the latest Actyx 2.x release [here](https://developer.actyx.com/releases/).
+
+<h4>Start your v2 node and migrate</h4>
+
+Start your Actyx v2 node and declare the previous v1 directory as a working directory.
+Assuming your v1 directory was `my-actyx-data`, execute the following command:
+
+```text
+./actyx-linux --working-dir my-actyx-data
+using data directory `/Users/actyx/my-actyxos-data`
+Jul 20 15:21:34.053  INFO MIGRATION: Migrating from an earlier version (1 to 2) ..
+Jul 20 15:21:34.126  INFO MIGRATION: Created backup of v1 files at /Users/actyx/my-actyx-data/1626787294_v1_data_files.tar.gz
+Jul 20 15:21:34.127  INFO MIGRATION: Migration succeeded.
+Jul 20 15:21:34.163  INFO NODE_STARTED_BY_HOST: Actyx 2.1.0_dev-4fe5eec475e1188561b476703ddff61d988843db-macos-x86_64-release is running.
+```
+
+After you see the above logs, the migration was successful.
+Your Actyx v2 node is now running and successfully migrated events and settings.
+
+</TabItem>
+</Tabs>
+
+### Migrate deleted nodes
+
+As each node only rewrites its own events, events published by deleted nodes are not rewritten yet.
+Therefore, after you have migrated all production nodes, you can now start migrating all deleted nodes. It works as follows:
+
+1. Download the Actyx migration binary
+2. TODO
+
+If your apps did not use any externally stored offset maps (for e.g. exporting data into other systems), you are finished now and can start your v2-compatible apps on all nodes. Otherwise, continue with our [guide on migrating externally stored offset maps](./migrate-externally-stored-offset-maps).
+
+:::tip Problems migrating?
+If you have any problems with migrating your apps, please don't hesitate to contact us in our [community forum](https://community.actyx.com) or on our [Discord server](https://discord.gg/262yJhc).
+We'll do our best to get back to you with answers as fast as possible.
+:::
