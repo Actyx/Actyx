@@ -290,11 +290,11 @@ mod tests {
 
     #[test]
     fn time_range() {
-        assert_eq!(q("FROM from(2021-07-07)"), Err(Beta(s("timeRange"))));
-        assert_eq!(q("FROM to(2021-07-07)"), Err(Beta(s("timeRange"))));
+        assert_eq!(q("FROM from(2021-07-07Z)"), Err(Beta(s("timeRange"))));
+        assert_eq!(q("FROM to(2021-07-07Z)"), Err(Beta(s("timeRange"))));
 
-        assert_eq!(q("FEATURES(timeRange) FROM from(2021-07-07)"), Ok(()));
-        assert_eq!(q("FEATURES(timeRange) FROM to(2021-07-07)"), Ok(()));
+        assert_eq!(q("FEATURES(timeRange) FROM from(2021-07-07Z)"), Ok(()));
+        assert_eq!(q("FEATURES(timeRange) FROM to(2021-07-07Z)"), Ok(()));
     }
 
     #[test]

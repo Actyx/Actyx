@@ -16,6 +16,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
+    language::SortKey,
     offset::{Offset, OffsetMap, OffsetOrMin},
     scalars::{NodeId, StreamId, StreamNr},
     LamportTimestamp, Tag, TagSet, Timestamp,
@@ -56,6 +57,15 @@ impl Arbitrary for Timestamp {
 impl Arbitrary for LamportTimestamp {
     fn arbitrary(g: &mut Gen) -> Self {
         LamportTimestamp::new(u64::arbitrary(g))
+    }
+}
+
+impl Arbitrary for SortKey {
+    fn arbitrary(g: &mut Gen) -> Self {
+        Self {
+            lamport: Arbitrary::arbitrary(g),
+            stream: Arbitrary::arbitrary(g),
+        }
     }
 }
 

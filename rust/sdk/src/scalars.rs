@@ -208,11 +208,18 @@ impl Decode<DagCborCodec> for NodeId {
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(into = "String", try_from = "String")]
 pub struct StreamId {
-    pub(crate) node_id: NodeId,
-    pub(crate) stream_nr: StreamNr,
+    pub node_id: NodeId,
+    pub stream_nr: StreamNr,
 }
 
 impl StreamId {
+    pub fn min() -> Self {
+        Self {
+            node_id: NodeId([0; 32]),
+            stream_nr: 0.into(),
+        }
+    }
+
     pub fn node_id(&self) -> NodeId {
         self.node_id
     }

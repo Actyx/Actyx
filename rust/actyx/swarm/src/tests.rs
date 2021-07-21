@@ -170,11 +170,13 @@ async fn should_extend_packed_when_hitting_max_tree_depth() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn must_not_lose_events_through_compaction() -> Result<()> {
-    let tags_query = TagExprQuery::from_expr(&"'abc'".parse().unwrap()).unwrap()(true);
     const EVENTS: usize = 1000;
     let store = BanyanStore::test("compaction_max_tree").await?;
     // compact continuously
     store.spawn_task("compaction", store.clone().compaction_loop(Duration::from_micros(0)));
+
+    let tags_query =
+        TagExprQuery::from_expr(&"'abc'".parse().unwrap()).unwrap()(true, store.node_id().stream(0.into()));
 
     let stream = store.get_or_create_own_stream(0.into())?;
     assert!(stream.published_tree().is_none());

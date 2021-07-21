@@ -92,7 +92,7 @@ impl EventStore {
                 if from_exclusive >= to_inclusive {
                     return None;
                 }
-                let tags_query = mk_tags_query(local);
+                let tags_query = mk_tags_query(local, stream_id);
                 if tags_query.is_empty() {
                     return None;
                 }
@@ -200,7 +200,7 @@ impl EventStore {
             .stream_known_streams()
             .filter_map(move |stream_id| {
                 let local = banyan_store.is_local(stream_id);
-                let tags_query = mk_tags_query(local);
+                let tags_query = mk_tags_query(local, stream_id);
                 future::ready(if tags_query.is_empty() {
                     None
                 } else {

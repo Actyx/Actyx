@@ -1,8 +1,9 @@
-use actyx_sdk::{app_id, AppId};
+use actyx_sdk::{app_id, AppId, Payload};
 use anyhow::Result;
 use api::{formats::Licensing, NodeInfo};
+use ax_futures_util::prelude::AxStreamExt;
 use crypto::{KeyPair, KeyStore};
-use futures::stream::StreamExt;
+use futures::{stream::StreamExt, TryStreamExt};
 use structopt::StructOpt;
 use swarm::{
     event_store_ref::{self, EventStoreHandler, EventStoreRef, EventStoreRequest},
@@ -14,7 +15,7 @@ use tokio::{
     runtime::Handle,
     sync::mpsc,
 };
-use trees::query::TagExprQuery;
+use trees::{query::TagExprQuery, AxKey};
 
 #[tokio::main]
 async fn main() {
@@ -97,6 +98,8 @@ async fn run() -> Result<()> {
         }
     });
 
+    let node_id = swarm.node_id();
+
     loop {
         line.clear();
         stdin.read_line(&mut line).await?;
@@ -106,10 +109,22 @@ async fn run() -> Result<()> {
                 swarm.append(nr, app_id(), events).await?;
             }
             Command::SubscribeQuery(q) => {
-                let tags_query = TagExprQuery::from_expr(&q.from).unwrap()(true);
-                let mut stream = swarm.stream_filtered_stream_ordered(tags_query);
+                let tags_query = TagExprQuery::from_expr(&q.from).unwrap();
+                let this = swarm.clone();
+                let mut stream = swarm
+                    .stream_known_streams()
+                    .map(move |stream_id| {
+                        this.stream_filtered_chunked(
+                            stream_id,
+                            0..=u64::max_value(),
+                            tags_query(stream_id.node_id() == node_id, stream_id),
+                        )
+                    })
+                    .merge_unordered()
+                    .map_ok(|chunk| futures::stream::iter(chunk.data).map(Ok))
+                    .try_flatten();
                 tokio::spawn(async move {
-                    while let Some(res) = stream.next().await {
+                    while let Some(res) = stream.next().await as Option<anyhow::Result<(u64, AxKey, Payload)>> {
                         println!("{}", Event::Result(res.unwrap()));
                     }
                 });

@@ -6,8 +6,8 @@ use std::{
 };
 
 use actyx_sdk::{
-    language::{self, TagAtom},
-    tag, LamportTimestamp, Timestamp,
+    language::{self, SortKey, TagAtom},
+    tag, StreamId, Timestamp,
 };
 use banyan::{
     index::{BranchIndex, CompactSeq, LeafIndex},
@@ -31,9 +31,9 @@ pub enum TagExprError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LamportQuery(RangeSet<LamportTimestamp>);
+pub struct LamportQueryBuilder(RangeSet<SortKey>);
 
-impl LamportQuery {
+impl LamportQueryBuilder {
     pub fn all() -> Self {
         Self(RangeSet::all())
     }
@@ -46,45 +46,67 @@ impl LamportQuery {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    pub fn build(&self, stream: StreamId) -> LamportQuery {
+        LamportQuery(self.0.clone(), stream)
+    }
 }
 
-impl BitAndAssign for LamportQuery {
+impl BitAndAssign for LamportQueryBuilder {
     fn bitand_assign(&mut self, rhs: Self) {
         self.0.bitand_assign(rhs.0)
     }
 }
 
-impl From<Range<LamportTimestamp>> for LamportQuery {
-    fn from(value: Range<LamportTimestamp>) -> Self {
+impl From<Range<SortKey>> for LamportQueryBuilder {
+    fn from(value: Range<SortKey>) -> Self {
         Self(value.into())
     }
 }
 
-impl From<RangeSet<LamportTimestamp>> for LamportQuery {
-    fn from(value: RangeSet<LamportTimestamp>) -> Self {
+impl From<RangeSet<SortKey>> for LamportQueryBuilder {
+    fn from(value: RangeSet<SortKey>) -> Self {
         Self(value)
     }
 }
 
-impl From<RangeFrom<LamportTimestamp>> for LamportQuery {
-    fn from(value: RangeFrom<LamportTimestamp>) -> Self {
+impl From<RangeFrom<SortKey>> for LamportQueryBuilder {
+    fn from(value: RangeFrom<SortKey>) -> Self {
         Self(value.into())
     }
 }
 
-impl From<RangeTo<LamportTimestamp>> for LamportQuery {
-    fn from(value: RangeTo<LamportTimestamp>) -> Self {
+impl From<RangeTo<SortKey>> for LamportQueryBuilder {
+    fn from(value: RangeTo<SortKey>) -> Self {
         Self(value.into())
     }
 }
 
-impl FromIterator<LamportQuery> for LamportQuery {
-    fn from_iter<T: IntoIterator<Item = LamportQuery>>(iter: T) -> Self {
+impl FromIterator<LamportQueryBuilder> for LamportQueryBuilder {
+    fn from_iter<T: IntoIterator<Item = LamportQueryBuilder>>(iter: T) -> Self {
         let mut ret = Self::all();
         for q in iter.into_iter() {
             ret &= q;
         }
         ret
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LamportQuery(RangeSet<SortKey>, StreamId);
+
+impl LamportQuery {
+    pub fn all() -> Self {
+        Self(RangeSet::all(), StreamId::min())
+    }
+    pub fn empty() -> Self {
+        Self(RangeSet::empty(), StreamId::min())
+    }
+    pub fn is_all(&self) -> bool {
+        self.0.is_all()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 
@@ -95,7 +117,15 @@ impl Query<AxTrees> for LamportQuery {
         }
         let lamport = &index.summaries.lamport;
         for i in 0..lamport.len().min(matching.len()) {
-            matching[i] = matching[i] && !self.0.is_disjoint(&lamport[i].into());
+            if matching[i] {
+                let min = lamport[i].min;
+                // this is somewhat too large: the best upper bound would be to increment the SortKey
+                // but that is quite a bit more complexity for little gain; the real event filter below
+                // is perfectly precise, so the effect is that we may inspect more leaves than needed
+                let max = lamport[i].max + 1;
+                let r = RangeSet::from(SortKey::new(min, self.1)..SortKey::new(max, self.1));
+                matching[i] = !self.0.is_disjoint(&r);
+            }
         }
     }
 
@@ -105,7 +135,10 @@ impl Query<AxTrees> for LamportQuery {
         }
         let lamport = &index.keys.lamport;
         for i in 0..lamport.len().min(matching.len()) {
-            matching[i] = matching[i] && self.0.contains(&lamport[i]);
+            if matching[i] {
+                let key = SortKey::new(lamport[i], self.1);
+                matching[i] = self.0.contains(&key);
+            }
         }
     }
 }
@@ -253,7 +286,7 @@ impl TagExprQuery {
         Self { tags, lamport, time }
     }
 
-    pub fn from_expr(tag_expr: &language::TagExpr) -> Result<impl Fn(bool) -> Self, TagExprError> {
+    pub fn from_expr(tag_expr: &language::TagExpr) -> Result<impl Fn(bool, StreamId) -> Self, TagExprError> {
         let dnf = Dnf::from(tag_expr).0;
 
         let mut terms = vec![];
@@ -284,17 +317,17 @@ impl TagExprQuery {
             get_time_query(tag_set, &mut time)?;
         }
 
-        let lamport = lamport.unwrap_or_else(LamportQuery::all);
+        let lamport = lamport.unwrap_or_else(LamportQueryBuilder::all);
         let time = time.unwrap_or_else(TimeQuery::all);
 
-        Ok(move |local| {
+        Ok(move |local, stream| {
             let mut local = (if local { local_terms.iter() } else { no_terms.iter() })
                 .cloned()
                 .peekable();
             if terms.get(0) == Some(&ScopedTagSet::empty()) || local.peek() == Some(&ScopedTagSet::empty()) {
-                Self::new(once(ScopedTagSet::empty()), lamport.clone(), time.clone())
+                Self::new(once(ScopedTagSet::empty()), lamport.build(stream), time.clone())
             } else {
-                Self::new(terms.iter().cloned().chain(local), lamport.clone(), time.clone())
+                Self::new(terms.iter().cloned().chain(local), lamport.build(stream), time.clone())
             }
         })
     }
@@ -328,12 +361,12 @@ impl TagExprQuery {
     }
 }
 
-fn get_lamport_query(tag_set: &BTreeSet<TagAtom>, q: &mut Option<LamportQuery>) -> Result<(), TagExprError> {
+fn get_lamport_query(tag_set: &BTreeSet<TagAtom>, q: &mut Option<LamportQueryBuilder>) -> Result<(), TagExprError> {
     let query = tag_set
         .iter()
         .filter_map(|x| match x {
-            TagAtom::FromLamport(l) => Some(LamportQuery::from(*l..)),
-            TagAtom::ToLamport(l) => Some(LamportQuery::from(..*l)),
+            TagAtom::FromLamport(l) => Some(LamportQueryBuilder::from(*l..)),
+            TagAtom::ToLamport(l) => Some(LamportQueryBuilder::from(..*l)),
             _ => None,
         })
         .collect();
@@ -441,7 +474,7 @@ mod tests {
     use super::*;
     use actyx_sdk::{
         language::{TagAtom, TagExpr},
-        tags, Tag,
+        tags, NodeId, Tag,
     };
 
     fn l(tag: &'static str) -> TagExpr {
@@ -449,7 +482,7 @@ mod tests {
     }
 
     fn assert_match(index: &TagIndex, expr: &TagExpr, expected: Vec<bool>) {
-        let query = TagExprQuery::from_expr(expr).unwrap()(true);
+        let query = TagExprQuery::from_expr(expr).unwrap()(true, StreamId::min());
         let mut matching = vec![true; expected.len()];
         query.tags.set_matching(index, &mut matching);
         assert_eq!(matching, expected);
@@ -487,7 +520,7 @@ mod tests {
     fn test_from_expr() {
         let test_expr = |local: bool, tag_expr: &'static str, expected: TagExprQuery| {
             let tag_expr = tag_expr.parse::<TagExpr>().unwrap();
-            let actual = TagExprQuery::from_expr(&tag_expr).unwrap()(local);
+            let actual = TagExprQuery::from_expr(&tag_expr).unwrap()(local, StreamId::min());
             assert_eq!(actual, expected, "tag_expr: {:?}", tag_expr);
         };
 
@@ -604,21 +637,21 @@ mod tests {
         assert_eq!(tq("allEvents"), TimeQuery::all());
         assert_eq!(tq("from(12)"), TimeQuery::all());
         assert_eq!(
-            tq("from(2021-01-01)"),
+            tq("from(2021-01-01Z)"),
             TimeQuery::from(Timestamp::new(1_609_459_200_000_000)..)
         );
         assert_eq!(
-            tq("to(2021-01-01)"),
+            tq("to(2021-01-01Z)"),
             TimeQuery::from(..Timestamp::new(1_609_459_200_000_000))
         );
         assert_eq!(
-            tq("from(2021-01-01) & to(2021-01-02)"),
+            tq("from(2021-01-01Z) & to(2021-01-02Z)"),
             TimeQuery::from(Timestamp::new(1_609_459_200_000_000)..Timestamp::new(1_609_545_600_000_000))
         );
-        assert_eq!(tq("from(2021-01-01) & to(2021-01-01)"), TimeQuery::empty());
+        assert_eq!(tq("from(2021-01-01Z) & to(2021-01-01Z)"), TimeQuery::empty());
     }
 
-    fn lq(s: &str) -> LamportQuery {
+    fn lq(s: &str) -> LamportQueryBuilder {
         let mut q = None;
         get_lamport_query(&tag_set(s), &mut q).unwrap();
         q.unwrap()
@@ -626,14 +659,31 @@ mod tests {
 
     #[test]
     fn lamport_query() {
-        assert_eq!(lq("allEvents"), LamportQuery::all());
-        assert_eq!(lq("from(2021-01-01)"), LamportQuery::all());
-        assert_eq!(lq("from(1)"), LamportQuery::from(LamportTimestamp::new(1)..));
-        assert_eq!(lq("to(4)"), LamportQuery::from(..LamportTimestamp::new(4)));
+        assert_eq!(lq("allEvents"), LamportQueryBuilder::all());
+        assert_eq!(lq("from(2021-01-01Z)"), LamportQueryBuilder::all());
+        assert_eq!(
+            lq("from(1)"),
+            LamportQueryBuilder::from(SortKey::new(1.into(), StreamId::min())..)
+        );
+        assert_eq!(
+            lq("to(4)"),
+            LamportQueryBuilder::from(..SortKey::new(4.into(), StreamId::min()))
+        );
         assert_eq!(
             lq("from(1) & to(4)"),
-            LamportQuery::from(LamportTimestamp::new(1)..LamportTimestamp::new(4))
+            LamportQueryBuilder::from(SortKey::new(1.into(), StreamId::min())..SortKey::new(4.into(), StreamId::min()))
         );
-        assert_eq!(lq("from(1) & to(1)"), LamportQuery::empty());
+        assert_eq!(lq("from(1) & to(1)"), LamportQueryBuilder::empty());
+
+        let zero = NodeId::from_bytes(&[0; 32]).unwrap().stream(0.into());
+        let one = NodeId::from_bytes(&[1; 32]).unwrap().stream(0.into());
+        assert_eq!(
+            lq(&format!("from(1/{}) & to(1/{})", zero, one)),
+            LamportQueryBuilder::from(SortKey::new(1.into(), zero)..SortKey::new(1.into(), one))
+        );
+        assert_eq!(
+            lq(&format!("from(1/{}) & to(1/{})", one, zero)),
+            LamportQueryBuilder::empty()
+        );
     }
 }

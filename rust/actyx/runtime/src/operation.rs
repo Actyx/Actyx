@@ -54,7 +54,7 @@ impl Select {
 
 #[cfg(test)]
 mod tests {
-    use actyx_sdk::{EventKey, NodeId};
+    use actyx_sdk::{language::SortKey, NodeId};
     use cbor_data::Encoder;
 
     use super::*;
@@ -63,11 +63,10 @@ mod tests {
         s.parse::<SimpleExpr>().unwrap()
     }
 
-    fn key() -> EventKey {
-        EventKey {
+    fn key() -> SortKey {
+        SortKey {
             lamport: Default::default(),
             stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
-            offset: Default::default(),
         }
     }
 

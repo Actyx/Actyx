@@ -27,7 +27,7 @@ impl EventSelection {
     #[cfg(test)]
     pub fn matches<T>(&self, local: bool, event: &actyx_sdk::Event<T>) -> bool {
         use actyx_sdk::TagSet;
-        let query = TagExprQuery::from_expr(&self.tag_expr).unwrap()(local);
+        let query = TagExprQuery::from_expr(&self.tag_expr).unwrap()(local, event.key.stream);
         query.is_all()
             || query.terms().any(|t| {
                 t.into_iter()

@@ -4,7 +4,7 @@
 use std::{convert::TryInto, str::FromStr};
 
 use super::{non_empty::NonEmptyVec, Arr, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, TagAtom, TagExpr};
-use crate::{tags::Tag, Timestamp};
+use crate::{language::SortKey, tags::Tag, StreamId, Timestamp};
 use chrono::{TimeZone, Utc};
 use once_cell::sync::Lazy;
 use pest::{prec_climber::PrecClimber, Parser};
@@ -37,17 +37,27 @@ enum FromTo {
     From,
     To,
 }
-fn r_tag_from_to(mut p: P, f: FromTo) -> TagExpr {
+fn r_tag_from_to(p: P, f: FromTo) -> TagExpr {
     use TagAtom::*;
     use TagExpr::Atom;
-    match p.rule() {
-        Rule::natural => match f {
-            FromTo::From => Atom(FromLamport(p.natural().unwrap().into())),
-            FromTo::To => Atom(ToLamport(p.natural().unwrap().into())),
-        },
+    let mut p = p.inner();
+    let mut first = p.next().unwrap();
+    match first.rule() {
+        Rule::natural => {
+            let lamport = first.natural().unwrap().into();
+            let stream = p
+                .next()
+                .map(|second| second.as_str().parse().unwrap())
+                // if no streamId was given, use the first one (just like assuming 00:00:00 for a date)
+                .unwrap_or_else(StreamId::min);
+            match f {
+                FromTo::From => Atom(FromLamport(SortKey { lamport, stream })),
+                FromTo::To => Atom(ToLamport(SortKey { lamport, stream })),
+            }
+        }
         Rule::isodate => match f {
-            FromTo::From => Atom(FromTime(r_timestamp(p))),
-            FromTo::To => Atom(ToTime(r_timestamp(p))),
+            FromTo::From => Atom(FromTime(r_timestamp(first))),
+            FromTo::To => Atom(ToTime(r_timestamp(first))),
         },
         x => unexpected!(x),
     }
@@ -70,8 +80,8 @@ fn r_tag_expr(p: P) -> TagExpr {
             Rule::tag_expr => r_tag_expr(p),
             Rule::all_events => Atom(AllEvents),
             Rule::is_local => Atom(IsLocal),
-            Rule::tag_from => r_tag_from_to(p.single(), FromTo::From),
-            Rule::tag_to => r_tag_from_to(p.single(), FromTo::To),
+            Rule::tag_from => r_tag_from_to(p, FromTo::From),
+            Rule::tag_to => r_tag_from_to(p, FromTo::To),
             Rule::tag_app => Atom(AppId(p.single().as_str().parse().unwrap())),
             x => unexpected!(x),
         },
@@ -331,7 +341,7 @@ impl FromStr for SimpleExpr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tag;
+    use crate::{tag, NodeId};
     use pest::{fails_with, Parser};
 
     #[test]
@@ -394,7 +404,8 @@ mod tests {
         assert_eq!(
             "FROM 'machine' |
                 -- or the other
-                  'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId(hello-5.-x-) & allEvents
+                  'user' & isLocal & from(2012-12-31Z) & to(12345678901234567) & \
+                  from(10/1234567890123456789012345678901234567890122-4312) & appId(hello-5.-x-) & allEvents
                   FILTER _.x[42] > 5 SELECT { x: ! 'hello' y: 42 z: [1.3,_.x] } END --"
                 .parse::<Query>()
                 .unwrap(),
@@ -402,7 +413,18 @@ mod tests {
                 Atom(Tag(tag!("machine"))).or(Tag(tag!("user"))
                     .and(IsLocal)
                     .and(Atom(FromTime(1356912000000000.into())))
-                    .and(Atom(ToLamport(12345678901234567.into())))
+                    .and(Atom(ToLamport(SortKey {
+                        lamport: 12345678901234567.into(),
+                        stream: StreamId::min(),
+                    })))
+                    .and(Atom(FromLamport(SortKey {
+                        lamport: 10.into(),
+                        stream: NodeId([
+                            12, 65, 70, 28, 130, 74, 44, 32, 196, 20, 97, 200, 36, 162, 194, 12, 65, 70, 28, 130, 74,
+                            44, 32, 196, 20, 97, 200, 36, 162, 194, 12, 65
+                        ])
+                        .stream(4312.into())
+                    })))
                     .and(Atom(AppId(app_id!("hello-5.-x-"))))
                     .and(Atom(AllEvents)))
             )
@@ -422,7 +444,7 @@ mod tests {
     #[test]
     fn positive() {
         let p = |str: &'static str| str.parse::<Query>().unwrap();
-        p("FROM 'machine' | 'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId(hello-5.-x-) & allEvents FILTER _.x[42] > 5 SELECT { x: !'hello', y: 42, z: [1.3, _.x] } END");
+        p("FROM 'machine' | 'user' & isLocal & from(2012-12-31Z) & to(12345678901234567) & appId(hello-5.-x-) & allEvents FILTER _.x[42] > 5 SELECT { x: !'hello', y: 42, z: [1.3, _.x] } END");
         p("FROM from(2012-12-31T09:30:32.007Z) END");
         p("FROM from(2012-12-31T09:30:32Z) END");
         p("FROM from(2012-12-31T09:30:32.007008Z) END");

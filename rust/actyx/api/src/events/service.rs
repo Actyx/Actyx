@@ -249,9 +249,9 @@ fn mk_feed(
         } = event;
         stream::iter(query.feed(Value::from((key, payload))).into_iter().map(move |v| {
             v.map(|v| EventResponse {
-                lamport: v.key().lamport,
-                stream: v.key().stream,
-                offset: v.key().offset,
+                lamport: key.lamport,
+                stream: key.stream,
+                offset: key.offset,
                 app_id: app_id.clone(),
                 timestamp,
                 tags: tags.clone(),

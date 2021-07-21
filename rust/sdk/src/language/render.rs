@@ -47,13 +47,9 @@ fn render_indexing(w: &mut impl Write, e: &Ind) -> Result {
 
 pub fn render_number(w: &mut impl Write, e: &Num) -> Result {
     match e {
-        Num::Decimal(d) => render_to_string(w, d),
-        Num::Natural(n) => render_to_string(w, n),
+        Num::Decimal(d) => write!(w, "{}", d),
+        Num::Natural(n) => write!(w, "{}", n),
     }
-}
-
-fn render_to_string<W: Write, T: ToString>(w: &mut W, e: &T) -> Result {
-    w.write_str(&e.to_string())
 }
 
 fn render_object(w: &mut impl Write, e: &Obj) -> Result {
@@ -179,7 +175,7 @@ fn render_timestamp(w: &mut impl Write, e: Timestamp) -> Result {
     use chrono::prelude::*;
     let dt: DateTime<Utc> = e.into();
     let str = if dt.hour() == 0 && dt.minute() == 0 && dt.second() == 0 && dt.nanosecond() == 0 {
-        dt.format("%Y-%m-%d").to_string()
+        dt.format("%Y-%m-%dZ").to_string()
     } else {
         dt.to_rfc3339_opts(SecondsFormat::AutoSi, true)
     };
@@ -201,16 +197,14 @@ fn render_tag_atom(w: &mut impl Write, e: &TagAtom) -> Result {
             render_timestamp(w, *tt)?;
             w.write_char(')')
         }
-        TagAtom::FromLamport(fl) => {
+        TagAtom::FromLamport(SortKey { lamport, stream }) => {
             w.write_str("from(")?;
-            let l: u64 = (*fl).into();
-            render_to_string(w, &l)?;
+            write!(w, "{}/{}", u64::from(*lamport), stream)?;
             w.write_char(')')
         }
-        TagAtom::ToLamport(tl) => {
+        TagAtom::ToLamport(SortKey { lamport, stream }) => {
             w.write_str("to(")?;
-            let l: u64 = (*tl).into();
-            render_to_string(w, &l)?;
+            write!(w, "{}/{}", u64::from(*lamport), stream)?;
             w.write_char(')')
         }
         TagAtom::AppId(app_id) => w.write_fmt(format_args!("appId({})", app_id)),
