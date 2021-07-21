@@ -92,6 +92,8 @@ stages:
         pool:
           name: Native
         steps:
+          - checkout: self
+            persistCredentials: true
           - bash: |
               set -e
               echo "Building cosmos-release"
