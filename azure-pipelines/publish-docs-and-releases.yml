@@ -109,7 +109,6 @@ stages:
                 fi
                 source ~/.nvm/nvm.sh
                 cd ../../web/developer.actyx.com
-                export NETLIFY_ACCESS_TOKEN=***REMOVED***
                 export NETLIFY_AUTH_TOKEN=***REMOVED***
                 export NETLIFY_SITE_ID=fffa1022-c8a0-4238-97c4-dd80979bf887
                 echo "Setting up node version"
