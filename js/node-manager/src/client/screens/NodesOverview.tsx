@@ -65,7 +65,7 @@ const NodeCard: React.FC<{ node: Node; remove: () => void; view: () => void }> =
   }
 
   return (
-    <div key={node.addr} className="bg-white rounded p-4 w-56 mr-6 mb-6 relative">
+    <div key={node.addr} className="bg-white rounded p-4 w-56 relative">
       <div className="absolute top-3 right-3 cursor-pointer" onClick={toggleFavorite}>
         {isFavorite(store, node) ? (
           <SolidStarIcon height={4} width={4} className="text-gray-400" />
@@ -141,7 +141,7 @@ const Screen: React.FC<{}> = () => {
       ]}
     >
       {/* <div className="grid gap-6 grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"> */}
-      <div className="flex flex-wrap flex-row">
+      <div className="grid gap-4 grid-cols-nodes grid-cols-nodes">
         {nodes.map((node) => (
           <NodeCard
             key={node.addr}

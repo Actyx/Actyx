@@ -56,7 +56,7 @@ const OffsetMatrix: React.FC<{ nodes: Node[]; offsets: OffsetInfo }> = ({ nodes,
   nodes = nodes.filter((n) => n.type !== NodeType.Loading)
 
   return (
-    <div className="w-max text-xs">
+    <div className="w-max">
       {nodes.length < 2 ? (
         <p className="text-gray-400">
           Must be connected to at least two nodes to show offset matrix (current: {nodes.length}
@@ -64,7 +64,7 @@ const OffsetMatrix: React.FC<{ nodes: Node[]; offsets: OffsetInfo }> = ({ nodes,
         </p>
       ) : (
         <>
-          <div className="flex flew-row">
+          <div className="flex flew-row text-xs">
             <div className={clsx(`w-${headerSize} h-${headerSize}`)}></div>
             {nodes.map((n, ix) => (
               <div
@@ -87,7 +87,7 @@ const OffsetMatrix: React.FC<{ nodes: Node[]; offsets: OffsetInfo }> = ({ nodes,
           </div>
           {nodes.map((from, ix) => {
             return (
-              <div key={'om-row-' + from.addr} className="flex flew-row">
+              <div key={'om-row-' + from.addr} className="flex flew-row text-xs">
                 <div
                   className={clsx(
                     `w-${headerSize} h-${cellHeight} font-medium truncate overflow-ellipsis px-2 pt-1.5 border-b`,
