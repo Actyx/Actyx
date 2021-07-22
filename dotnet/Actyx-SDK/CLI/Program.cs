@@ -61,11 +61,12 @@ namespace Actyx.CLI
                 new Option<EventsOrder>("--order"){ IsRequired = true },
                 new Option<OffsetMap>("--lower-bound", ParseBounds),
                 new Option<OffsetMap>("--upper-bound", ParseBounds),
+                new Argument<string>("node"),
                 new Argument<Aql>("query", res => new Aql(res.Tokens[0].Value)){ Arity = ArgumentArity.ExactlyOne },
             };
-            cmd.Handler = CommandHandler.Create<AppManifest, bool, string, OffsetMap, OffsetMap, Aql, EventsOrder>(async (manifest, websocket, authority, lowerBound, upperBound, query, order) =>
+            cmd.Handler = CommandHandler.Create<AppManifest, bool, string, OffsetMap, OffsetMap, Aql, EventsOrder>(async (manifest, websocket, node, lowerBound, upperBound, query, order) =>
             {
-                var eventStore = await MkStore(manifest, websocket, authority);
+                var eventStore = await MkStore(manifest, websocket, node);
                 await eventStore
                     .Query(lowerBound, upperBound, query, order)
                     .ForEachAsync(e => Console.WriteLine(Proto<IEventOnWire>.Serialize(e, false)));
@@ -77,11 +78,12 @@ namespace Actyx.CLI
         {
             var cmd = new Command("subscribe"){
                 new Option<OffsetMap>("--lower-bound", ParseBounds),
+                new Argument<string>("node"),
                 new Argument<Aql>("query", res => new Aql(res.Tokens[0].Value)){ Arity = ArgumentArity.ExactlyOne },
             };
-            cmd.Handler = CommandHandler.Create<AppManifest, bool, string, OffsetMap, Aql>(async (manifest, websocket, authority, lowerBound, query) =>
+            cmd.Handler = CommandHandler.Create<AppManifest, bool, string, OffsetMap, Aql>(async (manifest, websocket, node, lowerBound, query) =>
             {
-                var eventStore = await MkStore(manifest, websocket, authority);
+                var eventStore = await MkStore(manifest, websocket, node);
                 await eventStore
                     .Subscribe(lowerBound, query)
                     .ForEachAsync(x => Console.WriteLine(Proto<IEventOnWire>.Serialize(x, false)));
@@ -95,11 +97,12 @@ namespace Actyx.CLI
             var cmd = new Command("subscribe_monotonic"){
                 new Option<string>("--session"){ IsRequired = true, Arity = ArgumentArity.ExactlyOne },
                 new Option<OffsetMap>("--lower-bound", ParseBounds){ IsRequired = true, Arity = ArgumentArity.ExactlyOne },
+                new Argument<string>("node"),
                 new Argument<Aql>("query", res => new Aql(res.Tokens[0].Value)){ Arity = ArgumentArity.ExactlyOne },
             };
-            cmd.Handler = CommandHandler.Create<AppManifest, bool, string, OffsetMap, string, Aql>(async (manifest, websocket, authority, lowerBound, session, query) =>
+            cmd.Handler = CommandHandler.Create<AppManifest, bool, string, OffsetMap, string, Aql>(async (manifest, websocket, node, lowerBound, session, query) =>
             {
-                var eventStore = await MkStore(manifest, websocket, authority);
+                var eventStore = await MkStore(manifest, websocket, node);
                 await eventStore
                     .SubscribeMonotonic(session, lowerBound, query)
                     .ForEachAsync(x => Console.WriteLine(Proto<ISubscribeMonotonicResponse>.Serialize(x, false)));
@@ -107,27 +110,32 @@ namespace Actyx.CLI
             return cmd;
         }
 
-        private static Command Offsets() =>
-            new("offsets")
+        private static Command Offsets()
+        {
+            var cmd = new Command("offsets")
             {
-                Handler = CommandHandler.Create<AppManifest, bool, string>(async (manifest, websocket, authority) =>
-                {
-                    var eventStore = await MkStore(manifest, websocket, authority);
-                    var offsets = await eventStore.Offsets();
-                    Console.WriteLine(Proto<OffsetsResponse>.Serialize(offsets));
-                })
+                new Argument<string>("node"),
             };
+            cmd.Handler = CommandHandler.Create<AppManifest, bool, string>(async (manifest, websocket, node) =>
+            {
+                var eventStore = await MkStore(manifest, websocket, node);
+                var offsets = await eventStore.Offsets();
+                Console.WriteLine(Proto<OffsetsResponse>.Serialize(offsets));
+            });
+            return cmd;
+        }
 
         private static Command Publish()
         {
             var cmd = new Command("publish"){
+                new Argument<string>("node"),
                 new Argument<IEnumerable<EventDraft>>("events", (ArgumentResult res) =>
                     res.Tokens.Select(t => Proto<EventDraft>.Deserialize(t.Value)).ToArray()
-                )
+                ),
             };
-            cmd.Handler = CommandHandler.Create<AppManifest, bool, string, IEnumerable<EventDraft>>(async (manifest, websocket, authority, events) =>
+            cmd.Handler = CommandHandler.Create<AppManifest, bool, string, IEnumerable<EventDraft>>(async (manifest, websocket, node, events) =>
             {
-                var eventStore = await MkStore(manifest, websocket, authority);
+                var eventStore = await MkStore(manifest, websocket, node);
                 var response = await eventStore.Publish(events.Cast<IEventDraft>());
                 Console.WriteLine(Proto<PublishResponse>.Serialize(response));
             });
@@ -144,7 +152,6 @@ namespace Actyx.CLI
                 Publish(),
             };
             events.AddGlobalOption(new Option<bool>(new string[] { "--websocket", "-ws" }));
-            events.AddGlobalOption(new Option<string>(new string[] { "--authority", "-a" }));
             events.AddGlobalOption(new Option<AppManifest>(new string[] { "--manifest", "-m" }, ParseManifest, isDefault: true) { Arity = ArgumentArity.ZeroOrOne });
             var rootCmd = new RootCommand() { events };
             return await rootCmd.InvokeAsync(args);

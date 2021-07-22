@@ -107,17 +107,19 @@ const mkDotnetEventsExec = async (
   port: number,
   websocket?: boolean,
 ): Promise<AxEventService> =>
-  mkEventsExec('dotnet', [
-    await dotnetEventsCliAssembly(),
-    'events',
-    '--manifest',
-    JSON.stringify(trialManifest),
-    '--authority',
+  mkEventsExec(
+    'dotnet',
+    [
+      await dotnetEventsCliAssembly(),
+      'events',
+      '--manifest',
+      JSON.stringify(trialManifest),
+      ...(websocket ? ['--websocket'] : []),
+    ],
     `${hostname}:${port}`,
-    ...(websocket ? ['--websocket'] : []),
-  ])
+  )
 
-const mkEventsExec = (binaryPath: string, commonArgs: string[]): AxEventService => {
+const mkEventsExec = (binaryPath: string, commonArgs: string[], node: string): AxEventService => {
   const run = async (cmd: string, params: string[]) => {
     const response = await execa(binaryPath, [...commonArgs, cmd, ...params])
     return JSON.parse(response.stdout)
@@ -132,12 +134,12 @@ const mkEventsExec = (binaryPath: string, commonArgs: string[]): AxEventService 
 
   return {
     offsets: async () => {
-      const response = await run('offsets', [])
+      const response = await run('offsets', [node])
       return rightOrThrow(OffsetsResponse.decode(response), response)
     },
     publish: async (request) => {
       const events = request.data.map((x) => `${JSON.stringify(x)}`)
-      const response = await run('publish', events)
+      const response = await run('publish', [node, ...events])
       return rightOrThrow(PublishResponse.decode(response), response)
     },
     query: async (request, onData) => {
@@ -146,13 +148,18 @@ const mkEventsExec = (binaryPath: string, commonArgs: string[]): AxEventService 
         ...(lowerBound ? ['--lower-bound', JSON.stringify(lowerBound)] : []),
         ...(upperBound ? ['--upper-bound', JSON.stringify(upperBound)] : []),
         ...(order ? ['--order', order] : []),
+        node,
         query,
       ]
       await handleStreamResponse(QueryResponse, onData, stream('query', args))
     },
     subscribe: async (request, onData) => {
       const { lowerBound, query } = request
-      const args = [...(lowerBound ? ['--lower-bound', JSON.stringify(lowerBound)] : []), query]
+      const args = [
+        ...(lowerBound ? ['--lower-bound', JSON.stringify(lowerBound)] : []),
+        node,
+        query,
+      ]
       await handleStreamResponse(QueryResponse, onData, stream('subscribe', args))
     },
     subscribeMonotonic: async (request, onData) => {
@@ -160,6 +167,7 @@ const mkEventsExec = (binaryPath: string, commonArgs: string[]): AxEventService 
       const args = [
         ...['--session', session],
         ...(lowerBound ? ['--lower-bound', JSON.stringify(lowerBound)] : []),
+        node,
         query,
       ]
       await handleStreamResponse(
