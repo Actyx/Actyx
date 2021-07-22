@@ -16,12 +16,47 @@
 use serde::{de::Error, Deserialize, Deserializer};
 use unicode_normalization::UnicodeNormalization;
 
-use crate::types::ArcVal;
+use crate::{types::ArcVal, ParseError};
 
 pub fn nonempty_string<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D::Error> {
     let s = <String>::deserialize(d)?;
     if s.is_empty() {
         Err(D::Error::custom("expected non-empty string"))
+    } else {
+        Ok(ArcVal::from_boxed(s.into()))
+    }
+}
+
+pub fn is_app_id(s: &str) -> bool {
+    if s.is_empty() {
+        return false;
+    }
+    let mut dot_allowed = false;
+    for c in s.chars() {
+        if !('0'..='9').contains(&c) && !('a'..='z').contains(&c) && c != '-' && (!dot_allowed || c != '.') {
+            return false;
+        }
+        dot_allowed = c != '.';
+    }
+    dot_allowed
+}
+
+pub fn validate_app_id(s: &str) -> Result<(), ParseError> {
+    if s.is_empty() {
+        return Err(ParseError::EmptyAppId);
+    }
+    if !is_app_id(s) {
+        return Err(ParseError::InvalidAppId(s.to_owned()));
+    }
+    Ok(())
+}
+
+pub fn app_id_string<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D::Error> {
+    let s = <String>::deserialize(d)?;
+    if s.is_empty() {
+        Err(D::Error::custom("expected non-empty string"))
+    } else if !is_app_id(&s) {
+        Err(D::Error::custom("appId needs to be a valid DNS name"))
     } else {
         Ok(ArcVal::from_boxed(s.into()))
     }
@@ -37,23 +72,20 @@ pub fn nonempty_string_canonical<'de, D: Deserializer<'de>>(d: D) -> Result<ArcV
 }
 
 macro_rules! mk_scalar {
-    ($(#[$attr:meta])* struct $id:ident, $err:ident, $parse_err:ident) => {
+    ($(#[$attr:meta])* struct $id:ident, $parse_err:ident, $validate:path, $parse:literal) => {
 
         $(#[$attr])*
         #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
         #[cfg_attr(feature = "dataflow", derive(Abomonation))]
         pub struct $id(
-            #[serde(deserialize_with = "crate::scalar::nonempty_string")]
+            #[serde(deserialize_with = $parse)]
             $crate::types::ArcVal<str>
         );
 
         impl $id {
             pub fn new(value: String) -> Result<Self, $parse_err> {
-                if value.is_empty() {
-                    Err($parse_err::$err)
-                } else {
-                    Ok(Self($crate::types::ArcVal::from_boxed(value.into())))
-                }
+                $validate(&value)?;
+                Ok(Self($crate::types::ArcVal::from_boxed(value.into())))
             }
             pub fn as_str(&self) -> &str {
                 &self.0
@@ -66,22 +98,16 @@ macro_rules! mk_scalar {
         impl ::std::convert::TryFrom<&str> for $id {
             type Error = $parse_err;
             fn try_from(value: &str) -> Result<Self, $parse_err> {
-                if value.is_empty() {
-                    Err($parse_err::$err)
-                } else {
-                    Ok(Self($crate::types::ArcVal::clone_from_unsized(value)))
-                }
+                $validate(value)?;
+                Ok(Self($crate::types::ArcVal::clone_from_unsized(value)))
             }
         }
 
         impl ::std::convert::TryFrom<::std::sync::Arc<str>> for $id {
             type Error = $parse_err;
             fn try_from(value: ::std::sync::Arc<str>) -> Result<Self, $parse_err> {
-                if value.is_empty() {
-                    Err($parse_err::$err)
-                } else {
-                    Ok(Self($crate::types::ArcVal::from(value)))
-                }
+                $validate(&value)?;
+                Ok(Self($crate::types::ArcVal::from(value)))
             }
         }
 
@@ -127,4 +153,15 @@ macro_rules! mk_scalar {
             }
         }
     };
+}
+
+#[test]
+fn test_app_id() {
+    assert!(is_app_id("s"));
+    assert!(is_app_id("s.3"));
+    assert!(is_app_id("s.3.-"));
+    assert!(!is_app_id("s.3."));
+    assert!(!is_app_id("."));
+    assert!(!is_app_id(".a"));
+    assert!(is_app_id("-a"));
 }

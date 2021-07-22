@@ -1,5 +1,5 @@
 use actyx_sdk::{language::TagExpr, OffsetMap, OffsetOrMin, StreamId};
-use trees::query::TagsQuery;
+use trees::query::TagExprQuery;
 
 /// A precise selection of events, possibly unbounded in size.
 ///
@@ -27,11 +27,11 @@ impl EventSelection {
     #[cfg(test)]
     pub fn matches<T>(&self, local: bool, event: &actyx_sdk::Event<T>) -> bool {
         use actyx_sdk::TagSet;
-        let query = TagsQuery::from_expr(&self.tag_expr)(local);
+        let query = TagExprQuery::from_expr(&self.tag_expr).unwrap()(local, event.key.stream);
         query.is_all()
             || query.terms().any(|t| {
                 t.into_iter()
-                    .filter_map(|t| t.app())
+                    .filter_map(|t| t.to_app())
                     .cloned()
                     .collect::<TagSet>()
                     .is_subset(&event.meta.tags)
@@ -45,5 +45,5 @@ pub struct StreamEventSelection {
     pub stream_id: StreamId,
     pub from_exclusive: OffsetOrMin,
     pub to_inclusive: OffsetOrMin,
-    pub tags_query: TagsQuery,
+    pub tags_query: TagExprQuery,
 }

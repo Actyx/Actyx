@@ -282,6 +282,8 @@ pub enum SubscribeMonotonicResponse {
     /// relevant).
     #[serde(rename_all = "camelCase")]
     TimeTravel { new_start: EventKey },
+    #[serde(rename_all = "camelCase")]
+    Diagnostic(Diagnostic),
     #[serde(other)]
     FutureCompat,
 }
@@ -297,6 +299,8 @@ pub enum QueryResponse {
     Event(EventResponse<Payload>),
     #[serde(rename_all = "camelCase")]
     Offsets(OffsetMapResponse),
+    #[serde(rename_all = "camelCase")]
+    Diagnostic(Diagnostic),
     #[serde(other)]
     FutureCompat,
 }
@@ -312,8 +316,40 @@ pub enum SubscribeResponse {
     Event(EventResponse<Payload>),
     #[serde(rename_all = "camelCase")]
     Offsets(OffsetMapResponse),
+    #[serde(rename_all = "camelCase")]
+    Diagnostic(Diagnostic),
     #[serde(other)]
     FutureCompat,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub struct Diagnostic {
+    severity: Severity,
+    message: String,
+}
+
+impl Diagnostic {
+    pub fn warn(message: String) -> Self {
+        Self {
+            severity: Severity::Warning,
+            message,
+        }
+    }
+
+    pub fn error(message: String) -> Self {
+        Self {
+            severity: Severity::Error,
+            message,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum Severity {
+    Warning,
+    Error,
 }
 
 /// Response to the offsets request

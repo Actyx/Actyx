@@ -510,7 +510,7 @@ async fn bad_request_invalid_expression() {
         .path("/api/v2/events/subscribe")
         .method("POST")
         .header("Authorization", format!("Bearer {}", token))
-        .json(&serde_json::json!({"offsets": null, "query": "FROM x"}))
+        .json(&json!({"offsets": null, "query": "FROM x"}))
         .reply(&route)
         .await;
     assert_err_response(
@@ -530,7 +530,7 @@ async fn bad_request_unknown_stream() {
         .path("/api/v2/events/query")
         .method("POST")
         .header("Authorization", format!("Bearer {}", token))
-        .json(&serde_json::json!({
+        .json(&json!({
           "upperBound": {"4Rf5nier.0HWMLwRm32Nbgx8pkkOMCahfEmRtHCWaSs-0": 42},
           "query": "FROM 'x'",
           "order": "asc"
@@ -555,7 +555,7 @@ async fn bad_request_invalid_upper_bounds() {
         .path("/api/v2/events/query")
         .method("POST")
         .header("Authorization", format!("Bearer {}", token))
-        .json(&serde_json::json!({
+        .json(&json!({
           "upperBound": {stream_id: 42},
           "query": "FROM 'x'",
           "order": "asc"
@@ -570,4 +570,138 @@ async fn bad_request_invalid_upper_bounds() {
           "message": "Invalid request. Query bounds out of range: upper bound must be within the known present."
         }),
     );
+}
+
+#[tokio::test]
+async fn bad_request_aql_feature() {
+    let (route, token, ..) = test_routes().await;
+    let resp = test::request()
+        .path("/api/v2/events/query")
+        .method("POST")
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({"query": "FROM from(2021-07-20Z)", "order":"asc"}))
+        .reply(&route)
+        .await;
+    assert_err_response(
+        resp,
+        http::StatusCode::BAD_REQUEST,
+        json!({"code": "ERR_BAD_REQUEST", "message": "Invalid request. The query uses beta features that are not enabled: timeRange."}),
+    );
+}
+
+#[tokio::test]
+async fn ws_aql_feature() -> anyhow::Result<()> {
+    fn to_json(m: ws::Message) -> anyhow::Result<serde_json::Value> {
+        Ok(m.to_str()
+            .map_err(|_| anyhow::anyhow!("binary"))?
+            .parse::<serde_json::Value>()?)
+    }
+    async fn assert_complete(ws: &mut test::WsClient, id: u32) {
+        assert_eq!(
+            to_json(ws.recv().await.unwrap()).unwrap(),
+            json!({"type": "complete", "requestId": id})
+        );
+    }
+
+    let (route, token, ..) = test_routes().await;
+    let mut ws = test::ws()
+        .path(&format!("/api/v2/events?{}", token))
+        .header("connection", "upgrade")
+        .header("upgrade", "websocket")
+        .header("sec-websocket-version", "13")
+        .header("sec-websocket-key", "dGhlIHNhbXBsZSBub25jZQ==")
+        .handshake(route)
+        .await?;
+
+    ws.send_text(
+        json!({
+            "type": "request",
+            "serviceId": "query",
+            "requestId": 1,
+            "payload": "x"
+        })
+        .to_string(),
+    )
+    .await;
+    assert_eq!(
+        to_json(ws.recv().await?)?,
+        json!({
+            "type": "error",
+            "requestId": 1,
+            "kind": {
+                "type": "badRequest",
+                "message": r#"invalid type: string "x", expected struct QueryRequest"#
+            }
+        })
+    );
+    assert_complete(&mut ws, 1).await;
+
+    ws.send_text(
+        json!({
+            "type": "request",
+            "serviceId": "query",
+            "requestId": 1,
+            "payload": {
+                "query": "x",
+                "order": "asc",
+            }
+        })
+        .to_string(),
+    )
+    .await;
+    assert_eq!(
+        to_json(ws.recv().await?)?,
+        json!({
+            "type": "error",
+            "requestId": 1,
+            "kind": {
+                "type": "badRequest",
+                "message": " --> 1:1\n  |\n1 | x\n  | ^---\n  |\n  = expected main_query"
+            }
+        })
+    );
+    assert_complete(&mut ws, 1).await;
+
+    ws.send_text(
+        json!({
+            "type": "request",
+            "serviceId": "query",
+            "requestId": 1,
+            "payload": {
+                "query": "FROM from(2021-07-20Z)",
+                "order": "asc",
+            }
+        })
+        .to_string(),
+    )
+    .await;
+    assert_eq!(
+        to_json(ws.recv().await?)?,
+        json!({
+            "type": "error",
+            "requestId": 1,
+            "kind": {
+                "type": "serviceError",
+                "value": "The query uses beta features that are not enabled: timeRange."
+            }
+        })
+    );
+    assert_complete(&mut ws, 1).await;
+
+    ws.send_text(
+        json!({
+            "type": "request",
+            "serviceId": "query",
+            "requestId": 1,
+            "payload": {
+                "query": "FEATURES(timeRange) FROM from(2021-07-20Z)",
+                "order": "asc",
+            }
+        })
+        .to_string(),
+    )
+    .await;
+    assert_eq!(*to_json(ws.recv().await?)?.pointer("/type").unwrap(), json!("next"));
+
+    Ok(())
 }

@@ -14,12 +14,12 @@ pub struct Offsets {
 impl Service for Offsets {
     type Req = ();
     type Resp = OffsetsResponse;
-    type Error = ();
+    type Error = String;
     type Ctx = AppId;
 
     fn serve(&self, _app_id: AppId, _req: ()) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
         let service = self.event_service.clone();
-        (async move { service.offsets().await.map_err(|_| ()) })
+        (async move { service.offsets().await.map_err(|e| e.to_string()) })
             .into_stream()
             .boxed()
     }

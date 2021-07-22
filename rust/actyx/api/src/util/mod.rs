@@ -108,7 +108,7 @@ mod tests {
     fn bearer_token_is_expired() {
         let token = BearerToken {
             created: Timestamp::now() - Duration::from_secs(2),
-            app_id: app_id!("app id"),
+            app_id: app_id!("app-id"),
             cycles: 0.into(),
             app_version: "1.0.0".into(),
             validity: 1,
@@ -118,7 +118,7 @@ mod tests {
 
         let token = BearerToken {
             created: Timestamp::now(),
-            app_id: app_id!("app id"),
+            app_id: app_id!("app-id"),
             cycles: 0.into(),
             app_version: "1.0.0".into(),
             validity: 300,
@@ -132,7 +132,7 @@ mod tests {
         let now = Timestamp::now();
         let token = BearerToken {
             created: now,
-            app_id: app_id!("app id"),
+            app_id: app_id!("app-id"),
             cycles: 0.into(),
             app_version: "1.0.0".into(),
             validity: 1,
@@ -145,7 +145,7 @@ mod tests {
     fn bearer_round_trip() {
         let token = BearerToken {
             created: Timestamp::now(),
-            app_id: app_id!("app id"),
+            app_id: app_id!("app-id"),
             cycles: 0.into(),
             app_version: "1.0.0".into(),
             validity: 1,
@@ -160,7 +160,7 @@ mod tests {
     fn bearer_wire_format() {
         let json = r#"{
               "created": 1619769229417484,
-              "appId": "app id",
+              "appId": "app-id",
               "cycles": 42,
               "appVersion": "1.4.2",
               "validity": 10,
@@ -169,7 +169,7 @@ mod tests {
         let des: BearerToken = serde_json::from_str(json).unwrap();
         let token = BearerToken {
             created: Timestamp::from(1619769229417484),
-            app_id: app_id!("app id"),
+            app_id: app_id!("app-id"),
             cycles: 42.into(),
             app_version: "1.4.2".into(),
             validity: 10,

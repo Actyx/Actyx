@@ -203,6 +203,7 @@ module.exports = {
         'reference/cli/events/query',
       ],
     },
+    'reference/aql',
   ],
   tutorialSidebar: [
     {
