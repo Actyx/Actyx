@@ -127,26 +127,25 @@ export type AxNodeService = Readonly<{
   nodeId: () => Promise<string>
 }>
 
+export type OnData<T> = (response: T, cancel: () => void) => void
+
 export type AxEventService = Readonly<{
   offsets: () => Promise<OffsetsResponse>
   publish: (request: PublishRequest) => Promise<PublishResponse>
   /**
    * Resolves when stream completes. Use `catch` for error handling
    */
-  query: (request: QueryRequest, onData: (response: QueryResponse) => void) => Promise<void>
+  query: (request: QueryRequest, onData: OnData<QueryResponse>) => Promise<void>
   /**
    * The returned Promise rejects if there is an error, otherwise never resolves.
    */
-  subscribe: (
-    request: SubscribeRequest,
-    onData: (response: SubscribeResponse) => void,
-  ) => Promise<void>
+  subscribe: (request: SubscribeRequest, onData: OnData<SubscribeResponse>) => Promise<void>
   /**
-   * Resolves when stream completes. Use `catch` for error handling
+   * The returned Promise rejects if there is an error, otherwise never resolves.
    */
   subscribeMonotonic: (
     request: SubscribeMonotonicRequest,
-    onData: (response: SubscribeMonotonicResponse) => void,
+    onData: OnData<SubscribeMonotonicResponse>,
   ) => Promise<void>
 }>
 export const ErrorCode = t.union([

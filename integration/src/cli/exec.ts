@@ -125,12 +125,11 @@ const mkEventsExec = (binaryPath: string, commonArgs: string[], node: string): A
     return JSON.parse(response.stdout)
   }
   const stream = (cmd: string, params: string[]) =>
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     execa(binaryPath, [...commonArgs, cmd, ...params], {
       buffer: false,
       stdout: 'pipe',
       stderr: 'inherit',
-    }).stdout!
+    })
 
   return {
     offsets: async () => {
@@ -151,7 +150,9 @@ const mkEventsExec = (binaryPath: string, commonArgs: string[], node: string): A
         node,
         query,
       ]
-      await handleStreamResponse(QueryResponse, onData, stream('query', args))
+      const process = stream('query', args)
+      process.stdout &&
+        (await handleStreamResponse(QueryResponse, onData, process.stdout, () => process.cancel()))
     },
     subscribe: async (request, onData) => {
       const { lowerBound, query } = request
@@ -160,7 +161,9 @@ const mkEventsExec = (binaryPath: string, commonArgs: string[], node: string): A
         node,
         query,
       ]
-      await handleStreamResponse(QueryResponse, onData, stream('subscribe', args))
+      const process = stream('subscribe', args)
+      process.stdout &&
+        (await handleStreamResponse(QueryResponse, onData, process.stdout, () => process.cancel()))
     },
     subscribeMonotonic: async (request, onData) => {
       const { lowerBound, query, session } = request
@@ -170,11 +173,11 @@ const mkEventsExec = (binaryPath: string, commonArgs: string[], node: string): A
         node,
         query,
       ]
-      await handleStreamResponse(
-        SubscribeMonotonicResponse,
-        onData,
-        stream('subscribe_monotonic', args),
-      )
+      const process = stream('subscribe_monotonic', args)
+      process.stdout &&
+        (await handleStreamResponse(SubscribeMonotonicResponse, onData, process.stdout, () =>
+          process.cancel(),
+        ))
     },
   }
 }

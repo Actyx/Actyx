@@ -16,6 +16,7 @@ import {
   AxEventService,
   AxNodeService,
   OffsetsResponse,
+  OnData,
   PublishResponse,
   QueryResponse,
   SubscribeMonotonicResponse,
@@ -40,13 +41,23 @@ const mkLineParser = <T>(decoder: Decoder<unknown, T>): ((data: string) => T) =>
 
 export const handleStreamResponse = async <T>(
   decoder: Decoder<unknown, T>,
-  onData: (data: T) => void,
+  onData: OnData<T>,
   stream: NodeJS.ReadableStream,
+  onCancel?: () => void,
 ): Promise<void> => {
+  let canceled = false
+  const cb = (data: T) =>
+    onData(data, () => {
+      canceled = true
+      onCancel && onCancel()
+    })
   const lines$ = stream.pipe(mkLinesSplitter())
   const parse = mkLineParser(decoder)
   for await (const line of lines$) {
-    onData(parse(line))
+    if (canceled) {
+      break
+    }
+    cb(parse(line))
   }
 }
 
@@ -75,6 +86,7 @@ export const mkEventService = (httpClient: AxHttpClient): AxEventService => ({
   },
   subscribeMonotonic: async (request, onData) => {
     const res = await httpClient.post(mkEventsPath(SUBSCRIBE_MONOTONIC_SEG), request, true)
+
     await handleStreamResponse(SubscribeMonotonicResponse, onData, res.body)
   },
 })

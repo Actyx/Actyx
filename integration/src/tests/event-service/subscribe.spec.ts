@@ -13,9 +13,10 @@ describe('event service', () => {
           events
             .subscribe(
               { query: `FROM '${mySuite()}' & '${testName()}' & 'client:${clientId}' & isLocal` },
-              (x) => {
-                data.push(x)
+              (res, cancel) => {
+                data.push(res)
                 if (data.length == 2) {
+                  cancel()
                   resolve()
                 }
               },
@@ -37,9 +38,10 @@ describe('event service', () => {
           events
             .subscribe(
               { query: `FROM '${mySuite()}' & '${testName()}' & 'client:${clientId}' & isLocal` },
-              (x) => {
-                data.push(x)
+              (res, cancel) => {
+                data.push(res)
                 if (data.length == 3) {
+                  cancel()
                   resolve()
                 }
               },

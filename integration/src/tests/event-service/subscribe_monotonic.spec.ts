@@ -16,9 +16,10 @@ describe('event service', () => {
         const data: SubscribeMonotonicResponse[] = []
         await new Promise((resolve, reject) => {
           events
-            .subscribeMonotonic(request, (x) => {
-              data.push(x)
+            .subscribeMonotonic(request, (res, cancel) => {
+              data.push(res)
               if (data.length == 2) {
+                cancel()
                 resolve()
               }
             })
@@ -42,9 +43,10 @@ describe('event service', () => {
         const data: SubscribeMonotonicResponse[] = []
         const done = new Promise((resolve, reject) => {
           events
-            .subscribeMonotonic(request, (x) => {
-              data.push(x)
+            .subscribeMonotonic(request, (res, cancel) => {
+              data.push(res)
               if (data.length == 3) {
+                cancel()
                 resolve()
               }
             })
