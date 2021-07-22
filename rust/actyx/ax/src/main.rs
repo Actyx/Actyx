@@ -3,8 +3,8 @@ mod node_connection;
 mod private_key;
 
 use cmd::{
-    apps::AppsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts, swarms::SwarmsOpts,
-    users::UsersOpts, Verbosity,
+    apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
+    swarms::SwarmsOpts, users::UsersOpts, Verbosity,
 };
 use std::process::exit;
 use structopt::{
@@ -29,7 +29,7 @@ struct Opt {
 }
 
 #[derive(Debug)]
-#[allow(clippy::clippy::large_enum_variant)]
+#[allow(clippy::large_enum_variant)]
 enum CommandsOpt {
     // structopt will use the enum variant name in lowercase as a subcommand
     Apps(AppsOpts),
@@ -38,6 +38,7 @@ enum CommandsOpt {
     Nodes(NodesOpts),
     Users(UsersOpts),
     Internal(InternalOpts),
+    Events(EventsOpts),
 }
 
 impl StructOpt for CommandsOpt {
@@ -60,6 +61,7 @@ impl StructOptInternal for CommandsOpt {
             SwarmsOpts::augment_clap(SubCommand::with_name("swarms")).setting(AppSettings::SubcommandRequiredElseHelp),
             NodesOpts::augment_clap(SubCommand::with_name("nodes")).setting(AppSettings::SubcommandRequiredElseHelp),
             UsersOpts::augment_clap(SubCommand::with_name("users")).setting(AppSettings::SubcommandRequiredElseHelp),
+            EventsOpts::augment_clap(SubCommand::with_name("events")).setting(AppSettings::SubcommandRequiredElseHelp),
         ]);
         if superpowers() {
             app.subcommand(
@@ -84,6 +86,7 @@ impl StructOptInternal for CommandsOpt {
             ("internal", Some(matches)) if superpowers() => {
                 Some(CommandsOpt::Internal(InternalOpts::from_clap(matches)))
             }
+            ("events", Some(matches)) => Some(CommandsOpt::Events(EventsOpts::from_clap(matches))),
             _ => None,
         }
     }
@@ -115,6 +118,8 @@ async fn main() {
         },
     };
 
+    util::setup_logger();
+
     match command {
         CommandsOpt::Apps(opts) => cmd::apps::run(opts, json).await,
         CommandsOpt::Nodes(opts) => cmd::nodes::run(opts, json).await,
@@ -122,5 +127,6 @@ async fn main() {
         CommandsOpt::Swarms(opts) => cmd::swarms::run(opts, json).await,
         CommandsOpt::Users(opts) => cmd::users::run(opts, json).await,
         CommandsOpt::Internal(opts) => cmd::internal::run(opts, json).await,
+        CommandsOpt::Events(opts) => cmd::events::run(opts, json).await,
     }
 }

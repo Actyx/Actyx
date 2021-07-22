@@ -15,8 +15,6 @@ mod yield_after;
 pub mod latest_channel;
 pub mod variable;
 
-use std::task::Poll;
-
 pub use dedup::Dedup;
 pub use drain::Drain;
 pub use drainer::Drainer;
@@ -31,11 +29,13 @@ pub use take_until_signaled::TakeUntilSignaled;
 pub use tap::Tap;
 pub use yield_after::YieldAfter;
 
-use futures::{channel::mpsc::UnboundedReceiver, prelude::*};
+use futures::{channel::mpsc::UnboundedReceiver, task::noop_waker_ref, Future, Stream, StreamExt};
+use std::{
+    iter::{from_fn, once},
+    task::{Context, Poll},
+};
 use tokio::time::Duration;
-use variable::TeeVariable;
-
-use variable::Variable;
+use variable::{TeeVariable, Variable};
 
 /// Create a stream of ticks starting immediately and with the given cadence.
 pub fn interval(period: Duration) -> Interval {
@@ -182,3 +182,18 @@ pub trait AxStreamExt: Stream + Sized {
 }
 
 impl<T: Sized + Stream> AxStreamExt for T {}
+
+/// await the next item and return an iterator that yields all item that will then be directly available
+///
+/// When the returned iterator is exhausted, a noop waker will have been registered upstream.
+/// Normal usage will `.await` more elements later, which will install a proper waker.
+pub async fn ready_iter<St: Stream + Unpin>(stream: &mut St) -> Option<impl Iterator<Item = St::Item> + '_> {
+    stream.next().await.map(move |item| {
+        once(item).chain(from_fn(move || {
+            match stream.poll_next_unpin(&mut Context::from_waker(noop_waker_ref())) {
+                Poll::Ready(x) => x,
+                Poll::Pending => None,
+            }
+        }))
+    })
+}

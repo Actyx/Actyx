@@ -43,7 +43,7 @@ export const mkNodeLocalProcess = (
 
   await new Promise<void>((res, rej) => {
     proc.stdout?.on('data', (s: Buffer | string) => log('stdout', s) && res())
-    proc.stderr?.on('data', (s: Buffer | string) => log('stderr', s))
+    proc.stderr?.on('data', (s: Buffer | string) => log('stderr', s) && res())
     proc.on('close', (code: number, signal: string) =>
       rej(`channel closed, code: ${code}, signal: '${signal}'`),
     )
@@ -126,7 +126,7 @@ export const mkNodeLocalDocker = async (
 
     await new Promise<void>((res, rej) => {
       proc.stdout?.on('data', (s: Buffer | string) => log('stdout', s) && res())
-      proc.stderr?.on('data', (s: Buffer | string) => log('stderr', s))
+      proc.stderr?.on('data', (s: Buffer | string) => log('stderr', s) && res())
       proc.on('close', (code: number, signal: string) =>
         rej(`channel closed, code: ${code}, signal: '${signal}'`),
       )

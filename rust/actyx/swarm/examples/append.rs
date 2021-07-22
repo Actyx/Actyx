@@ -24,12 +24,7 @@ async fn main() -> anyhow::Result<()> {
         index_store: Some(index_store),
         node_name: Some("append_bench".to_owned()),
         db_path: Some(db),
-        enable_fast_path: true,
-        enable_slow_path: true,
-        enable_root_map: true,
-        enable_discovery: true,
-        enable_metrics: true,
-        ..Default::default()
+        ..SwarmConfig::basic()
     };
     let store = BanyanStore::new(config).await?;
     let n: usize = 1000;

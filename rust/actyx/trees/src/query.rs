@@ -32,7 +32,7 @@ impl Query<AxTrees> for LamportQuery {
     fn intersecting(&self, _offset: u64, index: &BranchIndex<AxTrees>, matching: &mut [bool]) {
         let lamport = &index.summaries.lamport;
         for i in 0..lamport.len().min(matching.len()) {
-            matching[i] = matching[i] && !self.0.is_disjoint(&lamport[i].clone().into());
+            matching[i] = matching[i] && !self.0.is_disjoint(&lamport[i].into());
         }
     }
 
@@ -75,7 +75,7 @@ impl Query<AxTrees> for TimeQuery {
     fn intersecting(&self, _offset: u64, index: &BranchIndex<AxTrees>, matching: &mut [bool]) {
         let time = &index.summaries.time;
         for i in 0..time.len().min(matching.len()) {
-            matching[i] = matching[i] && !self.0.is_disjoint(&time[i].clone().into());
+            matching[i] = matching[i] && !self.0.is_disjoint(&time[i].into());
         }
     }
 

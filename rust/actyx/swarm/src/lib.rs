@@ -12,6 +12,7 @@
 pub mod convert;
 mod discovery;
 pub mod event_store;
+pub mod event_store_ref;
 mod gossip;
 pub mod metrics;
 mod prune;
@@ -138,11 +139,10 @@ impl Default for EphemeralEventsConfig {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct SwarmConfig {
     pub topic: String,
     pub index_store: Option<Arc<Mutex<rusqlite::Connection>>>,
-    pub enable_mdns: bool,
     pub keypair: Option<KeyPair>,
     pub psk: Option<[u8; 32]>,
     pub node_name: Option<String>,
@@ -151,13 +151,44 @@ pub struct SwarmConfig {
     pub listen_addresses: Vec<Multiaddr>,
     pub bootstrap_addresses: Vec<Multiaddr>,
     pub ephemeral_event_config: EphemeralEventsConfig,
+    pub enable_loopback: bool,
     pub enable_fast_path: bool,
     pub enable_slow_path: bool,
+    pub enable_mdns: bool,
     pub enable_root_map: bool,
     pub enable_discovery: bool,
     pub enable_metrics: bool,
     pub banyan_config: BanyanConfig,
+    pub cadence_root_map: Duration,
+    pub cadence_compact: Duration,
 }
+impl SwarmConfig {
+    pub fn basic() -> Self {
+        Self {
+            enable_loopback: false,
+            topic: String::from("default"),
+            index_store: None,
+            keypair: None,
+            psk: None,
+            node_name: None,
+            db_path: None,
+            external_addresses: vec![],
+            listen_addresses: vec![],
+            bootstrap_addresses: vec![],
+            ephemeral_event_config: EphemeralEventsConfig::default(),
+            enable_fast_path: true,
+            enable_slow_path: true,
+            enable_mdns: true,
+            enable_root_map: true,
+            enable_discovery: true,
+            enable_metrics: true,
+            banyan_config: BanyanConfig::default(),
+            cadence_compact: Duration::from_secs(60),
+            cadence_root_map: Duration::from_secs(10),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct BanyanConfig {
     pub tree: banyan::Config,
@@ -176,20 +207,16 @@ impl Default for BanyanConfig {
 impl SwarmConfig {
     pub fn test(node_name: &str) -> Self {
         Self {
+            enable_loopback: true,
             topic: "topic".into(),
             enable_mdns: false,
             node_name: Some(node_name.into()),
             listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse().unwrap()],
-            enable_fast_path: true,
-            enable_slow_path: true,
-            enable_root_map: true,
-            enable_discovery: true,
-            enable_metrics: true,
             banyan_config: BanyanConfig {
                 tree: banyan::Config::debug(),
                 ..Default::default()
             },
-            ..Default::default()
+            ..SwarmConfig::basic()
         }
     }
 }
@@ -206,11 +233,14 @@ impl PartialEq for SwarmConfig {
             && self.listen_addresses == other.listen_addresses
             && self.bootstrap_addresses == other.bootstrap_addresses
             && self.ephemeral_event_config == other.ephemeral_event_config
+            && self.enable_loopback == other.enable_loopback
             && self.enable_fast_path == other.enable_fast_path
             && self.enable_slow_path == other.enable_slow_path
             && self.enable_root_map == other.enable_root_map
             && self.enable_discovery == other.enable_discovery
             && self.enable_metrics == other.enable_metrics
+            && self.cadence_compact == other.cadence_compact
+            && self.cadence_root_map == other.cadence_root_map
     }
 }
 
@@ -566,6 +596,7 @@ impl BanyanStore {
 
         let ipfs = Ipfs::new(IpfsConfig {
             network: NetworkConfig {
+                enable_loopback: cfg.enable_loopback,
                 node_key,
                 node_name,
                 psk: cfg.psk,
@@ -588,6 +619,8 @@ impl BanyanStore {
                 },
                 ping: Some(
                     PingConfig::new()
+                        .with_interval(Duration::from_secs(20))
+                        .with_timeout(Duration::from_secs(3))
                         .with_keep_alive(true)
                         .with_max_failures(NonZeroU32::new(2).unwrap()),
                 ),
@@ -611,6 +644,7 @@ impl BanyanStore {
                     request_timeout: Duration::from_secs(10),
                     connection_keep_alive: Duration::from_secs(10),
                 }),
+                streams: None,
             },
             storage: StorageConfig {
                 path: cfg.db_path,
@@ -734,10 +768,10 @@ impl BanyanStore {
                 banyan
                     .data
                     .gossip
-                    .publish_root_map(banyan.clone(), cfg.topic.clone(), Duration::from_secs(10)),
+                    .publish_root_map(banyan.clone(), cfg.topic.clone(), cfg.cadence_root_map),
             );
         }
-        banyan.spawn_task("compaction", banyan.clone().compaction_loop(Duration::from_secs(60)));
+        banyan.spawn_task("compaction", banyan.clone().compaction_loop(cfg.cadence_compact));
         if cfg.enable_discovery {
             banyan.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(banyan.clone()));
         }
@@ -755,7 +789,7 @@ impl BanyanStore {
         if cfg.enable_metrics {
             banyan.spawn_task(
                 "metrics",
-                crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), Duration::from_secs(30))?,
+                crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), Duration::from_secs(60 * 30))?,
             );
         }
         banyan.spawn_task(
@@ -1075,16 +1109,19 @@ impl BanyanStore {
                 // it must not hang indefinitely. It should ideally fail as quickly as possible
                 // when not making progress (but a fixed and short timeout would make it impossible
                 // to work on a slow network connection).
-                state2.downgrade(root);
                 match res {
                     Err(err) => {
+                        state2.downgrade(root, true);
                         if let Some(err) = err.downcast_ref::<BlockNotFound>() {
                             tracing::debug!("careful_ingestion: {}", err)
                         } else {
                             tracing::warn!("careful_ingestion: {}", err)
                         }
                     }
-                    Ok(outcome) => tracing::trace!("sync completed {:?}", outcome),
+                    Ok(outcome) => {
+                        tracing::trace!("sync completed {:?}", outcome);
+                        state2.downgrade(root, false);
+                    }
                 }
                 future::ready(())
             })

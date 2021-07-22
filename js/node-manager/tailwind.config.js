@@ -2,7 +2,11 @@ module.exports = {
   purge: [],
   darkMode: 'class', // or 'media' or 'class'
   theme: {
-    extend: {},
+    extend: {
+      gridTemplateColumns: {
+        nodes: 'repeat( auto-fit, 14rem)',
+      },
+    },
   },
   variants: {
     extend: {},

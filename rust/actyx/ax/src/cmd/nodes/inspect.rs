@@ -1,9 +1,9 @@
 use std::convert::TryInto;
 use std::fmt::Write;
 
-use crate::cmd::{AxCliCommand, ConsoleOpt};
+use crate::cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt};
 use futures::{stream, FutureExt, Stream};
-use prettytable::{cell, format, row, Table};
+use prettytable::{cell, row, Table};
 use structopt::StructOpt;
 use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse};
 
@@ -44,8 +44,12 @@ impl AxCliCommand for NodesInspect {
             writeln!(&mut s, "    {}", addr).unwrap();
         }
         writeln!(&mut s, "AnnounceAddrs:").unwrap();
-        for addr in &result.announce_addrs {
-            writeln!(&mut s, "    {}", addr).unwrap();
+        if result.announce_addrs.is_empty() {
+            writeln!(&mut s, "  none").unwrap();
+        } else {
+            for addr in &result.announce_addrs {
+                writeln!(&mut s, "    {}", addr).unwrap();
+            }
         }
         writeln!(&mut s, "AdminAddrs:").unwrap();
         for addr in &result.admin_addrs {
@@ -56,7 +60,7 @@ impl AxCliCommand for NodesInspect {
             writeln!(&mut s, "  none").unwrap();
         } else {
             let mut table = Table::new();
-            table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+            table.set_format(*TABLE_FORMAT);
             table.set_titles(row!["PEERID", "ADDRESS"]);
             for row in &result.connections {
                 table.add_row(row![row.peer_id, row.addr,]);
@@ -68,7 +72,7 @@ impl AxCliCommand for NodesInspect {
             writeln!(&mut s, "  none").unwrap();
         } else {
             let mut table = Table::new();
-            table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+            table.set_format(*TABLE_FORMAT);
             table.set_titles(row!["PEERID", "ADDRESS"]);
             for peer in &result.known_peers {
                 for (i, addr) in peer.addrs.iter().enumerate() {

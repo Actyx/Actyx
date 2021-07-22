@@ -83,7 +83,7 @@ impl PrivateKey {
     pub fn to_ed25519(self) -> ed25519_dalek::SecretKey {
         self.into()
     }
-    pub fn to_bytes(&self) -> [u8; ed25519_dalek::SECRET_KEY_LENGTH] {
+    pub fn to_bytes(self) -> [u8; ed25519_dalek::SECRET_KEY_LENGTH] {
         self.0
     }
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {

@@ -84,7 +84,9 @@ fn last_item<T: Clone>(drainer: &mut Drainer<T>) -> anyhow::Result<T> {
 async fn should_compact_regularly() -> Result<()> {
     // this will take 1010 chunks, so it will hit the MAX_TREE_LEVEL limit once
     const EVENTS: usize = 10100;
-    let store = BanyanStore::test("compaction_interval").await?;
+    let mut config = SwarmConfig::test("compaction_interval");
+    config.cadence_compact = Duration::from_secs(10);
+    let store = BanyanStore::new(config).await?;
 
     // Wait for the first compaction loop to pass.
     tokio::time::sleep(Duration::from_millis(500)).await;
@@ -119,7 +121,7 @@ async fn should_compact_regularly() -> Result<()> {
     // Make sure the root didn't change
     assert!(tree_stream.next().unwrap().is_empty());
 
-    tokio::time::sleep(Duration::from_secs(60)).await;
+    tokio::time::sleep(Duration::from_secs(11)).await;
 
     let tree_after_compaction = last_item(&mut tree_stream)?;
     assert!(tree_after_append.root() != tree_after_compaction.root());
@@ -212,12 +214,7 @@ async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
         index_store: Some(index_store),
         node_name: Some("must_report_proper_initial_offsets".to_owned()),
         db_path: Some(db),
-        enable_fast_path: true,
-        enable_slow_path: true,
-        enable_root_map: true,
-        enable_discovery: true,
-        enable_metrics: true,
-        ..Default::default()
+        ..SwarmConfig::basic()
     };
     let store = BanyanStore::new(config.clone()).await?;
     let stream = store.get_or_create_own_stream(0.into())?;

@@ -20,8 +20,11 @@ import { useAnalytics } from '../analytics'
 import { AnalyticsActions } from '../analytics/types'
 import { FatalError } from '../../common/ipc'
 import { safeErrorToStr } from '../../common/util'
+import deepEqual from 'fast-deep-equal'
+import { OffsetInfo } from '../offsets'
+import { none, Option, some } from 'fp-ts/lib/Option'
 
-const POLLING_INTERVAL_MS = 1000
+const POLLING_INTERVAL_MS = 1_000
 
 export const reducer =
   (analytics: AnalyticsActions | undefined) =>
@@ -86,6 +89,7 @@ export const reducer =
 
 interface Data {
   nodes: Node[]
+  offsets: Option<OffsetInfo>
 }
 
 interface Actions {
@@ -116,15 +120,14 @@ const AppStateContext =
     | undefined
   >(undefined)
 
-export const AppStateProvider: React.FC<{ setFatalError: (error: FatalError) => void }> = ({
-  children,
-  setFatalError,
-}) => {
+export const AppStateProvider: React.FC<{
+  setFatalError: (error: FatalError) => void
+}> = ({ children, setFatalError }) => {
   const analytics = useAnalytics()
   const [state, dispatch] = useReducer(reducer(analytics), {
     key: AppStateKey.Overview,
   })
-  const [data, setData] = useState<Data>({ nodes: [] })
+  const [data, setData] = useState<Data>({ nodes: [], offsets: none })
 
   const actions: Actions = {
     // Wrap addNodes and add the node as loading as soon as the request
@@ -144,6 +147,7 @@ export const AppStateProvider: React.FC<{ setFatalError: (error: FatalError) => 
             addrs.map((addr) => ({
               type: NodeType.Loading,
               addr,
+              offsets: null,
             })),
           ),
         }
@@ -207,15 +211,22 @@ export const AppStateProvider: React.FC<{ setFatalError: (error: FatalError) => 
 
     let timeout: ReturnType<typeof setTimeout> | null = null
     const getDetailsAndUpdate = async () => {
+      console.log('getting node information')
       try {
         const nodes = await getNodesDetails({ addrs: data.nodes.map((n) => n.addr) })
+        const offsetsInfo = OffsetInfo.of(data.nodes)
         if (!unmounted) {
-          setData((current) => ({
-            ...current,
-            nodes: current.nodes
-              .filter((n) => !nodes.map((n) => n.addr).includes(n.addr))
-              .concat(nodes),
-          }))
+          if (!deepEqual(data.nodes, nodes) || !deepEqual(data.offsets, some(offsetsInfo))) {
+            console.log(`+++ updating app-state/nodes +++`)
+            setData({
+              ...data,
+              offsets: some(offsetsInfo),
+              nodes: data.nodes
+                .filter((n) => !nodes.map((n) => n.addr).includes(n.addr))
+                .concat(nodes.filter((n) => data.nodes.map((n) => n.addr).includes(n.addr)))
+                .sort((n1, n2) => n1.addr.localeCompare(n2.addr)),
+            })
+          }
           timeout = setTimeout(() => {
             getDetailsAndUpdate()
           }, POLLING_INTERVAL_MS)
@@ -239,7 +250,7 @@ export const AppStateProvider: React.FC<{ setFatalError: (error: FatalError) => 
         clearTimeout(timeout)
       }
     }
-  }, [data.nodes, state.key, setFatalError])
+  }, [data, state.key, setFatalError])
 
   return (
     <AppStateContext.Provider value={{ state, data, actions, dispatch }}>

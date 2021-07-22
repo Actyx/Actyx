@@ -34,68 +34,20 @@ import useBaseUrl from '@docusaurus/useBaseUrl'
 As you can see in `orderfish.ts` , `DefinedState` can be – depending on the event – either `idle`, `active`, or `done`.
 Written in code, these state types are defined as follows:
 
-```ts title="Definition of state types"
-export type UndefineState = {
-  stateType: 'undefined'
-}
+```ts file=../../../../../third-party/advanced-example/src/fish/orderFish.ts#[states]
 
-export type DefinedState = {
-  stateType: 'idle' | 'active' | 'done'
-  name: string
-  duration: number
-  machine: string
-}
 ```
 
 The corresponding events are defined as follows:
 
-```ts title="Definition of event types"
-export type PlacedEvent = {
-  eventType: 'placed'
-  name: string
-  duration: number
-  machine: string
-}
+```ts file=../../../../../third-party/advanced-example/src/fish/orderFish.ts#[events]
 
-export type StartedEvent = {
-  eventType: 'started'
-  name: string
-  machine: string
-}
-
-export type FinishedEvent = {
-  eventType: 'finished'
-  name: string
-}
 ```
 
 Another important part of the order fish is the `onEvent` function:
 
-```ts title="onEvent function"
-onEvent: (state, event) => {
-    switch (event.eventType) {
-    case 'setState':
-        return {
-            stateType: event.state,
-            name,
-          }
-    case 'started':
-        return {
-            stateType: 'active',
-            order: event.order,
-            name,
-          }
-    case 'finished':
-        return {
-            stateType: 'finish',
-            order: event.order,
-            name,
-        }
-    default:
-        break
-    }
-    return state
-},
+```ts file=../../../../../third-party/advanced-example/src/fish/orderFish.ts#[onevent]
+
 ```
 
 The onEvent function reduces all incoming events to the state of the machine.

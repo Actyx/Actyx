@@ -1,5 +1,4 @@
 import * as React from 'react'
-
 import { Typography, Button, Input, ToggleButtons, Toolbar } from '@actyx/industrial-ui'
 import { useFish, usePond } from '@actyx-contrib/react-pond'
 import { MachineFish } from '../fish/machineFish'

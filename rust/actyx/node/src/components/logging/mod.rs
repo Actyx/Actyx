@@ -43,6 +43,6 @@ impl Component<(), LogSeverity> for Logging {
 impl Logging {
     pub fn new(rx: Receiver<ComponentRequest<()>>, level: LogSeverity) -> Self {
         let logging_sink = Arc::new(Mutex::new(LoggingSink::new(level)));
-        Self { logging_sink, rx }
+        Self { rx, logging_sink }
     }
 }

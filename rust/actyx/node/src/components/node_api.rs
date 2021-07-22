@@ -4,6 +4,7 @@ use crate::{
     formats::ExternalEvent,
     node_settings::Settings,
 };
+use actyx_sdk::NodeId;
 use anyhow::Result;
 use crossbeam::channel::{Receiver, Sender};
 use libp2p::PeerId;
@@ -13,6 +14,7 @@ use util::SocketAddrHelper;
 
 impl NodeApi {
     pub(crate) fn new(
+        node_id: NodeId,
         keypair: libp2p::core::identity::Keypair,
         sender: Sender<ExternalEvent>,
         bind_to: SocketAddrHelper,
@@ -20,6 +22,7 @@ impl NodeApi {
         store: StoreTx,
     ) -> Self {
         Self {
+            node_id,
             rx,
             keypair,
             bind_to,
@@ -32,6 +35,7 @@ impl NodeApi {
 }
 
 pub struct NodeApi {
+    node_id: NodeId,
     rx: Receiver<ComponentRequest<()>>,
     keypair: libp2p::core::identity::Keypair,
     bind_to: SocketAddrHelper,
@@ -71,6 +75,7 @@ impl Component<(), NodeApiSettings> for NodeApi {
             .build()?;
 
         rt.block_on(crate::node_api::mk_swarm(
+            self.node_id,
             self.keypair.clone(),
             self.sender.clone(),
             self.bind_to.clone(),

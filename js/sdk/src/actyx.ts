@@ -100,7 +100,7 @@ export const Actyx = {
       nodeId,
       directlyPushEvents: store.directlyPushEvents,
       dispose: () => {
-        // Nothing to do, probably.
+        store.close()
       },
       // snapshotStore: snaps,
     }

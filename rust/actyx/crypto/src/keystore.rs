@@ -367,9 +367,7 @@ mod tests {
     fn peer_id_pub_key_roundtrip() {
         let mut store = KeyStore::default();
         let public = store.generate_key_pair().unwrap();
-
-        let peer_id: libp2p::core::PeerId = public.clone().into();
-
+        let peer_id: libp2p::PeerId = public.into();
         let public_from_peer_id: PublicKey = peer_id.try_into().unwrap();
         assert_eq!(public, public_from_peer_id);
     }

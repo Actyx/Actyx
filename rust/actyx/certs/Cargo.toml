@@ -9,12 +9,12 @@ crypto = { path = "../crypto" }
 actyx_sdk = { path = "../../sdk" }
 util = { path = "../util" }
 
-anyhow = "1.0.40"
+anyhow = "1.0.42"
 base64 = "0.13.0"
 chrono = "0.4.19"
-derive_more = "0.99.13"
-regex = "1"
-serde = { version = "1.0.125", features = ["derive"] }
+derive_more = "0.99.16"
+regex = "1.5.4"
+serde = { version = "1.0.126", features = ["derive"] }
 serde_cbor = "0.11.1"
 serde_json = "1.0.64"
-structopt = "0.3.21"
+structopt = "0.3.22"

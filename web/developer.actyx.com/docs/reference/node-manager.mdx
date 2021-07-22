@@ -13,8 +13,8 @@ The Actyx Node Manager is an app that lets you manage and interact with local an
 This document describes the main navigation elements and the features of the Actyx Node Manager.
 
 Actyx gathers anonymous aggregate user behavior analytics when you use the Node Manager.
-Analytics allow us to prioritize fixes and features based on how, where, and when people use Actyx. 
-You can opt out of sending analytics data in the preferences section of the Node Manager. 
+Analytics allow us to prioritize fixes and features based on how, where, and when people use Actyx.
+You can opt out of sending analytics data in the preferences section of the Node Manager.
 Find out more in [this section](#anonymous-aggregate-user-behaviour-analytics) below.
 
 ## General UX
@@ -101,7 +101,15 @@ For more information on `announceAddresses`, please refer to our [how-to guide](
 
 The _Peers_ view displays all peers of the selected node.
 
-### 4 Settings
+### 4 Offsets
+
+The _Offsets_ tab shows all event streams known by the node as well as the current offsets:
+
+![node-offsets](../../static/images/node-manager/node-offsets.png)
+
+Additionally, the number of events the node knows it must get, but hasn't gotten yet is also shown where applicable.
+
+### 5 Settings
 
 ![settings](../../static/images/node-manager/settings.png)
 
@@ -168,7 +176,55 @@ The _Diagnostics_ view gives insights into the swarm connectivity and provides a
 
 ![diagnostics-01](../../static/images/node-manager/diagnostics-01.png)
 
-### 2 Node Manager
+### 2 Offset Matrix
+
+The _Offset Matrix_ tab shows a matrix of all nodes connected to the Node Manager.
+Each row of the matrix shows how many events a node holds from all other connected nodes.
+The color of the cells reflects the level of synchronization.
+A red cell would imply a large number of missing events, whereas a green cell means the node is completely up to date.
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+#### Examples
+
+Consider three examples of an offset matrix and the interpretation thereof.
+
+<Tabs
+  defaultValue="1"
+  values={[
+    { label: 'Example 1', value: '1', },
+    { label: 'Example 2', value: '2', },
+    { label: 'Example 3', value: '3', },
+  ]
+}>
+<TabItem value="1">
+In this example, Node 1 has emitted 34 events which all have been synchronized with Node 2.
+Node 2 has not emitted any events yet.
+
+
+![partially-connected](../../static/images/node-manager/offset-matrix-partial.png)
+
+</TabItem>
+<TabItem value="2">
+In this example, Node 1 and Node 2 have both emitted events and all events from Node 1 have been fully synchronized. 
+Node 2 has emitted 35 events but Node 1 has only received 14 of them yet and is currently synchronizing.
+
+
+![partially-synced](../../static/images/node-manager/offset-matrix-partially-synced.png)
+
+</TabItem>
+<TabItem value="3">
+In this example, both nodes are fully synchronized meaning every event from Node 1 has arrived at Node 2 and vice versa.
+
+
+![fully-synced](../../static/images/node-manager/offset-matrix-synced.png)
+
+</TabItem>
+</Tabs>
+
+
+### 3 Node Manager
 
 ![diagnostics-02](../../static/images/node-manager/diagnostics-02.png)
 
@@ -181,7 +237,7 @@ For example, if an error appears frequently for you, analytics will enable us to
 For every event, the following information is shared:
 
 - User ID: A randomly-generated UUID when you start the Node Manager for the first time
-- Device ID: A randomly-generated UUID when you start the Node Manager for the first time 
+- Device ID: A randomly-generated UUID when you start the Node Manager for the first time
 - Language: Language of your device
 - Device: Your operating system (Windows, macOS or Linux)
 - Version: The version of the Node Manager you are using
