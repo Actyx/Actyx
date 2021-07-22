@@ -62,7 +62,7 @@ describe('event service', () => {
             expect(x).toEqual({
               code: 'ERR_BAD_REQUEST',
               message:
-                'Invalid request. Query bounds out of range: upper bound must be within the known present.',
+                'Invalid request. Store error while reading: Upper bounds must be within the current offsets’ present.',
             })
           })
       }))
