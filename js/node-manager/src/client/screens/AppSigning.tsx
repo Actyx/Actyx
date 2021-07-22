@@ -58,7 +58,7 @@ const Initial: WizardInput<Input> = ({ execute, executing }) => {
       <p>
         <em>Note that this will overwrite any existing signature in the manifest file.</em>
       </p>
-      <div className="p-2">
+      <div>
         <SimpleInput
           className="mt-4"
           label="Path to manifest"

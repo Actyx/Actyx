@@ -35,7 +35,7 @@ const Initial: WizardInput<{}> = ({ execute, executing }) => {
   return (
     <>
       <p>Generate a swarm key to secure a swarm of Actyx nodes.</p>
-      <div className="p-2 pt-0">
+      <div>
         <div className="flex mt-8">
           <Button onClick={execute} working={executing}>
             Generate swarm key
@@ -56,7 +56,7 @@ const Success: WizardSuccess<Success> = ({ restart, result: { swarmKey } }) => {
   return (
     <>
       <p className="mb-0">Successfully generated swarm key.</p>
-      <div className="p-2">
+      <div>
         <SimpleInput
           className="mt-4"
           label="Generated swarm key"
