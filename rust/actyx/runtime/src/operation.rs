@@ -1,23 +1,24 @@
 use crate::{eval::Context, value::Value};
 use actyx_sdk::language::SimpleExpr;
-use anyhow::Result;
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Operation {
     Filter(Filter),
     Select(Select),
 }
 
 impl Operation {
-    pub fn apply<'a>(&'a self, cx: &'a Context, input: Value) -> (Vec<Value>, &'a Context) {
+    pub fn apply<'a>(&'a self, cx: &'a Context, input: Value) -> (Vec<anyhow::Result<Value>>, &'a Context) {
         match self {
-            Operation::Filter(f) => (f.apply(cx, input).unwrap_or(None).into_iter().collect(), cx),
-            Operation::Select(s) => (s.apply(cx, input).map(|x| vec![x]).unwrap_or_default(), cx),
+            Operation::Filter(f) => (f.apply(cx, input).into_iter().collect(), cx),
+            Operation::Select(s) => (s.apply(cx, input), cx),
         }
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Filter {
-    expr: SimpleExpr,
+    pub expr: SimpleExpr,
 }
 
 impl Filter {
@@ -25,27 +26,29 @@ impl Filter {
         Self { expr }
     }
 
-    pub fn apply(&self, cx: &Context, input: Value) -> Result<Option<Value>> {
+    pub fn apply(&self, cx: &Context, input: Value) -> Option<anyhow::Result<Value>> {
         let mut cx = cx.child();
         cx.bind("_", input.clone());
         cx.eval(&self.expr)
             .and_then(move |v| if v.as_bool()? { Ok(Some(input)) } else { Ok(None) })
+            .transpose()
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Select {
-    expr: SimpleExpr,
+    pub exprs: Vec<SimpleExpr>,
 }
 
 impl Select {
-    pub fn new(expr: SimpleExpr) -> Self {
-        Self { expr }
+    pub fn new(exprs: Vec<SimpleExpr>) -> Self {
+        Self { exprs }
     }
 
-    pub fn apply(&self, cx: &Context, input: Value) -> Result<Value> {
+    pub fn apply(&self, cx: &Context, input: Value) -> Vec<anyhow::Result<Value>> {
         let mut cx = cx.child();
         cx.bind("_", input);
-        cx.eval(&self.expr)
+        self.exprs.iter().map(|expr| cx.eval(expr)).collect()
     }
 }
 
@@ -74,15 +77,15 @@ mod tests {
         let mut cx = Context::new(key());
         cx.bind("a", cx.value(|b| b.encode_f64(3.0)));
 
-        assert_eq!(f.apply(&cx, cx.value(|b| b.encode_i64(8))).unwrap(), None);
+        assert!(f.apply(&cx, cx.value(|b| b.encode_i64(8))).is_none());
 
         let v = cx.value(|b| b.encode_i64(9));
-        assert_eq!(f.apply(&cx, v.clone()).unwrap(), Some(v));
+        assert_eq!(f.apply(&cx, v.clone()).unwrap().unwrap(), v);
     }
 
     #[test]
     fn select() {
-        let s = Select::new(simple_expr("_.x + a"));
+        let s = Select::new(vec![simple_expr("_.x + a")]);
         let mut cx = Context::new(key());
         cx.bind("a", cx.value(|b| b.encode_f64(0.5)));
 
@@ -93,6 +96,9 @@ mod tests {
                     b.with_key("x", |b| b.encode_u64(2));
                 }))
             )
+            .into_iter()
+            .next()
+            .unwrap()
             .unwrap(),
             cx.value(|b| b.encode_f64(2.5))
         );

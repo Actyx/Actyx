@@ -17,7 +17,7 @@ pub struct Subscribe {
 impl Service for Subscribe {
     type Req = SubscribeRequest;
     type Resp = SubscribeResponse;
-    type Error = ();
+    type Error = String;
     type Ctx = AppId;
 
     fn serve(&self, app_id: AppId, req: Self::Req) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
@@ -27,7 +27,7 @@ impl Service for Subscribe {
                 .subscribe(app_id, req)
                 .map(move |x| match x {
                     Ok(stream) => stream.map(Ok).left_stream(),
-                    Err(_) => stream::once(futures::future::err(())).right_stream(),
+                    Err(e) => stream::once(futures::future::err(e.to_string())).right_stream(),
                 })
                 .await
         }

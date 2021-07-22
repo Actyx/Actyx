@@ -1,6 +1,7 @@
 use actyx_sdk::AppId;
 use actyx_util::serde_support::StringSerialized;
 use derive_more::Display;
+use runtime::features::FeatureError;
 use tracing::*;
 use warp::{http::StatusCode, *};
 
@@ -56,6 +57,9 @@ pub enum ApiError {
     #[display(fmt = "Invalid request. {}", cause)]
     BadRequest { cause: String },
 
+    #[display(fmt = "Feature `{}` is not supported on endpoint `{}`.", features, endpoint)]
+    UnsupportedFeature { features: String, endpoint: String },
+
     #[display(fmt = "Internal server error.")]
     Internal,
 
@@ -66,6 +70,17 @@ pub enum ApiError {
     Shutdown { cause: String },
 }
 impl warp::reject::Reject for ApiError {}
+impl std::error::Error for ApiError {}
+
+impl From<FeatureError> for ApiError {
+    fn from(e: FeatureError) -> Self {
+        match e {
+            FeatureError::Alpha(_) => ApiError::BadRequest { cause: e.to_string() },
+            FeatureError::Beta(_) => ApiError::BadRequest { cause: e.to_string() },
+            FeatureError::Unsupported { features, endpoint } => ApiError::UnsupportedFeature { features, endpoint },
+        }
+    }
+}
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -87,13 +102,14 @@ impl From<ApiError> for ApiErrorResponse {
             ApiError::MissingTokenParameter => (StatusCode::UNAUTHORIZED, "ERR_MISSING_TOKEN_PARAM"),
             ApiError::NotAcceptable { .. } => (StatusCode::NOT_ACCEPTABLE, "ERR_NOT_ACCEPTABLE"),
             ApiError::NotFound => (StatusCode::NOT_FOUND, "ERR_NOT_FOUND"),
+            ApiError::Overloaded { .. } => (StatusCode::SERVICE_UNAVAILABLE, "ERR_SERVICE_OVERLOADED"),
+            ApiError::Shutdown { .. } => (StatusCode::SERVICE_UNAVAILABLE, "ERR_SHUTTING_DOWN"),
             ApiError::TokenExpired => (StatusCode::UNAUTHORIZED, "ERR_TOKEN_EXPIRED"),
             ApiError::TokenInvalid { .. } => (StatusCode::BAD_REQUEST, "ERR_TOKEN_INVALID"),
             ApiError::TokenUnauthorized => (StatusCode::UNAUTHORIZED, "ERR_TOKEN_UNAUTHORIZED"),
             ApiError::UnsupportedAuthType { .. } => (StatusCode::UNAUTHORIZED, "ERR_UNSUPPORTED_AUTH_TYPE"),
+            ApiError::UnsupportedFeature { .. } => (StatusCode::IM_A_TEAPOT, "ERR_UNSUPPORTED_FEATURE"),
             ApiError::UnsupportedMediaType { .. } => (StatusCode::UNSUPPORTED_MEDIA_TYPE, "ERR_UNSUPPORTED_MEDIA_TYPE"),
-            ApiError::Overloaded { .. } => (StatusCode::SERVICE_UNAVAILABLE, "ERR_SERVICE_OVERLOADED"),
-            ApiError::Shutdown { .. } => (StatusCode::SERVICE_UNAVAILABLE, "ERR_SHUTTING_DOWN"),
         };
         ApiErrorResponse {
             code: code.to_string(),

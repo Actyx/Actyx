@@ -18,7 +18,7 @@ use std::collections::BTreeMap;
 use crate::{
     offset::{Offset, OffsetMap, OffsetOrMin},
     scalars::{NodeId, StreamId, StreamNr},
-    Tag, TagSet,
+    LamportTimestamp, Tag, TagSet, Timestamp,
 };
 use quickcheck::{Arbitrary, Gen};
 
@@ -44,6 +44,18 @@ impl Arbitrary for StreamId {
             node_id: NodeId::arbitrary(g),
             stream_nr: StreamNr::arbitrary(g),
         }
+    }
+}
+
+impl Arbitrary for Timestamp {
+    fn arbitrary(g: &mut Gen) -> Self {
+        Timestamp::new(u64::arbitrary(g) & ((2 << 53) - 1))
+    }
+}
+
+impl Arbitrary for LamportTimestamp {
+    fn arbitrary(g: &mut Gen) -> Self {
+        LamportTimestamp::new(u64::arbitrary(g))
     }
 }
 

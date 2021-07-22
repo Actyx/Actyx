@@ -1,7 +1,7 @@
 use actyx_sdk::{
     service::{
-        EventResponse, OffsetsResponse, PublishRequest, PublishResponse, QueryRequest, SubscribeMonotonicRequest,
-        SubscribeRequest,
+        Diagnostic, EventResponse, OffsetsResponse, PublishRequest, PublishResponse, QueryRequest,
+        SubscribeMonotonicRequest, SubscribeRequest,
     },
     OffsetMap, Payload,
 };
@@ -42,6 +42,7 @@ pub enum EventsResponse {
         offsets: OffsetMap,
     },
     Publish(PublishResponse),
+    Diagnostic(Diagnostic),
     #[serde(other)]
     FutureCompat,
 }

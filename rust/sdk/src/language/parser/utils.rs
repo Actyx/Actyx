@@ -1,9 +1,10 @@
 use super::Rule;
+use crate::language::non_empty::NonEmptyString;
 use pest::{
     error::Error,
     iterators::{Pair, Pairs},
 };
-use std::{fmt::Debug, str::FromStr};
+use std::{convert::TryInto, fmt::Debug, str::FromStr};
 
 pub type R<T> = std::result::Result<T, Error<Rule>>;
 pub type Ps<'a> = Pairs<'a, Rule>;
@@ -14,7 +15,8 @@ pub trait Ext<'a>: 'a {
     fn inner(self) -> Ps<'a>;
     fn rule(&self) -> Rule;
     fn string(&mut self) -> String;
-    fn natural(&mut self) -> u64;
+    fn non_empty_string(&mut self) -> NonEmptyString;
+    fn natural(&mut self) -> Option<u64>;
     fn decimal(&mut self) -> f64;
     fn parse_or_default<T>(&mut self) -> T
     where
@@ -39,8 +41,12 @@ impl<'a> Ext<'a> for Ps<'a> {
         self.next().unwrap().as_str().to_owned()
     }
 
-    fn natural(&mut self) -> u64 {
-        self.next().unwrap().as_str().parse().unwrap()
+    fn non_empty_string(&mut self) -> NonEmptyString {
+        self.next().unwrap().as_str().to_owned().try_into().unwrap()
+    }
+
+    fn natural(&mut self) -> Option<u64> {
+        self.next().unwrap().as_str().parse().ok()
     }
 
     fn decimal(&mut self) -> f64 {
@@ -75,8 +81,12 @@ impl<'a> Ext<'a> for P<'a> {
         self.as_str().to_owned()
     }
 
-    fn natural(&mut self) -> u64 {
-        self.as_str().parse().unwrap()
+    fn non_empty_string(&mut self) -> NonEmptyString {
+        self.as_str().to_owned().try_into().unwrap()
+    }
+
+    fn natural(&mut self) -> Option<u64> {
+        self.as_str().parse().ok()
     }
 
     fn decimal(&mut self) -> f64 {

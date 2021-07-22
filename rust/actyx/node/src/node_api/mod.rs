@@ -326,6 +326,9 @@ impl ApiBehaviour {
                                 channel_id.clone(),
                                 Some(EventsResponse::OffsetMap { offsets: o.offsets }),
                             ))),
+                            QueryResponse::Diagnostic(d) => {
+                                ready(Some((channel_id.clone(), Some(EventsResponse::Diagnostic(d)))))
+                            }
                             QueryResponse::FutureCompat => ready(None),
                         })
                         .left_stream(),
@@ -347,6 +350,9 @@ impl ApiBehaviour {
                                 channel_id.clone(),
                                 Some(EventsResponse::OffsetMap { offsets: o.offsets }),
                             ))),
+                            SubscribeResponse::Diagnostic(d) => {
+                                ready(Some((channel_id.clone(), Some(EventsResponse::Diagnostic(d)))))
+                            }
                             SubscribeResponse::FutureCompat => ready(None),
                         })
                         .left_stream(),
@@ -369,6 +375,9 @@ impl ApiBehaviour {
                                 ready(Some((channel_id.clone(), Some(EventsResponse::Event(event)))))
                             }
                             SubscribeMonotonicResponse::TimeTravel { .. } => ready(Some((channel_id.clone(), None))),
+                            SubscribeMonotonicResponse::Diagnostic(d) => {
+                                ready(Some((channel_id.clone(), Some(EventsResponse::Diagnostic(d)))))
+                            }
                             SubscribeMonotonicResponse::FutureCompat => ready(None),
                         })
                         .left_stream(),

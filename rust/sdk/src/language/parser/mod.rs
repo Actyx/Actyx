@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 #![allow(clippy::upper_case_acronyms)]
 
-use std::str::FromStr;
+use std::{convert::TryInto, str::FromStr};
 
-use super::{Array, Index, Number, Object, Operation, Path, Query, SimpleExpr, TagAtom, TagExpr};
+use super::{non_empty::NonEmptyVec, Arr, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, TagAtom, TagExpr};
 use crate::{tags::Tag, Timestamp};
 use chrono::{TimeZone, Utc};
 use once_cell::sync::Lazy;
@@ -42,8 +42,8 @@ fn r_tag_from_to(mut p: P, f: FromTo) -> TagExpr {
     use TagExpr::Atom;
     match p.rule() {
         Rule::natural => match f {
-            FromTo::From => Atom(FromLamport(p.natural().into())),
-            FromTo::To => Atom(ToLamport(p.natural().into())),
+            FromTo::From => Atom(FromLamport(p.natural().unwrap().into())),
+            FromTo::To => Atom(ToLamport(p.natural().unwrap().into())),
         },
         Rule::isodate => match f {
             FromTo::From => Atom(FromTime(r_timestamp(p))),
@@ -101,29 +101,56 @@ fn r_string(p: P) -> String {
     }
 }
 
-fn r_path(p: P) -> Path {
+fn r_var(p: P) -> SimpleExpr {
     let mut p = p.inner();
-    let mut ret = Path {
-        head: p.string(),
-        tail: vec![],
-    };
+    let head = SimpleExpr::Variable(p.string().try_into().unwrap());
+    let mut tail = vec![];
     for mut i in p {
         match i.rule() {
-            Rule::ident => ret.tail.push(Index::Ident(i.string())),
-            Rule::natural => ret.tail.push(Index::Number(i.natural())),
+            Rule::ident => tail.push(Index::String(i.string())),
+            Rule::natural => tail.push(Index::Number(i.natural().unwrap())),
+            Rule::string => tail.push(Index::String(r_string(i))),
+            Rule::simple_expr => tail.push(Index::Expr(r_simple_expr(i))),
             x => unexpected!(x),
         }
     }
-    ret
+    if tail.is_empty() {
+        head
+    } else {
+        SimpleExpr::Indexing(Ind {
+            head: Box::new(head),
+            tail: tail.try_into().unwrap(),
+        })
+    }
 }
 
-fn r_number(p: P) -> Number {
-    let mut p = p.single();
-    match p.rule() {
-        Rule::decimal => Number::Decimal(p.decimal()),
-        Rule::natural => Number::Natural(p.natural()),
-        x => unexpected!(x),
+fn r_expr_index(p: P) -> SimpleExpr {
+    let mut p = p.inner();
+    let head = r_simple_expr(p.next().unwrap());
+    let mut tail = vec![];
+    for mut i in p {
+        match i.rule() {
+            Rule::ident => tail.push(Index::String(i.string())),
+            Rule::natural => tail.push(Index::Number(i.natural().unwrap())),
+            Rule::string => tail.push(Index::String(r_string(i))),
+            Rule::simple_expr => tail.push(Index::Expr(r_simple_expr(i))),
+            x => unexpected!(x),
+        }
     }
+    if tail.is_empty() {
+        head
+    } else {
+        SimpleExpr::Indexing(Ind {
+            head: Box::new(head),
+            tail: tail.try_into().unwrap(),
+        })
+    }
+}
+
+fn r_number(mut p: P) -> Num {
+    p.natural()
+        .map(Num::Natural)
+        .unwrap_or_else(|| Num::Decimal(p.decimal()))
 }
 
 fn r_timestamp(p: P) -> Timestamp {
@@ -147,19 +174,49 @@ fn r_timestamp(p: P) -> Timestamp {
     Utc.ymd(year, month, day).and_hms_nano(hour, min, sec, nano).into()
 }
 
-fn r_object(p: P) -> Object {
+fn r_object(p: P) -> Obj {
     let mut v = vec![];
     let mut p = p.inner();
     while p.peek().is_some() {
-        v.push((p.string(), r_simple_expr(p.next().unwrap())));
+        let key = {
+            let mut i = p.next().unwrap();
+            match i.rule() {
+                Rule::ident => Index::String(i.string()),
+                Rule::natural => Index::Number(i.natural().unwrap()),
+                Rule::string => Index::String(r_string(i)),
+                Rule::simple_expr => Index::Expr(r_simple_expr(i)),
+                x => unexpected!(x),
+            }
+        };
+        let value = r_simple_expr(p.next().unwrap());
+        v.push((key, value));
     }
-    Object { props: v }
+    Obj { props: v }
 }
 
-fn r_array(p: P) -> Array {
-    Array {
+fn r_array(p: P) -> Arr {
+    Arr {
         items: p.inner().map(r_simple_expr).collect(),
     }
+}
+
+fn r_bool(p: P) -> bool {
+    p.as_str() == "TRUE"
+}
+
+fn r_cases(p: P) -> NonEmptyVec<(SimpleExpr, SimpleExpr)> {
+    let mut p = p.inner();
+    let mut ret = Vec::new();
+    while let Some(pred) = p.next() {
+        let pred = r_simple_expr(pred);
+        let expr = r_simple_expr(p.next().unwrap());
+        ret.push((pred, expr));
+    }
+    ret.try_into().unwrap()
+}
+
+fn r_not(p: P) -> P {
+    p.single()
 }
 
 fn r_simple_expr(p: P) -> SimpleExpr {
@@ -181,13 +238,17 @@ fn r_simple_expr(p: P) -> SimpleExpr {
 
     fn primary(p: P) -> SimpleExpr {
         match p.rule() {
-            Rule::number => SimpleExpr::Number(r_number(p)),
-            Rule::path => SimpleExpr::Path(r_path(p)),
+            Rule::decimal => SimpleExpr::Number(r_number(p)),
+            Rule::var_index => r_var(p),
+            Rule::expr_index => r_expr_index(p),
             Rule::simple_expr => r_simple_expr(p),
-            Rule::simple_not => SimpleExpr::Not(primary(p.single()).into()),
+            Rule::simple_not => SimpleExpr::Not(primary(r_not(p)).into()),
             Rule::string => SimpleExpr::String(r_string(p)),
             Rule::object => SimpleExpr::Object(r_object(p)),
             Rule::array => SimpleExpr::Array(r_array(p)),
+            Rule::null => SimpleExpr::Null,
+            Rule::bool => SimpleExpr::Bool(r_bool(p)),
+            Rule::simple_cases => SimpleExpr::Cases(r_cases(p)),
             x => unexpected!(x),
         }
     }
@@ -212,16 +273,20 @@ fn r_simple_expr(p: P) -> SimpleExpr {
     })
 }
 
-fn r_query(p: P) -> Query {
+fn r_query(features: Vec<String>, p: P) -> Query {
     let mut p = p.inner();
     let mut q = Query {
+        features,
         from: r_tag_expr(p.next().unwrap()),
         ops: vec![],
     };
     for o in p {
         match o.rule() {
             Rule::filter => q.ops.push(Operation::Filter(r_simple_expr(o.single()))),
-            Rule::select => q.ops.push(Operation::Select(r_simple_expr(o.single()))),
+            Rule::select => {
+                let v = o.inner().map(r_simple_expr).collect::<Vec<_>>();
+                q.ops.push(Operation::Select(v.try_into().unwrap()))
+            }
             x => unexpected!(x),
         }
     }
@@ -232,8 +297,16 @@ impl FromStr for Query {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let p = Aql::parse(Rule::main_query, s)?.single().single();
-        Ok(r_query(p))
+        let mut p = Aql::parse(Rule::main_query, s)?.single().inner();
+        let mut f = p.next().unwrap();
+        let features = if f.rule() == Rule::features {
+            let features = f.inner().map(|mut ff| ff.string()).collect();
+            f = p.next().unwrap();
+            features
+        } else {
+            vec![]
+        };
+        Ok(r_query(features, f))
     }
 }
 
@@ -285,12 +358,10 @@ mod tests {
 
     #[test]
     fn simple_expr() {
-        use super::Number::*;
-        use super::Path;
-        use SimpleExpr::*;
+        use super::{Num::*, SimpleExpr::*};
         assert_eq!(
             "(x - 5.2 * 1234)^2 / 7 % 5".parse::<SimpleExpr>().unwrap(),
-            Path::ident("x")
+            Variable("x".try_into().unwrap())
                 .sub(Number(Decimal(5.2)).mul(Number(Natural(1234))))
                 .pow(Number(Natural(2)))
                 .div(Number(Natural(7)))
@@ -309,8 +380,8 @@ mod tests {
 
     #[test]
     fn query() {
-        use super::Number::*;
-        use super::{Array, Object, Path};
+        use super::Num::*;
+        use super::{Arr, Ind, Obj};
         use crate::app_id;
         use SimpleExpr::*;
         use TagAtom::*;
@@ -323,8 +394,8 @@ mod tests {
         assert_eq!(
             "FROM 'machine' |
                 -- or the other
-                  'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId( hello-5._x_ ) & allEvents
-                  FILTER _.x.42 > 5 SELECT { x: ! 'hello' y: 42 z: [1.3,_.x] } END --"
+                  'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId(hello-5.-x-) & allEvents
+                  FILTER _.x[42] > 5 SELECT { x: ! 'hello' y: 42 z: [1.3,_.x] } END --"
                 .parse::<Query>()
                 .unwrap(),
             Query::new(
@@ -332,37 +403,36 @@ mod tests {
                     .and(IsLocal)
                     .and(Atom(FromTime(1356912000000000.into())))
                     .and(Atom(ToLamport(12345678901234567.into())))
-                    .and(Atom(AppId(app_id!("hello-5._x_"))))
+                    .and(Atom(AppId(app_id!("hello-5.-x-"))))
                     .and(Atom(AllEvents)))
             )
-            .with_op(Operation::Filter(Path::with("_", &[&"x", &42]).gt(Number(Natural(5)))))
-            .with_op(Operation::Select(Object::with(&[
-                ("x", Not(String("hello".to_owned()).into())),
-                ("y", Number(Natural(42))),
-                ("z", Array::with(&[Number(Decimal(1.3)), Path::with("_", &[&"x"])]))
-            ])))
+            .with_op(Operation::Filter(Ind::with("_", &[&"x", &42]).gt(Number(Natural(5)))))
+            .with_op(Operation::Select(
+                vec![Obj::with(&[
+                    ("x", Not(String("hello".to_owned()).into())),
+                    ("y", Number(Natural(42))),
+                    ("z", Arr::with(&[Number(Decimal(1.3)), Ind::with("_", &[&"x"])]))
+                ])]
+                .try_into()
+                .unwrap()
+            ))
         );
     }
 
     #[test]
-    fn roundtrips() {
-        let rt = |str: &'static str| {
-            let query = str.parse::<Query>().unwrap();
-            let mut buf = String::new();
-            crate::language::render::render_query(&mut buf, &query).unwrap();
-            assert_eq!(buf.as_str(), str);
-        };
-        rt("FROM 'machine' | 'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId(hello-5._x_) & allEvents FILTER _.x.42 > 5 SELECT { x: !'hello', y: 42, z: [1.3, _.x] } END");
-        rt("FROM from(2012-12-31T09:30:32.007Z) END");
-        rt("FROM from(2012-12-31T09:30:32Z) END");
-        rt("FROM from(2012-12-31T09:30:32.007008Z) END");
-        rt("FROM 'hello''s revenge' END");
-        rt("FROM 'hell''o' FILTER _.x = 'worl''d' END");
-        rt("FROM 'a' & 'b' | 'c' END");
-        rt("FROM 'a' | 'b' & 'c' END");
-        rt("FROM 'a' & ('b' | 'c') END");
-        rt("FROM 'a' & 'b' | 'c' & 'd' END");
-        rt("FROM ('a' | 'b') & ('c' | 'd') END");
+    fn positive() {
+        let p = |str: &'static str| str.parse::<Query>().unwrap();
+        p("FROM 'machine' | 'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId(hello-5.-x-) & allEvents FILTER _.x[42] > 5 SELECT { x: !'hello', y: 42, z: [1.3, _.x] } END");
+        p("FROM from(2012-12-31T09:30:32.007Z) END");
+        p("FROM from(2012-12-31T09:30:32Z) END");
+        p("FROM from(2012-12-31T09:30:32.007008Z) END");
+        p("FROM 'hello''s revenge' END");
+        p("FROM 'hell''o' FILTER _.x = 'worl''d' END");
+        p("FROM 'a' & 'b' | 'c' END");
+        p("FROM 'a' | 'b' & 'c' END");
+        p("FROM 'a' & ('b' | 'c') END");
+        p("FROM 'a' & 'b' | 'c' & 'd' END");
+        p("FROM ('a' | 'b') & ('c' | 'd') END");
     }
 
     #[test]
@@ -391,5 +461,34 @@ mod tests {
             negatives: vec![],
             pos: 9
         };
+    }
+
+    #[test]
+    fn expr() {
+        use super::Num::*;
+        use SimpleExpr::*;
+        let p = |s: &'static str| s.parse::<SimpleExpr>().unwrap();
+        assert_eq!(p("NULL"), Null);
+        assert_eq!(p("FALSE"), Bool(false));
+        assert_eq!(p("1"), Number(Natural(1)));
+        assert_eq!(p("1.0"), Number(Natural(1)));
+        assert_eq!(p("'s'"), String("s".into()));
+        assert_eq!(
+            p("[1,TRUE]"),
+            Array(Arr {
+                items: vec![Number(Natural(1)), Bool(true)]
+            })
+        );
+        assert_eq!(
+            p("{one:1 ['two']:2 [('three')]:3 [4]:4}"),
+            Object(Obj {
+                props: vec![
+                    (Index::String("one".into()), Number(Natural(1))),
+                    (Index::String("two".into()), Number(Natural(2))),
+                    (Index::Expr(String("three".into())), Number(Natural(3))),
+                    (Index::Number(4), Number(Natural(4))),
+                ]
+            })
+        );
     }
 }

@@ -111,17 +111,17 @@ pub trait AxCliCommand {
     fn output(opts: Self::Opt, json: bool) -> Box<dyn Future<Output = ()> + Unpin> {
         Box::new(Self::run(opts).for_each(move |item| {
             let exit = if item.is_ok() { 0 } else { 1 };
-            println!(
-                "{}",
-                if json {
-                    serde_json::to_string::<ActyxCliResult<Self::Output>>(&item.into()).unwrap()
-                } else {
-                    match item {
-                        Ok(r) => Self::pretty(r),
-                        Err(err) => format!("{}", err),
-                    }
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string(&ActyxCliResult::<Self::Output>::from(item)).unwrap()
+                );
+            } else {
+                match item {
+                    Ok(r) => println!("{}", Self::pretty(r)),
+                    Err(err) => eprintln!("{}", err),
                 }
-            );
+            }
             if exit == 1 {
                 std::process::exit(1)
             }

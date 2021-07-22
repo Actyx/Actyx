@@ -78,7 +78,7 @@ mod tests {
     #[test]
     fn valid_app_ids() {
         let app_domain: AppDomain = "com.actyx.*".parse().unwrap();
-        vec!["com.actyx.test...", "com.actyx.dev", "com.actyx.dev.test"]
+        vec!["com.actyx.test", "com.actyx.dev", "com.actyx.dev.test"]
             .into_iter()
             .for_each(|x| {
                 let app_id = AppId::from_str(x).unwrap();
@@ -89,11 +89,9 @@ mod tests {
     #[test]
     fn invalid_app_ids() {
         let app_domain: AppDomain = "com.actyx.*".parse().unwrap();
-        vec!["com.actyx", "com", "xxx.xxx., com.actyx."]
-            .into_iter()
-            .for_each(|x| {
-                let app_id = AppId::from_str(x).unwrap();
-                assert!(!app_domain.is_app_id_allowed(&app_id));
-            });
+        vec!["com.actyx", "com", "xxx.xxx"].into_iter().for_each(|x| {
+            let app_id = AppId::from_str(x).unwrap();
+            assert!(!app_domain.is_app_id_allowed(&app_id));
+        });
     }
 }
