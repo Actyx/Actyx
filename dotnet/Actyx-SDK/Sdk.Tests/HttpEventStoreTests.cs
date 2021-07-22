@@ -23,7 +23,7 @@ namespace Sdk.Tests
 
         public Task DisposeAsync() => Task.CompletedTask;
 
-        [Fact]
+        [Fact(Skip = "requires running Actyx node")]
         public async void It_Should_Get_Offset()
         {
             var result = await es.Offsets();
@@ -33,7 +33,7 @@ namespace Sdk.Tests
             result.Present[key].Should().BeGreaterThan(0);
         }
 
-        [Fact]
+        [Fact(Skip = "requires running Actyx node")]
         public async void It_Should_Publish_Events_Then_Query_And_Subscribe()
         {
             // Publish some events
@@ -71,7 +71,7 @@ namespace Sdk.Tests
             yield return new object[] { new TestEvent[0] };
         }
 
-        [Theory]
+        [Theory(Skip = "requires running Actyx node")]
         [MemberData(nameof(It_Should_Complete_When_Nothing_To_Publish_TestData))]
         public async void It_Should_Complete_When_Nothing_To_Publish(IEnumerable<IEventDraft> events)
         {
