@@ -59,7 +59,7 @@ Larger expressions are constructed using the _and_ and _or_ combinators:
 
 As usual, `&` takes precedence over `|`. You can use parentheses to override this: `'a' & ('b' | 'c')` is the same as `'a' & 'b' | 'a' & 'c'`.
 
-## Data Transformations
+## Data transformations
 
 Following the `FROM <tag_expr>` clause you may optionally specify a sequence of transformation steps.
 The first step will receive the events selected by the event query as input and compute outputs from them.
