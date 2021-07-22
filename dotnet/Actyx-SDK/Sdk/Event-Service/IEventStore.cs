@@ -9,12 +9,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Actyx
 {
-    public class EventKeyX
-    {
-        public ulong Lamport { get; set; }
-        public long Offset { get; set; }
-        public string Stream { get; set; }
-    }
     public class EventPublishMetadata
     {
         public ulong Lamport { get; set; }
@@ -59,7 +53,7 @@ namespace Actyx
 
     public class SubscribeMonotonicTimeTravelResponse : ISubscribeMonotonicResponse
     {
-        public EventKeyX NewStart { get; set; }
+        public EventKey NewStart { get; set; }
     }
 
     public class PublishResponse

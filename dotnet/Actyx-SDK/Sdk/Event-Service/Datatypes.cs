@@ -94,7 +94,7 @@ namespace Actyx
 
         public string Stream { get; set; }
 
-        public ulong Offset { get; set; }
+        public long Offset { get; set; }
     }
 
     public struct EventMetadata
