@@ -46,7 +46,7 @@ impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}@{}: {}",
+            "{}/{}: {}",
             u64::from(self.sort_key.lamport),
             self.sort_key.stream,
             self.value.to_string()

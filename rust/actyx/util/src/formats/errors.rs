@@ -56,6 +56,7 @@ pub enum ActyxOSCode {
     // Fatal Error, the state on disk is inconsistent
     ERR_INVALID_NODE_STATE,
     ERR_UNSUPPORTED,
+    ERR_AQL_ERROR,
 }
 impl ActyxOSCode {
     pub fn with_message(self, message: impl Into<String>) -> ActyxOSError {
@@ -121,21 +122,36 @@ impl From<RepositoryError> for ActyxOSError {
 impl Display for ActyxOSError {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self.code {
-           ERR_SETTINGS_INVALID => write!(f, "[ERR_SETTINGS_INVALID] Error: {}", self.message),
-           ERR_SETTINGS_INVALID_SCHEMA => write!(f, "[ERR_SETTINGS_INVALID_SCHEMA] Error: {}", self.message),
-           ERR_SETTINGS_UNKNOWN_SCOPE => write!(f, "[ERR_SETTINGS_UNKNOWN_SCOPE] Error: {}", self.message),
-           ERR_SETTINGS_INVALID_AT_SCOPE => write!(f, "[ERR_SETTINGS_INVALID_AT_SCOPE] Error: {}", self.message),
-           ERR_SETTINGS_NOT_FOUND_AT_SCOPE => write!(f, "[ERR_SETTINGS_NOT_FOUND_AT_SCOPE] Error: {}", self.message),
-           ERR_INVALID_INPUT => write!(f, "[ERR_INVALID_INPUT] Error: {}", self.message),
-           ERR_INVALID_NODE_STATE => write!(f, "[ERR_INVALID_NODE_STATE] Error the state of your Node is inconsitent. Please file a bug at http://developer.actyx.com. message: {}", self.message),
-           ERR_INTERNAL_ERROR => write!(f, "[ERR_INTERNAL_ERROR] Error: internal error. Please file a bug at http://developer.actyx.com. message: {}", self.message),
-           ERR_NODE_UNREACHABLE => write!(f, "[ERR_NODE_UNREACHABLE] Error: unable to reach node, additional message: {}", self.message),
-           ERR_UNAUTHORIZED => write!(f, "[ERR_UNAUTHORIZED] Error: {}", self.message),
-           ERR_USER_UNAUTHENTICATED => write!(f, "[ERR_USER_UNAUTHENTICATED] Error: {}", self.message),
-           ERR_FILE_EXISTS => write!(f, "[ERR_FILE_EXISTS] Error: {}", self.message),
-           ERR_PATH_INVALID => write!(f, "[ERR_PATH_INVALID] Error: {}", self.message),
-           ERR_IO => write!(f, "[ERR_IO]: Error: {}", self.message),
-           ERR_UNSUPPORTED => write!(f, "[ERR_UNSUPPORTED]: Error: {}", self.message),
-       }
+            ERR_SETTINGS_INVALID => write!(f, "[ERR_SETTINGS_INVALID] Error: {}", self.message),
+            ERR_SETTINGS_INVALID_SCHEMA => write!(f, "[ERR_SETTINGS_INVALID_SCHEMA] Error: {}", self.message),
+            ERR_SETTINGS_UNKNOWN_SCOPE => write!(f, "[ERR_SETTINGS_UNKNOWN_SCOPE] Error: {}", self.message),
+            ERR_SETTINGS_INVALID_AT_SCOPE => write!(f, "[ERR_SETTINGS_INVALID_AT_SCOPE] Error: {}", self.message),
+            ERR_SETTINGS_NOT_FOUND_AT_SCOPE => write!(f, "[ERR_SETTINGS_NOT_FOUND_AT_SCOPE] Error: {}", self.message),
+            ERR_INVALID_INPUT => write!(f, "[ERR_INVALID_INPUT] Error: {}", self.message),
+            ERR_INVALID_NODE_STATE => write!(
+                f,
+                "[ERR_INVALID_NODE_STATE] Error the state of your Node is inconsitent. \
+                Please file a bug at http://developer.actyx.com. message: {}",
+                self.message
+            ),
+            ERR_INTERNAL_ERROR => write!(
+                f,
+                "[ERR_INTERNAL_ERROR] Error: internal error. \
+                Please file a bug at http://developer.actyx.com. message: {}",
+                self.message
+            ),
+            ERR_NODE_UNREACHABLE => write!(
+                f,
+                "[ERR_NODE_UNREACHABLE] Error: unable to reach node, additional message: {}",
+                self.message
+            ),
+            ERR_UNAUTHORIZED => write!(f, "[ERR_UNAUTHORIZED] Error: {}", self.message),
+            ERR_USER_UNAUTHENTICATED => write!(f, "[ERR_USER_UNAUTHENTICATED] Error: {}", self.message),
+            ERR_FILE_EXISTS => write!(f, "[ERR_FILE_EXISTS] Error: {}", self.message),
+            ERR_PATH_INVALID => write!(f, "[ERR_PATH_INVALID] Error: {}", self.message),
+            ERR_IO => write!(f, "[ERR_IO]: Error: {}", self.message),
+            ERR_UNSUPPORTED => write!(f, "[ERR_UNSUPPORTED]: Error: {}", self.message),
+            ERR_AQL_ERROR => write!(f, "[AQL_ERROR]: {}", self.message),
+        }
     }
 }

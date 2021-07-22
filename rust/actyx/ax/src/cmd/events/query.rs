@@ -1,10 +1,11 @@
 use crate::cmd::{AxCliCommand, ConsoleOpt};
 use actyx_sdk::{
     language::Query,
-    service::{EventResponse, Order, QueryRequest},
+    service::{Diagnostic, EventResponse, Order, QueryRequest, Severity},
     Payload,
 };
 use futures::{future::ready, stream, FutureExt, Stream, StreamExt};
+use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use structopt::StructOpt;
 use util::formats::{
@@ -22,10 +23,17 @@ pub struct QueryOpts {
     query: Query,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum EventDiagnostic {
+    Event(EventResponse<Payload>),
+    Diagnostic(Diagnostic),
+}
+
 pub struct EventsQuery;
 impl AxCliCommand for EventsQuery {
     type Opt = QueryOpts;
-    type Output = EventResponse<Payload>;
+    type Output = EventDiagnostic;
 
     fn run(mut opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let ret = async move {
@@ -50,7 +58,11 @@ impl AxCliCommand for EventsQuery {
         .flatten_stream()
         .filter_map(|x| {
             ready(match x {
-                Ok(EventsResponse::Event(ev)) => Some(Ok(ev)),
+                Ok(EventsResponse::Event(ev)) => Some(Ok(EventDiagnostic::Event(ev))),
+                Ok(EventsResponse::Diagnostic(d)) => match d.severity {
+                    Severity::Warning => Some(Ok(EventDiagnostic::Diagnostic(d))),
+                    Severity::Error => Some(Err(ActyxOSError::new(ActyxOSCode::ERR_AQL_ERROR, d.message))),
+                },
                 Ok(EventsResponse::Error { message }) => {
                     Some(Err(ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, message)))
                 }

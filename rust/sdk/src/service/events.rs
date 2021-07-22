@@ -323,10 +323,10 @@ pub enum SubscribeResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-#[serde(rename_all = "camelCase", tag = "type")]
+#[serde(rename_all = "camelCase")]
 pub struct Diagnostic {
-    severity: Severity,
-    message: String,
+    pub severity: Severity,
+    pub message: String,
 }
 
 impl Diagnostic {

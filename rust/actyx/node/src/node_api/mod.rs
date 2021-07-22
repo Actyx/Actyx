@@ -318,18 +318,21 @@ impl ApiBehaviour {
             EventsRequest::Query(request) => wrap(channel_id.clone(), async move {
                 match events.query(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => resp
-                        .filter_map(move |x| match x {
-                            QueryResponse::Event(ev) => {
-                                ready(Some((channel_id.clone(), Some(EventsResponse::Event(ev)))))
+                        .filter_map(move |x| {
+                            tracing::trace!("got query response {:?}", x);
+                            match x {
+                                QueryResponse::Event(ev) => {
+                                    ready(Some((channel_id.clone(), Some(EventsResponse::Event(ev)))))
+                                }
+                                QueryResponse::Offsets(o) => ready(Some((
+                                    channel_id.clone(),
+                                    Some(EventsResponse::OffsetMap { offsets: o.offsets }),
+                                ))),
+                                QueryResponse::Diagnostic(d) => {
+                                    ready(Some((channel_id.clone(), Some(EventsResponse::Diagnostic(d)))))
+                                }
+                                QueryResponse::FutureCompat => ready(None),
                             }
-                            QueryResponse::Offsets(o) => ready(Some((
-                                channel_id.clone(),
-                                Some(EventsResponse::OffsetMap { offsets: o.offsets }),
-                            ))),
-                            QueryResponse::Diagnostic(d) => {
-                                ready(Some((channel_id.clone(), Some(EventsResponse::Diagnostic(d)))))
-                            }
-                            QueryResponse::FutureCompat => ready(None),
                         })
                         .left_stream(),
                     Err(e) => stream::once(ready((
