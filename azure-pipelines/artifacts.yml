@@ -286,7 +286,7 @@ stages:
           - bash: |
               set -e
               build/bin/install-vault.sh
-              make prepare-js all-js
+              make prepare-js all-js all-dotnet
               cd integration
               source ~/.nvm/nvm.sh
               nvm use
