@@ -1519,9 +1519,9 @@ checksum = "56899898ce76aaf4a0f24d914c97ea6ed976d42fec6ad33fcbb0a1103e07b2b0"
 
 [[package]]
 name = "ed25519"
-version = "1.1.1"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d0860415b12243916284c67a9be413e044ee6668247b99ba26d94b2bc06c8f6"
+checksum = "4620d40f6d2601794401d6dd95a5cf69b6c157852539470eeda433a99b3c0efc"
 dependencies = [
  "serde",
  "signature",
@@ -2382,9 +2382,9 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "hyper"
-version = "0.14.10"
+version = "0.14.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7728a72c4c7d72665fde02204bcbd93b247721025b222ef78606f14513e0fd03"
+checksum = "0b61cf2d1aebcf6e6352c97b81dc2244ca29194be1b276f5d8ad5c6330fffb11"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -2524,7 +2524,7 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.22.2"
-source = "git+https://github.com/dvc94ch/ipfs-embed?branch=sim-open-2#09cebdc39bbf61ac2fab0c717501b0adcc623171"
+source = "git+https://github.com/dvc94ch/ipfs-embed?branch=sim-open-2#fbdb60fcab8c89d76f9b209fae6c64265750e4ad"
 dependencies = [
  "anyhow",
  "async-io",
@@ -3442,9 +3442,9 @@ dependencies = [
 
 [[package]]
 name = "minicbor-derive"
-version = "0.6.3"
+version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f2b9e8883d58e34b18facd16c4564a77ea50fce028ad3d0ee6753440e37acc8"
+checksum = "54999f917cd092b13904737e26631aa2b2b88d625db68e4bab461dcd8006c788"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4948,9 +4948,9 @@ dependencies = [
 
 [[package]]
 name = "rkyv"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5ff2771781b46ba9258c162626cbd77e7873d268130b765d96acda471668167"
+checksum = "03ec64e0b5a2b3304db23660ea0a8b0d9de124dbeb136301a63fe2d69356f8e2"
 dependencies = [
  "bytecheck",
  "hashbrown 0.11.2",
@@ -4962,9 +4962,9 @@ dependencies = [
 
 [[package]]
 name = "rkyv_derive"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c3234a24ab92001174e8387816597008694cd842c33bfabf194414d4989677c"
+checksum = "dbacab5cf28099f4c9fdfe6b43328feba30d2fa2b8562187293f164693834c35"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5630,9 +5630,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.73"
+version = "1.0.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f71489ff30030d2ae598524f61326b902466f72a0fb1a8564c001cc63425bcc7"
+checksum = "1873d832550d4588c3dbc20f01361ab00bfe741048f71e3fecf145a7cc18b29c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5794,9 +5794,9 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "1.3.0"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ac2e1d4bd0f75279cfd5a076e0d578bbf02c22b7c39e766c437dd49b3ec43e0"
+checksum = "848a1e1181b9f6753b5e96a092749e29b11d19ede67dfbbd6c7dc7e0f49b5338"
 dependencies = [
  "tinyvec_macros",
 ]
