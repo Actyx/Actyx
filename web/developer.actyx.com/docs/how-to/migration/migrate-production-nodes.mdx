@@ -175,7 +175,7 @@ This is not the case in the v2 docker image anymore and therefore you need to ch
 Assuming your v1 volume was `actyxos-data:/data`, execute the following command:
 
 ```text
-docker run --rm -v actyxos-data:/data -u root alpine chown -R 1000:1000 /data
+docker run --rm -v actyxos-data:/data -u root actyx/actyx chown -R 1000:1000 /data
 ```
 
 <h4>Start your v2 node</h4>
