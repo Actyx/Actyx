@@ -62,7 +62,9 @@ const Info: React.FC<{ node: ReachableNodeT }> = ({ node: { details } }) => {
   }) => (
     <div className={clsx('py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6', { 'bg-gray-50': gray })}>
       <dt className="text-sm font-medium text-gray-500">{field}</dt>
-      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 selectable">{value}</dd>
+      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 selectable truncate overflow-ellipsis">
+        {value}
+      </dd>
     </div>
   )
 
@@ -72,9 +74,9 @@ const Info: React.FC<{ node: ReachableNodeT }> = ({ node: { details } }) => {
         <Row field="Display name" value={details.displayName} gray />
         <Row field="Bind addresses" value={details.addrs} />
         <Row field="Node ID" value={details.nodeId} gray />
-        <Row field="Peer ID" value={details.swarmState.peerId} gray />
-        <Row field="Running since" value={details.startedIso} />
-        <Row field="Version" value={details.version} gray />
+        <Row field="Peer ID" value={details.swarmState.peerId} />
+        <Row field="Running since" value={details.startedIso} gray />
+        <Row field="Version" value={details.version} />
       </dl>
     </div>
   )
