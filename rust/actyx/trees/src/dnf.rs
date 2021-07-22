@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use actyx_sdk::language;
+use actyx_sdk::language::{self, TagAtom};
 
 // invariant: none of the sets are ever empty
 #[derive(Debug, PartialEq)]
@@ -20,8 +20,11 @@ impl Dnf {
         for a in self.0 {
             for b in &other.0 {
                 let mut r = BTreeSet::new();
-                r.extend(a.iter().cloned());
-                r.extend(b.iter().cloned());
+                r.extend(a.iter().filter(|a| **a != TagAtom::AllEvents).cloned());
+                r.extend(b.iter().filter(|a| **a != TagAtom::AllEvents).cloned());
+                if r.is_empty() {
+                    r.insert(TagAtom::AllEvents);
+                }
                 Self::insert_unless_redundant(&mut ret, r);
             }
         }
@@ -30,11 +33,11 @@ impl Dnf {
     fn insert_unless_redundant(aa: &mut BTreeSet<BTreeSet<language::TagAtom>>, b: BTreeSet<language::TagAtom>) {
         let mut to_remove = vec![];
         for a in aa.iter() {
-            if a.is_subset(&b) {
+            if a.iter().next() == Some(&TagAtom::AllEvents) || a.is_subset(&b) {
                 // a is larger than b. E.g. x | x&y
                 // keep a, b is redundant
                 return;
-            } else if a.is_superset(&b) {
+            } else if b.iter().next() == Some(&TagAtom::AllEvents) || a.is_superset(&b) {
                 // a is smaller than b, E.g. x&y | x
                 // remove a, keep b
                 to_remove.push(a.clone());

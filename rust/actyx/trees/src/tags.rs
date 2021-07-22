@@ -32,14 +32,22 @@ impl ScopedTag {
         Self(scope, tag)
     }
 
-    pub fn app(&self) -> Option<&Tag> {
+    pub fn app(tag: Tag) -> Self {
+        Self::new(TagScope::App, tag)
+    }
+
+    pub fn internal(tag: Tag) -> Self {
+        Self::new(TagScope::Internal, tag)
+    }
+
+    pub fn to_app(&self) -> Option<&Tag> {
         match self.0 {
             TagScope::App => Some(&self.1),
             _ => None,
         }
     }
 
-    pub fn internal(&self) -> Option<&Tag> {
+    pub fn to_internal(&self) -> Option<&Tag> {
         match self.0 {
             TagScope::Internal => Some(&self.1),
             _ => None,
@@ -114,15 +122,19 @@ impl ScopedTagSet {
     }
 
     pub fn public_tags(&self) -> impl Iterator<Item = &Tag> {
-        self.0.iter().filter_map(|t| t.app())
+        self.0.iter().filter_map(|t| t.to_app())
     }
 
     pub fn internal_tags(&self) -> impl Iterator<Item = &Tag> {
-        self.0.iter().filter_map(|t| t.internal())
+        self.0.iter().filter_map(|t| t.to_internal())
     }
 
     pub fn insert(&mut self, tag: ScopedTag) -> bool {
         self.0.insert(tag)
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 }
 
@@ -147,6 +159,12 @@ impl AsRef<[ScopedTag]> for ScopedTagSet {
 impl FromIterator<ScopedTag> for ScopedTagSet {
     fn from_iter<T: IntoIterator<Item = ScopedTag>>(iter: T) -> Self {
         Self(iter.into_iter().collect())
+    }
+}
+
+impl<'a> FromIterator<&'a ScopedTag> for ScopedTagSet {
+    fn from_iter<T: IntoIterator<Item = &'a ScopedTag>>(iter: T) -> Self {
+        Self(iter.into_iter().cloned().collect())
     }
 }
 

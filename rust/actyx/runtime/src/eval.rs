@@ -1,20 +1,17 @@
 use crate::value::{Value, ValueKind};
-use actyx_sdk::{
-    language::{Ind, Index, Num, SimpleExpr},
-    EventKey,
-};
+use actyx_sdk::language::{Ind, Index, Num, SimpleExpr, SortKey};
 use anyhow::{anyhow, bail};
 use cbor_data::{CborBuilder, CborOwned, Encoder, WithOutput, Writer};
 use std::{cmp::Ordering, collections::BTreeMap};
 
 pub struct Context<'a> {
-    sort_key: EventKey,
+    sort_key: SortKey,
     bindings: BTreeMap<String, Value>,
     parent: Option<&'a Context<'a>>,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(sort_key: EventKey) -> Self {
+    pub fn new(sort_key: SortKey) -> Self {
         Self {
             sort_key,
             bindings: BTreeMap::new(),
@@ -216,10 +213,9 @@ mod tests {
     }
 
     fn ctx() -> Context<'static> {
-        Context::new(EventKey {
+        Context::new(SortKey {
             lamport: Default::default(),
             stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
-            offset: Default::default(),
         })
     }
 

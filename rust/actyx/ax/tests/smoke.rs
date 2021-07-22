@@ -317,7 +317,7 @@ fn bad_query() -> anyhow::Result<()> {
                 o("-i"),
                 identity.as_os_str(),
                 o(&format!("localhost:{}", api)),
-                o("FROM from(2021-07-20) END"),
+                o("FROM from(2021-07-20Z) END"),
             ])
             .output()?;
         eprintln!(
@@ -338,7 +338,7 @@ fn bad_query() -> anyhow::Result<()> {
                 o("-ji"),
                 identity.as_os_str(),
                 o(&format!("localhost:{}", api)),
-                o("FROM from(2021-07-20) END"),
+                o("FROM from(2021-07-20Z) END"),
             ])
             .output()?;
         eprintln!(

@@ -1,4 +1,7 @@
-use actyx_sdk::{language::Num, EventKey, Payload};
+use actyx_sdk::{
+    language::{Num, SortKey},
+    EventKey, Payload,
+};
 use anyhow::{anyhow, Result};
 use cbor_data::{Cbor, CborBuilder, CborOwned, CborValue, Encoder, WithOutput};
 use std::{
@@ -25,7 +28,7 @@ pub enum ValueKind {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Value {
-    sort_key: EventKey,
+    sort_key: SortKey,
     value: CborOwned, // should later become InternedHash<[u8]>
 }
 
@@ -33,7 +36,7 @@ impl From<(EventKey, Payload)> for Value {
     fn from(event: (EventKey, Payload)) -> Self {
         let (key, payload) = event;
         Self {
-            sort_key: key,
+            sort_key: key.into(),
             value: CborOwned::trusting(payload.as_bytes()),
         }
     }
@@ -52,7 +55,7 @@ impl Display for Value {
 }
 
 impl Value {
-    pub fn new(sort_key: EventKey, f: impl FnOnce(CborBuilder<WithOutput>) -> CborOwned) -> Self {
+    pub fn new(sort_key: SortKey, f: impl FnOnce(CborBuilder<WithOutput>) -> CborOwned) -> Self {
         Self {
             sort_key,
             value: SCRATCH.with(|v| f(CborBuilder::with_scratch_space(&mut (*v).borrow_mut()))),
@@ -63,7 +66,7 @@ impl Value {
         self.value.as_slice()
     }
 
-    pub fn key(&self) -> EventKey {
+    pub fn key(&self) -> SortKey {
         self.sort_key
     }
 

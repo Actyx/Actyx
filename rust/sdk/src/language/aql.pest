@@ -28,6 +28,8 @@ object = { "{" ~ ( ( ident | "[" ~ natural ~ "]" | "[" ~ string ~ "]" | "[" ~ si
 array = { "[" ~ "]" | "[" ~ simple_expr ~ ( "," ~ simple_expr )* ~ "]" }
 app_id = @{ app_id_char+ ~ ( "." ~ app_id_char+ )* }
 app_id_char = { "-" | '0'..'9' | 'a'..'z' }
+stream_id = @{ crypt_char{43} ~ "-" ~ natural }
+crypt_char = { "." | "/" | 'a'..'z' | 'A'..'Z' | '0'..'9' }
 
 // identifiers
 ident = @{ "_" | LOWERCASE_LETTER ~ ( LOWERCASE_LETTER | NUMBER | "_" )* }
@@ -44,7 +46,7 @@ second = { ( '0'..'5' ~ '0'..'9' ) }
 millisecond = { ( '0'..'9'{3} ) }
 microsecond = { ( '0'..'9'{6} ) }
 nanosecond = { ( '0'..'9'{9} ) }
-isodate = ${ year ~ "-" ~ month ~ "-" ~ day ~ ("T" ~ hour ~ ":" ~ minute ~ (":" ~ second ~ ("." ~ (nanosecond|microsecond|millisecond))?)? ~ "Z")? }
+isodate = ${ year ~ "-" ~ month ~ "-" ~ day ~ ("T" ~ hour ~ ":" ~ minute ~ (":" ~ second ~ ("." ~ (nanosecond|microsecond|millisecond))?)?)? ~ "Z" }
 
 // tags
 tag_expr = { tag_atom ~ ( tag_op ~ tag_atom )* }
@@ -53,8 +55,8 @@ tag_op = _{ and | or }
 tag = { nonempty_string }
 all_events = { "allEvents" }
 is_local = { "isLocal" }
-tag_from = { "from(" ~ ( isodate | natural ) ~ ")" }
-tag_to = { "to(" ~ ( isodate | natural ) ~ ")" }
+tag_from = { "from(" ~ ( isodate | natural ~ ( "/" ~ stream_id )? ) ~ ")" }
+tag_to = { "to(" ~ ( isodate | natural ~ ( "/" ~ stream_id )? ) ~ ")" }
 tag_app = ${ "appId(" ~ app_id ~ ")" }
 
 // expressions

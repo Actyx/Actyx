@@ -1,11 +1,11 @@
 use crate::{
     axtrees::{AxKey, AxTrees, Sha256Digest},
-    query::{LamportQuery, TagsQuery, TimeQuery},
+    query::{LamportQuery, LamportQueryBuilder, TagExprQuery, TimeQuery},
     stags,
     tags::ScopedTagSet,
     AxTree,
 };
-use actyx_sdk::{tag, tags, LamportTimestamp, Payload, TagSet, Timestamp};
+use actyx_sdk::{language::SortKey, tag, tags, LamportTimestamp, Payload, StreamId, TagSet, Timestamp};
 use banyan::{
     query::{AllQuery, OffsetRangeQuery, Query},
     store::{BranchCache, MemStore},
@@ -272,7 +272,10 @@ async fn events_banyan_tree_simple_queries_with(events: Vec<(AxKey, Payload)>) -
         let events0 = events_with_offset()
             .filter(move |(_, key, _)| lamport_range1.contains(&key.lamport()))
             .collect::<Vec<_>>();
-        let query = LamportQuery::from(lamport_range);
+        let query = LamportQueryBuilder::from(
+            SortKey::new(lamport_range.start, StreamId::min())..SortKey::new(lamport_range.end, StreamId::min()),
+        )
+        .build(StreamId::min());
         let events1 = filter_tree(&txn, &tree, query.clone()).await?;
         assert_eq!(events0, events1);
 
@@ -310,7 +313,7 @@ async fn events_banyan_tree_simple_queries_with(events: Vec<(AxKey, Payload)>) -
             .filter(move |(_, key, _)| matches(key, &tags1))
             .collect::<Vec<_>>();
         // get back the events, filtered by tags
-        let query = TagsQuery::new(tags.clone());
+        let query = TagExprQuery::new(tags.clone(), LamportQuery::all(), TimeQuery::all());
         let events1 = filter_tree(&txn, &tree, query.clone()).await?;
         assert_eq!(events0, events1);
 

@@ -24,3 +24,4 @@ trees = { path = "../../trees" }
 util = { path = "../../util" }
 crossbeam = "0.8.1"
 chrono = "0.4.19"
+ax-futures-util = { path = "../../ax-futures-util/" }

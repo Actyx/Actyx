@@ -579,7 +579,7 @@ async fn bad_request_aql_feature() {
         .path("/api/v2/events/query")
         .method("POST")
         .header("Authorization", format!("Bearer {}", token))
-        .json(&json!({"query": "FROM from(2021-07-20)", "order":"asc"}))
+        .json(&json!({"query": "FROM from(2021-07-20Z)", "order":"asc"}))
         .reply(&route)
         .await;
     assert_err_response(
@@ -668,7 +668,7 @@ async fn ws_aql_feature() -> anyhow::Result<()> {
             "serviceId": "query",
             "requestId": 1,
             "payload": {
-                "query": "FROM from(2021-07-20)",
+                "query": "FROM from(2021-07-20Z)",
                 "order": "asc",
             }
         })
@@ -694,7 +694,7 @@ async fn ws_aql_feature() -> anyhow::Result<()> {
             "serviceId": "query",
             "requestId": 1,
             "payload": {
-                "query": "FEATURES(timeRange) FROM from(2021-07-20)",
+                "query": "FEATURES(timeRange) FROM from(2021-07-20Z)",
                 "order": "asc",
             }
         })

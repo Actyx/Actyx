@@ -3,7 +3,7 @@ mod parser;
 mod render;
 
 use self::{non_empty::NonEmptyVec, render::render_tag_expr};
-use crate::{tags::Tag, AppId, LamportTimestamp, Timestamp};
+use crate::{tags::Tag, AppId, EventKey, LamportTimestamp, StreamId, Timestamp};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Query {
@@ -55,6 +55,27 @@ impl std::ops::BitAnd for TagExpr {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub struct SortKey {
+    pub lamport: LamportTimestamp,
+    pub stream: StreamId,
+}
+
+impl SortKey {
+    pub fn new(lamport: LamportTimestamp, stream: StreamId) -> Self {
+        Self { lamport, stream }
+    }
+}
+
+impl From<EventKey> for SortKey {
+    fn from(k: EventKey) -> Self {
+        Self {
+            lamport: k.lamport,
+            stream: k.stream,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum TagAtom {
     Tag(Tag),
@@ -62,8 +83,8 @@ pub enum TagAtom {
     IsLocal,
     FromTime(Timestamp),
     ToTime(Timestamp),
-    FromLamport(LamportTimestamp),
-    ToLamport(LamportTimestamp),
+    FromLamport(SortKey),
+    ToLamport(SortKey),
     AppId(AppId),
 }
 

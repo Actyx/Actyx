@@ -6,6 +6,13 @@ The Actyx Query Language (AQL) allows you to select precisely which information 
 In its most basic form it selects events based on their tags.
 This section gives you all the gory details of how that works and what else you can express.
 
+:::note This chapter is normative
+If you find Actyx behavior differing from the description below, then you have found a bug. Please tell us about it!
+
+If you discover some behavior that is not documented below, then you have wandered into unspecified territory — the observed behavior may change in future releases.
+In these cases we very much welcome your questions, comments, and suggestions in the [forum](https://community.actyx.com/)!
+:::
+
 ## General structure
 
 AQL is not whitespace sensitive, you can add any amount of whitespace in almost all places (the exceptions are documented below).
@@ -42,15 +49,34 @@ Each feature is described below with its required feature names, if any.
 The `FROM <tag_expr>` part of an AQL query selects the events from which the results shall be computed.
 Hereby, `<tag_expr>` is a boolean expression composed from the following basic atoms:
 
-- `'mytag'` or `"mytag"` matches all events that carry this tag
-
+- `'mytag'` or `"mytag"` matches all events that carry this tag.
   Tags are arbitrary non-empty Unicode strings.
-  Quoting it only needed for the used delimiter: if your tag is enclosed in single quotes, single quotes within the tag need to be repeated, e.g. `'o''clock'`.
+  Quoting is only needed for the used delimiter: if your tag is enclosed in single quotes, single quotes within the tag need to be repeated, e.g. `'o''clock'`.
   The analogue goes for double quotes.
 
-- `isLocal` matches all events that were emitted by the local Actyx node
+- `isLocal` matches all events that were emitted by the local Actyx node.
 
-- `allEvents` matches all events
+- `allEvents` matches all events.
+
+- *FEATURES(timeRange):* `from(<time>)` matches all events whose timestamp is greater or equal to the provided one.
+  Timestamps are given in UTC and always end with `Z` — this will allow future extension towards supporting timezones.
+  Valid formats are `2021-07-20T09:53:07.462Z`, or without milliseconds, seconds, or just the date.
+  Omitted components are treated as zero, so `2021-07-20Z` marks the beginning of that day in UTC.
+
+- *FEATURES(timeRange):* `to(<time>)` matches all events whose timestamp is less than the provided one, i.e. `to(<x>)` and `from(<x>)` seamlessly cover the timeline around time _x_ without overlap.
+  The time formats are exactly the same as for `from(<time>)`.
+
+- *FEATURES(eventKeyRange):* `from(<event ID>)` matches all events whose event ID is greater or equal to the provided one.
+  An event ID consists of `<lamport timestamp>/<node ID>-<stream nr>` and has the same sort order as the corresponding event.
+  You may specify only the lamport timestamp, in which case node ID and stream number are treated as zero.
+
+- *FEATURES(eventKeyRange):* `to(<event ID>)` matches all events whose event ID is less than the provided one.
+  The syntax rules are the same as for `from(<event ID>)`.
+
+- `appId(<app ID>)` matches all events from the given app ID.
+  No whitespace is allowed between the parentheses.
+  App IDs are valid DNS names, i.e. name components consist of lowercase letters, digits, or dashes and are separated by a single dot.
+  A valid example is `appId(com.example.my-app)`.
 
 Larger expressions are constructed using the _and_ and _or_ combinators:
 
@@ -141,6 +167,9 @@ Whenever the description says that an error is generated, the evaluation of the 
   An error is yielded if no case matches.
 
   This means that `FILTER <expr>` has the same behavior as `SELECT CASE <expr> => _ ENDCASE`.
+
+Precedence of the binary operators in increasing order is: or, xor, and, equality, ordering, additive, multiplicative, exponential.
+Indexing binds more strongly than negation.
 
 ## Evaluation context
 

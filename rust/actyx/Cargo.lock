@@ -1435,6 +1435,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "diff"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e25ea47919b1560c4e3b7fe0aaab9becf5b84a10325ddf7db0f0ba5e1026499"
+
+[[package]]
 name = "difflib"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4032,6 +4038,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "output_vt100"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53cdc5b785b7a58c5aad8216b3dfa114df64b0b06ae6e1501cef91df2fbdf8f9"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "pango"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4372,6 +4387,18 @@ checksum = "15f553275e5721409451eb85e15fd9a860a6e5ab4496eb215987502b5f5391f2"
 dependencies = [
  "predicates-core",
  "treeline",
+]
+
+[[package]]
+name = "pretty_assertions"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cab0e7c02cf376875e9335e0ba1da535775beb5450d21e1dffca068818ed98b"
+dependencies = [
+ "ansi_term 0.12.1",
+ "ctor",
+ "diff",
+ "output_vt100",
 ]
 
 [[package]]
@@ -5626,6 +5653,7 @@ dependencies = [
  "anyhow",
  "ax-futures-util",
  "banyan",
+ "chrono",
  "crossbeam",
  "crypto",
  "derive_more",
@@ -5641,6 +5669,7 @@ dependencies = [
  "names",
  "num-traits",
  "parking_lot 0.11.1",
+ "pretty_assertions",
  "prometheus",
  "quickcheck",
  "rand 0.8.4",
@@ -5666,6 +5695,7 @@ dependencies = [
  "anyhow",
  "api",
  "async-process",
+ "ax-futures-util",
  "chrono",
  "crossbeam",
  "crypto",
@@ -6121,6 +6151,7 @@ dependencies = [
  "anyhow",
  "banyan",
  "cbor-tag-index",
+ "derive_more",
  "futures 0.3.15",
  "libipld",
  "multihash",

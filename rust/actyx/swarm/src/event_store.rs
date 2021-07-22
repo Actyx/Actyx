@@ -1,21 +1,24 @@
 use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
+use crate::{selection::StreamEventSelection, AppendMeta, BanyanStore, SwarmOffsets};
 use actyx_sdk::{
     language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
     Payload, StreamId, StreamNr, TagSet, Timestamp,
 };
 use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
 use banyan::FilteredChunk;
-use derive_more::{Display, Error};
+use derive_more::{Display, Error, From};
 use futures::{future, stream, Stream, StreamExt, TryStreamExt};
-use trees::{axtrees::AxKey, query::TagsQuery};
+use trees::{
+    axtrees::AxKey,
+    query::{TagExprError, TagExprQuery},
+};
 
-use crate::{selection::StreamEventSelection, AppendMeta, BanyanStore, SwarmOffsets};
-
-#[derive(Clone, Debug, Display, Error)]
+#[derive(Clone, Debug, Display, Error, From)]
 pub enum Error {
     #[display(fmt = "Upper bounds must be within the current offsets’ present.")]
     InvalidUpperBounds,
+    TagExprError(TagExprError),
 }
 
 pub type PersistenceMeta = (LamportTimestamp, Offset, StreamNr, Timestamp);
@@ -79,7 +82,7 @@ impl EventStore {
         if present.union(&to_offsets_including) != present {
             return Err(Error::InvalidUpperBounds);
         }
-        let mk_tags_query = TagsQuery::from_expr(tag_expr);
+        let mk_tags_query = TagExprQuery::from_expr(tag_expr)?;
         let res: Vec<_> = to_offsets_including
             .streams()
             .filter_map(|stream_id| {
@@ -89,7 +92,7 @@ impl EventStore {
                 if from_exclusive >= to_inclusive {
                     return None;
                 }
-                let tags_query = mk_tags_query(local);
+                let tags_query = mk_tags_query(local, stream_id);
                 if tags_query.is_empty() {
                     return None;
                 }
@@ -188,15 +191,16 @@ impl EventStore {
         &self,
         tag_expr: &TagExpr,
         from_offsets_excluding: OffsetMap,
-    ) -> impl Stream<Item = Event<Payload>> {
+    ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
         let this = self.clone();
-        let mk_tags_query = TagsQuery::from_expr(&tag_expr);
+        let mk_tags_query = TagExprQuery::from_expr(&tag_expr)?;
         let banyan_store = self.banyan_store.clone();
-        self.banyan_store
+        Ok(self
+            .banyan_store
             .stream_known_streams()
             .filter_map(move |stream_id| {
                 let local = banyan_store.is_local(stream_id);
-                let tags_query = mk_tags_query(local);
+                let tags_query = mk_tags_query(local, stream_id);
                 future::ready(if tags_query.is_empty() {
                     None
                 } else {
@@ -209,7 +213,7 @@ impl EventStore {
                 })
             })
             .map(move |selection| this.forward_stream(selection))
-            .merge_unordered()
+            .merge_unordered())
     }
 }
 
@@ -276,6 +280,8 @@ mod tests {
 
     use super::*;
     use crate::{selection::EventSelection, BanyanStore};
+    use chrono::{DateTime, SecondsFormat, Utc};
+    use trees::query::{LamportQuery, TimeQuery};
 
     async fn mk_store(name: &'static str) -> EventStore {
         EventStore::new(BanyanStore::test(name).await.unwrap())
@@ -370,7 +376,7 @@ mod tests {
             stream_id,
             from_exclusive: OffsetOrMin::MIN,
             to_inclusive: OffsetOrMin::ZERO,
-            tags_query: TagsQuery::all(),
+            tags_query: TagExprQuery::all(),
         }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
@@ -380,7 +386,7 @@ mod tests {
             stream_id,
             from_exclusive: OffsetOrMin::MIN,
             to_inclusive: OffsetOrMin::ZERO,
-            tags_query: TagsQuery::empty(),
+            tags_query: TagExprQuery::empty(),
         }));
         assert_eq!(stream.next(), None);
 
@@ -388,7 +394,7 @@ mod tests {
             stream_id,
             from_exclusive: OffsetOrMin::MIN,
             to_inclusive: OffsetOrMin::ZERO,
-            tags_query: TagsQuery::all(),
+            tags_query: TagExprQuery::all(),
         }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
@@ -399,7 +405,7 @@ mod tests {
             stream_id,
             from_exclusive: OffsetOrMin::MIN,
             to_inclusive: OffsetOrMin::MAX,
-            tags_query: TagsQuery::all(),
+            tags_query: TagExprQuery::all(),
         }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
@@ -421,7 +427,7 @@ mod tests {
             stream_id,
             from_exclusive: OffsetOrMin::MIN,
             to_inclusive: OffsetOrMin::ZERO,
-            tags_query: TagsQuery::all(),
+            tags_query: TagExprQuery::all(),
         }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
@@ -432,7 +438,7 @@ mod tests {
             stream_id,
             from_exclusive: OffsetOrMin::MIN,
             to_inclusive: OffsetOrMin::ZERO,
-            tags_query: TagsQuery::empty(),
+            tags_query: TagExprQuery::empty(),
         }));
         assert_eq!(stream.next(), None);
     }
@@ -589,7 +595,7 @@ mod tests {
             let from = offset_map(&btreemap! { stream_id1 => 0 });
             let to = offset_map(&btreemap! { stream_id1 => u32::MAX, stream_id2 => u32::MAX });
             // stream1 is below range and stream2 non-existant at this point
-            let stream = store_rx.unbounded_forward_per_stream(tag_expr, from.clone());
+            let stream = store_rx.unbounded_forward_per_stream(tag_expr, from.clone()).unwrap();
             let _ = await_stream_offsets(
                 &store_rx,
                 &[&store1_clone, &store2_clone],
@@ -652,7 +658,7 @@ mod tests {
                 let tags = mk_tag(i);
                 // tags with prefix, as they actually appear on the tree
                 let scoped_tags = tags.clone().into();
-                let tags_query = TagsQuery::new(vec![scoped_tags]);
+                let tags_query = TagExprQuery::new(vec![scoped_tags], LamportQuery::all(), TimeQuery::all());
                 let range = random_range();
                 let actual = store
                     .forward_stream(StreamEventSelection {
@@ -674,6 +680,79 @@ mod tests {
             handles.push(handle_sub);
         }
         try_join_all(handles).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn time_based_query() -> anyhow::Result<()> {
+        let store = mk_store("time-based").await;
+
+        let mut events = vec![];
+        for i in 0..10u32 {
+            let mut tags = TagSet::default();
+            if i % 3 == 0 {
+                tags.insert(tag!("fizz"));
+            }
+            if i % 5 == 0 {
+                tags.insert(tag!("buzz"));
+            }
+            let x = store
+                .persist(
+                    app_id!("test"),
+                    vec![(tags, Payload::from_json_str(&*format!("{}", i)).unwrap())],
+                )
+                .await?[0];
+            events.push(x);
+        }
+
+        let offsets = store.offsets().next().await.unwrap().present;
+        let stream0 = store.node_id().stream(0.into());
+
+        for i in 1..events.len() {
+            let prev = events[i - 1];
+            let this = events[i];
+            assert!(prev.0 < this.0);
+            assert!(prev.1 < this.1);
+            assert_eq!(prev.2, this.2);
+            assert!(prev.3 < this.3);
+        }
+        assert_eq!(events[0].2, StreamNr::from(0));
+        assert!(events[9].1 <= offsets.get(stream0).unwrap());
+
+        let time = {
+            let events = events.clone();
+            move |i: usize| DateTime::<Utc>::from(events[i].3).to_rfc3339_opts(SecondsFormat::Micros, true)
+        };
+        let lamport = move |i: usize| events[i].0.as_i64();
+
+        let events = move |s: String| {
+            let store = store.clone();
+            let offsets = offsets.clone();
+            async move {
+                anyhow::Result::<Vec<String>>::Ok(
+                    store
+                        .bounded_forward(&s.parse().unwrap(), OffsetMap::default(), offsets)
+                        .await?
+                        .map(|e| e.payload.json_string())
+                        .collect()
+                        .await,
+                )
+            }
+        };
+
+        assert_eq!(
+            events(format!("appId(test) & 'fizz' & from({}) & to({})", time(3), lamport(6))).await?,
+            vec!["3"]
+        );
+        assert_eq!(
+            events(format!("appId(test) & 'buzz' & from({}) & to({})", time(3), lamport(6))).await?,
+            vec!["5"]
+        );
+        assert_eq!(
+            events(format!("from({}) & to({})", lamport(4), lamport(6))).await?,
+            vec!["4", "5"]
+        );
+
+        Ok(())
     }
 
     #[tokio::test]

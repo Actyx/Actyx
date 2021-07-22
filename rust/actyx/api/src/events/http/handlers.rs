@@ -66,6 +66,7 @@ fn reject(err: anyhow::Error) -> Rejection {
             event_store_ref::Error::Aborted => reject::custom(ApiError::Shutdown { cause }),
             event_store_ref::Error::Overload => reject::custom(ApiError::Overloaded { cause }),
             event_store_ref::Error::InvalidUpperBounds => reject::custom(ApiError::BadRequest { cause }),
+            event_store_ref::Error::TagExprError(_) => reject::custom(ApiError::BadRequest { cause }),
         }
     } else {
         match err.downcast::<FeatureError>() {
