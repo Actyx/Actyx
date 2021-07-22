@@ -9,7 +9,7 @@ import {
   AUTH_SEG,
 } from '../../http-client'
 import WebSocket from 'ws'
-import { run, power_cycle, getHttpApi } from '../../util'
+import { run, powerCycle, getHttpApi } from '../../util'
 import { AppManifest } from '@actyx/pond'
 import { SettingsInput } from '../../cli/exec'
 import { waitForNodeToBeConfigured } from '../../retry'
@@ -274,7 +274,7 @@ describe('auth http', () => {
       expect(response).toEqual({ present: expect.any(Object), toReplicate: expect.any(Object) })
 
       // power cycle the node
-      await power_cycle(node)
+      await powerCycle(node)
 
       const result = await offsets(httpApi).then((resp) => {
         expect(resp.status).toEqual(401)

@@ -345,13 +345,12 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
   return newNode
 }
 
-export const power_cycle = async (node: ActyxNode): Promise<void> => {
+export const powerCycle = async (node: ActyxNode): Promise<void> => {
   const workdir = node._private.workingDir
   await node._private.shutdown()
   const n2 = await newProcess(node, workdir)
   node.ax = n2.ax
   node._private.shutdown = n2._private.shutdown
   node._private.adminPort = n2._private.adminPort
-  node._private.swarmPort = n2._private.swarmPort
   node._private.apiPort = n2._private.apiPort
 }
