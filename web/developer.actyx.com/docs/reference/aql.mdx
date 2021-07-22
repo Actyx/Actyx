@@ -73,7 +73,7 @@ Hereby, `<tag_expr>` is a boolean expression composed from the following basic a
 - *FEATURES(eventKeyRange):* `to(<event ID>)` matches all events whose event ID is less than the provided one.
   The syntax rules are the same as for `from(<event ID>)`.
 
-- `appId(com.example.my-app)` matches all events from the given app ID.
+- `appId(<app ID>)` matches all events from the given app ID.
   No whitespace is allowed between the parentheses.
   App IDs are valid DNS names, i.e. name components consist of lowercase letters, digits, or dashes and are separated by a single dot.
   A valid example is `appId(com.example.my-app)`.
