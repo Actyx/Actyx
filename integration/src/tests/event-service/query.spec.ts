@@ -69,6 +69,9 @@ describe('event service', () => {
 
     it('should return events in ascending order with explicit bounds and complete', () =>
       runWithClients(async (events, clientId) => {
+        // without this the lowerBound offset would be -1 which is illegal
+        await publishRandom(events, clientId)
+
         const pub1 = await publishRandom(events, clientId)
         const pub2 = await publishRandom(events, clientId)
         const request: QueryRequest = {
