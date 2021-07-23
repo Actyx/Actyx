@@ -60,6 +60,36 @@ export type AppManifest = {
     signature?: string;
 };
 
+// @beta
+export type AqlDiagnosticMessage = {
+    type: 'diagnostic';
+    severity: string;
+    message: string;
+};
+
+// @beta
+export type AqlEventMessage = {
+    type: 'event';
+    payload: unknown;
+    meta: Metadata;
+};
+
+// @beta
+export type AqlFutureCompat = {
+    type: string;
+    payload: unknown;
+    meta: Record<string, unknown>;
+};
+
+// @beta
+export type AqlOffsetsMsg = {
+    type: 'offsets';
+    offsets: OffsetMap;
+};
+
+// @beta
+export type AqlResponse = AqlEventMessage | AqlOffsetsMsg | AqlDiagnosticMessage | AqlFutureCompat;
+
 // @public
 export type AutoCappedQuery = {
     lowerBound?: OffsetMap;
@@ -97,6 +127,8 @@ export interface EventFns {
     present: () => Promise<OffsetMap>;
     queryAllKnown: (query: AutoCappedQuery) => Promise<EventChunk>;
     queryAllKnownChunked: (query: AutoCappedQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
+    // @beta
+    queryAql: (query: string) => Promise<AqlResponse[]>;
     queryKnownRange: (query: RangeQuery) => Promise<ActyxEvent[]>;
     queryKnownRangeChunked: (query: RangeQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
     subscribe: (query: EventSubscription, onEvent: (e: ActyxEvent) => Promise<void> | void) => CancelSubscription;

@@ -315,6 +315,9 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
     nodeId,
     offsets: getPresent,
     query,
+    queryUnchecked: () => {
+      throw new Error('not implemented for test event store')
+    },
     subscribe,
     persistEvents,
     directlyPushEvents,

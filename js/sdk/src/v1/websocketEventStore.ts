@@ -149,6 +149,10 @@ export class WebsocketEventStore implements EventStore {
         return { present: pres.psns, toReplicate: {} }
       })
 
+  queryUnchecked = () => {
+    throw new Error('not implemented for V1')
+  }
+
   query: DoQuery = (lowerBound, upperBound, query, sortOrder) => {
     if (typeof query === 'string') {
       throw new Error('No AQL support in V1')

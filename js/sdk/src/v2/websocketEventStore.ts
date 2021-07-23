@@ -11,6 +11,7 @@ import {
   DoSubscribe,
   EventStore,
   RequestOffsets,
+  TypedMsg,
 } from '../internal_common/eventStore'
 import log from '../internal_common/log'
 import {
@@ -54,12 +55,7 @@ const EventKeyWithTime = t.intersection([EventKeyIO, t.type({ timestamp: t.numbe
 const PublishEventsResponse = t.type({ data: t.readonlyArray(EventKeyWithTime) })
 
 const toAql = (w: Where<unknown> | string): string =>
-  w instanceof String ? (w as string) : 'FROM ' + w.toString()
-
-// TODO: Can we just change the type of MultiplexedWebsocket "payload" from unknown to this?
-type TypedMsg = {
-  type: string
-}
+  typeof w === 'string' ? (w as string) : 'FROM ' + w.toString()
 
 export class WebsocketEventStore implements EventStore {
   constructor(private readonly multiplexer: MultiplexedWebsocket, private readonly appId: AppId) {}
@@ -70,6 +66,15 @@ export class WebsocketEventStore implements EventStore {
       .map(validateOrThrow(OffsetsResponse))
       .first()
       .toPromise()
+
+  queryUnchecked = (aqlQuery: string) =>
+    this.multiplexer
+      .request(RequestTypes.Query, {
+        lowerBound: {},
+        query: aqlQuery,
+        order: 'asc',
+      })
+      .map(x => x as TypedMsg)
 
   query: DoQuery = (lowerBound, upperBound, whereObj, sortOrder) =>
     this.multiplexer

@@ -20,6 +20,7 @@ import { SnapshotStore } from '../snapshotStore'
 import {
   ActyxEvent,
   allEvents,
+  AqlResponse,
   CancelSubscription,
   EventChunk,
   EventKey,
@@ -531,6 +532,31 @@ export const EventFnsFromEventStoreV2 = (
     return pendingEmission(allPersisted)
   }
 
+  // FIXME properly type EventStore. (This runs without error because in production mode the ws event store does not use io-ts.)
+  const wrapAql = (e: { type: string }): AqlResponse => {
+    const actualType = e.type
+
+    if (actualType === 'offsets' || actualType === 'diagnostic') {
+      return e as AqlResponse
+    }
+
+    const w = wrap((e as unknown) as Event)
+
+    return {
+      ...w,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      type: actualType as any,
+    }
+  }
+
+  const queryAql = async (query: string): Promise<AqlResponse[]> => {
+    return eventStore
+      .queryUnchecked(query)
+      .map(wrapAql)
+      .toArray()
+      .toPromise()
+  }
+
   return {
     present,
     offsets,
@@ -538,6 +564,7 @@ export const EventFnsFromEventStoreV2 = (
     queryKnownRangeChunked,
     queryAllKnown,
     queryAllKnownChunked,
+    queryAql,
     subscribe,
     subscribeChunked,
     subscribeMonotonic,

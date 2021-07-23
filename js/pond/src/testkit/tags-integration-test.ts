@@ -12,7 +12,7 @@ type State = ReadonlyArray<Event>
 
 export const start = async () => {
   const pond = await Pond.default({
-    appId: 'com.example.dev-Pond',
+    appId: 'com.example.dev-pond',
     displayName: 'Pond dev',
     version: '1.0.0',
   }).catch(ex => {

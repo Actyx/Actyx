@@ -5,7 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { Observable, ReplaySubject } from 'rxjs'
-import { AppId, Lamport, NodeId, Offset, OffsetMap, toEventPredicate, Timestamp } from '../types'
+import { AppId, Lamport, NodeId, Offset, OffsetMap, Timestamp, toEventPredicate } from '../types'
 import { DoPersistEvents, DoQuery, DoSubscribe, EventStore } from './eventStore'
 import log from './log'
 import { ConnectivityStatus, Events } from './types'
@@ -76,6 +76,9 @@ export const mockEventStore: () => EventStore = () => {
     nodeId,
     offsets: getPresent,
     query,
+    queryUnchecked: () => {
+      throw new Error('not implemented for mock event store')
+    },
     subscribe,
     persistEvents,
     connectivityStatus: () => Observable.empty<ConnectivityStatus>(),
