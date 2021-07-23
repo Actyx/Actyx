@@ -94,7 +94,7 @@ namespace Actyx
 
         public string Stream { get; set; }
 
-        public long Offset { get; set; }
+        public ulong Offset { get; set; }
     }
 
     public struct EventMetadata
@@ -155,14 +155,14 @@ namespace Actyx
         }
     }
 
-    public class OffsetMap : Dictionary<string, long>
+    public class OffsetMap : Dictionary<string, ulong>
     {
         public OffsetMap() : base()
         {
         }
 
         // Just type alias. TODO Is this ideal? (Maybe use an immutable dict)
-        public OffsetMap(IDictionary<string, long> dictionary) : base(dictionary)
+        public OffsetMap(IDictionary<string, ulong> dictionary) : base(dictionary)
         {
         }
     }

@@ -12,7 +12,7 @@ namespace Actyx
     public class EventPublishMetadata
     {
         public ulong Lamport { get; set; }
-        public long Offset { get; set; }
+        public ulong Offset { get; set; }
         public ulong Timestamp { get; set; }
         public string Stream { get; set; }
     }
@@ -45,7 +45,7 @@ namespace Actyx
         public IEnumerable<string> Tags { get; set; }
         public JToken Payload { get; set; }
         public ulong Lamport { get; set; }
-        public long Offset { get; set; }
+        public ulong Offset { get; set; }
         public ulong Timestamp { get; set; }
         public string Stream { get; set; }
         public bool CaughtUp { get; set; }
