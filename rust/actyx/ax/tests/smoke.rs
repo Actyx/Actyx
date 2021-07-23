@@ -360,3 +360,32 @@ fn bad_query() -> anyhow::Result<()> {
     }
     result
 }
+
+#[test]
+fn diagnostics() -> anyhow::Result<()> {
+    let log = Log::default();
+    let result = with_api(log.clone(), |api, identity| {
+        let out = run("ax")?
+            .args(&[
+                o("events"),
+                o("query"),
+                o("-i"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+                o("FROM 'discovery' SELECT _ - 3"),
+            ])
+            .output()?;
+        eprintln!(
+            "out:\n{}\nerr:\n{}\n---",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        ensure!(out.status.success());
+        ensure!(String::from_utf8(out.stdout)?.contains("is not a number"));
+        Ok(())
+    });
+    if result.is_err() {
+        eprintln!("{}", log);
+    }
+    result
+}

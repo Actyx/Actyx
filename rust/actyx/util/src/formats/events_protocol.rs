@@ -51,7 +51,9 @@ pub enum EventsResponse {
 mod tests {
     use super::*;
     use actyx_sdk::{
-        app_id, service::StartFrom, tags, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, Timestamp,
+        app_id,
+        service::{Severity, StartFrom},
+        tags, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, Timestamp,
     };
     use std::collections::BTreeMap;
 
@@ -116,6 +118,21 @@ mod tests {
         assert_eq!(
             res(EventsResponse::Event(ev(3))),
             r#"{"type":"event","lamport":0,"stream":"...........................................-0","offset":0,"timestamp":12,"tags":["a","b"],"appId":"app","payload":3}"#
+        );
+        assert_eq!(
+            res(EventsResponse::Diagnostic(Diagnostic {
+                severity: Severity::Warning,
+                message: "buh".to_owned()
+            })),
+            r#"{"type":"diagnostic","severity":"warning","message":"buh"}"#
+        );
+        assert_eq!(
+            serde_json::from_str::<EventsResponse>(r#"{"type":"diagnostic","severity":"warning","message":"buh"}"#)
+                .unwrap(),
+            EventsResponse::Diagnostic(Diagnostic {
+                severity: Severity::Warning,
+                message: "buh".to_owned()
+            })
         );
         assert_eq!(
             res(EventsResponse::OffsetMap {
