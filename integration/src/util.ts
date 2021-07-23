@@ -148,6 +148,7 @@ export const runActyx = async (
 
 const getLog = async (
   proc: Promise<ActyxProcess>,
+  nodeName: string,
   triggers: string[],
   timeout: number,
 ): Promise<ExecaReturnValue | ExecaError | [string[], ExecaChildProcess, string, Ssh?]> => {
@@ -157,21 +158,21 @@ const getLog = async (
       const logs: string[] = []
       setTimeout(() => res([logs, p, workdir, ssh]), timeout)
       const { log } = mkProcessLogger((s) => logs.push(s), '', triggers)
-      const ts = () => `${new Date().toISOString()} node ${mySuite()} ${testName()}`
+      const prefix = () => `${new Date().toISOString()} ${nodeName} ${mySuite()} ${testName()}`
       p.stdout?.on('data', (buf) => {
-        process.stderr.write(`${ts()} ${netString(buf)}`)
+        process.stderr.write(`${prefix()} ${netString(buf)}`)
         if (log('stdout', buf)) {
           res([logs, p, workdir, ssh])
         }
       })
       p.stderr?.on('data', (buf) => {
-        process.stderr.write(`${ts()} ${netString(buf)}`)
+        process.stderr.write(`${prefix()} ${netString(buf)}`)
         if (log('stderr', buf)) {
           res([logs, p, workdir, ssh])
         }
       })
       p.stdout?.on('end', () => {
-        process.stderr.write(`${ts()} ended\n`)
+        process.stderr.write(`${prefix()} ended\n`)
       })
       p.then(res, res)
     },
@@ -190,10 +191,11 @@ const getLog = async (
  */
 export const runUntil = async (
   proc: Promise<ActyxProcess>,
+  nodeName: string,
   triggers: string[],
   timeout: number,
 ): Promise<ExecaReturnValue | ExecaError | string[]> => {
-  const result = await getLog(proc, triggers, timeout)
+  const result = await getLog(proc, nodeName, triggers, timeout)
   if (Array.isArray(result)) {
     const [logs, p] = result
     p.kill()
@@ -241,8 +243,8 @@ export const retryWhileLockedOrBound = async (
   }
 }
 
-export const startup = async (proc: Promise<ActyxProcess>): Promise<BoundTo> => {
-  const result = await getLog(proc, ['NODE_STARTED_BY_HOST'], 20_000)
+export const startup = async (proc: Promise<ActyxProcess>, nodeName: string): Promise<BoundTo> => {
+  const result = await getLog(proc, nodeName, ['NODE_STARTED_BY_HOST'], 20_000)
   if (!Array.isArray(result)) {
     throw new Error(`Actyx process didn’t start:\n${result.stderr}`)
   }
@@ -277,7 +279,7 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
   const { process, workdir, ssh, ...bound } = await retryWhileLockedOrBound(
     `${node.name} ${mySuite()} ${testName()}`,
     workingDir ? 15 : 1,
-    () => startup(runActyx(node, workingDir, randomBinds)),
+    () => startup(runActyx(node, workingDir, randomBinds), node.name),
   )
   const api = bound.api.find(([addr]) => addr === '127.0.0.1')?.[1]
   const admin = bound.admin.find(([addr]) => addr === '127.0.0.1')?.[1]
