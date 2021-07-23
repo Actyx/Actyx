@@ -6,8 +6,6 @@ using System.CommandLine.Parsing;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using Actyx;
-using Actyx.Sdk.AxHttpClient;
 using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
 
@@ -15,24 +13,27 @@ namespace Actyx.CLI
 {
     class Program
     {
-        private const string Authority = "localhost:4454";
-
-        private static async Task<IEventStore> MkStore(AppManifest manifest, bool websocket, string authority)
+        private static async Task<IEventStore> MkStore(AppManifest manifest, bool websocket, string node)
         {
-
-            var basePath = $"{(string.IsNullOrEmpty(authority) ? Authority : authority)}/api/v2/";
-            if (websocket)
+            var opts = new ActyxOpts()
             {
-                var nodeId = (await AxHttpClient.Create($"http://{basePath}", manifest)).NodeId;
-                var token = (await AxHttpClient.GetToken(new Uri($"http://{basePath}"), manifest)).Token;
-                var wsrpcClient = new WsrpcClient(new Uri($"ws://{basePath}events?{token}"));
-                return new WebsocketEventStore(wsrpcClient, nodeId);
-            }
-            else
+                Transport = websocket ? Transport.WebSocket : Transport.Http,
+            };
+            if (!string.IsNullOrWhiteSpace(node))
             {
-                var httpClient = await AxHttpClient.Create($"http://{basePath}", manifest);
-                return new HttpEventStore(httpClient);
+                var hostPort = node.Split(":");
+                switch (hostPort.Length)
+                {
+                    case 1:
+                        opts.ActyxHost = hostPort[0];
+                        break;
+                    case 2:
+                        opts.ActyxHost = hostPort[0];
+                        opts.ActyxPort = Convert.ToUInt32(hostPort[1]);
+                        break;
+                }
             }
+            return await EventStore.Create(manifest, opts);
         }
 
         private static OffsetMap ParseBounds(ArgumentResult res) =>
@@ -46,13 +47,10 @@ namespace Actyx.CLI
                 {
                     AppId = "com.example.actyx-cli",
                     DisplayName = "Actyx .NET CLI",
-                    Version = "0.0.1"
+                    Version = typeof(Program).Assembly.GetName().Version.ToString(),
                 };
             }
-            else
-            {
-                return Proto<AppManifest>.Deserialize(res.Tokens[0].Value);
-            }
+            return Proto<AppManifest>.Deserialize(res.Tokens[0].Value);
         }
 
         private static Command Query()

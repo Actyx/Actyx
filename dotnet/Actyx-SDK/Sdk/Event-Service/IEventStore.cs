@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Actyx.Sdk.AxHttpClient;
+using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
 using JsonSubTypes;
 using Newtonsoft.Json;
@@ -59,6 +60,29 @@ namespace Actyx
     public class PublishResponse
     {
         public IEnumerable<EventPublishMetadata> Data { get; set; }
+    }
+
+    public static class EventStore
+    {
+        public async static Task<IEventStore> Create(AppManifest manifest, ActyxOpts options)
+        {
+            string host = options?.ActyxHost ?? "localhost";
+            uint port = options?.ActyxPort ?? 4454;
+
+            string basePath = $"{host}:{port}/api/v2/";
+
+            if (options?.Transport == Transport.Http)
+            {
+                return new HttpEventStore(await AxHttpClient.Create($"http://{basePath}", manifest));
+            }
+
+            Uri axHttp = new($"http://{basePath}");
+            var token = await AxHttpClient.GetToken(axHttp, manifest);
+            var nodeId = await AxHttpClient.GetNodeId(axHttp);
+            Uri axWs = new($"ws://{basePath}events?{token.Token}");
+            var wsrpcClient = new WsrpcClient(axWs);
+            return new WebsocketEventStore(wsrpcClient, nodeId);
+        }
     }
 
     // This interface is not public, it is the internal adapter for switching between ws/http/test impl.
