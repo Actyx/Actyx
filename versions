@@ -3,16 +3,19 @@
 # The machine-readable product names are: actyx, node-manager,
 # cli, pond, ts-sdk, rust-sdk, docs, csharp-sdk
 
+actyx-2.2.0 7a61711c2c9a680627497617ae0b56785847f0b1
 actyx-2.1.0 499f98aeb8842a210a2592eadd32cad8619fcf26
 actyx-2.0.3 0a566f75ca8c0a37578f991bfb3aabf4d19b04b6
 actyx-2.0.2 4d25f8db492c189c2c9808db133eaa1838153c06
 actyx-2.0.1 cf0fd18c6853892cd5fea0d96d7e67c47fc635ce
 actyx-2.0.0 bedaa876cd9974affe76ee66a15e7e4ce5e168da
 actyx-1.1.5 c80924f6dccac51ae6d4da3a0b5a0afc94b1a1ac
+cli-2.1.1 7a61711c2c9a680627497617ae0b56785847f0b1
 cli-2.1.0 499f98aeb8842a210a2592eadd32cad8619fcf26
 cli-2.0.1 0a566f75ca8c0a37578f991bfb3aabf4d19b04b6
 cli-2.0.0 bedaa876cd9974affe76ee66a15e7e4ce5e168da
 cli-1.1.5 c80924f6dccac51ae6d4da3a0b5a0afc94b1a1ac
+node-manager-2.4.1 7a61711c2c9a680627497617ae0b56785847f0b1
 node-manager-2.4.0 499f98aeb8842a210a2592eadd32cad8619fcf26
 node-manager-2.3.0 042751c71d9dd944f68dffd6a5f33e5cbf04abf9
 node-manager-2.2.0 4d25f8db492c189c2c9808db133eaa1838153c06
