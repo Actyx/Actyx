@@ -130,7 +130,7 @@ impl Display for ActyxOSError {
             ERR_INVALID_INPUT => write!(f, "[ERR_INVALID_INPUT] Error: {}", self.message),
             ERR_INVALID_NODE_STATE => write!(
                 f,
-                "[ERR_INVALID_NODE_STATE] Error the state of your Node is inconsitent. \
+                "[ERR_INVALID_NODE_STATE] Error: the state of your node is inconsistent. \
                 Please file a bug at http://developer.actyx.com. message: {}",
                 self.message
             ),
