@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using Actyx;
-using Newtonsoft.Json.Linq;
 
 namespace Sdk.Tests.Helpers
 {
@@ -8,7 +7,7 @@ namespace Sdk.Tests.Helpers
     {
         public IEnumerable<string> Tags => Constants.Tags;
 
-        public JToken Payload { get; set; }
+        public object Payload { get; set; }
 
         public TestEvent(string payload)
         {

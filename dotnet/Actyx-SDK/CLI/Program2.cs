@@ -5,7 +5,7 @@ using Actyx.Sdk.AxHttpClient;
 using Actyx.Sdk.AxWebsocketClient;
 using Newtonsoft.Json.Linq;
 
-namespace CLI
+namespace Actyx.CLI
 {
     class Program2
     {

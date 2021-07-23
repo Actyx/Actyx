@@ -47,14 +47,14 @@ namespace Actyx
 
         // Must be JSON-Serializable.
         [JsonProperty("payload")]
-        JToken Payload { get; }
+        object Payload { get; }
     }
 
     public struct EventDraft : IEventDraft
     {
         public IEnumerable<string> Tags { get; set; }
 
-        public JToken Payload { get; set; }
+        public object Payload { get; set; }
     }
 
     public interface ISubscribeMonotonicMessageVisitor

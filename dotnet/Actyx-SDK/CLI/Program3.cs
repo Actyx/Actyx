@@ -2,16 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
-using System.Threading;
 using System.Threading.Tasks;
-using Actyx;
 using Actyx.Sdk.AxHttpClient;
 using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
 using DeepEqual.Syntax;
+using Newtonsoft.Json;
 
-namespace CLI
+namespace Actyx.CLI
 {
     class Program3
     {
@@ -36,32 +34,34 @@ namespace CLI
             var persisted =
                 Observable
                     .Timer(TimeSpan.Zero, TimeSpan.FromMilliseconds(50))
-                    .SelectMany(async _ =>
+                    .SelectMany(_ =>
+                    {
+                        List<IEventDraft> events = new()
                         {
-                            List<IEventDraft> events = new()
-                            {
-                                new EventDraft { Tags = tags, Payload = "event" },
-                            };
-                            PublishResponse response = await store.Publish(events);
-                            return response.Data.Zip(events, (metadata, @event) =>
-                                new EventOnWire
-                                {
-                                    Lamport = metadata.Lamport,
-                                    Offset = metadata.Offset,
-                                    Payload = @event.Payload,
-                                    Stream = metadata.Stream,
-                                    Tags = @event.Tags,
-                                    Timestamp = metadata.Timestamp,
-                                    AppId = manifest.AppId,
-                                }
-                            ).ToObservable();
-                        }
-                    );
-            var subscribe =
+                            new EventDraft { Tags = tags, Payload = RandomString(20) },
+                        };
+                        return Observable
+                            .FromAsync(() => store.Publish(events))
+                            .SelectMany(response => response.Data.Zip(events, (metadata, @event) =>
+                                    new EventOnWire
+                                    {
+                                        Lamport = metadata.Lamport,
+                                        Offset = metadata.Offset,
+                                        Payload = JsonConvert.SerializeObject(@event.Payload),
+                                        Stream = metadata.Stream,
+                                        Tags = @event.Tags,
+                                        Timestamp = metadata.Timestamp,
+                                        AppId = manifest.AppId,
+                                    }
+                            ));
+                    });
+
+            var subscribed =
                 store
                     .Subscribe(null, new Aql($"FROM '{tags[0]}'"))
                     .OfType<EventOnWire>();
-            await foreach (var (p, s) in persisted.Zip(subscribe).Take(N).ToAsyncEnumerable())
+
+            await foreach (var (p, s) in persisted.Zip(subscribed).Take(N).ToAsyncEnumerable())
             {
                 p.ShouldDeepEqual(s);
             }

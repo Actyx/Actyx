@@ -23,19 +23,17 @@ namespace Actyx.Sdk.Utils.Extensions
                 throw new NotSupportedException($"Tried to read 'application/x-ndjson', but got '{mediaType}'");
             }
 
-            using (var contentStream = await content.ReadAsStreamAsync().ConfigureAwait(false))
-            using (var contentStreamReader = new StreamReader(contentStream))
+            using var contentStream = await content.ReadAsStreamAsync().ConfigureAwait(false);
+            using var contentStreamReader = new StreamReader(contentStream);
+            while (!contentStreamReader.EndOfStream)
             {
-                while (!contentStreamReader.EndOfStream)
+                var data = await contentStreamReader.ReadLineAsync().ConfigureAwait(false);
+                if (string.IsNullOrEmpty(data))
                 {
-                    var data = await contentStreamReader.ReadLineAsync().ConfigureAwait(false);
-                    if (string.IsNullOrEmpty(data))
-                    {
-                        continue;
-                    }
-
-                    yield return JsonConvert.DeserializeObject<TValue>(data, HttpContentExtensions.JsonSettings);
+                    continue;
                 }
+
+                yield return JsonConvert.DeserializeObject<TValue>(data, HttpContentExtensions.JsonSettings);
             }
         }
     }

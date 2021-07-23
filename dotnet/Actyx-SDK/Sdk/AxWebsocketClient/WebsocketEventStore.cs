@@ -4,12 +4,12 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
-using Actyx.Sdk.Formats;
 using Actyx.Sdk.AxHttpClient;
+using Actyx.Sdk.Formats;
+using Actyx.Sdk.Utils;
 using Actyx.Sdk.Utils.Extensions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Actyx.Sdk.Utils;
 
 namespace Actyx.Sdk.AxWebsocketClient
 {
