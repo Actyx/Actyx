@@ -416,7 +416,7 @@ export type AqlDiagnosticMessage = {
 /** Future versions of AQL will know additional response message types. @beta */
 export type AqlFutureCompat = {
   /** Consult AQL documentation to find out about future available types. */
-  type: Exclude<'event', string>
+  type: Exclude<'event' | 'offsets' | 'diagnostic', string>
 
   payload: unknown
 
