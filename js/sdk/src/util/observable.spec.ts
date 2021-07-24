@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { Observable, Scheduler } from 'rxjs'
+import { Observable, Scheduler } from '../../node_modules/rxjs'
 import { marbles } from 'rxjs-marbles'
 import { takeWhileInclusive } from './observable'
 

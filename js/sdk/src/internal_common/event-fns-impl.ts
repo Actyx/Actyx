@@ -5,7 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { contramap, getTupleOrd, gt, lt, ordNumber, ordString } from 'fp-ts/lib/Ord'
-import { Observable } from 'rxjs'
+import { Observable } from '../../node_modules/rxjs'
 import {
   AutoCappedQuery,
   EarliestQuery,

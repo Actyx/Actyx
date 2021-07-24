@@ -7,7 +7,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as t from 'io-ts'
-import { Observable, Observer, Subscription } from 'rxjs'
+import { Observable, Observer, Subscription } from '../../node_modules/rxjs'
 import log from '../internal_common/log'
 import { WsStoreConfig } from '../internal_common/types'
 import { WebSocketWrapper } from '../internal_common/webSocketWrapper'

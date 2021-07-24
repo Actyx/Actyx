@@ -11,7 +11,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 import * as t from 'io-ts'
-import { Observable } from 'rxjs'
+import { Observable } from '../../node_modules/rxjs'
 import {
   DoPersistEvents,
   DoQuery,

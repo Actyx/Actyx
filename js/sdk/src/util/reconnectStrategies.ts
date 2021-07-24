@@ -6,7 +6,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Observable } from 'rxjs'
+import { Observable } from '../../node_modules/rxjs'
 
 export type ReconnectStrategy = (x: Observable<any>) => Observable<any>
 

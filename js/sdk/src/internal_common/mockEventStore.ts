@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { Observable, ReplaySubject } from 'rxjs'
+import { Observable, ReplaySubject } from '../../node_modules/rxjs'
 import { AppId, Lamport, NodeId, Offset, OffsetMap, Timestamp, toEventPredicate } from '../types'
 import { DoPersistEvents, DoQuery, DoSubscribe, EventStore } from './eventStore'
 import log from './log'

@@ -5,7 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { chunksOf } from 'fp-ts/lib/Array'
-import { Subject } from 'rxjs'
+import { Subject } from '../../node_modules/rxjs'
 import {
   ActyxEvent,
   allEvents,

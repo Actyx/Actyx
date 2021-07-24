@@ -6,7 +6,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Observable } from 'rxjs'
+import { Observable } from '../../node_modules/rxjs'
 import { marbles } from 'rxjs-marbles'
 import reconnectStrategies from './reconnectStrategies'
 

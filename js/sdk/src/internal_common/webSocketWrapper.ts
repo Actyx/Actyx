@@ -6,7 +6,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'events'
-import { Observable, ReplaySubject, Subject } from 'rxjs'
+import { Observable, ReplaySubject, Subject } from '../../node_modules/rxjs'
 import { isNode } from '../util'
 import { root } from '../util/root'
 import { decorateEConnRefused } from './errors'

@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { Observable } from 'rxjs'
+import { Observable } from '../../node_modules/rxjs'
 import { EventKey, LocalSnapshot, OffsetMap } from '../types'
 import { InMemSnapshotStore } from './inMemSnapshotStore'
 

@@ -9,7 +9,7 @@
 
 import { fromNullable } from 'fp-ts/lib/Option'
 import { range, takeWhile } from 'ramda'
-import { Observable } from 'rxjs'
+import { Observable } from '../../node_modules/rxjs'
 import { OffsetsResponse } from '../internal_common/types'
 import { validateOrThrow } from '../util'
 import {

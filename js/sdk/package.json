@@ -16,6 +16,9 @@
     "utf-8-validate": "5.0.2",
     "ws": "7.2.1"
   },
+  "bundledDependencies": [
+    "rxjs"
+  ],
   "description": "Actyx SDK",
   "devDependencies": {
     "@microsoft/api-extractor": "^7.16.1",
