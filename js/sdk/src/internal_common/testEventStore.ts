@@ -5,7 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { fromNullable } from 'fp-ts/lib/Option'
-import { Observable, ReplaySubject, Scheduler, Subject } from 'rxjs'
+import { Observable, ReplaySubject, Scheduler, Subject } from '../../node_modules/rxjs'
 import {
   AppId,
   EventKey,

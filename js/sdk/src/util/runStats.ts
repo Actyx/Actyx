@@ -6,7 +6,7 @@
  */
 import { none, Option, some } from 'fp-ts/lib/Option'
 import * as t from 'io-ts'
-import { Observable } from 'rxjs'
+import { Observable } from '../../node_modules/rxjs'
 
 // Copypasta to avoid weird circular dependency issues
 const lookup = <V>(m: { [k: string]: V }, k: string): V | undefined => m[k]

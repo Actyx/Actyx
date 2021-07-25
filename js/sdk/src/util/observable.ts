@@ -5,7 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Observable, Operator, Subscriber } from 'rxjs'
+import { Observable, Operator, Subscriber } from '../../node_modules/rxjs'
 import { MonoTypeOperatorFunction } from 'rxjs/interfaces'
 import { TeardownLogic } from 'rxjs/Subscription'
 import { CancelSubscription } from '../types'

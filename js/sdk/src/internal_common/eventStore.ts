@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { Observable } from 'rxjs'
+import { Observable } from '../../node_modules/rxjs'
 import { EventsSortOrder, NodeId, OffsetMap, Where } from '../types'
 import { mockEventStore } from './mockEventStore'
 import { testEventStore, TestEventStore } from './testEventStore'

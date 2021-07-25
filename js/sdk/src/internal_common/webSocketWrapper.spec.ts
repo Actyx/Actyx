@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Observable } from 'rxjs'
+import { Observable } from '../../node_modules/rxjs'
 import { MockWebSocket } from '../v2/multiplexedWebsocket.spec'
 import { WebSocketWrapper } from './webSocketWrapper'
 

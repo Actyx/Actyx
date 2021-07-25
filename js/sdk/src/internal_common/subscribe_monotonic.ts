@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { fromNullable, Option } from 'fp-ts/lib/Option'
 import { greaterThan } from 'fp-ts/lib/Ord'
-import { Observable } from 'rxjs'
+import { Observable } from '../../node_modules/rxjs'
 import { SnapshotStore } from '../snapshotStore'
 import {
   EventKey,

@@ -76,7 +76,7 @@ export type AqlEventMessage = {
 
 // @beta
 export type AqlFutureCompat = {
-    type: Exclude<'event', string>;
+    type: Exclude<'event' | 'offsets' | 'diagnostic', string>;
     payload: unknown;
     meta: Record<string, unknown>;
 };
