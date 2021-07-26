@@ -98,9 +98,25 @@ type Exec = {
 
 export const mkEventClients = async (hostname: string, port: number): Promise<EventClients> => ({
   AxHttpClient: mkEventService(await mkAuthHttpClient(trialManifest)(`http://${hostname}:${port}`)),
-  '.NET SDK (HTTP)': await mkDotnetEventsExec(hostname, port, false),
-  '.NET SDK (Websocket)': await mkDotnetEventsExec(hostname, port, true),
+  ...(await mkDotnetEventClients(hostname, port)),
 })
+
+const mkDotnetEventClients = async (hostname: string, port: number): Promise<EventClients> =>
+  await execa('dotnet', ['--version'])
+    .then(async () => {
+      return {
+        '.NET SDK (HTTP)': await mkDotnetEventsExec(hostname, port, false),
+        '.NET SDK (Websocket)': await mkDotnetEventsExec(hostname, port, true),
+      }
+    })
+    .catch((e) => {
+      if (process.env['AZURE_HTTP_USER_AGENT'] === undefined) {
+        console.log("'dotnet' executable not found. Skipping .NET event clients.")
+        return {}
+      } else {
+        throw e
+      }
+    })
 
 const mkDotnetEventsExec = async (
   hostname: string,
