@@ -4,7 +4,7 @@ import { ActyxNode } from '../../infrastructure/types'
 import { BoundTo, randomBinds, runActyx, runUntil, startup, withContext } from '../../util'
 
 const startNodeAndCheckBinds = async (node: ActyxNode, params: string[]): Promise<BoundTo> => {
-  const result = await startup(runActyx(node, undefined, params))
+  const result = await startup(runActyx(node, undefined, params), node.name)
   result.process.kill()
   return result
 }
@@ -69,39 +69,40 @@ describe('node lifecycle', () => {
     }))
 
   it('indicate a successful start', () =>
-    runOnEvery(async (n) => {
-      if (skipTarget(n)) {
+    runOnEvery(async (node) => {
+      if (skipTarget(node)) {
         return
       }
-      const node = await runUntil(
-        runActyx(n, undefined, randomBinds),
+      const proc = await runUntil(
+        runActyx(node, undefined, randomBinds),
+        node.name,
         ['NODE_STARTED_BY_HOST'],
         10_000,
       )
-      expect(Array.isArray(node)).toBeTruthy()
-      expect(node).toContainEqual(expect.stringContaining('NODE_STARTED_BY_HOST'))
+      expect(Array.isArray(proc)).toBeTruthy()
+      expect(proc).toContainEqual(expect.stringContaining('NODE_STARTED_BY_HOST'))
     }))
 
   it('indicate shutdown', () =>
-    runOnEvery(async (n) => {
-      if (n.target.kind.type !== 'local' || skipTarget(n)) {
+    runOnEvery(async (node) => {
+      if (node.target.kind.type !== 'local' || skipTarget(node)) {
         // It's not straight-forward to forward the signal via SSH
         return
       }
-      const { process: node } = await runActyx(n, undefined, randomBinds)
+      const { process } = await runActyx(node, undefined, randomBinds)
       const logs: string[] = await new Promise((res, rej) => {
         const buffer: string[] = []
-        node.stderr?.on('data', (buf) => buffer.push(buf.toString('utf8')))
-        node.stderr?.on('error', (err) => rej(err))
-        node.stderr?.on('end', () => res(buffer))
-        setTimeout(() => node.kill('SIGTERM'), 500)
+        process.stderr?.on('data', (buf) => buffer.push(buf.toString('utf8')))
+        process.stderr?.on('error', (err) => rej(err))
+        process.stderr?.on('end', () => res(buffer))
+        setTimeout(() => process.kill('SIGTERM'), 500)
       })
       expect(logs).toContainEqual(
         expect.stringContaining(
           'NODE_STOPPED_BY_HOST: Actyx is stopped. The shutdown was either initiated automatically by the host or intentionally by the user.',
         ),
       )
-      expect(node.killed).toBeTruthy()
+      expect(process.killed).toBeTruthy()
     }))
 
   const services = ['Admin', 'API', 'Swarm']
@@ -112,28 +113,29 @@ describe('node lifecycle', () => {
         return
       }
 
-      runOnEach([{ host: 'process', os: 'linux' }], async (n) => {
+      runOnEach([{ host: 'process', os: 'linux' }], async (node) => {
         // Tracking issue for Windows: https://github.com/Actyx/Cosmos/issues/5850
-        const port = await getFreeRemotePort(n.target)
-        const server = occupyRemotePort(n.target, port)
+        const port = await getFreeRemotePort(node.target)
+        const server = occupyRemotePort(node.target, port)
         let hot = true
         server.catch((e) => hot && done(e))
 
         const notX = services
           .filter((y) => y !== x)
           .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0'])
-        const node = await runUntil(
-          runActyx(n, undefined, [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX)),
+        const proc = await runUntil(
+          runActyx(node, undefined, [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX)),
+          node.name,
           [],
           10_000,
         )
         hot = false
         server.kill('SIGTERM')
 
-        if (Array.isArray(node)) {
-          throw new Error(`timed out, port=${port}:\n${node.join('\n')}`)
+        if (Array.isArray(proc)) {
+          throw new Error(`timed out, port=${port}:\n${proc.join('\n')}`)
         }
-        const logs = node.stderr
+        const logs = proc.stderr
 
         expect(logs).toMatch('NODE_STOPPED_BY_NODE: ERR_PORT_COLLISION')
         expect(logs).toMatch(
@@ -146,27 +148,28 @@ describe('node lifecycle', () => {
   // FIXME make shutdown reliable and merge back into the above test. https://github.com/Actyx/Cosmos/issues/7106
   it(`should error on occupied ports (Admin FIXME)`, (done) => {
     const x = 'Admin'
-    runOnEach([{ host: 'process', os: 'linux' }], async (n) => {
-      const port = await getFreeRemotePort(n.target)
-      const server = occupyRemotePort(n.target, port)
+    runOnEach([{ host: 'process', os: 'linux' }], async (node) => {
+      const port = await getFreeRemotePort(node.target)
+      const server = occupyRemotePort(node.target, port)
       let hot = true
       server.catch((e) => hot && done(e))
 
       const notX = services
         .filter((y) => y !== x)
         .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0'])
-      const node = await runUntil(
-        runActyx(n, undefined, [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX)),
+      const proc = await runUntil(
+        runActyx(node, undefined, [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX)),
+        node.name,
         ['Please specify a different'],
         10_000,
       )
       hot = false
       server.kill('SIGTERM')
 
-      if (!Array.isArray(node)) {
+      if (!Array.isArray(proc)) {
         throw new Error('Expected array of logs')
       }
-      const logs = node.join('\n')
+      const logs = proc.join('\n')
 
       expect(logs).toMatch('NODE_STOPPED_BY_NODE: ERR_PORT_COLLISION')
       expect(logs).toMatch(
@@ -231,7 +234,12 @@ describe('node lifecycle', () => {
         return
       }
 
-      const out = await runUntil(runActyx(node, node._private.workingDir, []), [], 10_000)
+      const out = await runUntil(
+        runActyx(node, node._private.workingDir, []),
+        node.name,
+        [],
+        10_000,
+      )
       if (Array.isArray(out)) {
         throw new Error(`timed out:\n${out.join('\n')}`)
       }

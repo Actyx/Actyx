@@ -19,13 +19,19 @@ describe('node.sqlite', () => {
       // run v1.1.5 to create an old workdir
       const v1Out = await runUntil(
         runActyxVersion(node, '1.1.5', workdir),
+        node.name,
         ['ActyxOS started.'],
         20_000,
       )
       expect(v1Out).toContainEqual(expect.stringContaining('ActyxOS started.'))
 
       // now run current version to check error message
-      const currOut = await runUntil(runActyx(node, workdir, []), ['NODE_STARTED_BY_HOST'], 20_000)
+      const currOut = await runUntil(
+        runActyx(node, workdir, []),
+        node.name,
+        ['NODE_STARTED_BY_HOST'],
+        20_000,
+      )
       if (Array.isArray(currOut)) {
         throw new Error(`timed out or started successfully:\n${currOut.join('\n')}`)
       }
