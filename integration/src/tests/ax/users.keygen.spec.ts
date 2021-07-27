@@ -35,7 +35,10 @@ describe('authorizing users', () => {
     await runOnEvery(async (node) => {
       // This will generate a CLI with a different than private key the node
       // was setup with
-      const secondCli = await CLI.build(node._private.axHost, await currentAxBinary())
+      const secondCli = await CLI.build(
+        `${node._private.hostname}:${node._private.adminPort}`,
+        await currentAxBinary(),
+      )
       const err = assertOK(await secondCli.nodes.ls())
       expect(err.result[0].connection).toBe('unauthorized')
 

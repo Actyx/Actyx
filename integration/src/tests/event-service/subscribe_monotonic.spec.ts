@@ -1,31 +1,29 @@
-import {
-  mkESFromTrial,
-  SubscribeMonotonicRequest,
-  SubscribeMonotonicResponse,
-} from '../../http-client'
+import { SubscribeMonotonicRequest, SubscribeMonotonicResponse } from '../../http-client'
 import { waitFor } from '../../retry'
-import { run } from '../../util'
+import { runWithClients } from '../../util'
 import { genericCommunicationTimeout, mySuite, publishRandom, testName } from './utils.support.test'
 
 describe('event service', () => {
   describe('subscribe_monotonic', () => {
     it('should publish event and find it in a monotonic event stream', () =>
-      run(async (x) => {
-        const es = await mkESFromTrial(x)
-        const pub1 = await publishRandom(es)
+      runWithClients(async (events, clientId) => {
+        const pub1 = await publishRandom(events, clientId)
         const request: SubscribeMonotonicRequest = {
           session: 'test-session',
-          query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
+          query: `FROM '${mySuite()}' & '${testName()}' & 'client:${clientId}' & isLocal`,
           lowerBound: {},
         }
         const data: SubscribeMonotonicResponse[] = []
         await new Promise((resolve, reject) => {
-          es.subscribeMonotonic(request, (x) => {
-            data.push(x)
-            if (data.length == 2) {
-              resolve()
-            }
-          }).catch(reject)
+          events
+            .subscribeMonotonic(request, (res, cancel) => {
+              data.push(res)
+              if (data.length == 2) {
+                cancel()
+                resolve()
+              }
+            })
+            .catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
         expect(data).toMatchObject([
@@ -35,22 +33,24 @@ describe('event service', () => {
       }))
 
     it('should start a monotonic event stream and find published event', () =>
-      run(async (x) => {
-        const es = await mkESFromTrial(x)
-        const pub1 = await publishRandom(es)
+      runWithClients(async (events, clientId) => {
+        const pub1 = await publishRandom(events, clientId)
         const request: SubscribeMonotonicRequest = {
           session: 'test-session',
-          query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
+          query: `FROM '${mySuite()}' & '${testName()}' & 'client:${clientId}' & isLocal`,
           lowerBound: {},
         }
         const data: SubscribeMonotonicResponse[] = []
         const done = new Promise((resolve, reject) => {
-          es.subscribeMonotonic(request, (x) => {
-            data.push(x)
-            if (data.length == 3) {
-              resolve()
-            }
-          }).catch(reject)
+          events
+            .subscribeMonotonic(request, (res, cancel) => {
+              data.push(res)
+              if (data.length == 3) {
+                cancel()
+                resolve()
+              }
+            })
+            .catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
         await waitFor(
@@ -60,7 +60,7 @@ describe('event service', () => {
           5_000,
           50,
         )
-        const pub2 = await publishRandom(es)
+        const pub2 = await publishRandom(events, clientId)
         await done
         expect(data).toMatchObject([
           pub1,

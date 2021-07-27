@@ -17,7 +17,7 @@ describe('@actyx/sdk', () => {
   test('connection without manifest (hello JS users)', async () => {
     await runOnEvery(async (node) => {
       const wrongConn = Actyx.of(null!, {
-        actyxPort: node._private.apiEventsPort,
+        actyxPort: node._private.apiPort,
       })
 
       await expect(wrongConn).rejects.toMatchObject({
@@ -35,7 +35,7 @@ describe('@actyx/sdk', () => {
           version: '1.0.0',
         },
         {
-          actyxPort: node._private.apiEventsPort,
+          actyxPort: node._private.apiPort,
         },
       )
 
@@ -55,7 +55,7 @@ describe('@actyx/sdk', () => {
           signature: 'garbage',
         },
         {
-          actyxPort: node._private.apiEventsPort,
+          actyxPort: node._private.apiPort,
         },
       )
 
@@ -76,7 +76,7 @@ describe('@actyx/sdk', () => {
             'v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYZ0JGTTgyZVpMWTdJQzhRbmFuVzFYZ0xrZFRQaDN5aCtGeDJlZlVqYm9qWGtUTWhUdFZNRU9BZFJaMVdTSGZyUjZUOHl1NEFKdFN5azhMbkRvTVhlQnc9PWlkZXZQdWJrZXl4LTBuejFZZEh1L0pEbVM2Q0ltY1pnT2o5WTk2MHNKT1ByYlpIQUpPMTA3cVcwPWphcHBEb21haW5zgmtjb20uYWN0eXguKm1jb20uZXhhbXBsZS4qa2F4U2lnbmF0dXJleFg4QmwzekNObm81R2JwS1VvYXRpN0NpRmdyMEtHd05IQjFrVHdCVkt6TzlwelcwN2hGa2tRK0dYdnljOVFhV2hIVDVhWHp6TyttVnJ4M2VpQzdUUkVBUT09/w==',
         },
         {
-          actyxPort: node._private.apiEventsPort,
+          actyxPort: node._private.apiPort,
         },
       )
 

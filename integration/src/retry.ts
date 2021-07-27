@@ -42,11 +42,13 @@ export const waitForNodeToBeConfigured = async (node: ActyxNode): Promise<void> 
       result: [{ connection: 'reachable' }],
     })
   })
-  await waitFor(() =>
-    fetch(node._private.httpApiOrigin, { method: 'get' }).catch((e) => {
-      throw new Error(`waitForNodeToBeConfigured ${node._private.httpApiOrigin}: ${e}`)
-    }),
-  )
+  await waitFor(() => {
+    const { hostname, apiPort } = node._private
+    const uri = `http://${hostname}:${apiPort}`
+    return fetch(uri, { method: 'get' }).catch((e) => {
+      throw new Error(`waitForNodeToBeConfigured ${uri}: ${e}`)
+    })
+  })
 }
 
 export const retryTimes = async <T>(op: () => T | Promise<T>, times: number): Promise<T> => {

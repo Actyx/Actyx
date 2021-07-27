@@ -67,7 +67,8 @@ describe('the Infrastructure', () => {
   // FIXME: Pond V1 cannot talk to Event Service V2, this needs to test a V1-compat Pond eventually.
   test.skip('must test Pond v1', async () => {
     const result = await runOnAll([{}], async ([node]) => {
-      const pond = await PondV1.Pond.of(new MultiplexedWebsocket({ url: node._private.apiPond }))
+      const url = `ws://${node._private.hostname}:${node._private.apiPort}/api/v2/events`
+      const pond = await PondV1.Pond.of(new MultiplexedWebsocket({ url }))
       return pond.getNodeConnectivity().first().toPromise()
     })
     // cannot assert connected or not connected since we don’t know when this case is run
@@ -82,7 +83,7 @@ describe('the Infrastructure', () => {
           displayName: 'Our Infra Test',
           version: '1.0.0',
         },
-        { actyxPort: node._private.apiEventsPort },
+        { actyxPort: node._private.apiPort },
         {},
       )
       return pond.info().nodeId

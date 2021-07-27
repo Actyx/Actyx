@@ -9,7 +9,7 @@ import {
   AUTH_SEG,
 } from '../../http-client'
 import WebSocket from 'ws'
-import { run, getHttpApi, power_cycle } from '../../util'
+import { run, powerCycle, getHttpApi } from '../../util'
 import { AppManifest } from '@actyx/pond'
 import { SettingsInput } from '../../cli/exec'
 import { waitForNodeToBeConfigured } from '../../retry'
@@ -39,8 +39,6 @@ describe('auth http', () => {
 
   it('auth flow signed manifest with node in prod mode', () =>
     runWithNewProcess(async (node) => {
-      const httpApi = getHttpApi(node)
-
       const set = async (scope: string, value: unknown): Promise<void> => {
         expect(
           await node.ax.settings.set(`/licensing/${scope}`, SettingsInput.FromValue(value)),
@@ -52,7 +50,7 @@ describe('auth http', () => {
         set('apps', { [signedManifest.appId]: license })
 
       const get = (expected: unknown) =>
-        getToken(signedManifest, httpApi)
+        getToken(signedManifest, getHttpApi(node))
           .then((x) => x.json())
           .then((x) => {
             expect(x).toEqual(expected)
@@ -66,7 +64,7 @@ describe('auth http', () => {
         })
 
       const offsets = async (token: string) => {
-        const resp = await getOffsets(node._private.httpApiOrigin, 'Bearer ' + token)
+        const resp = await getOffsets(getHttpApi(node), 'Bearer ' + token)
         return {
           status: resp.status,
           json: await resp.json(),
@@ -263,19 +261,19 @@ describe('auth http', () => {
 
   it('should fail for a valid token when node is cycled', () =>
     runWithNewProcess(async (node) => {
-      const token = await getToken(trialManifest, node._private.httpApiOrigin)
+      const token = await getToken(trialManifest, getHttpApi(node))
         .then((x) => x.json())
         .then((x) => x.token)
       const offsets = (origin: string) => getOffsets(origin, 'Bearer ' + token)
 
       // assert we can access event service
-      const response = await offsets(node._private.httpApiOrigin).then((resp) => resp.json())
+      const response = await offsets(getHttpApi(node)).then((resp) => resp.json())
       expect(response).toEqual({ present: expect.any(Object), toReplicate: expect.any(Object) })
 
       // power cycle the node
-      await power_cycle(node)
+      await powerCycle(node)
 
-      const result = await offsets(node._private.httpApiOrigin).then((resp) => {
+      const result = await offsets(getHttpApi(node)).then((resp) => {
         expect(resp.status).toEqual(401)
         return resp.json()
       })

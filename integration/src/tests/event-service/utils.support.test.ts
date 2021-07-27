@@ -3,10 +3,11 @@ import { randomString } from '../../util'
 
 type Response<T> = Omit<EventResponse, 'payload'> & { payload: T }
 
-export const publish = <T>(es: AxEventService): ((payload: T) => Promise<Response<T>>) => (
-  payload,
-) => {
-  const tags = [mySuite(), testName()]
+export const publish = <T>(
+  es: AxEventService,
+  clientId: string,
+): ((payload: T) => Promise<Response<T>>) => (payload) => {
+  const tags = [mySuite(), `client:${clientId}`, testName(), 'test']
   return es.publish({ data: [{ tags, payload }] }).then((response) => ({
     type: 'event',
     ...response.data[0],
@@ -16,8 +17,11 @@ export const publish = <T>(es: AxEventService): ((payload: T) => Promise<Respons
   }))
 }
 
-export const publishRandom = (es: AxEventService): Promise<Response<{ value: string }>> =>
-  publish<{ value: string }>(es)({ value: randomString() })
+export const publishRandom = (
+  es: AxEventService,
+  clientId: string,
+): Promise<Response<{ value: string }>> =>
+  publish<{ value: string }>(es, clientId)({ value: randomString() })
 
 export const throwOnCb = (msg: string) => (...rest: unknown[]): void => {
   throw new Error(`Unexpected callback invocation. ${msg}\n ${JSON.stringify(rest)}`)

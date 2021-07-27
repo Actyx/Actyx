@@ -1,17 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive;
 using System.Reactive.Linq;
-using System.Threading;
 using System.Threading.Tasks;
-using Actyx.Sdk.AxHttpClient;
-using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
 using Actyx.Sdk.Utils;
-using JsonSubTypes;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Actyx
 {
@@ -41,34 +34,11 @@ namespace Actyx
     {
         public static async Task<Actyx> Create(AppManifest manifest)
         {
-            return await Actyx.Create(manifest, null);
+            return await Create(manifest, null);
         }
 
-        public static async Task<Actyx> Create(AppManifest manifest, ActyxOpts options)
-        {
-
-            string host = options?.ActyxHost ?? "localhost";
-            uint port = options?.ActyxPort ?? 4454;
-
-            string httpUrl = "http://" + host + ':' + port;
-
-            if (options?.Transport == Transport.Http)
-            {
-                var httpEventStore = new HttpEventStore(await AxHttpClient.Create(httpUrl, manifest));
-                return new Actyx(httpEventStore);
-            }
-
-            Uri axHttp = new Uri(httpUrl);
-            var token = await AxHttpClient.GetToken(axHttp, manifest);
-            var nodeId = await AxHttpClient.GetNodeId(axHttp);
-
-            Uri axWs = new Uri("ws://" + host + ':' + port + '?' + token.Token);
-            var rpc = new WsrpcClient(axWs);
-
-            var wsEventStore = new WebsocketEventStore(rpc, manifest.AppId, nodeId);
-
-            return new Actyx(wsEventStore);
-        }
+        public static async Task<Actyx> Create(AppManifest manifest, ActyxOpts options) =>
+            new Actyx(await EventStore.Create(manifest, options));
 
         private readonly IEventStore store;
         private Actyx(IEventStore store)
@@ -78,7 +48,7 @@ namespace Actyx
 
         public void Dispose()
         {
-            this.store.Dispose();
+            store.Dispose();
         }
 
         public NodeId NodeId

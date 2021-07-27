@@ -6,8 +6,6 @@ import { randIdentifier } from '../infrastructure/util'
 export * from './types'
 
 export class CLI {
-  private readonly binaryPath: string
-  public readonly identityPath: string
   public readonly apps
   public readonly nodes
   public readonly settings
@@ -38,11 +36,14 @@ export class CLI {
     return cli
   }
 
-  private constructor(private readonly node: string, binaryPath: string, identityPath: string) {
-    this.binaryPath = binaryPath
+  private constructor(
+    private readonly node: string,
+    binaryPath: string,
+    readonly identityPath: string,
+  ) {
     this.identityPath = identityPath
 
-    const exec = mkExec(this.binaryPath, this.node, this.identityPath)
+    const exec = mkExec(binaryPath, this.node, this.identityPath)
     const shortVersion = exec.version().then((v) => v.replace('Actyx CLI ', '').split('-')[0])
 
     this.apps = exec.apps

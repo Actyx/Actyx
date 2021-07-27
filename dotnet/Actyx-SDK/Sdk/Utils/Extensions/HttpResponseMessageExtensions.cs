@@ -10,21 +10,12 @@ namespace Actyx.Sdk.Utils.Extensions
         {
             if (!that.IsSuccessStatusCode)
             {
-                string error;
-                if (that.StatusCode == System.Net.HttpStatusCode.NotFound)
+                string error = that.StatusCode switch
                 {
-                    error = $"URI Not Found!{that.RequestMessage.RequestUri}";
-                }
-                else if (that.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                {
-                    error = $"Unauthorized!{that.RequestMessage.RequestUri}";
-                }
-                else
-                {
-                    error = await that.Content.ReadAsStringAsync();
-                }
-
-                throw new Exception(that.ReasonPhrase + " " + error);
+                    System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Unauthorized => that.ReasonPhrase,
+                    _ => await that.Content.ReadAsStringAsync(),
+                };
+                throw new Exception($"Error requesting {that.RequestMessage.RequestUri}: {error}");
             }
         }
 

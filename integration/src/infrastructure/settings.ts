@@ -34,6 +34,9 @@ export const enum Binary {
 export const currentAxBinary = (): Promise<string> => getCurrent(Binary.ax)
 export const currentActyxBinary = (): Promise<string> => getCurrent(Binary.actyxLinux)
 
+export const dotnetEventsCliAssembly = (): Promise<string> =>
+  ensureBinaryExists(currentOS(), `../dist/dotnet/cli`).then((x) => `${x}/CLI.dll`)
+
 const getCurrent = (bin: Binary) =>
   settings().gitHash == null
     ? // TODO: Derive Binary from currentOS()

@@ -3,40 +3,39 @@ import { CLI } from './cli'
 import { currentAxBinary } from './infrastructure/settings'
 import { ActyxNode } from './infrastructure/types'
 
-export const mkNodeStub = (
+export const mkNodeStub = async (
   os: OS,
   arch: Arch,
   host: Host,
   name: string,
   addr = 'localhost',
-): Promise<ActyxNode> =>
-  currentAxBinary()
-    .then((x) => CLI.build(addr, x))
-    .then((ax) => ({
-      name,
-      host,
-      target: {
-        os,
-        arch,
-        kind: { type: 'test' },
-        execute: () => {
-          throw new Error('stubs cannot execute')
-        },
-        _private: { cleanup: () => Promise.resolve() },
+): Promise<ActyxNode> => {
+  const ax = await CLI.build(addr, await currentAxBinary())
+  return {
+    name,
+    host,
+    target: {
+      os,
+      arch,
+      kind: { type: 'test' },
+      execute: () => {
+        throw new Error('stubs cannot execute')
       },
-      ax,
-      _private: {
-        shutdown: () => Promise.resolve(),
-        actyxBinaryPath: '',
-        workingDir: '',
-        axBinaryPath: '',
-        axHost: '',
-        httpApiOrigin: '',
-        apiPond: '',
-        apiSwarmPort: 0,
-        apiEventsPort: 0,
-      },
-    }))
+      _private: { cleanup: () => Promise.resolve() },
+    },
+    ax,
+    _private: {
+      shutdown: () => Promise.resolve(),
+      actyxBinaryPath: '',
+      workingDir: '',
+      axBinaryPath: '',
+      hostname: '',
+      adminPort: 0,
+      swarmPort: 0,
+      apiPort: 0,
+    },
+  }
+}
 
 export const mkAx = (): Promise<CLI> =>
   mkNodeStub('android', 'aarch64', 'android', 'foo').then((x) => x.ax)

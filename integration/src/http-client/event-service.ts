@@ -1,5 +1,4 @@
 import { Decoder } from 'io-ts'
-import { Response } from 'node-fetch'
 import { AxHttpClient } from './ax-http-client'
 import {
   API_V2_PATH,
@@ -17,13 +16,10 @@ import {
   AxEventService,
   AxNodeService,
   OffsetsResponse,
-  PublishRequest,
+  OnData,
   PublishResponse,
-  QueryRequest,
   QueryResponse,
-  SubscribeMonotonicRequest,
   SubscribeMonotonicResponse,
-  SubscribeRequest,
   SubscribeResponse,
 } from './types'
 
@@ -43,15 +39,25 @@ const mkLineParser = <T>(decoder: Decoder<unknown, T>): ((data: string) => T) =>
   }
 }
 
-const handleStreamResponse = async <T>(
+export const handleStreamResponse = async <T>(
   decoder: Decoder<unknown, T>,
-  onData: (data: T) => void,
-  response: Response,
+  onData: OnData<T>,
+  stream: NodeJS.ReadableStream,
+  onCancel?: () => void,
 ): Promise<void> => {
-  const lines$ = response.body.pipe(mkLinesSplitter())
+  let canceled = false
+  const cb = (data: T) =>
+    onData(data, () => {
+      canceled = true
+      onCancel && onCancel()
+    })
+  const lines$ = stream.pipe(mkLinesSplitter())
   const parse = mkLineParser(decoder)
   for await (const line of lines$) {
-    onData(parse(line))
+    if (canceled) {
+      break
+    }
+    cb(parse(line))
   }
 }
 
@@ -65,24 +71,22 @@ export const mkEventService = (httpClient: AxHttpClient): AxEventService => ({
       .get(mkEventsPath(OFFSETS_SEG))
       .then((x) => x.json())
       .then((x) => decodeOrThrow(OffsetsResponse)(x)),
-  publish: (request: PublishRequest) =>
+  publish: (request) =>
     httpClient
       .post(mkEventsPath(PUBLISH_SEG), request)
       .then((x) => x.json())
       .then((x) => decodeOrThrow(PublishResponse)(x)),
-  query: async (request: QueryRequest, onData: (response: QueryResponse) => void) => {
+  query: async (request, onData) => {
     const res = await httpClient.post(mkEventsPath(QUERY_SEG), request, true)
-    await handleStreamResponse(QueryResponse, onData, res)
+    await handleStreamResponse(QueryResponse, onData, res.body)
   },
-  subscribe: async (request: SubscribeRequest, onData: (response: SubscribeResponse) => void) => {
+  subscribe: async (request, onData) => {
     const res = await httpClient.post(mkEventsPath(SUBSCRIBE_SEG), request, true)
-    await handleStreamResponse(SubscribeResponse, onData, res)
+    await handleStreamResponse(SubscribeResponse, onData, res.body)
   },
-  subscribeMonotonic: async (
-    request: SubscribeMonotonicRequest,
-    onData: (response: SubscribeMonotonicResponse) => void,
-  ) => {
+  subscribeMonotonic: async (request, onData) => {
     const res = await httpClient.post(mkEventsPath(SUBSCRIBE_MONOTONIC_SEG), request, true)
-    await handleStreamResponse(SubscribeMonotonicResponse, onData, res)
+
+    await handleStreamResponse(SubscribeMonotonicResponse, onData, res.body)
   },
 })

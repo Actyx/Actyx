@@ -12,11 +12,24 @@ import {
 import execa from 'execa'
 import * as path from 'path'
 import { rightOrThrow } from '../infrastructure/rightOrThrow'
+import {
+  AxEventService,
+  handleStreamResponse,
+  mkAuthHttpClient,
+  mkEventService,
+  OffsetsResponse,
+  PublishResponse,
+  QueryResponse,
+  SubscribeMonotonicResponse,
+  trialManifest,
+} from '../http-client'
+import { dotnetEventsCliAssembly } from '../infrastructure/settings'
+import { EventClients } from '../infrastructure/types'
 
 const exec = async (binaryPath: string, args: string[], options?: execa.Options) => {
   try {
     const binaryPathResolved = path.resolve(binaryPath)
-    const response = await execa(binaryPathResolved, [`-j`].concat(args), options)
+    const response = await execa(binaryPathResolved, [`-j`, ...args], options)
     return JSON.parse(response.stdout)
   } catch (error) {
     try {
@@ -80,6 +93,108 @@ type Exec = {
   }
   internal: {
     shutdown: () => Promise<void>
+  }
+}
+
+export const mkEventClients = async (hostname: string, port: number): Promise<EventClients> => ({
+  AxHttpClient: mkEventService(await mkAuthHttpClient(trialManifest)(`http://${hostname}:${port}`)),
+  ...(await mkDotnetEventClients(hostname, port)),
+})
+
+const mkDotnetEventClients = async (hostname: string, port: number): Promise<EventClients> =>
+  await execa('dotnet', ['--version'])
+    .then(async () => {
+      return {
+        '.NET SDK (HTTP)': await mkDotnetEventsExec(hostname, port, false),
+        '.NET SDK (Websocket)': await mkDotnetEventsExec(hostname, port, true),
+      }
+    })
+    .catch((e) => {
+      if (process.env['AZURE_HTTP_USER_AGENT'] === undefined) {
+        console.log("'dotnet' executable not found. Skipping .NET event clients.")
+        return {}
+      } else {
+        throw e
+      }
+    })
+
+const mkDotnetEventsExec = async (
+  hostname: string,
+  port: number,
+  websocket?: boolean,
+): Promise<AxEventService> =>
+  mkEventsExec(
+    'dotnet',
+    [
+      await dotnetEventsCliAssembly(),
+      'events',
+      '--manifest',
+      JSON.stringify(trialManifest),
+      ...(websocket ? ['--websocket'] : []),
+    ],
+    `${hostname}:${port}`,
+  )
+
+const mkEventsExec = (binaryPath: string, commonArgs: string[], node: string): AxEventService => {
+  const run = async (cmd: string, params: string[]) => {
+    const response = await execa(binaryPath, [...commonArgs, cmd, ...params])
+    return JSON.parse(response.stdout)
+  }
+  const stream = (cmd: string, params: string[]) =>
+    execa(binaryPath, [...commonArgs, cmd, ...params], {
+      buffer: false,
+      stdout: 'pipe',
+      stderr: 'inherit',
+    })
+
+  return {
+    offsets: async () => {
+      const response = await run('offsets', [node])
+      return rightOrThrow(OffsetsResponse.decode(response), response)
+    },
+    publish: async (request) => {
+      const events = request.data.map((x) => `${JSON.stringify(x)}`)
+      const response = await run('publish', [node, ...events])
+      return rightOrThrow(PublishResponse.decode(response), response)
+    },
+    query: async (request, onData) => {
+      const { lowerBound, upperBound, query, order } = request
+      const args = [
+        ...(lowerBound ? ['--lower-bound', JSON.stringify(lowerBound)] : []),
+        ...(upperBound ? ['--upper-bound', JSON.stringify(upperBound)] : []),
+        ...(order ? ['--order', order] : []),
+        node,
+        query,
+      ]
+      const process = stream('query', args)
+      process.stdout &&
+        (await handleStreamResponse(QueryResponse, onData, process.stdout, () => process.cancel()))
+    },
+    subscribe: async (request, onData) => {
+      const { lowerBound, query } = request
+      const args = [
+        ...(lowerBound ? ['--lower-bound', JSON.stringify(lowerBound)] : []),
+        node,
+        query,
+      ]
+      const process = stream('subscribe', args)
+      process.stdout &&
+        (await handleStreamResponse(QueryResponse, onData, process.stdout, () => process.cancel()))
+    },
+    subscribeMonotonic: async (request, onData) => {
+      const { lowerBound, query, session } = request
+      const args = [
+        ...['--session', session],
+        ...(lowerBound ? ['--lower-bound', JSON.stringify(lowerBound)] : []),
+        node,
+        query,
+      ]
+      const process = stream('subscribe_monotonic', args)
+      process.stdout &&
+        (await handleStreamResponse(SubscribeMonotonicResponse, onData, process.stdout, () =>
+          process.cancel(),
+        ))
+    },
   }
 }
 

@@ -27,32 +27,16 @@ namespace Actyx.Sdk.AxHttpClient
             return await response.Content.ReadFromJsonAsync<OffsetsResponse>();
         }
 
-        public async Task<IEnumerable<EventOnWire>> Publish(IEnumerable<IEventDraft> events)
+        public async Task<PublishResponse> Publish(IEnumerable<IEventDraft> events)
         {
             if (events is null || events.Count() == 0)
             {
-                return Enumerable.Empty<EventOnWire>();
+                return new PublishResponse { Data = new List<EventPublishMetadata>() };
             }
 
             var response = await client.Post(HttpApiPath.PUBLISH_SEG, new { data = events });
 
-            var publishResponse = await response.Content.ReadFromJsonAsync<PublishResponse>();
-            if (publishResponse.Data.Count() != events.Count())
-            {
-                throw new Exception("Sent event count differs from returned metadata count");
-            }
-
-            return publishResponse.Data.Zip(events, (metadata, ev) =>
-                new EventOnWire
-                {
-                    Lamport = metadata.Lamport,
-                    Offset = metadata.Offset,
-                    Payload = new JValue(ev.Payload),
-                    Stream = metadata.Stream,
-                    Tags = ev.Tags,
-                    Timestamp = metadata.Timestamp,
-                    AppId = client.AppId,
-                });
+            return await response.Content.ReadFromJsonAsync<PublishResponse>();
         }
 
         public IObservable<IEventOnWire> Query(OffsetMap lowerBound, OffsetMap upperBound, IEventSelection query, EventsOrder order)
@@ -84,6 +68,23 @@ namespace Actyx.Sdk.AxHttpClient
             {
                 response.EnsureSuccessStatusCode();
                 return response.Content!.ReadFromNdjsonAsync<IEventOnWire>().ToObservable();
+            });
+        }
+
+        public IObservable<ISubscribeMonotonicResponse> SubscribeMonotonic(string session, OffsetMap startFrom, IEventSelection query)
+        {
+            ThrowIf.Argument.IsNull(session, nameof(session));
+            ThrowIf.Argument.IsNull(query, nameof(query));
+
+            return Observable.FromAsync(() => client.Post(HttpApiPath.SUBSCRIBE_MONOTONIC_SEG, new
+            {
+                session,
+                lowerBound = startFrom,
+                query = query.ToAql(),
+            }, true)).SelectMany(response =>
+            {
+                response.EnsureSuccessStatusCode();
+                return response.Content!.ReadFromNdjsonAsync<ISubscribeMonotonicResponse>().ToObservable();
             });
         }
 

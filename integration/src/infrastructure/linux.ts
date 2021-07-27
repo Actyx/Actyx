@@ -284,13 +284,7 @@ export const forwardPortsAndBuildClients = async (
   console.log('node %s http api reachable on port %i', nodeName, port4454)
 
   const axBinaryPath = await currentAxBinary()
-  const axHost = `localhost:${port4458}`
-  console.error('created cli w/ ', axHost)
-  const ax = await CLI.build(axHost, axBinaryPath)
-
-  const httpApiOrigin = `http://localhost:${port4454}`
-
-  const apiPond = `ws://localhost:${port4454}/api/v2/events`
+  const ax = await CLI.build(`localhost:${port4458}`, axBinaryPath)
 
   const shutdown = async () => {
     console.log('node %s shutting down', nodeName)
@@ -310,11 +304,10 @@ export const forwardPortsAndBuildClients = async (
       actyxBinaryPath: './actyx',
       workingDir,
       axBinaryPath,
-      axHost,
-      httpApiOrigin,
-      apiPond,
-      apiSwarmPort: 4001,
-      apiEventsPort: port4454,
+      hostname: 'localhost',
+      adminPort: port4458,
+      swarmPort: 4001,
+      apiPort: port4454,
     },
     ...theRest,
   }
