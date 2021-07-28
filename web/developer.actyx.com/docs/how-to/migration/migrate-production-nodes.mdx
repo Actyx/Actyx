@@ -35,7 +35,7 @@ For the migration, it is important to distinguish two types of nodes:
 - **Deleted nodes**: These are nodes that have emitted events and do not exist anymore, e.g. because hardware was exchanged or Actyx deleted and re-installed
 
 Before you start with the migration, make a copy of the data directory of a node and move it onto your PC.
-You will need it later when you start migrating deleted nodes.
+You will need it later when you check to check if you migrated all nodes and migrate potentially deleted nodes.
 
 :::info TODO
 How to make sure that the directory contains all events from deleted sources or is in sync with other nodes?
@@ -59,6 +59,14 @@ If you set up a new discovery helper node (previously called _bootstrap node_) i
 If you want to use the same production node as a discovery helper node than before, you do not need to do anything as the setting is automatically migrated and the address is still the same after migration.
 
 The migration procedure depends on the operating system of your node–it does not matter in which order you migrate your nodes:
+
+:::tip
+We advise that you first make a list of all nodes that should be migrated and update it along the way. Otherwise it will be difficult for you to assess at the end if you actually have deleted nodes that should be migrated, if you just forgot one or more node(s), or if the migration event of a node is not synchronized with the rest of the swarm.
+:::
+
+:::caution
+Only the events of the currently configured topic are migrated. If you need to migrate events of different topics, please contact us in our [community forum](https://community.actyx.com) or on our [Discord server](https://discord.gg/262yJhc).
+:::
 
 import Tabs from '@theme/Tabs'
 import TabItem from '@theme/TabItem'
@@ -251,15 +259,69 @@ Your Actyx v2 node is now running and successfully migrated events and settings.
 </TabItem>
 </Tabs>
 
+:::tip Want to check if you migrated all nodes?
+Even if you are sure that you do not have deleted any nodes, we still advise you to perform the next step as it will make you aware of any nodes that you might have forgotten to migrate.
+:::
+
 ### Migrate deleted nodes
 
 As each node only rewrites its own events, events published by deleted nodes are not rewritten yet.
-Therefore, after you have migrated all production nodes, you can now start migrating all deleted nodes. It works as follows:
+Therefore, after you have migrated all production nodes, you can now check for any deleted nodes and migrate them.
 
-1. Download the Actyx migration binary
-2. TODO
+In the following example, the v1 deployment consisted of three nodes.
+One of these nodes was a previously deleted node which is migrated in the example.
+The other two nodes have already been migrated to v2.
 
-If your apps did not use any externally stored offset maps (for e.g. exporting data into other systems), you are finished now and can start your v2-compatible apps on all nodes. Otherwise, continue with our [guide on migrating externally stored offset maps](./migrate-externally-stored-offset-maps).
+There are a few additional steps you will see below, but in general the migration program works as follows:
+
+1. Check which nodes of the v1 swarm have already been migrated
+2. Migrate events of nodes that are not migrated yet
+3. Make sure that the migrated events have been distributed to the new v2 swarm
+
+You can download the program for migrating deleted nodes here. TODO
+
+This program needs to be started on the v1 data directory that you copied onto your PC before you started the migration (in this exmaple `actyxos-data-copy`):
+
+```
+./actyx-v1-migration --working-dir actyxos-data-copy
+```
+
+After starting the program, you are prompted with the following information:
+
+![migration-09](../../../static/images/how-to/migration/migration-09.png)
+
+It shows you the following things:
+- Connected v2 peers: Number of migrated v2 nodes that your PC can connect to
+- Migrated v1 sources: Number of migration events that are in the v2 swarm compared to the number of nodes that were in your v1 swarm (this information is taken from the working directory of the migration program)
+
+Note that, while being connected to only one v2 node, the program shows that two v2 nodes have already been migrated.
+This is because the v2 node that we are connected to has 2 migration events.
+One from itself, and the other one from a node that it was previously connected to but the migration program can currently not connect to (e.g. because the tablet is turned off).
+
+In the table, you can see the source ID of the two nodes that were migrated already, and of the node that was not migrated yet.
+You can navigate and select the deleted nodes that should be migrated.
+
+:::caution
+It is critical to the migration that you now assess if this overview is correct.
+The problematic scenario is that the overview shows less nodes than you already migrated; In this case, you need to make sure that all nodes you migrated are online and appear as migrated.
+Otherwise, you might migrate the events of the same nodes and therefore duplicate them.
+:::
+
+After selecting the deleted node that should be migrated, you need to enter the private key of your Actyx user keys.
+This enables the migration program to connect to all nodes of the v2 swarm to make sure that the migrated events of deleted nodes are distributed.
+
+After the migrated events were successfully distributed, you see the following table:
+
+![migration-10](../../../static/images/how-to/migration/migration-10.png)
+
+In the last step, you get an overview of all nodes that you have migrated from v1 to v2 and a mapping between the source ID and stream ID. You can store this information diretly, but is it also always accessible by querying the migration events as described in the next guide.
+
+:::tip What to do if you find production nodes after finishing the migration
+It can happen that you migrated all deleted nodes and later find out that one of them was actually just e.g. tablet you forgot. In this case, just treat it as if it would have been deleted before the migration, i.e. delete Actyx v1 and data from that node. If you would migrate this node again, you would duplicate its events.
+:::
+
+If your apps did not use any externally stored offset maps (for e.g. exporting data into other systems), you are finished now and can start your v2-compatible apps on all nodes.
+Otherwise, continue with our [guide on migrating externally stored offset maps](./migrate-externally-stored-offset-maps).
 
 :::tip Problems migrating?
 If you have any problems with migrating your apps, please don't hesitate to contact us in our [community forum](https://community.actyx.com) or on our [Discord server](https://discord.gg/262yJhc).
