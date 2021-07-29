@@ -289,8 +289,38 @@ There are a few additional steps you will see below, but in general the migratio
 
 You can download the program for migrating deleted nodes here:
 
-<DownloadLink cta="Download" link="TODO" />
+<Tabs
+  groupId="os"
+  defaultValue={"windows"}
+  values={[
+    { label: 'Windows', value: 'windows' },
+    { label: 'macOS', value: 'mac' },
+    { label: 'Linux', value: 'linux' },
+  ]}
+>
 
+<TabItem value="windows">
+
+<DownloadLink cta="Download" link="https://axartifacts.blob.core.windows.net/releases/actyx-v1-migration-windows-x86.zip" />
+
+</TabItem>
+<TabItem value="mac">
+
+Intel:
+
+<DownloadLink cta="Download" link="https://axartifacts.blob.core.windows.net/releases/actyx-v1-migration-macos-intel.zip" />
+
+Arm:
+
+<DownloadLink cta="Download" link="https://axartifacts.blob.core.windows.net/releases/actyx-v1-migration-macos-arm.zip" />
+
+</TabItem>
+<TabItem value="linux">
+
+<DownloadLink cta="Download" link="https://axartifacts.blob.core.windows.net/releases/actyx-v1-migration-linux-amd64.tar.gz" />
+
+</TabItem>
+</Tabs>
 This program needs to be started on the v1 data directory that you copied onto your PC before you started the migration (in this example `actyxos-data-copy`):
 
 ```
