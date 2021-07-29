@@ -7,7 +7,7 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-This guide explains how to migrate Actyx production nodes.
+This guide explains how to migrate Actyx production nodes from ActyxOS (v1).
 
 ## Before you start the migration
 
@@ -19,7 +19,7 @@ If you have not interacted with nodes before, please also [create user keys](../
 ### Prepare your deployment
 
 For a successful migration, no v1 nodes must emit events during and after the migration.
-This means that you have to close all apps before you start migrating a node.
+This means that you have to stop all apps before you start migrating any node.
 After all nodes have been migrated, you can start the v2-compatible apps again.
 
 ### Prepare the migration
@@ -32,16 +32,17 @@ You will need it in the last step for making sure that all nodes were correctly 
 For the migration, it is important to distinguish two types of nodes:
 
 - **Live nodes**: These are nodes that have emitted events and still exist, i.e. they are currently running in your v1 deployment
-- **Deleted nodes**: These are nodes that have emitted events and do not exist anymore, e.g. because hardware was exchanged or Actyx deleted and re-installed
+- **Deleted nodes**: These are nodes that have emitted events and do not exist anymore, e.g. because hardware was exchanged or Actyx was deleted and re-installed
 
 Before you start with the migration, make a copy of the data directory of a node and move it onto your PC.
-You will need it later when you check to check if you migrated all nodes and migrate potentially deleted nodes.
+You will need it later to check if you migrated all nodes and also to migrate any deleted nodes.
 
 :::caution
-Make sure that the node you are copying the directory from is synchronized with other nodes, i.e. it contains all events from deleted nodes. 
+Make sure that the node you are copying the directory from is synchronized with other nodes, i.e. it contains all events from all deleted nodes.
+You can verify that by checking the offset map of the node you pull the data from.
 :::
 
-After you have made the copy, you can start migrating all live nodes.
+After you have made the copy, you can proceed to migrating all live nodes.
 
 ### Migrate live nodes
 
@@ -52,16 +53,18 @@ Additionally to rewriting its own events, your node takes over the following set
 - Display name
 - Swarm key
 - Topic
-- Read only
+- Announce addresses
+
+Additionally, the node's identity is also preserved.
 - initial Peers
 
 If you set up a new discovery helper node (previously called _bootstrap node_) in the previous step, you need to manually change the `initialPeers` setting of each node to connect to it.
 If you want to use the same production node as a discovery helper node than before, you do not need to do anything as the setting is automatically migrated and the address is still the same after migration.
 
-The migration procedure depends on the operating system of your node–it does not matter in which order you migrate your nodes:
+The migration procedure depends on the platform your node runs on–it does not matter in which order you migrate your nodes:
 
 :::tip
-We advise that you first make a list of all nodes that should be migrated and update it along the way. Otherwise it will be difficult for you to assess at the end if you actually have deleted nodes that should be migrated, if you just forgot one or more node(s), or if the migration event of a node is not synchronized with the rest of the swarm.
+We advise that you first make a list of all nodes that should be migrated and update it along the way. Otherwise it will be difficult for you to assess at the end if you actually have deleted nodes that should be migrated, if you just forgot one or more node(s), or if any node is isolated from the rest of the swarm.
 :::
 
 :::caution
@@ -155,6 +158,7 @@ Migrating an Android node works as follows:
 On Android, different apps cannot access each others directories.
 You therefore need to update your v1 app with a dedicated migration app first.
 The migration app does not contain any functionality other than copying your v1 data directory to a public directory so that your v2 app can access it.
+As the migration app does not start the Actyx process anymore, you can safely install and start both apps side-by-side.
 
 <h4>1. Install and run the v1 migration app</h4>
 
@@ -164,7 +168,7 @@ import { DownloadLink } from '../../../src/components/DownloadLink.tsx'
 
 <DownloadLink cta="Download" link="https://actyx.com" />
 
-When starting the app, you are prompted to give Actyx permissions to access the public filesystem so that it can leave a backup of its data there. After accepting the permissions, you should see the following message:
+When starting the app, you are prompted to give Actyx permissions to access the external storage so that it can place a backup of its data there. After accepting the permissions, you should see the following message:
 
 ![migration-07](../../../static/images/how-to/migration/migration-07.png)
 
@@ -200,8 +204,8 @@ For stopping your v1 Docker node, just stop the Actyx v1 docker container.
 <h4>Change the permissions of the mounted v1 volume</h4>
 
 Actyx was running as the `root` user within the v1 docker image.
-This is not the case in the v2 docker image anymore and therefore you need to change the permissions of the mounted volume.
-Assuming your v1 volume was `actyxos-data:/data`, execute the following command:
+This is not the case in the v2 docker image anymore and therefore you need to change the permissions of the files inside the mounted volume.
+Assuming your v1 volume was called `actyxos-data`, execute the following command:
 
 ```text
 docker run --rm -v actyxos-data:/data -u root actyx/actyx chown -R 1000:1000 /data
@@ -263,6 +267,7 @@ After a successful migration, each node publishes an event containing meta data 
 
 :::tip Want to check if you migrated all nodes?
 Even if you are sure that you do not have deleted any nodes, we still advise you to perform the next step as it will make you aware of any nodes that you might have forgotten to migrate.
+Additionally, it will make sure that all v2 nodes are set up to be managed via their admin channel.
 :::
 
 ### Migrate deleted nodes
@@ -282,7 +287,7 @@ There are a few additional steps you will see below, but in general the migratio
 
 You can download the program for migrating deleted nodes here.
 
-This program needs to be started on the v1 data directory that you copied onto your PC before you started the migration (in this exmaple `actyxos-data-copy`):
+This program needs to be started on the v1 data directory that you copied onto your PC before you started the migration (in this example `actyxos-data-copy`):
 
 ```
 ./actyx-v1-migration --working-dir actyxos-data-copy
@@ -293,30 +298,32 @@ After starting the program, you are prompted with the following information:
 ![migration-09](../../../static/images/how-to/migration/migration-09.png)
 
 It shows you the following things:
-- Connected v2 peers: Number of migrated v2 nodes that your PC can connect to
+- Connected v2 peers: Number of migrated v2 nodes that your PC is connected to
 - Migrated v1 sources: Number of migration events that are in the v2 swarm compared to the number of nodes that were in your v1 swarm (this information is taken from the working directory of the migration program)
 
 Note that, while being connected to only one v2 node, the program shows that two v2 nodes have already been migrated.
-This is because the v2 node that we are connected to has 2 migration events.
+This is because the v2 node that we are connected already contains the migration information from the other node.
 One from itself, and the other one from a node that it was previously connected to but the migration program can currently not connect to (e.g. because the tablet is turned off).
 
 In the table, you can see the source ID of the two nodes that were migrated already, and of the node that was not migrated yet.
-You can navigate and select the deleted nodes that should be migrated.
+You can navigate (using the arrow keys) and select (using the space key) the deleted nodes that should be migrated.
 
 :::caution
 It is critical to the migration that you now assess if this overview is correct.
 The problematic scenario is that the overview shows less nodes than you already migrated; In this case, you need to make sure that all nodes you migrated are online and appear as migrated.
-Otherwise, you might migrate the events of the same nodes and therefore duplicate them.
+Otherwise, you might migrate the events of the same nodes and therefore duplicate them!
 :::
 
 After selecting the deleted node that should be migrated, you need to enter the private key of your Actyx user keys.
 This enables the migration program to connect to all nodes of the v2 swarm to make sure that the migrated events of deleted nodes are distributed.
 
+This is using the nodes' Admin channel. The migration program assumes that the nodes listen on port 4458 on the same interface as their swarm port (4001).
+
 After the migrated events were successfully distributed, you see the following table:
 
 ![migration-10](../../../static/images/how-to/migration/migration-10.png)
 
-In the last step, you get an overview of all nodes that you have migrated from v1 to v2 and a mapping between the source ID and stream ID. You can store this information diretly, but is it also always accessible by querying the migration events as described in the next guide.
+In the last step, you get an overview of all nodes that you have migrated from v1 to v2 and a mapping between the source ID and stream ID. You can store this information directly, but is it also always accessible by querying the migration events as described in the next guide.
 
 :::tip What to do if you find live v1 nodes after finishing the migration
 It can happen that you migrated all deleted nodes and later find out that one of them was actually just e.g. tablet you forgot. In this case, just treat it as if it would have been deleted before the migration, i.e. delete Actyx v1 and data from that node. If you would migrate this node again, you would duplicate its events.

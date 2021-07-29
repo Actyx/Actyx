@@ -33,7 +33,7 @@ You can use the CLI to query the migration events (and `jq` to format the output
 ax events query localhost 'FROM "migration"' | jq .payload
 ```
 
-Now that you know all mappings between source ID and stream ID, you have to change teh source ID to the corresponding stream ID in all your externally stored offset maps.
+Now that you know all mappings between source ID and stream ID, you have to change the source ID to the corresponding stream ID in all your externally stored offset maps.
 
 After you changed all externally stored offset maps, the migration is finished and you can start your v2-compatible apps on all nodes.
 
