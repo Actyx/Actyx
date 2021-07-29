@@ -11,6 +11,7 @@ import {
   Diagnostics,
   SwarmKey,
   Preferences,
+  Query,
 } from './screens'
 import { AppStateProvider, useAppState, AppStateKey } from './app-state'
 import { Provider as AnalyticsProvider, useAnalytics } from './analytics'
@@ -81,6 +82,8 @@ const Content: React.FC = () => {
       return <Preferences />
     case AppStateKey.SwarmKey:
       return <SwarmKey />
+    case AppStateKey.Query:
+      return <Query />
   }
 }
 

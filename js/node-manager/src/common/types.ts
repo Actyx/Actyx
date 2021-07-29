@@ -167,3 +167,37 @@ export type ShutdownNodeRequest = io.TypeOf<typeof ShutdownNodeRequest>
 
 export const ShutdownNodeResponse = Void
 export type ShutdownNodeResponse = io.TypeOf<typeof ShutdownNodeResponse>
+
+export const EventResponse = io.type({
+  lamport: io.number,
+  /// ID of the stream this event belongs to
+  stream: io.string,
+  /// The event offset within the stream
+  offset: io.number,
+  /// Timestamp at which the event was emitted
+  timestamp: io.number,
+  /// Tag attached to the event
+  tags: io.array(io.string),
+  /// Associated app ID
+  appId: io.string,
+  /// The actual, app-specific event payload
+  payload: io.unknown,
+})
+export type EventResponse = io.TypeOf<typeof EventResponse>
+export const Diagnostic = io.type({
+  severity: io.union([io.literal('warning'), io.literal('error')]),
+  message: io.string,
+})
+export type Diagnostic = io.TypeOf<typeof Diagnostic>
+export const EventDiagnostic = io.union([EventResponse, Diagnostic])
+export type EventDiagnostic = io.TypeOf<typeof EventDiagnostic>
+
+export const QueryRequest = io.type({
+  addr: io.string,
+  query: io.string,
+})
+export type QueryRequest = io.TypeOf<typeof QueryRequest>
+export const QueryResponse = io.type({
+  events: io.union([io.null, io.array(EventDiagnostic)]),
+})
+export type QueryResponse = io.TypeOf<typeof QueryResponse>

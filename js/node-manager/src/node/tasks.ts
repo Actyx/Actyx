@@ -6,6 +6,8 @@ import {
   GetNodesDetailsRequest,
   GetNodesDetailsResponse,
   Node,
+  QueryRequest,
+  QueryResponse,
   SetSettingsRequest,
   ShutdownNodeRequest,
   SignAppManifestRequest,
@@ -74,6 +76,9 @@ export const generateSwarmKey = (req: GenerateSwarmKeyRequest): Promise<Generate
 
 export const signAppManifest = (req: SignAppManifestRequest): Promise<SignAppManifestResponse> =>
   runAndDecode(native.signAppManifest, req, SignAppManifestResponse)
+
+export const query = (req: QueryRequest): Promise<QueryResponse> =>
+  runAndDecode(native.query, req, QueryResponse)
 
 export const shutdownNode = (req: ShutdownNodeRequest): Promise<void> =>
   runWithoutResult(native.shutdown, req)

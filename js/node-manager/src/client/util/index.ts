@@ -11,6 +11,7 @@ import {
   RPC_GetNodesDetails,
   RPC_SetSettings,
   RPC_ShutdownNode,
+  RPC_Query,
 } from '../../common/ipc'
 import { isLeft } from 'fp-ts/lib/Either'
 import { ioErrToStr } from '../../common/util'
@@ -114,6 +115,7 @@ export const shutdownNode = mkRpc(RPC_ShutdownNode)
 export const createUserKeyPair = mkRpc(RPC_CreateUserKeyPair)
 export const generateSwarmKey = mkRpc(RPC_GenerateSwarmKey)
 export const signAppManifest = mkRpc(RPC_SignAppManifest)
+export const query = mkRpc(RPC_Query)
 
 export { Wizard, WizardFailure, WizardInput, WizardSuccess } from './wizard'
 

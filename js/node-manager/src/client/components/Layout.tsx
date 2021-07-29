@@ -15,6 +15,7 @@ import {
   KeyIcon,
   ClipboardIcon,
   ClipboardCheckedIcon,
+  SearchIcon,
 } from './icons'
 import { ClassName } from '../react'
 import { getNodesDetails } from '../util'
@@ -243,6 +244,13 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
           icon={<InboxIcon />}
           text="Nodes"
           active={state.key === AppStateKey.Overview || state.key === AppStateKey.NodeDetail}
+          hidden={hideMenuItems}
+        />
+        <NavButton
+          onClick={() => dispatch({ key: AppActionKey.ShowQuery })}
+          icon={<SearchIcon />}
+          text="Query"
+          active={state.key === AppStateKey.Query}
           hidden={hideMenuItems}
         />
         <NavButton

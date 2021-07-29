@@ -2,6 +2,7 @@ import { FatalError } from '../../common/ipc'
 
 export interface AnalyticsActions {
   viewedScreen: (screenName: string) => void
+  queriedEvents: (query: string) => void
   startedApp: () => void
   addedNode: () => void
   removedNode: () => void
@@ -17,6 +18,7 @@ export interface AnalyticsActions {
 
 export type AnalyticsEvent =
   | { readonly key: 'ViewedScreen'; name: string }
+  | { readonly key: 'QueriedEvents'; query: string }
   | { readonly key: 'StartedApp' }
   | { readonly key: 'AddedNode' }
   | { readonly key: 'RemovedNode' }

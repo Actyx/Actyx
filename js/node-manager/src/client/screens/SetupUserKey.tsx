@@ -5,7 +5,7 @@ import { Button, SimpleInput } from '../components/basics'
 import { Wizard, WizardFailure, WizardSuccess, WizardInput } from '../util'
 import { Either, left, right } from 'fp-ts/lib/Either'
 import { useAppState, AppActionKey } from '../app-state'
-import { CreateUserKeyPairResponse } from 'common/types'
+import { CreateUserKeyPairResponse } from '../../common/types'
 
 const DefaultDirectoryHelpLink: React.FC = ({ children }) => (
   <a

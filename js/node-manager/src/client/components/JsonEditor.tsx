@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import AceEditor from 'react-ace'
 import 'ace-builds/src-noconflict/mode-json'
 import 'ace-builds/src-noconflict/theme-textmate'
-import { ClassName } from 'client/react'
+import { ClassName } from '../react'
 import clsx from 'clsx'
 import eq from 'deep-equal'
 

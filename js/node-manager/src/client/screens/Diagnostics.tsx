@@ -8,7 +8,7 @@ import { shutdownApp, toggleDevTools } from '../util'
 import { useStore } from '../store'
 import clsx from 'clsx'
 import { HslPercentageSpectrum, RedToGreenPercentageSpectrum } from '../util/color'
-import { OffsetInfo, Offset } from 'client/offsets'
+import { OffsetInfo, Offset } from '../offsets'
 import { isNone } from 'fp-ts/lib/Option'
 
 const isConnectedTo = (from: ReachableNodeT, to: Node) => {

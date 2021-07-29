@@ -26,6 +26,7 @@ const mkAnalyticsActions = (client: AmplitudeClient | null): AnalyticsActions =>
   }
   return {
     viewedScreen: (name) => logEvent({ key: 'ViewedScreen', name }),
+    queriedEvents: (query) => logEvent({ key: 'QueriedEvents', query }),
     startedApp: () => logEvent({ key: 'StartedApp' }),
     addedNode: () => logEvent({ key: 'AddedNode' }),
     removedNode: () => logEvent({ key: 'RemovedNode' }),

@@ -65,3 +65,7 @@ a[href^="ftp://"]
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+#event-queries-json-viewer .pretty-json-container svg {
+  font-size: 11px !important;
+}

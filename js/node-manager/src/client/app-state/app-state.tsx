@@ -7,6 +7,7 @@ import {
   setSettings,
   waitForNoUserKeysFound,
   shutdownNode,
+  query,
 } from '../util'
 import {
   CreateUserKeyPairResponse,
@@ -14,6 +15,7 @@ import {
   Node,
   GenerateSwarmKeyResponse,
   SignAppManifestResponse,
+  QueryResponse,
 } from '../../common/types'
 import { AppState, AppAction, AppStateKey, AppActionKey } from './types'
 import { useAnalytics } from '../analytics'
@@ -84,6 +86,12 @@ export const reducer =
         }
         return { ...state, ...action, key: AppStateKey.Preferences }
       }
+      case AppActionKey.ShowQuery: {
+        if (analytics) {
+          analytics.viewedScreen('Query')
+        }
+        return { ...state, ...action, key: AppStateKey.Query }
+      }
     }
   }
 
@@ -106,19 +114,19 @@ interface Actions {
     pathToManifest: string
     pathToCertificate: string
   }) => Promise<SignAppManifestResponse>
+  query: (args: { addr: string; query: string }) => Promise<QueryResponse>
 }
 
 export type AppDispatch = (action: AppAction) => void
-const AppStateContext =
-  React.createContext<
-    | {
-        state: AppState
-        data: Data
-        actions: Actions
-        dispatch: AppDispatch
-      }
-    | undefined
-  >(undefined)
+const AppStateContext = React.createContext<
+  | {
+      state: AppState
+      data: Data
+      actions: Actions
+      dispatch: AppDispatch
+    }
+  | undefined
+>(undefined)
 
 export const AppStateProvider: React.FC<{
   setFatalError: (error: FatalError) => void
@@ -196,6 +204,12 @@ export const AppStateProvider: React.FC<{
         pathToManifest,
         pathToCertificate,
       })
+    },
+    query: (args) => {
+      if (analytics) {
+        analytics.queriedEvents(args.query)
+      }
+      return query(args)
     },
   }
 

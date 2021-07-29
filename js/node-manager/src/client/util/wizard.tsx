@@ -1,7 +1,7 @@
 import React, { Reducer, useEffect, useReducer, useState } from 'react'
 import { Either, isRight } from 'fp-ts/lib/Either'
 import { useAnalytics } from '../analytics'
-import { safeErrorToStr } from 'common/util'
+import { safeErrorToStr } from '../../common/util'
 
 export type WizardInput<I> = React.FC<{
   execute: (input: I) => void

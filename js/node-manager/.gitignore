@@ -1,5 +1,6 @@
 # VS code settings ovveride
 !.vscode
+.vscode/workspace.code-workspace
 
 # Logs
 logs

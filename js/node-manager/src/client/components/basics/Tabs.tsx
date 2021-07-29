@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import clsx from 'clsx'
-import { ClassName } from 'client/react'
+import { ClassName } from '../../react'
 
 const Rider: React.FC<{
   active: boolean

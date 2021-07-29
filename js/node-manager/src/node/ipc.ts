@@ -11,6 +11,7 @@ import {
   RPC_GetNodesDetails,
   RPC_SetSettings,
   RPC_ShutdownNode,
+  RPC_Query,
 } from '../common/ipc'
 import { readStore, writeStore, storePath } from './store'
 import {
@@ -20,6 +21,7 @@ import {
   setSettings,
   signAppManifest,
   shutdownNode,
+  query,
 } from './tasks'
 import { isLeft, left, right } from 'fp-ts/lib/Either'
 import { ioErrToStr, safeErrorToStr } from '../common/util'
@@ -81,6 +83,7 @@ export const setupIpc = (app: App, browserWindow: BrowserWindow) => {
   setupRpc(browserWindow, RPC_GenerateSwarmKey, generateSwarmKey)
   setupRpc(browserWindow, RPC_SignAppManifest, signAppManifest)
   setupRpc(browserWindow, RPC_ShutdownNode, shutdownNode)
+  setupRpc(browserWindow, RPC_Query, query)
 
   ipcMain.on(IpcFromClient.SelectFolder, async (event, arg) => {
     console.log(`[ipc] got request ${IpcFromClient.SelectFolder}`)

@@ -12,6 +12,8 @@ import {
   SetSettingsResponse,
   ShutdownNodeRequest,
   ShutdownNodeResponse,
+  QueryRequest,
+  QueryResponse,
 } from './types'
 
 export const enum IpcFromClient {
@@ -83,3 +85,5 @@ export const RPC_SignAppManifest = mkRPC(
   SignAppManifestRequest,
   SignAppManifestResponse,
 )
+
+export const RPC_Query = mkRPC('Query', QueryRequest, QueryResponse)

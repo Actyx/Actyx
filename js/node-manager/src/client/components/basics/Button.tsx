@@ -10,6 +10,17 @@ interface Props {
   pingColor?: BackgroundColorSpectrum
   small?: boolean
   icon?: JSX.Element
+  outline?: boolean
+  fontWeight?:
+    | 'thin'
+    | 'extralight'
+    | 'light'
+    | 'normal'
+    | 'medium'
+    | 'semibold'
+    | 'bold'
+    | 'extrabold'
+    | 'black'
 }
 
 const E: React.FC<Props & React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
@@ -22,25 +33,32 @@ const E: React.FC<Props & React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
   pinging,
   small,
   icon,
+  outline,
+  fontWeight,
   ...props
 }) => {
   const colorSpectrum = color || 'gray'
-  const bgColor = `${colorSpectrum}-200`
-  const hvColor = `${colorSpectrum}-300`
-  const dsColor = `${colorSpectrum}-100`
-  const pgColor = `${pingColor || colorSpectrum}-300`
+  const backgroundColor = outline ? 'inherit' : `${colorSpectrum}-200`
+  const hoverColor = outline ? `${colorSpectrum}-100` : `${colorSpectrum}-300`
+  const pingingColor = `${pingColor || colorSpectrum}-300`
+  const borderColor = outline ? `${colorSpectrum}-300` : 'inherit'
+  fontWeight = fontWeight || 'medium'
   disabled = disabled || working
   return (
     <span className={clsx('relative inline-flex rounded-md', className)}>
       <button
         className={clsx(
-          'inline-flex items-center leading-6 font-medium rounded-md transition ease-in-out duration-150 focus:outline-none',
-          [!disabled && `hover:bg-${hvColor} bg-${bgColor}`],
-          [disabled && `cursor-not-allowed bg-${dsColor}`],
+          'inline-flex items-center leading-6 rounded-md transition ease-in-out duration-150 focus:outline-none',
+          `font-${fontWeight}`,
+          `bg-${backgroundColor}`,
+          [!disabled && `hover:bg-${hoverColor}`],
+          [disabled && `cursor-not-allowed`],
           {
             'px-4 py-2 text-base': !small,
             'px-2 py-1 text-sm': small,
+            'opacity-50': disabled,
           },
+          [outline && `border border-${borderColor}`],
         )}
         disabled={disabled}
         {...props}
@@ -73,9 +91,11 @@ const E: React.FC<Props & React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
       {pinging && (
         <div className="flex absolute top-0 right-0 -mt-0.5 -mr-1">
           <span className="absolute inline-flex animate-ping">
-            <span className={`inline-flex rounded-full h-3 w-3 bg-${pgColor} opacity-75`}></span>
+            <span
+              className={`inline-flex rounded-full h-3 w-3 bg-${pingingColor} opacity-75`}
+            ></span>
           </span>
-          <span className={`relative inline-flex rounded-full h-3 w-3 bg-${pgColor}`}></span>
+          <span className={`relative inline-flex rounded-full h-3 w-3 bg-${pingingColor}`}></span>
         </div>
       )}
     </span>
