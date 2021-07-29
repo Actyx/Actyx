@@ -1,0 +1,23 @@
+---
+title: Migrate bootstrap nodes
+id: migrate-bootstrap-nodes
+sidebar_label: Bootstrap nodes
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+This guide explains how to migrate bootstrap nodes.
+Please note that this guide is only relevant to you if you used a dedicated bootstrap node that was not running apps and emitting events.
+
+If you used a "normal" node as a bootstrap node, you can directly continue to the next [guide on migrating production nodes](./migrate-production-nodes.mdx) as you need to migrate it the same way as all other nodes.
+
+Actyx v2 does not offer a dedicated image for nodes that facilitate discovery–previously called *bootstrap nodes*–anymore.
+Instead, you can just use a normal node and deploy it as a so-called *discovery helper node* in v2 production deployments.
+In order to migrate your bootstrap node, follow these steps:
+
+1. Stop your bootstrap node
+2. Deploy a discovery helper node as described in [this guide](../operations/discovery-helper-node.mdx)
+
+Now that your discovery helper node is running, you can start to [migrate your production nodes](./migrate-production-nodes.mdx).
+Please bear in mind that you need to remove the address of the _old bootstrap node_ from your nodes' settings.
