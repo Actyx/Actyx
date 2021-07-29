@@ -54,9 +54,9 @@ Additionally to rewriting its own events, your node takes over the following set
 - Swarm key
 - Topic
 - Announce addresses
+- initial Peers
 
 Additionally, the node's identity is also preserved.
-- initial Peers
 
 If you set up a new discovery helper node (previously called _bootstrap node_) in the previous step, you need to manually change the `initialPeers` setting of each node to connect to it.
 If you want to use the same production node as a discovery helper node than before, you do not need to do anything as the setting is automatically migrated and the address is still the same after migration.
@@ -170,7 +170,7 @@ import { DownloadLink } from '../../../src/components/DownloadLink.tsx'
 
 When starting the app, you are prompted to give Actyx permissions to access the external storage so that it can place a backup of its data there. After accepting the permissions, you should see the following message:
 
-![migration-07](../../../static/images/how-to/migration/migration-07.png)
+<img src={require('@site/static/images/how-to/migration/migration-07.png').default} width="250" />
 
 <h4>2. Download and install the latest Actyx 2.x release</h4>
 
@@ -182,11 +182,13 @@ When starting the app, you are again prompted to give Actyx permissions so that 
 
 If you see the following message, the migration was successful:
 
-![migration-08](../../../static/images/how-to/migration/migration-08.png)
+<img src={require('@site/static/images/how-to/migration/migration-08.png').default} width="250" />
 
 <h4>4. Clean up your v1 installation</h4>
 
-You can now delete the Actyx v1 apk from your Android device.
+Here is a short video of the workflow:
+
+<img src={require('@site/static/images/how-to/migration/android.gif').default} width="250" />
 
 </TabItem>
 <TabItem value="docker">
@@ -225,6 +227,10 @@ Jul 20 15:21:34.163  INFO NODE_STARTED_BY_HOST: Actyx 2.1.0_dev-4fe5eec475e11885
 
 After you see the above logs, the migration was successful.
 Your Actyx v2 node is now running and successfully migrated events and settings.
+
+Here is a short video of the workflow:
+
+<img src={require('@site/static/images/how-to/migration/docker.gif').default} />
 
 </TabItem>
 <TabItem value="linux">
@@ -324,6 +330,11 @@ After the migrated events were successfully distributed, you see the following t
 ![migration-10](../../../static/images/how-to/migration/migration-10.png)
 
 In the last step, you get an overview of all nodes that you have migrated from v1 to v2 and a mapping between the source ID and stream ID. You can store this information directly, but is it also always accessible by querying the migration events as described in the next guide.
+
+
+Here is a short video of the workflow (note that the v1_migration program is placed inside the data directory, therefore it does not need to be explicitly specified):
+
+<img src={require('@site/static/images/how-to/migration/migration_bin.gif').default} />
 
 :::tip What to do if you find live v1 nodes after finishing the migration
 It can happen that you migrated all deleted nodes and later find out that one of them was actually just e.g. tablet you forgot. In this case, just treat it as if it would have been deleted before the migration, i.e. delete Actyx v1 and data from that node. If you would migrate this node again, you would duplicate its events.
