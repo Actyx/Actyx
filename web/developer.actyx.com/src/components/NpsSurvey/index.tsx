@@ -159,6 +159,7 @@ export const NpsSurvey = ({ showAfterMs, hideAfterMs }: Props): React.ReactEleme
   const disableForSec = (seconds: number) => {
     setCookie(DONT_SHOW_COOKIE_NAME, new Date().toISOString(), {
       maxAge: seconds,
+      path: '/',
     })
   }
 
