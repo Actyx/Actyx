@@ -38,7 +38,7 @@ describe('v1 to v2 migration', () => {
           ['ActyxOS ready'],
           20000,
         ),
-      ).toMatchObject([expect.stringContaining('ActyxOS ready')])
+      ).toContainEqual(expect.stringContaining('ActyxOS ready'))
       // Crash the container
       await execa('docker', ['container', 'rm', '-f', v1container])
       v1container = undefined
@@ -76,10 +76,8 @@ describe('v1 to v2 migration', () => {
         ['NODE_STARTED_BY_HOST'],
         20000,
       )
-      expect(v2out).toMatchObject([
-        expect.stringContaining('Migration succeeded.'),
-        expect.stringContaining('NODE_STARTED_BY_HOST'),
-      ])
+      expect(v2out).toContainEqual(expect.stringContaining('Migration succeeded.'))
+      expect(v2out).toContainEqual(expect.stringContaining('NODE_STARTED_BY_HOST'))
     } finally {
       try {
         v1container && (await execa('docker', ['container', 'rm', '-f', v1container]))
