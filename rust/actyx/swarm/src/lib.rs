@@ -775,6 +775,8 @@ impl BanyanStore {
         if cfg.enable_discovery {
             banyan.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(banyan.clone()));
         }
+        // if `cfg.enable_discovery` is not set, this function WON'T emit any
+        // events! It's needed in any case for `ipfs-embed` to do its thing.
         banyan.spawn_task(
             "discovery_publish",
             crate::discovery::discovery_publish(

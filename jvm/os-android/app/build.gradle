@@ -70,6 +70,7 @@ android {
 
 dependencies {
   coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
+  implementation "org.apache.commons:commons-compress:1.21"
   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
   implementation "org.jetbrains.kotlinx:kotlinx-serialization-core:1.0.1"
   implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.1"

@@ -3,8 +3,7 @@ use anyhow::Result;
 mod linux {
     use super::*;
     use anyhow::{anyhow, Context};
-    use node::shutdown_ceremony;
-    use node::{ApplicationState, BindTo, BindToOpts, Runtime};
+    use node::{shutdown_ceremony, ApplicationState, BindTo, BindToOpts, Runtime};
     use std::{convert::TryInto, path::PathBuf};
     use structopt::StructOpt;
     use util::version::NodeVersion;
@@ -40,6 +39,7 @@ mod linux {
                     .context("getting current working directory")?
                     .join("actyx-data"))
             })?;
+
             std::fs::create_dir_all(working_dir.clone())
                 .with_context(|| format!("creating working directory `{}`", working_dir.display()))?;
             // printed by hand since things can fail before logging is set up and we want the user to know this

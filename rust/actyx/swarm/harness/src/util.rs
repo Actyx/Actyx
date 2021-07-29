@@ -19,7 +19,7 @@ pub fn app_manifest() -> AppManifest {
 }
 
 pub fn to_events(tags: Vec<TagSet>) -> Vec<(TagSet, Payload)> {
-    tags.into_iter().map(|t| (t, Payload::empty())).collect()
+    tags.into_iter().map(|t| (t, Payload::null())).collect()
 }
 
 pub fn to_publish(events: Vec<(TagSet, Payload)>) -> PublishRequest {

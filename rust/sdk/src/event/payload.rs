@@ -63,7 +63,7 @@ impl Payload {
     }
 
     /// Construct a Payload consisting only of the `null` value.
-    pub fn empty() -> Payload {
+    pub fn null() -> Payload {
         Payload(serde_json::from_str("null").unwrap())
     }
 
@@ -90,7 +90,7 @@ impl Payload {
 
 impl Default for Payload {
     fn default() -> Self {
-        Payload::empty()
+        Payload::null()
     }
 }
 

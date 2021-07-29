@@ -3,14 +3,14 @@ use anyhow::{anyhow, Context};
 use crossbeam::channel::Sender;
 use crypto::{KeyStore, KeyStoreRef};
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::{io, sync::Arc};
 use tracing::*;
 
 pub(crate) fn make_keystore(storage: NodeStorage) -> anyhow::Result<KeyStoreRef> {
     let ks = storage
         .get_keystore()?
         .map(|dump| {
-            KeyStore::restore(&dump[..])
+            KeyStore::restore(io::Cursor::new(dump))
                 .context(
                     "Error reading KeyStore (data corruption or invalid version)\n\n\
                     You may try to remove the `key_store` property from the `node` table in `actyx-data/node.sqlite`.",

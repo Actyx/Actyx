@@ -291,22 +291,33 @@ impl ApiBehaviour {
         }
     }
 
-    fn enqueue_events_v2(&mut self, channel_id: ChannelId, request: EventsRequest) {
-        fn wrap<F>(c: ChannelId, f: F) -> (BoxStream<'static, (ChannelId, Option<EventsResponse>)>, AbortHandle)
-        where
-            F: Future + Send + 'static,
-            F::Output: Stream<Item = (ChannelId, Option<EventsResponse>)> + Send + 'static,
-        {
-            let (handle, reg) = AbortHandle::new_pair();
-            let s = f.flatten_stream().chain(stream::once(ready((c, None))));
-            let s = Abortable::new(s, reg);
-            (s.boxed(), handle)
+    fn wrap(
+        &self,
+        c: ChannelId,
+        f: impl Future<Output = impl Stream<Item = (ChannelId, Option<EventsResponse>)> + Send + 'static> + Send + 'static,
+    ) -> (BoxStream<'static, (ChannelId, Option<EventsResponse>)>, AbortHandle) {
+        let mac = self.maybe_add_key(c.peer());
+        let (handle, reg) = AbortHandle::new_pair();
+        let c2 = c.clone();
+        let s = async move {
+            match mac.await {
+                Ok(_) => f.await.left_stream(),
+                Err(e) => {
+                    stream::once(ready((c2, Some(EventsResponse::Error { message: e.to_string() })))).right_stream()
+                }
+            }
         }
+        .flatten_stream()
+        .chain(stream::once(ready((c, None))));
+        let s = Abortable::new(s, reg);
+        (s.boxed(), handle)
+    }
 
+    fn enqueue_events_v2(&mut self, channel_id: ChannelId, request: EventsRequest) {
         let channel_id2 = channel_id.clone();
         let events = self.state.events.clone();
         let (s, h) = match request {
-            EventsRequest::Offsets => wrap(channel_id.clone(), async move {
+            EventsRequest::Offsets => self.wrap(channel_id.clone(), async move {
                 match events.offsets().await {
                     Ok(o) => stream::once(ready((channel_id, Some(EventsResponse::Offsets(o))))),
                     Err(e) => stream::once(ready((
@@ -315,7 +326,7 @@ impl ApiBehaviour {
                     ))),
                 }
             }),
-            EventsRequest::Query(request) => wrap(channel_id.clone(), async move {
+            EventsRequest::Query(request) => self.wrap(channel_id.clone(), async move {
                 match events.query(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => resp
                         .filter_map(move |x| {
@@ -342,7 +353,7 @@ impl ApiBehaviour {
                     .right_stream(),
                 }
             }),
-            EventsRequest::Subscribe(request) => wrap(channel_id.clone(), async move {
+            EventsRequest::Subscribe(request) => self.wrap(channel_id.clone(), async move {
                 match events.subscribe(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => resp
                         .filter_map(move |x| match x {
@@ -366,7 +377,7 @@ impl ApiBehaviour {
                     .right_stream(),
                 }
             }),
-            EventsRequest::SubscribeMonotonic(request) => wrap(channel_id.clone(), async move {
+            EventsRequest::SubscribeMonotonic(request) => self.wrap(channel_id.clone(), async move {
                 match events.subscribe_monotonic(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => resp
                         .filter_map(move |x| match x {
@@ -391,7 +402,7 @@ impl ApiBehaviour {
                     .right_stream(),
                 }
             }),
-            EventsRequest::Publish(request) => wrap(channel_id.clone(), async move {
+            EventsRequest::Publish(request) => self.wrap(channel_id.clone(), async move {
                 match events.publish(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => stream::once(ready((channel_id, Some(EventsResponse::Publish(resp))))),
                     Err(e) => stream::once(ready((

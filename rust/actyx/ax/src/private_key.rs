@@ -110,6 +110,14 @@ impl AxPrivateKey {
         identity::Keypair::from(crypto_kp)
     }
 }
+impl FromStr for AxPrivateKey {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let x = PrivateKey::from_str(s)?;
+        Ok(Self(x))
+    }
+}
 
 #[cfg(test)]
 mod tests {

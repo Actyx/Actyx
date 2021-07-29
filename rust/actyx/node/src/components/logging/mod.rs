@@ -45,4 +45,8 @@ impl Logging {
         let logging_sink = Arc::new(Mutex::new(LoggingSink::new(level)));
         Self { rx, logging_sink }
     }
+    pub fn set_log_level(&self, level: LogSeverity) -> anyhow::Result<()> {
+        self.logging_sink.lock().set_level(level)?;
+        Ok(())
+    }
 }

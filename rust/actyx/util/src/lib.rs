@@ -42,7 +42,7 @@ pub fn setup_logger() {
     log_panics::init();
 }
 
-fn free_port(port: u16) -> anyhow::Result<NonZeroU16> {
+pub fn free_port(port: u16) -> anyhow::Result<NonZeroU16> {
     NonZeroU16::new(port).map(Ok).unwrap_or_else(|| {
         let mut tries = 100;
         loop {

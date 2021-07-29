@@ -252,7 +252,7 @@ pub struct NodeInfo {
 
 /// Converts a libp2p PeerId to a NodeId.
 /// Panics if the PeerId didn't originate from an Actyx node.
-fn to_node_id(peer_id: PeerId) -> NodeId {
+pub fn to_node_id(peer_id: PeerId) -> NodeId {
     let pk = PublicKey::try_from(peer_id).expect("Not an ActyxOS Node on the other side");
     pk.into()
 }

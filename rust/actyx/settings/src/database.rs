@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension, Transaction as RusqlTransaction};
 
 #[derive(thiserror::Error, Debug, PartialEq)]
@@ -20,13 +22,16 @@ pub struct Transaction<'a> {
 const DB_FILENAME: &str = "settings.db";
 
 impl Database {
-    pub fn new(base_dir: std::path::PathBuf) -> Result<Self> {
-        std::fs::create_dir_all(base_dir.clone()).map_err(|err| Error::IoError(format!("{}", err)))?;
+    pub fn new(base_dir: impl AsRef<Path>) -> Result<Self> {
+        std::fs::create_dir_all(base_dir.as_ref()).map_err(|err| Error::IoError(format!("{}", err)))?;
         let flags =
             OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_FULL_MUTEX;
-        let conn = Connection::open_with_flags(base_dir.join(DB_FILENAME), flags)?;
+        let conn = Connection::open_with_flags(base_dir.as_ref().join(DB_FILENAME), flags)?;
         Self::initialize(&conn)?;
         Ok(Database { conn })
+    }
+    pub fn from_connection_without_init(conn: Connection) -> Self {
+        Self { conn }
     }
     pub fn in_memory() -> Result<Self> {
         let flags =

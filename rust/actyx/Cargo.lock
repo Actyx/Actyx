@@ -100,6 +100,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "aes-stream"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8e2533cd0b6abfc7687517ba71d820f57945de2aeb7ca6cadfde8a53765328d"
+dependencies = [
+ "rand 0.3.23",
+ "rust-crypto",
+]
+
+[[package]]
 name = "ahash"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1295,6 +1305,7 @@ name = "crypto"
 version = "0.1.0"
 dependencies = [
  "actyx_sdk",
+ "aes-stream",
  "anyhow",
  "base64 0.13.0",
  "byteorder",
@@ -1307,6 +1318,7 @@ dependencies = [
  "multihash",
  "parking_lot 0.11.1",
  "rand 0.7.3",
+ "rust-crypto",
  "serde",
  "serde_cbor",
  "sha2",
@@ -1920,6 +1932,12 @@ checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
 dependencies = [
  "byteorder",
 ]
+
+[[package]]
+name = "gcc"
+version = "0.3.55"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
 
 [[package]]
 name = "gdk"
@@ -3744,10 +3762,15 @@ dependencies = [
  "crossbeam",
  "crypto",
  "derive_more",
+ "escargot",
  "ffi-support",
+ "flate2",
  "fslock",
  "futures 0.3.15",
+ "hex",
+ "ipfs-sqlite-block-store",
  "jemallocator",
+ "libipld",
  "libp2p",
  "libp2p-streaming-response",
  "maplit",
@@ -3767,6 +3790,7 @@ dependencies = [
  "signal-hook",
  "structopt",
  "swarm",
+ "tar",
  "tempfile",
  "thiserror",
  "tokio",
@@ -3775,6 +3799,7 @@ dependencies = [
  "tracing-subscriber",
  "tracing_win_event_log",
  "trees",
+ "unicode-width",
  "url",
  "util",
  "uuid",
@@ -5099,6 +5124,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust-crypto"
+version = "0.2.36"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f76d05d3993fd5f4af9434e8e436db163a12a9d40e1a58a726f27a01dfd12a2a"
+dependencies = [
+ "gcc",
+ "libc",
+ "rand 0.3.23",
+ "rustc-serialize",
+ "time",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5786,6 +5824,17 @@ dependencies = [
  "libc",
  "log",
  "winapi",
+]
+
+[[package]]
+name = "tar"
+version = "0.4.35"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d779dc6aeff029314570f666ec83f19df7280bb36ef338442cfa8c604021b80"
+dependencies = [
+ "filetime",
+ "libc",
+ "xattr",
 ]
 
 [[package]]
@@ -6836,6 +6885,15 @@ dependencies = [
  "curve25519-dalek",
  "rand_core 0.5.1",
  "zeroize",
+]
+
+[[package]]
+name = "xattr"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "244c3741f4240ef46274860397c7c74e50eb23624996930e484c16679633a54c"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

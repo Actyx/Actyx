@@ -12,7 +12,7 @@ use vec_collections::VecSet2;
 macro_rules! stags {
     ($($args:tt)*) => {{
         let res = ::actyx_sdk::tags!($($args)*);
-        crate::tags::ScopedTagSet::from(res)
+        $crate::tags::ScopedTagSet::from(res)
     }};
 }
 

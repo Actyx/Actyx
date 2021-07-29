@@ -368,7 +368,7 @@ mod tests {
         let app_id = app_id!("test-forward-stream");
 
         store
-            .persist(app_id.clone(), vec![(tags!(), Payload::empty())])
+            .persist(app_id.clone(), vec![(tags!(), Payload::null())])
             .await
             .unwrap();
 
@@ -419,7 +419,7 @@ mod tests {
         let app_id = app_id!("test-backward-stream");
 
         store
-            .persist(app_id.clone(), vec![(tags!(), Payload::empty())])
+            .persist(app_id.clone(), vec![(tags!(), Payload::null())])
             .await
             .unwrap();
 
@@ -455,9 +455,9 @@ mod tests {
             .persist(
                 app_id(),
                 vec![
-                    (tags!("test", "test:stream1"), Payload::empty()),
-                    (tags!("test", "test:stream1"), Payload::empty()),
-                    (tags!("test", "test:stream1"), Payload::empty()),
+                    (tags!("test", "test:stream1"), Payload::null()),
+                    (tags!("test", "test:stream1"), Payload::null()),
+                    (tags!("test", "test:stream1"), Payload::null()),
                 ],
             )
             .await
@@ -466,9 +466,9 @@ mod tests {
             .persist(
                 app_id(),
                 vec![
-                    (tags!("test", "test:stream2"), Payload::empty()),
-                    (tags!("test", "test:stream2"), Payload::empty()),
-                    (tags!("test", "test:stream2"), Payload::empty()),
+                    (tags!("test", "test:stream2"), Payload::null()),
+                    (tags!("test", "test:stream2"), Payload::null()),
+                    (tags!("test", "test:stream2"), Payload::null()),
                 ],
             )
             .await
@@ -560,7 +560,7 @@ mod tests {
         let stream_id2 = store2.node_id().stream(0.into());
 
         store1
-            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::empty())])
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::null())])
             .await
             .unwrap();
 
@@ -606,11 +606,11 @@ mod tests {
         });
 
         store1
-            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::empty())])
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::null())])
             .await
             .unwrap();
         store2
-            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::empty())])
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::null())])
             .await
             .unwrap();
 
@@ -646,7 +646,7 @@ mod tests {
         let mut handles = Vec::new();
         for i in 0..n {
             let (_, offset, _, _) = store
-                .persist(app_id(), vec![(mk_tag(i), Payload::empty())])
+                .persist(app_id(), vec![(mk_tag(i), Payload::null())])
                 .await
                 .unwrap()[0];
             assert_eq!(offset, Offset::from(i as u32));

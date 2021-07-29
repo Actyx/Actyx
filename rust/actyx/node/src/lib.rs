@@ -3,6 +3,7 @@
 mod components;
 mod formats;
 mod host;
+pub mod migration;
 mod node;
 mod node_api;
 mod node_storage;
@@ -13,7 +14,11 @@ pub use crate::node::NodeError;
 pub use crate::util::spawn_with_name;
 #[cfg(not(windows))]
 pub use crate::util::unix_shutdown::shutdown_ceremony;
+use ::util::formats::LogSeverity;
 pub use formats::{node_settings, ShutdownReason};
+#[cfg(not(target_os = "android"))]
+pub use host::lock_working_dir;
+pub use node_storage::CURRENT_VERSION as CURRENT_DB_VERSION;
 
 use crate::{
     components::{
@@ -33,7 +38,10 @@ use crate::{
 use ::util::SocketAddrHelper;
 use anyhow::Context;
 use crossbeam::channel::{bounded, Receiver, Sender};
-use std::net::{IpAddr, Ipv4Addr};
+use std::{
+    collections::BTreeSet,
+    net::{IpAddr, Ipv4Addr},
+};
 use std::{convert::TryInto, path::PathBuf, str::FromStr, thread};
 use structopt::StructOpt;
 use swarm::event_store_ref::{self, EventStoreRef};
@@ -59,6 +67,9 @@ pub enum Runtime {
 pub struct ApplicationState {
     pub join_handles: Vec<thread::JoinHandle<()>>,
     pub manager: NodeWrapper,
+    #[allow(dead_code)]
+    #[cfg(not(target_os = "android"))]
+    _lock: fslock::LockFile,
 }
 
 fn bounded_channel<T>() -> (Sender<T>, Receiver<T>) {
@@ -66,6 +77,8 @@ fn bounded_channel<T>() -> (Sender<T>, Receiver<T>) {
 }
 
 fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Result<ApplicationState> {
+    #[cfg(not(target_os = "android"))]
+    let _lock = crate::host::lock_working_dir(&working_dir)?;
     let mut join_handles = vec![];
 
     let (store_tx, store_rx) = bounded_channel();
@@ -85,11 +98,15 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
         (Logging::get_type().into(), ComponentChannel::Logging(logs_tx)),
     ];
 
+    // Component: Logging
+    // Set up logging so tracing is set up for migration
+    let logging = Logging::new(logs_rx, LogSeverity::default());
+    migration::migrate_if_necessary(&working_dir, BTreeSet::new(), false)?;
+
     // Host interface
     let host = Host::new(working_dir.clone()).context("creating host interface")?;
-
-    // Component: Logging
-    let logging = Logging::new(logs_rx, host.get_settings().admin.log_levels.node);
+    // now set up the configured log level after initializing `Host`
+    logging.set_log_level(host.get_settings().admin.log_levels.node)?;
     join_handles.push(logging.spawn().context("spawning logger")?);
 
     let node_id = host.get_or_create_node_id().context("getting node ID")?;
@@ -152,6 +169,8 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     Ok(ApplicationState {
         join_handles,
         manager: node,
+        #[cfg(not(target_os = "android"))]
+        _lock,
     })
 }
 pub type NodeLifecycleResult = Receiver<NodeProcessResult<()>>;

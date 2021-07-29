@@ -3,8 +3,6 @@ use actyx_sdk::NodeId;
 use anyhow::{Context, Result};
 use crypto::KeyStoreRef;
 use derive_more::Display;
-#[cfg(not(target_os = "android"))]
-use fslock::LockFile;
 use parking_lot::Mutex;
 use std::{path::PathBuf, sync::Arc};
 use util::formats::NodeCycleCount;
@@ -19,31 +17,26 @@ pub(crate) struct Host {
     storage: NodeStorage,
     settings_repo: settings::Repository,
     sys_settings: Settings,
-    #[allow(dead_code)] // this needs to be kept around to hold the lock
-    #[cfg(not(target_os = "android"))]
-    lockfile: LockFile,
 }
-
+#[cfg(not(target_os = "android"))]
+pub fn lock_working_dir(working_dir: impl AsRef<std::path::Path>) -> anyhow::Result<fslock::LockFile> {
+    let mut lf =
+        fslock::LockFile::open(&working_dir.as_ref().join("lockfile")).context("Error opening file `lockfile`")?;
+    if !lf.try_lock().context("Error locking file `lockfile`")? {
+        return Err(WorkdirLocked(working_dir.as_ref().display().to_string()).into());
+    }
+    Ok(lf)
+}
 impl Host {
     pub fn new(base_path: PathBuf) -> Result<Self> {
-        #[cfg(not(target_os = "android"))]
-        let lockfile = {
-            let mut lf = LockFile::open(&base_path.join("lockfile")).context("Error opening file `lockfile`")?;
-            if !lf.try_lock().context("Error locking file `lockfile`")? {
-                return Err(WorkdirLocked(base_path.display().to_string()).into());
-            }
-            lf
+        let (settings_db, storage) = if cfg!(test) {
+            (settings::Database::in_memory()?, NodeStorage::in_memory())
+        } else {
+            (
+                settings::Database::new(&base_path)?,
+                NodeStorage::new(base_path.join("node.sqlite")).context("Error opening node.sqlite")?,
+            )
         };
-
-        #[cfg(test)]
-        let storage = NodeStorage::in_memory();
-        #[cfg(not(test))]
-        let storage = NodeStorage::new(base_path.join("node.sqlite")).context("Error opening node.sqlite")?;
-
-        #[cfg(test)]
-        let settings_db = settings::Database::in_memory()?;
-        #[cfg(not(test))]
-        let settings_db = settings::Database::new(base_path)?;
         let mut settings_repo = settings::Repository::new(settings_db);
         // Apply the current schema for com.actyx (it might have changed). If this is
         // unsuccessful, we panic.
@@ -62,8 +55,6 @@ impl Host {
             storage,
             settings_repo,
             sys_settings,
-            #[cfg(not(target_os = "android"))]
-            lockfile,
         })
     }
 
@@ -100,7 +91,7 @@ impl Host {
 }
 
 /// Set the schema for the ActyxOS system settings.
-fn apply_system_schema(settings_repo: &mut settings::Repository) -> Result<(), settings::RepositoryError> {
+pub(crate) fn apply_system_schema(settings_repo: &mut settings::Repository) -> Result<(), settings::RepositoryError> {
     tracing::debug!("setting current schema for com.actyx");
     let schema: serde_json::Value = serde_json::from_slice(include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),

@@ -9,6 +9,7 @@ import com.sun.jna.Pointer
 typealias AxNodeMessageHandler = (code: Int, msg: String) -> Unit
 
 class AxNode(ctx: Context, handler: AxNodeMessageHandler) {
+  // TODO: refactor when targeting Android 11
   private val path: String = ctx.getExternalFilesDir(null)!!.path
   private val lib = com.actyx.android.util.Native.loadLibrary<AxNodeFFI>("axosnodeffi")
   private val callback = object : Callback {

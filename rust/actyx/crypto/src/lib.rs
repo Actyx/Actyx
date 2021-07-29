@@ -35,6 +35,7 @@
 
 mod dh;
 mod keystore;
+mod legacy;
 mod pair;
 mod private;
 mod public;
@@ -42,6 +43,7 @@ mod signature;
 
 pub use dh::*;
 pub use keystore::{KeyStore, KeyStoreRef};
+pub use legacy::LegacyKeyId;
 pub use pair::KeyPair;
 pub use private::PrivateKey;
 pub use public::PublicKey;

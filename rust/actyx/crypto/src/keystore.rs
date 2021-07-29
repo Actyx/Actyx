@@ -26,7 +26,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
     convert::{Into, TryFrom},
-    io::{Read, Write},
+    io::{Read, Seek, SeekFrom, Write},
     sync::Arc,
 };
 
@@ -48,10 +48,10 @@ type DumpFn = Box<dyn Fn(Box<[u8]>) -> Result<()> + Send + Sync>;
 /// These keys are referenced by PublicKey.
 #[derive(Serialize, Deserialize)]
 pub struct KeyStore {
-    pairs: BTreeMap<PublicKey, PrivateKey>,
-    publics: BTreeSet<PublicKey>,
+    pub(crate) pairs: BTreeMap<PublicKey, PrivateKey>,
+    pub(crate) publics: BTreeSet<PublicKey>,
     #[serde(skip)]
-    dump_after_modify: Option<DumpFn>,
+    pub(crate) dump_after_modify: Option<DumpFn>,
 }
 
 impl std::cmp::PartialEq for KeyStore {
@@ -232,7 +232,7 @@ impl KeyStore {
     // dumps are obfuscated with this key (this does not provide much security since the key
     // can be extracted from Actyx binaries without much hassle, but it does make it a bit
     // less obvious to prying eyes)
-    const DUMP_KEY: &'static [u8; 32] = b"uqTmyHA4*G!KQQ@77QMu_xhTg@!o*DnP";
+    pub(crate) const DUMP_KEY: &'static [u8; 32] = b"uqTmyHA4*G!KQQ@77QMu_xhTg@!o*DnP";
     const VERSION_1: u8 = 1;
 
     /// Write the state of this store into the given writer
@@ -253,7 +253,31 @@ impl KeyStore {
     }
 
     /// Recreate a store from a reader that yields the bytes previously written by `dump()`
-    pub fn restore(mut src: impl Read) -> Result<Self> {
+    pub fn restore(mut src: impl Read + Seek) -> Result<Self> {
+        match Self::restore0(&mut src) {
+            Err(e) => {
+                // Try legacy v1 (ActyxOS) conversion
+                src.seek(SeekFrom::Start(0))?;
+                match Self::restore_legacy_v1(&mut src) {
+                    Err(v1_err) => {
+                        // Try legacy v0 conversion
+                        // Return original error
+                        src.seek(SeekFrom::Start(0))?;
+                        Self::restore_legacy_v0(src).map_err(|v0_err| {
+                            let ctx = format!(
+                                "Also tried legacy conversions, which failed: v1: {}; v0: {}",
+                                v1_err, v0_err
+                            );
+                            e.context(ctx)
+                        })
+                    }
+                    x => x,
+                }
+            }
+            x => x,
+        }
+    }
+    fn restore0(mut src: impl Read) -> Result<Self> {
         match src.read_u8()? {
             Self::VERSION_1 => {
                 let mut nonce = [0u8; 24];
@@ -283,7 +307,7 @@ impl KeyStore {
 mod tests {
     use super::*;
     use chacha20poly1305::aead;
-    use std::convert::TryInto;
+    use std::{convert::TryInto, io::Cursor};
 
     #[test]
     fn must_sign_and_verify() {
@@ -341,9 +365,26 @@ mod tests {
         let mut bytes = Vec::new();
         store.dump(&mut bytes).unwrap();
 
-        let store2 = KeyStore::restore(&*bytes).unwrap();
+        let store2 = KeyStore::restore(Cursor::new(bytes)).unwrap();
         store2.verify(&signed, vec![me]).unwrap();
         assert_eq!(store2, store);
+    }
+
+    #[test]
+    fn must_restore_from_v1_dump_format() -> anyhow::Result<()> {
+        // base64 encoded v1 keystore
+        let base64 = "V9DuJKgD3E7GEypiWNdV2Ugx6e6W2E87BYeWkvPTXhczxIwRL3dcbHlYYTBq/j5zP0rD7IdSpCuKQqOiJ09aYTxwLfOpf/zhjEWeQkvJJqJxe8LY8vLq++RASTNu1pB2WLM0Xro7Il/TNpizH0gMcbzZFyTbye2NWOXiejbBPAU=";
+        let bytes = base64::decode(base64)?;
+        let _ = KeyStore::restore(Cursor::new(bytes))?;
+        Ok(())
+    }
+    #[test]
+    fn must_restore_from_legacy_v0_dump_format() -> anyhow::Result<()> {
+        // base64 encoded v0 keystore
+        let base64 = "jK5aKMCq3qgbtkt6lKMaOpGXzMnnSz9dud/rzcz2gLqaB5NYlaTntbqser+fTgeL7uq/MhFP8lRhbXcFty41beeYqG5P+mI4UUx5KFguqK1dFzm41uRO47APXNWhQwidX+ncuKZSWzutjxiM5K0mRt0odp2HkSbweKkt9PTZJWNxhwg+AnpRd5gwcHcsO63OC119zuYVreOMyCmLUzxRJQ==";
+        let bytes = base64::decode(base64)?;
+        let _ = KeyStore::restore(Cursor::new(bytes))?;
+        Ok(())
     }
 
     #[test]
@@ -386,7 +427,7 @@ mod tests {
         local.dump(&mut data)?;
 
         // check successful case
-        let local_restored = KeyStore::restore(&data[..])?;
+        let local_restored = KeyStore::restore(Cursor::new(&data[..]))?;
         assert_eq!(local, local_restored);
 
         // check corruption
@@ -399,16 +440,16 @@ mod tests {
                 break;
             }
         }
-        let err = KeyStore::restore(&data[..]).unwrap_err();
+        let err = KeyStore::restore(Cursor::new(&data[..])).unwrap_err();
         err.downcast_ref::<aead::Error>()
             .unwrap_or_else(|| panic!("found wrong error: {}", err));
 
         // check unknown version
         data[0] = 0;
-        let err = KeyStore::restore(&data[..]).unwrap_err();
+        let err = KeyStore::restore(Cursor::new(&data[..])).unwrap_err();
         err.downcast_ref::<UnknownVersion>()
             .unwrap_or_else(|| panic!("found wrong error: {}", err));
-        assert_eq!(err.to_string(), "unknown KeyStore version 0");
+        assert!(format!("{:#}", err).contains("unknown KeyStore version 0"));
 
         Ok(())
     }

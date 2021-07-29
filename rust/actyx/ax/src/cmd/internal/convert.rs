@@ -1,4 +1,5 @@
 use crate::cmd::AxCliCommand;
+use actyx_sdk::NodeId;
 use futures::{prelude::*, stream, Stream};
 use structopt::StructOpt;
 use swarm::convert::{convert_from_v1, ConversionOptions};
@@ -34,6 +35,8 @@ impl AxCliCommand for ConvertFromV1 {
         let conversion_options = ConversionOptions {
             gc: !opts.no_gc,
             vacuum: !opts.no_vacuum,
+            filtered_sources: None,
+            source_to_stream: Default::default(),
         };
         let result = convert_from_v1(
             &opts.source,
@@ -41,6 +44,10 @@ impl AxCliCommand for ConvertFromV1 {
             &opts.topic,
             &opts.app_id,
             conversion_options,
+            false,
+            0,
+            0,
+            NodeId::from_bytes(&[0u8; 32]).unwrap(),
         )
         .map(|_| format!("Conversion done. Target db at {}", opts.target))
         .ax_err_ctx(util::formats::ActyxOSCode::ERR_NODE_UNREACHABLE, "Convert failed");
