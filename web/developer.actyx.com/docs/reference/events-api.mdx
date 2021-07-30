@@ -375,6 +375,16 @@ The response will be in the [Newline Delimited JSON format](http://ndjson.org/) 
 }
 ```
 
+#### Response type `diagnostics`
+
+```json
+{
+  "type": "diagnostic",
+  "severity": "<string: 'warning' or 'error'>",
+  "message": "<string>"
+}
+```
+
 :::info Response types
 This is just a subset of possible response types. Clients should be prepared to handle (or ignore)
 responses with a value of `type` not specified above.
@@ -559,6 +569,16 @@ The response will be in the [Newline Delimited JSON format](http://ndjson.org/) 
 }
 ```
 
+#### Response type `diagnostics`
+
+```json
+{
+  "type": "diagnostic",
+  "severity": "<string: 'warning' or 'error'>",
+  "message": "<string>"
+}
+```
+
 :::info Response types
 This is just a subset of possible response types. Clients should be prepared to handle (or ignore)
 responses with a value of `type` not specified above.
@@ -727,6 +747,16 @@ In case the service learns about events that need to be sorted earlier than an e
     "lamport": "<integer>",
     "offset": "<integer>"
   }
+}
+```
+
+#### Response type `diagnostics`
+
+```json
+{
+  "type": "diagnostic",
+  "severity": "<string: 'warning' or 'error'>",
+  "message": "<string>"
 }
 ```
 
