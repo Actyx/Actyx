@@ -326,15 +326,7 @@ Otherwise the Events API will only return events from streams that are specified
 
 #### Required: Query (`query`)
 
-The `query` field specifies a tag query that defines which events should be queried.
-Every `query` must begin with the keyword `FROM`.
-Following `FROM`, three different query types can be specified.
-
-- [Tag query](../conceptual/tags): Arbitrary unicode strings in single quotes, e.g. `FROM 'tag-01'`
-- `isLocal`: Returns all events within the specified bounds emitted by the local node backing the Events API
-- `allEvents`: Returns all events within the specified bounds known by the node backing the Events API
-
-All three query types can be combined using a combination of the boolean expressions `|` and `&` and parentheses, e.g. `FROM isLocal & ('tag-01' | 'tag-02')`.
+The `query` field specifies an [AQL](/docs/reference/aql) query that defines how events should be filtered and/or transformed.
 
 #### Required: Ordering (`order`)
 
@@ -521,15 +513,7 @@ You use the request body to specify the details of your request as documented in
 
 #### Required: Query (`query`)
 
-The `query` field specifies a query that defines how events should be filtered.
-Every `query` must begin with the keyword `FROM`.
-Following `FROM`, three different query types can be specified.
-
-- [Tag query](../conceptual/tags): Arbitrary unicode strings in single quotes, e.g. `FROM 'tag-01'`
-- `isLocal`: Returns all events within the specified bounds emitted by the local node backing the Events API
-- `allEvents`: Returns all events within the specified bounds known by the node backing the Events API
-
-All three query types can be combined using a combination of the boolean expressions `|` and `&` and parentheses, e.g. `FROM isLocal & ('tag-01' | 'tag-02')`.
+The `query` field specifies an [AQL](/docs/reference/aql) query that defines how events should be filtered and/or transformed.
 
 #### Optional: Lower bound for offsets (`lowerBound`)
 
@@ -684,7 +668,7 @@ If the `query` changes, a new session will be created regardless of the existenc
 
 #### Required: Query (`query`)
 
-The `query` field specifies a tag query that defines how events should be filtered.
+The `query` field specifies an [AQL](/docs/reference/aql) query that defines how events should be filtered and/or transformed.
 
 #### Optional: Lower bound for offsets (`lowerBound`)
 
