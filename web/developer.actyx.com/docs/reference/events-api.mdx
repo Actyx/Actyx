@@ -373,6 +373,17 @@ The response will be in the [Newline Delimited JSON format](http://ndjson.org/) 
     "<string: stream ID>": "<integer: event offset, e.g. 101>"
   }
 }
+```
+
+#### Response type `diagnostics`
+
+```json
+{
+  "type": "diagnostic",
+  "severity": "<string: 'warning' or 'error'>",
+  "message": "<string>"
+}
+```
 
 :::info Response types
 This is just a subset of possible response types. Clients should be prepared to handle (or ignore)
@@ -473,8 +484,6 @@ curl \
 You can use the Events API to subscribe to event streams.
 The Events API may return past events and continue returning new "live" events as they are received.
 
-TODO: clarify ordering
-
 <Tabs
   groupId="content"
   defaultValue={"ref"}
@@ -556,6 +565,17 @@ The response will be in the [Newline Delimited JSON format](http://ndjson.org/) 
     "<string: stream ID>": "<integer: event offset, e.g. 101>"
   }
 }
+```
+
+#### Response type `diagnostics`
+
+```json
+{
+  "type": "diagnostic",
+  "severity": "<string: 'warning' or 'error'>",
+  "message": "<string>"
+}
+```
 
 :::info Response types
 This is just a subset of possible response types. Clients should be prepared to handle (or ignore)
@@ -725,6 +745,16 @@ In case the service learns about events that need to be sorted earlier than an e
     "lamport": "<integer>",
     "offset": "<integer>"
   }
+}
+```
+
+#### Response type `diagnostics`
+
+```json
+{
+  "type": "diagnostic",
+  "severity": "<string: 'warning' or 'error'>",
+  "message": "<string>"
 }
 ```
 
