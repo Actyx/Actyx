@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Actyx.Sdk.Formats;
+using Actyx.Sdk.Utils;
 using Actyx.Sdk.Utils.Extensions;
 using Newtonsoft.Json;
 
@@ -27,12 +28,15 @@ namespace Actyx.Sdk.AxHttpClient
 
         public static async Task<AxHttpClient> Create(string baseUrl, AppManifest manifest)
         {
-            var that = new AxHttpClient(baseUrl, manifest);
-            var nodeId = await GetNodeId(new Uri(baseUrl));// httpClient.GetAsync(that.MkApiUrl(HttpApiPath.NODE_ID_SEG));
-            that.NodeId = nodeId;
-            that.token = (await GetToken(that.uriBuilder.Uri, manifest)).Token;
+            ThrowIf.Argument.IsNull(baseUrl, nameof(baseUrl));
 
-            return that;
+            var client = new AxHttpClient(baseUrl, manifest)
+            {
+                NodeId = await GetNodeId(new Uri(baseUrl)),
+            };
+            client.token = (await GetToken(client.uriBuilder.Uri, manifest)).Token;
+
+            return client;
         }
 
         private readonly UriBuilder uriBuilder;

@@ -16,11 +16,20 @@ namespace Actyx
 
     public class ActyxOpts
     {
+        private static uint? PortNumber(string s) => s is null ? (uint?)null : Convert.ToUInt32(s);
+
+        public ActyxOpts()
+        {
+            Transport = Transport.Http;
+            Host = Environment.GetEnvironmentVariable("AX_CLIENT_HOST") ?? "localhost";
+            Port = PortNumber(Environment.GetEnvironmentVariable("AX_CLIENT_API_PORT")) ?? 4454;
+        }
+
         /** Host of the Actxy service. This defaults to localhost and should stay localhost in almost all cases. */
-        public string ActyxHost { get; set; }
+        public string Host { get; set; }
 
         /** API port of the Actyx service. Defaults to 4454. */
-        public uint? ActyxPort { get; set; }
+        public uint Port { get; set; }
 
         /** Whether to use plain http or websocket to communicate with the Actyx service. Defaults
          * to WebSocket. */

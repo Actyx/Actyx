@@ -4,8 +4,7 @@ using System.Threading.Tasks;
 using Actyx.Sdk.AxHttpClient;
 using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
-using JsonSubTypes;
-using Newtonsoft.Json;
+using Actyx.Sdk.Utils;
 using Newtonsoft.Json.Linq;
 
 namespace Actyx
@@ -66,12 +65,11 @@ namespace Actyx
     {
         public async static Task<IEventStore> Create(AppManifest manifest, ActyxOpts options)
         {
-            string host = options?.ActyxHost ?? "localhost";
-            uint port = options?.ActyxPort ?? 4454;
+            ThrowIf.Argument.IsNull(options, nameof(options));
 
-            string basePath = $"{host}:{port}/api/v2/";
+            string basePath = $"{options.Host}:{options.Port}/api/v2/";
 
-            if (options?.Transport == Transport.Http)
+            if (options.Transport == Transport.Http)
             {
                 return new HttpEventStore(await AxHttpClient.Create($"http://{basePath}", manifest));
             }

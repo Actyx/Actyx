@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Actyx.Sdk.Formats;
 
-namespace Sdk.Tests.Helpers
+namespace Sdk.IntegrationTests.Helpers
 {
     public static class Constants
     {
@@ -14,7 +14,5 @@ namespace Sdk.Tests.Helpers
         };
 
         public static IEnumerable<string> Tags => new List<string>() { "42", "order", "dotnet" };
-
-        public static string ApiOrigin => Environment.GetEnvironmentVariable("HTTP_API_ORIGIN") ?? "http://localhost:4454/api/v2/";
     }
 }

@@ -4,7 +4,6 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
-using Actyx.Sdk.AxHttpClient;
 using Actyx.Sdk.Formats;
 using Actyx.Sdk.Utils;
 using Actyx.Sdk.Utils.Extensions;
@@ -39,12 +38,19 @@ namespace Actyx.Sdk.AxWebsocketClient
                 .Select(offsets => offsets.ToObject<OffsetsResponse>(serializer))
                 .ToTask();
 
-        public Task<PublishResponse> Publish(IEnumerable<IEventDraft> events) =>
-            wsrpcClient
+        public Task<PublishResponse> Publish(IEnumerable<IEventDraft> events)
+        {
+            if (events is null || events.Count() == 0)
+            {
+                return Task.FromResult(new PublishResponse { Data = new List<EventPublishMetadata>() });
+            }
+
+            return wsrpcClient
                 .Request("publish", JToken.FromObject(new { data = events }, serializer))
                 .Take(1)
                 .Select(response => response.ToObject<PublishResponse>(serializer))
                 .ToTask();
+        }
 
         public IObservable<IEventOnWire> Query(OffsetMap lowerBound, OffsetMap upperBound, IEventSelection query, EventsOrder sortOrder)
         {
