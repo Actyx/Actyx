@@ -9,6 +9,10 @@ image: /images/defaults/default.svg
 This series of guides is for everyone who has developed an app and/or is running a deployment on Actyx 1.x.
 While it looks like a lot has changed, most of what you know and like about Actyx is still the same; we wanted to be as thorough as possible and provide detailed explanations and examples for the migration procedure.
 
+:::info Looking for v1 documentation?
+If you are still working with Actyx version 1.x, you can find the documentation under [this link](https://60e2cdf227e6fa000855d867--ax-v1-developer.netlify.app/). To download version 1 artifacts, please visit our [legacy downloads website](https://6082f864470e5600086ac7cf--ax-v1-downloads-redirect.netlify.app/).
+:::
+
 ## Notable new features
 
 Although you will probably not notice most of the internal changes, Actyx 2.0 is built differently from the ground up.
@@ -27,7 +31,7 @@ This section contains a list of breaking changes from 1.x:
 
 ### APIs
 
-- [Events API](../../reference/events-api.mdx) now uses tags (instead of `semantics` and  `name`) to align it with the Pond, and requires apps to authenticate.
+- [Events API](../../reference/events-api.mdx) now uses tags (instead of `semantics` and `name`) to align it with the Pond, and requires apps to authenticate.
 - [Auth API](../../reference/auth-api.mdx) for receiving authentication tokens to interact with the Events API.
 
 ### Communication between Actyx and CLI
@@ -40,7 +44,7 @@ This section contains a list of breaking changes from 1.x:
 
 ### App packaging, logging, and settings
 
-- Actyx does not provide app runtimes anymore. This means your apps run natively on the host and you can use any 3rd party tools for packaging, logging, as well as settings management. 
+- Actyx does not provide app runtimes anymore. This means your apps run natively on the host and you can use any 3rd party tools for packaging, logging, as well as settings management.
 
 ### Node and app license key formats
 
