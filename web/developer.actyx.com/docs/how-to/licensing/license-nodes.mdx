@@ -1,0 +1,63 @@
+---
+title: License nodes
+id: license-nodes
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+This how-to guide explains how you can manage node licenses.
+If you want to run a node in production, you need to have a valid node license which is stored in the node's settings.
+
+:::tip No need for a license during development
+By default, your node is configured to be in development. You do not need to provide a license until you run it in production.
+:::
+
+:::info want to buy license keys?
+If you want to buy license keys, please get in touch with your contact at Actyx or fill out [this form](https://www.actyx.com/contact).
+:::
+
+You can manage license keys in the settings of the node on which the app is running under `licensing/node/...` as shown below:
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<Tabs
+  groupId="tool"
+  defaultValue={"nm"}
+  values={[
+    { label: "Node Manager", value: "nm" },
+    { label: "CLI", value: "cli" }
+  ]}
+>
+
+<TabItem value="nm">
+
+You can add or delete authorized apps from the node by simply editing the node settings.
+For this, you need to first select the node you want to manage from the **Node Overview**.
+
+![node-overview](/images/how-to/app-auth/node-overview.png)
+
+Next, navigate to the **Settings** tab which displays the currently saved node settings.
+Now, you can simply change the value for `node` under `licensing`.
+
+![settings-01](/images/how-to/app-auth/settings-01.png)
+
+</TabItem>
+<TabItem value="cli">
+
+In order to change the license of your node, you need to use the [`ax settings set`](../../reference/cli/settings/set.md) commands, as shown in the example below:
+
+```text
+ax settings set /licensing/node "2VK3DWKBZEPJCHJ7ZGP83OT1EDUX67ZWDYNZ222EUZ57Q4MNC5QZGDHZYI8ROSFN88SYRDK8YXAQ235NKLIZC9Y2ZCVTZHJDVI1Z" 192.168.1.211
+```
+
+</TabItem>
+</Tabs>
+
+
+If you want to read a more holistic explanation of authentication and authorization with Actyx, please check out our [conceptual guide](../../conceptual/authentication-and-authorization.mdx) on the topic.
+
+:::tip still have app license keys for Actyx v1.x?
+The format of app and node license keys changed. If you have license keys that you purchased for Actyx v1.x, please get in touch with your contact at Actyx or write an e-mail to developer@actyx.io and we will send you new license keys.
+:::
