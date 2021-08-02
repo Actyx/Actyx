@@ -5,6 +5,7 @@ module.exports = {
   tagline: 'Documentation, guides and tools for building on the Actyx Platform',
   url: 'https://developer.actyx.com',
   baseUrl: '/',
+  trailingSlash: false,
   favicon: 'img/favicon.ico',
   organizationName: 'Actyx',
   projectName: 'Actyx Developer Docs',
@@ -129,7 +130,7 @@ module.exports = {
           ],
         },
         {
-          title: 'Essential concepts',
+          title: 'Concepts',
           items: [
             {
               label: 'How Actyx works',
@@ -164,22 +165,30 @@ module.exports = {
               label: 'Node Manager',
               to: 'docs/reference/node-manager',
             },
+            {
+              label: 'Actyx Query Language',
+              to: 'docs/reference/aql',
+            },
           ],
         },
         {
-          title: 'For developers',
+          title: 'Migration',
           items: [
             {
-              label: 'Forum',
-              to: 'https://community.actyx.com',
+              label: 'Version 1 Docs',
+              to: 'https://60e2cdf227e6fa000855d867--ax-v1-developer.netlify.app/',
             },
             {
-              label: 'Discord',
-              to: 'https://discord.gg/262yJhc',
+              label: 'Version 1 Downloads',
+              to: 'https://6082f864470e5600086ac7cf--ax-v1-downloads-redirect.netlify.app/',
             },
             {
-              label: 'Blog',
-              to: 'blog',
+              label: 'Migrating Apps',
+              to: 'docs/how-to/migration/migration-overview#migrating-your-apps',
+            },
+            {
+              label: 'Migrating Nodes',
+              to: 'docs/how-to/migration/migrate-production-nodes',
             },
           ],
         },
@@ -191,12 +200,12 @@ module.exports = {
               to: 'https://www.actyx.com',
             },
             {
-              label: 'Team',
-              to: 'https://www.actyx.com/about',
+              label: 'Forum',
+              to: 'https://community.actyx.com',
             },
             {
-              label: 'News',
-              to: 'https://www.actyx.com/news',
+              label: 'Blog',
+              to: 'blog',
             },
             {
               label: 'Careers',
