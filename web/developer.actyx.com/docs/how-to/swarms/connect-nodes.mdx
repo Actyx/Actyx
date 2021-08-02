@@ -38,7 +38,7 @@ In this example, the node that should initiate the connection after startup has 
 
 <!-- markdownlint-disable MD036 -->
 
-**1. Get the peer ID of the node you want to connect to by running [`ax nodes inspect`](../../reference/cli/nodes/inspect):**
+**1. Get the peer ID of the node you want to connect to by running [`ax nodes inspect`](../../reference/cli/nodes/inspect.md):**
 
 ```text
 ax nodes inspect 192.168.1.219
@@ -62,9 +62,9 @@ In the above example output, you can see that the peer ID with IP address `192.1
 
 **2. Configure the `initialPeers`setting**
 
-You configure initialPeers in the following format: `/ip4/<IP address>/tcp/<swarm port>/p2p/<peer ID>`; the IP address of the node that you want to connect to, the swarm port (4001 [unless configured differently](../troubleshooting/installation-and-startup#err_port_collision)), and the peer ID that you found out above.
+You configure initialPeers in the following format: `/ip4/<IP address>/tcp/<swarm port>/p2p/<peer ID>`; the IP address of the node that you want to connect to, the swarm port (4001 [unless configured differently](../troubleshooting/installation-and-startup.mdx#err_port_collision)), and the peer ID that you found out above.
 
-You can configure the `initialPeers` by running `[ax settings set`](../../reference/cli/settings/set):
+You can configure the `initialPeers` by running `[ax settings set`](../../reference/cli/settings/set.md):
 
 ```text
 ax settings set /swarm/initialPeers [/ip4/192.168.1.219/tcp/4001/p2p/12D3KooWSgvc3hzrsuExYazNDB1BU3gevUPTzaumnwHWv5yFBNzH] 192.168.2.220
@@ -80,7 +80,7 @@ TODO
 
 **2. Configure the `initialPeers`setting**
 
-You configure initialPeers in the following format: `/ip4/<IP address>/tcp/<swarm port>/p2p/<peer ID>`; the IP address of the node that you want to connect to, the swarm port (4001 [unless configured differently](../troubleshooting/installation-and-startup#err_port_collision)), and the peer ID that you found out above.
+You configure initialPeers in the following format: `/ip4/<IP address>/tcp/<swarm port>/p2p/<peer ID>`; the IP address of the node that you want to connect to, the swarm port (4001 [unless configured differently](../troubleshooting/installation-and-startup.mdx#err_port_collision)), and the peer ID that you found out above.
 
 In this case, we would configure `/ip4/192.168.1.219/tcp/4001/p2p/12D3KooWSgvc3hzrsuExYazNDB1BU3gevUPTzaumnwHWv5yFBNzH`.
 

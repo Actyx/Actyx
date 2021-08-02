@@ -19,7 +19,7 @@ const chatRoomFish: Fish<string[], ChatRoomEvent> = ..
 This allows interactions with fishes via `Pond.run` and `Pond.observe` to be checked for correctness
 by the TypeScript compiler.
 
-Via the [typed tagging system](typed-tags), correctness is also checked for `Pond.emit`: Given a set
+Via the [typed tagging system](typed-tags.mdx), correctness is also checked for `Pond.emit`: Given a set
 of tags (constructed like `someTag.and(someOtherTag).and(aThirdTag.withId('some-id'))`), only those
 events may be emitted that are part of the type of all of these tags.
 

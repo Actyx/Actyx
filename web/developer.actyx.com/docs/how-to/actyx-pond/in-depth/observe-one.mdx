@@ -3,7 +3,7 @@ title: observeOne() Behavior
 hide_table_of_contents: true
 ---
 
-`observeOne` is a variant of [`observeAll`](./observe-all) that is useful when you are looking for one specific Fish.
+`observeOne` is a variant of [`observeAll`](./observe-all.mdx) that is useful when you are looking for one specific Fish.
 
 From the events selected by `seedEventSelector: Where<F>`, one will be chosen to pass to `makeFish: (seedEvent: F) => Fish<S, any>` and spawn the Fish.
 The Fish is then observed and its state passed to the `callback: (newState: S) => void` whenever it changes.

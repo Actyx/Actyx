@@ -10,7 +10,7 @@ image: /images/defaults/default.svg
 <!-- textlint-disable -->
 
 This is the reference documentation for the **Events API**.
-If you run into questions while going through the document, we recommend reading the [conceptual guide](../conceptual/event-streams) on event streams to get a more holistic understanding of how the Events API works.
+If you run into questions while going through the document, we recommend reading the [conceptual guide](../conceptual/event-streams.mdx) on event streams to get a more holistic understanding of how the Events API works.
 
 The Events API allows you to
 
@@ -57,7 +57,7 @@ This request returns the currently validated `present` as observed by this node,
 It further returns a map in `toReplicate`, which describes the number of events that are available in the swarm and should eventually become available on this local node.
 Fully replicated streams are omitted from this map.
 
-Take a look at the [event streams guide](../conceptual/event-streams) to learn more about the role of offsets.
+Take a look at the [event streams guide](../conceptual/event-streams.mdx) to learn more about the role of offsets.
 
 <Tabs
   groupId="content"
@@ -103,7 +103,7 @@ The response body will contain a JSON object of the following structure:
 }
 ```
 
-To learn more about stream IDs and event streams in general see our [conceptual guide on event streams](../conceptual/event-streams).
+To learn more about stream IDs and event streams in general see our [conceptual guide on event streams](../conceptual/event-streams.mdx).
 
 </TabItem>
 
@@ -326,7 +326,7 @@ Otherwise the Events API will only return events from streams that are specified
 
 #### Required: Query (`query`)
 
-The `query` field specifies an [AQL](/docs/reference/aql) query that defines how events should be filtered and/or transformed.
+The `query` field specifies an [AQL](aql.mdx) query that defines how events should be filtered and/or transformed.
 
 #### Required: Ordering (`order`)
 
@@ -522,7 +522,7 @@ You use the request body to specify the details of your request as documented in
 
 #### Required: Query (`query`)
 
-The `query` field specifies an [AQL](/docs/reference/aql) query that defines how events should be filtered and/or transformed.
+The `query` field specifies an [AQL](aql.mdx) query that defines how events should be filtered and/or transformed.
 
 #### Optional: Lower bound for offsets (`lowerBound`)
 
