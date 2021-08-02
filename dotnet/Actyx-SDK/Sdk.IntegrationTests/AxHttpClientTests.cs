@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Net.Http;
+using Actyx;
 using Actyx.Sdk.AxHttpClient;
 using FluentAssertions;
-using Sdk.Tests.Helpers;
+using Sdk.IntegrationTests.Helpers;
 using Xunit;
 
-namespace Sdk.Tests
+namespace Sdk.IntegrationTests
 {
     public class AxHttpClientTests
     {
@@ -35,17 +36,22 @@ namespace Sdk.Tests
             var ex = await Assert.ThrowsAsync<HttpRequestException>(async () => await AxHttpClient.Create(uri, Constants.TrialManifest));
         }
 
-        [Fact(Skip = "requires running Actyx node")]
+        [Fact()]
         public async void It_Should_Get_App_Id()
         {
-            var client = await AxHttpClient.Create(Constants.ApiOrigin, Constants.TrialManifest);
+            var opts = new ActyxOpts();
+            string uri = $"http://{opts.Host}:{opts.Port}/api/v2/";
+            var client = await AxHttpClient.Create(uri, Constants.TrialManifest);
             client.AppId.Should().Equals(Constants.TrialManifest.AppId);
         }
 
-        [Fact(Skip = "requires running Actyx node")]
+        [Fact()]
         public async void It_Should_Get_Node_Id()
         {
-            var client = await AxHttpClient.Create(Constants.ApiOrigin, Constants.TrialManifest);
+
+            var opts = new ActyxOpts();
+            string uri = $"http://{opts.Host}:{opts.Port}/api/v2/";
+            var client = await AxHttpClient.Create(uri, Constants.TrialManifest);
             client.NodeId.ToString().Should().NotBeNullOrWhiteSpace();
         }
     }

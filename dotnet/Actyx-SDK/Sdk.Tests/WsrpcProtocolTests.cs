@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Sdk.Tests
 {
-    public class ProtocolTests
+    public class WsrpcProtocolTests
     {
         static void Roundtrip<T>(T value)
         {

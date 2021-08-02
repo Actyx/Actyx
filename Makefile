@@ -165,7 +165,7 @@ current: dist/bin/current/ax dist/bin/current/actyx-linux
 
 all-js: dist/js/pond dist/js/sdk
 
-all-dotnet: dist/dotnet/cli
+all-dotnet: dist/dotnet/cli dist/dotnet/sdk-integration
 
 # Create a `make-always` target that always has the current timestamp.
 # Depending on this ensures that the rule is always executed.
@@ -350,10 +350,14 @@ dist/dotnet/cli: make-always
 	mkdir -p $@
 	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet publish CLI --output /src/$@/
 
+dist/dotnet/sdk-integration: make-always
+	mkdir -p $@
+	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet publish Sdk.IntegrationTests --output /src/$@/
+
 validate-dotnet: validate-dotnet-sdk
 
 validate-dotnet-sdk:
-	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet test
+	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet test Sdk.Tests
 
 validate-node-manager-bindings:
 	cd rust/actyx/node-manager-bindings && \

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Actyx;
 
-namespace Sdk.Tests.Helpers
+namespace Sdk.IntegrationTests.Helpers
 {
     class TestEvent : IEventDraft
     {

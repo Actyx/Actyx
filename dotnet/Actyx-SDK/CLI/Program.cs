@@ -25,11 +25,11 @@ namespace Actyx.CLI
                 switch (hostPort.Length)
                 {
                     case 1:
-                        opts.ActyxHost = hostPort[0];
+                        opts.Host = hostPort[0];
                         break;
                     case 2:
-                        opts.ActyxHost = hostPort[0];
-                        opts.ActyxPort = Convert.ToUInt32(hostPort[1]);
+                        opts.Host = hostPort[0];
+                        opts.Port = Convert.ToUInt32(hostPort[1]);
                         break;
                 }
             }

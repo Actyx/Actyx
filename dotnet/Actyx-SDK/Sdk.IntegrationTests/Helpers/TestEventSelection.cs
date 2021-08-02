@@ -1,6 +1,6 @@
 ﻿using Actyx;
 
-namespace Sdk.Tests.Helpers
+namespace Sdk.IntegrationTests.Helpers
 {
     class TestEventSelection : IEventSelection
     {
