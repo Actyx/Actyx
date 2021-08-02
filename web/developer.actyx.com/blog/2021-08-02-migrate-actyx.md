@@ -1,15 +1,16 @@
 ---
-title: Migrate to Actyx 2.x from 1.x
+title: Introducing tooling for migrating to Actyx 2.x
 author: Maximilian Haushofer
 author_title: Product Manager at Actyx
-author_url: https://www.actyx.com/
-tags: [Actyx Node Manager, Events, AQL]
+author_url: https://www.linkedin.com/in/maximilianhaushofer/
+tags: [Migration]
 ---
 
-Do you want to upgrade your production deployment to benefit from all Actyx 2.x features?
+Do you want your production deployment to benefit from all amazing features introduced with Actyx 2.x and newer releases?
 
-The release of Actyx version 2 and all following releases contained great improvements.
+With the [Actyx 2.3.0](/releases/actyx/2.3.0) release, we are excited to offer extensive migration tooling that will enable you to easily migrate to Actyx version 2.
 
-To benefit of them in your existing deployments, we [released the functionality to migrate nodes in Actyx 2.3.0](/releases/actyx/2.3.0).
+If you want to find out more about how to migrate your production deployment, head over to the [migration section of our how-to guides](/docs/how-to/migration/migration-overview)!
 
-You can find all relevant [how-to guides for migrating your apps and nodes here](/docs/how-to/migration/migration-overview).
+As always, we are keen on hearing your opinions and feedback. 
+If you have any questions or run into problems during your migration, please don't hesitate to [contact us on Discord](https://discord.com/invite/262yJhc) or visit our [Community Forum](https://community.actyx.com/)!
