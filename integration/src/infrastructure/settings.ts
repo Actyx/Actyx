@@ -37,6 +37,11 @@ export const currentActyxBinary = (): Promise<string> => getCurrent(Binary.actyx
 export const dotnetEventsCliAssembly = (): Promise<string> =>
   ensureBinaryExists(currentOS(), `../dist/dotnet/cli`).then((x) => `${x}/CLI.dll`)
 
+export const dotnetIntegrationTestsAssembly = (): Promise<string> =>
+  ensureBinaryExists(currentOS(), `../dist/dotnet/sdk-integration`).then(
+    (x) => `${x}/Sdk.IntegrationTests.dll`,
+  )
+
 const getCurrent = (bin: Binary) =>
   settings().gitHash == null
     ? // TODO: Derive Binary from currentOS()
