@@ -84,7 +84,6 @@ module.exports = {
       items: [
         'how-to/app-auth/sign-app-manifest',
         'how-to/app-auth/authenticate-with-app-manifest',
-        'how-to/app-auth/manage-authorized-apps',
       ],
     },
     {
@@ -123,6 +122,15 @@ module.exports = {
         'how-to/monitoring-debugging/network-requirements',
         'how-to/monitoring-debugging/node-connections',
       ],
+    },
+    {
+      type: 'category',
+      label: 'Licensing',
+      collapsed: true,
+      items: [
+        'how-to/licensing/license-nodes',
+        'how-to/licensing/license-apps',
+      ]
     },
     {
       type: 'category',

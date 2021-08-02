@@ -1,35 +1,33 @@
 ---
-title: Manage authorized apps
-id: manage-authorized-apps
+title: License apps
+id: license-apps
 hide_title: false
 hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-Authorized apps are apps for which you purchased an app license key so that they can run in production.
-If you want to deploy an app to or remove an app from your nodes in production, you need to manage their licenses stored in the node settings.
-This how-to guide explains how you can manage your authorized apps.
+This how-to guide explains how you can manage app licenses.
+If you deploy apps to or remove them from a node in production, you need to manage their licenses stored in the node's settings.
+Without a valid license, an app does not receive an Auth token and can therefore not interact with the Events API.
+
+:::tip No need for licenses during development
+By default, your node is configured as follows and you therefore do not need to store an app license in your node's settings for receiving an Auth token:
+
+```json title="Node settings example"
+...
+"licensing": {
+    "node": "development"
+}
+...
+```
+
+:::
 
 :::info want to buy license keys?
 If you want to buy license keys, please get in touch with your contact at Actyx or fill out [this form](https://www.actyx.com/contact).
 :::
 
-You can manage license keys in the settings of the node on which the app is running under `licensing/apps/...` as shown below:
-
-```json title="Managing authorized apps"
-...
-"licensing": {
-    "node": "<string: node license key>",
-    "apps": {
-        "com.actyx.example": "<string: app license key>"
-    }
-}
-...
-```
-
-:::tip still have app license keys for Actyx v1.x?
-The format of app and node license keys changed. If you have license keys that you purchased for Actyx v1.x, please get in touch with your contact at Actyx or write an e-mail to developer@actyx.io and we will send you new license keys.
-:::
+You can manage the app license keys in the settings of the node on which the app is running under `licensing/apps/...` as shown below:
 
 import Tabs from '@theme/Tabs'
 import TabItem from '@theme/TabItem'
@@ -47,7 +45,7 @@ import TabItem from '@theme/TabItem'
 <TabItem value="nm">
 
 
-You can add or delete authorized apps from the node by simply editing the node settings.
+You can add or delete licensed apps from the node by simply editing the node settings.
 For this, you need to first select the node you want to manage from the **Node Overview**.
 
 ![node-overview](/images/how-to/app-auth/node-overview.png)
@@ -68,7 +66,7 @@ In order to add or delete authorized apps from the node, you need to use the [`a
 The following command creates a text file called `example` that lists the currently authorized apps on your node running at `192.168.1.211`:
 
 ```text
-ax settings get com.actyx/licensing/apps 192.168.1.211 > example
+ax settings get /licensing/apps 192.168.1.211 > example
 ```
 
 Now open the file, and add the license you want to add to the node:
@@ -77,16 +75,17 @@ Now open the file, and add the license you want to add to the node:
 com.actyx.example: '2VK3DWKBZEPJCHJ7ZGP83OT1EDUX67ZWDYNZ222EUZ57Q4MNC5QZGDHZYI8ROSFN88SYRDK8YXAQ235NKLIZC9Y2ZCVTZHJDVI1Z'
 ```
 
-<!-- TODO check and if necessary change license key format once implemented -->
-
 You can then use this file to configure the list of authorized apps:
 
 ```text
-ax settings set com.actyx/licensing/apps @example 192.168.1.211
+ax settings set /licensing/apps @example 192.168.1.211
 ```
 
 </TabItem>
 </Tabs>
 
-
 If you want to read a more holistic explanation of authentication and authorization with Actyx, please check out our [conceptual guide](../../conceptual/authentication-and-authorization.mdx) on the topic.
+
+:::tip still have app license keys for Actyx v1.x?
+The format of app and node license keys changed. If you have license keys that you purchased for Actyx v1.x, please get in touch with your contact at Actyx or write an e-mail to developer@actyx.io and we will send you new license keys.
+:::
