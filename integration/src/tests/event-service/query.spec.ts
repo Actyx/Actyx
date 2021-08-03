@@ -6,7 +6,7 @@ import {
   QueryResponse,
 } from '../../http-client'
 import { run, runWithClients } from '../../util'
-import { mySuite, publishRandom, testName, throwOnCb } from './utils.support.test'
+import { mySuite, publish, publishRandom, testName, throwOnCb } from './utils.support.test'
 
 const query = async (es: AxEventService, query: string): Promise<unknown[]> => {
   const result: unknown[] = []
@@ -192,6 +192,27 @@ describe('event service', () => {
         expect(await query(es, `FROM isLocal & "${mySuite()}" & "query-canon" & "H"`)).toEqual([4])
         expect(await query(es, `FROM isLocal & "${mySuite()}" & "query-canon" & "ﬁ"`)).toEqual([5])
         expect(await query(es, `FROM isLocal & "${mySuite()}" & "query-canon" & "fi"`)).toEqual([6])
+      }))
+
+    it('should work with AQL', () =>
+      runWithClients(async (events, clientId) => {
+        const [pub1, ..._] = await publish(events, clientId)({ value: 1 }, { value: 'one' })
+
+        const request: QueryRequest = {
+          query: `FROM '${mySuite()}' & '${testName()}' & 'client:${clientId}' & isLocal SELECT _.value / 1`,
+          order: Order.Asc,
+        }
+        const data: QueryResponse[] = []
+        await events.query(request, (x) => data.push(x))
+        expect(data).toMatchObject([
+          { ...pub1, payload: 1 }, // apply transformation
+          {
+            type: 'diagnostic',
+            severity: 'warning',
+            message: expect.stringContaining('"one" is not a number'),
+          },
+          { type: 'offsets', offsets: { [pub1.stream]: expect.any(Number) } },
+        ])
       }))
   })
 })

@@ -6,6 +6,9 @@ using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
 using Actyx.Sdk.Utils;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
 
 namespace Actyx
 {
@@ -22,6 +25,15 @@ namespace Actyx
     public class OffsetsOnWire : IEventOnWire
     {
         public OffsetMap Offsets { get; set; }
+    }
+
+    public enum DiagnosticSeverity { Warning, Error }
+
+    public class DiagnosticOnWire : IEventOnWire
+    {
+        [JsonConverter(typeof(StringEnumConverter), typeof(CamelCaseNamingStrategy))]
+        public DiagnosticSeverity Severity;
+        public string Message;
     }
 
     // Internal event class, 1:1 correspondence with wire format
