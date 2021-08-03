@@ -181,7 +181,7 @@ async fn filter_tree(
     tree: &AxTree,
     query: impl Query<AxTrees> + Clone + 'static,
 ) -> anyhow::Result<Vec<(u64, AxKey, Payload)>> {
-    txn.stream_filtered(&tree, query)
+    txn.stream_filtered(tree, query)
         .collect::<Vec<_>>()
         .await
         .into_iter()

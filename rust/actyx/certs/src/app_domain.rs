@@ -28,7 +28,7 @@ impl FromStr for AppDomain {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let re = Regex::new("^[a-z0-9-]+\\.[a-z0-9-]+\\.\\*$").unwrap();
-        match re.is_match(&s) {
+        match re.is_match(s) {
             true => Ok(Self(s.into())),
             false => Err(InvalidAppDomainForm { input: s.into() }),
         }

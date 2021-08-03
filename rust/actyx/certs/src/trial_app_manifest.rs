@@ -68,13 +68,13 @@ mod tests {
     #[test]
     fn should_succeed_deserializing_manifest() {
         let serialized = r#"{"appId":"com.example.test-app","displayName":"display name","version":"v0.0.1"}"#;
-        let _: TrialAppManifest = serde_json::from_str(&serialized).unwrap();
+        let _: TrialAppManifest = serde_json::from_str(serialized).unwrap();
     }
 
     #[test]
     fn should_fail_deserializing_manifest() {
         let serialized = r#"{"appId":"com.actyx.test-app","displayName":"display name","version":"v0.0.1"}"#;
-        let result = serde_json::from_str::<TrialAppManifest>(&serialized).unwrap_err();
+        let result = serde_json::from_str::<TrialAppManifest>(serialized).unwrap_err();
         assert_eq!(
             result.to_string(),
             "Trial app id needs to start with \'com.example.\'. Got \'com.actyx.test-app\'. at line 1 column 29"

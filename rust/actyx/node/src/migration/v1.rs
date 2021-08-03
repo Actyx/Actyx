@@ -132,7 +132,7 @@ pub fn assert_v1(v1_working_dir: impl AsRef<Path>) -> anyhow::Result<V1Directory
 /// Creates a new DB from a given [`rusqlite::Connection`] at `to`.
 fn copy_db(from: &Connection, to: impl AsRef<Path>) -> anyhow::Result<Connection> {
     let mut to = Connection::open(to)?;
-    let backup = rusqlite::backup::Backup::new(&from, &mut to)?;
+    let backup = rusqlite::backup::Backup::new(from, &mut to)?;
     backup.run_to_completion(1000, Duration::from_millis(1), None)?;
     std::mem::drop(backup);
     Ok(to)

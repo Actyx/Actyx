@@ -193,7 +193,7 @@ impl EventStore {
         from_offsets_excluding: OffsetMap,
     ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
         let this = self.clone();
-        let mk_tags_query = TagExprQuery::from_expr(&tag_expr)?;
+        let mk_tags_query = TagExprQuery::from_expr(tag_expr)?;
         let banyan_store = self.banyan_store.clone();
         Ok(self
             .banyan_store
@@ -347,7 +347,7 @@ mod tests {
         assert_eq!(res.len(), len, "actual: {:#?}", res);
 
         fn matches(selection: EventSelection, node_id: NodeId) -> impl FnMut(&Event<Payload>) -> bool {
-            move |e| selection.matches(e.key.stream.node_id() == node_id, &e)
+            move |e| selection.matches(e.key.stream.node_id() == node_id, e)
         }
         assert!(res.iter().all(matches(selection, node_id)));
 

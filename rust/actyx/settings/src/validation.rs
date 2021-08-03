@@ -88,7 +88,7 @@ impl Validator {
 
     fn get_schema(&'_ self) -> schema::ScopedSchema<'_> {
         let (url, scope) = &self.schema;
-        scope.resolve(&url).unwrap()
+        scope.resolve(url).unwrap()
     }
 
     fn handle_result<F>(

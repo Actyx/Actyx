@@ -23,8 +23,8 @@ pub enum Data {
 impl AsRef<[u8]> for Data {
     fn as_ref(&self) -> &[u8] {
         match self {
-            Data::List(b) => &b,
-            Data::Bytes(b) => &b,
+            Data::List(b) => b,
+            Data::Bytes(b) => b,
         }
     }
 }

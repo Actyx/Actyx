@@ -60,13 +60,13 @@ android-bins = actyx.apk
 CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
 
-export BUILD_RUST_TOOLCHAIN ?= 1.51.0
+export BUILD_RUST_TOOLCHAIN ?= 1.54.0
 
 # The stable image version is the git commit hash inside `Actyx/Cosmos`, with
 # which the respective images was built. Whenever the build images (inside
 # ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 285829647132a4a05bc6174613384e5205fd4a3f
+export LATEST_STABLE_IMAGE_VERSION := 33b15c3a394b14aee711cc6d26b7267a35fdf065
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl

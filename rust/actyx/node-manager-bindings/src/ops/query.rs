@@ -38,7 +38,7 @@ struct Res {
 
 async fn do_query(key: &AxPrivateKey, mut node: NodeConnection, query: Query) -> ActyxOSResult<Res> {
     let r = node.request_events(
-        &key,
+        key,
         EventsRequest::Query(QueryRequest {
             lower_bound: None,
             upper_bound: None,

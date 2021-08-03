@@ -130,13 +130,13 @@ impl Node {
                 .with_message("You cannot set settings for the root scope. Please specify a settings scope."));
         }
         debug!("Trying to set settings for {}", scope);
-        let update = if is_system_scope(&scope) && ignore_errors {
+        let update = if is_system_scope(scope) && ignore_errors {
             debug!("Ignoring force option for system scope.");
-            self.settings_repo().update_settings(&scope, json, false)?
+            self.settings_repo().update_settings(scope, json, false)?
         } else {
-            self.settings_repo().update_settings(&scope, json, ignore_errors)?
+            self.settings_repo().update_settings(scope, json, ignore_errors)?
         };
-        if is_system_scope(&scope) {
+        if is_system_scope(scope) {
             self.update_node_state()?;
         }
         Ok(update)

@@ -106,7 +106,7 @@ impl<'de, T: Deserialize<'de> + SerializesAsNumber> Deserialize<'de> for ValueOr
 impl<T: Ord> Ord for ValueOrLimit<T> {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (Value(a), Value(b)) => a.cmp(&b),
+            (Value(a), Value(b)) => a.cmp(b),
             (Min, Min) => Equal,
             (Max, Max) => Equal,
             (Min, _) => Less,
@@ -120,7 +120,7 @@ impl<T: Ord> Ord for ValueOrLimit<T> {
 impl<T: PartialOrd> PartialOrd for ValueOrLimit<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
-            (Value(a), Value(b)) => a.partial_cmp(&b),
+            (Value(a), Value(b)) => a.partial_cmp(b),
             (Min, Min) => Some(Equal),
             (Max, Max) => Some(Equal),
             (Min, _) => Some(Less),

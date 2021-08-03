@@ -271,7 +271,7 @@ mod test {
             .get_keystore()?
             .map(|dump| KeyStore::restore(io::Cursor::new(dump)))
             .unwrap()?;
-        let node_id: NodeId = ks.get_pair(expected_node_id.clone().into()).unwrap().pub_key().into();
+        let node_id: NodeId = ks.get_pair(expected_node_id.into()).unwrap().pub_key().into();
         assert_eq!(node_id, expected_node_id);
         Ok(())
     }
@@ -299,7 +299,7 @@ mod test {
             .get_keystore()?
             .map(|dump| KeyStore::restore(io::Cursor::new(dump)))
             .unwrap()?;
-        let node_id: NodeId = ks.get_pair(expected_node_id.clone().into()).unwrap().pub_key().into();
+        let node_id: NodeId = ks.get_pair(expected_node_id.into()).unwrap().pub_key().into();
         assert_eq!(node_id, expected_node_id);
         Ok(())
     }

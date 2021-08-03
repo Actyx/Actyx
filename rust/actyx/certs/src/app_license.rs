@@ -68,7 +68,7 @@ impl SignedAppLicense {
     }
 
     pub fn validate(&self, ax_public_key: &PublicKey) -> anyhow::Result<()> {
-        self.signature.verify(&self.license, &ax_public_key)
+        self.signature.verify(&self.license, ax_public_key)
     }
 
     pub fn to_base64(&self) -> anyhow::Result<String> {

@@ -90,7 +90,7 @@ fn iter_events_v1_chunked(
     let block_links = iter_chain(db, root).collect::<Vec<_>>();
     block_links.into_iter().rev().map(move |r| {
         r.and_then(|link| {
-            let block = get(&db, &link)?;
+            let block = get(db, &link)?;
             let envelopes = block.decompress()?;
             Ok(envelopes.into_vec())
         })
@@ -115,7 +115,7 @@ fn envelope_to_v2(event: IpfsEnvelope, app_id: &str) -> (AxKey, Payload) {
 ///
 /// an ipfs blockstore transaction is not a db transation. It just protects the generated
 /// stuff from gc.
-#[allow(clippy::clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 fn build_banyan_tree<'a, RW: BlockWriter<Sha256Digest> + ReadOnlyStore<Sha256Digest>>(
     txn: &'a AxTxn<RW>,
     source: &'a SourceId,
@@ -287,7 +287,7 @@ impl Default for ConversionOptions {
 /// Convert from an existing v1 actyx_data directory to an existing v2 actyx_directory for a given topic.
 ///
 /// All files must already exist.
-#[allow(clippy::clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 pub fn convert_from_v1(
     v1_actyx_data: impl AsRef<Path>,
     v2_actyx_data: impl AsRef<Path>,
@@ -388,7 +388,7 @@ pub fn convert_from_v1(
         .map(|(source, cid)| {
             let stream_id: StreamId = options
                 .source_to_stream
-                .get(&source)
+                .get(source)
                 .copied()
                 // If there's no mapping, just convert
                 .unwrap_or_else(|| source.into());
@@ -397,7 +397,7 @@ pub fn convert_from_v1(
             let iter = iter_events_v1_chunked(&db1, Link::new(*cid));
             let tree = build_banyan_tree(
                 &txn,
-                &source,
+                source,
                 stream_id,
                 iter,
                 config.clone(),

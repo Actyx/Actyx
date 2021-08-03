@@ -47,7 +47,7 @@ pub struct EphemeralEventsConfigWrapper(pub EphemeralEventsConfig);
 impl FromStr for EphemeralEventsConfigWrapper {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(serde_json::from_str(&s)?))
+        Ok(Self(serde_json::from_str(s)?))
     }
 }
 

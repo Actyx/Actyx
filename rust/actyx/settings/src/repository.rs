@@ -83,7 +83,7 @@ fn parse(s: String) -> Result<serde_json::Value> {
 /// Searches recursively for a schema for `scope`, popping one level on each iteration.
 /// Search terminates either if a schema is found or scope is empty.
 fn parent_schema(tx: &mut database::Transaction, scope: &Scope) -> Result<(Scope, serde_json::Value)> {
-    let res = parent_schema0(tx, &scope)?;
+    let res = parent_schema0(tx, scope)?;
     res.ok_or_else(|| Error::SchemaNotFound(scope.clone()))
 }
 fn parent_schema0(tx: &mut database::Transaction, scope: &Scope) -> Result<Option<(Scope, serde_json::Value)>> {
@@ -102,7 +102,7 @@ fn parent_schema0(tx: &mut database::Transaction, scope: &Scope) -> Result<Optio
 
 /// Creates a validator for the parent scope.
 fn mk_validator(tx: &mut database::Transaction, scope: &Scope) -> Result<(Scope, Validator)> {
-    let (schema_scope, schema) = parent_schema(tx, &scope)?;
+    let (schema_scope, schema) = parent_schema(tx, scope)?;
     let res = Validator::new(schema)?;
     Ok((schema_scope, res))
 }
@@ -142,12 +142,12 @@ impl Repository {
                 .transpose()?
                 .unwrap_or_else(|| serde_json::json!({}));
 
-            let (schema_scope, validator) = mk_validator(tx, &scope)?;
+            let (schema_scope, validator) = mk_validator(tx, scope)?;
 
             let validation = validate(
                 &schema_scope,
                 &validator,
-                &scope,
+                scope,
                 settings.clone(),
                 current_settings.clone(),
             );
@@ -174,7 +174,7 @@ impl Repository {
                     Ok(new_settings_for_scope)
                 }
                 Err(Error::ValidationError(err)) if force => {
-                    let new_settings = current_settings.update_at_force(&scope, settings.clone());
+                    let new_settings = current_settings.update_at_force(scope, settings.clone());
                     info!(
                         "Validation failed with error {}. Force is enabled so {} will be set to {}.",
                         err, scope, new_settings
@@ -192,7 +192,7 @@ impl Repository {
     pub fn clear_settings(&self, scope: &Scope) -> Result<()> {
         self.database.lock().exec(|tx| {
             if let Some(current_settings) = tx.get_settings()?.map(parse).transpose()? {
-                let new_settings = current_settings.remove_at(&scope);
+                let new_settings = current_settings.remove_at(scope);
                 tx.set_settings(stringify(&new_settings)?)?;
             }
             Ok(())
@@ -252,7 +252,7 @@ impl Repository {
                     Ok(all_settings_with_defaults)
                 }
             } else {
-                let scope_and_settings = Self::get_schema_settings(tx, current_settings.as_ref(), &scope, no_defaults)?;
+                let scope_and_settings = Self::get_schema_settings(tx, current_settings.as_ref(), scope, no_defaults)?;
                 scope_and_settings
                     .and_then(|(schema_scope, settings)| match scope.diff(&schema_scope) {
                         Some(scope_within_schema) => settings.pointer(&scope_within_schema.as_json_ptr()).cloned(),
@@ -272,7 +272,7 @@ impl Repository {
             }
 
             if let Some(current_settings) = tx.get_settings()?.map(parse).transpose()? {
-                let new_settings = current_settings.remove_at(&scope);
+                let new_settings = current_settings.remove_at(scope);
                 tx.set_settings(stringify(&new_settings)?)?;
             }
             Ok(())

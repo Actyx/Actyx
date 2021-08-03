@@ -69,7 +69,7 @@ impl From<&language::TagExpr> for Dnf {
                 language::TagExpr::Atom(a) => a.into(),
             }
         }
-        dnf(&tag_expr)
+        dnf(tag_expr)
     }
 }
 
