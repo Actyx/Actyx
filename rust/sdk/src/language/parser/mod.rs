@@ -5,7 +5,7 @@ use std::{convert::TryInto, str::FromStr};
 
 use super::{non_empty::NonEmptyVec, Arr, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, TagAtom, TagExpr};
 use crate::{language::SortKey, tags::Tag, Timestamp};
-use anyhow::{bail, Result};
+use anyhow::{bail, ensure, Result};
 use chrono::{TimeZone, Utc};
 use once_cell::sync::Lazy;
 use pest::{prec_climber::PrecClimber, Parser};
@@ -25,6 +25,20 @@ impl std::error::Error for NoVal {}
 struct Aql;
 
 mod utils;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Context {
+    Simple,
+    Aggregate,
+}
+
+#[derive(Debug, Clone, derive_more::Display, derive_more::Error)]
+pub enum ContextError {
+    #[display(fmt = "aggregators are only valid in AGGREGATE clauses")]
+    AggregatorOutsideAggregate,
+    #[display(fmt = "current value _ not available in AGGREGATE clauses")]
+    CurrentValueInAggregate,
+}
 
 fn r_tag(p: P) -> Result<Tag> {
     let quoted = p.single()?.single()?;
@@ -116,16 +130,20 @@ fn r_string(p: P) -> Result<String> {
     })
 }
 
-fn r_var(p: P) -> Result<SimpleExpr> {
+fn r_var(p: P, ctx: Context) -> Result<SimpleExpr> {
     let mut p = p.inner()?;
-    let head = SimpleExpr::Variable(p.string()?.try_into()?);
+    let s = p.string()?;
+    if s == "_" {
+        ensure!(ctx != Context::Aggregate, ContextError::CurrentValueInAggregate);
+    }
+    let head = SimpleExpr::Variable(s.try_into()?);
     let mut tail = vec![];
     for mut i in p {
         match i.as_rule() {
             Rule::ident => tail.push(Index::String(i.string()?)),
             Rule::natural => tail.push(Index::Number(i.natural()?)),
             Rule::string => tail.push(Index::String(r_string(i)?)),
-            Rule::simple_expr => tail.push(Index::Expr(r_simple_expr(i)?)),
+            Rule::simple_expr => tail.push(Index::Expr(r_simple_expr(i, ctx)?)),
             x => bail!("unexpected token: {:?}", x),
         }
     }
@@ -139,16 +157,16 @@ fn r_var(p: P) -> Result<SimpleExpr> {
     })
 }
 
-fn r_expr_index(p: P) -> Result<SimpleExpr> {
+fn r_expr_index(p: P, ctx: Context) -> Result<SimpleExpr> {
     let mut p = p.inner()?;
-    let head = r_simple_expr(p.next().ok_or(NoVal("r_expr_index head"))?)?;
+    let head = r_simple_expr(p.next().ok_or(NoVal("r_expr_index head"))?, ctx)?;
     let mut tail = vec![];
     for mut i in p {
         match i.as_rule() {
             Rule::ident => tail.push(Index::String(i.string()?)),
             Rule::natural => tail.push(Index::Number(i.natural()?)),
             Rule::string => tail.push(Index::String(r_string(i)?)),
-            Rule::simple_expr => tail.push(Index::Expr(r_simple_expr(i)?)),
+            Rule::simple_expr => tail.push(Index::Expr(r_simple_expr(i, ctx)?)),
             x => bail!("unexpected token: {:?}", x),
         }
     }
@@ -187,7 +205,7 @@ fn r_timestamp(p: P) -> Result<Timestamp> {
     Ok(Utc.ymd(year, month, day).and_hms_nano(hour, min, sec, nano).into())
 }
 
-fn r_object(p: P) -> Result<Obj> {
+fn r_object(p: P, ctx: Context) -> Result<Obj> {
     let mut props = vec![];
     let mut p = p.inner()?;
     while p.peek().is_some() {
@@ -197,19 +215,19 @@ fn r_object(p: P) -> Result<Obj> {
                 Rule::ident => Index::String(i.string()?),
                 Rule::natural => Index::Number(i.natural()?),
                 Rule::string => Index::String(r_string(i)?),
-                Rule::simple_expr => Index::Expr(r_simple_expr(i)?),
+                Rule::simple_expr => Index::Expr(r_simple_expr(i, ctx)?),
                 x => bail!("unexpected token: {:?}", x),
             }
         };
-        let value = r_simple_expr(p.next().ok_or(NoVal("value"))?)?;
+        let value = r_simple_expr(p.next().ok_or(NoVal("value"))?, ctx)?;
         props.push((key, value));
     }
     Ok(Obj { props })
 }
 
-fn r_array(p: P) -> Result<Arr> {
+fn r_array(p: P, ctx: Context) -> Result<Arr> {
     Ok(Arr {
-        items: p.inner()?.map(r_simple_expr).collect::<Result<_>>()?,
+        items: p.inner()?.map(|p| r_simple_expr(p, ctx)).collect::<Result<_>>()?,
     })
 }
 
@@ -217,12 +235,12 @@ fn r_bool(p: P) -> bool {
     p.as_str() == "TRUE"
 }
 
-fn r_cases(p: P) -> Result<NonEmptyVec<(SimpleExpr, SimpleExpr)>> {
+fn r_cases(p: P, ctx: Context) -> Result<NonEmptyVec<(SimpleExpr, SimpleExpr)>> {
     let mut p = p.inner()?;
     let mut ret = Vec::new();
     while let Some(pred) = p.next() {
-        let pred = r_simple_expr(pred)?;
-        let expr = r_simple_expr(p.next().ok_or(NoVal("case expression"))?)?;
+        let pred = r_simple_expr(pred, ctx)?;
+        let expr = r_simple_expr(p.next().ok_or(NoVal("case expression"))?, ctx)?;
         ret.push((pred, expr));
     }
     Ok(ret.try_into()?)
@@ -232,19 +250,20 @@ fn r_not(p: P) -> Result<P> {
     p.single()
 }
 
-fn r_aggr(p: P) -> Result<SimpleExpr> {
+fn r_aggr(p: P, ctx: Context) -> Result<SimpleExpr> {
+    ensure!(ctx == Context::Aggregate, ContextError::AggregatorOutsideAggregate);
     let p = p.single()?;
     Ok(match p.as_rule() {
-        Rule::aggr_sum => SimpleExpr::Sum(Box::new(r_simple_expr(p.single()?)?)),
-        Rule::aggr_min => SimpleExpr::Min(Box::new(r_simple_expr(p.single()?)?)),
-        Rule::aggr_max => SimpleExpr::Max(Box::new(r_simple_expr(p.single()?)?)),
-        Rule::aggr_first => SimpleExpr::First(Box::new(r_simple_expr(p.single()?)?)),
-        Rule::aggr_last => SimpleExpr::Last(Box::new(r_simple_expr(p.single()?)?)),
+        Rule::aggr_sum => SimpleExpr::Sum(Box::new(r_simple_expr(p.single()?, Context::Simple)?)),
+        Rule::aggr_min => SimpleExpr::Min(Box::new(r_simple_expr(p.single()?, Context::Simple)?)),
+        Rule::aggr_max => SimpleExpr::Max(Box::new(r_simple_expr(p.single()?, Context::Simple)?)),
+        Rule::aggr_first => SimpleExpr::First(Box::new(r_simple_expr(p.single()?, Context::Simple)?)),
+        Rule::aggr_last => SimpleExpr::Last(Box::new(r_simple_expr(p.single()?, Context::Simple)?)),
         x => bail!("unexpected token: {:?}", x),
     })
 }
 
-fn r_simple_expr(p: P) -> Result<SimpleExpr> {
+fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
     static CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
         use pest::prec_climber::{Assoc::*, Operator};
         let op = Operator::new;
@@ -261,44 +280,48 @@ fn r_simple_expr(p: P) -> Result<SimpleExpr> {
         ])
     });
 
-    fn primary(p: P) -> Result<SimpleExpr> {
+    fn primary(p: P, ctx: Context) -> Result<SimpleExpr> {
         Ok(match p.as_rule() {
             Rule::decimal => SimpleExpr::Number(r_number(p)?),
-            Rule::var_index => r_var(p)?,
-            Rule::expr_index => r_expr_index(p)?,
-            Rule::simple_expr => r_simple_expr(p)?,
-            Rule::simple_not => SimpleExpr::Not(primary(r_not(p)?)?.into()),
+            Rule::var_index => r_var(p, ctx)?,
+            Rule::expr_index => r_expr_index(p, ctx)?,
+            Rule::simple_expr => r_simple_expr(p, ctx)?,
+            Rule::simple_not => SimpleExpr::Not(primary(r_not(p)?, ctx)?.into()),
             Rule::string => SimpleExpr::String(r_string(p)?),
-            Rule::object => SimpleExpr::Object(r_object(p)?),
-            Rule::array => SimpleExpr::Array(r_array(p)?),
+            Rule::object => SimpleExpr::Object(r_object(p, ctx)?),
+            Rule::array => SimpleExpr::Array(r_array(p, ctx)?),
             Rule::null => SimpleExpr::Null,
             Rule::bool => SimpleExpr::Bool(r_bool(p)),
-            Rule::simple_cases => SimpleExpr::Cases(r_cases(p)?),
-            Rule::aggr_op => r_aggr(p)?,
+            Rule::simple_cases => SimpleExpr::Cases(r_cases(p, ctx)?),
+            Rule::aggr_op => r_aggr(p, ctx)?,
             x => bail!("unexpected token: {:?}", x),
         })
     }
 
-    CLIMBER.climb(p.inner()?, primary, |lhs, op, rhs| {
-        Ok(match op.as_rule() {
-            Rule::add => lhs?.add(rhs?),
-            Rule::sub => lhs?.sub(rhs?),
-            Rule::mul => lhs?.mul(rhs?),
-            Rule::div => lhs?.div(rhs?),
-            Rule::modulo => lhs?.modulo(rhs?),
-            Rule::pow => lhs?.pow(rhs?),
-            Rule::and => lhs?.and(rhs?),
-            Rule::or => lhs?.or(rhs?),
-            Rule::xor => lhs?.xor(rhs?),
-            Rule::lt => lhs?.lt(rhs?),
-            Rule::le => lhs?.le(rhs?),
-            Rule::gt => lhs?.gt(rhs?),
-            Rule::ge => lhs?.ge(rhs?),
-            Rule::eq => lhs?.eq(rhs?),
-            Rule::ne => lhs?.ne(rhs?),
-            x => bail!("unexpected token: {:?}", x),
-        })
-    })
+    CLIMBER.climb(
+        p.inner()?,
+        |p| primary(p, ctx),
+        |lhs, op, rhs| {
+            Ok(match op.as_rule() {
+                Rule::add => lhs?.add(rhs?),
+                Rule::sub => lhs?.sub(rhs?),
+                Rule::mul => lhs?.mul(rhs?),
+                Rule::div => lhs?.div(rhs?),
+                Rule::modulo => lhs?.modulo(rhs?),
+                Rule::pow => lhs?.pow(rhs?),
+                Rule::and => lhs?.and(rhs?),
+                Rule::or => lhs?.or(rhs?),
+                Rule::xor => lhs?.xor(rhs?),
+                Rule::lt => lhs?.lt(rhs?),
+                Rule::le => lhs?.le(rhs?),
+                Rule::gt => lhs?.gt(rhs?),
+                Rule::ge => lhs?.ge(rhs?),
+                Rule::eq => lhs?.eq(rhs?),
+                Rule::ne => lhs?.ne(rhs?),
+                x => bail!("unexpected token: {:?}", x),
+            })
+        },
+    )
 }
 
 fn r_query(features: Vec<String>, p: P) -> Result<Query> {
@@ -310,12 +333,19 @@ fn r_query(features: Vec<String>, p: P) -> Result<Query> {
     };
     for o in p {
         match o.as_rule() {
-            Rule::filter => q.ops.push(Operation::Filter(r_simple_expr(o.single()?)?)),
+            Rule::filter => q
+                .ops
+                .push(Operation::Filter(r_simple_expr(o.single()?, Context::Simple)?)),
             Rule::select => {
-                let v = o.inner()?.map(r_simple_expr).collect::<Result<Vec<_>>>()?;
+                let v = o
+                    .inner()?
+                    .map(|p| r_simple_expr(p, Context::Simple))
+                    .collect::<Result<Vec<_>>>()?;
                 q.ops.push(Operation::Select(v.try_into()?))
             }
-            Rule::aggregate => q.ops.push(Operation::Aggregate(r_simple_expr(o.single()?)?)),
+            Rule::aggregate => q
+                .ops
+                .push(Operation::Aggregate(r_simple_expr(o.single()?, Context::Aggregate)?)),
             x => bail!("unexpected token: {:?}", x),
         }
     }
@@ -353,7 +383,7 @@ impl FromStr for SimpleExpr {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let p = Aql::parse(Rule::main_simple_expr, s)?.single()?.single()?;
-        r_simple_expr(p)
+        r_simple_expr(p, Context::Simple)
     }
 }
 
@@ -533,6 +563,38 @@ mod tests {
                     (Index::Number(4), Number(Natural(4))),
                 ]
             })
+        );
+    }
+
+    #[test]
+    fn aggregate() {
+        let p = |s: &str, e: Option<&str>| {
+            let q = s.parse::<Query>();
+            if let Some(err) = e {
+                let e = q.unwrap_err().to_string();
+                assert!(e.contains(err), "received: {}", e);
+            } else {
+                q.unwrap();
+            }
+        };
+
+        p(
+            "FROM 'x' FILTER SUM(1)",
+            Some("aggregators are only valid in AGGREGATE clauses"),
+        );
+        p(
+            "FROM 'x' SELECT 1 + SUM(1)",
+            Some("aggregators are only valid in AGGREGATE clauses"),
+        );
+        p("FROM 'x' FILTER _", None);
+        p(
+            "FROM 'x' AGGREGATE 1 + _",
+            Some("current value _ not available in AGGREGATE clauses"),
+        );
+        p("FROM 'x' AGGREGATE 1 + 2", None);
+        p(
+            "FROM 'x' AGGREGATE { a: LAST(_ + 1) b: FIRST(_.a.b) c: MIN(1 / _) d: MAX([_]) e: SUM(1.3 * _) }",
+            None,
         );
     }
 }

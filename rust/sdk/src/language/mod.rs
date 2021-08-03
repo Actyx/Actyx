@@ -233,8 +233,9 @@ impl SimpleExpr {
 #[cfg(test)]
 mod for_tests {
     use super::*;
+    use crate::language::parser::ContextError;
     use once_cell::sync::OnceCell;
-    use quickcheck::{Arbitrary, Gen, QuickCheck};
+    use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
     use std::{cell::RefCell, convert::TryInto, str::FromStr};
 
     impl Query {
@@ -550,7 +551,7 @@ mod for_tests {
 
     #[test]
     fn qc_roundtrip() {
-        fn roundtrip_aql(q: Query) -> anyhow::Result<bool> {
+        fn roundtrip_aql(q: Query) -> TestResult {
             // What this test currently ascertains is that our rendered string is isomorphic
             // to the internal representation of the parse tree, hence there are many “unnecessary”
             // parentheses in the output. If we want to remove those parentheses, we need to
@@ -558,9 +559,18 @@ mod for_tests {
             // as during parsing. Luckily, this test will then prove that our canonicalisation
             // actually works.
             let s = q.to_string();
-            let p = Query::from_str(&s)?;
-            anyhow::ensure!(q == p, "q={} p={} pp={:?}", q, p, p);
-            Ok(true)
+            let p = match Query::from_str(&s) {
+                Ok(p) => p,
+                Err(e) => match e.downcast::<ContextError>() {
+                    Ok(_) => return TestResult::discard(),
+                    Err(e) => return TestResult::error(e.to_string()),
+                },
+            };
+            if q == p {
+                TestResult::passed()
+            } else {
+                TestResult::error(format!("\nq={}\np={}\n ={:?}", q, p, p))
+            }
         }
         let mut q = QuickCheck::new();
         if std::env::var_os("QUICKCHECK_TESTS").is_none() {
@@ -568,6 +578,6 @@ mod for_tests {
         }
         q.max_tests(1_000_000)
             .gen(Gen::new(10))
-            .quickcheck(roundtrip_aql as fn(Query) -> anyhow::Result<bool>)
+            .quickcheck(roundtrip_aql as fn(Query) -> TestResult)
     }
 }
