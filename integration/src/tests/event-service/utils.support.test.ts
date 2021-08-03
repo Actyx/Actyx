@@ -6,22 +6,28 @@ type Response<T> = Omit<EventResponse, 'payload'> & { payload: T }
 export const publish = <T>(
   es: AxEventService,
   clientId: string,
-): ((payload: T) => Promise<Response<T>>) => (payload) => {
+): ((...payloads: T[]) => Promise<Response<T>[]>) => (...payloads) => {
   const tags = [mySuite(), `client:${clientId}`, testName(), 'test']
-  return es.publish({ data: [{ tags, payload }] }).then((response) => ({
-    type: 'event',
-    ...response.data[0],
-    tags,
-    appId: trialManifest.appId,
-    payload,
-  }))
+  const data = payloads.map((payload) => ({ tags, payload }))
+  return es.publish({ data }).then((response) =>
+    response.data.map<Response<T>>((metadata, i) => ({
+      type: 'event',
+      ...metadata,
+      tags,
+      appId: trialManifest.appId as string,
+      payload: payloads[i],
+    })),
+  )
 }
 
 export const publishRandom = (
   es: AxEventService,
   clientId: string,
 ): Promise<Response<{ value: string }>> =>
-  publish<{ value: string }>(es, clientId)({ value: randomString() })
+  publish<{ value: string }>(
+    es,
+    clientId,
+  )({ value: randomString() }).then((response) => response[0])
 
 export const throwOnCb = (msg: string) => (...rest: unknown[]): void => {
   throw new Error(`Unexpected callback invocation. ${msg}\n ${JSON.stringify(rest)}`)

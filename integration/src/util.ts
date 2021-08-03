@@ -23,7 +23,7 @@ export const runWithClients = <T>(
       Object.entries(await mkEventClients(node._private.hostname, node._private.apiPort)).map(
         ([clientId, events]) =>
           f(events, clientId).catch((error) => {
-            const e = new Error(`Failure running ${clientId}: ${error}`)
+            const e = new Error(`Failure running ${clientId}: ${JSON.stringify(error)}`)
             e.stack = (e.stack || '').split('\n').slice(0, 2).join('\n') + '\n' + error.stack
             throw e
           }),

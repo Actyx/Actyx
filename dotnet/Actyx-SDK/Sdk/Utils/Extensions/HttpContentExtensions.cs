@@ -30,6 +30,7 @@ namespace Actyx.Sdk.Utils.Extensions
                     .Of(typeof(IEventOnWire), "type")
                     .RegisterSubtype<OffsetsOnWire>("offsets")
                     .RegisterSubtype<EventOnWire>("event")
+                    .RegisterSubtype<DiagnosticOnWire>("diagnostic")
                     .SerializeDiscriminatorProperty() // can't be set with Attributes
                     .Build(),
                 JsonSubtypesConverterBuilder

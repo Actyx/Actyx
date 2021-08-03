@@ -26,7 +26,6 @@ export const OffsetMapResponse = t.type({
   offsets: OffsetMap,
 })
 
-// Streams
 export const EventResponse = t.type({
   type: t.literal('event'),
   lamport: t.number,
@@ -39,13 +38,19 @@ export const EventResponse = t.type({
 })
 export type EventResponse = t.TypeOf<typeof EventResponse>
 
-export const QueryResponse = t.union([EventResponse, OffsetMapResponse])
+export const DiagnosticResponse = t.type({
+  type: t.literal('diagnostic'),
+  severity: t.union([t.literal('warning'), t.literal('error')]),
+  message: t.string,
+})
+export type DiagnosticsResonse = t.TypeOf<typeof DiagnosticResponse>
+
+export const QueryResponse = t.union([EventResponse, OffsetMapResponse, DiagnosticResponse])
 export type QueryResponse = t.TypeOf<typeof QueryResponse>
 
-export const SubscribeResponse = t.union([EventResponse, OffsetMapResponse])
+export const SubscribeResponse = t.union([EventResponse, OffsetMapResponse, DiagnosticResponse])
 export type SubscribeResponse = t.TypeOf<typeof SubscribeResponse>
 
-// SubscribeMonotonic
 export const Compression = t.union([t.literal('none'), t.literal('deflate')])
 export type Compression = t.TypeOf<typeof Compression>
 
@@ -85,6 +90,7 @@ export const SubscribeMonotonicResponse = t.union([
   SubscribeMonotonicEvent,
   SubscribeMonotonicTimeTravel,
   OffsetMapResponse,
+  DiagnosticResponse,
 ])
 export type SubscribeMonotonicResponse = t.TypeOf<typeof SubscribeMonotonicResponse>
 
