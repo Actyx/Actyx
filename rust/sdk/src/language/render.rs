@@ -12,6 +12,13 @@ fn render_simple_pair(w: &mut impl Write, e: &(SimpleExpr, SimpleExpr), op: &'st
     w.write_char(')')
 }
 
+fn render_unary_function(w: &mut impl Write, f: &str, e: &SimpleExpr) -> Result {
+    w.write_str(f)?;
+    w.write_char('(')?;
+    render_simple_expr(w, e)?;
+    w.write_char(')')
+}
+
 fn render_index(w: &mut impl Write, e: &Index, with_dot: bool) -> Result {
     match e {
         Index::String(s) => {
@@ -126,6 +133,11 @@ pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
         SimpleExpr::Ge(e) => render_simple_pair(w, e, ">="),
         SimpleExpr::Eq(e) => render_simple_pair(w, e, "="),
         SimpleExpr::Ne(e) => render_simple_pair(w, e, "!="),
+        SimpleExpr::Sum(e) => render_unary_function(w, "SUM", e),
+        SimpleExpr::Min(e) => render_unary_function(w, "MIN", e),
+        SimpleExpr::Max(e) => render_unary_function(w, "MAX", e),
+        SimpleExpr::First(e) => render_unary_function(w, "FIRST", e),
+        SimpleExpr::Last(e) => render_unary_function(w, "LAST", e),
     }
 }
 
@@ -147,6 +159,10 @@ fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
                 render_simple_expr(w, e)?;
             }
             Ok(())
+        }
+        Operation::Aggregate(a) => {
+            w.write_str("AGGREGATE ")?;
+            render_simple_expr(w, a)
         }
     }
 }

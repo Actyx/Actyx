@@ -17,6 +17,7 @@ mod query_impl;
 pub enum Operation {
     Filter(SimpleExpr),
     Select(NonEmptyVec<SimpleExpr>),
+    Aggregate(SimpleExpr),
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -166,6 +167,11 @@ pub enum SimpleExpr {
     Ge(Box<(SimpleExpr, SimpleExpr)>),
     Eq(Box<(SimpleExpr, SimpleExpr)>),
     Ne(Box<(SimpleExpr, SimpleExpr)>),
+    Sum(Box<SimpleExpr>),
+    Min(Box<SimpleExpr>),
+    Max(Box<SimpleExpr>),
+    First(Box<SimpleExpr>),
+    Last(Box<SimpleExpr>),
 }
 mod var;
 
@@ -441,7 +447,11 @@ mod for_tests {
 
     impl Arbitrary for SimpleExpr {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(SimpleExpr: g => Variable Number String Bool, Indexing Object Array Cases Add Sub Mul Div Mod Pow And Or Not Xor Lt Le Gt Ge Eq Ne, Null)
+            arb!(SimpleExpr: g =>
+                Variable Number String Bool,
+                Indexing Object Array Cases Add Sub Mul Div Mod Pow And Or Not Xor Lt Le Gt Ge Eq Ne Sum Min Max First Last,
+                Null
+            )
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             shrink!(SimpleExpr: self => Variable Number String Bool,
@@ -465,6 +475,11 @@ mod for_tests {
                 Ge(x, x.0.clone(), x.1.clone())
                 Eq(x, x.0.clone(), x.1.clone())
                 Ne(x, x.0.clone(), x.1.clone())
+                Sum(x, (**x).clone())
+                Min(x, (**x).clone())
+                Max(x, (**x).clone())
+                First(x, (**x).clone())
+                Last(x, (**x).clone())
                 , Null)
         }
     }
@@ -489,10 +504,10 @@ mod for_tests {
 
     impl Arbitrary for Operation {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(Operation: g => Filter Select,,)
+            arb!(Operation: g => Filter Select Aggregate,,)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            shrink!(Operation: self => Filter Select,,)
+            shrink!(Operation: self => Filter Select Aggregate,,)
         }
     }
 

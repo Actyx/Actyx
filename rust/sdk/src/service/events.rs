@@ -350,6 +350,8 @@ impl Diagnostic {
 pub enum Severity {
     Warning,
     Error,
+    #[serde(other)]
+    FutureCompat,
 }
 
 /// Response to the offsets request
