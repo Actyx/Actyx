@@ -66,7 +66,7 @@ export BUILD_RUST_TOOLCHAIN ?= 1.54.0
 # which the respective images was built. Whenever the build images (inside
 # ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 33b15c3a394b14aee711cc6d26b7267a35fdf065
+export LATEST_STABLE_IMAGE_VERSION := 804ae71c44c8deae9597992eba76669047d41b36
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -371,7 +371,7 @@ node-manager-win: prepare-docker
 	-v `pwd`:/src \
 	-w /src/js/node-manager \
 	--rm \
-	actyx/util:node-manager-win-builder \
+	actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
 	bash -c "npm install && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
 
 node-manager-mac-linux:
