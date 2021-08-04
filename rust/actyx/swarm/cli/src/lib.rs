@@ -2,11 +2,12 @@ use actyx_sdk::{language::Query, Payload, StreamNr, TagSet, Timestamp};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use crypto::{KeyPair, PrivateKey};
+use libipld::{cbor::DagCborCodec, codec::Codec};
 pub use libp2p::{multiaddr, Multiaddr, PeerId};
 use std::{borrow::Borrow, net::SocketAddr, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 use swarm::{BanyanConfig, SwarmConfig};
-pub use swarm::{EphemeralEventsConfig, RetainConfig};
+pub use swarm::{EphemeralEventsConfig, GossipMessage, RetainConfig, RootMap, RootUpdate};
 use trees::axtrees::AxKey;
 
 #[derive(Clone, Debug, StructOpt)]
@@ -150,6 +151,7 @@ pub enum Command {
     Append(StreamNr, Vec<(TagSet, Payload)>),
     SubscribeQuery(Query),
     ApiPort,
+    GossipSubscribe(String),
 }
 
 impl std::fmt::Display for Command {
@@ -159,6 +161,7 @@ impl std::fmt::Display for Command {
             Self::Append(nr, events) => write!(f, ">append {} {}", nr, serde_json::to_string(events).unwrap())?,
             Self::SubscribeQuery(expr) => write!(f, ">query {}", expr)?,
             Self::ApiPort => write!(f, ">api-port")?,
+            Self::GossipSubscribe(topic) => write!(f, ">gossip-subscribe {}", topic)?,
         }
         Ok(())
     }
@@ -184,6 +187,7 @@ impl std::str::FromStr for Command {
                 Self::Append(nr.into(), events)
             }
             Some(">api-port") => Self::ApiPort,
+            Some(">gossip-subscribe") => Self::GossipSubscribe(parts.next().unwrap().into()),
             _ => {
                 return Err(anyhow::anyhow!("invalid command '{}'", s));
             }
@@ -202,6 +206,7 @@ pub enum Event {
     Subscribed(PeerId, String),
     Result((u64, AxKey, Payload)),
     ApiPort(Option<u16>),
+    GossipEvent(String, PeerId, GossipMessage),
 }
 
 impl std::fmt::Display for Event {
@@ -238,6 +243,10 @@ impl std::fmt::Display for Event {
                     write!(f, "<api-port none")?;
                 }
             }
+            Self::GossipEvent(topic, sender, message) => {
+                let cbor: Vec<u8> = DagCborCodec.encode(&message).unwrap();
+                write!(f, "<gossip {} {} {}", topic, sender, hex::encode(cbor))?;
+            }
         }
         Ok(())
     }
@@ -268,6 +277,13 @@ impl std::str::FromStr for Event {
                 let token = parts.next().unwrap();
                 let port: Option<u16> = if token == "none" { None } else { Some(token.parse()?) };
                 Self::ApiPort(port)
+            }
+            Some("<gossip") => {
+                let topic = parts.next().unwrap().into();
+                let sender = parts.next().unwrap().parse()?;
+                let cbor: Vec<u8> = hex::decode(parts.next().unwrap())?;
+                let message = DagCborCodec.decode(&cbor[..])?;
+                Self::GossipEvent(topic, sender, message)
             }
             _ => {
                 return Err(anyhow::anyhow!("invalid event '{}'", s));

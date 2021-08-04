@@ -6,7 +6,6 @@ use actyx_sdk::{app_id, tags, AppId, Payload};
 use parking_lot::Mutex;
 use std::{path::PathBuf, sync::Arc, time::Instant};
 use swarm::*;
-use tempdir::TempDir;
 use util::set_log_level;
 
 fn app_id() -> AppId {
@@ -16,7 +15,7 @@ fn app_id() -> AppId {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     set_log_level(0);
-    let dir = TempDir::new("append_bench")?;
+    let dir = tempfile::tempdir()?;
     let db = PathBuf::from(dir.path().join("db").to_str().expect("illegal filename"));
     let index = PathBuf::from(dir.path().join("index").to_str().expect("illegal filename"));
     let index_store = Arc::new(Mutex::new(rusqlite::Connection::open(index)?));

@@ -14,6 +14,7 @@ mod discovery;
 pub mod event_store;
 pub mod event_store_ref;
 mod gossip;
+mod gossip_protocol;
 pub mod metrics;
 mod prune;
 pub mod selection;
@@ -31,6 +32,7 @@ use actyx_sdk::app_id;
 pub use prune::RetainConfig;
 
 use crate::gossip::Gossip;
+pub use crate::gossip_protocol::{GossipMessage, RootMap, RootUpdate};
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::streams::{OwnStream, ReplicatedStream};
 use actyx_sdk::{
@@ -279,8 +281,20 @@ pub struct AppendMeta {
     timestamp: Timestamp,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
+pub struct RootSource {
+    path: RootPath,
+    sender: PeerId,
+}
+
+impl RootSource {
+    fn new(sender: PeerId, path: RootPath) -> Self {
+        Self { sender, path }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum RootSource {
+pub enum RootPath {
     // needs to be ordered in ascending priority
     RootMap,
     SlowPath,
@@ -288,10 +302,13 @@ pub enum RootSource {
 }
 
 #[test]
-fn root_source_is_ordered() {
-    use RootSource::*;
+fn root_path_is_ordered() {
+    use RootPath::*;
     assert!(RootMap < SlowPath);
     assert!(SlowPath < FastPath);
+
+    assert!(RootSource::new(PeerId::random(), RootMap) < RootSource::new(PeerId::random(), SlowPath));
+    assert!(RootSource::new(PeerId::random(), SlowPath) < RootSource::new(PeerId::random(), FastPath));
 }
 
 /// All immutable or internally mutable parts of the banyan store
@@ -510,16 +527,16 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 
     /// Get a complete root map from both own and replicated streams
-    pub fn root_map(&self) -> BTreeMap<StreamId, Cid> {
+    pub fn root_map(&self) -> BTreeMap<StreamId, (Cid, Offset, LamportTimestamp)> {
         let own = self.own_streams.iter().filter_map(|(stream_nr, inner)| {
             let stream_id = self.node_id().stream(*stream_nr);
-            inner.root().map(|root| (stream_id, root))
+            inner.infos().map(|infos| (stream_id, infos))
         });
 
         let other = self.remote_nodes.iter().flat_map(|(node_id, remote_node)| {
             remote_node.streams.iter().filter_map(move |(stream_nr, inner)| {
                 let stream_id = node_id.stream(*stream_nr);
-                inner.root().map(|root| (stream_id, root))
+                inner.infos().map(|infos| (stream_id, infos))
             })
         });
         own.chain(other).collect()
@@ -1048,14 +1065,13 @@ impl BanyanStore {
         stream
             .latest()
             .set(Some(PublishedTree::new(root, header, curr.clone())));
-        // update resent and highest_seen for the stream
+        // update resent for the stream
         let offset = curr.offset().unwrap();
-        self.update_highest_seen(stream_id, offset);
         self.update_present(stream_id, offset);
         // publish the update - including the header
         let blocks = txn.into_writer().into_written();
         // publish new blocks and root
-        self.data.gossip.publish(stream_nr, root, blocks, lamport)?;
+        self.data.gossip.publish(stream_nr, root, blocks, lamport, offset)?;
         tracing::trace!("transform_stream successful");
         res
     }
@@ -1126,13 +1142,13 @@ impl BanyanStore {
     ///
     /// this future may be interrupted at any time when an even newer root comes along.
     async fn sync_one(self, stream_id: StreamId, root: Link, source: RootSource) -> Result<SyncOutcome> {
-        if source == RootSource::SlowPath {
+        if source.path == RootPath::SlowPath {
             // it is not unlikely that this sync_one will be replaced by one from the FastPath,
             // so don’t start bitswapping right away
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
 
-        let s = tracing::trace_span!("sync_one", stream_id = display(stream_id), root = display(root));
+        let s = tracing::trace_span!("sync_one", %stream_id, %root);
         let e = s.enter();
 
         let cid = Cid::from(root);
@@ -1189,7 +1205,6 @@ impl BanyanStore {
                 {
                     // sanity check: we must never lose events.
                     anyhow::ensure!(temp.count() >= validated_header_count);
-                    self.update_highest_seen(stream_id, temp.offset().unwrap());
                     tree = Some(temp);
                 }
             }
@@ -1267,6 +1282,7 @@ impl BanyanStore {
         });
     }
 
+    /// Updates the highest seen for a given stream, if it is higher
     fn update_highest_seen(&self, stream_id: StreamId, offset: Offset) {
         self.data.offsets.transform_mut(|offsets| {
             offsets

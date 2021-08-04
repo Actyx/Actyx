@@ -1,4 +1,4 @@
-use crate::{AxStreamBuilder, Cid, Link, RootSource, Tree};
+use crate::{AxStreamBuilder, Cid, Link, RootPath, RootSource, Tree};
 use actyx_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr};
 use ax_futures_util::stream::variable::Variable;
 use banyan::StreamTransaction;
@@ -88,8 +88,10 @@ impl OwnStream {
         self.latest.get_cloned()
     }
 
-    pub fn root(&self) -> Option<Cid> {
-        self.latest.project(|x| x.as_ref().map(|x| Cid::from(x.root)))
+    // Infos about the latest published tree
+    pub fn infos(&self) -> Option<(Cid, Offset, LamportTimestamp)> {
+        self.latest
+            .project(|x| x.as_ref().map(|x| (Cid::from(x.root), x.offset(), x.lamport())))
     }
 
     /// Acquire an async lock to modify this stream
@@ -166,6 +168,10 @@ impl PublishedTree {
         Offset::try_from(offset).expect("invalid offset")
     }
 
+    pub fn lamport(&self) -> LamportTimestamp {
+        self.header.lamport
+    }
+
     pub fn root(&self) -> Link {
         self.root
     }
@@ -189,9 +195,10 @@ impl ReplicatedStream {
         self.validated.get_cloned()
     }
 
-    /// root of the tree. This is the hash of the header.
-    pub fn root(&self) -> Option<Cid> {
-        self.validated.project(|x| x.as_ref().map(|x| Cid::from(x.root)))
+    // Infos about the latest validated tree
+    pub fn infos(&self) -> Option<(Cid, Offset, LamportTimestamp)> {
+        self.validated
+            .project(|x| x.as_ref().map(|x| (Cid::from(x.root), x.offset(), x.lamport())))
     }
 
     /// lamport of the header and count of the last validated tree.
@@ -227,7 +234,7 @@ impl ReplicatedStream {
                     if error {
                         x.take();
                     } else {
-                        *s = RootSource::RootMap;
+                        s.path = RootPath::RootMap;
                     }
                 }
                 _ => {}

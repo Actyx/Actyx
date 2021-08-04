@@ -11,7 +11,6 @@ use libipld::Cid;
 use maplit::btreemap;
 use parking_lot::Mutex;
 use std::{collections::BTreeMap, convert::TryFrom, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
-use tempdir::TempDir;
 use tokio::runtime::Runtime;
 use trees::query::TagExprQuery;
 
@@ -205,10 +204,8 @@ async fn must_not_lose_events_through_compaction() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
-async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
-    const EVENTS: usize = 10;
-    let dir = TempDir::new("must_report_proper_initial_offsets")?;
+fn config_in_temp_folder() -> anyhow::Result<(SwarmConfig, tempfile::TempDir)> {
+    let dir = tempfile::tempdir()?;
     let db = PathBuf::from(dir.path().join("db").to_str().expect("illegal filename"));
     let index = PathBuf::from(dir.path().join("index").to_str().expect("illegal filename"));
     let index_store = Arc::new(Mutex::new(rusqlite::Connection::open(index)?));
@@ -218,6 +215,13 @@ async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
         db_path: Some(db),
         ..SwarmConfig::basic()
     };
+    Ok((config, dir))
+}
+
+#[tokio::test]
+async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
+    const EVENTS: usize = 10;
+    let (config, _dir) = config_in_temp_folder()?;
     let store = BanyanStore::new(config.clone()).await?;
     let stream = store.get_or_create_own_stream(0.into())?;
     let stream_id = store.node_id().stream(0.into());
@@ -234,8 +238,10 @@ async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
 
     // load non-empty store from disk and check that the offsets are correctly computed
     let store = BanyanStore::new(config).await?;
-    let present = store.data.offsets.project(|x| x.present.clone());
-    assert_eq!(present, expected_present);
+    let swarm_offsets = store.data.offsets.project(Clone::clone);
+    assert_eq!(swarm_offsets.present, expected_present);
+    // replication_target should be equal to the present. is nulled in the event service API
+    assert_eq!(swarm_offsets.replication_target, expected_present);
 
     Ok(())
 }

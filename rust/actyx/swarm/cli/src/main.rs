@@ -4,10 +4,12 @@ use api::{formats::Licensing, NodeInfo};
 use ax_futures_util::prelude::AxStreamExt;
 use crypto::{KeyPair, KeyStore};
 use futures::{stream::StreamExt, TryStreamExt};
+use ipfs_embed::GossipEvent;
+use libipld::{cbor::DagCborCodec, codec::Codec};
 use structopt::StructOpt;
 use swarm::{
     event_store_ref::{self, EventStoreHandler, EventStoreRef, EventStoreRequest},
-    BanyanStore, SwarmConfig,
+    BanyanStore, GossipMessage, SwarmConfig,
 };
 use swarm_cli::{Command, Config, Event};
 use tokio::{
@@ -131,6 +133,23 @@ async fn run() -> Result<()> {
             }
             Command::ApiPort => {
                 println!("{}", Event::ApiPort(config.enable_api.map(|a| a.port())));
+            }
+            Command::GossipSubscribe(topic) => {
+                let mut stream = swarm.ipfs().subscribe(&topic)?;
+                tokio::spawn(async move {
+                    while let Some(msg) = stream.next().await {
+                        if let GossipEvent::Message(sender, data) = msg {
+                            match DagCborCodec.decode::<GossipMessage>(&data[..]) {
+                                Ok(x) => {
+                                    println!("{}", Event::GossipEvent(topic.clone(), sender, x));
+                                }
+                                Err(e) => {
+                                    println!("Error decoding GossipMessage: {}", e);
+                                }
+                            }
+                        }
+                    }
+                });
             }
         }
     }

@@ -183,7 +183,6 @@ pub fn initialize_db(conn: &Connection) -> Result<()> {
 mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
-    use tempdir::TempDir;
 
     fn get_shared_memory_index_store(path: &str) -> Result<SqliteIndexStore> {
         SqliteIndexStore::open(DbPath::File(path.into()))
@@ -204,7 +203,7 @@ mod test {
 
     #[test]
     fn creating_a_new_store_should_grab_lamport_from_the_db() -> Result<()> {
-        let dir = TempDir::new("grab_lamport_from_db").expect("cannot create TempDir");
+        let dir = tempfile::tempdir()?;
         let db = dir.path().join("db").to_str().expect("illegal filename").to_owned();
         let mut store = get_shared_memory_index_store(&db)?;
         for _ in 0..4 {

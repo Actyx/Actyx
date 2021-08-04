@@ -7,11 +7,16 @@ edition = "2018"
 [dependencies]
 actyx_sdk = { path = "../../../sdk" }
 anyhow = "1.0.42"
-async-process = "1.1.0"
 api = { path = "../../api" }
+async-process = "1.1.0"
+ax-futures-util = { path = "../../ax-futures-util/" }
+chrono = "0.4.19"
+crossbeam = "0.8.1"
 crypto = { path = "../../crypto" }
 futures = { version = "0.3.15", package = "futures" }
+hex = "0.4.3"
 ipfs-embed = { version = "0.22.3", default-features = false, features = ["tokio"] }
+libipld = { version = "0.12.0", features = ["dag-cbor"], default-features = false }
 libp2p = { version = "0.39.1", default-features = false }
 serde_json = "1.0.64"
 structopt = "0.3.22"
@@ -21,6 +26,3 @@ tracing = "0.1.26"
 tracing-subscriber = "0.2.19"
 trees = { path = "../../trees" }
 util = { path = "../../util" }
-crossbeam = "0.8.1"
-chrono = "0.4.19"
-ax-futures-util = { path = "../../ax-futures-util/" }

@@ -80,6 +80,16 @@ impl PublicKey {
     }
 }
 
+pub fn node_id_to_peer_id(node_id: NodeId) -> libp2p::core::PeerId {
+    let public: PublicKey = node_id.into();
+    public.into()
+}
+
+pub fn peer_id_to_node_id(peer_id: libp2p::core::PeerId) -> anyhow::Result<NodeId> {
+    let public = PublicKey::try_from(peer_id)?;
+    Ok(public.into())
+}
+
 impl From<PublicKey> for libp2p::core::PeerId {
     fn from(pb: PublicKey) -> libp2p::core::PeerId {
         let public = pb.into();

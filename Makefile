@@ -263,6 +263,7 @@ validate-netsim: diagnostics
 	rust/actyx/target/release/gossip --n-nodes 8 --enable-fast-path
 	rust/actyx/target/release/gossip --n-nodes 8 --enable-slow-path
 	rust/actyx/target/release/gossip --n-nodes 8 --enable-root-map
+	rust/actyx/target/release/gossip_protocol --n-nodes 8
 	rust/actyx/target/release/root_map --n-nodes 8 --enable-root-map
 	rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
 	rust/actyx/target/release/discovery_multi_net

@@ -4675,6 +4675,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "quickcheck_macros"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b22a693222d716a9587786f37ac3f6b4faedb5b80c23914e7303ff5a1d8016e9"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "quinn-noise"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5701,13 +5712,14 @@ dependencies = [
  "pretty_assertions",
  "prometheus",
  "quickcheck",
+ "quickcheck_macros",
  "rand 0.8.4",
  "rayon",
  "rusqlite",
  "serde",
  "serde_cbor",
  "serde_json",
- "tempdir",
+ "tempfile",
  "tokio",
  "tracing",
  "trees",
@@ -5729,7 +5741,9 @@ dependencies = [
  "crossbeam",
  "crypto",
  "futures 0.3.16",
+ "hex",
  "ipfs-embed",
+ "libipld",
  "libp2p",
  "serde_json",
  "structopt",
@@ -5751,6 +5765,7 @@ dependencies = [
  "async-process",
  "async-std",
  "async-trait",
+ "crypto",
  "futures 0.3.16",
  "libipld",
  "libp2p",

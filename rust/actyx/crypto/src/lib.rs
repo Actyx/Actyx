@@ -46,5 +46,5 @@ pub use keystore::{KeyStore, KeyStoreRef};
 pub use legacy::LegacyKeyId;
 pub use pair::KeyPair;
 pub use private::PrivateKey;
-pub use public::PublicKey;
+pub use public::{node_id_to_peer_id, peer_id_to_node_id, PublicKey};
 pub use signature::SignedMessage;
