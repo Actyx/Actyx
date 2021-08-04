@@ -94,7 +94,7 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/osxbuilder:90af262c037444c4da6d981f8a885ac510a79bb6
+image-darwin = actyx/osxbuilder:a042cc707998b83704f3cf5d3f0ededc7143d1c3
 
 image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
 
