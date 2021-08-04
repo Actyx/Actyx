@@ -66,7 +66,7 @@ export BUILD_RUST_TOOLCHAIN ?= 1.54.0
 # which the respective images was built. Whenever the build images (inside
 # ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 33b15c3a394b14aee711cc6d26b7267a35fdf065
+export LATEST_STABLE_IMAGE_VERSION := 804ae71c44c8deae9597992eba76669047d41b36
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -94,7 +94,7 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/osxbuilder:90af262c037444c4da6d981f8a885ac510a79bb6
+image-darwin = actyx/osxbuilder:a042cc707998b83704f3cf5d3f0ededc7143d1c3
 
 image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
 
@@ -372,7 +372,7 @@ node-manager-win: prepare-docker
 	-v `pwd`:/src \
 	-w /src/js/node-manager \
 	--rm \
-	actyx/util:node-manager-win-builder \
+	actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
 	bash -c "npm install && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
 
 node-manager-mac-linux:
