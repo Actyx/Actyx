@@ -271,6 +271,24 @@ async fn select_multi_internal<T>(machine: &mut Machine<Command, Event>, things:
     res.into_iter().map(|x| x.unwrap()).collect()
 }
 
+pub async fn fully_mesh(sim: &mut Netsim<Command, Event>, timeout: Duration) -> Result<()> {
+    for i in 0..sim.machines().len() {
+        let machine = &mut sim.machines_mut()[i];
+        loop {
+            if let Some(Event::NewListenAddr(addr)) = future::timeout(Duration::from_secs(3), machine.recv()).await? {
+                if !addr.is_loopback() {
+                    let peer_id = machine.peer_id();
+                    for machine in sim.machines_mut() {
+                        machine.send(Command::AddAddress(peer_id, addr.clone()));
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    fully_meshed(sim, timeout).await
+}
+
 pub async fn fully_meshed<E>(sim: &mut Netsim<Command, E>, timeout: Duration) -> Result<()>
 where
     E: Borrow<Event> + FromStr<Err = anyhow::Error> + Send + 'static,

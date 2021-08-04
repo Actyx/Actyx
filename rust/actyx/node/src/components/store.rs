@@ -158,6 +158,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             .map_err(|_| anyhow::anyhow!("invalid psk"))?;
         let topic = s.swarm.topic.replace('/', "_");
         let db_path = self.working_dir.join(format!("{}.sqlite", topic));
+        let read_only = s.api.events.read_only;
         let swarm_config = SwarmConfig {
             topic,
             index_store: Some(self.db.clone()),
@@ -178,6 +179,9 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 .iter()
                 .map(|s| s.parse())
                 .collect::<Result<_, libp2p::multiaddr::Error>>()?,
+            enable_fast_path: !read_only,
+            enable_slow_path: !read_only,
+            enable_root_map: !read_only,
             ..SwarmConfig::basic()
         };
         Ok(StoreConfig {

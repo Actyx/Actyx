@@ -626,21 +626,13 @@ impl BanyanStore {
                         .with_max_failures(NonZeroU32::new(2).unwrap()),
                 ),
                 identify: Some(IdentifyConfig::new("/actyx/2.0.0".to_string(), public)),
-                gossipsub: if cfg.enable_root_map || cfg.enable_slow_path {
-                    Some(
-                        GossipsubConfigBuilder::default()
-                            .validation_mode(ValidationMode::Permissive)
-                            .build()
-                            .expect("valid gossipsub config"),
-                    )
-                } else {
-                    None
-                },
-                broadcast: if cfg.enable_fast_path {
-                    Some(Default::default())
-                } else {
-                    None
-                },
+                gossipsub: Some(
+                    GossipsubConfigBuilder::default()
+                        .validation_mode(ValidationMode::Permissive)
+                        .build()
+                        .expect("valid gossipsub config"),
+                ),
+                broadcast: Some(Default::default()),
                 bitswap: Some(BitswapConfig {
                     request_timeout: Duration::from_secs(10),
                     connection_keep_alive: Duration::from_secs(10),
