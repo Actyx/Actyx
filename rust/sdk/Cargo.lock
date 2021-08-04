@@ -44,6 +44,7 @@ dependencies = [
  "pest_derive",
  "postgres-types",
  "quickcheck",
+ "quickcheck_derive",
  "rand",
  "reduce",
  "reqwest",
@@ -1402,6 +1403,17 @@ dependencies = [
  "env_logger",
  "log",
  "rand",
+]
+
+[[package]]
+name = "quickcheck_derive"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "695566b1208e5a3e5a613d3326fcdb78203e1493c81514bfb4f4460ce0694deb"
+dependencies = [
+ "proc-macro2",
+ "syn",
+ "synstructure",
 ]
 
 [[package]]

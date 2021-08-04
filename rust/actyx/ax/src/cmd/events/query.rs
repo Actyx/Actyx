@@ -62,6 +62,7 @@ impl AxCliCommand for EventsQuery {
                 Ok(EventsResponse::Diagnostic(d)) => match d.severity {
                     Severity::Warning => Some(Ok(EventDiagnostic::Diagnostic(d))),
                     Severity::Error => Some(Err(ActyxOSError::new(ActyxOSCode::ERR_AQL_ERROR, d.message))),
+                    Severity::FutureCompat => None,
                 },
                 Ok(EventsResponse::Error { message }) => {
                     Some(Err(ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, message)))

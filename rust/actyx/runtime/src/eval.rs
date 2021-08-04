@@ -1,5 +1,5 @@
 use crate::value::{Value, ValueKind};
-use actyx_sdk::language::{Ind, Index, Num, SimpleExpr, SortKey};
+use actyx_sdk::language::{BinOp, Ind, Index, Num, SimpleExpr, SortKey};
 use anyhow::{anyhow, bail};
 use cbor_data::{CborBuilder, CborOwned, Encoder, WithOutput, Writer};
 use std::{cmp::Ordering, collections::BTreeMap};
@@ -122,71 +122,78 @@ impl<'a> Context<'a> {
                 }
                 Err(anyhow!("no case matched"))
             }
-            SimpleExpr::Add(a) => self.eval(&a.0)?.add(&self.eval(&a.1)?),
-            SimpleExpr::Sub(a) => self.eval(&a.0)?.sub(&self.eval(&a.1)?),
-            SimpleExpr::Mul(a) => self.eval(&a.0)?.mul(&self.eval(&a.1)?),
-            SimpleExpr::Div(a) => self.eval(&a.0)?.div(&self.eval(&a.1)?),
-            SimpleExpr::Mod(a) => self.eval(&a.0)?.modulo(&self.eval(&a.1)?),
-            SimpleExpr::Pow(a) => self.eval(&a.0)?.pow(&self.eval(&a.1)?),
-            SimpleExpr::And(a) => {
-                let v = self.eval(&a.0)?.as_bool()? && self.eval(&a.1)?.as_bool()?;
-                Ok(self.value(|b| b.encode_bool(v)))
-            }
-            SimpleExpr::Or(a) => {
-                let v = self.eval(&a.0)?.as_bool()? || self.eval(&a.1)?.as_bool()?;
-                Ok(self.value(|b| b.encode_bool(v)))
-            }
             SimpleExpr::Not(a) => {
                 let v = !self.eval(a)?.as_bool()?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Xor(a) => {
-                let v = self.eval(&a.0)?.as_bool()? ^ self.eval(&a.1)?.as_bool()?;
+            SimpleExpr::BinOp(b) => self.bin_op(&b.1, b.0, &b.2),
+            SimpleExpr::AggrOp(_) => todo!(),
+        }
+    }
+
+    fn bin_op(&self, l: &SimpleExpr, op: BinOp, r: &SimpleExpr) -> anyhow::Result<Value> {
+        match op {
+            BinOp::Add => self.eval(&l)?.add(&self.eval(&r)?),
+            BinOp::Sub => self.eval(&l)?.sub(&self.eval(&r)?),
+            BinOp::Mul => self.eval(&l)?.mul(&self.eval(&r)?),
+            BinOp::Div => self.eval(&l)?.div(&self.eval(&r)?),
+            BinOp::Mod => self.eval(&l)?.modulo(&self.eval(&r)?),
+            BinOp::Pow => self.eval(&l)?.pow(&self.eval(&r)?),
+            BinOp::And => {
+                let v = self.eval(&l)?.as_bool()? && self.eval(&r)?.as_bool()?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Lt(a) => {
-                let left = self.eval(&a.0)?;
-                let right = self.eval(&a.1)?;
+            BinOp::Or => {
+                let v = self.eval(&l)?.as_bool()? || self.eval(&r)?.as_bool()?;
+                Ok(self.value(|b| b.encode_bool(v)))
+            }
+            BinOp::Xor => {
+                let v = self.eval(&l)?.as_bool()? ^ self.eval(&r)?.as_bool()?;
+                Ok(self.value(|b| b.encode_bool(v)))
+            }
+            BinOp::Lt => {
+                let left = self.eval(&l)?;
+                let right = self.eval(&r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o == Ordering::Less)
                     .ok_or_else(|| anyhow!("cannot compare {} < {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Le(a) => {
-                let left = self.eval(&a.0)?;
-                let right = self.eval(&a.1)?;
+            BinOp::Le => {
+                let left = self.eval(&l)?;
+                let right = self.eval(&r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o != Ordering::Greater)
                     .ok_or_else(|| anyhow!("cannot compare {} ≤ {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Gt(a) => {
-                let left = self.eval(&a.0)?;
-                let right = self.eval(&a.1)?;
+            BinOp::Gt => {
+                let left = self.eval(&l)?;
+                let right = self.eval(&r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o == Ordering::Greater)
                     .ok_or_else(|| anyhow!("cannot compare {} > {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Ge(a) => {
-                let left = self.eval(&a.0)?;
-                let right = self.eval(&a.1)?;
+            BinOp::Ge => {
+                let left = self.eval(&l)?;
+                let right = self.eval(&r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o != Ordering::Less)
                     .ok_or_else(|| anyhow!("cannot compare {} ≥ {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Eq(a) => {
-                let left = self.eval(&a.0)?;
-                let right = self.eval(&a.1)?;
+            BinOp::Eq => {
+                let left = self.eval(&l)?;
+                let right = self.eval(&r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o == Ordering::Equal)
                     .ok_or_else(|| anyhow!("cannot compare {} = {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Ne(a) => {
-                let left = self.eval(&a.0)?;
-                let right = self.eval(&a.1)?;
+            BinOp::Ne => {
+                let left = self.eval(&l)?;
+                let right = self.eval(&r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o != Ordering::Equal)
                     .ok_or_else(|| anyhow!("cannot compare {} ≠ {}", left, right))?;

@@ -2,13 +2,13 @@ use std::fmt::{Result, Write};
 
 use super::*;
 
-fn render_simple_pair(w: &mut impl Write, e: &(SimpleExpr, SimpleExpr), op: &'static str) -> Result {
+fn render_simple_pair(w: &mut impl Write, l: &SimpleExpr, op: &'static str, r: &SimpleExpr) -> Result {
     w.write_char('(')?;
-    render_simple_expr(w, &(*e).0)?;
+    render_simple_expr(w, l)?;
     w.write_char(' ')?;
     w.write_str(op)?;
     w.write_char(' ')?;
-    render_simple_expr(w, &(*e).1)?;
+    render_simple_expr(w, r)?;
     w.write_char(')')
 }
 
@@ -118,26 +118,8 @@ pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
             }
             w.write_str(" ENDCASE")
         }
-        SimpleExpr::Add(e) => render_simple_pair(w, e, "+"),
-        SimpleExpr::Sub(e) => render_simple_pair(w, e, "-"),
-        SimpleExpr::Mul(e) => render_simple_pair(w, e, "*"),
-        SimpleExpr::Div(e) => render_simple_pair(w, e, "/"),
-        SimpleExpr::Mod(e) => render_simple_pair(w, e, "%"),
-        SimpleExpr::Pow(e) => render_simple_pair(w, e, "^"),
-        SimpleExpr::And(e) => render_simple_pair(w, e, "&"),
-        SimpleExpr::Or(e) => render_simple_pair(w, e, "|"),
-        SimpleExpr::Xor(e) => render_simple_pair(w, e, "~"),
-        SimpleExpr::Lt(e) => render_simple_pair(w, e, "<"),
-        SimpleExpr::Le(e) => render_simple_pair(w, e, "<="),
-        SimpleExpr::Gt(e) => render_simple_pair(w, e, ">"),
-        SimpleExpr::Ge(e) => render_simple_pair(w, e, ">="),
-        SimpleExpr::Eq(e) => render_simple_pair(w, e, "="),
-        SimpleExpr::Ne(e) => render_simple_pair(w, e, "!="),
-        SimpleExpr::Sum(e) => render_unary_function(w, "SUM", e),
-        SimpleExpr::Min(e) => render_unary_function(w, "MIN", e),
-        SimpleExpr::Max(e) => render_unary_function(w, "MAX", e),
-        SimpleExpr::First(e) => render_unary_function(w, "FIRST", e),
-        SimpleExpr::Last(e) => render_unary_function(w, "LAST", e),
+        SimpleExpr::BinOp(e) => render_simple_pair(w, &e.1, e.0.as_str(), &e.2),
+        SimpleExpr::AggrOp(e) => render_unary_function(w, e.0.as_str(), &e.1),
     }
 }
 

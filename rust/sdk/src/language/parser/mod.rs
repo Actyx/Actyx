@@ -1,9 +1,11 @@
 #![allow(dead_code)]
 #![allow(clippy::upper_case_acronyms)]
 
-use std::{convert::TryInto, str::FromStr};
+use std::{convert::TryInto, str::FromStr, sync::Arc};
 
-use super::{non_empty::NonEmptyVec, Arr, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, TagAtom, TagExpr};
+use super::{
+    non_empty::NonEmptyVec, AggrOp, Arr, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, TagAtom, TagExpr,
+};
 use crate::{language::SortKey, tags::Tag, Timestamp};
 use anyhow::{bail, ensure, Result};
 use chrono::{TimeZone, Utc};
@@ -151,7 +153,7 @@ fn r_var(p: P, ctx: Context) -> Result<SimpleExpr> {
         head
     } else {
         SimpleExpr::Indexing(Ind {
-            head: Box::new(head),
+            head: Arc::new(head),
             tail: tail.try_into()?,
         })
     })
@@ -174,7 +176,7 @@ fn r_expr_index(p: P, ctx: Context) -> Result<SimpleExpr> {
         head
     } else {
         SimpleExpr::Indexing(Ind {
-            head: Box::new(head),
+            head: Arc::new(head),
             tail: tail.try_into()?,
         })
     })
@@ -222,7 +224,7 @@ fn r_object(p: P, ctx: Context) -> Result<Obj> {
         let value = r_simple_expr(p.next().ok_or(NoVal("value"))?, ctx)?;
         props.push((key, value));
     }
-    Ok(Obj { props })
+    Ok(Obj { props: props.into() })
 }
 
 fn r_array(p: P, ctx: Context) -> Result<Arr> {
@@ -254,11 +256,11 @@ fn r_aggr(p: P, ctx: Context) -> Result<SimpleExpr> {
     ensure!(ctx == Context::Aggregate, ContextError::AggregatorOutsideAggregate);
     let p = p.single()?;
     Ok(match p.as_rule() {
-        Rule::aggr_sum => SimpleExpr::Sum(Box::new(r_simple_expr(p.single()?, Context::Simple)?)),
-        Rule::aggr_min => SimpleExpr::Min(Box::new(r_simple_expr(p.single()?, Context::Simple)?)),
-        Rule::aggr_max => SimpleExpr::Max(Box::new(r_simple_expr(p.single()?, Context::Simple)?)),
-        Rule::aggr_first => SimpleExpr::First(Box::new(r_simple_expr(p.single()?, Context::Simple)?)),
-        Rule::aggr_last => SimpleExpr::Last(Box::new(r_simple_expr(p.single()?, Context::Simple)?)),
+        Rule::aggr_sum => SimpleExpr::AggrOp(Arc::new((AggrOp::Sum, r_simple_expr(p.single()?, Context::Simple)?))),
+        Rule::aggr_min => SimpleExpr::AggrOp(Arc::new((AggrOp::Min, r_simple_expr(p.single()?, Context::Simple)?))),
+        Rule::aggr_max => SimpleExpr::AggrOp(Arc::new((AggrOp::Max, r_simple_expr(p.single()?, Context::Simple)?))),
+        Rule::aggr_first => SimpleExpr::AggrOp(Arc::new((AggrOp::First, r_simple_expr(p.single()?, Context::Simple)?))),
+        Rule::aggr_last => SimpleExpr::AggrOp(Arc::new((AggrOp::Last, r_simple_expr(p.single()?, Context::Simple)?))),
         x => bail!("unexpected token: {:?}", x),
     })
 }
@@ -550,7 +552,7 @@ mod tests {
         assert_eq!(
             p("[1,TRUE]"),
             Array(Arr {
-                items: vec![Number(Natural(1)), Bool(true)]
+                items: vec![Number(Natural(1)), Bool(true)].into()
             })
         );
         assert_eq!(
@@ -562,6 +564,7 @@ mod tests {
                     (Index::Expr(String("three".into())), Number(Natural(3))),
                     (Index::Number(4), Number(Natural(4))),
                 ]
+                .into()
             })
         );
     }

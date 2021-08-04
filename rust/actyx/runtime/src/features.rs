@@ -1,5 +1,5 @@
 use crate::{operation::Operation, query::Query};
-use actyx_sdk::language::{Arr, Ind, Obj, SimpleExpr, TagAtom, TagExpr};
+use actyx_sdk::language::{SimpleExpr, TagAtom, TagExpr, Traverse};
 use std::{collections::BTreeSet, str::FromStr};
 
 #[derive(Debug, Clone, derive_more::Display, PartialEq)]
@@ -58,6 +58,7 @@ features! {
     timeRange: Beta,
     eventKeyRange: Beta,
     multiEmission: Alpha,
+    aggregate: Alpha,
 }
 
 use itertools::Itertools;
@@ -130,9 +131,13 @@ fn features_op(feat: &mut Features, op: &Operation) {
             if s.exprs.len() > 1 {
                 feat.add(multiEmission);
             }
-            for expr in &s.exprs {
+            for expr in s.exprs.iter() {
                 features_simple(feat, expr);
             }
+        }
+        Operation::Aggregate(a) => {
+            feat.add(aggregate);
+            features_simple(feat, &a.expr);
         }
     }
 }
@@ -160,110 +165,9 @@ fn features_tag(feat: &mut Features, expr: &TagExpr) {
     }
 }
 
-fn features_simple(feat: &mut Features, expr: &SimpleExpr) {
-    match expr {
-        SimpleExpr::Variable(_string) => {}
-        SimpleExpr::Indexing(Ind { head, tail }) => {
-            features_simple(feat, head);
-            for idx in tail.iter() {
-                match idx {
-                    actyx_sdk::language::Index::String(_) => {}
-                    actyx_sdk::language::Index::Number(_) => {}
-                    actyx_sdk::language::Index::Expr(expr) => {
-                        features_simple(feat, expr);
-                    }
-                }
-            }
-        }
-        SimpleExpr::Number(_n) => {}
-        SimpleExpr::String(_string) => {}
-        SimpleExpr::Object(Obj { props }) => {
-            for (idx, expr) in props {
-                features_simple(feat, expr);
-                match idx {
-                    actyx_sdk::language::Index::String(_) => {}
-                    actyx_sdk::language::Index::Number(_) => {}
-                    actyx_sdk::language::Index::Expr(expr) => {
-                        features_simple(feat, expr);
-                    }
-                }
-            }
-        }
-        SimpleExpr::Array(Arr { items }) => {
-            for expr in items {
-                features_simple(feat, expr);
-            }
-        }
-        SimpleExpr::Null => {}
-        SimpleExpr::Bool(_) => {}
-        SimpleExpr::Cases(v) => {
-            for (pred, res) in v.iter() {
-                features_simple(feat, pred);
-                features_simple(feat, res);
-            }
-        }
-        SimpleExpr::Add(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Sub(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Mul(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Div(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Mod(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Pow(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::And(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Or(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Xor(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Lt(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Le(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Gt(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Ge(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Eq(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Ne(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Not(x) => features_simple(feat, x),
-    }
+fn features_simple(_feat: &mut Features, expr: &SimpleExpr) {
+    // currently there are no features to be found
+    expr.traverse(&mut |_| Traverse::Stop);
 }
 
 #[cfg(test)]

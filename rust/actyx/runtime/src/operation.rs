@@ -1,17 +1,20 @@
 use crate::{eval::Context, value::Value};
-use actyx_sdk::language::SimpleExpr;
+use actyx_sdk::language::{AggrOp, NonEmptyVec, SimpleExpr, Traverse};
+use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Operation {
     Filter(Filter),
     Select(Select),
+    Aggregate(Aggregate),
 }
 
 impl Operation {
-    pub fn apply<'a>(&'a self, cx: &'a Context, input: Value) -> (Vec<anyhow::Result<Value>>, &'a Context) {
+    pub fn apply(&mut self, cx: &Context, input: Value) -> Vec<anyhow::Result<Value>> {
         match self {
-            Operation::Filter(f) => (f.apply(cx, input).into_iter().collect(), cx),
-            Operation::Select(s) => (s.apply(cx, input), cx),
+            Operation::Filter(f) => f.apply(cx, input).into_iter().collect(),
+            Operation::Select(s) => s.apply(cx, input),
+            Operation::Aggregate(a) => a.apply(cx, input),
         }
     }
 }
@@ -37,11 +40,11 @@ impl Filter {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Select {
-    pub exprs: Vec<SimpleExpr>,
+    pub exprs: NonEmptyVec<SimpleExpr>,
 }
 
 impl Select {
-    pub fn new(exprs: Vec<SimpleExpr>) -> Self {
+    pub fn new(exprs: NonEmptyVec<SimpleExpr>) -> Self {
         Self { exprs }
     }
 
@@ -52,12 +55,75 @@ impl Select {
     }
 }
 
+pub trait Aggregator {
+    fn feed(&mut self, input: Value) -> anyhow::Result<()>;
+}
+impl Aggregator for () {
+    fn feed(&mut self, _input: Value) -> anyhow::Result<()> {
+        Ok(())
+    }
+}
+
+pub struct Aggregate {
+    pub expr: SimpleExpr,
+    state: BTreeMap<(AggrOp, SimpleExpr), Box<dyn Aggregator + Send>>,
+}
+
+impl PartialEq for Aggregate {
+    fn eq(&self, other: &Self) -> bool {
+        self.expr == other.expr
+    }
+}
+
+impl std::fmt::Debug for Aggregate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Aggregate({:?})", self.expr)
+    }
+}
+
+impl Aggregate {
+    pub fn new(expr: SimpleExpr) -> Self {
+        let mut state = BTreeMap::new();
+        expr.traverse(&mut |e| match e {
+            SimpleExpr::AggrOp(a) => {
+                state.insert((a.0, a.1.clone()), Box::new(()) as Box<dyn Aggregator + Send>);
+                Traverse::Stop
+            }
+            _ => Traverse::Descend,
+        });
+        Self { expr, state }
+    }
+
+    pub fn apply(&mut self, cx: &Context, input: Value) -> Vec<anyhow::Result<Value>> {
+        let mut cx = cx.child();
+        cx.bind("_", input);
+
+        let mut errors = vec![];
+        fn log_error(errors: &mut Vec<anyhow::Result<Value>>, f: impl FnOnce() -> anyhow::Result<()>) {
+            match f() {
+                Ok(_) => {}
+                Err(e) => errors.push(Err(e)),
+            }
+        }
+
+        for ((_op, expr), agg) in &mut self.state {
+            log_error(&mut errors, || {
+                let v = cx.eval(expr)?;
+                agg.feed(v)?;
+                Ok(())
+            });
+        }
+        errors
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use actyx_sdk::{language::SortKey, NodeId};
     use cbor_data::Encoder;
 
     use super::*;
+    use std::convert::TryInto;
 
     fn simple_expr(s: &str) -> SimpleExpr {
         s.parse::<SimpleExpr>().unwrap()
@@ -84,7 +150,7 @@ mod tests {
 
     #[test]
     fn select() {
-        let s = Select::new(vec![simple_expr("_.x + a")]);
+        let s = Select::new(vec![simple_expr("_.x + a")].try_into().unwrap());
         let mut cx = Context::new(key());
         cx.bind("a", cx.value(|b| b.encode_f64(0.5)));
 
