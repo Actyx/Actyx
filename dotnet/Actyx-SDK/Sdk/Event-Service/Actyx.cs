@@ -145,7 +145,7 @@ namespace Actyx
                 .Select(BookKeepingOnChunk(sub.LowerBound));
 
 
-        private async Task<IEnumerable<IEventOnWire>> QueryKnown(RangeQuery query)
+        private async Task<IEnumerable<IResponseMessage>> QueryKnown(RangeQuery query)
         {
             var wireEvents = await store.Query(
                 query.LowerBound,

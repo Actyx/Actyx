@@ -57,7 +57,12 @@ export const handleStreamResponse = async <T>(
     if (canceled) {
       break
     }
-    cb(parse(line))
+    try {
+      const data = parse(line)
+      cb(data)
+    } catch (e) {
+      console.error('Error parsing response.', e)
+    }
   }
 }
 

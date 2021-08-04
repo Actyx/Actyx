@@ -4,7 +4,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <RootNamespace>CLI</RootNamespace>
-    <Version>0.0.1</Version>
+    <Version>0.2.0</Version>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <StartupObject>Actyx.CLI.Program</StartupObject>
   </PropertyGroup>

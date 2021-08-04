@@ -6,8 +6,8 @@ using System.CommandLine.Parsing;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
+using Newtonsoft.Json;
 
 namespace Actyx.CLI
 {
@@ -37,7 +37,7 @@ namespace Actyx.CLI
         }
 
         private static OffsetMap ParseBounds(ArgumentResult res) =>
-            Proto<OffsetMap>.Deserialize(res.Tokens[0].Value);
+            EventStore.Protocol.Deserialize<OffsetMap>(res.Tokens[0].Value);
 
         private static AppManifest ParseManifest(ArgumentResult res)
         {
@@ -50,7 +50,17 @@ namespace Actyx.CLI
                     Version = typeof(Program).Assembly.GetName().Version.ToString(),
                 };
             }
-            return Proto<AppManifest>.Deserialize(res.Tokens[0].Value);
+            return EventStore.Protocol.Deserialize<AppManifest>(res.Tokens[0].Value);
+        }
+
+        private static Action<T> Serializer<T>()
+        {
+            var serializer = EventStoreSerializer.Create(pretty: false);
+            return t =>
+            {
+                serializer.Serialize(Console.Out, t);
+                Console.Out.WriteLine();
+            };
         }
 
         private static Command Query()
@@ -67,7 +77,7 @@ namespace Actyx.CLI
                 var eventStore = await MkStore(manifest, websocket, node);
                 await eventStore
                     .Query(lowerBound, upperBound, query, order)
-                    .ForEachAsync(e => Console.WriteLine(Proto<IEventOnWire>.Serialize(e, false)));
+                    .ForEachAsync(Serializer<IResponseMessage>());
             });
             return cmd;
         }
@@ -84,7 +94,7 @@ namespace Actyx.CLI
                 var eventStore = await MkStore(manifest, websocket, node);
                 await eventStore
                     .Subscribe(lowerBound, query)
-                    .ForEachAsync(x => Console.WriteLine(Proto<IEventOnWire>.Serialize(x, false)));
+                    .ForEachAsync(Serializer<IResponseMessage>());
             });
             return cmd;
         }
@@ -103,7 +113,7 @@ namespace Actyx.CLI
                 var eventStore = await MkStore(manifest, websocket, node);
                 await eventStore
                     .SubscribeMonotonic(session, lowerBound, query)
-                    .ForEachAsync(x => Console.WriteLine(Proto<ISubscribeMonotonicResponse>.Serialize(x, false)));
+                    .ForEachAsync(Serializer<ISubscribeMonotonicResponse>());
             });
             return cmd;
         }
@@ -118,24 +128,31 @@ namespace Actyx.CLI
             {
                 var eventStore = await MkStore(manifest, websocket, node);
                 var offsets = await eventStore.Offsets();
-                Console.WriteLine(Proto<OffsetsResponse>.Serialize(offsets));
+                Serializer<OffsetsResponse>()(offsets);
             });
             return cmd;
         }
 
         private static Command Publish()
         {
+            var serializer = EventStoreSerializer.Create();
             var cmd = new Command("publish"){
                 new Argument<string>("node"),
                 new Argument<IEnumerable<EventDraft>>("events", (ArgumentResult res) =>
-                    res.Tokens.Select(t => Proto<EventDraft>.Deserialize(t.Value)).ToArray()
+                    res.Tokens
+                        .Select(t => {
+                            using var reader = new System.IO.StringReader(t.Value);
+                            using var jsonReader = new JsonTextReader(reader);
+                            return serializer.Deserialize<EventDraft>(jsonReader);
+                        })
+                        .ToArray()
                 ),
             };
             cmd.Handler = CommandHandler.Create<AppManifest, bool, string, IEnumerable<EventDraft>>(async (manifest, websocket, node, events) =>
             {
                 var eventStore = await MkStore(manifest, websocket, node);
                 var response = await eventStore.Publish(events.Cast<IEventDraft>());
-                Console.WriteLine(Proto<PublishResponse>.Serialize(response));
+                Serializer<PublishResponse>()(response);
             });
             return cmd;
         }

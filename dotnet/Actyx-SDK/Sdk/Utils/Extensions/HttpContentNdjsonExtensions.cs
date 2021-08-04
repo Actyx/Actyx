@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Actyx.Sdk.Utils.Extensions
 {
     internal static class HttpContentNdjsonExtensions
     {
 
-        public static async IAsyncEnumerable<TValue> ReadFromNdjsonAsync<TValue>(this HttpContent content)
+        public static async IAsyncEnumerable<JToken> ReadFromNdjsonAsync(this HttpContent content)
         {
             if (content is null)
             {
@@ -27,13 +27,12 @@ namespace Actyx.Sdk.Utils.Extensions
             using var contentStreamReader = new StreamReader(contentStream);
             while (!contentStreamReader.EndOfStream)
             {
-                var data = await contentStreamReader.ReadLineAsync().ConfigureAwait(false);
-                if (string.IsNullOrEmpty(data))
+                var line = await contentStreamReader.ReadLineAsync().ConfigureAwait(false);
+                if (string.IsNullOrEmpty(line))
                 {
                     continue;
                 }
-
-                yield return JsonConvert.DeserializeObject<TValue>(data, HttpContentExtensions.JsonSettings);
+                yield return JToken.Parse(line);
             }
         }
     }

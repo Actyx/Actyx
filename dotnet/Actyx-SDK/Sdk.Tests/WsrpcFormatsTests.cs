@@ -1,17 +1,20 @@
 ﻿using System.Collections.Generic;
-using Actyx.Sdk.AxWebsocketClient;
+using Actyx.Sdk.Utils;
+using Actyx.Sdk.Wsrpc;
 using DeepEqual.Syntax;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Sdk.Tests
 {
-    public class WsrpcProtocolTests
+    public class WsrpcFormatsTests
     {
-        static void Roundtrip<T>(T value)
+        readonly JsonProtocol protocol = new(WsrpcSerializer.Create());
+
+        void Roundtrip<T>(T value)
         {
-            var serialized = Proto<T>.Serialize(value);
-            var deserialized = Proto<T>.Deserialize(serialized);
+            var serialized = protocol.Serialize(value);
+            var deserialized = protocol.Deserialize<T>(serialized);
             deserialized.ShouldDeepEqual(value);
         }
 

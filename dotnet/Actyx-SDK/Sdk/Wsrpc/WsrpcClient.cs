@@ -3,23 +3,26 @@ using System.Collections.Concurrent;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
+using Actyx.Sdk.Utils;
 using Newtonsoft.Json.Linq;
 using Websocket.Client;
 
-namespace Actyx.Sdk.AxWebsocketClient
+namespace Actyx.Sdk.Wsrpc
 {
     public class WsrpcClient : IDisposable
     {
+        public static readonly JsonProtocol Protocol = new(WsrpcSerializer.Create());
+
         private readonly WebsocketClient client;
         private readonly ConcurrentDictionary<long, IObserver<IResponseMessage>> listeners = new() { };
         private readonly IDisposable responseProcessor;
         private Exception error;
         private long requestCounter = -1;
 
-        public class Error : Exception
+        public class WsrpcException : Exception
         {
             private readonly IErrorKind errorKind;
-            public Error(IErrorKind errorKind) : base(Proto<IErrorKind>.Serialize(errorKind))
+            public WsrpcException(IErrorKind errorKind) : base(Protocol.Serialize(errorKind))
             {
                 this.errorKind = errorKind;
             }
@@ -34,7 +37,7 @@ namespace Actyx.Sdk.AxWebsocketClient
 
             responseProcessor = client.MessageReceived.Subscribe(msg =>
             {
-                var response = Proto<IResponseMessage>.Deserialize(msg.Text);
+                var response = Protocol.Deserialize<IResponseMessage>(msg.Text);
                 if (listeners.TryGetValue(response.RequestId, out IObserver<IResponseMessage> listener))
                 {
                     listener.OnNext(response);
@@ -54,7 +57,7 @@ namespace Actyx.Sdk.AxWebsocketClient
             return Multiplex(serviceId, payload, () => !upstreamCompletedOrError)
                 .TakeWhile(res =>
                 {
-                    var isComplete = res.Type == "complete";
+                    var isComplete = res is Complete;
                     if (isComplete) { upstreamCompletedOrError = true; }
                     return !isComplete;
                 }).SelectMany(res =>
@@ -62,10 +65,10 @@ namespace Actyx.Sdk.AxWebsocketClient
                     switch (res)
                     {
                         case Next next: return next.Payload;
-                        case AxWebsocketClient.Error error:
+                        case Error error:
                             {
                                 upstreamCompletedOrError = true;
-                                throw new Error(error.Kind);
+                                throw new WsrpcException(error.Kind);
                             }
                         default: throw new InvalidOperationException();
                     }
@@ -85,7 +88,7 @@ namespace Actyx.Sdk.AxWebsocketClient
                     {
                         if (shouldCancelUpstream())
                         {
-                            var cancelMsg = Proto<Cancel>.Serialize(cancel);
+                            var cancelMsg = Protocol.Serialize(cancel);
                             client.Send(cancelMsg);
                         }
                     }
@@ -99,7 +102,7 @@ namespace Actyx.Sdk.AxWebsocketClient
 
             try
             {
-                var requestMsg = Proto<Request>.Serialize(request);
+                var requestMsg = Protocol.Serialize(request);
                 client.Send(requestMsg);
             }
             catch (Exception err)

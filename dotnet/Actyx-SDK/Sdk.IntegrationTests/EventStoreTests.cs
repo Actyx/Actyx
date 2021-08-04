@@ -35,7 +35,7 @@ namespace Sdk.IntegrationTests
             var client = await clientTask;
 
             // Publish some events
-            var events = Enumerable.Range(1, 10).Select(x => new TestEvent($"event {x}")).ToList();
+            var events = Enumerable.Range(1, 10).Select(x => new TestEvent(x)).ToList();
             var results = (await client.Publish(events)).Data;
             results.Should().HaveCount(events.Count);
             var first = results.First();
@@ -44,7 +44,7 @@ namespace Sdk.IntegrationTests
             first.Timestamp.Should().BePositive();
 
             // Query events
-            var query = new TestEventSelection($"FROM {string.Join(" & ", Constants.Tags.Select(x => $"'{x}'"))}");
+            var query = new TestEventSelection($"FROM {string.Join(" & ", Constants.Tags.Select(x => $"'{x}'"))} SELECT _ / 1");
             var queryResults = await client.Query(null, null, query, EventsOrder.Asc).ToList();
             queryResults.Should().HaveCountGreaterThan(1);
             var offsets = queryResults.Last() as OffsetsOnWire;

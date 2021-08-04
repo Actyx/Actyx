@@ -9,7 +9,7 @@ namespace Sdk.IntegrationTests.Helpers
 
         public object Payload { get; set; }
 
-        public TestEvent(string payload)
+        public TestEvent(object payload)
         {
             Payload = payload;
         }

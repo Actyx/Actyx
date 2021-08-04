@@ -2,7 +2,8 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Actyx.Sdk.AxHttpClient;
-using Actyx.Sdk.AxWebsocketClient;
+using Actyx.Sdk.Formats;
+using Actyx.Sdk.Wsrpc;
 using Newtonsoft.Json.Linq;
 
 namespace Actyx.CLI
@@ -12,25 +13,27 @@ namespace Actyx.CLI
         static async Task Main()
         {
             var exitEvent = new ManualResetEvent(false);
-            var token = (await AxHttpClient.GetToken(new Uri("http://localhost:4454/api/v2/"), new()
+            var serializer = EventStoreSerializer.Create();
+            var manifest = new AppManifest()
             {
                 AppId = "com.example.ax-ws-client-tests",
                 DisplayName = "ax ws client tests",
-                Version = "1.0.0"
-            })).Token;
-            var uri = new Uri($"http://localhost:4454/api/v2/events?{token}");
-            using var client = new WsrpcClient(uri);
+                Version = typeof(Program).Assembly.GetName().Version.ToString(),
+            };
+            var axHttpClient = await AxHttpClient.Create("http://localhost:4454/api/v2/", manifest, serializer);
+            Uri axWs = new($"ws://localhost:4454/api/v2/events?{axHttpClient.Token}");
+            using var client = new WsrpcClient(axWs);
             client.Start();
             var _ = Task.Run(() =>
-           {
-               var request = JToken.Parse(@"{ ""query"": ""FROM 'com.actyx.1'"", ""order"": ""asc""}");
-               client
-                   .Request("subscribe", request)
-                   .Subscribe(
-                       next => Console.WriteLine($">>> next: {next}"),
-                       error => Console.WriteLine($">>> error: {error}")
-                   );
-           });
+            {
+                var request = JToken.Parse(@"{ ""query"": ""FROM 'com.actyx.1'"", ""order"": ""asc""}");
+                client
+                    .Request("subscribe", request)
+                    .Subscribe(
+                        next => Console.WriteLine($">>> next: {next}"),
+                        error => Console.WriteLine($">>> error: {error}")
+                    );
+            });
 
             exitEvent.WaitOne();
         }

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Actyx.Sdk.Formats;
 using Actyx.Sdk.Utils;
 using Actyx.Sdk.Utils.Extensions;
-using Newtonsoft.Json;
+using Actyx.Sdk.Wsrpc;
 using Newtonsoft.Json.Linq;
 
 namespace Actyx.Sdk.AxWebsocketClient
@@ -15,17 +15,14 @@ namespace Actyx.Sdk.AxWebsocketClient
     public class WebsocketEventStore : IEventStore
     {
         private readonly WsrpcClient wsrpcClient;
-        private readonly NodeId nodeId;
-        private readonly JsonSerializer serializer = JsonSerializer.Create(HttpContentExtensions.JsonSettings);
+        public NodeId NodeId { get; private set; }
 
         public WebsocketEventStore(WsrpcClient wsrpcClient, NodeId nodeId)
         {
             this.wsrpcClient = wsrpcClient;
-            this.nodeId = nodeId;
+            NodeId = nodeId;
             wsrpcClient.Start();
         }
-
-        public NodeId NodeId => nodeId;
 
         public void Dispose()
         {
@@ -35,7 +32,7 @@ namespace Actyx.Sdk.AxWebsocketClient
         public async Task<OffsetsResponse> Offsets() =>
             await wsrpcClient.Request("offsets", null)
                 .Take(1)
-                .Select(offsets => offsets.ToObject<OffsetsResponse>(serializer))
+                .Select(EventStore.Protocol.DeserializeJson<OffsetsResponse>)
                 .ToTask();
 
         public Task<PublishResponse> Publish(IEnumerable<IEventDraft> events)
@@ -45,39 +42,42 @@ namespace Actyx.Sdk.AxWebsocketClient
                 return Task.FromResult(new PublishResponse { Data = new List<EventPublishMetadata>() });
             }
 
+            var request = new { data = events };
             return wsrpcClient
-                .Request("publish", JToken.FromObject(new { data = events }, serializer))
+                .Request("publish", EventStore.Protocol.SerializeJson(request))
                 .Take(1)
-                .Select(response => response.ToObject<PublishResponse>(serializer))
+                .Select(EventStore.Protocol.DeserializeJson<PublishResponse>)
                 .ToTask();
         }
 
-        public IObservable<IEventOnWire> Query(OffsetMap lowerBound, OffsetMap upperBound, IEventSelection query, EventsOrder sortOrder)
+        public IObservable<IResponseMessage> Query(OffsetMap lowerBound, OffsetMap upperBound, IEventSelection query, EventsOrder order)
         {
             ThrowIf.Argument.IsNull(query, nameof(query));
 
+            var request = new
+            {
+                lowerBound,
+                upperBound,
+                query = query.ToAql(),
+                order,
+            };
             return wsrpcClient
-                 .Request("query", JToken.FromObject(new
-                 {
-                     lowerBound,
-                     upperBound,
-                     query = query.ToAql(),
-                     order = sortOrder.ToWireString(),
-                 }, serializer))
-                 .Select(response => response.ToObject<IEventOnWire>(serializer));
+                .Request("query", EventStore.Protocol.SerializeJson(request))
+                .TrySelect(EventStore.Protocol.DeserializeJson<IResponseMessage>, LogDecodingError);
         }
 
-        public IObservable<IEventOnWire> Subscribe(OffsetMap lowerBound, IEventSelection query)
+        public IObservable<IResponseMessage> Subscribe(OffsetMap lowerBound, IEventSelection query)
         {
             ThrowIf.Argument.IsNull(query, nameof(query));
 
+            var request = new
+            {
+                lowerBound,
+                query = query.ToAql(),
+            };
             return wsrpcClient
-                   .Request("subscribe", JToken.FromObject(new
-                   {
-                       lowerBound,
-                       query = query.ToAql(),
-                   }, serializer))
-                   .Select(response => response.ToObject<IEventOnWire>(serializer));
+                .Request("subscribe", EventStore.Protocol.SerializeJson(request))
+                .TrySelect(EventStore.Protocol.DeserializeJson<IResponseMessage>, LogDecodingError);
         }
 
         public IObservable<ISubscribeMonotonicResponse> SubscribeMonotonic(string session, OffsetMap startFrom, IEventSelection query)
@@ -86,14 +86,18 @@ namespace Actyx.Sdk.AxWebsocketClient
             ThrowIf.Argument.IsNull(startFrom, nameof(startFrom));
             ThrowIf.Argument.IsNull(query, nameof(query));
 
+            var request = new
+            {
+                session,
+                lowerBound = startFrom,
+                query = query.ToAql(),
+            };
             return wsrpcClient
-                .Request("subscribe_monotonic", JToken.FromObject(new
-                {
-                    session,
-                    lowerBound = startFrom,
-                    query = query.ToAql(),
-                }, serializer))
-                .Select(response => response.ToObject<ISubscribeMonotonicResponse>(serializer));
+                .Request("subscribe_monotonic", EventStore.Protocol.SerializeJson(request))
+                .TrySelect(EventStore.Protocol.DeserializeJson<ISubscribeMonotonicResponse>, LogDecodingError);
         }
+
+        private static void LogDecodingError(JToken json, Exception error) =>
+            Console.Error.WriteLine($"Error decoding {json}: {error.Message}");
     }
 }

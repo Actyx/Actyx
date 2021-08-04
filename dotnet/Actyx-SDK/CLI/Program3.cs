@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Actyx.Sdk.AxHttpClient;
 using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
+using Actyx.Sdk.Wsrpc;
 using DeepEqual.Syntax;
 using Newtonsoft.Json;
 
@@ -21,13 +22,12 @@ namespace Actyx.CLI
             {
                 AppId = "com.example.ax-ws-client-tests",
                 DisplayName = "ax ws client tests",
-                Version = "1.0.0"
+                Version = typeof(Program).Assembly.GetName().Version.ToString(),
             };
-            var baseUri = "http://localhost:4454/api/v2/";
-            var nodeId = (await AxHttpClient.Create(baseUri, manifest)).NodeId;
-            var token = (await AxHttpClient.GetToken(new Uri(baseUri), manifest)).Token;
-            var wsrpcClient = new WsrpcClient(new Uri($"ws://localhost:4454/api/v2/events?{token}"));
-            using var store = new WebsocketEventStore(wsrpcClient, nodeId);
+            var axHttpClient = await AxHttpClient.Create("http://localhost:4454/api/v2/", manifest, EventStoreSerializer.Create());
+            Uri axWs = new($"ws://localhost:4454/api/v2/events?{axHttpClient.Token}");
+            using var wsrpcClient = new WsrpcClient(axWs);
+            using var store = new WebsocketEventStore(wsrpcClient, axHttpClient.NodeId);
 
             List<string> tags = new() { RandomString(8) };
 

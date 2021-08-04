@@ -5,93 +5,29 @@ using Actyx.Sdk.AxHttpClient;
 using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
 using Actyx.Sdk.Utils;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Serialization;
+using Actyx.Sdk.Wsrpc;
 
 namespace Actyx
 {
-    public class EventPublishMetadata
-    {
-        public ulong Lamport { get; set; }
-        public ulong Offset { get; set; }
-        public ulong Timestamp { get; set; }
-        public string Stream { get; set; }
-    }
-
-    public interface IEventOnWire { }
-
-    public class OffsetsOnWire : IEventOnWire
-    {
-        public OffsetMap Offsets { get; set; }
-    }
-
-    public enum DiagnosticSeverity { Warning, Error }
-
-    public class DiagnosticOnWire : IEventOnWire
-    {
-        [JsonConverter(typeof(StringEnumConverter), typeof(CamelCaseNamingStrategy))]
-        public DiagnosticSeverity Severity;
-        public string Message;
-    }
-
-    // Internal event class, 1:1 correspondence with wire format
-    public class EventOnWire : EventPublishMetadata, IEventOnWire
-    {
-        public string AppId { get; set; }
-        public IEnumerable<string> Tags { get; set; }
-        public JToken Payload { get; set; }
-    }
-
-    public interface ISubscribeMonotonicResponse { }
-
-    public class SubscribeMonotonicOffsetsResponse : ISubscribeMonotonicResponse
-    {
-        public OffsetMap Offsets { get; set; }
-    }
-
-    public class SubscribeMonotonicEventResponse : ISubscribeMonotonicResponse
-    {
-        public string AppId { get; set; }
-        public IEnumerable<string> Tags { get; set; }
-        public JToken Payload { get; set; }
-        public ulong Lamport { get; set; }
-        public ulong Offset { get; set; }
-        public ulong Timestamp { get; set; }
-        public string Stream { get; set; }
-        public bool CaughtUp { get; set; }
-    }
-
-    public class SubscribeMonotonicTimeTravelResponse : ISubscribeMonotonicResponse
-    {
-        public EventKey NewStart { get; set; }
-    }
-
-    public class PublishResponse
-    {
-        public IEnumerable<EventPublishMetadata> Data { get; set; }
-    }
-
     public static class EventStore
     {
+        public static readonly JsonProtocol Protocol = new(EventStoreSerializer.Create());
+
         public async static Task<IEventStore> Create(AppManifest manifest, ActyxOpts options)
         {
             ThrowIf.Argument.IsNull(options, nameof(options));
 
             string basePath = $"{options.Host}:{options.Port}/api/v2/";
+            var axHttpClient = await AxHttpClient.Create($"http://{basePath}", manifest, EventStoreSerializer.Create());
 
             if (options.Transport == Transport.Http)
             {
-                return new HttpEventStore(await AxHttpClient.Create($"http://{basePath}", manifest));
+                return new HttpEventStore(axHttpClient);
             }
 
-            Uri axHttp = new($"http://{basePath}");
-            var token = await AxHttpClient.GetToken(axHttp, manifest);
-            var nodeId = await AxHttpClient.GetNodeId(axHttp);
-            Uri axWs = new($"ws://{basePath}events?{token.Token}");
+            Uri axWs = new($"ws://{basePath}events?{axHttpClient.Token}");
             var wsrpcClient = new WsrpcClient(axWs);
-            return new WebsocketEventStore(wsrpcClient, nodeId);
+            return new WebsocketEventStore(wsrpcClient, axHttpClient.NodeId);
         }
     }
 
@@ -124,7 +60,7 @@ namespace Actyx
          * given that store and pond are usually on the same machine this won't be that bad, and in any case this is perferable
          * to needing a way of sending a javascript predicate to the store.
          */
-        IObservable<IEventOnWire> Query(
+        IObservable<IResponseMessage> Query(
             OffsetMap lowerBound,
             OffsetMap upperBound,
             IEventSelection query,
@@ -140,7 +76,7 @@ namespace Actyx
          * Getting events up to a maximum event key can be achieved for a finite set of sources by specifying sort by
          * event key and aborting as soon as the desired event key is reached.
          */
-        IObservable<IEventOnWire> Subscribe(
+        IObservable<IResponseMessage> Subscribe(
             OffsetMap lowerBound,
             IEventSelection query
         );
@@ -158,5 +94,4 @@ namespace Actyx
             IEnumerable<IEventDraft> events
         );
     }
-
 }

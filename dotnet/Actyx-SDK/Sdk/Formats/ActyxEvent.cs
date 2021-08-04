@@ -7,7 +7,6 @@ namespace Actyx.Sdk.Formats
 {
     public class ActyxEvent
     {
-
         public ActyxEventMetadata Meta { private set; get; }
 
         public JToken Payload { private set; get; }
