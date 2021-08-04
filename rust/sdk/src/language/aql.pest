@@ -70,8 +70,9 @@ simple_not = { not ~ simple_atom }
 simple_cases = { ( "CASE" ~ simple_expr ~ "=>" ~ simple_expr )+ ~ "ENDCASE" }
 
 // aggregations
-aggr_op = { aggr_sum | aggr_min | aggr_max | aggr_first | aggr_last }
+aggr_op = { aggr_sum | aggr_prod | aggr_min | aggr_max | aggr_first | aggr_last }
 aggr_sum = { "SUM(" ~ simple_expr ~ ")" }
+aggr_prod = { "PRODUCT(" ~ simple_expr ~ ")" }
 aggr_min = { "MIN(" ~ simple_expr ~ ")" }
 aggr_max = { "MAX(" ~ simple_expr ~ ")" }
 aggr_first = { "FIRST(" ~ simple_expr ~ ")" }

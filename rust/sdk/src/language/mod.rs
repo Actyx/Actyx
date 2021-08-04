@@ -58,7 +58,7 @@ impl std::ops::BitAnd for TagExpr {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
 pub struct SortKey {
     pub lamport: LamportTimestamp,
     pub stream: StreamId,
@@ -190,6 +190,7 @@ decl_op! {
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
     pub enum AggrOp {
         Sum -> "SUM",
+        Prod -> "PRODUCT",
         Min -> "MIN",
         Max -> "MAX",
         First -> "FIRST",

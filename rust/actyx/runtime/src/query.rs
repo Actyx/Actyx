@@ -13,21 +13,39 @@ pub struct Query {
 }
 
 impl Query {
-    pub fn feed(&mut self, input: Value) -> Vec<Result<Value, String>> {
-        fn rec(stages: &mut Vec<Operation>, current: usize, cx: &Context, input: Value) -> Vec<Result<Value, String>> {
+    /// Feed a new value into this processing pipeline, or feed None to flush aggregations.
+    pub fn feed(&mut self, input: Option<Value>) -> Vec<Result<Value, String>> {
+        fn rec(
+            stages: &mut Vec<Operation>,
+            current: usize,
+            cx: &Context,
+            input: Option<Value>,
+        ) -> Vec<Result<Value, String>> {
             if let Some(op) = stages.get_mut(current) {
-                let vs = op.apply(cx, input);
+                let flush = input.is_none();
+                let vs = if let Some(v) = input {
+                    op.apply(cx, v)
+                } else {
+                    op.flush(cx)
+                };
                 vs.into_iter()
+                    .map(|r| Some(r).transpose())
+                    .chain(if flush { vec![None.transpose()] } else { vec![] })
                     .flat_map(|v| match v {
                         Ok(v) => rec(stages, current + 1, cx, v),
                         Err(e) => vec![Err(e.to_string())],
                     })
                     .collect()
             } else {
-                vec![Ok(input)]
+                input.into_iter().map(Ok).collect()
             }
         }
-        rec(&mut self.stages, 0, &Context::new(input.key()), input)
+        rec(
+            &mut self.stages,
+            0,
+            &Context::new(input.as_ref().map(|x| x.key()).unwrap_or_default()),
+            input,
+        )
     }
 }
 
@@ -62,7 +80,7 @@ mod tests {
     fn feed(q: &str, v: &str) -> Vec<String> {
         let mut q = Query::from(q.parse::<language::Query>().unwrap());
         let v = Context::new(key()).eval(&v.parse().unwrap()).unwrap();
-        q.feed(v)
+        q.feed(Some(v))
             .into_iter()
             .map(|v| v.map(|v| v.value().to_string()).unwrap_or_else(|e| e))
             .collect()

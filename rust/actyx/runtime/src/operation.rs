@@ -1,12 +1,14 @@
 use crate::{eval::Context, value::Value};
-use actyx_sdk::language::{AggrOp, NonEmptyVec, SimpleExpr, Traverse};
-use std::collections::BTreeMap;
+use actyx_sdk::language::{NonEmptyVec, SimpleExpr};
+
+mod aggregate;
+pub use aggregate::{AggrState, Aggregate, Aggregator};
 
 #[derive(Debug, PartialEq)]
 pub enum Operation {
     Filter(Filter),
     Select(Select),
-    Aggregate(Aggregate),
+    Aggregate(aggregate::Aggregate),
 }
 
 impl Operation {
@@ -15,6 +17,13 @@ impl Operation {
             Operation::Filter(f) => f.apply(cx, input).into_iter().collect(),
             Operation::Select(s) => s.apply(cx, input),
             Operation::Aggregate(a) => a.apply(cx, input),
+        }
+    }
+
+    pub fn flush(&mut self, cx: &Context) -> Vec<anyhow::Result<Value>> {
+        match self {
+            Operation::Aggregate(a) => vec![a.flush(cx)],
+            _ => vec![],
         }
     }
 }
@@ -52,68 +61,6 @@ impl Select {
         let mut cx = cx.child();
         cx.bind("_", input);
         self.exprs.iter().map(|expr| cx.eval(expr)).collect()
-    }
-}
-
-pub trait Aggregator {
-    fn feed(&mut self, input: Value) -> anyhow::Result<()>;
-}
-impl Aggregator for () {
-    fn feed(&mut self, _input: Value) -> anyhow::Result<()> {
-        Ok(())
-    }
-}
-
-pub struct Aggregate {
-    pub expr: SimpleExpr,
-    state: BTreeMap<(AggrOp, SimpleExpr), Box<dyn Aggregator + Send>>,
-}
-
-impl PartialEq for Aggregate {
-    fn eq(&self, other: &Self) -> bool {
-        self.expr == other.expr
-    }
-}
-
-impl std::fmt::Debug for Aggregate {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Aggregate({:?})", self.expr)
-    }
-}
-
-impl Aggregate {
-    pub fn new(expr: SimpleExpr) -> Self {
-        let mut state = BTreeMap::new();
-        expr.traverse(&mut |e| match e {
-            SimpleExpr::AggrOp(a) => {
-                state.insert((a.0, a.1.clone()), Box::new(()) as Box<dyn Aggregator + Send>);
-                Traverse::Stop
-            }
-            _ => Traverse::Descend,
-        });
-        Self { expr, state }
-    }
-
-    pub fn apply(&mut self, cx: &Context, input: Value) -> Vec<anyhow::Result<Value>> {
-        let mut cx = cx.child();
-        cx.bind("_", input);
-
-        let mut errors = vec![];
-        fn log_error(errors: &mut Vec<anyhow::Result<Value>>, f: impl FnOnce() -> anyhow::Result<()>) {
-            match f() {
-                Ok(_) => {}
-                Err(e) => errors.push(Err(e)),
-            }
-        }
-
-        for ((_op, expr), agg) in &mut self.state {
-            log_error(&mut errors, || {
-                let v = cx.eval(expr)?;
-                agg.feed(v)?;
-                Ok(())
-            });
-        }
-        errors
     }
 }
 

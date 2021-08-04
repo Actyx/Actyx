@@ -257,6 +257,7 @@ fn r_aggr(p: P, ctx: Context) -> Result<SimpleExpr> {
     let p = p.single()?;
     Ok(match p.as_rule() {
         Rule::aggr_sum => SimpleExpr::AggrOp(Arc::new((AggrOp::Sum, r_simple_expr(p.single()?, Context::Simple)?))),
+        Rule::aggr_prod => SimpleExpr::AggrOp(Arc::new((AggrOp::Prod, r_simple_expr(p.single()?, Context::Simple)?))),
         Rule::aggr_min => SimpleExpr::AggrOp(Arc::new((AggrOp::Min, r_simple_expr(p.single()?, Context::Simple)?))),
         Rule::aggr_max => SimpleExpr::AggrOp(Arc::new((AggrOp::Max, r_simple_expr(p.single()?, Context::Simple)?))),
         Rule::aggr_first => SimpleExpr::AggrOp(Arc::new((AggrOp::First, r_simple_expr(p.single()?, Context::Simple)?))),

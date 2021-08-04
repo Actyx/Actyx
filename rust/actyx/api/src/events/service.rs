@@ -1,4 +1,5 @@
 use actyx_sdk::{
+    app_id,
     service::{
         Diagnostic, EventResponse, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest,
         PublishResponse, PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
@@ -11,7 +12,11 @@ use futures::{
     stream::{BoxStream, StreamExt},
 };
 use genawaiter::sync::{Co, Gen};
-use runtime::{features::Features, query::Query, value::Value};
+use runtime::{
+    features::{Endpoint, Features},
+    query::Query,
+    value::Value,
+};
 use std::{convert::TryFrom, num::NonZeroU64};
 use swarm::event_store_ref::EventStoreRef;
 use tokio::sync::mpsc::Receiver;
@@ -92,7 +97,7 @@ impl EventService {
 
         let mut query = Query::from(request.query);
         let features = Features::from_query(&query);
-        features.validate(&query.features)?;
+        features.validate(&query.features, Endpoint::Query)?;
 
         let mut stream = match request.order {
             Order::Asc => {
@@ -115,14 +120,23 @@ impl EventService {
 
         let gen = Gen::new(move |co: Co<QueryResponse>| async move {
             while let Some(ev) = stream.next().await {
-                let vs = query.feed(to_value(&ev));
+                let vs = query.feed(Some(to_value(&ev)));
                 for v in vs {
                     co.yield_(match v {
-                        Ok(v) => QueryResponse::Event(to_event(v, &ev)),
+                        Ok(v) => QueryResponse::Event(to_event(v, Some(&ev))),
                         Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e)),
                     })
                     .await;
                 }
+            }
+
+            let vs = query.feed(None);
+            for v in vs {
+                co.yield_(match v {
+                    Ok(v) => QueryResponse::Event(to_event(v, None)),
+                    Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e)),
+                })
+                .await;
             }
 
             co.yield_(QueryResponse::Offsets(OffsetMapResponse { offsets: upper_bound }))
@@ -143,7 +157,7 @@ impl EventService {
         let mut query = Query::from(request.query);
         let tag_expr = query.from.clone();
         let features = Features::from_query(&query);
-        features.validate(&query.features)?;
+        features.validate(&query.features, Endpoint::Subscribe)?;
 
         let mut bounded = self
             .store
@@ -157,10 +171,10 @@ impl EventService {
             .stop_on_error();
         let gen = Gen::new(move |co: Co<SubscribeResponse>| async move {
             while let Some(ev) = bounded.next().await {
-                let vs = query.feed(to_value(&ev));
+                let vs = query.feed(Some(to_value(&ev)));
                 for v in vs {
                     co.yield_(match v {
-                        Ok(v) => SubscribeResponse::Event(to_event(v, &ev)),
+                        Ok(v) => SubscribeResponse::Event(to_event(v, Some(&ev))),
                         Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
                     })
                     .await;
@@ -171,10 +185,10 @@ impl EventService {
                 .await;
 
             while let Some(ev) = unbounded.next().await {
-                let vs = query.feed(to_value(&ev));
+                let vs = query.feed(Some(to_value(&ev)));
                 for v in vs {
                     co.yield_(match v {
-                        Ok(v) => SubscribeResponse::Event(to_event(v, &ev)),
+                        Ok(v) => SubscribeResponse::Event(to_event(v, Some(&ev))),
                         Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
                     })
                     .await;
@@ -198,7 +212,7 @@ impl EventService {
         let mut query = Query::from(request.query);
         let tag_expr = query.from.clone();
         let features = Features::from_query(&query);
-        features.validate(&query.features)?;
+        features.validate(&query.features, Endpoint::SubscribeMonotonic)?;
 
         let mut bounded = self
             .store
@@ -223,11 +237,11 @@ impl EventService {
 
         let gen = Gen::new(move |co: Co<SubscribeMonotonicResponse>| async move {
             while let Some(ev) = bounded.next().await {
-                let vs = query.feed(to_value(&ev));
+                let vs = query.feed(Some(to_value(&ev)));
                 for v in vs {
                     co.yield_(match v {
                         Ok(v) => SubscribeMonotonicResponse::Event {
-                            event: to_event(v, &ev),
+                            event: to_event(v, Some(&ev)),
                             caught_up: true,
                         },
                         Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
@@ -245,11 +259,11 @@ impl EventService {
                 let key = Some(ev.key);
                 if key > latest {
                     latest = key;
-                    let vs = query.feed(to_value(&ev));
+                    let vs = query.feed(Some(to_value(&ev)));
                     for v in vs {
                         co.yield_(match v {
                             Ok(v) => SubscribeMonotonicResponse::Event {
-                                event: to_event(v, &ev),
+                                event: to_event(v, Some(&ev)),
                                 caught_up: true,
                             },
                             Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
@@ -271,14 +285,25 @@ impl EventService {
 fn to_value(event: &Event<Payload>) -> Value {
     Value::from((event.key, event.payload.clone()))
 }
-fn to_event(value: Value, event: &Event<Payload>) -> EventResponse<Payload> {
-    EventResponse {
-        lamport: event.key.lamport,
-        stream: event.key.stream,
-        offset: event.key.offset,
-        app_id: event.meta.app_id.clone(),
-        timestamp: event.meta.timestamp,
-        tags: event.meta.tags.clone(),
-        payload: value.payload(),
+fn to_event(value: Value, event: Option<&Event<Payload>>) -> EventResponse<Payload> {
+    match event {
+        Some(event) => EventResponse {
+            lamport: event.key.lamport,
+            stream: event.key.stream,
+            offset: event.key.offset,
+            app_id: event.meta.app_id.clone(),
+            timestamp: event.meta.timestamp,
+            tags: event.meta.tags.clone(),
+            payload: value.payload(),
+        },
+        None => EventResponse {
+            lamport: Default::default(),
+            stream: Default::default(),
+            offset: Default::default(),
+            app_id: app_id!("none"),
+            timestamp: Default::default(),
+            tags: Default::default(),
+            payload: value.payload(),
+        },
     }
 }

@@ -22,7 +22,7 @@ pub enum FeatureKind {
 }
 
 macro_rules! features {
-    ($($name:ident: $kind:ident,)+) => {
+    ($($name:ident: $kind:ident [$($endpoint:ident)*],)+) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
         #[allow(non_camel_case_types)]
         pub enum Feature {
@@ -32,6 +32,15 @@ macro_rules! features {
             pub fn kind(self) -> FeatureKind {
                 match self {
                     $(Feature::$name => FeatureKind::$kind,)*
+                }
+            }
+
+            pub fn valid_on_endpoint(self, ep: Endpoint) -> Result<(), FeatureError> {
+                match self {
+                    $(Feature::$name => match ep {
+                        $(Endpoint::$endpoint => Err(FeatureError::Unsupported { features: stringify!($name).to_owned(), endpoint: ep.to_string() }),)*
+                        _ => Ok(()),
+                    },)*
                 }
             }
         }
@@ -55,10 +64,17 @@ macro_rules! features {
 }
 
 features! {
-    timeRange: Beta,
-    eventKeyRange: Beta,
-    multiEmission: Alpha,
-    aggregate: Alpha,
+    timeRange: Beta [],
+    eventKeyRange: Beta [],
+    multiEmission: Alpha [Subscribe SubscribeMonotonic],
+    aggregate: Alpha [Subscribe SubscribeMonotonic],
+}
+
+#[derive(Debug, Clone, Copy, derive_more::Display)]
+pub enum Endpoint {
+    Query,
+    Subscribe,
+    SubscribeMonotonic,
 }
 
 use itertools::Itertools;
@@ -85,7 +101,7 @@ impl Features {
         self.0.insert(f);
     }
 
-    pub fn validate(&self, enabled: &[String]) -> Result<(), FeatureError> {
+    pub fn validate(&self, enabled: &[String], endpoint: Endpoint) -> Result<(), FeatureError> {
         let mut alpha = false;
         let mut enabled_features = BTreeSet::new();
         for s in enabled {
@@ -119,6 +135,10 @@ impl Features {
         }
         if !b.is_empty() {
             return Err(FeatureError::Beta(b.iter().join(" ")));
+        }
+        // last check if all used features are valid on the endpoint
+        for f in self.0.iter() {
+            f.valid_on_endpoint(endpoint)?;
         }
         Ok(())
     }
@@ -180,16 +200,19 @@ mod tests {
     }
     fn q(s: &str) -> Result<(), FeatureError> {
         let q = Query::from(s.parse::<actyx_sdk::language::Query>().unwrap());
-        Features::from_query(&q).validate(&q.features)
+        Features::from_query(&q).validate(&q.features, Endpoint::Query)
     }
 
     #[test]
     fn alpha() {
         let f = Features::new();
 
-        assert_eq!(f.validate(&[s("multiEmission")]), Err(Alpha(s("multiEmission"))));
-        assert_eq!(f.validate(&[s("zøg"), s("multiEmission")]), Ok(()));
-        assert_eq!(f.validate(&[s("multiEmission"), s("zøg")]), Ok(()));
+        assert_eq!(
+            f.validate(&[s("multiEmission")], Endpoint::Query),
+            Err(Alpha(s("multiEmission")))
+        );
+        assert_eq!(f.validate(&[s("zøg"), s("multiEmission")], Endpoint::Query), Ok(()));
+        assert_eq!(f.validate(&[s("multiEmission"), s("zøg")], Endpoint::Query), Ok(()));
     }
 
     #[test]
@@ -218,5 +241,28 @@ mod tests {
             Err(Alpha(s("multiEmission")))
         );
         assert_eq!(q("FEATURES(multiEmission zøg) FROM allEvents SELECT _, _"), Ok(()));
+
+        let mut f = Features::new();
+        f.add(Feature::multiEmission);
+        assert_eq!(
+            f.validate(&[s("zøg"), s("multiEmission")], Endpoint::Subscribe),
+            Err(Unsupported {
+                features: s("multiEmission"),
+                endpoint: s("Subscribe")
+            })
+        );
+    }
+
+    #[test]
+    fn aggregate() {
+        let mut f = Features::new();
+        f.add(Feature::aggregate);
+        assert_eq!(
+            f.validate(&[s("zøg"), s("aggregate")], Endpoint::Subscribe),
+            Err(Unsupported {
+                features: s("aggregate"),
+                endpoint: s("Subscribe")
+            })
+        );
     }
 }

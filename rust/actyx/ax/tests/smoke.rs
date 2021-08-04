@@ -389,3 +389,34 @@ fn diagnostics() -> anyhow::Result<()> {
     }
     result
 }
+
+#[test]
+fn aggregate() -> anyhow::Result<()> {
+    let log = Log::default();
+    let result = with_api(log.clone(), |api, identity| {
+        let out = run("ax")?
+            .args(&[
+                o("events"),
+                o("query"),
+                o("-ji"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+                o("FEATURES(zøg aggregate) FROM 'discovery' AGGREGATE SUM(1)"),
+            ])
+            .output()?;
+        eprintln!(
+            "out:\n{}\nerr:\n{}\n---",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        ensure!(out.status.success());
+        let json = serde_json::from_slice::<Value>(&out.stdout)?;
+        ensure!(get(&json, "/code")? == json!("OK"));
+        ensure!(get(&json, "/result/payload")?.as_u64() > Some(0));
+        Ok(())
+    });
+    if result.is_err() {
+        eprintln!("{}", log);
+    }
+    result
+}
