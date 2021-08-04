@@ -289,7 +289,7 @@ mod tests {
             .unwrap()
     }
     fn flush(a: &mut Aggregate, cx: &Context) -> String {
-        a.flush(&cx).unwrap().cbor().to_string()
+        a.flush(cx).unwrap().cbor().to_string()
     }
 
     #[test]

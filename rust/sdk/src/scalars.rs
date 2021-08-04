@@ -317,7 +317,7 @@ mod sqlite {
 }
 
 /// Stream number. Newtype alias for `u64`
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, DagCbor,Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, DagCbor, Default)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[ipld(repr = "value")]
 pub struct StreamNr(u64);

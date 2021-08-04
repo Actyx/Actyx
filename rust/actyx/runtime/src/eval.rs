@@ -163,67 +163,67 @@ impl<'a> Context<'a> {
 
     fn bin_op(&mut self, l: &SimpleExpr, op: BinOp, r: &SimpleExpr) -> anyhow::Result<Value> {
         match op {
-            BinOp::Add => self.eval(&l)?.add(&self.eval(&r)?),
-            BinOp::Sub => self.eval(&l)?.sub(&self.eval(&r)?),
-            BinOp::Mul => self.eval(&l)?.mul(&self.eval(&r)?),
-            BinOp::Div => self.eval(&l)?.div(&self.eval(&r)?),
-            BinOp::Mod => self.eval(&l)?.modulo(&self.eval(&r)?),
-            BinOp::Pow => self.eval(&l)?.pow(&self.eval(&r)?),
+            BinOp::Add => self.eval(l)?.add(&self.eval(r)?),
+            BinOp::Sub => self.eval(l)?.sub(&self.eval(r)?),
+            BinOp::Mul => self.eval(l)?.mul(&self.eval(r)?),
+            BinOp::Div => self.eval(l)?.div(&self.eval(r)?),
+            BinOp::Mod => self.eval(l)?.modulo(&self.eval(r)?),
+            BinOp::Pow => self.eval(l)?.pow(&self.eval(r)?),
             BinOp::And => {
-                let v = self.eval(&l)?.as_bool()? && self.eval(&r)?.as_bool()?;
+                let v = self.eval(l)?.as_bool()? && self.eval(r)?.as_bool()?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Or => {
-                let v = self.eval(&l)?.as_bool()? || self.eval(&r)?.as_bool()?;
+                let v = self.eval(l)?.as_bool()? || self.eval(r)?.as_bool()?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Xor => {
-                let v = self.eval(&l)?.as_bool()? ^ self.eval(&r)?.as_bool()?;
+                let v = self.eval(l)?.as_bool()? ^ self.eval(r)?.as_bool()?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Lt => {
-                let left = self.eval(&l)?;
-                let right = self.eval(&r)?;
+                let left = self.eval(l)?;
+                let right = self.eval(r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o == Ordering::Less)
                     .ok_or_else(|| anyhow!("cannot compare {} < {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Le => {
-                let left = self.eval(&l)?;
-                let right = self.eval(&r)?;
+                let left = self.eval(l)?;
+                let right = self.eval(r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o != Ordering::Greater)
                     .ok_or_else(|| anyhow!("cannot compare {} ≤ {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Gt => {
-                let left = self.eval(&l)?;
-                let right = self.eval(&r)?;
+                let left = self.eval(l)?;
+                let right = self.eval(r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o == Ordering::Greater)
                     .ok_or_else(|| anyhow!("cannot compare {} > {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Ge => {
-                let left = self.eval(&l)?;
-                let right = self.eval(&r)?;
+                let left = self.eval(l)?;
+                let right = self.eval(r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o != Ordering::Less)
                     .ok_or_else(|| anyhow!("cannot compare {} ≥ {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Eq => {
-                let left = self.eval(&l)?;
-                let right = self.eval(&r)?;
+                let left = self.eval(l)?;
+                let right = self.eval(r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o == Ordering::Equal)
                     .ok_or_else(|| anyhow!("cannot compare {} = {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Ne => {
-                let left = self.eval(&l)?;
-                let right = self.eval(&r)?;
+                let left = self.eval(l)?;
+                let right = self.eval(r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o != Ordering::Equal)
                     .ok_or_else(|| anyhow!("cannot compare {} ≠ {}", left, right))?;

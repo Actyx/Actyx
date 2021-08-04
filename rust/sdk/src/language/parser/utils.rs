@@ -1,11 +1,11 @@
-use super::{Rule,NoVal};
+use super::{NoVal, Rule};
 use crate::language::non_empty::NonEmptyString;
+use anyhow::Result;
 use pest::{
     error::Error,
     iterators::{Pair, Pairs},
 };
 use std::{convert::TryInto, fmt::Debug, str::FromStr};
-use anyhow::Result;
 
 pub type R<T> = std::result::Result<T, Error<Rule>>;
 pub type Ps<'a> = Pairs<'a, Rule>;
@@ -45,7 +45,12 @@ impl<'a> Ext<'a> for Ps<'a> {
     }
 
     fn non_empty_string(&mut self) -> Result<NonEmptyString> {
-        Ok(self.next().ok_or(NoVal("non_empty_string"))?.as_str().to_owned().try_into()?)
+        Ok(self
+            .next()
+            .ok_or(NoVal("non_empty_string"))?
+            .as_str()
+            .to_owned()
+            .try_into()?)
     }
 
     fn natural(&mut self) -> Result<u64> {
@@ -62,7 +67,8 @@ impl<'a> Ext<'a> for Ps<'a> {
         anyhow::Error: From<T::Err>,
         T::Err: Send + Sync + 'static,
     {
-        Ok(self.next()
+        Ok(self
+            .next()
             .map(|o| o.as_str().parse::<T>())
             .transpose()?
             .unwrap_or_default())
