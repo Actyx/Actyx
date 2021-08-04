@@ -597,6 +597,7 @@ impl BanyanStore {
         let ipfs = Ipfs::new(IpfsConfig {
             network: NetworkConfig {
                 enable_loopback: cfg.enable_loopback,
+                prune_addresses: false,
                 node_key,
                 node_name,
                 psk: cfg.psk,
@@ -718,9 +719,9 @@ impl BanyanStore {
         for addr in cfg.external_addresses {
             ipfs.add_external_address(addr);
         }
-        for (peer, addrs) in &bootstrap {
+        for (peer, addrs) in bootstrap {
             for addr in addrs {
-                ipfs.add_address(peer, addr.clone());
+                ipfs.add_address(&peer, addr);
             }
         }
 
@@ -783,7 +784,6 @@ impl BanyanStore {
                 banyan.clone(),
                 swarm_events,
                 DISCOVERY_STREAM_NR.into(),
-                bootstrap,
                 external_addrs,
                 cfg.enable_discovery,
             )?,

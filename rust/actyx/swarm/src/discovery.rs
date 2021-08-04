@@ -187,11 +187,32 @@ pub async fn discovery_ingest(store: BanyanStore) {
     }
 }
 
+struct Dialer {
+    backoff: Duration,
+    task: Option<tokio::task::JoinHandle<()>>,
+}
+
+impl Dialer {
+    fn new(backoff: Duration, task: tokio::task::JoinHandle<()>) -> Self {
+        Self {
+            backoff,
+            task: Some(task),
+        }
+    }
+}
+
+impl Drop for Dialer {
+    fn drop(&mut self) {
+        if let Some(task) = self.task.take() {
+            task.abort();
+        }
+    }
+}
+
 pub fn discovery_publish(
     store: BanyanStore,
     mut stream: impl Stream<Item = ipfs_embed::Event> + Unpin,
     nr: StreamNr,
-    bootstrap: FnvHashMap<ipfs_embed::PeerId, Vec<ipfs_embed::Multiaddr>>,
     external: FnvHashSet<ipfs_embed::Multiaddr>,
     enable_discovery: bool,
 ) -> Result<impl Future<Output = ()>> {
@@ -199,6 +220,7 @@ pub fn discovery_publish(
     let tags = tags!("discovery");
     let peer_id: PeerId = store.ipfs().local_peer_id().into();
     let node_name = store.ipfs().local_node_name();
+    let mut dialers = FnvHashMap::<_, Dialer>::default();
     Ok(async move {
         while let Some(event) = stream.next().await {
             tracing::debug!("discovery_publish {} {:?}", node_name, event);
@@ -225,20 +247,21 @@ pub fn discovery_publish(
                     continue;
                 }
                 ipfs_embed::Event::Unreachable(peer) => {
-                    // when an address is unreachable it is removed. once all addresses have
-                    // been found to be unreachable an unreachable event is emitted. we add
-                    // back the bootstrap addresses which cause a discovered event and redialing
-                    // of the bootstrap nodes.
-                    if let Some(addrs) = bootstrap.get(&peer) {
-                        let ipfs = store.ipfs().clone();
-                        let addrs = addrs.clone();
-                        tokio::spawn(async move {
-                            tokio::time::sleep(Duration::from_secs(1)).await;
-                            for addr in addrs {
-                                ipfs.add_address(&peer, addr.clone());
-                            }
-                        });
-                    }
+                    let ipfs = store.ipfs().clone();
+                    let backoff = if let Some(dialer) = dialers.remove(&peer) {
+                        dialer.backoff.saturating_add(Duration::from_secs(10))
+                    } else {
+                        Duration::from_secs(10)
+                    };
+                    let task = tokio::spawn(async move {
+                        tokio::time::sleep(backoff).await;
+                        ipfs.dial(&peer);
+                    });
+                    dialers.insert(peer, Dialer::new(backoff, task));
+                    continue;
+                }
+                ipfs_embed::Event::Connected(peer) => {
+                    dialers.remove(&peer);
                     continue;
                 }
                 _ => continue,
