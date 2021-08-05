@@ -5,7 +5,7 @@ fn main() -> anyhow::Result<()> {
     use netsim_embed::{Ipv4Range, MachineId, Netsim, NetworkId};
     use std::path::Path;
     use std::sync::{Arc, Mutex};
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
     use std::{collections::BTreeMap, net::Ipv4Addr};
     use swarm_cli::{Command, Config, Event};
     use swarm_harness::MachineExt;
@@ -75,6 +75,7 @@ fn main() -> anyhow::Result<()> {
         // first assert that the ro node's events are not propagated, but the others' are
         let ro_peer_id = sim.machine(ro).peer_id();
         let payload = Payload::from_json_str(&format!("\"{}\"", ro_peer_id)).unwrap();
+        let start = Instant::now();
         for machine in sim.machines_mut() {
             let read_only = machine.peer_id() == ro_peer_id;
             let events = if read_only { 3 } else { 2 };
@@ -92,6 +93,7 @@ fn main() -> anyhow::Result<()> {
                         }
                         _ => {}
                     }
+                    anyhow::ensure!(start.elapsed() < Duration::from_secs(60), "Overall deadline exceeded");
                 }
             }
         }
