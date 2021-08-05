@@ -16,6 +16,6 @@
 
         public static SelectAllEvents Instance => instance;
 
-        public string ToAql() => "allEvents";
+        public string ToAql() => "FROM allEvents";
     }
 }
