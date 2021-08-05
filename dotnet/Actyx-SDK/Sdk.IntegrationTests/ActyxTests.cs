@@ -10,11 +10,13 @@ namespace Sdk.IntegrationTests
     {
         public static IEnumerable<object[]> Clients()
         {
-            foreach (var transport in new Transport[] {
+            foreach (var transport in new Transport?[] {
+                null,
                 Transport.Http,
             })
             {
-                yield return new object[] { Actyx.Actyx.Create(Constants.TrialManifest, new ActyxOpts() { Transport = transport }) };
+                var opts = transport is not null ? new ActyxOpts() { Transport = (Transport)transport } : null;
+                yield return new object[] { Actyx.Actyx.Create(Constants.TrialManifest, opts) };
             }
         }
 
