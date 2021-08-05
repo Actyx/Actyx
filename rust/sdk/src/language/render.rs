@@ -2,13 +2,20 @@ use std::fmt::{Result, Write};
 
 use super::*;
 
-fn render_simple_pair(w: &mut impl Write, e: &(SimpleExpr, SimpleExpr), op: &'static str) -> Result {
+fn render_simple_pair(w: &mut impl Write, l: &SimpleExpr, op: &'static str, r: &SimpleExpr) -> Result {
     w.write_char('(')?;
-    render_simple_expr(w, &(*e).0)?;
+    render_simple_expr(w, l)?;
     w.write_char(' ')?;
     w.write_str(op)?;
     w.write_char(' ')?;
-    render_simple_expr(w, &(*e).1)?;
+    render_simple_expr(w, r)?;
+    w.write_char(')')
+}
+
+fn render_unary_function(w: &mut impl Write, f: &str, e: &SimpleExpr) -> Result {
+    w.write_str(f)?;
+    w.write_char('(')?;
+    render_simple_expr(w, e)?;
     w.write_char(')')
 }
 
@@ -111,21 +118,8 @@ pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
             }
             w.write_str(" ENDCASE")
         }
-        SimpleExpr::Add(e) => render_simple_pair(w, e, "+"),
-        SimpleExpr::Sub(e) => render_simple_pair(w, e, "-"),
-        SimpleExpr::Mul(e) => render_simple_pair(w, e, "*"),
-        SimpleExpr::Div(e) => render_simple_pair(w, e, "/"),
-        SimpleExpr::Mod(e) => render_simple_pair(w, e, "%"),
-        SimpleExpr::Pow(e) => render_simple_pair(w, e, "^"),
-        SimpleExpr::And(e) => render_simple_pair(w, e, "&"),
-        SimpleExpr::Or(e) => render_simple_pair(w, e, "|"),
-        SimpleExpr::Xor(e) => render_simple_pair(w, e, "~"),
-        SimpleExpr::Lt(e) => render_simple_pair(w, e, "<"),
-        SimpleExpr::Le(e) => render_simple_pair(w, e, "<="),
-        SimpleExpr::Gt(e) => render_simple_pair(w, e, ">"),
-        SimpleExpr::Ge(e) => render_simple_pair(w, e, ">="),
-        SimpleExpr::Eq(e) => render_simple_pair(w, e, "="),
-        SimpleExpr::Ne(e) => render_simple_pair(w, e, "!="),
+        SimpleExpr::BinOp(e) => render_simple_pair(w, &e.1, e.0.as_str(), &e.2),
+        SimpleExpr::AggrOp(e) => render_unary_function(w, e.0.as_str(), &e.1),
     }
 }
 
@@ -147,6 +141,10 @@ fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
                 render_simple_expr(w, e)?;
             }
             Ok(())
+        }
+        Operation::Aggregate(a) => {
+            w.write_str("AGGREGATE ")?;
+            render_simple_expr(w, a)
         }
     }
 }

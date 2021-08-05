@@ -4,9 +4,10 @@ main_simple_expr = { SOI ~ simple_expr ~ EOI }
 
 // queries
 query = { "FROM" ~ tag_expr ~ query_op* ~ "END"? }
-query_op = _{ filter | select }
+query_op = _{ filter | select | aggregate }
 filter = { "FILTER" ~ simple_expr }
 select = { "SELECT" ~ simple_expr ~ ( "," ~ simple_expr )* }
+aggregate = { "AGGREGATE" ~ simple_expr }
 features = { "FEATURES(" ~ feature_word* ~ ")" }
 feature_word = @{ ( ASCII_ALPHANUMERIC | "ø" )+ }
 
@@ -64,9 +65,18 @@ simple_expr = { simple_atom ~ ( simple_op ~ simple_atom )* }
 simple_op = _{ add | sub | mul | div | modulo | pow | and | or | xor | le | lt | ge | gt | eq | ne }
 var_index = { var ~ index* }
 expr_index = { "(" ~ simple_expr ~ ")" ~ index* }
-simple_atom = _{ decimal | var_index | string | expr_index | simple_not | object | array | null | bool | simple_cases }
+simple_atom = _{ decimal | var_index | string | expr_index | simple_not | object | array | null | bool | simple_cases | aggr_op }
 simple_not = { not ~ simple_atom }
 simple_cases = { ( "CASE" ~ simple_expr ~ "=>" ~ simple_expr )+ ~ "ENDCASE" }
+
+// aggregations
+aggr_op = { aggr_sum | aggr_prod | aggr_min | aggr_max | aggr_first | aggr_last }
+aggr_sum = { "SUM(" ~ simple_expr ~ ")" }
+aggr_prod = { "PRODUCT(" ~ simple_expr ~ ")" }
+aggr_min = { "MIN(" ~ simple_expr ~ ")" }
+aggr_max = { "MAX(" ~ simple_expr ~ ")" }
+aggr_first = { "FIRST(" ~ simple_expr ~ ")" }
+aggr_last = { "LAST(" ~ simple_expr ~ ")" }
 
 // operators
 add = { "+" }

@@ -1,5 +1,8 @@
-use crate::value::{Value, ValueKind};
-use actyx_sdk::language::{Ind, Index, Num, SimpleExpr, SortKey};
+use crate::{
+    operation::AggrState,
+    value::{Value, ValueKind},
+};
+use actyx_sdk::language::{BinOp, Ind, Index, Num, SimpleExpr, SortKey};
 use anyhow::{anyhow, bail};
 use cbor_data::{CborBuilder, CborOwned, Encoder, WithOutput, Writer};
 use std::{cmp::Ordering, collections::BTreeMap};
@@ -8,6 +11,7 @@ pub struct Context<'a> {
     sort_key: SortKey,
     bindings: BTreeMap<String, Value>,
     parent: Option<&'a Context<'a>>,
+    aggregation: Option<&'a mut AggrState>,
 }
 
 impl<'a> Context<'a> {
@@ -16,6 +20,7 @@ impl<'a> Context<'a> {
             sort_key,
             bindings: BTreeMap::new(),
             parent: None,
+            aggregation: None,
         }
     }
 
@@ -24,11 +29,24 @@ impl<'a> Context<'a> {
             sort_key: self.sort_key,
             bindings: BTreeMap::new(),
             parent: Some(self),
+            aggregation: None,
         }
+    }
+
+    #[cfg(test)]
+    pub fn incr(&mut self) {
+        self.sort_key.lamport = self.sort_key.lamport.incr();
     }
 
     pub fn value(&self, f: impl FnOnce(CborBuilder<WithOutput>) -> CborOwned) -> Value {
         Value::new(self.sort_key, f)
+    }
+
+    pub fn number(&self, n: &Num) -> Value {
+        match n {
+            Num::Decimal(d) => Value::new(self.sort_key, |b| b.encode_f64(*d)),
+            Num::Natural(n) => Value::new(self.sort_key, |b| b.encode_u64(*n)),
+        }
     }
 
     pub fn bind(&mut self, name: impl Into<String>, value: Value) {
@@ -41,7 +59,11 @@ impl<'a> Context<'a> {
             .or_else(|| self.parent.and_then(|c| c.lookup(name)))
     }
 
-    pub fn eval(&self, expr: &SimpleExpr) -> anyhow::Result<Value> {
+    pub fn bind_aggregation(&mut self, state: &'a mut AggrState) {
+        self.aggregation = Some(state);
+    }
+
+    pub fn eval(&mut self, expr: &SimpleExpr) -> anyhow::Result<Value> {
         match expr {
             SimpleExpr::Variable(v) => {
                 let v = self.lookup(v).ok_or_else(|| anyhow!("variable '{}' is not bound", v))?;
@@ -122,71 +144,86 @@ impl<'a> Context<'a> {
                 }
                 Err(anyhow!("no case matched"))
             }
-            SimpleExpr::Add(a) => self.eval(&a.0)?.add(&self.eval(&a.1)?),
-            SimpleExpr::Sub(a) => self.eval(&a.0)?.sub(&self.eval(&a.1)?),
-            SimpleExpr::Mul(a) => self.eval(&a.0)?.mul(&self.eval(&a.1)?),
-            SimpleExpr::Div(a) => self.eval(&a.0)?.div(&self.eval(&a.1)?),
-            SimpleExpr::Mod(a) => self.eval(&a.0)?.modulo(&self.eval(&a.1)?),
-            SimpleExpr::Pow(a) => self.eval(&a.0)?.pow(&self.eval(&a.1)?),
-            SimpleExpr::And(a) => {
-                let v = self.eval(&a.0)?.as_bool()? && self.eval(&a.1)?.as_bool()?;
-                Ok(self.value(|b| b.encode_bool(v)))
-            }
-            SimpleExpr::Or(a) => {
-                let v = self.eval(&a.0)?.as_bool()? || self.eval(&a.1)?.as_bool()?;
-                Ok(self.value(|b| b.encode_bool(v)))
-            }
             SimpleExpr::Not(a) => {
                 let v = !self.eval(a)?.as_bool()?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Xor(a) => {
-                let v = self.eval(&a.0)?.as_bool()? ^ self.eval(&a.1)?.as_bool()?;
+            SimpleExpr::BinOp(b) => self.bin_op(&b.1, b.0, &b.2),
+            SimpleExpr::AggrOp(a) => {
+                let aggr = self.aggregation.take().ok_or_else(|| anyhow!("no aggregation state"))?;
+                let v = aggr
+                    .get_mut(a)
+                    .ok_or_else(|| anyhow!("no aggregation result for {}({})", a.0.as_str(), a.1))?
+                    .flush(self);
+                self.aggregation.replace(aggr);
+                v
+            }
+        }
+    }
+
+    fn bin_op(&mut self, l: &SimpleExpr, op: BinOp, r: &SimpleExpr) -> anyhow::Result<Value> {
+        match op {
+            BinOp::Add => self.eval(l)?.add(&self.eval(r)?),
+            BinOp::Sub => self.eval(l)?.sub(&self.eval(r)?),
+            BinOp::Mul => self.eval(l)?.mul(&self.eval(r)?),
+            BinOp::Div => self.eval(l)?.div(&self.eval(r)?),
+            BinOp::Mod => self.eval(l)?.modulo(&self.eval(r)?),
+            BinOp::Pow => self.eval(l)?.pow(&self.eval(r)?),
+            BinOp::And => {
+                let v = self.eval(l)?.as_bool()? && self.eval(r)?.as_bool()?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Lt(a) => {
-                let left = self.eval(&a.0)?;
-                let right = self.eval(&a.1)?;
+            BinOp::Or => {
+                let v = self.eval(l)?.as_bool()? || self.eval(r)?.as_bool()?;
+                Ok(self.value(|b| b.encode_bool(v)))
+            }
+            BinOp::Xor => {
+                let v = self.eval(l)?.as_bool()? ^ self.eval(r)?.as_bool()?;
+                Ok(self.value(|b| b.encode_bool(v)))
+            }
+            BinOp::Lt => {
+                let left = self.eval(l)?;
+                let right = self.eval(r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o == Ordering::Less)
                     .ok_or_else(|| anyhow!("cannot compare {} < {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Le(a) => {
-                let left = self.eval(&a.0)?;
-                let right = self.eval(&a.1)?;
+            BinOp::Le => {
+                let left = self.eval(l)?;
+                let right = self.eval(r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o != Ordering::Greater)
                     .ok_or_else(|| anyhow!("cannot compare {} ≤ {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Gt(a) => {
-                let left = self.eval(&a.0)?;
-                let right = self.eval(&a.1)?;
+            BinOp::Gt => {
+                let left = self.eval(l)?;
+                let right = self.eval(r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o == Ordering::Greater)
                     .ok_or_else(|| anyhow!("cannot compare {} > {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Ge(a) => {
-                let left = self.eval(&a.0)?;
-                let right = self.eval(&a.1)?;
+            BinOp::Ge => {
+                let left = self.eval(l)?;
+                let right = self.eval(r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o != Ordering::Less)
                     .ok_or_else(|| anyhow!("cannot compare {} ≥ {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Eq(a) => {
-                let left = self.eval(&a.0)?;
-                let right = self.eval(&a.1)?;
+            BinOp::Eq => {
+                let left = self.eval(l)?;
+                let right = self.eval(r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o == Ordering::Equal)
                     .ok_or_else(|| anyhow!("cannot compare {} = {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
-            SimpleExpr::Ne(a) => {
-                let left = self.eval(&a.0)?;
-                let right = self.eval(&a.1)?;
+            BinOp::Ne => {
+                let left = self.eval(l)?;
+                let right = self.eval(r)?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o != Ordering::Equal)
                     .ok_or_else(|| anyhow!("cannot compare {} ≠ {}", left, right))?;
@@ -204,11 +241,11 @@ mod tests {
     use quickcheck::{quickcheck, TestResult};
     use spectral::{assert_that, string::StrAssertions};
 
-    fn eval(cx: &Context, s: &str) -> anyhow::Result<String> {
+    fn eval(cx: &mut Context, s: &str) -> anyhow::Result<String> {
         cx.eval(&s.parse()?).map(|x| x.value().to_string())
     }
 
-    fn eval_bool(cx: &Context, s: &str) -> bool {
+    fn eval_bool(cx: &mut Context, s: &str) -> bool {
         eval(cx, s).unwrap().parse::<bool>().unwrap()
     }
 
@@ -231,17 +268,17 @@ mod tests {
             }),
         );
 
-        assert_eq!(eval(&cx, "5+2.1+x.y").unwrap(), "49.1");
+        assert_eq!(eval(&mut cx, "5+2.1+x.y").unwrap(), "49.1");
 
-        assert_eq!(eval(&cx, "x").unwrap(), "{\"y\": 42}");
+        assert_eq!(eval(&mut cx, "x").unwrap(), "{\"y\": 42}");
 
-        let err = eval(&cx, "5+x").unwrap_err().to_string();
+        let err = eval(&mut cx, "5+x").unwrap_err().to_string();
         assert!(err.contains("{\"y\": 42} is not a number"), "didn’t match: {}", err);
 
-        let err = eval(&cx, "y").unwrap_err().to_string();
+        let err = eval(&mut cx, "y").unwrap_err().to_string();
         assert!(err.contains("variable 'y' is not bound"), "didn’t match: {}", err);
 
-        let err = eval(&cx, "x.a").unwrap_err().to_string();
+        let err = eval(&mut cx, "x.a").unwrap_err().to_string();
         assert!(
             err.contains("path .a does not exist in value {\"y\": 42}"),
             "didn’t match: {}",
@@ -251,69 +288,75 @@ mod tests {
 
     #[test]
     fn primitives() {
-        let cx = ctx();
-        assert_eq!(eval(&cx, "NULL").unwrap(), "null");
-        assert_eq!(eval(&cx, "TRUE").unwrap(), "true");
-        assert_eq!(eval(&cx, "FALSE").unwrap(), "false");
-        assert_eq!(eval(&cx, "1.23").unwrap(), "1.23");
-        assert_eq!(eval(&cx, "12345678901234567890").unwrap(), "12345678901234567890");
-        assert_eq!(eval(&cx, "''").unwrap(), "\"\"");
-        assert_eq!(eval(&cx, "\"\"").unwrap(), "\"\"");
-        assert_eq!(eval(&cx, "'hello'").unwrap(), "\"hello\"");
-        assert_eq!(eval(&cx, "\"hello\"").unwrap(), "\"hello\"");
-        assert_eq!(eval(&cx, r#"'h"ell''o'"#).unwrap(), r#""h\"ell\'o""#);
-        assert_eq!(eval(&cx, r#""h""ell'o""#).unwrap(), r#""h\"ell\'o""#);
+        let mut cx = ctx();
+        assert_eq!(eval(&mut cx, "NULL").unwrap(), "null");
+        assert_eq!(eval(&mut cx, "TRUE").unwrap(), "true");
+        assert_eq!(eval(&mut cx, "FALSE").unwrap(), "false");
+        assert_eq!(eval(&mut cx, "1.23").unwrap(), "1.23");
+        assert_eq!(eval(&mut cx, "12345678901234567890").unwrap(), "12345678901234567890");
+        assert_eq!(eval(&mut cx, "''").unwrap(), "\"\"");
+        assert_eq!(eval(&mut cx, "\"\"").unwrap(), "\"\"");
+        assert_eq!(eval(&mut cx, "'hello'").unwrap(), "\"hello\"");
+        assert_eq!(eval(&mut cx, "\"hello\"").unwrap(), "\"hello\"");
+        assert_eq!(eval(&mut cx, r#"'h"ell''o'"#).unwrap(), r#""h\"ell\'o""#);
+        assert_eq!(eval(&mut cx, r#""h""ell'o""#).unwrap(), r#""h\"ell\'o""#);
     }
 
     #[test]
     fn boolean() {
-        let cx = ctx();
+        let mut cx = ctx();
 
-        assert_eq!(eval(&cx, "FALSE ∧ FALSE").unwrap(), "false");
-        assert_eq!(eval(&cx, "FALSE ∧ TRUE").unwrap(), "false");
-        assert_eq!(eval(&cx, "TRUE ∧ FALSE").unwrap(), "false");
-        assert_eq!(eval(&cx, "TRUE ∧ TRUE").unwrap(), "true");
+        assert_eq!(eval(&mut cx, "FALSE ∧ FALSE").unwrap(), "false");
+        assert_eq!(eval(&mut cx, "FALSE ∧ TRUE").unwrap(), "false");
+        assert_eq!(eval(&mut cx, "TRUE ∧ FALSE").unwrap(), "false");
+        assert_eq!(eval(&mut cx, "TRUE ∧ TRUE").unwrap(), "true");
 
-        assert_eq!(eval(&cx, "FALSE ∨ FALSE").unwrap(), "false");
-        assert_eq!(eval(&cx, "FALSE ∨ TRUE").unwrap(), "true");
-        assert_eq!(eval(&cx, "TRUE ∨ FALSE").unwrap(), "true");
-        assert_eq!(eval(&cx, "TRUE ∨ TRUE").unwrap(), "true");
+        assert_eq!(eval(&mut cx, "FALSE ∨ FALSE").unwrap(), "false");
+        assert_eq!(eval(&mut cx, "FALSE ∨ TRUE").unwrap(), "true");
+        assert_eq!(eval(&mut cx, "TRUE ∨ FALSE").unwrap(), "true");
+        assert_eq!(eval(&mut cx, "TRUE ∨ TRUE").unwrap(), "true");
 
-        assert_eq!(eval(&cx, "FALSE ⊻ FALSE").unwrap(), "false");
-        assert_eq!(eval(&cx, "FALSE ⊻ TRUE").unwrap(), "true");
-        assert_eq!(eval(&cx, "TRUE ⊻ FALSE").unwrap(), "true");
-        assert_eq!(eval(&cx, "TRUE ⊻ TRUE").unwrap(), "false");
+        assert_eq!(eval(&mut cx, "FALSE ⊻ FALSE").unwrap(), "false");
+        assert_eq!(eval(&mut cx, "FALSE ⊻ TRUE").unwrap(), "true");
+        assert_eq!(eval(&mut cx, "TRUE ⊻ FALSE").unwrap(), "true");
+        assert_eq!(eval(&mut cx, "TRUE ⊻ TRUE").unwrap(), "false");
 
-        assert_eq!(eval(&cx, "!FALSE").unwrap(), "true");
-        assert_eq!(eval(&cx, "¬TRUE").unwrap(), "false");
+        assert_eq!(eval(&mut cx, "!FALSE").unwrap(), "true");
+        assert_eq!(eval(&mut cx, "¬TRUE").unwrap(), "false");
 
         // check short-circuit behaviour
-        assert_eq!(eval(&cx, "FALSE & 12").unwrap(), "false");
-        assert_eq!(eval(&cx, "TRUE | 12").unwrap(), "true");
+        assert_eq!(eval(&mut cx, "FALSE & 12").unwrap(), "false");
+        assert_eq!(eval(&mut cx, "TRUE | 12").unwrap(), "true");
 
-        assert_that(&eval(&cx, "NULL & x").unwrap_err().to_string()).contains("null is not a bool");
-        assert_that(&eval(&cx, "FALSE | 12").unwrap_err().to_string()).contains("12 is not a bool");
-        assert_that(&eval(&cx, "!'a'").unwrap_err().to_string()).contains("\"a\" is not a bool");
+        assert_that(&eval(&mut cx, "NULL & x").unwrap_err().to_string()).contains("null is not a bool");
+        assert_that(&eval(&mut cx, "FALSE | 12").unwrap_err().to_string()).contains("12 is not a bool");
+        assert_that(&eval(&mut cx, "!'a'").unwrap_err().to_string()).contains("\"a\" is not a bool");
     }
 
     #[test]
     fn compare() {
-        let cx = ctx();
+        let mut cx = ctx();
 
-        assert_eq!(eval(&cx, "NULL = NULL ∧ NULL ≥ NULL ∧ NULL ≤ NULL").unwrap(), "true");
-        assert_eq!(eval(&cx, "NULL ≠ NULL ∨ NULL > NULL ∨ NULL < NULL").unwrap(), "false");
+        assert_eq!(
+            eval(&mut cx, "NULL = NULL ∧ NULL ≥ NULL ∧ NULL ≤ NULL").unwrap(),
+            "true"
+        );
+        assert_eq!(
+            eval(&mut cx, "NULL ≠ NULL ∨ NULL > NULL ∨ NULL < NULL").unwrap(),
+            "false"
+        );
 
         #[allow(clippy::bool_comparison)]
         fn prop_bool(left: bool, right: bool) -> bool {
             let mut cx = ctx();
             cx.bind("a", cx.value(|b| b.encode_bool(left)));
             cx.bind("b", cx.value(|b| b.encode_bool(right)));
-            assert_eq!(eval_bool(&cx, "a < b"), left < right);
-            assert_eq!(eval_bool(&cx, "a ≤ b"), left <= right);
-            assert_eq!(eval_bool(&cx, "a > b"), left > right);
-            assert_eq!(eval_bool(&cx, "a ≥ b"), left >= right);
-            assert_eq!(eval_bool(&cx, "a = b"), left == right);
-            assert_eq!(eval_bool(&cx, "a ≠ b"), left != right);
+            assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
+            assert_eq!(eval_bool(&mut cx, "a ≤ b"), left <= right);
+            assert_eq!(eval_bool(&mut cx, "a > b"), left > right);
+            assert_eq!(eval_bool(&mut cx, "a ≥ b"), left >= right);
+            assert_eq!(eval_bool(&mut cx, "a = b"), left == right);
+            assert_eq!(eval_bool(&mut cx, "a ≠ b"), left != right);
             true
         }
         quickcheck(prop_bool as fn(bool, bool) -> bool);
@@ -322,12 +365,12 @@ mod tests {
             let mut cx = ctx();
             cx.bind("a", cx.value(|b| b.encode_u64(left)));
             cx.bind("b", cx.value(|b| b.encode_u64(right)));
-            assert_eq!(eval_bool(&cx, "a < b"), left < right);
-            assert_eq!(eval_bool(&cx, "a ≤ b"), left <= right);
-            assert_eq!(eval_bool(&cx, "a > b"), left > right);
-            assert_eq!(eval_bool(&cx, "a ≥ b"), left >= right);
-            assert_eq!(eval_bool(&cx, "a = b"), left == right);
-            assert_eq!(eval_bool(&cx, "a ≠ b"), left != right);
+            assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
+            assert_eq!(eval_bool(&mut cx, "a ≤ b"), left <= right);
+            assert_eq!(eval_bool(&mut cx, "a > b"), left > right);
+            assert_eq!(eval_bool(&mut cx, "a ≥ b"), left >= right);
+            assert_eq!(eval_bool(&mut cx, "a = b"), left == right);
+            assert_eq!(eval_bool(&mut cx, "a ≠ b"), left != right);
             true
         }
         quickcheck(prop_u64 as fn(u64, u64) -> bool);
@@ -340,12 +383,12 @@ mod tests {
             let mut cx = ctx();
             cx.bind("a", cx.value(|b| b.encode_f64(left)));
             cx.bind("b", cx.value(|b| b.encode_f64(right)));
-            assert_eq!(eval_bool(&cx, "a < b"), left < right);
-            assert_eq!(eval_bool(&cx, "a ≤ b"), left <= right);
-            assert_eq!(eval_bool(&cx, "a > b"), left > right);
-            assert_eq!(eval_bool(&cx, "a ≥ b"), left >= right);
-            assert_eq!(eval_bool(&cx, "a = b"), left == right);
-            assert_eq!(eval_bool(&cx, "a ≠ b"), left != right);
+            assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
+            assert_eq!(eval_bool(&mut cx, "a ≤ b"), left <= right);
+            assert_eq!(eval_bool(&mut cx, "a > b"), left > right);
+            assert_eq!(eval_bool(&mut cx, "a ≥ b"), left >= right);
+            assert_eq!(eval_bool(&mut cx, "a = b"), left == right);
+            assert_eq!(eval_bool(&mut cx, "a ≠ b"), left != right);
             TestResult::passed()
         }
         quickcheck(prop_f64 as fn(f64, f64) -> TestResult);
@@ -354,81 +397,97 @@ mod tests {
             let mut cx = ctx();
             cx.bind("a", cx.value(|b| b.encode_str(left.as_str())));
             cx.bind("b", cx.value(|b| b.encode_str(right.as_str())));
-            assert_eq!(eval_bool(&cx, "a < b"), left < right);
-            assert_eq!(eval_bool(&cx, "a ≤ b"), left <= right);
-            assert_eq!(eval_bool(&cx, "a > b"), left > right);
-            assert_eq!(eval_bool(&cx, "a ≥ b"), left >= right);
-            assert_eq!(eval_bool(&cx, "a = b"), left == right);
-            assert_eq!(eval_bool(&cx, "a ≠ b"), left != right);
+            assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
+            assert_eq!(eval_bool(&mut cx, "a ≤ b"), left <= right);
+            assert_eq!(eval_bool(&mut cx, "a > b"), left > right);
+            assert_eq!(eval_bool(&mut cx, "a ≥ b"), left >= right);
+            assert_eq!(eval_bool(&mut cx, "a = b"), left == right);
+            assert_eq!(eval_bool(&mut cx, "a ≠ b"), left != right);
             true
         }
         quickcheck(prop_str as fn(String, String) -> bool);
 
-        assert_that(&eval(&cx, "NULL > 12").unwrap_err().to_string()).contains("cannot compare");
+        assert_that(&eval(&mut cx, "NULL > 12").unwrap_err().to_string()).contains("cannot compare");
     }
 
     #[test]
     fn constructors() {
-        let cx = ctx();
-        assert_eq!(eval(&cx, "([1,'x',NULL])[0]").unwrap(), "1");
-        assert_eq!(eval(&cx, "([1,'x',NULL])[1]").unwrap(), "\"x\"");
-        assert_eq!(eval(&cx, "([1,'x',NULL])[2]").unwrap(), "null");
+        let mut cx = ctx();
+        assert_eq!(eval(&mut cx, "([1,'x',NULL])[0]").unwrap(), "1");
+        assert_eq!(eval(&mut cx, "([1,'x',NULL])[1]").unwrap(), "\"x\"");
+        assert_eq!(eval(&mut cx, "([1,'x',NULL])[2]").unwrap(), "null");
         assert_eq!(
-            eval(&cx, "({ one: 1, ['two']: 'x', [('three')]: NULL, [4]: TRUE }).one").unwrap(),
+            eval(&mut cx, "({ one: 1, ['two']: 'x', [('three')]: NULL, [4]: TRUE }).one").unwrap(),
             "1"
         );
         assert_eq!(
-            eval(&cx, "({ one: 1 ['two']: 'x' [('three')]: NULL, [4]: TRUE }).two").unwrap(),
+            eval(&mut cx, "({ one: 1 ['two']: 'x' [('three')]: NULL, [4]: TRUE }).two").unwrap(),
             "\"x\""
         );
         assert_eq!(
-            eval(&cx, "({ one: 1, ['two']: 'x', [('three')]: NULL, [4]: TRUE }).three").unwrap(),
+            eval(
+                &mut cx,
+                "({ one: 1, ['two']: 'x', [('three')]: NULL, [4]: TRUE }).three"
+            )
+            .unwrap(),
             "null"
         );
         assert_eq!(
-            eval(&cx, "({ one: 1, ['two']: 'x', [('three')]: NULL, [4]: TRUE })[4]").unwrap(),
+            eval(&mut cx, "({ one: 1, ['two']: 'x', [('three')]: NULL, [4]: TRUE })[4]").unwrap(),
             "true"
         );
 
-        assert_that(&eval(&cx, "{'x':1}").unwrap_err().to_string()).contains("expected ident");
+        assert_that(&eval(&mut cx, "{'x':1}").unwrap_err().to_string()).contains("expected ident");
     }
 
     #[test]
     fn arithmetic() {
-        let cx = ctx();
-        assert_eq!(eval(&cx, "1+2").unwrap(), "3");
-        assert_eq!(eval(&cx, "1+2*3^2%5").unwrap(), "4");
-        assert_eq!(eval(&cx, "1.0+2.0*3.0^2.0%5.0").unwrap(), "4.0");
+        let mut cx = ctx();
+        assert_eq!(eval(&mut cx, "1+2").unwrap(), "3");
+        assert_eq!(eval(&mut cx, "1+2*3^2%5").unwrap(), "4");
+        assert_eq!(eval(&mut cx, "1.0+2.0*3.0^2.0%5.0").unwrap(), "4.0");
 
         assert_that(
-            &eval(&cx, "12345678901234567890 + 12345678901234567890")
+            &eval(&mut cx, "12345678901234567890 + 12345678901234567890")
                 .unwrap_err()
                 .to_string(),
         )
         .contains("integer overflow");
-        assert_that(&eval(&cx, "10.0 ^ 400").unwrap_err().to_string()).contains("floating-point overflow");
-        assert_that(&eval(&cx, "10.0 / 0").unwrap_err().to_string()).contains("floating-point overflow");
-        assert_that(&eval(&cx, "0.0 / 0").unwrap_err().to_string()).contains("not a number");
+        assert_that(&eval(&mut cx, "10.0 ^ 400").unwrap_err().to_string()).contains("floating-point overflow");
+        assert_that(&eval(&mut cx, "10.0 / 0").unwrap_err().to_string()).contains("floating-point overflow");
+        assert_that(&eval(&mut cx, "0.0 / 0").unwrap_err().to_string()).contains("not a number");
     }
 
     #[test]
     fn indexing() {
-        let cx = ctx();
-        assert_eq!(eval(&cx, "([42])[0]").unwrap(), "42");
-        assert_eq!(eval(&cx, "([42])[1-1]").unwrap(), "42");
-        assert_eq!(eval(&cx, "({x:12}).x").unwrap(), "12");
-        assert_eq!(eval(&cx, "({x:12})['x']").unwrap(), "12");
-        assert_eq!(eval(&cx, "({x:12})[('x')]").unwrap(), "12");
+        let mut cx = ctx();
+        assert_eq!(eval(&mut cx, "([42])[0]").unwrap(), "42");
+        assert_eq!(eval(&mut cx, "([42])[1-1]").unwrap(), "42");
+        assert_eq!(eval(&mut cx, "({x:12}).x").unwrap(), "12");
+        assert_eq!(eval(&mut cx, "({x:12})['x']").unwrap(), "12");
+        assert_eq!(eval(&mut cx, "({x:12})[('x')]").unwrap(), "12");
     }
 
     #[test]
     fn cases() {
-        let cx = ctx();
-        assert_eq!(eval(&cx, "CASE 5 ≤ 5 => 42 CASE TRUE => NULL ENDCASE").unwrap(), "42");
-        assert_eq!(eval(&cx, "CASE 5 < 5 => 42 CASE TRUE => NULL ENDCASE").unwrap(), "null");
-        assert_eq!(eval(&cx, "CASE 'a' => 'b' CASE TRUE => 'c' ENDCASE").unwrap(), "\"c\"");
-        assert_eq!(eval(&cx, "CASE a => 'b' CASE TRUE => 'c' ENDCASE").unwrap(), "\"c\"");
+        let mut cx = ctx();
+        assert_eq!(
+            eval(&mut cx, "CASE 5 ≤ 5 => 42 CASE TRUE => NULL ENDCASE").unwrap(),
+            "42"
+        );
+        assert_eq!(
+            eval(&mut cx, "CASE 5 < 5 => 42 CASE TRUE => NULL ENDCASE").unwrap(),
+            "null"
+        );
+        assert_eq!(
+            eval(&mut cx, "CASE 'a' => 'b' CASE TRUE => 'c' ENDCASE").unwrap(),
+            "\"c\""
+        );
+        assert_eq!(
+            eval(&mut cx, "CASE a => 'b' CASE TRUE => 'c' ENDCASE").unwrap(),
+            "\"c\""
+        );
 
-        assert_that(&eval(&cx, "CASE FALSE => 1 ENDCASE").unwrap_err().to_string()).contains("no case matched");
+        assert_that(&eval(&mut cx, "CASE FALSE => 1 ENDCASE").unwrap_err().to_string()).contains("no case matched");
     }
 }

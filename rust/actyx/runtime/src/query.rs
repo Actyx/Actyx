@@ -1,11 +1,11 @@
 use crate::{
     eval::Context,
-    operation::{Filter, Operation, Select},
+    operation::{Aggregate, Filter, Operation, Select},
     value::Value,
 };
 use actyx_sdk::language;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Query {
     pub features: Vec<String>,
     pub from: language::TagExpr,
@@ -13,25 +13,39 @@ pub struct Query {
 }
 
 impl Query {
-    pub fn feed(&self, input: Value) -> Vec<Result<Value, String>> {
-        fn rec<'a>(
-            cx: &'a Context,
-            input: Value,
-            mut ops: impl Iterator<Item = &'a Operation> + Clone,
+    /// Feed a new value into this processing pipeline, or feed None to flush aggregations.
+    pub fn feed(&mut self, input: Option<Value>) -> Vec<Result<Value, String>> {
+        fn rec(
+            stages: &mut Vec<Operation>,
+            current: usize,
+            cx: &Context,
+            input: Option<Value>,
         ) -> Vec<Result<Value, String>> {
-            if let Some(op) = ops.next() {
-                let (vs, cx) = op.apply(cx, input);
+            if let Some(op) = stages.get_mut(current) {
+                let flush = input.is_none();
+                let vs = if let Some(v) = input {
+                    op.apply(cx, v)
+                } else {
+                    op.flush(cx)
+                };
                 vs.into_iter()
+                    .map(|r| Some(r).transpose())
+                    .chain(if flush { vec![None.transpose()] } else { vec![] })
                     .flat_map(|v| match v {
-                        Ok(v) => rec(cx, v, ops.clone()),
+                        Ok(v) => rec(stages, current + 1, cx, v),
                         Err(e) => vec![Err(e.to_string())],
                     })
                     .collect()
             } else {
-                vec![Ok(input)]
+                input.into_iter().map(Ok).collect()
             }
         }
-        rec(&Context::new(input.key()), input, self.stages.iter())
+        rec(
+            &mut self.stages,
+            0,
+            &Context::new(input.as_ref().map(|x| x.key()).unwrap_or_default()),
+            input,
+        )
     }
 }
 
@@ -43,7 +57,8 @@ impl From<language::Query> for Query {
         for op in q.ops {
             match op {
                 language::Operation::Filter(f) => stages.push(Operation::Filter(Filter::new(f))),
-                language::Operation::Select(s) => stages.push(Operation::Select(Select::new(s.into_inner()))),
+                language::Operation::Select(s) => stages.push(Operation::Select(Select::new(s))),
+                language::Operation::Aggregate(a) => stages.push(Operation::Aggregate(Aggregate::new(a))),
             }
         }
         Self { features, from, stages }
@@ -63,9 +78,9 @@ mod tests {
     }
 
     fn feed(q: &str, v: &str) -> Vec<String> {
-        let q = Query::from(q.parse::<language::Query>().unwrap());
+        let mut q = Query::from(q.parse::<language::Query>().unwrap());
         let v = Context::new(key()).eval(&v.parse().unwrap()).unwrap();
-        q.feed(v)
+        q.feed(Some(v))
             .into_iter()
             .map(|v| v.map(|v| v.value().to_string()).unwrap_or_else(|e| e))
             .collect()

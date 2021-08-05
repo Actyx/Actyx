@@ -1,5 +1,6 @@
-use super::Rule;
+use super::{NoVal, Rule};
 use crate::language::non_empty::NonEmptyString;
+use anyhow::Result;
 use pest::{
     error::Error,
     iterators::{Pair, Pairs},
@@ -11,93 +12,104 @@ pub type Ps<'a> = Pairs<'a, Rule>;
 pub type P<'a> = Pair<'a, Rule>;
 
 pub trait Ext<'a>: 'a {
-    fn single(self) -> P<'a>;
-    fn inner(self) -> Ps<'a>;
-    fn rule(&self) -> Rule;
-    fn string(&mut self) -> String;
-    fn non_empty_string(&mut self) -> NonEmptyString;
-    fn natural(&mut self) -> Option<u64>;
-    fn decimal(&mut self) -> f64;
-    fn parse_or_default<T>(&mut self) -> T
+    fn single(self) -> Result<P<'a>>;
+    fn inner(self) -> Result<Ps<'a>>;
+    fn rule(&self) -> Result<Rule>;
+    fn string(&mut self) -> Result<String>;
+    fn non_empty_string(&mut self) -> Result<NonEmptyString>;
+    fn natural(&mut self) -> Result<u64>;
+    fn decimal(&mut self) -> Result<f64>;
+    /// if exists, parse as string and return error
+    fn parse_or_default<T>(&mut self) -> Result<T>
     where
         T: Default + FromStr + Debug,
-        T::Err: Debug;
+        anyhow::Error: From<T::Err>,
+        T::Err: Send + Sync + 'static;
 }
 
 impl<'a> Ext<'a> for Ps<'a> {
-    fn single(mut self) -> P<'a> {
-        self.next().unwrap()
+    fn single(mut self) -> Result<P<'a>> {
+        Ok(self.next().ok_or(NoVal(""))?)
     }
 
-    fn inner(self) -> Ps<'a> {
-        self.single().into_inner()
+    fn inner(self) -> Result<Ps<'a>> {
+        Ok(self.single()?.into_inner())
     }
 
-    fn rule(&self) -> Rule {
-        self.peek().unwrap().as_rule()
+    fn rule(&self) -> Result<Rule> {
+        Ok(self.peek().ok_or(NoVal("peek"))?.as_rule())
     }
 
-    fn string(&mut self) -> String {
-        self.next().unwrap().as_str().to_owned()
+    fn string(&mut self) -> Result<String> {
+        Ok(self.next().ok_or(NoVal("string"))?.as_str().to_owned())
     }
 
-    fn non_empty_string(&mut self) -> NonEmptyString {
-        self.next().unwrap().as_str().to_owned().try_into().unwrap()
+    fn non_empty_string(&mut self) -> Result<NonEmptyString> {
+        Ok(self
+            .next()
+            .ok_or(NoVal("non_empty_string"))?
+            .as_str()
+            .to_owned()
+            .try_into()?)
     }
 
-    fn natural(&mut self) -> Option<u64> {
-        self.next().unwrap().as_str().parse().ok()
+    fn natural(&mut self) -> Result<u64> {
+        Ok(self.next().ok_or(NoVal("natural"))?.as_str().parse()?)
     }
 
-    fn decimal(&mut self) -> f64 {
-        self.next().unwrap().as_str().parse().unwrap()
+    fn decimal(&mut self) -> Result<f64> {
+        Ok(self.next().ok_or(NoVal("decimal"))?.as_str().parse()?)
     }
 
-    fn parse_or_default<T>(&mut self) -> T
+    fn parse_or_default<T>(&mut self) -> Result<T>
     where
         T: Default + FromStr + Debug,
-        T::Err: Debug,
+        anyhow::Error: From<T::Err>,
+        T::Err: Send + Sync + 'static,
     {
-        self.next()
-            .map(|o| o.as_str().parse::<T>().unwrap())
-            .unwrap_or_default()
+        Ok(self
+            .next()
+            .map(|o| o.as_str().parse::<T>())
+            .transpose()?
+            .unwrap_or_default())
     }
 }
 
 impl<'a> Ext<'a> for P<'a> {
-    fn single(self) -> P<'a> {
-        self.inner().next().unwrap()
+    fn single(self) -> Result<P<'a>> {
+        Ok(self.inner()?.next().ok_or(NoVal("single"))?)
     }
 
-    fn inner(self) -> Ps<'a> {
-        self.into_inner()
+    fn inner(self) -> Result<Ps<'a>> {
+        Ok(self.into_inner())
     }
 
-    fn rule(&self) -> Rule {
-        self.as_rule()
+    fn rule(&self) -> Result<Rule> {
+        Ok(self.as_rule())
     }
 
-    fn string(&mut self) -> String {
-        self.as_str().to_owned()
+    fn string(&mut self) -> Result<String> {
+        Ok(self.as_str().to_owned())
     }
 
-    fn non_empty_string(&mut self) -> NonEmptyString {
-        self.as_str().to_owned().try_into().unwrap()
+    fn non_empty_string(&mut self) -> Result<NonEmptyString> {
+        Ok(self.as_str().try_into()?)
     }
 
-    fn natural(&mut self) -> Option<u64> {
-        self.as_str().parse().ok()
+    fn natural(&mut self) -> Result<u64> {
+        Ok(self.as_str().parse()?)
     }
 
-    fn decimal(&mut self) -> f64 {
-        self.as_str().parse().unwrap()
+    fn decimal(&mut self) -> Result<f64> {
+        Ok(self.as_str().parse()?)
     }
 
-    fn parse_or_default<T>(&mut self) -> T
+    fn parse_or_default<T>(&mut self) -> Result<T>
     where
         T: Default + FromStr + Debug,
-        T::Err: Debug,
+        anyhow::Error: From<T::Err>,
+        T::Err: Send + Sync + 'static,
     {
-        self.as_str().parse::<T>().unwrap()
+        Ok(self.as_str().parse::<T>()?)
     }
 }

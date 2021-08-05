@@ -1,17 +1,29 @@
 use crate::{eval::Context, value::Value};
-use actyx_sdk::language::SimpleExpr;
+use actyx_sdk::language::{NonEmptyVec, SimpleExpr};
 
-#[derive(Debug, Clone, PartialEq)]
+mod aggregate;
+pub use aggregate::{AggrState, Aggregate, Aggregator};
+
+#[derive(Debug, PartialEq)]
 pub enum Operation {
     Filter(Filter),
     Select(Select),
+    Aggregate(aggregate::Aggregate),
 }
 
 impl Operation {
-    pub fn apply<'a>(&'a self, cx: &'a Context, input: Value) -> (Vec<anyhow::Result<Value>>, &'a Context) {
+    pub fn apply(&mut self, cx: &Context, input: Value) -> Vec<anyhow::Result<Value>> {
         match self {
-            Operation::Filter(f) => (f.apply(cx, input).into_iter().collect(), cx),
-            Operation::Select(s) => (s.apply(cx, input), cx),
+            Operation::Filter(f) => f.apply(cx, input).into_iter().collect(),
+            Operation::Select(s) => s.apply(cx, input),
+            Operation::Aggregate(a) => a.apply(cx, input),
+        }
+    }
+
+    pub fn flush(&mut self, cx: &Context) -> Vec<anyhow::Result<Value>> {
+        match self {
+            Operation::Aggregate(a) => vec![a.flush(cx)],
+            _ => vec![],
         }
     }
 }
@@ -37,11 +49,11 @@ impl Filter {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Select {
-    pub exprs: Vec<SimpleExpr>,
+    pub exprs: NonEmptyVec<SimpleExpr>,
 }
 
 impl Select {
-    pub fn new(exprs: Vec<SimpleExpr>) -> Self {
+    pub fn new(exprs: NonEmptyVec<SimpleExpr>) -> Self {
         Self { exprs }
     }
 
@@ -58,6 +70,7 @@ mod tests {
     use cbor_data::Encoder;
 
     use super::*;
+    use std::convert::TryInto;
 
     fn simple_expr(s: &str) -> SimpleExpr {
         s.parse::<SimpleExpr>().unwrap()
@@ -84,7 +97,7 @@ mod tests {
 
     #[test]
     fn select() {
-        let s = Select::new(vec![simple_expr("_.x + a")]);
+        let s = Select::new(vec![simple_expr("_.x + a")].try_into().unwrap());
         let mut cx = Context::new(key());
         cx.bind("a", cx.value(|b| b.encode_f64(0.5)));
 

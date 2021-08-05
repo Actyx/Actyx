@@ -1,5 +1,5 @@
 use crate::{operation::Operation, query::Query};
-use actyx_sdk::language::{Arr, Ind, Obj, SimpleExpr, TagAtom, TagExpr};
+use actyx_sdk::language::{SimpleExpr, TagAtom, TagExpr, Traverse};
 use std::{collections::BTreeSet, str::FromStr};
 
 #[derive(Debug, Clone, derive_more::Display, PartialEq)]
@@ -22,7 +22,7 @@ pub enum FeatureKind {
 }
 
 macro_rules! features {
-    ($($name:ident: $kind:ident,)+) => {
+    ($($name:ident: $kind:ident [$($endpoint:ident)*],)+) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
         #[allow(non_camel_case_types)]
         pub enum Feature {
@@ -32,6 +32,15 @@ macro_rules! features {
             pub fn kind(self) -> FeatureKind {
                 match self {
                     $(Feature::$name => FeatureKind::$kind,)*
+                }
+            }
+
+            pub fn valid_on_endpoint(self, ep: Endpoint) -> Result<(), FeatureError> {
+                match self {
+                    $(Feature::$name => match ep {
+                        $(Endpoint::$endpoint => Err(FeatureError::Unsupported { features: stringify!($name).to_owned(), endpoint: ep.to_string() }),)*
+                        _ => Ok(()),
+                    },)*
                 }
             }
         }
@@ -55,9 +64,17 @@ macro_rules! features {
 }
 
 features! {
-    timeRange: Beta,
-    eventKeyRange: Beta,
-    multiEmission: Alpha,
+    timeRange: Beta [],
+    eventKeyRange: Beta [],
+    multiEmission: Alpha [Subscribe SubscribeMonotonic],
+    aggregate: Alpha [Subscribe SubscribeMonotonic],
+}
+
+#[derive(Debug, Clone, Copy, derive_more::Display)]
+pub enum Endpoint {
+    Query,
+    Subscribe,
+    SubscribeMonotonic,
 }
 
 use itertools::Itertools;
@@ -84,7 +101,7 @@ impl Features {
         self.0.insert(f);
     }
 
-    pub fn validate(&self, enabled: &[String]) -> Result<(), FeatureError> {
+    pub fn validate(&self, enabled: &[String], endpoint: Endpoint) -> Result<(), FeatureError> {
         let mut alpha = false;
         let mut enabled_features = BTreeSet::new();
         for s in enabled {
@@ -119,6 +136,10 @@ impl Features {
         if !b.is_empty() {
             return Err(FeatureError::Beta(b.iter().join(" ")));
         }
+        // last check if all used features are valid on the endpoint
+        for f in self.0.iter() {
+            f.valid_on_endpoint(endpoint)?;
+        }
         Ok(())
     }
 }
@@ -130,9 +151,13 @@ fn features_op(feat: &mut Features, op: &Operation) {
             if s.exprs.len() > 1 {
                 feat.add(multiEmission);
             }
-            for expr in &s.exprs {
+            for expr in s.exprs.iter() {
                 features_simple(feat, expr);
             }
+        }
+        Operation::Aggregate(a) => {
+            feat.add(aggregate);
+            features_simple(feat, &a.expr);
         }
     }
 }
@@ -160,110 +185,9 @@ fn features_tag(feat: &mut Features, expr: &TagExpr) {
     }
 }
 
-fn features_simple(feat: &mut Features, expr: &SimpleExpr) {
-    match expr {
-        SimpleExpr::Variable(_string) => {}
-        SimpleExpr::Indexing(Ind { head, tail }) => {
-            features_simple(feat, head);
-            for idx in tail.iter() {
-                match idx {
-                    actyx_sdk::language::Index::String(_) => {}
-                    actyx_sdk::language::Index::Number(_) => {}
-                    actyx_sdk::language::Index::Expr(expr) => {
-                        features_simple(feat, expr);
-                    }
-                }
-            }
-        }
-        SimpleExpr::Number(_n) => {}
-        SimpleExpr::String(_string) => {}
-        SimpleExpr::Object(Obj { props }) => {
-            for (idx, expr) in props {
-                features_simple(feat, expr);
-                match idx {
-                    actyx_sdk::language::Index::String(_) => {}
-                    actyx_sdk::language::Index::Number(_) => {}
-                    actyx_sdk::language::Index::Expr(expr) => {
-                        features_simple(feat, expr);
-                    }
-                }
-            }
-        }
-        SimpleExpr::Array(Arr { items }) => {
-            for expr in items {
-                features_simple(feat, expr);
-            }
-        }
-        SimpleExpr::Null => {}
-        SimpleExpr::Bool(_) => {}
-        SimpleExpr::Cases(v) => {
-            for (pred, res) in v.iter() {
-                features_simple(feat, pred);
-                features_simple(feat, res);
-            }
-        }
-        SimpleExpr::Add(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Sub(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Mul(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Div(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Mod(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Pow(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::And(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Or(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Xor(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Lt(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Le(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Gt(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Ge(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Eq(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Ne(x) => {
-            features_simple(feat, &x.0);
-            features_simple(feat, &x.1);
-        }
-        SimpleExpr::Not(x) => features_simple(feat, x),
-    }
+fn features_simple(_feat: &mut Features, expr: &SimpleExpr) {
+    // currently there are no features to be found
+    expr.traverse(&mut |_| Traverse::Stop);
 }
 
 #[cfg(test)]
@@ -276,16 +200,19 @@ mod tests {
     }
     fn q(s: &str) -> Result<(), FeatureError> {
         let q = Query::from(s.parse::<actyx_sdk::language::Query>().unwrap());
-        Features::from_query(&q).validate(&q.features)
+        Features::from_query(&q).validate(&q.features, Endpoint::Query)
     }
 
     #[test]
     fn alpha() {
         let f = Features::new();
 
-        assert_eq!(f.validate(&[s("multiEmission")]), Err(Alpha(s("multiEmission"))));
-        assert_eq!(f.validate(&[s("zøg"), s("multiEmission")]), Ok(()));
-        assert_eq!(f.validate(&[s("multiEmission"), s("zøg")]), Ok(()));
+        assert_eq!(
+            f.validate(&[s("multiEmission")], Endpoint::Query),
+            Err(Alpha(s("multiEmission")))
+        );
+        assert_eq!(f.validate(&[s("zøg"), s("multiEmission")], Endpoint::Query), Ok(()));
+        assert_eq!(f.validate(&[s("multiEmission"), s("zøg")], Endpoint::Query), Ok(()));
     }
 
     #[test]
@@ -314,5 +241,28 @@ mod tests {
             Err(Alpha(s("multiEmission")))
         );
         assert_eq!(q("FEATURES(multiEmission zøg) FROM allEvents SELECT _, _"), Ok(()));
+
+        let mut f = Features::new();
+        f.add(Feature::multiEmission);
+        assert_eq!(
+            f.validate(&[s("zøg"), s("multiEmission")], Endpoint::Subscribe),
+            Err(Unsupported {
+                features: s("multiEmission"),
+                endpoint: s("Subscribe")
+            })
+        );
+    }
+
+    #[test]
+    fn aggregate() {
+        let mut f = Features::new();
+        f.add(Feature::aggregate);
+        assert_eq!(
+            f.validate(&[s("zøg"), s("aggregate")], Endpoint::Subscribe),
+            Err(Unsupported {
+                features: s("aggregate"),
+                endpoint: s("Subscribe")
+            })
+        );
     }
 }

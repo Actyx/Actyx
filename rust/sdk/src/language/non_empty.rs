@@ -1,8 +1,8 @@
 #![allow(dead_code)]
-use std::{convert::TryFrom, ops::Deref};
+use std::{convert::TryFrom, ops::Deref, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct NonEmptyVec<T>(Vec<T>);
+pub struct NonEmptyVec<T>(Arc<[T]>);
 
 #[derive(Debug, Clone)]
 pub struct NoElements;
@@ -20,7 +20,7 @@ impl<T> TryFrom<Vec<T>> for NonEmptyVec<T> {
         if value.is_empty() {
             Err(NoElements)
         } else {
-            Ok(Self(value))
+            Ok(Self(value.into()))
         }
     }
 }
@@ -29,13 +29,7 @@ impl<T> Deref for NonEmptyVec<T> {
     type Target = [T];
 
     fn deref(&self) -> &Self::Target {
-        self.0.as_slice()
-    }
-}
-
-impl<T> NonEmptyVec<T> {
-    pub fn into_inner(self) -> Vec<T> {
-        self.0
+        &self.0
     }
 }
 
@@ -49,10 +43,16 @@ impl<T: quickcheck::Arbitrary + Clone + 'static> quickcheck::Arbitrary for NonEm
             }
             v = Vec::<T>::arbitrary(g);
         }
-        Self(v)
+        Self(v.into())
     }
     fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-        Box::new(self.0.shrink().filter(|v| !v.is_empty()).map(Self))
+        Box::new(
+            self.0
+                .to_vec()
+                .shrink()
+                .filter(|v| !v.is_empty())
+                .map(|v| Self(v.into())),
+        )
     }
 }
 

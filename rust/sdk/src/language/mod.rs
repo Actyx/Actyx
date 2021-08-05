@@ -2,8 +2,10 @@ mod non_empty;
 mod parser;
 mod render;
 
-use self::{non_empty::NonEmptyVec, render::render_tag_expr};
+pub use self::non_empty::NonEmptyVec;
+use self::render::render_tag_expr;
 use crate::{tags::Tag, AppId, EventKey, LamportTimestamp, StreamId, Timestamp};
+use std::sync::Arc;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Query {
@@ -17,21 +19,22 @@ mod query_impl;
 pub enum Operation {
     Filter(SimpleExpr),
     Select(NonEmptyVec<SimpleExpr>),
+    Aggregate(SimpleExpr),
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum TagExpr {
-    Or(Box<(TagExpr, TagExpr)>),
-    And(Box<(TagExpr, TagExpr)>),
+    Or(Arc<(TagExpr, TagExpr)>),
+    And(Arc<(TagExpr, TagExpr)>),
     Atom(TagAtom),
 }
 
 impl TagExpr {
     pub fn and(self, other: TagExpr) -> Self {
-        TagExpr::And(Box::new((self, other)))
+        TagExpr::And(Arc::new((self, other)))
     }
     pub fn or(self, other: TagExpr) -> Self {
-        TagExpr::Or(Box::new((self, other)))
+        TagExpr::Or(Arc::new((self, other)))
     }
 }
 
@@ -55,7 +58,7 @@ impl std::ops::BitAnd for TagExpr {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
 pub struct SortKey {
     pub lamport: LamportTimestamp,
     pub stream: StreamId,
@@ -125,19 +128,77 @@ fn is_ident(s: &str) -> bool {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Ind {
-    pub head: Box<SimpleExpr>,
+    pub head: Arc<SimpleExpr>,
     pub tail: NonEmptyVec<Index>,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Obj {
-    pub props: Vec<(Index, SimpleExpr)>,
+    pub props: Arc<[(Index, SimpleExpr)]>,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Arr {
-    pub items: Vec<SimpleExpr>,
+    pub items: Arc<[SimpleExpr]>,
 }
+
+macro_rules! decl_op {
+    ($(#[$a:meta])* $v:vis enum $n:ident { $($x:ident -> $s:literal,)* }) => {
+        $(#[$a])* $v enum $n {
+            $($x,)*
+        }
+
+        impl $n {
+            pub fn as_str(&self) -> &'static str {
+                match self {
+                    $($n::$x => $s,)*
+                }
+            }
+        }
+
+        #[cfg(test)]
+        impl ::quickcheck::Arbitrary for $n {
+            fn arbitrary(g: &mut ::quickcheck::Gen) -> Self {
+                *g.choose(&[$($n::$x,)*]).unwrap()
+            }
+        }
+    }
+}
+
+decl_op! {
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+    pub enum BinOp {
+        Add -> "+",
+        Sub -> "-",
+        Mul -> "*",
+        Div -> "/",
+        Mod -> "%",
+        Pow -> "^",
+        And -> "&",
+        Or -> "|",
+        Xor -> "~",
+        Lt -> "<",
+        Le -> "<=",
+        Gt -> ">",
+        Ge -> ">=",
+        Eq -> "=",
+        Ne -> "!=",
+    }
+}
+
+decl_op! {
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+    pub enum AggrOp {
+        Sum -> "SUM",
+        Prod -> "PRODUCT",
+        Min -> "MIN",
+        Max -> "MAX",
+        First -> "FIRST",
+        Last -> "LAST",
+    }
+}
+
+mod var;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum SimpleExpr {
@@ -150,24 +211,67 @@ pub enum SimpleExpr {
     Null,
     Bool(bool),
     Cases(NonEmptyVec<(SimpleExpr, SimpleExpr)>),
-    Add(Box<(SimpleExpr, SimpleExpr)>),
-    Sub(Box<(SimpleExpr, SimpleExpr)>),
-    Mul(Box<(SimpleExpr, SimpleExpr)>),
-    Div(Box<(SimpleExpr, SimpleExpr)>),
-    Mod(Box<(SimpleExpr, SimpleExpr)>),
-    Pow(Box<(SimpleExpr, SimpleExpr)>),
-    And(Box<(SimpleExpr, SimpleExpr)>),
-    Or(Box<(SimpleExpr, SimpleExpr)>),
-    Not(Box<SimpleExpr>),
-    Xor(Box<(SimpleExpr, SimpleExpr)>),
-    Lt(Box<(SimpleExpr, SimpleExpr)>),
-    Le(Box<(SimpleExpr, SimpleExpr)>),
-    Gt(Box<(SimpleExpr, SimpleExpr)>),
-    Ge(Box<(SimpleExpr, SimpleExpr)>),
-    Eq(Box<(SimpleExpr, SimpleExpr)>),
-    Ne(Box<(SimpleExpr, SimpleExpr)>),
+    BinOp(Arc<(BinOp, SimpleExpr, SimpleExpr)>),
+    Not(Arc<SimpleExpr>),
+    AggrOp(Arc<(AggrOp, SimpleExpr)>),
 }
-mod var;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Traverse {
+    Descend,
+    Stop,
+}
+
+impl SimpleExpr {
+    pub fn traverse(&self, f: &mut impl FnMut(&SimpleExpr) -> Traverse) {
+        if f(self) == Traverse::Descend {
+            match self {
+                SimpleExpr::Variable(_) => {}
+                SimpleExpr::Indexing(Ind { head, tail }) => {
+                    head.traverse(f);
+                    for t in tail.iter() {
+                        match t {
+                            Index::String(_) => {}
+                            Index::Number(_) => {}
+                            Index::Expr(e) => e.traverse(f),
+                        }
+                    }
+                }
+                SimpleExpr::Number(_) => {}
+                SimpleExpr::String(_) => {}
+                SimpleExpr::Object(Obj { props }) => {
+                    for (idx, expr) in props.iter() {
+                        match idx {
+                            Index::String(_) => {}
+                            Index::Number(_) => {}
+                            Index::Expr(e) => e.traverse(f),
+                        }
+                        expr.traverse(f);
+                    }
+                }
+                SimpleExpr::Array(Arr { items }) => {
+                    for expr in items.iter() {
+                        expr.traverse(f);
+                    }
+                }
+                SimpleExpr::Null => {}
+                SimpleExpr::Bool(_) => {}
+                SimpleExpr::Cases(c) => {
+                    for (cond, expr) in c.iter() {
+                        cond.traverse(f);
+                        expr.traverse(f);
+                    }
+                }
+                SimpleExpr::BinOp(x) => {
+                    x.1.traverse(f);
+                    x.2.traverse(f);
+                }
+                SimpleExpr::Not(e) => e.traverse(f),
+                SimpleExpr::AggrOp(a) => a.1.traverse(f),
+            }
+        }
+    }
+}
 
 impl std::fmt::Display for SimpleExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -178,57 +282,58 @@ impl std::fmt::Display for SimpleExpr {
 #[allow(clippy::clippy::should_implement_trait)]
 impl SimpleExpr {
     pub fn add(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Add(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Add, self, other)))
     }
     pub fn sub(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Sub(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Sub, self, other)))
     }
     pub fn mul(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Mul(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Mul, self, other)))
     }
     pub fn div(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Div(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Div, self, other)))
     }
     pub fn modulo(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Mod(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Mod, self, other)))
     }
     pub fn pow(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Pow(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Pow, self, other)))
     }
     pub fn and(self, other: SimpleExpr) -> Self {
-        SimpleExpr::And(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::And, self, other)))
     }
     pub fn or(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Or(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Or, self, other)))
     }
     pub fn xor(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Xor(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Xor, self, other)))
     }
     pub fn lt(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Lt(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Lt, self, other)))
     }
     pub fn le(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Le(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Le, self, other)))
     }
     pub fn gt(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Gt(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Gt, self, other)))
     }
     pub fn ge(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Ge(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Ge, self, other)))
     }
     pub fn eq(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Eq(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Eq, self, other)))
     }
     pub fn ne(self, other: SimpleExpr) -> Self {
-        SimpleExpr::Ne(Box::new((self, other)))
+        SimpleExpr::BinOp(Arc::new((BinOp::Ne, self, other)))
     }
 }
 
 #[cfg(test)]
 mod for_tests {
     use super::*;
+    use crate::language::parser::ContextError;
     use once_cell::sync::OnceCell;
-    use quickcheck::{Arbitrary, Gen, QuickCheck};
+    use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
     use std::{cell::RefCell, convert::TryInto, str::FromStr};
 
     impl Query {
@@ -251,10 +356,10 @@ mod for_tests {
 
     impl TagAtom {
         pub fn and(self, other: TagAtom) -> TagExpr {
-            TagExpr::And(Box::new((TagExpr::Atom(self), TagExpr::Atom(other))))
+            TagExpr::And(Arc::new((TagExpr::Atom(self), TagExpr::Atom(other))))
         }
         pub fn or(self, other: TagAtom) -> TagExpr {
-            TagExpr::Or(Box::new((TagExpr::Atom(self), TagExpr::Atom(other))))
+            TagExpr::Or(Arc::new((TagExpr::Atom(self), TagExpr::Atom(other))))
         }
     }
 
@@ -332,7 +437,7 @@ mod for_tests {
     impl Ind {
         pub fn with(head: impl Into<String>, tail: &[&dyn ToIndex]) -> SimpleExpr {
             SimpleExpr::Indexing(Self {
-                head: Box::new(SimpleExpr::Variable(head.into().try_into().unwrap())),
+                head: Arc::new(SimpleExpr::Variable(head.into().try_into().unwrap())),
                 tail: tail.iter().map(|x| (*x).into()).collect::<Vec<_>>().try_into().unwrap(),
             })
         }
@@ -351,7 +456,7 @@ mod for_tests {
 
     impl Arr {
         pub fn with(items: &[SimpleExpr]) -> SimpleExpr {
-            SimpleExpr::Array(Arr { items: items.to_vec() })
+            SimpleExpr::Array(Arr { items: items.into() })
         }
     }
 
@@ -395,7 +500,7 @@ mod for_tests {
     impl Arbitrary for Ind {
         fn arbitrary(g: &mut Gen) -> Self {
             Self {
-                head: Box::new(SimpleExpr::arbitrary(g)),
+                head: Arc::new(SimpleExpr::arbitrary(g)),
                 tail: Arbitrary::arbitrary(g),
             }
         }
@@ -420,28 +525,32 @@ mod for_tests {
     impl Arbitrary for Arr {
         fn arbitrary(g: &mut Gen) -> Self {
             Self {
-                items: Arbitrary::arbitrary(g),
+                items: Vec::arbitrary(g).into(),
             }
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            Box::new(self.items.shrink().map(|items| Self { items }))
+            Box::new(self.items.to_vec().shrink().map(|items| Self { items: items.into() }))
         }
     }
 
     impl Arbitrary for Obj {
         fn arbitrary(g: &mut Gen) -> Self {
             Self {
-                props: Arbitrary::arbitrary(g),
+                props: Vec::arbitrary(g).into(),
             }
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            Box::new(self.props.shrink().map(|props| Self { props }))
+            Box::new(self.props.to_vec().shrink().map(|props| Self { props: props.into() }))
         }
     }
 
     impl Arbitrary for SimpleExpr {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(SimpleExpr: g => Variable Number String Bool, Indexing Object Array Cases Add Sub Mul Div Mod Pow And Or Not Xor Lt Le Gt Ge Eq Ne, Null)
+            arb!(SimpleExpr: g =>
+                Variable Number String Bool,
+                Indexing Object Array Cases BinOp Not AggrOp,
+                Null
+            )
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             shrink!(SimpleExpr: self => Variable Number String Bool,
@@ -449,22 +558,9 @@ mod for_tests {
                 Object(x, x.props.first().map(|p| p.1.clone()).unwrap_or(SimpleExpr::Null))
                 Array(x, x.items.first().cloned().unwrap_or(SimpleExpr::Null))
                 Cases(x, x.first().map(|p| p.1.clone()).unwrap_or(SimpleExpr::Null))
-                Add(x, x.0.clone(), x.1.clone())
-                Sub(x, x.0.clone(), x.1.clone())
-                Mul(x, x.0.clone(), x.1.clone())
-                Div(x, x.0.clone(), x.1.clone())
-                Mod(x, x.0.clone(), x.1.clone())
-                Pow(x, x.0.clone(), x.1.clone())
-                And(x, x.0.clone(), x.1.clone())
-                Or(x, x.0.clone(), x.1.clone())
+                BinOp(x,)
                 Not(x, (**x).clone())
-                Xor(x, x.0.clone(), x.1.clone())
-                Lt(x, x.0.clone(), x.1.clone())
-                Le(x, x.0.clone(), x.1.clone())
-                Gt(x, x.0.clone(), x.1.clone())
-                Ge(x, x.0.clone(), x.1.clone())
-                Eq(x, x.0.clone(), x.1.clone())
-                Ne(x, x.0.clone(), x.1.clone())
+                AggrOp(x,)
                 , Null)
         }
     }
@@ -489,10 +585,10 @@ mod for_tests {
 
     impl Arbitrary for Operation {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(Operation: g => Filter Select,,)
+            arb!(Operation: g => Filter Select Aggregate,,)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            shrink!(Operation: self => Filter Select,,)
+            shrink!(Operation: self => Filter Select Aggregate,,)
         }
     }
 
@@ -535,7 +631,7 @@ mod for_tests {
 
     #[test]
     fn qc_roundtrip() {
-        fn roundtrip_aql(q: Query) -> anyhow::Result<bool> {
+        fn roundtrip_aql(q: Query) -> TestResult {
             // What this test currently ascertains is that our rendered string is isomorphic
             // to the internal representation of the parse tree, hence there are many “unnecessary”
             // parentheses in the output. If we want to remove those parentheses, we need to
@@ -543,9 +639,18 @@ mod for_tests {
             // as during parsing. Luckily, this test will then prove that our canonicalisation
             // actually works.
             let s = q.to_string();
-            let p = Query::from_str(&s)?;
-            anyhow::ensure!(q == p, "q={} p={} pp={:?}", q, p, p);
-            Ok(true)
+            let p = match Query::from_str(&s) {
+                Ok(p) => p,
+                Err(e) => match e.downcast::<ContextError>() {
+                    Ok(_) => return TestResult::discard(),
+                    Err(e) => return TestResult::error(e.to_string()),
+                },
+            };
+            if q == p {
+                TestResult::passed()
+            } else {
+                TestResult::error(format!("\nq={}\np={}\n ={:?}", q, p, p))
+            }
         }
         let mut q = QuickCheck::new();
         if std::env::var_os("QUICKCHECK_TESTS").is_none() {
@@ -553,6 +658,6 @@ mod for_tests {
         }
         q.max_tests(1_000_000)
             .gen(Gen::new(10))
-            .quickcheck(roundtrip_aql as fn(Query) -> anyhow::Result<bool>)
+            .quickcheck(roundtrip_aql as fn(Query) -> TestResult)
     }
 }

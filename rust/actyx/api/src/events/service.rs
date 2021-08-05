@@ -1,17 +1,22 @@
 use actyx_sdk::{
+    app_id,
     service::{
         Diagnostic, EventResponse, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest,
         PublishResponse, PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    AppId, Event, Metadata, NodeId, OffsetMap, OffsetOrMin, Payload,
+    AppId, Event, NodeId, OffsetMap, OffsetOrMin, Payload,
 };
-use ax_futures_util::prelude::AxStreamExt;
 use futures::{
-    future::{self, ready},
-    stream::{self, BoxStream, StreamExt},
+    future::ready,
+    stream::{BoxStream, StreamExt},
 };
-use runtime::{features::Features, query::Query, value::Value};
+use genawaiter::sync::{Co, Gen};
+use runtime::{
+    features::{Endpoint, Features},
+    query::Query,
+    value::Value,
+};
 use std::{convert::TryFrom, num::NonZeroU64};
 use swarm::event_store_ref::EventStoreRef;
 use tokio::sync::mpsc::Receiver;
@@ -90,12 +95,11 @@ impl EventService {
         };
         let lower_bound = request.lower_bound.unwrap_or_default();
 
-        let query = Query::from(request.query);
+        let mut query = Query::from(request.query);
         let features = Features::from_query(&query);
-        features.validate(&query.features)?;
-        let feed = mk_feed(query);
+        features.validate(&query.features, Endpoint::Query)?;
 
-        let stream = match request.order {
+        let mut stream = match request.order {
             Order::Asc => {
                 self.store
                     .bounded_forward(tag_expr, lower_bound, upper_bound.clone(), false)
@@ -111,19 +115,35 @@ impl EventService {
                     .bounded_forward(tag_expr, lower_bound, upper_bound.clone(), true)
                     .await?
             }
-        };
-        let response = stream
-            .stop_on_error()
-            .flat_map(feed)
-            .map(|res| match res {
-                Ok(ev) => QueryResponse::Event(ev),
-                Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e)),
-            })
-            .chain(stream::once(ready(QueryResponse::Offsets(OffsetMapResponse {
-                offsets: upper_bound,
-            }))))
-            .boxed();
-        Ok(response)
+        }
+        .stop_on_error();
+
+        let gen = Gen::new(move |co: Co<QueryResponse>| async move {
+            while let Some(ev) = stream.next().await {
+                let vs = query.feed(Some(to_value(&ev)));
+                for v in vs {
+                    co.yield_(match v {
+                        Ok(v) => QueryResponse::Event(to_event(v, Some(&ev))),
+                        Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e)),
+                    })
+                    .await;
+                }
+            }
+
+            let vs = query.feed(None);
+            for v in vs {
+                co.yield_(match v {
+                    Ok(v) => QueryResponse::Event(to_event(v, None)),
+                    Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e)),
+                })
+                .await;
+            }
+
+            co.yield_(QueryResponse::Offsets(OffsetMapResponse { offsets: upper_bound }))
+                .await;
+        });
+
+        Ok(gen.boxed())
     }
 
     pub async fn subscribe(
@@ -134,36 +154,49 @@ impl EventService {
         let present = self.store.offsets().await?.present();
         let lower_bound = request.lower_bound.unwrap_or_default();
 
-        let query = Query::from(request.query);
+        let mut query = Query::from(request.query);
         let tag_expr = query.from.clone();
         let features = Features::from_query(&query);
-        features.validate(&query.features)?;
-        let feed = mk_feed(query);
+        features.validate(&query.features, Endpoint::Subscribe)?;
 
-        let bounded = self
+        let mut bounded = self
             .store
             .bounded_forward(tag_expr.clone(), lower_bound, present.clone(), false)
             .await?
-            .stop_on_error()
-            .flat_map(feed.clone())
-            .map(|res| match res {
-                Ok(ev) => SubscribeResponse::Event(ev),
-                Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
-            });
-        let offsets = stream::once(future::ready(SubscribeResponse::Offsets(OffsetMapResponse {
-            offsets: present.clone(),
-        })));
-        let unbounded = self
+            .stop_on_error();
+        let mut unbounded = self
             .store
-            .unbounded_forward(tag_expr, present)
+            .unbounded_forward(tag_expr, present.clone())
             .await?
-            .stop_on_error()
-            .flat_map(feed)
-            .map(|res| match res {
-                Ok(ev) => SubscribeResponse::Event(ev),
-                Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
-            });
-        Ok(bounded.chain(offsets).chain(unbounded).boxed())
+            .stop_on_error();
+        let gen = Gen::new(move |co: Co<SubscribeResponse>| async move {
+            while let Some(ev) = bounded.next().await {
+                let vs = query.feed(Some(to_value(&ev)));
+                for v in vs {
+                    co.yield_(match v {
+                        Ok(v) => SubscribeResponse::Event(to_event(v, Some(&ev))),
+                        Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
+                    })
+                    .await;
+                }
+            }
+
+            co.yield_(SubscribeResponse::Offsets(OffsetMapResponse { offsets: present }))
+                .await;
+
+            while let Some(ev) = unbounded.next().await {
+                let vs = query.feed(Some(to_value(&ev)));
+                for v in vs {
+                    co.yield_(match v {
+                        Ok(v) => SubscribeResponse::Event(to_event(v, Some(&ev))),
+                        Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
+                    })
+                    .await;
+                }
+            }
+        });
+
+        Ok(gen.boxed())
     }
 
     pub async fn subscribe_monotonic(
@@ -176,29 +209,25 @@ impl EventService {
             StartFrom::LowerBound(x) => x.clone(),
         };
 
-        let query = Query::from(request.query);
+        let mut query = Query::from(request.query);
         let tag_expr = query.from.clone();
         let features = Features::from_query(&query);
-        features.validate(&query.features)?;
-        let feed = mk_feed(query);
+        features.validate(&query.features, Endpoint::SubscribeMonotonic)?;
 
-        let bounded = self
+        let mut bounded = self
             .store
             .bounded_forward(tag_expr.clone(), lower_bound, present.clone(), false)
             .await?
-            .stop_on_error()
-            .flat_map(feed.clone())
-            .map(|res| match res {
-                Ok(event) => SubscribeMonotonicResponse::Event { event, caught_up: true },
-                Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
-            });
-        let offsets = stream::once(ready(SubscribeMonotonicResponse::Offsets(OffsetMapResponse {
-            offsets: present.clone(),
-        })));
+            .stop_on_error();
+        let mut unbounded = self
+            .store
+            .unbounded_forward(tag_expr.clone(), present.clone())
+            .await?
+            .stop_on_error();
         let mut latest = match &request.from {
             StartFrom::LowerBound(offsets) => self
                 .store
-                .bounded_backward(tag_expr.clone(), OffsetMap::default(), offsets.clone())
+                .bounded_backward(tag_expr, OffsetMap::default(), offsets.clone())
                 .await?
                 .recv()
                 .await
@@ -206,58 +235,75 @@ impl EventService {
                 .map(|event| event.key),
         };
 
-        let unbounded = self
-            .store
-            .unbounded_forward(tag_expr, present)
-            .await?
-            .stop_on_error()
-            .flat_map({
-                move |e| {
-                    let key = Some(e.key);
-                    if key > latest {
-                        latest = key;
-                        feed(e)
-                            .map(|res| match res {
-                                Ok(event) => SubscribeMonotonicResponse::Event { event, caught_up: true },
-                                Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
-                            })
-                            .left_stream()
-                    } else {
-                        stream::once(async move { SubscribeMonotonicResponse::TimeTravel { new_start: e.key } })
-                            .right_stream()
-                    }
+        let gen = Gen::new(move |co: Co<SubscribeMonotonicResponse>| async move {
+            while let Some(ev) = bounded.next().await {
+                let vs = query.feed(Some(to_value(&ev)));
+                for v in vs {
+                    co.yield_(match v {
+                        Ok(v) => SubscribeMonotonicResponse::Event {
+                            event: to_event(v, Some(&ev)),
+                            caught_up: true,
+                        },
+                        Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
+                    })
+                    .await;
                 }
-            })
-            .take_until_condition(|e| ready(matches!(e, SubscribeMonotonicResponse::TimeTravel { .. })));
+            }
 
-        Ok(bounded.chain(offsets).chain(unbounded).boxed())
+            co.yield_(SubscribeMonotonicResponse::Offsets(OffsetMapResponse {
+                offsets: present,
+            }))
+            .await;
+
+            while let Some(ev) = unbounded.next().await {
+                let key = Some(ev.key);
+                if key > latest {
+                    latest = key;
+                    let vs = query.feed(Some(to_value(&ev)));
+                    for v in vs {
+                        co.yield_(match v {
+                            Ok(v) => SubscribeMonotonicResponse::Event {
+                                event: to_event(v, Some(&ev)),
+                                caught_up: true,
+                            },
+                            Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
+                        })
+                        .await;
+                    }
+                } else {
+                    co.yield_(SubscribeMonotonicResponse::TimeTravel { new_start: ev.key })
+                        .await;
+                    return;
+                }
+            }
+        });
+
+        Ok(gen.boxed())
     }
 }
 
-fn mk_feed(
-    query: Query,
-) -> impl Fn(Event<Payload>) -> BoxStream<'static, Result<EventResponse<Payload>, String>> + Clone {
-    move |event| {
-        let Event {
-            key,
-            meta: Metadata {
-                timestamp,
-                tags,
-                app_id,
-            },
-            payload,
-        } = event;
-        stream::iter(query.feed(Value::from((key, payload))).into_iter().map(move |v| {
-            v.map(|v| EventResponse {
-                lamport: key.lamport,
-                stream: key.stream,
-                offset: key.offset,
-                app_id: app_id.clone(),
-                timestamp,
-                tags: tags.clone(),
-                payload: v.payload(),
-            })
-        }))
-        .boxed()
+fn to_value(event: &Event<Payload>) -> Value {
+    Value::from((event.key, event.payload.clone()))
+}
+fn to_event(value: Value, event: Option<&Event<Payload>>) -> EventResponse<Payload> {
+    match event {
+        Some(event) => EventResponse {
+            lamport: event.key.lamport,
+            stream: event.key.stream,
+            offset: event.key.offset,
+            app_id: event.meta.app_id.clone(),
+            timestamp: event.meta.timestamp,
+            tags: event.meta.tags.clone(),
+            payload: value.payload(),
+        },
+        None => EventResponse {
+            lamport: Default::default(),
+            stream: Default::default(),
+            offset: Default::default(),
+            app_id: app_id!("none"),
+            timestamp: Default::default(),
+            tags: Default::default(),
+            payload: value.payload(),
+        },
     }
 }
