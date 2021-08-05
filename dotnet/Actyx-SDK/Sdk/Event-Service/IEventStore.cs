@@ -18,11 +18,12 @@ namespace Actyx
             ThrowIf.Argument.IsNull(options, nameof(options));
 
             string basePath = $"{options.Host}:{options.Port}/api/v2/";
-            var axHttpClient = await AxHttpClient.Create($"http://{basePath}", manifest, EventStoreSerializer.Create());
+            var converter = new JsonContentConverter(EventStoreSerializer.Create());
+            var axHttpClient = await AxHttpClient.Create($"http://{basePath}", manifest, converter);
 
             if (options.Transport == Transport.Http)
             {
-                return new HttpEventStore(axHttpClient);
+                return new HttpEventStore(axHttpClient, converter);
             }
 
             Uri axWs = new($"ws://{basePath}events?{axHttpClient.Token}");

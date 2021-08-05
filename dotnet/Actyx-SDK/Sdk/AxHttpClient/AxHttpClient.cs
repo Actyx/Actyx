@@ -4,31 +4,24 @@ using System.Threading.Tasks;
 using Actyx.Sdk.Formats;
 using Actyx.Sdk.Utils;
 using Actyx.Sdk.Utils.Extensions;
-using Newtonsoft.Json;
 
 namespace Actyx.Sdk.AxHttpClient
 {
-    public class AxHttpClientException : Exception
-    {
-        public AxHttpClientException(string message, Exception inner) : base(message, inner) { }
-        public AxHttpClientException(string message) : base(message) { }
-    }
-
     public class AxHttpClient : IAxHttpClient
     {
         private readonly HttpClient httpClient;
         private readonly UriBuilder uriBuilder;
         private readonly AppManifest manifest;
-        private readonly JsonSerializer serializer;
+        private readonly JsonContentConverter converter;
         public string Token { get; private set; }
         public NodeId NodeId { get; private set; }
         public string AppId => manifest.AppId;
 
-        private AxHttpClient(HttpClient httpClient, string baseUrl, AppManifest manifest, JsonSerializer serializer)
+        private AxHttpClient(HttpClient httpClient, string baseUrl, AppManifest manifest, JsonContentConverter converter)
         {
             ThrowIf.Argument.IsNull(baseUrl, nameof(baseUrl));
             ThrowIf.Argument.IsNull(manifest, nameof(manifest));
-            ThrowIf.Argument.IsNull(serializer, nameof(serializer));
+            ThrowIf.Argument.IsNull(converter, nameof(converter));
 
             if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri uri))
             {
@@ -45,17 +38,17 @@ namespace Actyx.Sdk.AxHttpClient
 
             this.httpClient = httpClient;
             this.manifest = manifest;
-            this.serializer = serializer;
+            this.converter = converter;
         }
 
-        public static async Task<AxHttpClient> Create(string baseUrl, AppManifest manifest, JsonSerializer serializer)
+        public static async Task<AxHttpClient> Create(string baseUrl, AppManifest manifest, JsonContentConverter converter)
         {
             var httpClient = new HttpClient();
-            var client = new AxHttpClient(httpClient, baseUrl, manifest, serializer)
+            var client = new AxHttpClient(httpClient, baseUrl, manifest, converter)
             {
                 NodeId = await GetNodeId(httpClient, new Uri(baseUrl)),
             };
-            client.Token = (await GetToken(httpClient, client.uriBuilder.Uri, manifest, serializer)).Token;
+            client.Token = (await GetToken(httpClient, client.uriBuilder.Uri, manifest, converter)).Token;
 
             return client;
         }
@@ -63,59 +56,38 @@ namespace Actyx.Sdk.AxHttpClient
         public static async Task<NodeId> GetNodeId(HttpClient httpClient, Uri baseUri)
         {
             var uri = baseUri + HttpApiPath.NODE_ID_SEG;
-            try
-            {
-                var nodeIdResponse = await httpClient.GetAsync(uri);
-                await nodeIdResponse.EnsureSuccessStatusCodeCustom();
-                var nodeId = await nodeIdResponse.Content.ReadAsStringAsync();
-                return new NodeId(nodeId);
-            }
-            catch (Exception e)
-            {
-                throw new AxHttpClientException($"Error GETting {uri}", e);
-            }
+            var nodeIdResponse = await httpClient.GetAsync(uri);
+            await nodeIdResponse.EnsureSuccessStatusCodeCustom();
+            var nodeId = await nodeIdResponse.Content.ReadAsStringAsync();
+            return new NodeId(nodeId);
         }
 
         public Task<HttpResponseMessage> Post<T>(string path, T payload, bool xndjson = false) =>
             FetchWithRetryOnUnauthorized(() =>
             {
                 var uri = MkApiUrl(path);
-                try
-                {
-                    var request = new HttpRequestMessage(HttpMethod.Post, uri);
-                    request.Headers.Add("Accept", xndjson ? "application/x-ndjson" : "application/json");
-                    request.Headers.Add("Authorization", $"Bearer {Token}");
-                    request.Content = new JsonContent(payload, serializer);
-                    return httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-                }
-                catch (Exception e)
-                {
-                    throw new AxHttpClientException($"Error POSTing to {uri}", e);
-                }
+                var request = new HttpRequestMessage(HttpMethod.Post, uri);
+                request.Headers.Add("Accept", xndjson ? "application/x-ndjson" : "application/json");
+                request.Headers.Add("Authorization", $"Bearer {Token}");
+                request.Content = converter.ToContent(payload);
+                return httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             });
 
         public Task<HttpResponseMessage> Get(string path) =>
             FetchWithRetryOnUnauthorized(() =>
             {
                 var uri = MkApiUrl(path);
-                try
-                {
-                    var request = new HttpRequestMessage(HttpMethod.Get, uri);
-                    request.Headers.Add("Authorization", $"Bearer {Token}");
-                    request.Headers.Add("Accept", "application/json");
-                    return httpClient.SendAsync(request);
-                }
-                catch (Exception e)
-                {
-                    throw new AxHttpClientException($"Error GETting {uri}", e);
-                }
+                var request = new HttpRequestMessage(HttpMethod.Get, uri);
+                request.Headers.Add("Authorization", $"Bearer {Token}");
+                request.Headers.Add("Accept", "application/json");
+                return httpClient.SendAsync(request);
             });
 
-        public static async Task<AuthenticationResponse> GetToken(HttpClient httpClient, Uri baseUri, AppManifest manifest, JsonSerializer serializer)
+        public static async Task<AuthenticationResponse> GetToken(HttpClient httpClient, Uri baseUri, AppManifest manifest, JsonContentConverter converter)
         {
-            var response = await httpClient.PostAsync(baseUri + HttpApiPath.AUTH_SEG, new JsonContent(manifest, serializer));
+            var response = await httpClient.PostAsync(baseUri + HttpApiPath.AUTH_SEG, converter.ToContent(manifest));
             await response.EnsureSuccessStatusCodeCustom();
-            return await response.Content.ReadFromJsonAsync<AuthenticationResponse>(EventStore.Protocol);
+            return await converter.FromContent<AuthenticationResponse>(response.Content);
         }
 
         private string MkApiUrl(string path) => uriBuilder.Uri + path;
@@ -125,7 +97,7 @@ namespace Actyx.Sdk.AxHttpClient
             var response = await request();
             if (response.IsUnauthorized())
             {
-                Token = (await GetToken(httpClient, uriBuilder.Uri, manifest, serializer)).Token;
+                Token = (await GetToken(httpClient, uriBuilder.Uri, manifest, converter)).Token;
                 response = await request();
             }
 
