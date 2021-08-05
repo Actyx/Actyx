@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <AssemblyName>Actyx.Sdk</AssemblyName>
-    <PackageVersion>0.2.0</PackageVersion>
+    <PackageVersion>0.2.1</PackageVersion>
     <Description>Data types for communicating with Actyx and C# bindings for the Actyx APIs.</Description>
     <PackageProjectUrl>https://developer.actyx.com/</PackageProjectUrl>
     <PackageLicenseUrl>https://licenses.nuget.org/Apache-2.0</PackageLicenseUrl>

@@ -14,17 +14,19 @@ namespace Actyx.Sdk.AxHttpClient
     public class HttpEventStore : IEventStore
     {
         private readonly IAxHttpClient client;
+        private readonly JsonContentConverter converter;
         public NodeId NodeId => client.NodeId;
 
-        public HttpEventStore(IAxHttpClient client)
+        public HttpEventStore(IAxHttpClient client, JsonContentConverter converter)
         {
             this.client = client;
+            this.converter = converter;
         }
 
         public async Task<OffsetsResponse> Offsets()
         {
             var response = await client.Get(HttpApiPath.OFFSETS_SEG);
-            return await response.Content.ReadFromJsonAsync<OffsetsResponse>(EventStore.Protocol);
+            return await converter.FromContent<OffsetsResponse>(response.Content);
         }
 
         public async Task<PublishResponse> Publish(IEnumerable<IEventDraft> events)
@@ -35,7 +37,7 @@ namespace Actyx.Sdk.AxHttpClient
             }
 
             var response = await client.Post(HttpApiPath.PUBLISH_SEG, new { data = events });
-            return await response.Content.ReadFromJsonAsync<PublishResponse>(EventStore.Protocol);
+            return await converter.FromContent<PublishResponse>(response.Content);
         }
 
         public IObservable<IResponseMessage> Query(OffsetMap lowerBound, OffsetMap upperBound, IEventSelection query, EventsOrder order)
@@ -69,23 +71,12 @@ namespace Actyx.Sdk.AxHttpClient
                 .SelectMany(ResponseMessages<ISubscribeMonotonicResponse>);
         }
 
-        private IObservable<T> ResponseMessages<T>(HttpResponseMessage response)
-        {
-            if (response.IsSuccessStatusCode)
-            {
-                return response.Content!
+        private IObservable<T> ResponseMessages<T>(HttpResponseMessage response) =>
+            Observable
+                .FromAsync(async () => await response.EnsureSuccessStatusCodeCustom())
+                .SelectMany(_ => response.Content!
                     .ReadFromNdjsonAsync().ToObservable()
-                    .TrySelect(EventStore.Protocol.DeserializeJson<T>, LogDecodingError);
-            }
-            else
-            {
-                return Observable
-                    .FromAsync(() => response.Content!.ReadAsStringAsync())
-                    .Select<string, T>(content =>
-                        throw new AxHttpClientException($"Response status code {response.StatusCode} not indicate success. Reponse body: {content}")
-                    );
-            }
-        }
+                    .TrySelect(EventStore.Protocol.DeserializeJson<T>, LogDecodingError));
 
         private static void LogDecodingError(JToken json, Exception error) =>
             Console.Error.WriteLine($"Error decoding {json}: {error.Message}");

@@ -41,13 +41,11 @@ namespace Actyx
 
     public class Actyx : IEventFns, IDisposable
     {
-        public static async Task<Actyx> Create(AppManifest manifest)
+        public static async Task<Actyx> Create(AppManifest manifest, ActyxOpts options = null)
         {
-            return await Create(manifest, null);
+            options ??= new ActyxOpts();
+            return new Actyx(await EventStore.Create(manifest, options));
         }
-
-        public static async Task<Actyx> Create(AppManifest manifest, ActyxOpts options) =>
-            new Actyx(await EventStore.Create(manifest, options));
 
         private readonly IEventStore store;
         private Actyx(IEventStore store)

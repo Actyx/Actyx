@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Actyx;
 using Actyx.Sdk.AxHttpClient;
 using Actyx.Sdk.Utils;
 using FluentAssertions;
-using Newtonsoft.Json;
 using Sdk.IntegrationTests.Helpers;
 using Xunit;
 
@@ -12,10 +12,10 @@ namespace Sdk.IntegrationTests
 {
     public class AxHttpClientTests
     {
-        private readonly JsonSerializer serializer = DefaultJsonSerializer.Create();
+        private readonly JsonContentConverter converter = new(DefaultJsonSerializer.Create());
 
         private async Task<AxHttpClient> Create(string uri) =>
-            await AxHttpClient.Create(uri, Constants.TrialManifest, serializer);
+            await AxHttpClient.Create(uri, Constants.TrialManifest, converter);
 
         [Theory]
         [InlineData("")]
@@ -40,7 +40,7 @@ namespace Sdk.IntegrationTests
         public async void It_Should_Fail_When_Actyx_Is_Not_Listening_At_Location()
         {
             var uri = "http://localhost:6666";
-            var ex = await Assert.ThrowsAsync<AxHttpClientException>(async () => await Create(uri));
+            var ex = await Assert.ThrowsAsync<HttpRequestException>(async () => await Create(uri));
         }
 
         [Fact()]

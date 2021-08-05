@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Actyx.Sdk.AxHttpClient;
 using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
+using Actyx.Sdk.Utils;
 using Actyx.Sdk.Wsrpc;
 using DeepEqual.Syntax;
 using Newtonsoft.Json;
@@ -24,7 +25,9 @@ namespace Actyx.CLI
                 DisplayName = "ax ws client tests",
                 Version = typeof(Program).Assembly.GetName().Version.ToString(),
             };
-            var axHttpClient = await AxHttpClient.Create("http://localhost:4454/api/v2/", manifest, EventStoreSerializer.Create());
+            var serializer = EventStoreSerializer.Create();
+            var converter = new JsonContentConverter(serializer);
+            var axHttpClient = await AxHttpClient.Create("http://localhost:4454/api/v2/", manifest, converter);
             Uri axWs = new($"ws://localhost:4454/api/v2/events?{axHttpClient.Token}");
             using var wsrpcClient = new WsrpcClient(axWs);
             using var store = new WebsocketEventStore(wsrpcClient, axHttpClient.NodeId);
