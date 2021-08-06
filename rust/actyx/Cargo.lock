@@ -5166,6 +5166,7 @@ dependencies = [
  "actyx_sdk",
  "anyhow",
  "cbor-data",
+ "criterion",
  "derive_more",
  "itertools 0.10.1",
  "quickcheck",
