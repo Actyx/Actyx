@@ -23,6 +23,26 @@ namespace Actyx.Sdk.Formats
             Offset = ev.Offset;
         }
 
+        public ActyxEventMetadata(
+            ulong timestamp,
+            ulong lamport,
+            ulong offset,
+            string appId,
+            string stream,
+            IEnumerable<string> tags,
+            NodeId nodeId
+        )
+        {
+            IsLocalEvent = nodeId.IsOwn(stream);
+            Tags = tags;
+            TimestampMicros = timestamp;
+            Lamport = lamport;
+            EventId = MkEventId(lamport, stream);
+            AppId = appId;
+            Stream = stream;
+            Offset = offset;
+        }
+
         // Was this event written by the very node we are running on?
         public bool IsLocalEvent { private set; get; }
 

@@ -74,6 +74,6 @@ Global
 		{A7B4BAF8-22DA-4CB8-BBA0-BA2D47A0924E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
-		version = 0.1.0
+		version = 0.2.2
 	EndGlobalSection
 EndGlobal

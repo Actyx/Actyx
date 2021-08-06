@@ -151,5 +151,14 @@ namespace Actyx
          * @returns A function that can be called in order to cancel the subscription.
          */
         public IObservable<ActyxEvent> Subscribe(EventSubscription sub);
+
+        /**
+         * Emit an event with tags attached.
+         *
+         * @param eventDraft - Event to emit.
+         *
+         * @returns        A Task that completes with the published event’s metadata.
+         */
+        public Task<ActyxEventMetadata> Publish(IEventDraft eventDraft);
     }
 }

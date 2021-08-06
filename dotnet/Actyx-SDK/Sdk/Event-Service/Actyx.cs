@@ -44,18 +44,26 @@ namespace Actyx
         public static async Task<Actyx> Create(AppManifest manifest, ActyxOpts options = null)
         {
             options ??= new ActyxOpts();
-            return new Actyx(await EventStore.Create(manifest, options));
+            return new Actyx(manifest.AppId, await EventStore.Create(manifest, options));
         }
 
+        private readonly string appId;
         private readonly IEventStore store;
-        private Actyx(IEventStore store)
+
+        private Actyx(string appId, IEventStore store)
         {
+            this.appId = appId;
             this.store = store;
         }
 
         public void Dispose()
         {
             store.Dispose();
+        }
+
+        public string AppId
+        {
+            get => this.appId;
         }
 
         public NodeId NodeId
@@ -199,6 +207,19 @@ namespace Actyx
 
                 return chunk;
             };
+        }
+
+        private ActyxEventMetadata ConvertMetadata(EventPublishMetadata publishedMetadata, IEnumerable<string> tags)
+        {
+            return new ActyxEventMetadata(
+                publishedMetadata.Timestamp, publishedMetadata.Lamport, publishedMetadata.Offset,
+                this.AppId, publishedMetadata.Stream, tags, this.NodeId);
+        }
+
+        public async Task<ActyxEventMetadata> Publish(IEventDraft eventDraft)
+        {
+            var res = await store.Publish(new[] { eventDraft });
+            return ConvertMetadata(res.Data.First(), eventDraft.Tags);
         }
     }
 }
