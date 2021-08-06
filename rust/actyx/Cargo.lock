@@ -5168,9 +5168,11 @@ dependencies = [
  "cbor-data",
  "criterion",
  "derive_more",
+ "futures 0.3.16",
  "itertools 0.10.1",
  "quickcheck",
  "spectral",
+ "tokio",
  "tracing",
 ]
 

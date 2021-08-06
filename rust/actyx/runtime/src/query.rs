@@ -14,38 +14,50 @@ pub struct Query {
 
 impl Query {
     /// Feed a new value into this processing pipeline, or feed None to flush aggregations.
-    pub fn feed(&mut self, input: Option<Value>) -> Vec<Result<Value, String>> {
-        fn rec(
-            stages: &mut Vec<Operation>,
-            current: usize,
-            cx: &Context,
-            input: Option<Value>,
-        ) -> Vec<Result<Value, String>> {
-            if let Some(op) = stages.get_mut(current) {
-                let flush = input.is_none();
-                let vs = if let Some(v) = input {
-                    op.apply(cx, v)
-                } else {
-                    op.flush(cx)
-                };
-                vs.into_iter()
-                    .map(|r| Some(r).transpose())
-                    .chain(if flush { vec![None.transpose()] } else { vec![] })
-                    .flat_map(|v| match v {
-                        Ok(v) => rec(stages, current + 1, cx, v),
-                        Err(e) => vec![Err(e.to_string())],
-                    })
-                    .collect()
-            } else {
-                input.into_iter().map(Ok).collect()
+    pub async fn feed(&mut self, input: Option<Value>) -> Vec<Result<Value, String>> {
+        // create storage space for one context per stage
+        let mut ctx = Vec::<Option<Context<'_>>>::new();
+        ctx.resize_with(self.stages.len(), || None);
+        let mut ctx = &mut ctx[..];
+
+        let mut cx = Context::new(input.as_ref().map(|x| x.key()).unwrap_or_default());
+
+        // set up per-iteration state
+        let mut cx = &mut cx;
+        let mut input = vec![Ok(input).transpose()];
+
+        fn adapt(r: anyhow::Result<Value>) -> Option<Result<Value, String>> {
+            Some(r.map_err(|e| e.to_string()))
+        }
+
+        for op in self.stages.iter_mut() {
+            // create fresh child context, stored in the ctx slice
+            let (curr_ctx, rest) = ctx.split_first_mut().unwrap();
+            ctx = rest;
+            *curr_ctx = Some(cx.child());
+            cx = curr_ctx.as_mut().unwrap();
+            // then feed all inputs
+            let mut output = vec![];
+            for input in input {
+                match input {
+                    Some(Ok(v)) => {
+                        cx.bind("_", v);
+                        output.extend(op.apply(cx).await.into_iter().map(adapt));
+                    }
+                    None => {
+                        output.extend(op.flush(cx).await.into_iter().map(adapt));
+                        output.push(None);
+                    }
+                    Some(Err(e)) => output.push(Some(Err(e))),
+                }
+            }
+            input = output;
+            if input.is_empty() {
+                break;
             }
         }
-        rec(
-            &mut self.stages,
-            0,
-            &Context::new(input.as_ref().map(|x| x.key()).unwrap_or_default()),
-            input,
-        )
+
+        input.into_iter().flatten().collect()
     }
 }
 
@@ -77,32 +89,37 @@ mod tests {
         }
     }
 
-    fn feed(q: &str, v: &str) -> Vec<String> {
+    async fn feed(q: &str, v: &str) -> Vec<String> {
         let mut q = Query::from(q.parse::<language::Query>().unwrap());
-        let v = Context::new(key()).eval(&v.parse().unwrap()).unwrap();
+        let v = Context::new(key()).eval(&v.parse().unwrap()).await.unwrap();
         q.feed(Some(v))
+            .await
             .into_iter()
             .map(|v| v.map(|v| v.value().to_string()).unwrap_or_else(|e| e))
             .collect()
     }
 
-    #[test]
-    fn query() {
+    #[tokio::test]
+    async fn query() {
         assert_eq!(
-            feed("FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2", "3"),
+            feed("FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2", "3").await,
             Vec::<String>::new()
         );
-        assert_eq!(feed("FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2", "2"), vec!["4"]);
+        assert_eq!(
+            feed("FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2", "2").await,
+            vec!["4"]
+        );
     }
 
-    #[test]
-    fn select_multi() {
-        assert_eq!(feed("FROM allEvents SELECT _, _ * 1.5", "42"), vec!["42", "63.0"]);
+    #[tokio::test]
+    async fn select_multi() {
+        assert_eq!(feed("FROM allEvents SELECT _, _ * 1.5", "42").await, vec!["42", "63.0"]);
         assert_eq!(
             feed(
                 "FROM allEvents SELECT _.x, _.y, _.z FILTER _ = 'a' SELECT _, 42",
                 "{x:'a' y:'b'}"
-            ),
+            )
+            .await,
             vec!["\"a\"", "42", r#"path .z does not exist in value {"x": "a", "y": "b"}"#]
         );
     }

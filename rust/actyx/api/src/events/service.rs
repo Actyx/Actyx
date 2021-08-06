@@ -120,7 +120,7 @@ impl EventService {
 
         let gen = Gen::new(move |co: Co<QueryResponse>| async move {
             while let Some(ev) = stream.next().await {
-                let vs = query.feed(Some(to_value(&ev)));
+                let vs = query.feed(Some(to_value(&ev))).await;
                 for v in vs {
                     co.yield_(match v {
                         Ok(v) => QueryResponse::Event(to_event(v, Some(&ev))),
@@ -130,7 +130,7 @@ impl EventService {
                 }
             }
 
-            let vs = query.feed(None);
+            let vs = query.feed(None).await;
             for v in vs {
                 co.yield_(match v {
                     Ok(v) => QueryResponse::Event(to_event(v, None)),
@@ -171,7 +171,7 @@ impl EventService {
             .stop_on_error();
         let gen = Gen::new(move |co: Co<SubscribeResponse>| async move {
             while let Some(ev) = bounded.next().await {
-                let vs = query.feed(Some(to_value(&ev)));
+                let vs = query.feed(Some(to_value(&ev))).await;
                 for v in vs {
                     co.yield_(match v {
                         Ok(v) => SubscribeResponse::Event(to_event(v, Some(&ev))),
@@ -185,7 +185,7 @@ impl EventService {
                 .await;
 
             while let Some(ev) = unbounded.next().await {
-                let vs = query.feed(Some(to_value(&ev)));
+                let vs = query.feed(Some(to_value(&ev))).await;
                 for v in vs {
                     co.yield_(match v {
                         Ok(v) => SubscribeResponse::Event(to_event(v, Some(&ev))),
@@ -237,7 +237,7 @@ impl EventService {
 
         let gen = Gen::new(move |co: Co<SubscribeMonotonicResponse>| async move {
             while let Some(ev) = bounded.next().await {
-                let vs = query.feed(Some(to_value(&ev)));
+                let vs = query.feed(Some(to_value(&ev))).await;
                 for v in vs {
                     co.yield_(match v {
                         Ok(v) => SubscribeMonotonicResponse::Event {
@@ -259,7 +259,7 @@ impl EventService {
                 let key = Some(ev.key);
                 if key > latest {
                     latest = key;
-                    let vs = query.feed(Some(to_value(&ev)));
+                    let vs = query.feed(Some(to_value(&ev))).await;
                     for v in vs {
                         co.yield_(match v {
                             Ok(v) => SubscribeMonotonicResponse::Event {

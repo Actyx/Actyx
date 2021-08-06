@@ -2,7 +2,7 @@ use crate::{eval::Context, value::Value};
 use actyx_sdk::language::{AggrOp, Num, SimpleExpr, Traverse};
 use anyhow::{anyhow, bail};
 use cbor_data::Encoder;
-use std::{cmp::Ordering, collections::BTreeMap, marker::PhantomData, ops::AddAssign};
+use std::{cmp::Ordering, marker::PhantomData, ops::AddAssign};
 
 pub trait Aggregator {
     fn feed(&mut self, input: Value) -> anyhow::Result<()>;
@@ -189,7 +189,7 @@ impl Aggregator for Max {
     }
 }
 
-pub type AggrState = BTreeMap<(AggrOp, SimpleExpr), Box<dyn Aggregator + Send>>;
+pub type AggrState = Vec<((AggrOp, SimpleExpr), Box<dyn Aggregator + Send + Sync + 'static>)>;
 
 pub struct Aggregate {
     pub expr: SimpleExpr,
@@ -210,10 +210,10 @@ impl std::fmt::Debug for Aggregate {
 
 impl Aggregate {
     pub fn new(expr: SimpleExpr) -> Self {
-        let mut state: AggrState = BTreeMap::new();
+        let mut state: AggrState = vec![];
         expr.traverse(&mut |e| match e {
             SimpleExpr::AggrOp(a) => {
-                let op: Box<dyn Aggregator + Send> = match a.0 {
+                let op: Box<dyn Aggregator + Send + Sync> = match a.0 {
                     AggrOp::Sum => Box::new(Sum::<AddOp>::default()),
                     AggrOp::Prod => Box::new(Sum::<MulOp>::default()),
                     AggrOp::Min => Box::new(Min(None)),
@@ -221,7 +221,10 @@ impl Aggregate {
                     AggrOp::First => Box::new(First(None)),
                     AggrOp::Last => Box::new(Last(None)),
                 };
-                state.insert((a.0, a.1.clone()), op);
+                match state.binary_search_by_key(&&**a, |x| &x.0) {
+                    Ok(_found) => {}
+                    Err(idx) => state.insert(idx, ((**a).clone(), op)),
+                };
                 Traverse::Stop
             }
             _ => Traverse::Descend,
@@ -229,32 +232,25 @@ impl Aggregate {
         Self { expr, state }
     }
 
-    pub fn apply(&mut self, cx: &Context, input: Value) -> Vec<anyhow::Result<Value>> {
-        let mut cx = cx.child();
-        cx.bind("_", input);
-
+    pub async fn apply(&mut self, cx: &mut Context<'_>) -> Vec<anyhow::Result<Value>> {
         let mut errors = vec![];
-        fn log_error(errors: &mut Vec<anyhow::Result<Value>>, f: impl FnOnce() -> anyhow::Result<()>) {
-            match f() {
-                Ok(_) => {}
+        for ((_op, expr), agg) in self.state.iter_mut() {
+            match cx.eval(expr).await {
+                Ok(v) => {
+                    if let Err(e) = agg.feed(v) {
+                        errors.push(Err(e))
+                    }
+                }
                 Err(e) => errors.push(Err(e)),
             }
-        }
-
-        for ((_op, expr), agg) in &mut self.state {
-            log_error(&mut errors, || {
-                let v = cx.eval(expr)?;
-                agg.feed(v)?;
-                Ok(())
-            });
         }
         errors
     }
 
-    pub fn flush(&mut self, cx: &Context) -> anyhow::Result<Value> {
+    pub async fn flush(&mut self, cx: &Context<'_>) -> anyhow::Result<Value> {
         let mut cx = cx.child();
         cx.bind_aggregation(&mut self.state);
-        cx.eval(&self.expr)
+        cx.eval(&self.expr).await
     }
 }
 
@@ -281,63 +277,61 @@ mod tests {
             stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
         })
     }
-    fn apply(a: &mut Aggregate, cx: &mut Context, v: u64) -> Vec<Value> {
+    async fn apply(a: &mut Aggregate, cx: &mut Context<'_>, v: u64) -> Vec<Value> {
         cx.incr();
-        a.apply(cx, cx.value(|b| b.encode_u64(v)))
-            .into_iter()
-            .collect::<anyhow::Result<_>>()
-            .unwrap()
+        cx.bind("_", cx.value(|b| b.encode_u64(v)));
+        a.apply(cx).await.into_iter().collect::<anyhow::Result<_>>().unwrap()
     }
-    fn flush(a: &mut Aggregate, cx: &Context) -> String {
-        a.flush(cx).unwrap().cbor().to_string()
+    async fn flush(a: &mut Aggregate, cx: &Context<'_>) -> String {
+        a.flush(cx).await.unwrap().cbor().to_string()
     }
 
-    #[test]
-    fn sum() {
+    #[tokio::test]
+    async fn sum() {
         let mut s = a("42 - SUM(_ * 2)");
         let mut cx = ctx();
 
-        assert_eq!(apply(&mut s, &mut cx, 1), vec![]);
-        assert_eq!(apply(&mut s, &mut cx, 2), vec![]);
-        assert_eq!(flush(&mut s, &cx), "36");
+        assert_eq!(apply(&mut s, &mut cx, 1).await, vec![]);
+        assert_eq!(apply(&mut s, &mut cx, 2).await, vec![]);
+        assert_eq!(flush(&mut s, &cx).await, "36");
 
         let mut s = a("CASE SUM(_ ≥ 2) => 11 CASE TRUE => 12 ENDCASE");
 
-        assert_eq!(apply(&mut s, &mut cx, 1), vec![]);
-        assert_eq!(flush(&mut s, &cx), "12");
-        assert_eq!(apply(&mut s, &mut cx, 2), vec![]);
-        assert_eq!(flush(&mut s, &cx), "11");
+        assert_eq!(apply(&mut s, &mut cx, 1).await, vec![]);
+        assert_eq!(flush(&mut s, &cx).await, "12");
+        assert_eq!(apply(&mut s, &mut cx, 2).await, vec![]);
+        assert_eq!(flush(&mut s, &cx).await, "11");
     }
 
-    #[test]
-    fn product() {
+    #[tokio::test]
+    async fn product() {
         let mut s = a("42 - PRODUCT(_ * 2)");
         let mut cx = ctx();
 
-        assert_eq!(apply(&mut s, &mut cx, 1), vec![]);
-        assert_eq!(apply(&mut s, &mut cx, 2), vec![]);
-        assert_eq!(flush(&mut s, &cx), "34");
+        assert_eq!(apply(&mut s, &mut cx, 1).await, vec![]);
+        assert_eq!(apply(&mut s, &mut cx, 2).await, vec![]);
+        assert_eq!(flush(&mut s, &cx).await, "34");
 
         let mut s = a("CASE PRODUCT(_ ≥ 2) => 11 CASE TRUE => 12 ENDCASE");
 
-        assert_eq!(apply(&mut s, &mut cx, 2), vec![]);
-        assert_eq!(flush(&mut s, &cx), "11");
-        assert_eq!(apply(&mut s, &mut cx, 1), vec![]);
-        assert_eq!(flush(&mut s, &cx), "12");
+        assert_eq!(apply(&mut s, &mut cx, 2).await, vec![]);
+        assert_eq!(flush(&mut s, &cx).await, "11");
+        assert_eq!(apply(&mut s, &mut cx, 1).await, vec![]);
+        assert_eq!(flush(&mut s, &cx).await, "12");
     }
 
-    #[test]
-    fn min_max() {
+    #[tokio::test]
+    async fn min_max() {
         let mut s = a("[FIRST(_), LAST(_), MIN(_), MAX(_)]");
         let mut cx = ctx();
 
-        assert_eq!(apply(&mut s, &mut cx, 2), vec![]);
-        assert_eq!(flush(&mut s, &cx), "[2, 2, 2, 2]");
-        assert_eq!(apply(&mut s, &mut cx, 1), vec![]);
-        assert_eq!(flush(&mut s, &cx), "[2, 1, 1, 2]");
-        assert_eq!(apply(&mut s, &mut cx, 4), vec![]);
-        assert_eq!(flush(&mut s, &cx), "[2, 4, 1, 4]");
-        assert_eq!(apply(&mut s, &mut cx, 3), vec![]);
-        assert_eq!(flush(&mut s, &cx), "[2, 3, 1, 4]");
+        assert_eq!(apply(&mut s, &mut cx, 2).await, vec![]);
+        assert_eq!(flush(&mut s, &cx).await, "[2, 2, 2, 2]");
+        assert_eq!(apply(&mut s, &mut cx, 1).await, vec![]);
+        assert_eq!(flush(&mut s, &cx).await, "[2, 1, 1, 2]");
+        assert_eq!(apply(&mut s, &mut cx, 4).await, vec![]);
+        assert_eq!(flush(&mut s, &cx).await, "[2, 4, 1, 4]");
+        assert_eq!(apply(&mut s, &mut cx, 3).await, vec![]);
+        assert_eq!(flush(&mut s, &cx).await, "[2, 3, 1, 4]");
     }
 }

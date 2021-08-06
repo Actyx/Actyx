@@ -9,6 +9,7 @@ actyx_sdk = { path = "../../sdk" }
 anyhow = "1.0.42"
 cbor-data = "0.5.0"
 derive_more = "0.99.16"
+futures = "0.3.16"
 itertools = "0.10.1"
 tracing = "0.1.26"
 
@@ -16,6 +17,7 @@ tracing = "0.1.26"
 criterion = "0.3.5"
 quickcheck = "1.0.3"
 spectral = "0.6.0"
+tokio = { version = "1.9.0", features = ["full"] }
 
 [[bench]]
 name = "bench_runtime_query"

@@ -1,3 +1,5 @@
+#![deny(clippy::future_not_send)]
+
 pub mod eval;
 pub mod features;
 pub mod operation;

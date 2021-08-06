@@ -1,6 +1,7 @@
 use actyx_sdk::language;
 use cbor_data::Encoder;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use futures::executor::block_on;
 use runtime::{eval::Context, query::Query, value::Value};
 
 fn v() -> Value {
@@ -20,7 +21,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("feed value", |b| {
         let mut query = Query::from(QUERY.parse::<language::Query>().unwrap());
         let value = v();
-        b.iter(|| black_box(query.feed(Some(value.clone()))));
+        b.iter(|| black_box(block_on(query.feed(Some(value.clone())))));
     });
 }
 
