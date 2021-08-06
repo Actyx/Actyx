@@ -18,6 +18,11 @@ fn v() -> Value {
 const QUERY: &str = "FROM allEvents FILTER _.x > 3 | _.y = 'hello' SELECT [_.x + _.z * 3, { one: 1 two: _.y }] AGGREGATE [SUM(_[0]), LAST(_[1].two)]";
 
 fn criterion_benchmark(c: &mut Criterion) {
+    c.bench_function("nnop", |b| {
+        let mut query = Query::from("FROM allEvents".parse::<language::Query>().unwrap());
+        let value = v();
+        b.iter(|| black_box(block_on(query.feed(Some(value.clone())))));
+    });
     c.bench_function("feed value", |b| {
         let mut query = Query::from(QUERY.parse::<language::Query>().unwrap());
         let value = v();
