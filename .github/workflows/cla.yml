@@ -17,7 +17,7 @@ jobs:
           PERSONAL_ACCESS_TOKEN : ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         with:
           path-to-signatures: 'cla.json'
-          path-to-document: 'https://github.com/Actyx/Actyx/ICLA.md'
+          path-to-document: 'https://github.com/Actyx/Actyx/blob/master/ICLA.md'
           branch: 'master'
           allowlist: user1,bot*
           remote-repository-name: CLA-list
