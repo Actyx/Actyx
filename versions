@@ -3,10 +3,12 @@
 # The machine-readable product names are: actyx, node-manager,
 # cli, pond, ts-sdk, rust-sdk, docs, csharp-sdk
 
+actyx-2.0.1 b2e52e3b17547f6c7465c5870430f67fbfa334b6
 actyx-2.0.0 30977569ca8ab9ea2452b1e3d47df47c3198b96b
 actyx-1.1.5 ddd5f7eda5924e31e4b4a4c2767ab101237bb387
 cli-2.0.0 30977569ca8ab9ea2452b1e3d47df47c3198b96b
 cli-1.1.5 ddd5f7eda5924e31e4b4a4c2767ab101237bb387
+node-manager-2.1.0 b2e52e3b17547f6c7465c5870430f67fbfa334b6
 node-manager-2.0.0 30977569ca8ab9ea2452b1e3d47df47c3198b96b
 node-manager 1.1.5 ddd5f7eda5924e31e4b4a4c2767ab101237bb387
 pond-3.0.0 30977569ca8ab9ea2452b1e3d47df47c3198b96b
