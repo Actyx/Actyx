@@ -1,0 +1,119 @@
+---
+title: Installation and startup errors
+id: installation-and-startup
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+This page lists common installation and startup errors and solutions for them. If you face different issues, please contact us in our [Discord chat](https://discord.gg/262yJhc) or open an issue in our [community forum](https://community.actyx.com/).
+
+### Port collision (ERR_PORT_COLLISION)
+
+`ERR_PORT_COLLISION` is a fatal error that occurs if one of the ports that Actyx binds by default is already in use:
+
+1. `4001`: Swarm (used for inter-node communication)
+
+2. `4454`: API (exposes the [Events](../../reference/events-api.mdx) and [Auth](../../reference/auth-api.mdx) API; only on localhost)
+
+3. `4458`: Admin (used for communication with the CLI or Node Manager)
+
+The error message states which port could not be bound.
+Besides stopping the process that is currently using the port, you can also change the port on which Actyx is running with the command line option `--bind-swarm`, `--bind-api` or `--bind-admin`.
+This works as follows:
+
+:::caution
+Depending on the default port you change, please also consider the following:
+
+- Swarm (4001): If you configure this node as an `initialPeer` in another node's settings, or if you configure this node's `announceAddress` setting, you have to use the port you specified instead of 4001.
+- Admin (4458): When using the CLI or Node Manager, you have to add the specified port (instead of e.g. `192.168.2.1`, your command would use `192.168.2.1:4460` as the node argument).
+- API (4454): Make sure to set the right environment variable if you are using Actyx Pond, or specify the correct port if you are doing a direct HTTP API request.
+
+:::
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<Tabs
+  groupId="os"
+  defaultValue={"windows"}
+  values={[
+    { label: 'Windows', value: 'windows' },
+    { label: 'Android', value: 'android' },
+    { label: 'macOS/Linux', value: 'macos' },
+    { label: 'Docker', value: 'docker' }
+  ]}
+>
+
+
+<TabItem value="windows">
+
+
+1. Open the `Services` app, right click on Actyx and stop Actyx
+2. Go to the Actyx folder at `C:\Program Files\Actyx\Node`
+3. Open `actyx-service.xml`
+
+In this XML document, you will find an `arguments` element that is commented out and contains an example.
+
+4. Delete the example `arguments` element, and instead paste the following (remove the options for ports you do not want to reconfigure):
+
+```xml
+<arguments>--bind-swarm 4002 --bind-api 4455 --bind-admin 4459</arguments>
+```
+
+5. Save the updated `actyx-service.xml` file
+6. Go back to the `Services` app, and start Actyx
+
+Please note that Actyx is now permanently –i.e. also after you restart your computer- configured to bind different ports. If you want Actyx to bind to default or other ports, you have to remove the XML element in `actyx-service.xml` or change the options in the element.
+
+</TabItem>
+<TabItem value="android">
+
+
+On Android, you cannot change the ports used by Actyx. Please make sure that the required ports are not in use.
+
+</TabItem>
+<TabItem value="macos">
+
+
+On macOS or Linux, you can specify the ports when starting Actyx (remove the options for ports you do not want to reconfigure):
+
+```text
+./actyx-linux --bind-swarm 4002 --bind-api 4457 --bind-admin 4460
+```
+
+</TabItem>
+<TabItem value="docker">
+
+
+On Docker, you can use the [-p option of the docker run command](https://docs.docker.com/engine/reference/run/#expose-incoming-ports). For example, this command would expose the standard ports and 4002 on your host instead of 4001 (remove the options for ports you do not want to reconfigure):
+
+```text
+docker run --name actyx -it --rm -v actyx-data:/data -p 4002:4001 -p 4458:4458 -p 127.0.0.1:4454:4454 actyx/actyx
+```
+
+</TabItem>
+</Tabs>
+
+
+### Damaged and can't be opened on Apple Silicon (arm64)
+
+![apple-silicon-arm64-is-damaged](../../../images/how-to/troubleshooting/apple-silicon-amd64-is-damaged.png)
+
+If you see an error similar to what is shown above, you can _fix_ the respective file (e.g. `actyx`, `ax`) by running the following command in the folder where the file is located:
+
+```bash
+# xattr -d com.apple.quarantine <file-name>
+# Example for `actyx`
+xattr -d com.apple.quarantine actyx
+```
+
+### Legacy ActyxOS installer (Windows): can't open file for writing
+
+If you receive the following error during installation, please close the Windows Event Viewer and press **Retry**:
+
+![windows-installation-error](../../../images/how-to/local-development/windows-installation-error.png)
+
+## Did not find what you were looking for?
+
+If you couldn't a solution to your problem, please don't hesitate to contact us in our [community forum](https://community.actyx.com) or on our [Discord server](https://discord.gg/262yJhc). We'll do our best to get back to you with answers as fast as possible.

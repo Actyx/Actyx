@@ -1,0 +1,80 @@
+---
+title: Sign app manifest
+id: sign-app-manifest
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+In order for your app to access the Events API, it needs to be authenticated with the node it is running on.
+This works by providing the node with a signed app manifest.
+This how-to guide explains the steps you need to follow to sign your app manifest.
+You can sign an app manifest with the Actyx CLI in the command line or with the Actyx Node Manager.
+Independent of the tool you are using, the manifest needs to meet a few requirements.
+
+1. The manifest must be a `.json` file. Any other file format will be rejected by the CLI and the Node Manager.
+2. The manifest has three required properties:
+
+   ```json
+   {
+     "appId": "<string: app ID>",
+     "displayName": "<string: display name>",
+     "version": "<string: version>"
+   }
+   ```
+
+   One additional property that is reserved by Actyx is the `signature` property.
+   This property is added or updated by the CLI or the Node Manager when signing a manifest.
+   Apart from that, you can add any additional properties describing your app metadata such as the path to an app icon.
+
+:::info Updating the signature
+Note that every time you change one of the three properties listed above, you need to renew the manifest signature since the three properties are used to create it.
+:::
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<Tabs
+  groupId="tool"
+  defaultValue={"nm"}
+  values={[
+    { label: "Node Manager", value: "nm" },
+    { label: "CLI", value: "cli" }
+  ]}
+>
+
+
+<TabItem value="nm">
+
+
+To sign an app manifest with the Actyx Node Manager, please navigate to the **App Signing** section in the left panel.
+
+![signing-01](/images/how-to/app-auth/signing-01.png)
+
+Next, specify the path to your developer certificate and the path to the manifest you want to sign.
+
+![signing-02](/images/how-to/app-auth/signing-02.png)
+
+![signing-03](/images/how-to/app-auth/signing-03.png)
+
+Note that when signing a manifest, the Node Manager updates the file you provided rather than saving a new one.
+
+</TabItem>
+
+
+<TabItem value="cli">
+
+
+To sign an app manifest with the Actyx CLI, you need to use the [`ax apps sign`](../../reference/cli/apps/sign.mdx) command as shown in the following example:
+
+```text title="Example Usage"
+ax apps sign "/Users/ax/Apps/Dashboard/manifest.json" "/Users/ax/Documents/certificate.txt"
+```
+
+Note that when you sign a manifest, the CLI updates the file you provided rather than saving a new one.
+
+</TabItem>
+</Tabs>
+
+
+If you want to read a more holistic explanation of authentication and authorization with Actyx, please check out our [conceptual guide](../../conceptual/authentication-and-authorization.mdx) on the topic.

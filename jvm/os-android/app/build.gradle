@@ -1,0 +1,103 @@
+import java.util.Date
+
+plugins {
+  id 'com.android.application'
+  id 'kotlin-android'
+  id 'org.jlleitschuh.gradle.ktlint'
+  id 'com.quittle.setup-android-sdk' version '2.1.0'
+}
+
+apply from: '../actyx-local/actyx.properties'
+
+// 102000000 is the version code that would have been applied to ActyxOS 1.2
+def verCode = { -> ("git log --oneline".execute().text.readLines().size() + 102000000) as Integer }
+def dirty = !"git status --porcelain".execute().text.isBlank()
+def verName = System.getenv('ACTYX_VERSION')
+  ?: "0.0.0_dev-" + "git rev-parse HEAD".execute().text.trim().concat(dirty? "_dirty" : "")
+
+android {
+  compileSdkVersion 30
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+    coreLibraryDesugaringEnabled true
+  }
+  kotlinOptions {
+    jvmTarget = "1.8"
+  }
+  buildToolsVersion '30.0.3'
+  defaultConfig {
+    applicationId 'com.actyx.android'
+    minSdkVersion 23
+    targetSdkVersion 30
+    versionCode verCode()
+    versionName "$verName-android"
+    testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    buildConfigField "int", "MIN_SDK_API_LEVEL", "$minSdkVersion.apiLevel"
+    ndk {
+      abiFilters 'x86', 'arm64-v8a', 'armeabi-v7a'
+    }
+  }
+  signingConfigs {
+    release {
+      storeFile file(actyxKeystoreName)
+      keyAlias actyxKeyAlias
+      storePassword actyxKeystorePassword
+      keyPassword actyxKeyPassword
+    }
+  }
+  buildTypes {
+    buildTypes.each {
+      it.resValue 'string', 'actyx_version', "Version $verName"
+    }
+    release {
+      signingConfig signingConfigs.release
+      minifyEnabled true
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+      versionNameSuffix '-release'
+    }
+    debug {
+      versionNameSuffix '-debug'
+    }
+  }
+  buildFeatures {
+    viewBinding true
+  }
+  ktlint {
+    android = true
+  }
+}
+
+dependencies {
+  coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
+  implementation "org.apache.commons:commons-compress:1.21"
+  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+  implementation "org.jetbrains.kotlinx:kotlinx-serialization-core:1.0.1"
+  implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.1"
+  implementation 'androidx.appcompat:appcompat:1.3.0'
+  implementation 'androidx.core:core-ktx:1.5.0'
+  implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
+  implementation 'com.google.android.material:material:1.3.0'
+  implementation 'net.java.dev.jna:jna:5.8.0@aar'
+  implementation 'org.slf4j:slf4j-api:1.7.25'
+  implementation 'com.github.tony19:logback-android:2.0.0'
+  implementation 'org.mozilla.appservices:support:0.20.1'
+  testImplementation 'junit:junit:4.13.1'
+  testImplementation 'io.kotlintest:kotlintest-runner-junit5:3.3.2'
+  androidTestImplementation 'androidx.test:runner:1.3.0'
+  androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+}
+
+def archs = ["x86", "arm64-v8a", "armeabi-v7a"]
+def nativeLibs = ["axosnodeffi"]
+task checkExternalLibsExist() {
+  // this is the task setup. Doing things here means they are executed on each gradle run
+  doLast {
+    // this is the task execution. It will only run when running the task or tasks that depend on it
+    [archs, nativeLibs].eachCombination { arch, lib ->
+      assert file("./src/main/jniLibs/${arch}/lib${lib}.so").exists()
+    }
+  }
+}
+assemble.dependsOn checkExternalLibsExist
+

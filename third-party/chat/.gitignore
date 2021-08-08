@@ -1,0 +1,13 @@
+node_modules/
+*.tar.gz
+dist/
+.cache/
+index.js
+index.js.map
+index-1.js
+index-1.js.map
+# Do not commit package-lock since this tutorial
+# is actually completed in a copy-paste fashion
+package-lock.json
+.parcel-cache/
+.DS_Store

@@ -1,0 +1,42 @@
+---
+title: Migrate externally stored offset maps
+id: migrate-externally-stored-offset-maps
+sidebar_label: External offset maps
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+If your apps used any externally stored offset maps (for e.g. exporting data into other systems), you need to migrate them as well.
+All events have been rewrittem by your new v2 nodes, so you now need to replace the source ID in the offset map with the corresping ID of the stream in which the events of a source have been rewritten.
+
+:::info Why replace source ID with stream ID?
+In Actyx v1, there was only one event stream per node so the source ID served as an identifier for your node as well as its event stream.
+Therefore, you could identify events in a stream by source ID and offset.
+In Actyx v2, a node can have multiple streams. 
+In order to identify an event, you now need a stream ID and offset.
+
+For more information, please check out [our guide on event streams](../../conceptual/event-streams.mdx).
+:::
+
+After successful migration, each node published an event containing the old source ID and new stream ID.
+
+You can query these events with the Actyx CLI:
+
+:::tip
+To get all migration events, make sure that the node you are querying the events from is synchronized with all other nodes.
+:::
+
+You can use the CLI to query the migration events (and `jq` to format the output to only show the events' payload):
+
+```
+ax events query localhost 'FROM "migration"' | jq .payload
+```
+
+Now that you know all mappings between source ID and stream ID, you have to change the source ID to the corresponding stream ID in all your externally stored offset maps.
+
+After you changed all externally stored offset maps, the migration is finished and you can start your v2-compatible apps on all nodes.
+
+:::tip Problems migrating?
+If you have any problems with migrating your apps, please don't hesitate to contact us in our [community forum](https://community.actyx.com) or on our [Discord server](https://discord.gg/262yJhc). We'll do our best to get back to you with answers as fast as possible.
+:::

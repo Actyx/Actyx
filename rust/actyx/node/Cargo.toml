@@ -1,0 +1,88 @@
+[package]
+authors = ["Actyx AG"]
+edition = "2018"
+name = "node"
+version = "0.1.0"
+
+[[bin]]
+name = "actyx-linux"
+path = "src/bin/linux.rs"
+
+[build-dependencies]
+prost-build = "0.8.0"
+
+[dependencies]
+actyx_sdk = { path = "../../sdk" }
+anyhow = "1.0.42"
+api = { path = "../api" }
+ax-futures-util = { path = "../ax-futures-util" }
+backtrace = "0.3.60"
+base64 = "0.13.0"
+bytes = "1.0.1"
+chrono = { features = ["serde"], version = "0.4.19" }
+crossbeam = "0.8.1"
+crypto = { path = "../crypto/" }
+derive_more = "0.99.16"
+ffi-support = "0.4.3"
+flate2 = "1.0.20"
+fslock = "0.1.6"
+futures = { version = "0.3.15", features = ["compat"], package = "futures" }
+hex = "0.4.3"
+ipfs-sqlite-block-store = "0.6.1"
+libipld = "0.12.0"
+libp2p = { version = "0.39.1", default-features = false, features = ["gossipsub", "ping"] }
+libp2p-streaming-response = { path = "../libp2p-streaming-response" }
+maplit = "1.0.2"
+multihash = "0.14.0"
+parking_lot = "0.11.1"
+prost = "0.8.0"
+prost-derive = "0.8.0"
+regex = "1.5.4"
+rusqlite = { features = ["bundled", "backup", "hooks"], version = "0.25.3" }
+serde = { features = ["derive"], version = "1.0.126" }
+serde_cbor = "0.11.1"
+serde_json = "1.0.64"
+serde_urlencoded = "0.7.0"
+settings = { path = "../settings" }
+signal-hook = "0.3.9"
+structopt = "0.3.22"
+swarm = { path = "../swarm" }
+tar = "0.4.35"
+tempfile = "3.2.0"
+thiserror = "1.0.26"
+tokio = { package = "tokio", version = "1.8.2" }
+tracing = { version = "0.1.26", features = ["release_max_level_trace"] }
+tracing-subscriber = "0.2.19"
+trees = { path = "../trees" }
+unicode-width = "0.1.8"
+util = { path = "../util" }
+uuid = "0.8.2"
+void = "1.0.2"
+warp = "0.3.1"
+
+[target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies]
+jemallocator = "0.3.2"
+
+[target.'cfg(target_os = "android")'.dependencies]
+tracing-android = "0.1.3"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+tracing_win_event_log = { path = "../tracing_win_event_log" }
+
+[lib]
+crate-type = ["lib"]
+name = "node"
+
+[dev-dependencies]
+actyx_sdk = { version = "0.1", path = "../../sdk", features = ["client"] }
+assert_cmd = "1.0.7"
+criterion = { version = "0.3.4", features = ["html_reports", "async_tokio" ] }
+escargot = "0.5.2"
+maplit = "1.0.2"
+predicates = "2.0.0"
+tracing-subscriber = "0.2.19"
+url = "2.2.2"
+
+[[bench]]
+name = "local_event_roundtrip"
+harness = false

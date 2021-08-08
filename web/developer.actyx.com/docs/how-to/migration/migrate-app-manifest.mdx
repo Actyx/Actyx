@@ -1,0 +1,42 @@
+---
+title: Migrate your app manifest
+id: migrate-app-manifest
+sidebar_label: App manifest
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+With Actyx 2.0, the format of the app manifest changes, as well as the way you provide it to Actyx. Let's use the following v1-compatible app manifest as an example for this migration guide:
+
+```json
+{
+    "manifestVersion": "1.0",
+    "type": "web",
+    "id": "com.actyx.dashboard",
+    "version": "1.0.0",
+    "displayName": "Machine dashboard",
+    "description": "This app displays a machine dashboard.",
+    "dist": "release",
+    "main": "release/index.html",
+    "settingsSchema": "./settings-schema.json"
+}
+```
+
+The new manifest only requires an app ID, version, and display name.
+Making the above example compatible with version 2 looks as follows:
+
+```json
+{
+    "appId": "com.actyx.dashboard",
+    "displayName": "Machine dashboard",
+    "version": "1.0.0"
+}
+```
+
+Now that you have a new manifest, you need to do 2 more things:
+
+1. Sign the app manifest. Please follow the steps in the [how-to guide for signing app manifests](../app-auth/sign-app-manifest.mdx).
+2. Instead of packaging the manifest together with the app, you now provide it to Actyx via the SDK or Pond. Please follow the steps in the [how-to guide on authenticating with an app manifest](../app-auth/authenticate-with-app-manifest.mdx).
+
+After migrating your app manifest, you can start to migrate your app [packaging, logging and settings](./migrate-app-logs-and-settings.mdx).

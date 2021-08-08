@@ -1,0 +1,232 @@
+---
+title: Install and start Actyx
+id: install-actyx
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+In order to get you started with Actyx, please choose your development platform below.
+The rest of this guide will then change according to your selection!
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<Tabs
+  groupId="os"
+  defaultValue={"windows"}
+  values={[
+    { label: 'Windows', value: 'windows' },
+    { label: 'Android', value: 'android' },
+    { label: 'Linux', value: 'linux' },
+    { label: 'macOS', value: 'mac' },
+    { label: 'Docker', value: 'docker' },
+  ]}
+>
+
+
+<TabItem value="windows">
+
+
+## Hardware Requirements
+
+In order to be able to run Actyx on Windows, your device needs to meet the following requirements:
+
+- Windows 10 or Windows Server 2019
+- `x64` processor architecture
+
+## Installing Actyx
+
+You can download the Actyx installer for Windows on our [releases page](/releases/actyx/latest/).
+The MSI installer launches the setup wizard that installs Actyx as a service which automatically starts in the background.
+After opening the installer, you are guided through the setup process.
+
+![msi](/images/how-to/local-development/msi-installer.png)
+
+Congratulations, you have now successfully installed Actyx on your Windows device! 🎉
+
+## Starting and stopping Actyx
+
+Actyx is automatically started after installation and upon booting your device.
+To stop or restart Actyx manually, open the **Windows Services Manager**, click on Actyx and click the **Stop**, or the **Restart** button on the left.
+
+![actyx-service](/images/how-to/local-development/actyx-service.png)
+
+</TabItem>
+<TabItem value="android">
+
+
+<!-- We use <h2> html tags here to avoid the headlines being repeated in the TOC -->
+
+<h2>Hardware Requirements</h2>
+
+In order to be able to run Actyx on Android, your device needs to meet the following requirements:
+
+- Android 6-10
+- At least 2GB of RAM
+- `x86`, `arm64-v8a` or `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa)
+
+<h2>Installing Actyx</h2>
+
+:::warning Android 11 not supported
+Note that Actyx is currently not supported on Android 11.
+We are on it and will release support for the latest version of Android in one of the coming releases!
+:::
+
+Please visit [our downloads page](https://developer.actyx.com/releases) and download it from there.
+Once downloaded, simply follow the instructions on your device to install Actyx.
+
+Congratulations, you have successfully installed Actyx on your Android device! 🎉
+
+<h2>Starting and stopping Actyx</h2>
+
+By clicking on the Actyx icon on your home screen, you start Actyx.
+While Actyx is running, you can pull down from the top of your screen to bring up the notification area.
+You should now see that Actyx is running in your notifications.
+Please note that Actyx keeps running when you swipe away the app window in the app switcher.
+In order to properly stop Actyx, navigate to the system settings -> apps -> Actyx and click on **Force Stop**.
+
+:::info
+If Actyx was running on your Android device, it will automatically restart upon reboot.
+On some Android distributions you may need to explicitly permit it by navigating to the system settings -> apps -> Actyx and then enabling _Autostart_.
+:::
+
+</TabItem>
+<TabItem value="linux">
+
+
+<h2>Hardware Requirements</h2>
+
+In order to be able to run Actyx on Linux, your device needs to meet the following requirements:
+
+- `amd64`, `arm64`, `armhf` or `arm` processor architectures
+
+<h2>Installing Actyx</h2>
+
+You can download the binary for Actyx on Linux on our [downloads page](/releases/actyx/latest).
+For Actyx to start, please open your terminal, navigate to the directory where you saved the binary and type in the following:
+
+```shell
+sudo chmod +x actyx
+```
+
+When asked for, type the required password and hit _enter_.
+Now the file can be executed by the current user with root privileges.
+
+Congratulations, you have successfully installed and run Actyx on your Linux device! 🎉
+
+<h2>Starting and stopping Actyx</h2>
+
+To start Actyx, please execute the following command in your terminal from the directory where you saved the binary:
+
+```shell
+./actyx
+```
+
+You should now see the message `Actyx started` followed by a bunch of log messages.
+As long as you don't see any error messages here, you can be sure that Actyx is running.
+To stop Actyx, simply hit `^C` (`ctrl + C`) on your keyboard.
+After a few seconds, Actyx will be stopped.
+
+</TabItem>
+<TabItem value="mac">
+
+
+<h2>Hardware Requirements</h2>
+
+In order to be able to run Actyx on macOS, your device needs to meet the following requirements:
+
+- macOS Big Sur (earlier versions may work as well, are not officially supported though)
+
+<h2>Installing Actyx</h2>
+
+You can download the binary for Actyx on macOS on our [downloads page](/releases/actyx/latest).
+For Actyx to start, please open your terminal, navigate to the directory where you saved the binary and type in the following:
+
+```shell
+chmod +x actyx
+```
+
+If you do not get asked for your password at this point, you have to explicitly allow Actyx:
+
+1. Go to **Settings** and then to **Security &amp; Privacy**. In the **General** tab, you should see a prompt at the bottom that asks you to allow Actyx CLI.
+2. When running the first `ax` command, you will be prompted again to allow the Actyx CLI.
+
+Congratulations, you have successfully installed Actyx on your Mac! 🎉
+
+<h2>Starting and stopping Actyx</h2>
+
+To start Actyx, please execute the following command in your terminal from the directory where you saved the binary:
+
+```shell
+./actyx
+```
+
+:::tip Allow Actyx in System Preferences
+If you are prompted with a warning and cannot run Actyx, please go to "System Preferences" -> "Security & Privacy". Under the "General" tab, you should see a message at the bottom that Actyx is not from an identified developer. After clicking on "Allow Anyway", you can run Actyx.  
+:::
+
+You should now see the message `Actyx started` followed by a bunch of log messages.
+As long as you don't see any error messages here, you can be sure that Actyx is running.
+To stop Actyx, simply hit `^C` (`ctrl + C`) on your keyboard.
+After a few seconds, Actyx will be stopped.
+
+:::tip On Apple Silicon: "actyx" is damaged and can't be opened.
+If you see this error, run the following command in the folder where the `actyx` binary is located: `xattr -d com.apple.quarantine actyx`.
+:::
+
+</TabItem>
+<TabItem value="docker">
+
+
+<h2>Hardware Requirements</h2>
+
+In order to be able to run Actyx on Docker, your device needs to meet the following requirements:
+
+- Must have Docker installed
+- Must be able to run amd64 or arm64, armv7 or arm Docker images
+
+<h2>Installing and running Actyx</h2>
+
+Actyx on Docker is published on [DockerHub](https://hub.docker.com/r/actyx/actyx).
+To download and run the latest version execute one of the following commands.
+
+<h3>Production Mode</h3>
+
+<h4>Linux</h4>
+
+```text
+docker run --name actyx -it --rm -v actyx-data:/data --network=host actyx/actyx
+```
+
+:::warning Running Actyx on Docker on Windows or macOS
+It is not recommended to run Actyx on Docker on Windows or macOS. We strongly recommend using the native Actyx binaries on those systems.
+:::
+
+<h4>Windows / macOS</h4>
+
+```text
+docker run --name actyx -it --rm -v actyx-data:/data -p 4001:4001 -p 4458:4458 -p 127.0.0.1:4454:4454 actyx/actyx
+```
+
+:::info Publishing docker ports
+Since `--network=host` is not supported on Windows and Mac you have to explicitly forward the needed network ports.
+Please refer to the [Docker Documentation](https://docs.docker.com/) for more information on how to run Docker containers.
+:::
+
+Congratulations, you have successfully installed and run Actyx on Docker! 🎉
+
+<h2>Stopping Actyx</h2>
+
+In order to stop Actyx on Docker, go to your command line and type in `docker stop actyx` or press `^C` (`ctrl + C`) on your keyboard.
+After a couple of seconds, Actyx will be stopped.
+
+</TabItem>
+</Tabs>
+
+
+## Where next?
+
+- [Installation Guide for Actyx CLI and Node Manager](../local-development/install-cli-node-manager.mdx)
+- [Common Installation and startup Errors](../troubleshooting/installation-and-startup.mdx)
+- [Quickstart Guide](../../tutorials/quickstart.mdx)

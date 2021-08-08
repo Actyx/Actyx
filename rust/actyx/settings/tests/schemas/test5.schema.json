@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "backgroundColor": {
+      "type": "number",
+      "default": 42
+    },
+    "something": {
+      "type": "object",
+      "required": [],
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "backgroundColor"
+  ]
+}

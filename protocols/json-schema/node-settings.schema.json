@@ -1,0 +1,192 @@
+{
+  "$schema": "http://json-schema.org/draft-06/schema#",
+  "$id": "https://developer.actyx.com/schemas/node-settings.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "swarm": {
+      "$ref": "#/definitions/Swarm"
+    },
+    "licensing": {
+      "$ref": "#/definitions/Licensing"
+    },
+    "admin": {
+      "$ref": "#/definitions/Admin"
+    },
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "events": {
+          "$ref": "#/definitions/API/Events"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Basic": {
+      "Key": {
+        "type": "string",
+        "minLength": 44,
+        "maxLength": 44
+      },
+      "NonEmptyString": {
+        "type": "string",
+        "minLength": 1
+      },
+      "MultiAddr": {
+          "type": "string",
+          "format": "multiaddr-without-peer-id"
+      },
+      "MultiAddrWithPeerId": {
+        "type": "string",
+        "format": "multiaddr-with-peer-id"
+      },
+      "NodeLicenseKey": {
+        "type": "string",
+        "minLength": 64
+      },
+      "AppLicenseKey": {
+        "type": "string",
+        "minLength": 100
+      },
+      "UserKey": {
+        "type": "string",
+        "minLength": 45,
+        "maxLength": 45
+      }
+    },
+    "Composite": {
+      "LogLevel": {
+        "type": "string",
+        "enum": [
+          "DEBUG",
+          "WARN",
+          "INFO",
+          "ERROR"
+        ],
+        "default": "INFO"
+      },
+      "NodeLicense": {
+        "oneOf": [
+          {
+            "$ref": "#/definitions/Basic/NodeLicenseKey"
+          },
+          {
+            "type": "string",
+            "const": "development"
+          }
+        ]
+      },
+      "AppLicense": {
+        "oneOf": [
+          {
+            "$ref": "#/definitions/Basic/AppLicenseKey"
+          },
+          {
+            "type": "string",
+            "const": "testing"
+          }
+        ]
+      }
+    },
+    "Swarm": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "swarmKey": {
+          "$ref": "#/definitions/Basic/Key",
+          "default": "MDAwMDAwMDAxMTExMTExMTIyMjIyMjIyMzMzMzMzMzM="
+        },
+        "topic": {
+          "$ref": "#/definitions/Basic/NonEmptyString",
+          "default": "default-topic"
+        },
+        "initialPeers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Basic/MultiAddrWithPeerId"
+          },
+          "default": [],
+          "uniqueItems": true,
+          "description": "Addresses of peers to initially connect to. These must be multiaddresses containing a peer id. E.g. /dns4/demo-bootstrap.actyx.net/tcp/4001/p2p/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH"
+        },
+        "announceAddresses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Basic/MultiAddr"
+          },
+          "minItems": 0,
+          "uniqueItems": true,
+          "default": [],
+          "description": "Manually configured addresses to announce. These must be multiaddresses without peer id, e.g. /ip4/1.2.3.4/tcp/4001"
+        }
+      }
+    },
+    "Admin": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "displayName": {
+          "$ref": "#/definitions/Basic/NonEmptyString",
+          "default": "Default Node"
+        },
+        "logLevels": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "node": {
+              "$ref": "#/definitions/Composite/LogLevel"
+            }
+          }
+        },
+        "authorizedUsers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Basic/UserKey"
+          },
+          "default": [],
+          "uniqueItems": true,
+          "description": "Public keys of the users allowed to connect to the node."
+        }
+      }
+    },
+    "Licensing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "node": {
+          "$ref": "#/definitions/Composite/NodeLicense",
+          "default": "development"
+        },
+        "apps": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^(\\d|\\w|-|_)+(\\.(\\d|\\w|-|_)+)*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/definitions/Composite/AppLicense"
+          },
+          "description": "Key-value pairs where the key is an app's ID.",
+          "default": {}
+        }
+      }
+    },
+    "API": {
+      "Events": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "readOnly": {
+            "type": "boolean",
+            "default": false
+          },
+          "_internal": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  }
+}

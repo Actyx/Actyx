@@ -1,0 +1,32 @@
+<configuration>
+  <appender name="LOGCAT" class="ch.qos.logback.classic.android.LogcatAppender">
+    <encoder>
+      <pattern>%msg%n%ex</pattern>
+    </encoder>
+    <tagEncoder>
+      <pattern>%logger{20}</pattern>
+    </tagEncoder>
+  </appender>
+  <property name="LOG_DIR" value="/sdcard/Android/data/${PACKAGE_NAME}/files/logs" />
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- active log file -->
+    <encoder>
+      <pattern>%d{yyyy-MM-dd_HH:mm:ss.SSS} %logger{35} - %msg%n</pattern>
+    </encoder>
+    <file>${LOG_DIR}/log.txt</file>
+
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <!-- daily rollover period -->
+      <fileNamePattern>${LOG_DIR}/log.%d.txt</fileNamePattern>
+
+      <!-- keep 7 days' worth of history -->
+      <maxHistory>7</maxHistory>
+      <totalSizeCap>1GB</totalSizeCap>
+    </rollingPolicy>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="LOGCAT" />
+    <appender-ref ref="FILE" />
+  </root>
+</configuration>

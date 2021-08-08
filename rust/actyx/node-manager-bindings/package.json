@@ -1,0 +1,15 @@
+{
+  "name": "node-manager-bindings",
+  "version": "0.1.0",
+  "description": "Native Node.js bindings for interacting with Actyx nodes",
+  "main": "index.node",
+  "scripts": {
+    "build": "cargo-cp-artifact -nc node-manager-bindings.node -- cargo +${BUILD_RUST_TOOLCHAIN:-1.54.0} build --message-format=json-render-diagnostics",
+    "test": "cargo test"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "cargo-cp-artifact": "^0.1"
+  }
+}

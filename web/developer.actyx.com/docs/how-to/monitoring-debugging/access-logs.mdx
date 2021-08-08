@@ -1,0 +1,66 @@
+---
+title: Access logs
+id: access-logs
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+When working with Actyx, you can directly access your app and device logs on your host.
+The way you access them, depends on your operating system:
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<Tabs
+  groupId="os"
+  defaultValue={"cli"}
+  values={[
+    { label: 'Windows', value: 'windows' },
+    { label: 'Linux/macOS/Docker', value: 'linux' },
+  ]}
+>
+
+
+<TabItem value="windows">
+
+
+You can access Actyx logs through the Windows Event Viewer. In the Event Viewer, you can create a custom view filtering for Actyx logs and a log level:
+
+<img
+  src="/images/how-to/monitoring-debugging/windows-event-viewer-1.png"
+  style={{ maxWidth: '550px' }}
+/>
+
+You can then see all Actyx logs in that view:
+
+<img
+  src="/images/how-to/monitoring-debugging/windows-event-viewer-2.png"
+  style={{ maxWidth: '550px' }}
+/>
+
+</TabItem>
+<TabItem value="linux">
+
+
+On Linux, macOS, and Docker, Actyx logs to stdout so you should see logs in your terminal after startup:
+
+```text
+$ ./actyx
+May 25 18:03:14.722  INFO NODE_STARTED_BY_HOST: Actyx 2.0.0 is running.
+May 25 18:03:14.731  INFO ADMIN_API_BOUND: Admin API bound to /ip6/::1/tcp/4458.
+May 25 18:03:14.731  INFO ADMIN_API_BOUND: Admin API bound to /ip4/192.168.2.113/tcp/4458.
+May 25 18:03:14.731  INFO ADMIN_API_BOUND: Admin API bound to /ip4/127.0.0.1/tcp/4458.
+May 25 18:03:14.746  INFO SWARM_SERVICES_BOUND: Swarm Services bound to /ip6/::1/tcp/4001.
+May 25 18:03:14.747  INFO SWARM_SERVICES_BOUND: Swarm Services bound to /ip4/127.0.0.1/tcp/4001.
+May 25 18:03:14.750  INFO API_BOUND: API bound to [::1]:4454.
+May 25 18:03:14.750  INFO API_BOUND: API bound to 127.0.0.1:4454.
+...
+```
+
+:::tip Docker logging functionalities
+If you are running Actyx on Docker, you can also access your logs with the `docker logs` command. By [reconfiguring your Docker logging driver](https://docs.docker.com/config/containers/logging/configure/), you can also log to external systems or files.
+:::
+
+</TabItem>
+</Tabs>

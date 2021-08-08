@@ -1,0 +1,72 @@
+---
+title: Overview
+id: migration-overview
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+This series of guides is for everyone who has developed an app and/or is running a deployment on Actyx 1.x.
+While it looks like a lot has changed, most of what you know and like about Actyx is still the same; we wanted to be as thorough as possible and provide detailed explanations and examples for the migration procedure.
+
+:::info Looking for v1 documentation?
+If you are still working with Actyx version 1.x, you can find the documentation under [this link](https://60e2cdf227e6fa000855d867--ax-v1-developer.netlify.app/). To download version 1 artifacts, please visit our [legacy downloads website](https://6082f864470e5600086ac7cf--ax-v1-downloads-redirect.netlify.app/).
+:::
+
+## Notable new features
+
+Although you will probably not notice most of the internal changes, Actyx 2.0 is built differently from the ground up.
+It sets the foundation for building groundbreaking new features in the future.
+Some of the new features to keep an eye on in Actyx 2.0 include:
+
+- Production support for Windows, Linux and macOS (they were in beta before)
+- Significant performance improvements
+- Ephemeral events
+
+Check out our [blog post](https://developer.actyx.com/blog) for more information on the release, and on the features that are planned for the next releases.
+
+## Breaking changes
+
+This section contains a list of breaking changes from 1.x:
+
+### APIs
+
+- [Events API](../../reference/events-api.mdx) now uses tags (instead of `semantics` and `name`) to align it with the Pond, and requires apps to authenticate.
+- [Auth API](../../reference/auth-api.mdx) for receiving authentication tokens to interact with the Events API.
+
+### Communication between Actyx and CLI
+
+- Communication between Actyx and CLI is secured; [users need a key pair for authentication and be authorized to manage a node](../user-auth/set-up-user-keys.mdx).
+
+### Actyx internals
+
+- Network protocols and data storage formats have changed. While this does not impact you directly, it is relevant to how the [migration described below works](#migrating-your-production-deployment).
+
+### App packaging, logging, and settings
+
+- Actyx does not provide app runtimes anymore. This means your apps run natively on the host and you can use any 3rd party tools for packaging, logging, as well as settings management.
+
+### Node and app license key formats
+
+- The license key formats have changed. If you have license keys that you purchased for Actyx v1.x, please get in touch with your contact at Actyx or write an e-mail to developer@actyx.io and we will send you new license keys.
+
+## Migrating your apps
+
+This is the recommended approach for migrating your apps to work with Actyx 2.x:
+
+- [Migrate business logic](./migrate-business-logic.mdx)
+- [Migrate your Actyx app manifest](./migrate-app-manifest.mdx)
+- [Migrate your app packaging, logs and settings](./migrate-app-logs-and-settings.mdx)
+
+## Migrating your production deployment
+
+Once your apps are migrated to work with Actyx 2.x, this is the recommended approach for migrating your nodes to Actyx 2.x:
+
+:::tip Plan appropriate system downtime
+Please consider that you must not emit events during the migration, i.e. your apps on all nodes should be stopped.
+The migration is performed on a node-by-node basis, so please plan appropriate downtime depending on the size of your deployment.
+:::
+
+- [Migrate bootstrap nodes](./migrate-bootstrap-nodes)
+- [Migrate production nodes](./migrate-production-nodes)
+- [Migrate externally stored offset maps](./migrate-externally-stored-offset-maps)

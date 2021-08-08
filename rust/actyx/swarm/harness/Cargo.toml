@@ -1,0 +1,28 @@
+[package]
+name = "swarm-harness"
+version = "0.1.0"
+authors = ["Actyx AG"]
+edition = "2018"
+
+[dependencies]
+actyx_sdk = { path = "../../../sdk", features = ["client", "arb", "with-tokio"] }
+anyhow = "1.0.42"
+async-global-executor = { version = "2.0.2", features = ["tokio"] }
+async-process = "1.1.0"
+async-std = "1.9.0"
+async-trait = "0.1.50"
+crypto = { path = "../../crypto" }
+futures = { version = "0.3.15", package = "futures" }
+libipld = "0.12.0"
+libp2p = { version = "0.39.1", default-features = false }
+maplit = "1.0.2"
+quickcheck = "1.0.3"
+structopt = "0.3.22"
+swarm-cli = { path = "../cli" }
+tempdir = "0.3.7"
+tokio = { version = "1.8.2", features = ["time"], package = "tokio" }
+tracing = "0.1.26"
+util = { path = "../../util" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+netsim-embed = "0.5.1"

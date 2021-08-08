@@ -1,0 +1,573 @@
+# markdown-spellcheck spelling configuration file
+# Format - lines beginning # are comments
+# global dictionary is at the start, file overrides afterwards
+# one word per line, to define a file override use ' - filename'
+# where filename is relative to this configuration file
+RPi
+Dockerfile
+macOS
+buildx
+x86_64
+ax
+AGV
+composable
+rxjs
+Vue
+png
+jQuery
+Node.js
+div
+quickstart
+localhost
+Tada
+http
+plugin
+xml
+npm
+toolchain
+gif
+apk
+ERP
+actyx.com
+analog
+Grafana
+PostgreSQL
+dataflow
+timestamp
+lamport
+deserialization
+v2
+versioning
+ok
+struct
+e.g.
+runtime
+src
+SQLite
+APIs
+enqueue
+enqueued
+libp2p
+traceroute
+interop
+blockchain
+javascript
+polkadot
+Actyx
+ActyxOS
+Hilscher
+Bressner
+VMware
+vSphere
+VMs
+subcommand
+undeploy
+subcommands
+schemas
+unsetting
+keygen
+conformant
+NIOT-E-TPI51-EN-RE
+MXE-1500
+boostrap
+amongst
+i.e.
+yay
+O'Reilly
+auditability
+auditable
+programmatically
+enum
+PLCs
+Beckhoff
+Weidmüller
+runtimes
+deletable
+100s
+pre-shared
+salsa20
+ed25519
+curve25519
+TPM-backed
+repo
+toJSON
+performant
+FishId
+namespace
+conceptionally
+timestamps
+deserialize
+prepends
+parameterized
+JSON-based
+untyped
+serializability
+Paxos
+deduplicated
+deduplication
+postfixed
+boolean
+virtualized
+fieldbuses
+EtherCAT
+WebSocket
+MultiAddrs
+DockerHub
+PowerShell
+KPIs
+AGVs
+parameterize
+Cordova
+mDNS
+AlpineOS
+unicast
+SDKs
+wildcard
+Wago
+Ctrl
+learnings
+combinator
+EventService
+onEvent
+Ethereum
+utf8
+architecting
+intra-logistics
+cli
+sdk
+rust-sdk
+js-ts-sdk
+SKUs
+stringified
+errored
+NodeManager
+middleware
+developer.actyx.com
+IoT
+deduplicates
+architected
+deserialized
+analytics
+async
+natively
+Sieffert
+Pako
+datetime
+useBaseUrl
+docusaurus
+ThreeElementRow
+ThreeElementRow.tsx
+svg
+Webview
+iframe
+frameborder
+marginheight
+marginwidth
+mdx
+Playstore
+swarmKey
+rc.4
+yml
+rc.3
+inlining
+rc.2
+webview
+config
+x86
+arm64-v8a
+armeabi-v7a
+IPv4
+IPv6
+https
+v1-compatible
+v1
+1.x
+jq
+rxpond
+registryfish
+statechanged
+non-realtime
+intralogistics
+oleg
+barcode
+ux-wise
+maintenancemoderequested
+modechangestarted
+modechangecompleted
+finishedgoodslogged
+finishedgoodsbooked
+2.x.
+1.x.
+balena
+err_user_unauthenticated
+err_path_invalid
+err_user_unauthorized
+err_node_unreachable
+arm64
+armv7
+multicast
+IPs
+stdout
+nm
+groupId
+http
+metadata
+auth-api
+macos
+err_port_collision
+misconfiguration
+initialpeers
+metadata
+gapless
+swarmaddrs
+v1.x
+unicode
+aarch64
+arm64v8
+amd64
+js-libp2p
+appId
+com.example.app
+js
+subscribe_monotonic
+img
+whitespace
+combinators
+subtyping
+64bit
+ - blog/2020-06-09-building-docker-apps-for-arm64v8.md
+arm64
+ActyxOS
+rc.2
+Actyx
+yml
+ - blog/2020-06-16-registry-fishes.md
+RegistryFish
+createRegistryFish
+observeRegistry
+ - blog/2020-06-22-react-pond.md
+materialRequestFish
+useRegistryFish
+industrial-ui
+dev-server
+learnings
+ - blog/2020-06-25-differential-dataflow.md
+Drill1
+Drill2
+Drill3
+DbRecord
+serde
+webview
+EventService
+machineFish
+new_limited
+actyxos_data_flow
+combinator
+ - blog/2020-07-24-pond-v2-release.md
+fishName
+v1
+Array.reduce
+TaskDone
+CLR
+ - blog/2020-07-27-libp2p-gossipsub.md
+ethereum
+go-ipfs
+gossipsub
+bitswap
+messageids
+utf8
+Dimitris
+Vyzovitis
+non-uft8
+base64
+protobuf
+repo
+proto
+Js-ipfs
+js-libp2p
+rust-libp2
+ - blog/2020-08-04-event-design-for-a-logistics-solution.md
+architecting
+intra-logistics
+SKUs
+Amongst
+ - blog/2020-08-19-pond-210-release.md
+package.json
+ - docs/faq/supported-edge-devices.md
+NIOT-E-TPI51-EN-RE
+MXE-1500
+FZ-A2
+ - ./docs/faq/supported-edge-devices.md
+FZ-A2
+ - ./docs/conceptual/apps-in-the-factory-context.mdx
+hide_title
+hide_table_of_contents
+sidebar_label
+default.svg
+ - ./docs/conceptual/event-sourcing.mdx
+onEvent
+ - ./docs/how-to/actyx-pond/fish-parameters/deserialize-state.mdx
+immutable-js
+ - ./docs/how-to/actyx-pond/fish-parameters/fish-id.mdx
+entityType
+ - ./docs/how-to/actyx-pond/fish-parameters/on-event.mdx
+Array.reduce
+ - ./docs/how-to/actyx-pond/getting-started.mdx
+npmjs.org
+TabItem
+defaultValue
+js
+ - ./docs/how-to/actyx-pond/guides/snapshots.mdx
+immutable.js
+semanticSnapshot
+ - ./docs/how-to/actyx-pond/in-depth/cycling-states.mdx
+eventId
+endedWorkIds
+ - ./docs/how-to/actyx-pond/in-depth/do-not-ignore-events.mdx
+WorkStarted
+WorkStopped
+ - ./docs/how-to/actyx-pond/in-depth/observe-all.mdx
+_seed_events_
+ - ./docs/how-to/actyx-pond/in-depth/tag-type-checking.mdx
+tagA
+tagC
+io-ts
+ - ./docs/how-to/local-development/install-actyx.mdx
+groupId
+linux
+Autostart
+amd64
+arm64v8
+actyx
+ - ./docs/how-to/local-development/install-cli-node-manager.mdx
+zsh
+tcsh
+cmd
+aarch64
+armv7
+ - ./docs/how-to/local-development/set-up-a-new-project.mdx
+ExampleProject
+ - ./docs/how-to/local-development/set-up-your-environment.mdx
+Node.js.
+ESLint
+ - ./docs/how-to/process-logic/publishing-to-event-streams.mdx
+sdk
+ - ./docs/how-to/swarms/connect-nodes.mdx
+cli
+ - ./docs/reference/actyx.mdx
+https
+ - ./docs/reference/cli-v2.mdx
+CLIRef
+src
+Callout
+com.actyx.os
+displayName
+ - ./docs/reference/event-service-v2.mdx
+jq
+ - ./docs/reference/event-service.mdx
+nodejs
+csharp
+ - ./docs/reference/node-manager.mdx
+tar.gz
+GeoIP
+ - ./docs/reference/rust-sdk.mdx
+docs.rs
+ - ./docs/tutorials/advanced-tutorial/explore-the-apps.mdx
+useBaseUrl
+docusaurus
+img
+dx1-tutorial
+statemachine.png
+machinefish.png
+orderfish.png
+Webview
+Wago-connector
+ - ./docs/tutorials/advanced-tutorial/get-started.mdx
+DownloadLink
+DownloadLink.tsx
+cta
+erpsimulator.png
+dashboard1.png
+ - ./docs/tutorials/advanced-tutorial/introduction.mdx
+tutorial-setup-01
+svg
+ - ./docs/tutorials/advanced-tutorial/solution-architecture.mdx
+ThreeElementRow
+ThreeElementRow.tsx
+img1
+erp-simulator-icon
+img2
+img3
+title1
+title2
+title3
+body1
+body2
+body3
+showLinks
+tutorial-setup-02
+ - ./docs/tutorials/chat.mdx
+http
+ - ./blog/2020-06-09-building-docker-apps-for-arm64v8.md
+arm64
+rc.2
+yml
+ - ./blog/2020-06-16-registry-fishes.md
+RegistryFish
+createRegistryFish
+observeRegistry
+ - ./blog/2020-06-22-react-pond.md
+materialRequestFish
+useRegistryFish
+industrial-ui
+ - ./blog/2020-06-25-differential-dataflow.md
+Drill1
+Drill2
+Drill3
+DbRecord
+serde
+webview
+machineFish
+new_limited
+actyxos_data_flow
+ - ./blog/2020-07-24-pond-v2-release.md
+v1
+TaskDone
+Array.reduce
+ - ./blog/2020-07-27-libp2p-gossipsub.md
+go-ipfs
+gossipsub
+bitswap
+messageids
+Dimitris
+Vyzovitis
+non-uft8
+base64
+protobuf
+proto
+Js-ipfs
+rust-libp2
+ - ./blog/2020-08-19-pond-210-release.md
+package.json
+ - ./blog/2020-08-27-from-events-to-erp-bookings.md
+MovementTrackingFish
+stringly
+ SkuFish
+ - ./blog/2020-09-01-optimizing-differential-dataflow-applications-strings.md
+pcs
+Abomonation
+ArcVal
+ - ./blog/2020-09-30-designing-csharp-pond.md
+unioning
+JsonSubTypes
+impl
+ - ./blog/2020-11-17-introducing-observe-all.md
+irst
+observeAll
+observeOne
+ - ./blog/2021-03-19-manage-snapshot-sizes.md
+chart.js
+highcharts
+_If_
+_if_
+rawSizeMB
+compressedSizeMB
+roundtripOk
+pufferfish
+Yurasits
+ - ./docs/tutorials/advanced-tutorial/architecture.mdx
+img1
+dx1-tutorial
+erp-simulator-icon
+img2
+img3
+title1
+title2
+title3
+body1
+body2
+body3
+showLinks
+img
+tutorial-setup-02
+src
+ - ./docs/tutorials/advanced-tutorial/the-apps.mdx
+statemachine.png
+machinefish.png
+orderfish.png
+- ./blog/2021-04-22-registry-fishes.md
+RxPond
+registryFish
+stateChanged
+- ./blog/2021-04-29-partial-connectivity-ux.md
+non-realtime
+intralogistics
+Oleg
+barcode
+UX-wise
+MaintenanceModeRequested
+ModeChangeStarted
+ModeChangeCompleted
+FinishedGoodsLogged
+FinishedGoodsBooked
+- ./docs/reference/actyx.mdx
+ff02
+fb
+- ./docs/tutorials/advanced-tutorial/business-logic.mdx
+statemachine.svg
+orderfish.svg
+machinefish.svg
+-  ./docs/tutorials/advanced-tutorial/get-started.mdx
+erp-ui
+dashboard-ui
+- ./docs/tutorials/advanced-tutorial/packaging.mdx
+com.actyx.orderManagement
+a-zA-Z0-9_
+wago-connector-amd64
+- ./docs/tutorials/advanced-tutorial/get-started.mdx
+DownloadLink
+DownloadLink.tsx
+erp-ui
+dashboard-ui
+- ./docs/conceptual/authentication-and-authorization.mdx
+com.example.
+com.example
+namespaces
+ - ./docs/reference/events-api.mdx
+TabItem
+defaultValue
+json
+tag-01
+tag-02
+tag-03
+lowerBound
+upperBound
+AUTH_TOKEN
+x-ndjson
+tag1
+tag2
+timeTravel
+newStart
+my_session_id
+fooArr
+bar1
+bar2
+caughtUp
+query.json
+1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s
+- ./blog/2021-06-23-actyx-2-0-0-release.md
+header.svg
+events-api
+node-api
+roadmap
+node-manager-ui
+changelog
+lightspeed.gif
+10x
+benchmark.svg
+ - ./docs/reference/aql.mdx
+_or_
+timeRange
+_x_
+eventKeyRange
+user_id

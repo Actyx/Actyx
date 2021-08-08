@@ -1,0 +1,81 @@
+{
+  "type": "object",
+  "required": [
+    "someRoot"
+  ],
+  "properties": {
+    "someRoot": {
+      "type": "object",
+      "required": [
+        "general"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "general": {
+          "$ref": "#/definitions/ActyxOS/General"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Basic": {
+      "Key": {
+        "type": "string",
+        "minLength": 64,
+        "maxLength": 64
+      }
+    },
+    "Composite": {
+      "initialPeer": {
+        "type": "object",
+        "required": [
+          "ip",
+          "port",
+          "pubKey"
+        ],
+        "properties": {
+          "ip": {
+            "type": "string"
+          },
+          "port": {
+            "type": "string"
+          },
+          "pubKey": {
+            "type": "string"
+          }
+        },
+        "default": {
+          "ip": "DefaultIp",
+          "port": "DefaultPort",
+          "pubKey": "DefaultPubKey"
+        }
+      }
+    },
+    "ActyxOS": {
+      "General": {
+        "type": "object",
+        "required": [
+          "someVal",
+          "someObject",
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "someVal": {
+            "$ref": "#/definitions/Basic/Key"
+          },
+          "someObject": {
+            "$ref": "#/definitions/Composite/InitialPeer"
+          },
+          "name": {
+            "type": "string",
+            "default": "Random Node"
+          },
+          "devMode": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

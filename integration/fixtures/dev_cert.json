@@ -1,0 +1,9 @@
+{
+  "devPrivkey": "08lUw93C+xzdxBcsYOoPVjzn8IHPJtnJW9Y/WyEu4v64=",
+  "devPubkey": "0nz1YdHu/JDmS6CImcZgOj9Y960sJOPrbZHAJO107qW0=",
+  "appDomains": [
+    "com.actyx.*",
+    "com.example.*"
+  ],
+  "axSignature": "8Bl3zCNno5GbpKUoati7CiFgr0KGwNHB1kTwBVKzO9pzW07hFkkQ+GXvyc9QaWhHT5aXzzO+mVrx3eiC7TREAQ=="
+}

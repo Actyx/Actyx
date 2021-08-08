@@ -1,0 +1,26 @@
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+    branches:
+      - master
+      - actyx/v1
+      - actyx/non-product
+
+jobs:
+  notify:
+    name: Slack notification for new PR
+    runs-on: ubuntu-latest
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+    steps:
+      - name: notify
+        uses: edge/simple-slack-notify@v1.1.2
+        with:
+          disable_eval: true
+          text: |
+            :loudspeaker: new pull request opened by *${{ github.event.pull_request.user.login }}*
+            at ${{ github.event.pull_request.html_url }}
+          fields: |
+            [
+              {"title":"Title:","value":${{ toJSON(github.event.pull_request.title) }}}
+            ]

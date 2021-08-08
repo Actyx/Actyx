@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <RootNamespace>CLI</RootNamespace>
+    <Version>0.2.1</Version>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <StartupObject>Actyx.CLI.Program</StartupObject>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\Sdk\Sdk.csproj" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="DeepEqual" Version="2.0.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta1.21308.1" />
+    <PackageReference Include="System.Reactive" Version="5.0.0" />
+  </ItemGroup>
+
+  <Target Name="PostClean" AfterTargets="Clean">
+    <RemoveDir Directories="$(BaseIntermediateOutputPath)" /><!-- obj -->
+    <RemoveDir Directories="$(BaseOutputPath)" /><!-- bin -->
+  </Target>
+
+</Project>

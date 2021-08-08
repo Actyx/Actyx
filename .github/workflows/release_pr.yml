@@ -1,0 +1,26 @@
+name: Release PR
+on: push
+
+jobs:
+  createPullRequest:
+    if: startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Dump GitHub context
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "${GITHUB_CONTEXT}"
+
+    - name: Install github/hub
+      run: |
+        export HUB_VERSION="2.14.2"
+        curl -fsSL https://github.com/github/hub/raw/8d91904208171b013f9a9d1175f4ab39068db047/script/get | bash -s "${HUB_VERSION}"
+
+    - name: Create PR
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git fetch origin
+        ./bin/hub pull-request -b Actyx/Cosmos:master -h Actyx/Cosmos:${GITHUB_REF/refs\/heads\//} --no-edit

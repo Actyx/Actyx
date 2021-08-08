@@ -1,0 +1,107 @@
+.root {
+  margin-top: 32px;
+  margin-bottom: 64px;
+}
+
+.root code {
+  padding: 0.2rem 0.4rem;
+}
+
+.root hr {
+  margin: 0;
+}
+
+.root h1 {
+}
+.root h2 {
+  font-size: 2rem;
+}
+
+li.download {
+}
+li.download code {
+  margin-left: 0.02rem;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0.2rem 0.3rem;
+}
+li.download a {
+  border: none;
+  font-size: 15px;
+}
+
+div.alert {
+  --alert-color: #e2a500;
+  color: var(--alert-color);
+  background-color: #fdf7e7;
+  border-left: 4px solid var(--alert-color) !important;
+  border-radius: var(--ifm-global-radius);
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+.alert a {
+  color: var(--alert-color);
+  text-decoration: underline;
+}
+
+.subtitle {
+  margin-bottom: 0;
+  color: #aebdcc;
+  font-weight: 600;
+}
+
+.heading {
+  font-size: 3rem;
+  margin-bottom: 0.2rem;
+}
+
+.commit {
+  color: #aebdcc;
+  font-size: 13px;
+}
+.commit code {
+  color: #a4aebb;
+  background-color: #f3f4f5;
+  padding: 0.15rem 0.3rem;
+  font-size: 12px;
+}
+
+.text,
+.text p,
+.text li {
+  color: #5d6979;
+  margin-bottom: 16px;
+}
+.text ul {
+  margin-top: 1rem;
+  margin-top: 1rem;
+}
+
+.text li {
+  margin-bottom: 0.1rem;
+}
+
+.version select {
+  min-width: 100px;
+  padding: 0.3rem;
+  font-size: 16px;
+  background-color: var(--ifm-panel-background-color, rgba(0, 27, 61, 0.05));
+  border-color: rgba(0, 27, 61, 0.075);
+  border-color: var(--ifm-panel-border-color);
+  border-radius: var(--ifm-global-radius);
+  box-shadow: none;
+  box-shadow: var(--ifm-panel-box-shadow);
+  box-sizing: border-box;
+  color: var(--ifm-font-color-base);
+}
+
+li.showMore {
+  list-style: none;
+}
+
+.showMore span {
+  color: gray;
+  cursor: pointer;
+  font-size: 15px;
+}

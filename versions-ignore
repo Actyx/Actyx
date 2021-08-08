@@ -1,0 +1,3 @@
+# IDs of commits to be ignore by cosmos-release when computing **new**
+# versions, generating change logs, or publishing artifacts.
+# Each line may contain a single commit id (SHA1).

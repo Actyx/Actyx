@@ -1,0 +1,20 @@
+---
+title: snapshotThreshold
+hide_table_of_contents: true
+---
+
+Whenever more than `snapshotThreshold` new events are observed over a period longer than one hour, a snapshot is created.
+
+`snapshotThreshold` overwrites the default snapshot threshold set in the Pond. The default value is `1014`.
+
+```ts
+export const MyFish: Fish<State, Event> = {
+        fishId: FishId.of(...),
+        initialState: undefined,
+        where: ...,
+        onEvent: (state, event) => { ... },
+        snapshotThreshold: 420 // set fish threshold
+    }
+```
+
+For details on snapshot handling and performance implications, please refer to [the Pond snapshot documentation](https://developer.actyx.com/docs/how-to/actyx-pond/guides/snapshots).

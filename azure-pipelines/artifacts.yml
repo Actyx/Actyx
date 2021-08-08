@@ -1,0 +1,340 @@
+# Artifact generation pipeline
+#
+# For general remarks, see ../README.md
+
+schedules:
+  - cron: "0 */6 * * *" # Every 6 hours
+    displayName: Periodic build
+    branches:
+      include:
+        - master
+
+trigger: none
+
+pr: none
+
+stages:
+  - stage: calculateActyxVersion
+    displayName: Calculate Actyx Version
+    pool:
+      name: Native
+    jobs:
+      - job: j
+        displayName: ACTYX_VERSION
+        steps:
+          - bash: |
+              set -e
+              cargo build --release
+            workingDirectory: rust/release
+            name: buildRelease
+          - bash: |
+              set -e
+              for p in actyx cli node-manager pond ts-sdk rust-sdk csharp-sdk; do
+                version=$(./cosmos-release get-actyx-version $p)
+                echo "ACTYX_VERSION_$p=$version"
+                echo "##vso[task.setvariable variable=ACTYX_VERSION_$p;isOutput=true]$version"
+              done
+            workingDirectory: rust/release/target/release
+            name: getVersions
+
+  - stage: makeArtifacts
+    dependsOn: [calculateActyxVersion]
+    displayName: Make all artifacts
+    # Those variables are mapped as env vars into all steps of this stage
+    variables:
+      - name: ACTYX_VERSION
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_actyx'] ]
+      - name: ACTYX_VERSION_CLI
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_cli'] ]
+      - name: ACTYX_VERSION_NODEMANAGER
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_node-manager'] ]
+      - name: ACTYX_VERSION_POND
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_pond'] ]
+      - name: ACTYX_VERSION_TSSDK
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_ts-sdk'] ]
+      - name: ACTYX_VERSION_RUSTSDK
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_rust-sdk'] ]
+      - name: ACTYX_VERSION_CSHARPSDK
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_csharp-sdk'] ]
+    pool:
+      name: Native
+    jobs:
+      - job: makeAllJS
+        displayName: all-js
+        steps:
+          - bash: |
+              set -e
+              build/bin/install-vault.sh
+              make all-js assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+          - publish: $(System.DefaultWorkingDirectory)/dist/js
+            artifact: js-packages
+            condition: succeeded()
+      - job: makeAllWindows
+        displayName: all-windows
+        steps:
+          - bash: |
+              set -e
+              build/bin/install-vault.sh
+              mkdir -p dist/bin/windows-x86_64/
+              chmod -R 777 .
+              chmod -R 777 /root/.cargo
+              make all-windows assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+              WIN_CODESIGN_CERTIFICATE: $(WIN_CODESIGN_CERTIFICATE)
+              WIN_CODESIGN_PASSWORD: $(WIN_CODESIGN_PASSWORD)
+          - publish: $(System.DefaultWorkingDirectory)/dist/bin
+            artifact: windows-binaries
+            condition: succeeded()
+      - job: makeAllLinux
+        displayName: all-linux
+        steps:
+          - bash: |
+              set -e
+              build/bin/install-vault.sh
+              chmod -R 777 .
+              chmod -R 777 /root/.cargo
+              make all-linux assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+          - publish: $(System.DefaultWorkingDirectory)/dist/bin
+            artifact: linux-binaries
+            condition: succeeded()
+      - job: makeAllMacos
+        displayName: all-macos
+        steps:
+          - bash: |
+              set -e
+              build/bin/install-vault.sh
+              chmod -R 777 .
+              chmod -R 777 /root/.cargo
+              make all-macos assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+          - publish: $(System.DefaultWorkingDirectory)/dist/bin
+            artifact: macos-binaries
+            condition: succeeded()
+      - job: makeActyxDocker
+        displayName: actyx multiarch docker image
+        steps:
+          - bash: |
+              set -e
+              GIT_COMMIT=`git rev-parse HEAD`
+              head_of_master=`git rev-parse origin/master`
+
+              MASTER_TAG=""
+              if [ "$GIT_COMMIT" == "$head_of_master" ]; then
+                  echo "Running on HEAD of master ($head_of_master), tagging image as latest"
+                  MASTER_TAG="--tag actyx/cosmos:actyx-latest"
+              fi
+
+              docker buildx build \
+                $(make docker-multiarch-build-args) \
+                --push \
+                --tag actyx/cosmos:actyx-$GIT_COMMIT $MASTER_TAG \
+                -f ops/docker/images/actyx/Dockerfile \
+                .
+
+              make assert-clean
+            env:
+              BASH_ENV: "~/.bashrc"
+      - job: makeAllAndroid
+        displayName: all-android
+        steps:
+          - bash: |
+              set -e
+              build/bin/install-vault.sh
+              chmod -R 777 .
+              chmod -R 777 /root/.cargo
+              make all-android assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+          - publish: $(System.DefaultWorkingDirectory)/dist/bin
+            artifact: android-binaries
+            condition: succeeded()
+      - job:
+        displayName: node-manager mac
+        pool:
+          name: MacIntel
+          demands:
+            - Agent.OS -equals Darwin
+            - Agent.OSArchitecture -equals X64
+        steps:
+          - bash: |
+              set -e
+              make node-manager-mac-linux
+          - publish: "$(System.DefaultWorkingDirectory)/js/node-manager/dist/artifacts"
+            artifact: node-manager-mac
+            condition: succeeded()
+      - job:
+        displayName: node-manager linux
+        steps:
+          - bash: |
+              set -e
+              make node-manager-mac-linux
+            env:
+              BASH_ENV: "~/.bashrc"
+          - publish: "$(System.DefaultWorkingDirectory)/js/node-manager/dist/artifacts"
+            artifact: node-manager-linux
+            condition: succeeded()
+      - job:
+        displayName: node-manager win
+        steps:
+          - bash: |
+              set -e
+              make node-manager-win
+            env:
+              BASH_ENV: "~/.bashrc"
+          - publish: "$(System.DefaultWorkingDirectory)/js/node-manager/dist/artifacts"
+            artifact: node-manager-win
+            condition: succeeded()
+
+  - stage: upload
+    displayName: Upload to az blob store
+    dependsOn:
+      - makeArtifacts
+    jobs:
+      - job:
+        steps:
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              path: pipeline-artifacts
+
+          - task: AzureCLI@2
+            # Now, there would be the nicely looking AzureFileCopy@4 task, which would use the `azcopy` cli (yes, it's not
+            # included in `az`), to upload a bunch of files:
+            # https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/deploy/azure-file-copy?view=azure-devops.
+            #
+            # Now, that task currently only works under Windows.
+            # Next up: Directly use `azcopy`. No built-in authentication via azure pipelines, bummer.
+            # Luckily, the `az` cli offers a legacy command `storage  blob upload-batch`.
+            displayName: Upload
+            inputs:
+              azureSubscription: azure-ax-ci
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -e
+                az --version
+                az account show
+                az storage blob upload-batch -s $(System.DefaultWorkingDirectory)/pipeline-artifacts -d https://axartifacts.blob.core.windows.net/artifacts/ --destination-path $(Build.SourceVersion)/
+
+  - stage: notifyMakeSuccess
+    displayName: Notify Slack on successful make all
+    dependsOn:
+      - upload
+      - integration
+      - createReleaseCandidateIA
+    jobs:
+      - template: jobs-notify-success.yml
+
+  - stage: notifyMakeFailure
+    displayName: Notify Slack on failure
+    condition: failed()
+    dependsOn:
+      - makeArtifacts
+      - upload
+      - integration
+      - createReleaseCandidateIA
+    jobs:
+      - template: slack-notify-failure.yml
+
+  - stage: integration
+    displayName: Nightly integration test
+    pool:
+      name: Native
+    dependsOn:
+      - upload
+    jobs:
+      - job: integrationTest
+        displayName: Integration Test
+        steps:
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              path: pipeline-artifacts
+          - bash: |
+              set -e
+              mkdir -p dist/bin
+              cd pipeline-artifacts
+              for i in `ls`; do mv $i/* ../dist/bin/; done
+              cd ../dist
+              find -type f -exec chmod +x {} \;
+              cp -r bin/linux-x86_64 bin/current
+            displayName: Massage artifact directory structure
+            env:
+              BASH_ENV: "~/.bashrc"
+          - bash: |
+              set -e
+              build/bin/install-vault.sh
+              make prepare-js all-js all-dotnet
+              cd integration
+              source ~/.nvm/nvm.sh
+              nvm use
+              npm install
+              npm test -- -w 4
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+            displayName: npm test
+          - publish: $(System.DefaultWorkingDirectory)/integration/logs
+            condition: failed()
+            artifact: integration-test-logs-attempt$(System.JobAttempt)
+      - job: cleanup
+        displayName: Integration test cleanup tasks
+        condition: always()
+        steps:
+          - bash: |
+              set -e
+              make prepare-js all-js
+              cd integration
+              source ~/.nvm/nvm.sh
+              nvm use
+              npm install
+              npm run cleanup 43200
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+            name: cleanupInstances
+            displayName: Clean up old integration test instances
+
+  - stage: createReleaseCandidateIA
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+    dependsOn:
+      - integration
+    pool:
+      name: Native
+    jobs:
+      - job:
+        displayName: Create a release candidate IA
+        steps:
+          - checkout: self
+            persistCredentials: true
+          - bash: |
+              set -e
+              cargo run --release -- release
+            workingDirectory: rust/release
+            name: release
+            displayName: Create a release candidate if changes
+            env:
+              BASH_ENV: "~/.bashrc"

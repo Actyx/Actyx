@@ -1,0 +1,129 @@
+trigger:
+  - master
+  - release/*
+
+pr: none
+
+stages:
+  - stage: publishDocsAndReleases
+    pool:
+      name: Native
+    jobs:
+      - job:
+        displayName: Publish docs and release candidates (IA)
+        steps:
+          - checkout: self
+            persistCredentials: true
+          - task: AzureCLI@2
+            # `AzureCLI@2` task is a wrapper for a bash task, providing the
+            # azure service connection, which is needed to interact with the
+            # azure blob store
+            displayName: Release Task
+            env:
+              BASH_ENV: "~/.bashrc"
+              SLACK_HOOK: $(SECRET_SLACK_HOOK)
+              NETLIFY_AUTH_TOKEN: $(SECRET_NETLIFY_TOKEN)
+              NETLIFY_SITE_ID: $(SECRET_NETLIFY_SITE)
+            inputs:
+              workingDirectory: rust/release
+              azureSubscription: azure-ax-ci
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -e
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++ Diagnostics information +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo ""
+                echo "Build.SourceVersion: $(Build.SourceVersion)"
+                echo "Build.SourceBranch: $(Build.SourceBranch)"
+                echo "Build.SourceBranchName: $(Build.SourceBranchName)"
+                echo "Azure CLI: $(which az)"
+                echo ""
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++ Version changes in this release +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo ""
+                git diff origin/master... ../../versions
+                echo ""
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++ Figuring out how to publish +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo ""
+                publication=none
+                if [[ "$(Build.SourceBranch)" = refs/heads/release/* ]]; then
+                  echo "We are on a release branch and thus releasing a DRAFT"
+                  publication=draft
+                fi
+                if [[ "$(Build.SourceBranch)" = refs/heads/master ]]; then
+                  echo "We are on master and thus releasing to the PUBLIC"
+                  publication=public
+                fi
+                echo "publication kind: $publication"
+                if [[ "$publication" = none ]]; then
+                  echo "This is not a draft, nor a final publication; bugging out (note that this shouldn't have happened "
+                  echo "unless you triggered this CI pipeline manually)."
+                  exit 0
+                fi
+                echo ""
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++ Building the release program ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo ""
+                cargo build --release 
+                echo ""
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++ Versioning history ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo ""
+                echo "Here are all past versions of our products incl. this release"
+                for p in actyx cli node-manager; do
+                  echo "Version history for $p (incl. this release):"
+                  ./target/release/cosmos-release versions "$p" --commits
+                done
+                echo ""
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++ Artifact publication ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo ""
+                for p in actyx cli node-manager; do
+                  echo "Publishing $p artifacts:"
+                  if [[ "$publication" = draft ]]; then
+                    echo "We are going to do a dry-run of artifact publication since this is DRAFT release"
+                    ./target/release/cosmos-release publish "$p" --dry-run
+                  else
+                    RUST_LOG=debug ./target/release/cosmos-release publish "$p"
+                  fi
+                done
+                echo ""
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++ Documentation publication +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo ""
+                if [[ "$publication" = public ]]; then
+                  echo "We are doing a production deploy of the documentation since this is public release"
+                  doc_deploy_type="prod"
+                else
+                  echo "We are going to do a draft publication of the documentation since this is DRAFT release"
+                  doc_deploy_type="draft"
+                fi
+                source ~/.nvm/nvm.sh
+                cd ../../web/developer.actyx.com
+                export NETLIFY_SITE_ID=fffa1022-c8a0-4238-97c4-dd80979bf887
+                echo "Setting up node version"
+                nvm install
+                nvm use
+                echo "Installing doc dependencies"
+                npm ci
+                echo "Building docs"
+                npm run build
+                echo "Deploying docs"
+                npm run deploy:"$doc_deploy_type" -- "Cosmos publish release for $(Build.SourceBranch)"
+                cd ../../rust/release
+
+                echo ""
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                echo ""
+                #cargo run --release -- release
+                ## Checking out original commit since release may put us on a new release branch
+                #git checkout $(Build.SourceVersion)

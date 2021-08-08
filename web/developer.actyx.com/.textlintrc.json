@@ -1,0 +1,23 @@
+{
+  "filters": {
+    "comments": true
+  },
+  "rules": {
+    "no-todo": false,
+    "no-start-duplicated-conjunction": {
+      "interval": 2
+    },
+    "no-empty-section": true,
+    "period-in-list-item": false,
+    "date-weekday-mismatch": true,
+    "@textlint-rule/no-unmatched-pair": true,
+    "footnote-order": true
+  },
+  "plugins": {
+    "@textlint/markdown": {
+      "extensions": [
+        ".mdx"
+      ]
+    }
+  }
+}

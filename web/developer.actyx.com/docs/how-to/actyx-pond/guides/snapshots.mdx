@@ -1,0 +1,32 @@
+---
+title: Snapshots
+hide_table_of_contents: true
+---
+
+_The state of a fish may become expensive to calculate from scratch: snapshots to the rescue!_
+
+## Semantic snapshots
+
+Some fishes have events that completely determine the state after applying said event — you could say that such an event resets the state, regardless of what the previous state was.
+Consider as an example the ability to wipe the chat room clean with a new event.
+
+```typescript
+type ChatRoomEvent = { type: 'messageAdded'; message: string } | { type: 'messagesCleared' }
+```
+
+The result of applying the `messagesCleared` event would be the empty array.
+Therefore it would not make sense to replay any prior events, their effect would be undone by this event.
+Actyx Pond can be informed about this by providing a function that recognizes such “reset events”:
+
+```typescript
+export const chatRoomFish = {
+  // ... same as before
+  isReset: (event) => event.type === 'messagesCleared',
+}
+```
+
+Actyx Pond takes note of semantic snapshots as they are encountered and will avoid replaying earlier events to save time.
+
+:::note
+Whether an event constitutes a semantic snapshot lies in the eye of the beholder: the chat room fish may consider the `messagesCleared` of its event stream as such an event, but another fish listening to the same event stream may not (e.g. if it shall count all messages ever posted to the chat room). Therefore, the semanticSnapshot property is defined by the fish type and not by the event type.
+:::

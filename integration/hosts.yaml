@@ -1,0 +1,94 @@
+# NB! `fn ensureDocker` from `linux.ts` might need to be adjusted if `ami` for Docker changes.
+hosts:
+  - name: x86_64-linux-linux
+    prepare:
+      type: create-aws-ec2
+      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-0e793d1a6c23e9488
+      instance: t2.medium
+      user: ubuntu
+    install:
+      type: linux
+  - name: x86_64-linux-docker
+    prepare:
+      type: create-aws-ec2
+      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-0e793d1a6c23e9488
+      instance: t2.medium
+      user: ubuntu
+    install:
+      type: docker
+  - name: aarch64-linux-linux
+    prepare:
+      type: create-aws-ec2
+      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-07d86cfde3bba417d
+      instance: a1.large
+      user: ubuntu
+    install:
+      type: linux
+  - name: aarch64-linux-docker
+    prepare:
+      type: create-aws-ec2
+      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-07d86cfde3bba417d
+      instance: a1.large
+      user: ubuntu
+    install:
+      type: docker
+  - name: armv7-linux-linux
+    prepare:
+      type: create-aws-ec2
+      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-07d86cfde3bba417d
+      instance: a1.large
+      user: ubuntu
+      # There are no ARMv7 instances, but we can run ARMv7 binaries to test them
+      armv7: true
+    install:
+      type: linux
+  - name: armv7-linux-docker
+    prepare:
+      type: create-aws-ec2
+      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-07d86cfde3bba417d
+      instance: a1.large
+      user: ubuntu
+      armv7: true
+    install:
+      type: docker
+  - name: windows-1
+    prepare:
+      type: create-aws-ec2
+      # Windows Server 2019
+      # Note: This is a public AMI. The underlying image might be upgraded from
+      # time to time, thus the AMI's ID is going to change, and the old one is
+      # not accessible anymore.  If that happens, search for the current "Windows
+      # Server 2019 Base" Image in the AWS Marketplace
+      # https://aws.amazon.com/marketplace
+      ami: ami-086d0be14ab5129e1
+      instance: t2.large
+      user: Administrator
+    install:
+      type: windows
+  - name: x86_64-android-emulator
+    prepare:
+      type: create-aws-ec2
+      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-0e793d1a6c23e9488
+      # cheapest aws bare metal instance
+      # needed to have direct access to /dev/kvm
+      instance: c5n.metal
+      user: ubuntu
+    install:
+      type: android
+settings:
+  # Where folders and files will be created during a test run.
+  tempDir: temp
+  # When set to true `npm test` will not terminate but keep SSH forwarding open
+  # and the spawned hosts alive, so that you can investigate them. ctrl-C will kill them.
+  keepNodesRunning: false
+  # Set this to a specific hash instead of null to use Docker artifacts from that commit.
+  gitHash: null
+  # Rather than writing all logs to individual files, dump everything on stdout
+  logToStdout: false

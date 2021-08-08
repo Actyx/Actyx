@@ -1,0 +1,12 @@
+jobs:
+  - job: notifySuccessMainJob
+    displayName: Notify Success
+    pool:
+      name: Native
+    steps:
+      - script: |
+          build/bin/post-to-slack.sh -s "success" -a "good"
+        condition: succeeded()
+        displayName: Ping Slack
+        env:
+          SLACK_HOOK: $(SECRET_SLACK_HOOK)

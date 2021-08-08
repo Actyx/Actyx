@@ -1,0 +1,60 @@
+---
+title: Configure announced addresses
+id: configure-announced-addresses
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+You need to configure the `announceAddresses` settings if the following statements are both true:
+
+- there is NAT between the discovery helper node and your other nodes, **and**
+- one (or more) of your nodes is a Docker node, and the Actyx container is running with the `--network=host` option
+
+In this case, you have to manually configure the address of your node's host in the `announceAddress` property in the node settings:
+
+```yml
+announceAddress: # Manually configured addresses to announce
+  - /ip4/192.168.1.101/tcp/4001
+  # These must be multiaddresses, i.e. ip4/<YOUR_IP>/tcp/4001
+```
+
+You can configure it by using the Actyx CLI or the Node Manager. The following examples assume that the IP address of your Docker node is 192.168.2.10:
+
+<Tabs
+  groupId="os"
+  defaultValue={"cli"}
+  values={[
+    { label: 'Actyx CLI', value: 'cli' },
+    { label: 'Node Manager', value: 'manager' },
+  ]}
+>
+
+
+<TabItem value="cli">
+
+
+You can use the output from above and `ax settings set` to configure it:
+
+```text
+ax settings set /swarm/announceAddresses [/ip4/192.168.2.10/tcp/4001] localhost
+```
+
+</TabItem>
+<TabItem value="manager">
+
+
+Go to the settings tab change the `announceAddresses` property and press save:
+
+![announce-address-node-manager](../../../static/images/how-to/swarms/announce-addresses.png)
+
+</TabItem>
+</Tabs>
+
+
+:::tip conceptual guide on discovery
+For more information on discovery, please refer to our [conceptual guide](../../conceptual/discovery.mdx).
+:::

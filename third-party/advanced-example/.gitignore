@@ -1,0 +1,8 @@
+node_modules
+build
+dist
+release
+.cache
+*.tar.gz
+*.tgz
+src/machine
