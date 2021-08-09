@@ -3,8 +3,7 @@
 # Each line may contain a single commit id (SHA1).
 
 # This was a test commit which landed on master
-# see https://github.com/Actyx/Cosmos/commit/b511683d18b99f6d329cdbb1759cc74b43f97213
-b511683d18b99f6d329cdbb1759cc74b43f97213
+9bc8e55868f45f2634c90da2578c8029dd446e40
 
 # Initial version of everything:
-c80924f6dccac51ae6d4da3a0b5a0afc94b1a1ac
+684bb5520ecbdc192306ee1db1fc24b78db5f4f0
