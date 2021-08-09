@@ -234,6 +234,10 @@ module.exports = {
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
           remarkPlugins: [remarkCodeImport],
+          editUrl: 'https://github.com/Actyx/Actyx/tree/master/web/developer.actyx.com',
+          editCurrentVersion: true,
+          showLastUpdateAuthor: true,
+          showLastUpdateTime: true,
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
