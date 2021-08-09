@@ -5,8 +5,6 @@
 #
 # Prerequisites for using this makefile locally:
 #
-# - vault credentials should be in the `VAULT_TOKEN` environment variable.
-#   E.g. `export VAULT_TOKEN=`vault login -token-only -method aws role=dev-ruediger`
 # - nvm should be installed. https://github.com/nvm-sh/nvm#install--update-script
 # - docker needs to be installed and configured
 # - able to access dockerhub
@@ -126,16 +124,6 @@ docker-multiarch-build-args = $(docker-build-args) --platform $(shell echo $(doc
 
 export CARGO_HOME ?= $(HOME)/.cargo
 export DOCKER_CLI_EXPERIMENTAL := enabled
-
-# log in to vault and store the token in an environment variable
-# to run this locally, set the VAULT_TOKEN environment variable by running vault login with your dev role.
-# e.g. `export VAULT_TOKEN=`vault login -token-only -method aws role=dev-ruediger`
-# the current token is looked up and no login attempted if present - this suppresses warnings
-VAULT_TOKEN ?= $(vault token lookup -format=json | jq .data.id)
-ifndef VAULT_TOKEN
-export VAULT_ADDR ?= https://vault.actyx.net
-export VAULT_TOKEN ?= $(shell VAULT_ADDR=$(VAULT_ADDR) vault login -token-only -method aws role=ops-travis-ci)
-endif
 
 # Use docker run -ti only if the input device is a TTY (so that Ctrl+C works)
 export DOCKER_FLAGS ?= -e "ACTYX_VERSION=${ACTYX_VERSION}" -e "ACTYX_VERSION_CLI=${ACTYX_VERSION_CLI}" $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
@@ -279,7 +267,6 @@ validate-netsim: diagnostics
 .PHONY: validate-os-android
 # execute linter for os-android
 validate-os-android: diagnostics
-	jvm/os-android/bin/get-keystore.sh
 	docker run \
 	  -u builder \
 	  -v `pwd`:/src \
