@@ -110,7 +110,7 @@ module.exports = {
       type: 'category',
       label: 'Operations',
       collapsed: true,
-      items: ['how-to/operations/device-management', 'how-to/operations/discovery-helper-node','how-to/operations/restore-broken-node'],
+      items: ['how-to/operations/device-management', 'how-to/operations/discovery-helper-node'],
     },
     {
       type: 'category',

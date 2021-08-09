@@ -8,3 +8,5 @@ jobs:
           build/bin/post-to-slack.sh -s "success" -a "good"
         condition: succeeded()
         displayName: Ping Slack
+        env:
+          SLACK_HOOK: $(SECRET_SLACK_HOOK)

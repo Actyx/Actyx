@@ -36,7 +36,8 @@ impl NodeInfo {
 }
 
 fn get_ax_public_key() -> PublicKey {
-    PublicKey::from_str("075i62XGQJuXjv6nnLQyJzECZhF29acYvYeEOJ3kc5M8=").unwrap()
+    PublicKey::from_str(option_env!("AX_PUBLIC_KEY").unwrap_or("075i62XGQJuXjv6nnLQyJzECZhF29acYvYeEOJ3kc5M8="))
+        .unwrap()
 }
 
 fn get_token_validity() -> u32 {

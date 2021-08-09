@@ -1,9 +1,11 @@
 jobs:
   - job: notifyFailureJob
-    displayName: Notify Failure 
+    displayName: Notify Failure
     pool:
       name: Native
     steps:
       - script: |
           build/bin/post-to-slack.sh -s "failure" -a "danger"
         displayName: Ping Slack
+        env:
+          SLACK_HOOK: $(SECRET_SLACK_HOOK)

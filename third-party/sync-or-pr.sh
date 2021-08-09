@@ -35,7 +35,7 @@ echo "last cosmos commit: $LAST_COSMOS_COMMIT"
 BRANCH_NAME="update-to-cosmos/$LAST_COSMOS_COMMIT"
 echo "will create branch $LAST_COSMOS_COMMIT"
 
-SLACK_WEBHOOK="https://hooks.slack.com/services/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"
+SLACK_WEBHOOK="https://hooks.slack.com/services/$SLACK_HOOK"
 
 for repo in "${repos[@]}"
 do

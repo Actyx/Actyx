@@ -1,10 +1,10 @@
 # A proposed procedure for upgrading an existing ActyxOS swarm to Actyx v2
 
-|  |  |
-| --- | --- |
-| date | 2020-05-25 |
-| status | proposed (pending validation by implementation) |
-| persons | @rkuhn |
+|         |                                                 |
+|---------|-------------------------------------------------|
+| date    | 2020-05-25                                      |
+| status  | proposed (pending validation by implementation) |
+| persons | @rkuhn                                          |
 
 ## Decision
 
@@ -27,7 +27,6 @@ And it allows detection of when the whole migration is complete.
 - We need to ensure before the Actyx v2.0.0 release that ActyxOS and Actyx v2 can coexist in the same IPFS swarm (i.e. swarm key) using the same gossipsub topic _without accepting each others’ events and without crashing._
 - This document does not describe or consider apps; apps are assumed to have been migrated such that they are compatible with Actyx v2 already, and are assumed to be stopped during the migration.
 - Migration on Android will be quite a bit more involved since the Actyx APK won’t be able to access the ActyxOS APK’s database files directly; perhaps we’ll need to keep the ActyxOS APK running and pull out the events via the Event Service.
-
 
 ## Business context
 

@@ -13,9 +13,6 @@ trigger: none
 
 pr: none
 
-variables:
-  SLACK_HOOK: ***REMOVED***
-
 stages:
   - stage: calculateActyxVersion
     displayName: Calculate Actyx Version

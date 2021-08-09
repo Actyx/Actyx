@@ -1,11 +1,10 @@
 # Swarm migration procedure: Actyx Shell App -> Actyx v2.1
 
-|  |  |
-| --- | --- |
-| date | 2021-06-29 |
-| status | proposed |
-| persons | @mcamou |
-
+|         |            |
+|---------|------------|
+| date    | 2021-06-29 |
+| status  | proposed   |
+| persons | @mcamou    |
 
 ## Decision
 

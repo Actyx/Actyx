@@ -4,9 +4,6 @@ trigger:
 
 pr: none
 
-variables:
-  SLACK_HOOK: ***REMOVED***
-
 stages:
   - stage: publishDocsAndReleases
     pool:
@@ -24,6 +21,9 @@ stages:
             displayName: Release Task
             env:
               BASH_ENV: "~/.bashrc"
+              SLACK_HOOK: $(SECRET_SLACK_HOOK)
+              NETLIFY_AUTH_TOKEN: $(SECRET_NETLIFY_TOKEN)
+              NETLIFY_SITE_ID: $(SECRET_NETLIFY_SITE)
             inputs:
               workingDirectory: rust/release
               azureSubscription: azure-ax-ci
@@ -109,7 +109,6 @@ stages:
                 fi
                 source ~/.nvm/nvm.sh
                 cd ../../web/developer.actyx.com
-                export NETLIFY_AUTH_TOKEN=***REMOVED***
                 export NETLIFY_SITE_ID=fffa1022-c8a0-4238-97c4-dd80979bf887
                 echo "Setting up node version"
                 nvm install

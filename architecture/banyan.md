@@ -34,7 +34,7 @@ Would be nice to have some real world numbers from CTA MWL here...
 
 ### Compression
 
-ZStd compression has the awesome property that the compression rate can be tweaked over a wide range, from extremely fast compression with deflate/gzip compression ratios to slower compression with bzip2 level or better compression ratios. However, decompression is *always* fast, even for high compression factors. 
+ZStd compression has the awesome property that the compression rate can be tweaked over a wide range, from extremely fast compression with deflate/gzip compression ratios to slower compression with bzip2 level or better compression ratios. However, decompression is *always* fast, even for high compression factors.
 
 It follows from the above read/write tradeoff that zstd is a good choice for a distributed event sourcing system, whereas something that offers extremely fast compression such as lz4 would be a better choice for a more write optimized application.
 
@@ -88,13 +88,12 @@ Even without having additional indexes, this split provides large efficiency gai
 
 The same separation can be done higher up in the tree. A branch node consists of (uncompressible) links as well as summaries of its children, and a summary of the entire branch node.
 
-
-### References/Ideas:
+### References/Ideas
 
 OLAP vs OLTP
 
 Appending via extend_unpacked is OLTP, distribution via the fast path is also OLTP, packing and distributing the packed representation is then the transition to am ore OLAP friendly format.
 
-https://en.wikipedia.org/wiki/Online_analytical_processing
+<https://en.wikipedia.org/wiki/Online_analytical_processing>
 
-https://en.wikipedia.org/wiki/Online_transaction_processing
+<https://en.wikipedia.org/wiki/Online_transaction_processing>

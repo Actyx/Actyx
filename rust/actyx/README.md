@@ -1,61 +1,21 @@
 # Rust based core infrastructure
 
-_for a map of the modules and components, see below_
-
 ## Building
 
 This is a multi-project build, so running `cargo` in this top level directory will build every subproject. To build or
 test a specific subproject you can you the `-p` option:
 
-```
+```sh
   cargo build -p ipfs
 ```
 
 ## Testing
 
-```
-  cargo run test
-```
-
-### Integration tests using docker
-
-_Note: This feature does not work with a virtual workspace (<https://github.com/rust-lang/cargo/issues/4942>). So you need to run the tests from the specific Cargo workspace the tests are defined.
-For your convenience, there is a [script](./run-docker-integration-tests.sh) to automate that._
-
-To also enable integration tests, that spin up docker containers for testing purposes, run:
-
-```
-  cargo run test --features docker-integration
+```sh
+  cargo test
 ```
 
-This works by prefixing your tests like so:
-
-```rs
-#[test]
-#[cfg_attr(not(feature = "docker-integration"), ignore)]
-fn should_find_provs() {
-```
-
-which means, that the test will be ignored if the _docker-integration_ feature is not enabled (which by default, is not).
-
-The relevant `Cargo.toml` (of the individual project) needs to be augmented with ..
-
-```toml
-[features]
-docker-integration = []
-```
-
-# Rust futures runtime considerations
-
-In cases where we need a futures runtime, we default to tokio 0.2. If possible, executables
-should use `#[tokio::main]`. Tests using futures can use `#[tokio::test]` for convenience.
-
-Spawning a task from the environment using `tokio::spawn` should be avoided except in `async fn` or `async` blocks. If this is not possible, please document the rationale.
-
-Services or runtimes should be spawned close to or in `main()`, with a comment explaning the usage of
-`tokio::spawn` or an explicit separate thread pool.
-
-# Map of our components
+## Map of our components
 
 All data types used across serialisation boundaries should be moved to the `SDK`, which removes the need for `*-formats` crates. Local storage is managed by the `ipfs-sqlite-block-store` crate. Then, we need the following:
 

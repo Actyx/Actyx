@@ -12,7 +12,8 @@ Dev keys:
 - private: `08lUw93C+xzdxBcsYOoPVjzn8IHPJtnJW9Y/WyEu4v64=`
 - public:  `0nz1YdHu/JDmS6CImcZgOj9Y960sJOPrbZHAJO107qW0=`
 
-NB! Above Actyx public key is hardcoded into the node. If another private key is used for creating dev certificates or app licenses, then its public key needs to be configured for nodes that will consume those artefacts.
+**Important note:** The above keys are just examples, they are also used in the test suite.
+The official Actyx binaries use different keys.
 
 ## Create dev cert
 

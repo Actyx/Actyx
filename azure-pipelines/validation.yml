@@ -14,9 +14,6 @@ pr:
       - master
       - proj/*
 
-variables:
-  SLACK_HOOK: ***REMOVED***
-
 stages:
   - stage: validation
     dependsOn: []
@@ -119,9 +116,6 @@ stages:
               nvm install
               npm ci
               npm run build
-              export NETLIFY_ACCESS_TOKEN=***REMOVED***
-              export NETLIFY_AUTH_TOKEN=***REMOVED***
-              export NETLIFY_SITE_ID=fffa1022-c8a0-4238-97c4-dd80979bf887
               npm run deploy:draft "Validation pipeline"
               make -C ../.. assert-clean
             env:
@@ -129,6 +123,9 @@ stages:
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
+              NETLIFY_SITE_ID: $(SECRET_NETLIFY_SITE)
+              NETLIFY_ACCESS_TOKEN: $(SECRET_NETLIFY_TOKEN)
+              NETLIFY_AUTH_TOKEN: $(SECRET_NETLIFY_TOKEN)
 
   - stage: notifySuccess
     dependsOn:

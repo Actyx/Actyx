@@ -35,9 +35,6 @@ use crate::{AxStreamBuilder, StreamAlias};
 mod v1;
 use v1::{Block, ConsNode, IpfsEnvelope};
 
-#[cfg(test)]
-mod tests;
-
 type AxTxn<RW> = Transaction<AxTrees, RW, RW>;
 
 /// Get a block from a block store and decode it, with extensive logging
