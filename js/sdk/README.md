@@ -8,9 +8,9 @@
 
 A open-source Typescript/Javascript SDK for interacting the [Actyx APIs](https://developer.actyx.com/docs/reference/overview):
 
-- Authenticate as an app
-- Access the node ID
-- Emit, query, and subscribe to event
+- Emit, query, and subscribe to events that get distributed via Actyx
+- Get Actyx diagnostics
+- Scoped to your custom app id
 
 This SDK is the basis for the more frequently used [Actyx Pond](https://developer.actyx.com/docs/how-to/actyx-pond/introduction) framework.
 
