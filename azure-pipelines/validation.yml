@@ -26,7 +26,6 @@ stages:
         steps:
           - bash: |
               set -e
-              build/bin/install-vault.sh
               make validate-js assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
@@ -40,7 +39,6 @@ stages:
         steps:
           - bash: |
               set -e
-              build/bin/install-vault.sh
               make validate-dotnet assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
@@ -80,7 +78,6 @@ stages:
         steps:
           - bash: |
               set -e
-              build/bin/install-vault.sh
               chmod -R 777 .
               make validate-os-android assert-clean
             env:
