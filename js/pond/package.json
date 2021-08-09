@@ -38,7 +38,7 @@
     "typedoc": "0.17.0-3",
     "typescript": "3.9.6"
   },
-  "homepage": "https://developer.actyx.com/docs/reference/pond",
+  "homepage": "https://developer.actyx.com/",
   "keywords": [
     "actyx",
     "pond",
@@ -62,7 +62,7 @@
   "name": "@actyx/pond",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Actyx/Cosmos.git"
+    "url": "git+https://github.com/Actyx/Actyx.git"
   },
   "scripts": {
     "api:accept": "api-extractor run -l",

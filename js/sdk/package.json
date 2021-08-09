@@ -73,7 +73,7 @@
   "name": "@actyx/sdk",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Actyx/Cosmos.git"
+    "url": "git+https://github.com/Actyx/Actyx.git"
   },
   "scripts": {
     "api:accept": "api-extractor run -l",
