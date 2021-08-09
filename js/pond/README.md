@@ -7,7 +7,7 @@
 </div>
 
 An open-source Typescript/Javascript framework for implementing distributed state-machines which are automatically kept in sync across 
-a swarm of interconnected devices. The Actyx Pond require Actyx to be running on each device.
+a swarm of interconnected devices. The Actyx Pond requires Actyx to be running on each device.
 
 The key features of Actyx Pond are:
 
