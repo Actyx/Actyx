@@ -1,24 +1,56 @@
-# Actyx SDK
+<div align="center">
+    <h1>Actyx Typescript/Javascript SDK</h1>
+    <a href="https://www.npmjs.com/package/@actyx/sdk"><img src="https://img.shields.io/npm/v/@actyx/sdk.svg?style=flat" /></a>
+    <a href="https://github.com/Actyx/Actyx/blob/master/README.md#contributing"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" /></a>
+    <br />
+    <hr />
+</div>
 
-A TypeScript SDK for writing distributed apps deployed on peer-to-peer networks, without any servers. 
+A open-source Typescript/Javascript SDK for interacting the [Actyx APIs](https://developer.actyx.com/docs/reference/overview):
 
-This is made possible by being based on [Actyx](https://www.actyx.com/platform). Please visit also the [documentation](https://developer.actyx.com/docs/how-to/actyx-pond/getting-started) for how to get started.
+- Emit, query, and subscribe to events that get distributed via Actyx
+- Get Actyx diagnostics
+- Scoped to your custom app id
 
-## Key features
+This SDK is the basis for the more frequently used [Actyx Pond](https://developer.actyx.com/docs/how-to/actyx-pond/introduction) framework.
 
-- **Distributed Event-Sourcing** architecture for great information replication facilities and declarative information consumption
+## Example usage
 
-- **Partition Tolerance** built into the core by offering an eventually consistent programming model for arbitrary business logic
+```typescript
+import { Actyx, Tags } from '@actyx/sdk'
 
-- **Eventual Consistency made easy** by using an innovative time-travel algorithm integrated with performance optimizations like snapshots for swift recovery after restart
+(async () => {
 
-## IDE setup
+    // Connect to the local Actyx process
+    const actyx = await Actyx.of({
+        appId: 'com.example.app',
+        displayName: 'Example App',
+        version: '1.0.0'
+    })
 
-The recommended IDE for developing on Actyx is [Visual Studio Code](https://code.visualstudio.com/).
+    // Get latest event stream offsets
+    const offsets = await actyx.offsets()
+    console.log(offsets)
 
-### Recommended plugins
-- [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) for live source code linting
+    // Emit events
+    await actyx.emit([
+        {
+            tags: ['tag-1', 'tag-2'],
+            event: {
+                foo: 'bar'
+            }
+        }
+    ])
 
-## License and Support
+    // Subscribe to events
+    await actyx.subscribe({
+        query: Tags('tag-1').and('tag-2')
+    }, event => {
+        console.log(event)
+    })
+})()
+```
 
-For commercial licenses and support please email contact@actyx.io.
+## Contributing
+
+PRs are very welcome. Please review the contribution notes in [the root README](https://github.com/Actyx/Actyx/blob/master/README.md#contributing).
