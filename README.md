@@ -1,16 +1,15 @@
-# Actyx Cosmos
-
-— _Everything you ever wanted._
+# Actyx
 
 Actyx is a **decentralized** event **database**, **streaming** and **processing** engine that allows you to easily build [local-first cooperative](https://www.local-first-cooperation.org/) apps.
 For more information on how to use it, please refer to [developer.actyx.com](https://developer.actyx.com).
-You’re also very welcome to drop us a line in [the forum](https://community.actyx.com/).
+You’re also very welcome to drop us a line in [the forum](https://community.actyx.com/) and watch this space (or give it a ✩)!
 
 ## Features
 
-- durable event stream storage in peer-to-peer network using [IPFS](https://ipfs.io/)
+- durable event stream storage in peer-to-peer network using [libp2p](https://github.com/libp2p/rust-libp2p) and [ipfs-embed](https://github.com/ipfs-rust/ipfs-embed)
 - low-latency replication between nodes
 - tag-based and time-based indexing of events
+- full-fledged support for event-sourcing, guaranteeing eventual consistency
 - [query language](https://developer.actyx.com/docs/reference/aql) for extracting and summarizing events (still growing)
 
 ## Quick demo
