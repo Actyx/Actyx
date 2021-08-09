@@ -15,7 +15,7 @@ The key features of Actyx Pond are:
 - **Partition tolerance** with an eventually consistent programming model for arbitrary business logic
 - **Eventual consistency** by using a state machine time-travel algorithm to agree on global state
 
-This package builds on the [Actyx SDK](../sdk/README.md).
+This package builds on the [Actyx SDK](https://www.npmjs.com/package/@actyx/sdk).
 
 ## Example usage
 
