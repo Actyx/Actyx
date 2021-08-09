@@ -12,7 +12,7 @@ A open-source Typescript/Javascript SDK for interacting the [Actyx APIs](https:/
 - Access the node ID
 - Emit, query, and subscribe to event
 
-This SDK is the basis for the more frequently used opinionated [@actyx/pond](https://developer.actyx.com/docs/how-to/actyx-pond/introduction) framework.
+This SDK is the basis for the more frequently used [Actyx Pond](https://developer.actyx.com/docs/how-to/actyx-pond/introduction) framework.
 
 ## Example usage
 
