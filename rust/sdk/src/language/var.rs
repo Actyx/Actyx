@@ -82,7 +82,7 @@ impl quickcheck::Arbitrary for Var {
                     first = false;
                     *g.choose(&choices[0..26]).unwrap()
                 } else {
-                    *g.choose(&choices).unwrap()
+                    *g.choose(choices).unwrap()
                 }
             })
             .collect::<String>();
