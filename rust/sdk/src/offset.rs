@@ -171,7 +171,7 @@ impl From<u32> for OffsetOrMin {
 
 impl PartialEq<Offset> for OffsetOrMin {
     fn eq(&self, other: &Offset) -> bool {
-        OffsetOrMin::from(*other) == *self
+        self.0 == other.0
     }
 }
 
@@ -349,7 +349,7 @@ impl Default for Offset {
 
 impl PartialEq<OffsetOrMin> for Offset {
     fn eq(&self, other: &OffsetOrMin) -> bool {
-        OffsetOrMin::from(*self) == *other
+        self.0 == other.0
     }
 }
 

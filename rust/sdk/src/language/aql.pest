@@ -33,7 +33,7 @@ stream_id = @{ crypt_char{43} ~ "-" ~ natural }
 crypt_char = { "." | "/" | 'a'..'z' | 'A'..'Z' | '0'..'9' }
 
 // identifiers
-ident = @{ "_" | LOWERCASE_LETTER ~ ( LOWERCASE_LETTER | NUMBER | "_" )* }
+ident = @{ "_" | ( LOWERCASE_LETTER | UPPERCASE_LETTER ~ LOWERCASE_LETTER ) ~ ( CASED_LETTER | NUMBER | "_" )* }
 var = { ident }
 index = _{ "." ~ ident | "[" ~ natural ~ "]" | "[" ~ string ~ "]" | "[" ~ simple_expr ~ "]" }
 

@@ -73,7 +73,7 @@ impl quickcheck::Arbitrary for AppId {
         });
         let s = Vec::<bool>::arbitrary(g)
             .into_iter()
-            .map(|_| *g.choose(&choices).unwrap())
+            .map(|_| *g.choose(choices).unwrap())
             .collect::<String>();
         AppId::try_from(s.as_str()).unwrap_or_else(|_| app_id!("empty"))
     }
