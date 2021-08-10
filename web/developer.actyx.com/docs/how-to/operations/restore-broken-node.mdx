@@ -1,0 +1,37 @@
+---
+title: Restore a broken node
+id: restore-broken-node
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+When operating Actyx in a production environment, there are several scenarios in which one of your nodes could fatally break.
+This guide gives an overview of how to prepare, and what to do in these scenarios.
+
+### Restore a node without a backup
+
+In almost all cases, you will not need a backup for restoring a node.
+Due to the distributed nature of an Actyx deployment, you usually don't lose any data if a node breaks.
+The node's events have been distributed to the swarm and are stored on several other nodes already.
+Therefore, if one of your nodes fatally breaks, you can just start from scratch and reinstall Actyx on the device again or, in case of a hardware failure, exchange the device and install Actyx on the new one.
+
+:::info
+Please note that events which your node did not distribute to other nodes (e.g. because it was partitioned), are lost in this case.
+:::
+
+After configuring Actyx (as it was configured on the previous node), you can just deploy and start your apps again. The only thing that changed is the node ID of your node.
+Therefore, if your app made queries for only local events (with `isLocal`), the response from the Actyx is now different. Usually, `isLocal` queries are (if used at all), not used for important app logic.
+
+However, if you need your node ID to stay the same due to `isLocal` queries in your app, you need to restore your node from a backup.
+
+### Restore a node from a backup
+
+As you can restore your node without a backup in almost all cases, Actyx currently does not have dedicated functionality for this.
+If your deplyoment requires you to restore a node from a backup, please contact us on our [Discord server](https://discord.gg/262yJhc) or open a topic in our [community forum](https://community.actyx.com).
+
+:::tip Why can Actyx not just start on a backup?
+Unless your node did not publish events after the backup was taken, the swarm contains events that your backup does not contain.
+Therefore, if you started a new node on this backup, it would first need to consume these events from the swarm again.
+Otherwise, your node publishes new events with offsets that in fact already exist; you would then have conflicting event streams on this node and in the rest of the swarm that contain different events for the same offset.
+:::
