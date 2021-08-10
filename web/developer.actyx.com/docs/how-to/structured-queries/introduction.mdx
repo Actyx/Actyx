@@ -1,0 +1,104 @@
+---
+title: Introduction to Actyx Query Language
+sidebar_label: Introduction
+id: introduction
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+The Actyx Query Language allows you to query, filter, transform, and soon aggregate events in a structured fashion.
+
+## Features
+
+The Actyx Query Language currently has the following features:
+
+- **Query** events by source, tags, app id, timestamp, event key
+- **Filter** by event payload to discard events
+- **Select** event payload contents
+- **Transform** event payloads using arithmetic operations and case expressions
+
+Currently AQL queries (or subscriptions) always return events. The ability to aggregate (e.g. SUM) events is being worked on.
+
+## Usage
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+You can run AQL queries using the CLI, the Node Manager or any of the SDKs.
+Here are examples for each one of those.
+
+<Tabs
+  groupId="method"
+  defaultValue={"CLI"}
+  values={[
+    { label: 'CLI', value: 'cli' },
+    { label: 'Node Manager', value: 'node-manager' },
+    { label: 'Typescript SDK', value: 'ts-sdk' },
+    { label: 'C#/.NET SDK', value: 'csharp-sdk' },
+    { label: 'Rust SDK', value: 'rust-sdk' },
+  ]}
+>
+
+<TabItem value="cli">
+
+Use the Actyx CLI's `events query` subcommand to run AQL queries:
+
+```bash
+ax events query localhost "FROM 'discovery'"
+```
+
+This will return a list of JSON objects which are either events or errors/warnings if the query is invalid or cannot be executed.
+
+</TabItem>
+
+<TabItem value="node-manager">
+
+The _Query_ screen in the Node Manager allows you to perform AQL queries:
+
+![AQL query using the Actyx Node Manager](/images/how-to/structured-queries/structured-queries-node-manager.png)
+
+</TabItem>
+
+<TabItem value="ts-sdk">
+
+Install the Typescript/Javascript SDK using `npm install @actyx/sdk` and then run AQL queries as follows:
+
+```ts
+import { Actyx } from '@actyx/sdk'
+
+(async () => {
+    // Connect to the local Actyx process
+    const actyx = await Actyx.of({
+        appId: 'com.example.app',
+        displayName: 'Example App',
+        version: '1.0.0'
+    })
+
+    // Run AQL query
+    const results = await actyx.queryAql("FROM 'discovery'")
+
+    // Do something with the results
+    results.forEach(result => {
+        if (result.type === 'event') {
+            console.log(JSON.stringify(result.payload))
+        }
+    })
+})()
+```
+</TabItem>
+
+<TabItem value="csharp-sdk">
+C# SDK
+</TabItem>
+
+<TabItem value="rust-sdk">
+Rust SDK
+</TabItem>
+
+</Tabs>
+
+## Examples
+
+## Reference
+
