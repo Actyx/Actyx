@@ -29,7 +29,7 @@
 //! client that retrieves some events. Please adapt the `semantics` to match your stored events
 //! in order to see output.
 //!
-//! > _Note: this example needs the `client` feature to compile_
+//! > _Note: this example needs the `client` feature to compile._
 //!
 //! ```no_run
 //! use actyx_sdk::{
@@ -82,6 +82,9 @@
 //! - `client`: include HTTP client bindings using the [`reqwest`](https://docs.rs/reqwest) crate
 //! - `dataflow`: provide [`Abomonation`](https://docs.rs/abomonation) instances for use with tools
 //!   like [`Differential Dataflow`](https://docs.rs/differential-dataflow)
+//! - `arb`: provide
+//! [`quickcheck::Arbitrary`](https://docs.rs/quickcheck/latest/quickcheck/trait.Arbitrary.html)
+//! instances for common data types. This is useful for testing.
 #![doc(html_logo_url = "https://developer.actyx.com/img/logo.svg")]
 #![doc(html_favicon_url = "https://developer.actyx.com/img/favicon.ico")]
 #![allow(clippy::unreadable_literal)]
