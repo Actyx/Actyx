@@ -183,6 +183,7 @@ decl_op! {
         Ge -> ">=",
         Eq -> "=",
         Ne -> "!=",
+        Alt -> "//",
     }
 }
 
@@ -325,6 +326,9 @@ impl SimpleExpr {
     }
     pub fn ne(self, other: SimpleExpr) -> Self {
         SimpleExpr::BinOp(Arc::new((BinOp::Ne, self, other)))
+    }
+    pub fn alt(self, other: SimpleExpr) -> Self {
+        SimpleExpr::BinOp(Arc::new((BinOp::Alt, self, other)))
     }
 }
 

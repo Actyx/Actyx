@@ -229,6 +229,7 @@ impl<'a> Context<'a> {
                     .ok_or_else(|| anyhow!("cannot compare {} ≠ {}", left, right))?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
+            BinOp::Alt => self.eval(l).or_else(|_| self.eval(r)),
         }
     }
 }
@@ -489,5 +490,12 @@ mod tests {
         );
 
         assert_that(&eval(&mut cx, "CASE FALSE => 1 ENDCASE").unwrap_err().to_string()).contains("no case matched");
+    }
+
+    #[test]
+    fn alternative() {
+        let mut cx = ctx();
+        assert_eq!(eval(&mut cx, "5 // 6").unwrap(), "5");
+        assert_eq!(eval(&mut cx, "(5).a // 6").unwrap(), "6");
     }
 }

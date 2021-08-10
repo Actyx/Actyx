@@ -272,6 +272,7 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
         let op = Operator::new;
 
         PrecClimber::new(vec![
+            op(Rule::alternative, Left),
             op(Rule::or, Left),
             op(Rule::xor, Left),
             op(Rule::and, Left),
@@ -321,6 +322,7 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
                 Rule::ge => lhs?.ge(rhs?),
                 Rule::eq => lhs?.eq(rhs?),
                 Rule::ne => lhs?.ne(rhs?),
+                Rule::alternative => lhs?.alt(rhs?),
                 x => bail!("unexpected token: {:?}", x),
             })
         },
@@ -437,7 +439,8 @@ mod tests {
             parser: Aql,
             input: "5+3!",
             rule: Rule::main_simple_expr,
-            positives: vec![Rule::EOI, Rule::add, Rule::sub, Rule::mul, Rule::div, Rule::modulo, Rule::pow, Rule::and, Rule::or, Rule::xor, Rule::lt, Rule::le, Rule::gt, Rule::ge, Rule::eq, Rule::ne],
+            positives: vec![Rule::EOI, Rule::add, Rule::sub, Rule::mul, Rule::div, Rule::modulo, Rule::pow, Rule::and,
+                Rule::or, Rule::xor, Rule::lt, Rule::le, Rule::gt, Rule::ge, Rule::eq, Rule::ne, Rule::alternative],
             negatives: vec![],
             pos: 3
         };
