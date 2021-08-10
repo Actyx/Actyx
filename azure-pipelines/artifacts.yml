@@ -64,7 +64,6 @@ stages:
         steps:
           - bash: |
               set -e
-              build/bin/install-vault.sh
               make all-js assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
@@ -79,7 +78,6 @@ stages:
         steps:
           - bash: |
               set -e
-              build/bin/install-vault.sh
               mkdir -p dist/bin/windows-x86_64/
               chmod -R 777 .
               chmod -R 777 /root/.cargo
@@ -99,7 +97,6 @@ stages:
         steps:
           - bash: |
               set -e
-              build/bin/install-vault.sh
               chmod -R 777 .
               chmod -R 777 /root/.cargo
               make all-linux assert-clean
@@ -116,7 +113,6 @@ stages:
         steps:
           - bash: |
               set -e
-              build/bin/install-vault.sh
               chmod -R 777 .
               chmod -R 777 /root/.cargo
               make all-macos assert-clean
@@ -160,6 +156,7 @@ stages:
               build/bin/install-vault.sh
               chmod -R 777 .
               chmod -R 777 /root/.cargo
+              ./jvm/os-android/bin/get-keystore.sh
               make all-android assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
