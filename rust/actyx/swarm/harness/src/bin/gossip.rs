@@ -9,12 +9,16 @@ fn main() -> anyhow::Result<()> {
 
     swarm_harness::setup_env()?;
     swarm_harness::run_netsim(HarnessOpts::from_args(), |mut network| async move {
+        tracing::info!("waiting for new listen addresses");
         for machine in network.machines_mut() {
             loop {
-                if let Some(Event::NewListenAddr(addr)) = timeout(Duration::from_secs(3), machine.recv()).await? {
-                    if !addr.is_loopback() {
-                        break;
+                match timeout(Duration::from_secs(3), machine.recv()).await? {
+                    Some(Event::NewListenAddr(addr)) => {
+                        if !addr.is_loopback() {
+                            break;
+                        }
                     }
+                    ev => tracing::info!("{:?}", ev),
                 }
             }
         }
@@ -23,6 +27,7 @@ fn main() -> anyhow::Result<()> {
         for machine in r.iter_mut() {
             s.send(Command::AddAddress(machine.peer_id(), machine.multiaddr()));
         }
+        tracing::info!("waiting for subscriptions");
         for _ in r.iter_mut() {
             loop {
                 if let Some(Event::Subscribed(peer_id, topic)) = timeout(Duration::from_secs(3), s.recv()).await? {
