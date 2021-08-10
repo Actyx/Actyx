@@ -1,5 +1,6 @@
 use actyx_sdk::{app_id, service::AuthenticationResponse, NodeId};
 use bytes::Bytes;
+use chrono::Utc;
 use crypto::{KeyStore, KeyStoreRef, PrivateKey, PublicKey};
 use hyper::Response;
 use parking_lot::lock_api::RwLock;
@@ -45,6 +46,7 @@ async fn test_routes() -> (
         token_validity: 300,
         ax_public_key: PrivateKey::generate().into(),
         licensing: Licensing::default(),
+        started_at: Utc::now(),
     };
     let event_store = {
         let store2 = store.clone();

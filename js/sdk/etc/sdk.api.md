@@ -10,6 +10,7 @@ import { Ord } from 'fp-ts/lib/Ord';
 export type Actyx = EventFns & {
     readonly nodeId: NodeId;
     dispose: () => void;
+    waitForSync: () => Promise<void>;
 };
 
 // @public
