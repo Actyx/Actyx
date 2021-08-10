@@ -291,7 +291,7 @@ impl std::fmt::Display for SimpleExpr {
     }
 }
 
-#[allow(clippy::clippy::should_implement_trait)]
+#[allow(clippy::should_implement_trait)]
 impl SimpleExpr {
     pub fn add(self, other: SimpleExpr) -> Self {
         SimpleExpr::BinOp(Arc::new((BinOp::Add, self, other)))

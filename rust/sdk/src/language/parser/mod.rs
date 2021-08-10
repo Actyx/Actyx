@@ -393,8 +393,9 @@ impl FromStr for SimpleExpr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{tag, NodeId, StreamId};
+    use crate::{language::var::Var, tag, NodeId, StreamId};
     use pest::{fails_with, Parser};
+    use std::convert::TryFrom;
 
     #[test]
     fn tag() -> Result<()> {
@@ -568,6 +569,49 @@ mod tests {
                 .into()
             })
         );
+    }
+
+    #[test]
+    fn ident() {
+        let p = |s: &str, e: Option<&str>| {
+            let q = s.parse::<Query>();
+            if let Some(err) = e {
+                let e = q.unwrap_err().to_string();
+                assert!(e.contains(err), "received: {}", e);
+                None
+            } else {
+                match q.unwrap().ops[0].clone() {
+                    Operation::Select(v) => Some(v.to_vec()),
+                    _ => None,
+                }
+            }
+        };
+        let ind = |s: &str| {
+            SimpleExpr::Indexing(Ind {
+                head: Arc::new(SimpleExpr::Variable(Var::try_from("_").unwrap())),
+                tail: NonEmptyVec::try_from(vec![Index::String(s.to_owned())]).unwrap(),
+            })
+        };
+        let s = |s: &str| Index::String(s.to_owned());
+        let n = |n: u64| SimpleExpr::Number(Num::Natural(n));
+        let v = |s: &str| SimpleExpr::Variable(Var::try_from(s).unwrap());
+
+        p("FROM 'x' SELECT _.H", Some("expected ident"));
+        p("FROM 'x' SELECT _.HE", Some("expected ident"));
+        assert_eq!(
+            p("FROM 'x' SELECT i, iIö, PσΔ", None),
+            Some(vec![v("i"), v("iIö"), v("PσΔ")])
+        );
+        assert_eq!(
+            p("FROM 'x' SELECT _.i, _.iIö, _.PσΔ", None),
+            Some(vec![ind("i"), ind("iIö"), ind("PσΔ")])
+        );
+        assert_eq!(
+            p("FROM 'x' SELECT { i: 1 iIö: 2 PσΔ: 3 }", None),
+            Some(vec![SimpleExpr::Object(Obj {
+                props: Arc::from(vec![(s("i"), n(1)), (s("iIö"), n(2)), (s("PσΔ"), n(3))].as_slice())
+            })])
+        )
     }
 
     #[test]

@@ -14,8 +14,12 @@ impl std::fmt::Display for NoVar {
 
 fn is_var(s: &str) -> bool {
     s == "_"
-        || s.chars().next().into_iter().any(|c| c.is_lowercase())
-            && s.chars().all(|c| c.is_lowercase() || c.is_numeric() || c == '_')
+        || (s.chars().next().into_iter().any(|c| c.is_lowercase()) || {
+            let mut c = s.chars();
+            c.next().into_iter().any(|c| c.is_uppercase()) && c.next().into_iter().any(|c| c.is_lowercase())
+        }) && s
+            .chars()
+            .all(|c| c.is_lowercase() || c.is_uppercase() || c.is_numeric() || c == '_')
 }
 
 impl TryFrom<&str> for Var {
@@ -82,7 +86,7 @@ impl quickcheck::Arbitrary for Var {
                     first = false;
                     *g.choose(&choices[0..26]).unwrap()
                 } else {
-                    *g.choose(&choices).unwrap()
+                    *g.choose(choices).unwrap()
                 }
             })
             .collect::<String>();
