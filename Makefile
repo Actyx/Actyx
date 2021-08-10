@@ -446,7 +446,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
-	  cargo --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*) --target $(TARGET)
+	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*) --target $(TARGET)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 
@@ -467,7 +467,7 @@ $(soTargetPatterns): cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-	  cargo --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) --target $(TARGET)
+	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) --target $(TARGET)
 
 # create these so that they belong to the current user (Docker would create as root)
 # (formulating as rule dependencies only runs mkdir when they are missing)

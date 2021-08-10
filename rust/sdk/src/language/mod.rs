@@ -8,6 +8,18 @@ use crate::{tags::Tag, AppId, EventKey, LamportTimestamp, StreamId, Timestamp};
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+/// A [`Query`] can be constructed using the Actyx Query Language (AQL). For an in-depth overview
+/// see the [docs](https://developer.actyx.com/docs/reference/aql).
+///
+/// ```
+/// use actyx_sdk::language::Query;
+///
+/// let query: Query = r#"
+/// FEATURES(some features)  -- this is optional
+/// FROM 'mytag1' & 'mytag2' -- the only mandatory part
+/// SELECT _.value           -- optional list of transformations
+/// END                      -- optional"#.parse().unwrap();
+/// ```
 pub struct Query {
     pub features: Vec<String>,
     pub from: TagExpr,

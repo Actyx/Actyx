@@ -18,3 +18,4 @@ secrets.yml
 actyx-data/
 **/obj
 dotnet/**/bin
+pipeline-artifacts
