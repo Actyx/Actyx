@@ -5,7 +5,7 @@ authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
-actyx_sdk = { version = "0.1", features = ["sqlite", "arb"], path = "../../sdk" }
+actyx_sdk = { features = ["sqlite", "arb"], path = "../../sdk" }
 anyhow = "1.0.42"
 ax-futures-util = { path = "../ax-futures-util" }
 banyan = "0.16.0"
