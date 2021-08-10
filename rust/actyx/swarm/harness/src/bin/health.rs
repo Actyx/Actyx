@@ -32,7 +32,7 @@ fn main() {
     }
 
     const NETWORKS: &[usize] = &[0, 1];
-    const NODES: &[usize] = &[0];
+    const NODES: &[usize] = &[0, 1, 2];
     const ROUTES: &[(usize, usize)] = &[(0, 1)];
 
     #[derive(Clone, Debug)]
