@@ -157,19 +157,19 @@ If one of the above examples was not be specific enough, you can also filter out
 ```
 FEATURES(timeRange)
 FROM from(2021-08-06T14:09:00Z) & to(2021-08-06T14:11:00Z)
-FILTER _.type "Started"
+FILTER _.type = "Started"
 ```
 
 The above query only returns events that have a property "type" with value "Started".
 
 ### Transform events
 
-For the returned events, you can also choose modify the format of the payload:
+For the returned events, you can also modify the format of the payload:
 
 ```
 FEATURES(timeRange)
 FROM from(2021-08-06T14:09:00Z) & to(2021-08-06T14:11:00Z)
-FILTER _.type "Started"
+FILTER _.type = "Started"
 SELECT _["byUser"].name    <--- As the property is camelCase, you have to use a specific syntax
 ```
 
