@@ -158,6 +158,19 @@ impl<'a> Context<'a> {
                 self.aggregation.replace(aggr);
                 v
             }
+            SimpleExpr::FuncCall(f) => match f.name.as_str() {
+                "IsDefined" => {
+                    if f.args.len() != 1 {
+                        return Err(anyhow!(
+                            "wrong number of arguments: 'IsDefined' takes 1 argument but {} were provided",
+                            f.args.len()
+                        ));
+                    }
+                    let defined = self.eval(&f.args[0]).is_ok();
+                    Ok(self.value(|b| b.encode_bool(defined)))
+                }
+                _ => Err(anyhow!("undefined function '{}'", f.name)),
+            },
         }
     }
 
@@ -497,5 +510,16 @@ mod tests {
         let mut cx = ctx();
         assert_eq!(eval(&mut cx, "5 // 6").unwrap(), "5");
         assert_eq!(eval(&mut cx, "(5).a // 6").unwrap(), "6");
+    }
+
+    #[test]
+    fn builtin_functions() {
+        let mut cx = ctx();
+
+        assert_eq!(eval(&mut cx, "IsDefined(1)").unwrap(), "true");
+        assert_eq!(eval(&mut cx, "IsDefined(1 + '')").unwrap(), "false");
+        assert_eq!(eval(&mut cx, "IsDefined(1 + '' // FALSE)").unwrap(), "true");
+        assert_that(&eval(&mut cx, "IsDefined()").unwrap_err().to_string()).contains("wrong number of arguments");
+        assert_that(&eval(&mut cx, "IsDefined(1, 2)").unwrap_err().to_string()).contains("wrong number of arguments");
     }
 }

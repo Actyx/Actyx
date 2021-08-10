@@ -133,6 +133,12 @@ pub struct Ind {
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+pub struct FuncCall {
+    pub name: String,
+    pub args: Arc<[SimpleExpr]>,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Obj {
     pub props: Arc<[(Index, SimpleExpr)]>,
 }
@@ -215,6 +221,7 @@ pub enum SimpleExpr {
     BinOp(Arc<(BinOp, SimpleExpr, SimpleExpr)>),
     Not(Arc<SimpleExpr>),
     AggrOp(Arc<(AggrOp, SimpleExpr)>),
+    FuncCall(FuncCall),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -269,6 +276,11 @@ impl SimpleExpr {
                 }
                 SimpleExpr::Not(e) => e.traverse(f),
                 SimpleExpr::AggrOp(a) => a.1.traverse(f),
+                SimpleExpr::FuncCall(c) => {
+                    for expr in c.args.iter() {
+                        expr.traverse(f);
+                    }
+                }
             }
         }
     }
@@ -526,6 +538,15 @@ mod for_tests {
         }
     }
 
+    impl Arbitrary for FuncCall {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                name: "Ab".to_owned(),
+                args: Vec::arbitrary(g).into(),
+            }
+        }
+    }
+
     impl Arbitrary for Arr {
         fn arbitrary(g: &mut Gen) -> Self {
             Self {
@@ -552,7 +573,7 @@ mod for_tests {
         fn arbitrary(g: &mut Gen) -> Self {
             arb!(SimpleExpr: g =>
                 Variable Number String Bool,
-                Indexing Object Array Cases BinOp Not AggrOp,
+                Indexing Object Array Cases BinOp Not AggrOp FuncCall,
                 Null
             )
         }
@@ -565,6 +586,7 @@ mod for_tests {
                 BinOp(x,)
                 Not(x, (**x).clone())
                 AggrOp(x,)
+                FuncCall(x,)
                 , Null)
         }
     }

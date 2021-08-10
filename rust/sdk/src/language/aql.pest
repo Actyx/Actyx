@@ -34,6 +34,7 @@ crypt_char = { "." | "/" | 'a'..'z' | 'A'..'Z' | '0'..'9' }
 
 // identifiers
 ident = @{ "_" | ( LOWERCASE_LETTER | UPPERCASE_LETTER ~ LOWERCASE_LETTER ) ~ ( CASED_LETTER | NUMBER | "_" )* }
+func_name = @{ UPPERCASE_LETTER ~ LOWERCASE_LETTER ~ ( CASED_LETTER | NUMBER | "_" )* }
 var = { ident }
 index = _{ "." ~ ident | "[" ~ natural ~ "]" | "[" ~ string ~ "]" | "[" ~ simple_expr ~ "]" }
 
@@ -65,7 +66,8 @@ simple_expr = { simple_atom ~ ( binary_op ~ simple_atom )* }
 binary_op = _{ alternative | add | sub | mul | div | modulo | pow | and | or | xor | le | lt | ge | gt | eq | ne }
 var_index = { var ~ index* }
 expr_index = { "(" ~ simple_expr ~ ")" ~ index* }
-simple_atom = _{ decimal | var_index | string | expr_index | simple_not | object | array | null | bool | simple_cases | aggr_op }
+func_call = { func_name ~ "(" ~ ( simple_expr ~ ("," ~ simple_expr)* )? ~ ")" }
+simple_atom = _{ decimal | func_call | var_index | string | expr_index | simple_not | object | array | null | bool | simple_cases | aggr_op }
 simple_not = { not ~ simple_atom }
 simple_cases = { ( "CASE" ~ simple_expr ~ "=>" ~ simple_expr )+ ~ "ENDCASE" }
 

@@ -4,7 +4,7 @@
 use std::{convert::TryInto, str::FromStr, sync::Arc};
 
 use super::{
-    non_empty::NonEmptyVec, AggrOp, Arr, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, TagAtom, TagExpr,
+    non_empty::NonEmptyVec, AggrOp, Arr, FuncCall, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, TagAtom, TagExpr,
 };
 use crate::{language::SortKey, tags::Tag, Timestamp};
 use anyhow::{bail, ensure, Result};
@@ -266,6 +266,19 @@ fn r_aggr(p: P, ctx: Context) -> Result<SimpleExpr> {
     })
 }
 
+fn r_func_call(p: P, ctx: Context) -> Result<FuncCall> {
+    let mut p = p.inner()?;
+    let name = p.string()?;
+    let mut args = vec![];
+    for p in p {
+        args.push(r_simple_expr(p, ctx)?);
+    }
+    Ok(FuncCall {
+        name,
+        args: args.into(),
+    })
+}
+
 fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
     static CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
         use pest::prec_climber::{Assoc::*, Operator};
@@ -298,6 +311,7 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
             Rule::bool => SimpleExpr::Bool(r_bool(p)),
             Rule::simple_cases => SimpleExpr::Cases(r_cases(p, ctx)?),
             Rule::aggr_op => r_aggr(p, ctx)?,
+            Rule::func_call => SimpleExpr::FuncCall(r_func_call(p, ctx)?),
             x => bail!("unexpected token: {:?}", x),
         })
     }
@@ -646,6 +660,49 @@ mod tests {
         p(
             "FROM 'x' AGGREGATE { a: LAST(_ + 1) b: FIRST(_.a.b) c: MIN(1 / _) d: MAX([_]) e: SUM(1.3 * _) }",
             None,
+        );
+    }
+
+    #[test]
+    fn func_call() {
+        let p = |s: &str, e: Option<&str>| {
+            let q = s.parse::<Query>();
+            if let Some(err) = e {
+                let e = q.unwrap_err().to_string();
+                assert!(e.contains(err), "received: {}", e);
+                None
+            } else {
+                match q.unwrap().ops[0].clone() {
+                    Operation::Select(v) => Some(v.to_vec()),
+                    _ => None,
+                }
+            }
+        };
+
+        assert_eq!(
+            p("FROM 'x' SELECT Func()", None),
+            Some(vec![SimpleExpr::FuncCall(FuncCall {
+                name: "Func".to_owned(),
+                args: vec![].into()
+            })])
+        );
+        assert_eq!(
+            p("FROM 'x' SELECT Fÿnc('x')", None),
+            Some(vec![SimpleExpr::FuncCall(FuncCall {
+                name: "Fÿnc".to_owned(),
+                args: vec![SimpleExpr::String("x".to_owned())].into()
+            })])
+        );
+        assert_eq!(
+            p("FROM 'x' SELECT Func(x, 'x')", None),
+            Some(vec![SimpleExpr::FuncCall(FuncCall {
+                name: "Func".to_owned(),
+                args: vec![
+                    SimpleExpr::Variable(Var::try_from("x").unwrap()),
+                    SimpleExpr::String("x".to_owned())
+                ]
+                .into()
+            })])
         );
     }
 }
