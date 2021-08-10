@@ -74,7 +74,7 @@ crate-type = ["lib"]
 name = "node"
 
 [dev-dependencies]
-actyx_sdk = { version = "0.1", path = "../../sdk", features = ["client"] }
+actyx_sdk = { path = "../../sdk", features = ["client"] }
 assert_cmd = "1.0.7"
 criterion = { version = "0.3.4", features = ["html_reports", "async_tokio" ] }
 escargot = "0.5.2"
