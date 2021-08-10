@@ -2,8 +2,3 @@
 # versions, generating change logs, or publishing artifacts.
 # Each line may contain a single commit id (SHA1).
 
-# This was a test commit which landed on master
-8df051850e7226b1a867217ec6d7396c938f4a72
-
-# Initial version of everything:
-8184e5de588b505b0039f7567a353365af468db3
