@@ -142,7 +142,7 @@ stages:
                 $(make docker-multiarch-build-args) \
                 --push \
                 --tag actyx/cosmos:actyx-$GIT_COMMIT $MASTER_TAG \
-                -f ops/docker/images/actyx/Dockerfile \
+                -f docker/actyx/Dockerfile \
                 .
 
               make assert-clean

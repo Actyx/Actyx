@@ -62,7 +62,7 @@ export BUILD_RUST_TOOLCHAIN ?= 1.54.0
 
 # The stable image version is the git commit hash inside `Actyx/Cosmos`, with
 # which the respective images was built. Whenever the build images (inside
-# ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
+# docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
 export LATEST_STABLE_IMAGE_VERSION := 804ae71c44c8deae9597992eba76669047d41b36
 
@@ -503,7 +503,7 @@ docker-$(1):
 	docker buildx build \
 	  --platform $(docker-platform-$(1)) \
 	  $(docker-build-args) \
-	  -f ops/docker/images/actyx/Dockerfile \
+	  -f docker/actyx/Dockerfile \
 	  --tag actyx/cosmos:actyx-$(1)-$(GIT_COMMIT) \
 	  --load \
 	  .
@@ -522,12 +522,12 @@ docker-all: $(foreach arch,$(architectures),docker-$(arch))
 docker-multiarch:
 	docker buildx build \
 	  $(docker-multiarch-build-args) \
-	  -f ops/docker/images/actyx/Dockerfile \
+	  -f docker/actyx/Dockerfile \
 	  .
 
 # build for local architecture and load into docker daemon
 docker-current:
-	docker buildx build --load $(docker-build-args) -f ops/docker/images/actyx/Dockerfile .
+	docker buildx build --load $(docker-build-args) -f docker/actyx/Dockerfile .
 
 # This is here to ensure that we use the same build-args here and in artifacts.yml
 docker-multiarch-build-args:
