@@ -153,7 +153,7 @@ stages:
         steps:
           - bash: |
               set -e
-              build/bin/install-vault.sh
+              azure-pipelines/bin/install-vault.sh
               chmod -R 777 .
               chmod -R 777 /root/.cargo
               ./jvm/os-android/bin/get-keystore.sh
@@ -279,7 +279,7 @@ stages:
               BASH_ENV: "~/.bashrc"
           - bash: |
               set -e
-              build/bin/install-vault.sh
+              azure-pipelines/bin/install-vault.sh
               make prepare-js all-js all-dotnet
               cd integration
               source ~/.nvm/nvm.sh
