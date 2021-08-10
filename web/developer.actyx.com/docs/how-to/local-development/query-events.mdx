@@ -1,0 +1,96 @@
+---
+title: Query events
+id: query-events
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+AQL (Actyx Query Language) allows you to easily select which events you want to query, and which information you want to extract from these events. This guide lists usage examples of AQL within the Actyx Node Manager or CLI.
+
+:::info Beta features
+If a query begins with `FEATURES()` it uses beta functionality. Please refer to the [AQL reference guide](../../reference/aql.mdx) for a detailed specification of AQL and its features.
+:::
+
+You can use the queries in the below examples either in the [`Query` section of the Node Manager](https://developer.actyx.com/blog/2021/07/29/node-manager-event-queries), or as an argument to the [`ax events query` command](../../reference/cli/events/query.md).
+
+## Query events by time
+
+You can query events by their timestamp. This is an example of a query for events between 14:09 and 14:11 on 06 August 2021:
+
+```text
+FEATURES(timeRange)
+FROM from(2021-08-06T14:09:00Z) & to(2021-08-06T14:11:00Z)
+```
+
+## Query events by tags
+
+In addition to a specific time, you could also add a query for specific tags:
+
+```text
+```text
+FEATURES(timeRange)
+FROM from(2021-08-06T14:09:00Z) & to(2021-08-06T14:11:00Z)
+& 'machine2512'
+```
+
+:::info Usage of tags
+When published, each event can be tagged with an arbitrary number of tags. Check out [conceptual guide on tags](../../conceptual/tags.mdx) or our [how-to guides for business logic](../actyx-pond/introduction.mdx) for more info. 
+:::
+
+## Query events by app ID
+
+You could add also use a query such as the following to get the events for a specific appId and tag:
+
+```text
+FROM 'machine2512' & appId(com.actyx.example)
+```
+
+## Transform data
+
+With AQL, you can write down the transformation from events into query results in an incremental fashion, doing one step at a time.
+
+For the following example, we assume that our event payload is structured as follows:
+
+```json
+{
+    "byUser": {
+        "name": "<string>",
+        "id": "<string>"
+    },
+    "type": "<string>",
+    ...
+}
+```
+
+### Filter events
+
+If one of the above examples was not be specific enough, you can also filter out certain results:
+
+```
+FEATURES(timeRange)
+FROM from(2021-08-06T14:09:00Z) & to(2021-08-06T14:11:00Z)
+FILTER _.type "Started"
+```
+
+The above query only returns events that have a property "type" with value "Started".
+
+### Transform events
+
+For the returned events, you can also choose modify the format of the payload:
+
+```
+FEATURES(timeRange)
+FROM from(2021-08-06T14:09:00Z) & to(2021-08-06T14:11:00Z)
+FILTER _.type "Started"
+SELECT _["byUser"].name    <--- As the property is camelCase, you have to use a specific syntax
+```
+
+The above query only returns the value of the property "name" within the property "byUser".
+
+
+If you have any questions, comments, or suggestions, we very much welcome you to our [forum](https://community.actyx.com/) or [discord chat](https://discord.gg/262yJhc)!
+
+:::info Full reference documentation
+Check out our [reference documentation on AQL](../../reference/aql.mdx) for more info on expressions and data transformations!
+:::

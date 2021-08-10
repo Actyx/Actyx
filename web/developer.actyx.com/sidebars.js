@@ -10,6 +10,7 @@ module.exports = {
         'how-to/local-development/set-up-your-environment',
         'how-to/local-development/set-up-a-new-project',
         'how-to/local-development/install-cli-node-manager',
+        'how-to/local-developement/query-events',
         'how-to/local-development/reset-your-node',
       ],
     },
