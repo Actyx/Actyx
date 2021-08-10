@@ -63,7 +63,7 @@ describe('v1 to v2 migration', () => {
           '-d',
           '-v',
           `${volumeId}:/data`,
-          `actyx/cosmos:actyx-${settings().gitHash || (await currentHead())}`,
+          `actyx/actyx-ci:actyx-${settings().gitHash || (await currentHead())}`,
         ])
       ).stdout
       const v2out = await runUntil(

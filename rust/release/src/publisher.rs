@@ -235,7 +235,7 @@ fn mk_docker_tuples(
         // Multiarch image, so just do it once
         let mut out = vec![];
         let registry = "docker.io".to_string();
-        let repository = "actyx/cosmos".to_string();
+        let repository = "actyx/actyx-ci".to_string();
         let tag = format!("actyx-{}", hash);
         let manifest = docker_manifest_inspect(&*format!("{}:{}", repository, tag))?;
         let source = SourceArtifact {

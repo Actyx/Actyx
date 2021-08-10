@@ -135,13 +135,13 @@ stages:
               MASTER_TAG=""
               if [ "$GIT_COMMIT" == "$head_of_master" ]; then
                   echo "Running on HEAD of master ($head_of_master), tagging image as latest"
-                  MASTER_TAG="--tag actyx/cosmos:actyx-latest"
+                  MASTER_TAG="--tag actyx/actyx-ci:actyx-latest"
               fi
 
               docker buildx build \
                 $(make docker-multiarch-build-args) \
                 --push \
-                --tag actyx/cosmos:actyx-$GIT_COMMIT $MASTER_TAG \
+                --tag actyx/actyx-ci:actyx-$GIT_COMMIT $MASTER_TAG \
                 -f docker/actyx/Dockerfile \
                 .
 

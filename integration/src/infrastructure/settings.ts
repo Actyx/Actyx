@@ -57,7 +57,7 @@ export const actyxCliWindowsBinary = async (arch: Arch): Promise<string> =>
 // Extract the image for the architecture we want to test from the multiarch manifest. This is due to
 // the fact that we have to use `aarch64` hosts to test `armv7` images.
 export const actyxDockerImage = async (arch: Arch, version: string): Promise<string> => {
-  const repo = 'actyx/cosmos'
+  const repo = 'actyx/actyx-ci'
   const dockerTag = `${repo}:actyx-${version}`
   const inspect = await execa.command(`docker manifest inspect ${dockerTag}`)
   const json = JSON.parse(inspect.stdout)
