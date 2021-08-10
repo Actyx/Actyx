@@ -1,6 +1,8 @@
 main_query = { SOI ~ features? ~ query ~ EOI }
 main_tag_expr = { SOI ~ tag_expr ~ EOI }
 main_simple_expr = { SOI ~ simple_expr ~ EOI }
+main_ident = @{ SOI ~ ident ~ EOI }
+main_func_name = @{ SOI ~ func_name ~ EOI }
 
 // queries
 query = { "FROM" ~ tag_expr ~ query_op* ~ "END"? }
@@ -33,8 +35,8 @@ stream_id = @{ crypt_char{43} ~ "-" ~ natural }
 crypt_char = { "." | "/" | 'a'..'z' | 'A'..'Z' | '0'..'9' }
 
 // identifiers
-ident = @{ "_" | ( LOWERCASE_LETTER | UPPERCASE_LETTER ~ LOWERCASE_LETTER ) ~ ( CASED_LETTER | NUMBER | "_" )* }
-func_name = @{ UPPERCASE_LETTER ~ LOWERCASE_LETTER ~ ( CASED_LETTER | NUMBER | "_" )* }
+ident = @{ "_" | &( LOWERCASE | UPPERCASE ~ LOWERCASE ) ~ ( ALPHABETIC | NUMBER | "_" )+ }
+func_name = @{ UPPERCASE ~ LOWERCASE ~ ( ALPHABETIC | NUMBER | "_" )* }
 var = { ident }
 index = _{ "." ~ ident | "[" ~ natural ~ "]" | "[" ~ string ~ "]" | "[" ~ simple_expr ~ "]" }
 

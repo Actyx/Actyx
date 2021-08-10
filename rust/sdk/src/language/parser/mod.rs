@@ -11,6 +11,7 @@ use anyhow::{bail, ensure, Result};
 use chrono::{TimeZone, Utc};
 use once_cell::sync::Lazy;
 use pest::{prec_climber::PrecClimber, Parser};
+use unicode_normalization::UnicodeNormalization;
 use utils::*;
 
 #[derive(Debug, Clone)]
@@ -29,7 +30,7 @@ struct Aql;
 mod utils;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Context {
+pub(crate) enum Context {
     Simple,
     Aggregate,
 }
@@ -134,11 +135,11 @@ fn r_string(p: P) -> Result<String> {
 
 fn r_var(p: P, ctx: Context) -> Result<SimpleExpr> {
     let mut p = p.inner()?;
-    let s = p.string()?;
+    let s = p.next().ok_or(NoVal("no var"))?.as_str();
     if s == "_" {
         ensure!(ctx != Context::Aggregate, ContextError::CurrentValueInAggregate);
     }
-    let head = SimpleExpr::Variable(s.try_into()?);
+    let head = SimpleExpr::Variable(super::var::Var(s.nfc().collect()));
     let mut tail = vec![];
     for mut i in p {
         match i.as_rule() {
@@ -406,6 +407,19 @@ impl FromStr for SimpleExpr {
     }
 }
 
+impl FromStr for super::var::Var {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let p = Aql::parse(Rule::main_ident, s)?.single()?;
+        Ok(Self(p.as_str().nfc().collect()))
+    }
+}
+
+pub fn is_ident(s: &str) -> bool {
+    Aql::parse(Rule::main_ident, s).is_ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -629,6 +643,34 @@ mod tests {
                 props: Arc::from(vec![(s("i"), n(1)), (s("iIö"), n(2)), (s("PσΔ"), n(3))].as_slice())
             })])
         )
+    }
+
+    #[test]
+    fn index() {
+        let p = |s: &str| s.parse::<SimpleExpr>().unwrap();
+        assert_eq!(
+            p("a['ª']"),
+            SimpleExpr::Indexing(Ind {
+                head: Arc::new(SimpleExpr::Variable(Var::try_from("a").unwrap())),
+                tail: vec![Index::String("ª".to_owned())].try_into().unwrap()
+            })
+        );
+        assert_eq!(
+            p("a.ª"),
+            SimpleExpr::Indexing(Ind {
+                head: Arc::new(SimpleExpr::Variable(Var::try_from("a").unwrap())),
+                tail: vec![Index::String("ª".to_owned())].try_into().unwrap()
+            })
+        );
+        assert_eq!(p("a['ª']").to_string(), "a.ª");
+
+        assert_eq!(
+            p("{ⓐ:1}"),
+            SimpleExpr::Object(Obj {
+                props: vec![(Index::String("ⓐ".to_owned()), SimpleExpr::Number(Num::Natural(1)))].into()
+            })
+        );
+        assert_eq!(p("{ⓐ:1}").to_string(), "{ ⓐ: 1 }");
     }
 
     #[test]
