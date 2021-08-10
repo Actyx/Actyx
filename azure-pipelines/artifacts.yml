@@ -11,8 +11,6 @@ schedules:
 
 trigger: none
 
-pr: none
-
 stages:
   - stage: calculateActyxVersion
     displayName: Calculate Actyx Version
