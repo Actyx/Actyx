@@ -60,6 +60,8 @@ stages:
       - job: makeAllJS
         displayName: all-js
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
               make all-js assert-clean
@@ -73,9 +75,9 @@ stages:
             condition: succeeded()
       - job: makeAllWindows
         displayName: all-windows
-        workspace:
-          clean: all
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
               mkdir -p dist/bin/windows-x86_64/
@@ -94,9 +96,9 @@ stages:
             condition: succeeded()
       - job: makeAllLinux
         displayName: all-linux
-        workspace:
-          clean: all
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
               chmod -R 777 .
@@ -112,9 +114,9 @@ stages:
             condition: succeeded()
       - job: makeAllMacos
         displayName: all-macos
-        workspace:
-          clean: all
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
               chmod -R 777 .
@@ -153,10 +155,10 @@ stages:
             env:
               BASH_ENV: "~/.bashrc"
       - job: makeAllAndroid
-        workspace:
-          clean: all
         displayName: all-android
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
               azure-pipelines/bin/install-vault.sh
@@ -180,6 +182,8 @@ stages:
             - Agent.OS -equals Darwin
             - Agent.OSArchitecture -equals X64
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
               make node-manager-mac-linux
@@ -189,6 +193,8 @@ stages:
       - job:
         displayName: node-manager linux
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
               make node-manager-mac-linux
@@ -200,6 +206,8 @@ stages:
       - job:
         displayName: node-manager win
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
               make node-manager-win
@@ -269,6 +277,8 @@ stages:
       - job: integrationTest
         displayName: Integration Test
         steps:
+          - checkout: self
+            clean: true
           - task: DownloadPipelineArtifact@2
             inputs:
               path: pipeline-artifacts
