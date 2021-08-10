@@ -73,6 +73,8 @@ stages:
             condition: succeeded()
       - job: makeAllWindows
         displayName: all-windows
+        workspace:
+          clean: all
         steps:
           - bash: |
               set -e
@@ -92,6 +94,8 @@ stages:
             condition: succeeded()
       - job: makeAllLinux
         displayName: all-linux
+        workspace:
+          clean: all
         steps:
           - bash: |
               set -e
@@ -108,6 +112,8 @@ stages:
             condition: succeeded()
       - job: makeAllMacos
         displayName: all-macos
+        workspace:
+          clean: all
         steps:
           - bash: |
               set -e
@@ -147,6 +153,8 @@ stages:
             env:
               BASH_ENV: "~/.bashrc"
       - job: makeAllAndroid
+        workspace:
+          clean: all
         displayName: all-android
         steps:
           - bash: |
