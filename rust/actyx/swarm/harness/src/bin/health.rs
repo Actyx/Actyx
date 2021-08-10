@@ -291,7 +291,7 @@ fn main() {
                     }
                     None
                 });
-                match timeout(Duration::from_secs(60), fut).await {
+                match timeout(Duration::from_secs(80), fut).await {
                     Ok(Some(true)) => {}
                     Ok(_) => panic!(),
                     Err(_) => {
