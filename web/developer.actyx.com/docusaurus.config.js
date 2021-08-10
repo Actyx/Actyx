@@ -99,9 +99,9 @@ module.exports = {
           to: 'https://community.actyx.com/',
         },
         {
-          label: 'GitHub',
+          href: 'https://github.com/Actyx/Actyx',
           position: 'right',
-          to: 'https://github.com/Actyx/Actyx',
+          className: 'header-github-link',
         },
       ],
     },
