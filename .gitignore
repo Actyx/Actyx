@@ -16,3 +16,5 @@ secrets.yml
 .ensime*
 /make-always
 actyx-data/
+**/obj
+dotnet/**/bin

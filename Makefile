@@ -5,8 +5,6 @@
 #
 # Prerequisites for using this makefile locally:
 #
-# - vault credentials should be in the `VAULT_TOKEN` environment variable.
-#   E.g. `export VAULT_TOKEN=`vault login -token-only -method aws role=dev-ruediger`
 # - nvm should be installed. https://github.com/nvm-sh/nvm#install--update-script
 # - docker needs to be installed and configured
 # - able to access dockerhub
@@ -64,7 +62,7 @@ export BUILD_RUST_TOOLCHAIN ?= 1.54.0
 
 # The stable image version is the git commit hash inside `Actyx/Cosmos`, with
 # which the respective images was built. Whenever the build images (inside
-# ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
+# docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
 export LATEST_STABLE_IMAGE_VERSION := 804ae71c44c8deae9597992eba76669047d41b36
 
@@ -126,16 +124,6 @@ docker-multiarch-build-args = $(docker-build-args) --platform $(shell echo $(doc
 
 export CARGO_HOME ?= $(HOME)/.cargo
 export DOCKER_CLI_EXPERIMENTAL := enabled
-
-# log in to vault and store the token in an environment variable
-# to run this locally, set the VAULT_TOKEN environment variable by running vault login with your dev role.
-# e.g. `export VAULT_TOKEN=`vault login -token-only -method aws role=dev-ruediger`
-# the current token is looked up and no login attempted if present - this suppresses warnings
-VAULT_TOKEN ?= $(vault token lookup -format=json | jq .data.id)
-ifndef VAULT_TOKEN
-export VAULT_ADDR ?= https://vault.actyx.net
-export VAULT_TOKEN ?= $(shell VAULT_ADDR=$(VAULT_ADDR) vault login -token-only -method aws role=ops-travis-ci)
-endif
 
 # Use docker run -ti only if the input device is a TTY (so that Ctrl+C works)
 export DOCKER_FLAGS ?= -e "ACTYX_VERSION=${ACTYX_VERSION}" -e "ACTYX_VERSION_CLI=${ACTYX_VERSION_CLI}" $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
@@ -279,7 +267,6 @@ validate-netsim: diagnostics
 .PHONY: validate-os-android
 # execute linter for os-android
 validate-os-android: diagnostics
-	jvm/os-android/bin/get-keystore.sh
 	docker run \
 	  -u builder \
 	  -v `pwd`:/src \
@@ -516,7 +503,7 @@ docker-$(1):
 	docker buildx build \
 	  --platform $(docker-platform-$(1)) \
 	  $(docker-build-args) \
-	  -f ops/docker/images/actyx/Dockerfile \
+	  -f docker/actyx/Dockerfile \
 	  --tag actyx/cosmos:actyx-$(1)-$(GIT_COMMIT) \
 	  --load \
 	  .
@@ -535,12 +522,12 @@ docker-all: $(foreach arch,$(architectures),docker-$(arch))
 docker-multiarch:
 	docker buildx build \
 	  $(docker-multiarch-build-args) \
-	  -f ops/docker/images/actyx/Dockerfile \
+	  -f docker/actyx/Dockerfile \
 	  .
 
 # build for local architecture and load into docker daemon
 docker-current:
-	docker buildx build --load $(docker-build-args) -f ops/docker/images/actyx/Dockerfile .
+	docker buildx build --load $(docker-build-args) -f docker/actyx/Dockerfile .
 
 # This is here to ensure that we use the same build-args here and in artifacts.yml
 docker-multiarch-build-args:

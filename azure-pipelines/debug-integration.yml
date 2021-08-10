@@ -16,7 +16,7 @@ stages:
         steps:
           - bash: |
               set -e
-              build/bin/install-vault.sh
+              azure-pipelines/bin/install-vault.sh
               make prepare-js all-js
               cd integration
               nvm use
