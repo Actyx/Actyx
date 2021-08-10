@@ -98,6 +98,11 @@ module.exports = {
           position: 'right',
           to: 'https://community.actyx.com/',
         },
+        {
+          label: 'GitHub',
+          position: 'right',
+          to: 'https://github.com/Actyx/Actyx',
+        },
       ],
     },
     footer: {
