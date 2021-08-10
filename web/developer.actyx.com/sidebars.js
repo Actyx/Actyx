@@ -70,6 +70,14 @@ module.exports = {
     },
     {
       type: 'category',
+      label: 'Structured queries',
+      collapsed: true,
+      items: [
+        'how-to/structured-queries/introduction',
+      ],
+    },
+    {
+      type: 'category',
       label: 'User Auth',
       collapsed: true,
       items: [
