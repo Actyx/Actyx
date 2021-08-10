@@ -12,6 +12,10 @@ This how-to guide explains the steps you need to follow to sign your app manifes
 You can sign an app manifest with the Actyx CLI in the command line or with the Actyx Node Manager.
 Independent of the tool you are using, the manifest needs to meet a few requirements.
 
+:::tip No need for signatures during development
+Actyx accepts manifests without a signature if the app ID is `com.example.*`. Only when you deploy to production and want to use proper app IDs for authentication, you need to sign your app.
+:::
+
 1. The manifest must be a `.json` file. Any other file format will be rejected by the CLI and the Node Manager.
 2. The manifest has three required properties:
 
@@ -26,10 +30,6 @@ Independent of the tool you are using, the manifest needs to meet a few requirem
    One additional property that is reserved by Actyx is the `signature` property.
    This property is added or updated by the CLI or the Node Manager when signing a manifest.
    Apart from that, you can add any additional properties describing your app metadata such as the path to an app icon.
-
-:::info Updating the signature
-Note that every time you change one of the three properties listed above, you need to renew the manifest signature since the three properties are used to create it.
-:::
 
 import Tabs from '@theme/Tabs'
 import TabItem from '@theme/TabItem'
@@ -76,5 +76,8 @@ Note that when you sign a manifest, the CLI updates the file you provided rather
 </TabItem>
 </Tabs>
 
+:::info Updating the signature
+Note that every time you change one of the three properties listed above, you need to renew the manifest signature since the three properties are used to create it.
+:::
 
 If you want to read a more holistic explanation of authentication and authorization with Actyx, please check out our [conceptual guide](../../conceptual/authentication-and-authorization.mdx) on the topic.

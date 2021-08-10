@@ -164,6 +164,10 @@ import { DownloadLink } from '../../../src/components/DownloadLink.tsx'
 
 <DownloadLink cta="Download" link="https://axartifacts.blob.core.windows.net/artifacts/715f11fa80d02f115eed76b7c2ea67308eb9327a/android-binaries/actyxos.apk" />
 
+:::tip adb installation
+On some verions of Android, you get the error `INSTALL_FAILED_ALREADY_EXISTS` when updating an app via `adb`. You then have to run the command with the `-r` option, i.e. `adb install -r <path to the apk>`.
+:::
+
 When starting the app, you are prompted to give Actyx permissions to access the external storage so that it can place a backup of its data there. After accepting the permissions, you should see the following message:
 
 <img src={require('@site/static/images/how-to/migration/migration-07.png').default} width="250" />
