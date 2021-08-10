@@ -25,8 +25,16 @@ fn main() -> anyhow::Result<()> {
         }
         for _ in r.iter_mut() {
             loop {
-                if let Some(Event::Subscribed(_, topic)) = timeout(Duration::from_secs(3), s.recv()).await? {
-                    tracing::info!("subscribed {}", topic);
+                if let Some(Event::Subscribed(peer_id, topic)) = timeout(Duration::from_secs(3), s.recv()).await? {
+                    tracing::info!("subscribed {} {}", topic, peer_id);
+                    break;
+                }
+            }
+        }
+        for _ in r.iter_mut() {
+            loop {
+                if let Some(Event::Subscribed(peer_id, topic)) = timeout(Duration::from_secs(3), s.recv()).await? {
+                    tracing::info!("subscribed {} {}", topic, peer_id);
                     break;
                 }
             }
