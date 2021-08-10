@@ -6,8 +6,6 @@
  */
 import { Observable } from '../../node_modules/rxjs'
 import { EventsSortOrder, NodeId, OffsetMap, Where } from '../types'
-import { mockEventStore } from './mockEventStore'
-import { testEventStore, TestEventStore } from './testEventStore'
 import { Event, Events, OffsetsResponse, UnstoredEvents } from './types'
 
 /**
@@ -75,22 +73,4 @@ export type EventStore = {
   readonly query: DoQuery
   readonly subscribe: DoSubscribe
   readonly persistEvents: DoPersistEvents
-}
-
-const noopEventStore: EventStore = {
-  subscribe: () => Observable.empty(),
-  query: () => Observable.empty(),
-  queryUnchecked: () => Observable.empty(),
-  offsets: () => Promise.resolve({ present: {}, toReplicate: {} }),
-  persistEvents: () => Observable.empty(),
-}
-
-export const EventStore: {
-  noop: EventStore
-  mock: () => EventStore
-  test: (nodeId?: NodeId, eventChunkSize?: number) => TestEventStore
-} = {
-  noop: noopEventStore,
-  mock: mockEventStore,
-  test: testEventStore,
 }

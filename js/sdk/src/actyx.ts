@@ -5,7 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { EventFns, TestEventFns } from './event-fns'
-import { EventFnsFromEventStoreV2, EventStoreV2 } from './internal_common'
+import { EventFnsFromEventStoreV2, EventStores } from './internal_common'
 import { log } from './internal_common/log'
 import { SnapshotStore } from './snapshotStore'
 import { ActyxOpts, ActyxTestOpts, AppId, AppManifest, NodeId } from './types'
@@ -90,7 +90,7 @@ export const Actyx = {
    * @public
    */
   test: (opts: ActyxTestOpts = {}): TestActyx => {
-    const store = EventStoreV2.test(opts.nodeId)
+    const store = EventStores.test(opts.nodeId)
     const snaps = SnapshotStore.inMem()
     const nodeId = opts.nodeId || NodeId.of('TESTNODEID')
 
