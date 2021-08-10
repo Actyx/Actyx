@@ -38,3 +38,60 @@ curl -s http://localhost:4454/api/v2/node/id
 ```text title="Example node ID response"
 1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s
 ```
+
+
+## Request Node Information
+
+You can request some additional information of the Actyx node.
+This API will likely be extended with additional properties in the future.
+**Note that this API call requires a valid auth token.**
+
+### Request
+
+- Endpoint: `http://localhost:4454/api/v2/node/info`
+- HTTP method: `GET`
+  - HTTP headers:
+  - `Authorization`
+  - (optional) `Accept`, must be `application/json`, default: `application/json`
+
+There is no request body.
+
+### Response
+
+- HTTP headers:
+  - `Content-Type` is `application/json`
+
+The response body will contain the number of connected nodes, the
+node's version, and uptime.
+
+```json
+{
+  "connectedNodes": 42,
+  "uptime": {
+    "secs": 39,
+    "nanos": 900657761
+  },
+  "version": "2.31-75493e4637bff572d9a05ac0946f95c3d275b511-linux-x86_64-release"
+}
+```
+
+See the following example using cURL:
+
+```bash title="Example node info request"
+curl \
+    -s \
+    -H "Authorization: Bearer $AUTH_TOKEN" \
+    -H "Content-Type: application/json" \
+    http://localhost:4454/api/v2/node/info
+```
+
+```json title="Example node info response"
+{
+  "connectedNodes": 42,
+  "uptime": {
+    "secs": 39,
+    "nanos": 900657761
+  },
+  "version": "2.31-75493e4637bff572d9a05ac0946f95c3d275b511-linux-x86_64-release"
+}
+```

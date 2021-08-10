@@ -52,7 +52,13 @@ async fn run() -> Result<()> {
         key_store.add_key_pair_ed25519(cfg.keypair.unwrap_or_else(KeyPair::generate).into())?;
         let swarm = BanyanStore::new(cfg).await?;
         tracing::info!("Binding api to {:?}", addr);
-        let node_info = NodeInfo::new(swarm.node_id(), key_store.into_ref(), 0.into(), Licensing::default());
+        let node_info = NodeInfo::new(
+            swarm.node_id(),
+            key_store.into_ref(),
+            0.into(),
+            Licensing::default(),
+            chrono::Utc::now(),
+        );
         let (tx, _rx) = crossbeam::channel::unbounded();
         let event_store = {
             let store = swarm.clone();

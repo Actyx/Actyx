@@ -94,6 +94,7 @@ mod tests {
     use super::*;
     use crate::{formats::Licensing, AppMode};
     use actyx_sdk::{app_id, Timestamp};
+    use chrono::Utc;
     use crypto::{KeyStore, PrivateKey};
     use parking_lot::RwLock;
     use std::sync::Arc;
@@ -119,6 +120,7 @@ mod tests {
             token_validity: 300,
             ax_public_key: PrivateKey::generate().into(),
             licensing: Licensing::default(),
+            started_at: Utc::now(),
         };
 
         (auth_args, bearer)
