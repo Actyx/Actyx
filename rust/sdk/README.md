@@ -17,7 +17,7 @@ Below you find a full example using the [`EventService`](https://docs.rs/actyx_s
 client that retrieves some events. Please adapt the `semantics` to match your stored events
 in order to see output.
 
-> _Note: (this example needs the `client` feature to compile)_
+> _Note: (this example needs the `client` feature to compile)._
 
 ```rust
 use actyx_sdk::event_service::{EventService,
@@ -56,3 +56,6 @@ for [`serde`](https://docs.rs/serde). The following features can be enabled in a
 - `client`: include HTTP client bindings using the [`reqwest`](https://docs.rs/reqwest) crate
 - `dataflow`: provide [`Abomonation`](https://docs.rs/abomonation) instances for use with tools
   like [`Differential Dataflow`](https://docs.rs/differential-dataflow)
+- `arb`: provide
+[`quickcheck::Arbitrary`](https://docs.rs/quickcheck/latest/quickcheck/trait.Arbitrary.html)
+instances for common data types. This is useful for testing.

@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "actyx_sdk"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "actyx_sdk_macros",
  "anyhow",
@@ -345,9 +345,9 @@ dependencies = [
 
 [[package]]
 name = "async-process"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8f38756dd9ac84671c428afbf7c9f7495feff9ec5b0710f17100098e5b354ac"
+checksum = "b21b63ab5a0db0369deb913540af2892750e42d949faacc7a61495ac418a1692"
 dependencies = [
  "async-io",
  "blocking",
@@ -834,9 +834,9 @@ checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 
 [[package]]
 name = "bytecheck"
-version = "0.6.3"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff6e41b4c23aca8e5dd453b1142c330704cc461bff785cbebaf0b4582d6a0ea5"
+checksum = "fb738a1e65989ecdcd5bba16079641bd7209688fa546e1064832fd6e012fd32a"
 dependencies = [
  "bytecheck_derive",
  "ptr_meta",
@@ -844,9 +844,9 @@ dependencies = [
 
 [[package]]
 name = "bytecheck_derive"
-version = "0.6.3"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb785814a4df138638a22e448a4067ca0661a864ba2add6fea0d1cbece1c63d3"
+checksum = "c3b4dff26fdc9f847dab475c9fec16f2cba82d5aa1f09981b87c44520721e10a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1380,9 +1380,9 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek"
-version = "3.1.0"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "639891fde0dbea823fc3d798a0fdf9d2f9440a42d64a78ab3488b0ca025117b3"
+checksum = "0b9fdf9972b2bd6af2d913799d9ebc165ea4d2e65878e329d9c6b372c4491b61"
 dependencies = [
  "byteorder",
  "digest 0.9.0",
@@ -1690,7 +1690,7 @@ checksum = "1d34cfa13a63ae058bfa601fe9e313bbdb3746427c1459185464ce0fcf62e1e8"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
- "redox_syscall 0.2.9",
+ "redox_syscall 0.2.10",
  "winapi",
 ]
 
@@ -1711,6 +1711,12 @@ name = "fixedbitset"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
+
+[[package]]
+name = "fixedbitset"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "398ea4fabe40b9b0d885340a2a991a44c8a645624075ad966d21f88688e2b69e"
 
 [[package]]
 name = "flate2"
@@ -2391,9 +2397,9 @@ dependencies = [
 
 [[package]]
 name = "http-body"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60daa14be0e0786db0f03a9e57cb404c9d756eed2b6c62b9ea98ec5743ec75a9"
+checksum = "399c583b2979440c60be0821a6199eca73bc3c8dcd9d070d75ac726e2c6186e5"
 dependencies = [
  "bytes",
  "http",
@@ -2571,7 +2577,7 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.22.3"
-source = "git+https://github.com/dvc94ch/ipfs-embed?branch=sim-open-2#b7f2c82e7381735f57473f99c417ea1cc6ba1c5f"
+source = "git+https://github.com/dvc94ch/ipfs-embed?branch=sim-open-2#66ec7aaeb3415df9cec4548cb1793ca538962633"
 dependencies = [
  "anyhow",
  "async-io",
@@ -2665,9 +2671,9 @@ dependencies = [
 
 [[package]]
 name = "jobserver"
-version = "0.1.22"
+version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "972f5ae5d1cb9c6ae417789196c803205313edde988685da5e3aae0827b9e7fd"
+checksum = "f5ca711fd837261e14ec9e674f092cbb931d3fa1482b017ae59328ddc6f3212b"
 dependencies = [
  "libc",
 ]
@@ -3757,9 +3763,9 @@ dependencies = [
 
 [[package]]
 name = "netsim-embed-router"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "375628ede17ac6aa3f6f9428d9c9f9f08ac5248f38798fd10fed941ac463213b"
+checksum = "101406e5ae177748f1e0ba309b4ba1ccbf7d5898046c42299b60c1bc094ce0ce"
 dependencies = [
  "async-global-executor",
  "futures 0.3.16",
@@ -4171,7 +4177,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "instant",
  "libc",
- "redox_syscall 0.2.9",
+ "redox_syscall 0.2.10",
  "smallvec",
  "winapi",
 ]
@@ -4237,7 +4243,17 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "467d164a6de56270bd7c4d070df81d07beace25012d5103ced4e9ff08d6afdb7"
 dependencies = [
- "fixedbitset",
+ "fixedbitset 0.2.0",
+ "indexmap",
+]
+
+[[package]]
+name = "petgraph"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a13a2fa9d0b63e5f22328828741e523766fff0ee9e779316902290dff3f824f"
+dependencies = [
+ "fixedbitset 0.4.0",
  "indexmap",
 ]
 
@@ -4429,9 +4445,9 @@ checksum = "57e35a3326b75e49aa85f5dc6ec15b41108cf5aee58eabb1f274dd18b73c2451"
 
 [[package]]
 name = "predicates-tree"
-version = "1.0.2"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15f553275e5721409451eb85e15fd9a860a6e5ab4496eb215987502b5f5391f2"
+checksum = "d7dd0fd014130206c9352efbdc92be592751b2b9274dff685348341082c6ea3d"
 dependencies = [
  "predicates-core",
  "treeline",
@@ -4599,7 +4615,7 @@ dependencies = [
  "itertools 0.9.0",
  "log",
  "multimap",
- "petgraph",
+ "petgraph 0.5.1",
  "prost 0.7.0",
  "prost-types 0.7.0",
  "tempfile",
@@ -4617,7 +4633,7 @@ dependencies = [
  "itertools 0.10.1",
  "log",
  "multimap",
- "petgraph",
+ "petgraph 0.5.1",
  "prost 0.8.0",
  "prost-types 0.8.0",
  "tempfile",
@@ -4672,9 +4688,9 @@ dependencies = [
 
 [[package]]
 name = "protobuf"
-version = "2.24.1"
+version = "2.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db50e77ae196458ccd3dc58a31ea1a90b0698ab1b7928d89f644c25d72070267"
+checksum = "020f86b07722c5c4291f7c723eac4676b3892d47d9a7708dc2779696407f039b"
 
 [[package]]
 name = "ptr_meta"
@@ -4975,9 +4991,9 @@ checksum = "41cc0f7e4d5d4544e8861606a285bb08d3e70712ccc7d2b84d7c0ccfaf4b05ce"
 
 [[package]]
 name = "redox_syscall"
-version = "0.2.9"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ab49abadf3f9e1c4bc499e8845e152ad87d2ad2d30371841171169e9d75feee"
+checksum = "8383f39639269cde97d255a32bdb68c047337295414940c68bdd30c2e13203ff"
 dependencies = [
  "bitflags",
 ]
@@ -5000,7 +5016,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "528532f3d801c87aec9def2add9ca802fe569e44a544afe633765267840abe64"
 dependencies = [
  "getrandom 0.2.3",
- "redox_syscall 0.2.9",
+ "redox_syscall 0.2.10",
 ]
 
 [[package]]
@@ -5046,9 +5062,9 @@ dependencies = [
 
 [[package]]
 name = "rend"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90b1d060a116ee1cf2522965825bed81136d04df7c731e211cd46dbd1107eab1"
+checksum = "6d0351a2e529ee30d571ef31faa5a4e0b9addaad087697b77efb20d2809e41c7"
 dependencies = [
  "bytecheck",
 ]
@@ -5119,9 +5135,9 @@ dependencies = [
 
 [[package]]
 name = "rkyv"
-version = "0.7.4"
+version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03ec64e0b5a2b3304db23660ea0a8b0d9de124dbeb136301a63fe2d69356f8e2"
+checksum = "a3b30254774091bad43024509fd74d06999c52871a8a9548ef2572c56ab7791e"
 dependencies = [
  "bytecheck",
  "hashbrown 0.11.2",
@@ -5133,9 +5149,9 @@ dependencies = [
 
 [[package]]
 name = "rkyv_derive"
-version = "0.7.4"
+version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbacab5cf28099f4c9fdfe6b43328feba30d2fa2b8562187293f164693834c35"
+checksum = "933f73e4a76d2c4ea35b5c3aea561b3bc3078cb55a7da30c20760fb207a4a75e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5542,9 +5558,9 @@ dependencies = [
 
 [[package]]
 name = "sharded-slab"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef79578eaf1846837727db975d587f15f6d8abd3900f4aa58e3fa6ae0fd9e4d1"
+checksum = "740223c51853f3145fe7c90360d2d4232f2b62e3449489c207eccde818979982"
 dependencies = [
  "lazy_static",
 ]
@@ -5588,9 +5604,9 @@ checksum = "729a25c17d72b06c68cb47955d44fda88ad2d3e7d77e025663fdd69b93dd71a1"
 
 [[package]]
 name = "slab"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f173ac3d1a7e3b28003f40de0b5ce7fe2710f9b9dc3fc38664cebee46b3b6527"
+checksum = "c307a32c1c5c437f38c7fd45d753050587732ba8628319fbdf12a7e289ccc590"
 
 [[package]]
 name = "sled"
@@ -5829,6 +5845,7 @@ dependencies = [
  "libp2p",
  "maplit",
  "netsim-embed",
+ "petgraph 0.6.0",
  "quickcheck",
  "structopt",
  "swarm-cli",
@@ -5931,7 +5948,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "libc",
  "rand 0.8.4",
- "redox_syscall 0.2.9",
+ "redox_syscall 0.2.10",
  "remove_dir_all",
  "winapi",
 ]
@@ -6249,7 +6266,7 @@ dependencies = [
  "lazy_static",
  "nom 3.2.1",
  "parking_lot 0.10.2",
- "petgraph",
+ "petgraph 0.5.1",
 ]
 
 [[package]]

@@ -340,7 +340,7 @@ struct BanyanStoreState {
     known_streams: Vec<mpsc::UnboundedSender<StreamId>>,
 
     /// tasks of the stream manager.
-    tasks: Vec<tokio::task::JoinHandle<()>>,
+    tasks: Vec<(&'static str, tokio::task::JoinHandle<()>)>,
 
     /// Banyan related config
     banyan_config: BanyanConfig,
@@ -348,7 +348,7 @@ struct BanyanStoreState {
 
 impl Drop for BanyanStoreState {
     fn drop(&mut self) {
-        for task in self.tasks.drain(..) {
+        for (_, task) in self.tasks.drain(..) {
             task.abort();
         }
     }
@@ -554,7 +554,19 @@ impl<'a> BanyanStoreGuard<'a> {
         tracing::debug!("Spawning task '{}'!", name);
         let handle =
             tokio::spawn(task.map(move |_| tracing::error!("Fatal: Task '{}' unexpectedly terminated!", name)));
-        self.tasks.push(handle);
+        self.tasks.push((name, handle));
+    }
+
+    /// Aborts a task.
+    pub fn abort_task(&mut self, name: &'static str) {
+        self.tasks.retain(|(label, handle)| {
+            if *label == name {
+                handle.abort();
+                false
+            } else {
+                true
+            }
+        })
     }
 
     /// reserve a number of lamport timestamps
@@ -788,7 +800,7 @@ impl BanyanStore {
         // if `cfg.enable_discovery` is not set, this function WON'T emit any
         // events! It's needed in any case for `ipfs-embed` to do its thing.
         banyan.spawn_task(
-            "discovery_publish",
+            "discovery",
             crate::discovery::discovery_publish(
                 banyan.clone(),
                 swarm_events,
@@ -1304,6 +1316,10 @@ impl BanyanStore {
 
     pub fn spawn_task(&self, name: &'static str, task: impl Future<Output = ()> + Send + 'static) {
         self.lock().spawn_task(name, task)
+    }
+
+    pub fn abort_task(&self, name: &'static str) {
+        self.lock().abort_task(name)
     }
 }
 

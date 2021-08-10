@@ -5,7 +5,7 @@ jobs:
       name: Native
     steps:
       - script: |
-          build/bin/post-to-slack.sh -s "failure" -a "danger"
+          azure-pipelines/bin/post-to-slack.sh -s "failure" -a "danger"
         displayName: Ping Slack
         env:
           SLACK_HOOK: $(SECRET_SLACK_HOOK)

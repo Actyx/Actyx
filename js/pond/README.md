@@ -15,7 +15,7 @@ The key features of Actyx Pond are:
 - **Partition tolerance** with an eventually consistent programming model for arbitrary business logic
 - **Eventual consistency** by using a state machine time-travel algorithm to agree on global state
 
-This package builds on the [Actyx SDK](../sdk/README.md).
+This package builds on the [Actyx SDK](https://www.npmjs.com/package/@actyx/sdk).
 
 ## Example usage
 
@@ -59,7 +59,6 @@ import { Pond, Tag, Fish, FishId } from '@actyx/pond'
 
 ## Recommended VSCode plugins
 - [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) for live source code linting
-- [Actyx Pond](https://marketplace.visualstudio.com/items?itemName=Actyx.actyx-pond) for efficienly working with fishes
 
 ## Contributing
 

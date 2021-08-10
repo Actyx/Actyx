@@ -89,6 +89,8 @@ async fn run() -> Result<()> {
                 ipfs_embed::Event::ExpiredListenAddr(_, addr) => Some(Event::ExpiredListenAddr(addr)),
                 ipfs_embed::Event::NewExternalAddr(addr) => Some(Event::NewExternalAddr(addr)),
                 ipfs_embed::Event::ExpiredExternalAddr(addr) => Some(Event::ExpiredExternalAddr(addr)),
+                ipfs_embed::Event::Discovered(peer_id) => Some(Event::Discovered(peer_id)),
+                ipfs_embed::Event::Unreachable(peer_id) => Some(Event::Unreachable(peer_id)),
                 ipfs_embed::Event::Connected(peer_id) => Some(Event::Connected(peer_id)),
                 ipfs_embed::Event::Disconnected(peer_id) => Some(Event::Disconnected(peer_id)),
                 ipfs_embed::Event::Subscribed(peer_id, topic) => Some(Event::Subscribed(peer_id, topic)),

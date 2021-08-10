@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-## Create actyx.properties file for Gradle build
+## Create actyx.properties file for Gradle build with production
+## signing config
 
 mkdir -p jvm/os-android/actyx-local app/src/main/assets
 

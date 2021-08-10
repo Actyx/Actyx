@@ -11,8 +11,6 @@ schedules:
 
 trigger: none
 
-pr: none
-
 stages:
   - stage: calculateActyxVersion
     displayName: Calculate Actyx Version
@@ -62,9 +60,10 @@ stages:
       - job: makeAllJS
         displayName: all-js
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
-              build/bin/install-vault.sh
               make all-js assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
@@ -77,9 +76,10 @@ stages:
       - job: makeAllWindows
         displayName: all-windows
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
-              build/bin/install-vault.sh
               mkdir -p dist/bin/windows-x86_64/
               chmod -R 777 .
               chmod -R 777 /root/.cargo
@@ -97,9 +97,10 @@ stages:
       - job: makeAllLinux
         displayName: all-linux
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
-              build/bin/install-vault.sh
               chmod -R 777 .
               chmod -R 777 /root/.cargo
               make all-linux assert-clean
@@ -114,9 +115,10 @@ stages:
       - job: makeAllMacos
         displayName: all-macos
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
-              build/bin/install-vault.sh
               chmod -R 777 .
               chmod -R 777 /root/.cargo
               make all-macos assert-clean
@@ -139,14 +141,14 @@ stages:
               MASTER_TAG=""
               if [ "$GIT_COMMIT" == "$head_of_master" ]; then
                   echo "Running on HEAD of master ($head_of_master), tagging image as latest"
-                  MASTER_TAG="--tag actyx/cosmos:actyx-latest"
+                  MASTER_TAG="--tag actyx/actyx-ci:actyx-latest"
               fi
 
               docker buildx build \
                 $(make docker-multiarch-build-args) \
                 --push \
-                --tag actyx/cosmos:actyx-$GIT_COMMIT $MASTER_TAG \
-                -f ops/docker/images/actyx/Dockerfile \
+                --tag actyx/actyx-ci:actyx-$GIT_COMMIT $MASTER_TAG \
+                -f docker/actyx/Dockerfile \
                 .
 
               make assert-clean
@@ -155,11 +157,14 @@ stages:
       - job: makeAllAndroid
         displayName: all-android
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
-              build/bin/install-vault.sh
+              azure-pipelines/bin/install-vault.sh
               chmod -R 777 .
               chmod -R 777 /root/.cargo
+              ./jvm/os-android/bin/get-keystore.sh
               make all-android assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
@@ -177,6 +182,8 @@ stages:
             - Agent.OS -equals Darwin
             - Agent.OSArchitecture -equals X64
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
               make node-manager-mac-linux
@@ -186,6 +193,8 @@ stages:
       - job:
         displayName: node-manager linux
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
               make node-manager-mac-linux
@@ -197,6 +206,8 @@ stages:
       - job:
         displayName: node-manager win
         steps:
+          - checkout: self
+            clean: true
           - bash: |
               set -e
               make node-manager-win
@@ -266,6 +277,8 @@ stages:
       - job: integrationTest
         displayName: Integration Test
         steps:
+          - checkout: self
+            clean: true
           - task: DownloadPipelineArtifact@2
             inputs:
               path: pipeline-artifacts
@@ -282,7 +295,7 @@ stages:
               BASH_ENV: "~/.bashrc"
           - bash: |
               set -e
-              build/bin/install-vault.sh
+              azure-pipelines/bin/install-vault.sh
               make prepare-js all-js all-dotnet
               cd integration
               source ~/.nvm/nvm.sh

@@ -201,6 +201,8 @@ pub enum Event {
     ExpiredListenAddr(Multiaddr),
     NewExternalAddr(Multiaddr),
     ExpiredExternalAddr(Multiaddr),
+    Discovered(PeerId),
+    Unreachable(PeerId),
     Connected(PeerId),
     Disconnected(PeerId),
     Subscribed(PeerId, String),
@@ -223,6 +225,12 @@ impl std::fmt::Display for Event {
             }
             Self::ExpiredExternalAddr(addr) => {
                 write!(f, "<expired-external-addr {}", addr)?;
+            }
+            Self::Discovered(peer_id) => {
+                write!(f, "<discovered {}", peer_id)?;
+            }
+            Self::Unreachable(peer_id) => {
+                write!(f, "<unreachable {}", peer_id)?;
             }
             Self::Connected(peer_id) => {
                 write!(f, "<connected {}", peer_id)?;
@@ -262,6 +270,8 @@ impl std::str::FromStr for Event {
             Some("<expired-listen-addr") => Self::ExpiredListenAddr(parts.next().unwrap().parse()?),
             Some("<new-external-addr") => Self::NewExternalAddr(parts.next().unwrap().parse()?),
             Some("<expired-external-addr") => Self::ExpiredExternalAddr(parts.next().unwrap().parse()?),
+            Some("<discovered") => Self::Discovered(parts.next().unwrap().parse()?),
+            Some("<unreachable") => Self::Unreachable(parts.next().unwrap().parse()?),
             Some("<connected") => Self::Connected(parts.next().unwrap().parse()?),
             Some("<disconnected") => Self::Disconnected(parts.next().unwrap().parse()?),
             Some("<subscribed") => {

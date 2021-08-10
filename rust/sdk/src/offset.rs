@@ -127,7 +127,7 @@ impl OffsetOrMin {
     /// The maximum offset needs to fit into an `i64` and also needs to be losslessly converted into an `f64`
     /// due to interop with languages that do not have proper integers.
     ///
-    /// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
+    /// See <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER>
     pub const MAX: OffsetOrMin = OffsetOrMin(MAX_SAFE_INT);
 
     /// Minimum value, predecessor of [`Offset::ZERO`](struct.Offset.html#associatedconstant.ZERO)
@@ -171,7 +171,7 @@ impl From<u32> for OffsetOrMin {
 
 impl PartialEq<Offset> for OffsetOrMin {
     fn eq(&self, other: &Offset) -> bool {
-        OffsetOrMin::from(*other) == *self
+        self.0 == other.0
     }
 }
 
@@ -298,7 +298,7 @@ impl Offset {
     /// The maximum offset needs to fit into an `i64` and also needs to be losslessly converted into an `f64`
     /// due to interop with languages that do not have proper integers.
     ///
-    /// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
+    /// See <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER>
     pub const MAX: Offset = Offset(MAX_SAFE_INT);
 
     /// Fallible conversion from [`OffsetOrMin`](struct.OffsetOrMin.html)
@@ -349,7 +349,7 @@ impl Default for Offset {
 
 impl PartialEq<OffsetOrMin> for Offset {
     fn eq(&self, other: &OffsetOrMin) -> bool {
-        OffsetOrMin::from(*self) == *other
+        self.0 == other.0
     }
 }
 
