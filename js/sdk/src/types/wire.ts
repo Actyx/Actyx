@@ -6,7 +6,8 @@
  */
 import * as t from 'io-ts'
 import { isNumber, isString } from './functions'
-import { AppId, Lamport, Milliseconds, NodeId, Offset, StreamId, Timestamp } from './various'
+import { NodeId, Offset, StreamId } from './offsetMap'
+import { AppId, Lamport, Milliseconds, Timestamp } from './various'
 
 /**
  *
