@@ -53,18 +53,18 @@ endif
 architectures = aarch64 x86_64 armv7 arm
 unix-bins = actyx-linux ax
 windows-bins = actyx.exe ax.exe actyx-x64.msi
-android-bins = actyx.apk
+android-bins = actyx.apk actyx.aab
 
 CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
 
 export BUILD_RUST_TOOLCHAIN ?= 1.54.0
 
-# The stable image version is the git commit hash inside `Actyx/Cosmos`, with
+# The stable image version is the git commit hash inside `Actyx/Actyx`, with
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 804ae71c44c8deae9597992eba76669047d41b36
+export LATEST_STABLE_IMAGE_VERSION := 0c6ed1ec7665d45d73bdcb974993175e4676542c
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -475,7 +475,7 @@ cargo-init: $(CARGO_HOME)/git $(CARGO_HOME)/registry
 $(CARGO_HOME)/%:
 	mkdir -p $@
 
-jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnodeffi make-always
+jvm/os-android/app/build/outputs/bundle/release/app-release.aab: android-libaxosnodeffi make-always
 	jvm/os-android/bin/get-keystore.sh
 	docker run \
 	  -u builder \
@@ -484,11 +484,32 @@ jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnod
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-      ./gradlew --stacktrace ktlintCheck build assembleRelease
+      ./gradlew --stacktrace ktlintCheck build bundleRelease
 
-dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
+dist/bin/actyx.apk: jvm/os-android/app/build/outputs/bundle/release/app-release.aab make-always
+	jvm/os-android/bin/get-keystore.sh
+	rm -f dist/bin/actyx.apks
+	docker run \
+	  -u builder \
+	  -v `pwd`:/src \
+	  -w /src/jvm/os-android \
+	  --rm \
+	  $(DOCKER_FLAGS) \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
+      java -jar /usr/local/lib/bundletool.jar build-apks \
+				--bundle /src/$< \
+				--output=/src/dist/bin/actyx.apks \
+				--ks=/src/jvm/os-android/actyx-local/axosandroid.jks \
+				--ks-key-alias=axosandroid \
+				--ks-pass=pass:$(shell grep actyxKeyPassword jvm/os-android/actyx-local/actyx.properties|cut -f2 -d\") \
+				--mode=universal
+	unzip -o dist/bin/actyx.apks universal.apk
+	mv -f universal.apk dist/bin/actyx.apk
+
+dist/bin/actyx.aab: jvm/os-android/app/build/outputs/bundle/release/app-release.aab
 	mkdir -p $(dir $@)
 	cp $< $@
+
 
 dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/actyx.exe make-always
 	docker run \
