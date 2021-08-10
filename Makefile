@@ -440,8 +440,6 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
@@ -461,8 +459,6 @@ $(soTargetPatterns): cargo-init make-always
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
