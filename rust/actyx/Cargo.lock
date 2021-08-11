@@ -2662,8 +2662,8 @@ dependencies = [
 
 [[package]]
 name = "ipfs-embed"
-version = "0.22.3"
-source = "git+https://github.com/dvc94ch/ipfs-embed?branch=sim-open-2#66ec7aaeb3415df9cec4548cb1793ca538962633"
+version = "0.22.4"
+source = "git+https://github.com/dvc94ch/ipfs-embed?branch=sim-open-2#d71030e3c217f254007b1e96d48c8063aff094a9"
 dependencies = [
  "anyhow",
  "async-io",
@@ -3252,14 +3252,15 @@ dependencies = [
 
 [[package]]
 name = "libp2p-quic"
-version = "0.5.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1de8fda3ccc284d52049fab92db2b1fcd9d6b0ac4e09760456a2d4d6ada585a7"
+checksum = "efab133f41ec02c6554c10c31e919f24ccca21c61316b1ddc473d1604fc3728a"
 dependencies = [
  "anyhow",
  "async-global-executor",
  "async-io",
  "bytes 1.0.1",
+ "ed25519-dalek",
  "fnv",
  "futures 0.3.16",
  "if-watch",
@@ -4914,9 +4915,9 @@ dependencies = [
 
 [[package]]
 name = "quinn-noise"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83e7626a7a184fe86b38d5b3a87722695d3108a89a3d856a75e42e1cfb49db34"
+checksum = "5e1c50d22f398d489a79753d17bab5a6f9fb48e5cc537ce50b0bb9312ae07ea9"
 dependencies = [
  "bytes 1.0.1",
  "chacha20poly1305",
