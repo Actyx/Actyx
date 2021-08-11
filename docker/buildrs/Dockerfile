@@ -56,6 +56,9 @@ RUN cd /usr/local && \
   rm android-ndk-r20-linux-x86_64.zip
 ENV NDK_HOME /usr/local/android-ndk-r20
 
+# Install bundletool
+RUN curl -L -o /usr/local/lib/bundletool.jar https://github.com/google/bundletool/releases/download/1.7.1/bundletool-all-1.7.1.jar
+
 # Setup rust specifics with the proper user
 USER builder
 RUN rustup default ${BUILD_RUST_TOOLCHAIN}

@@ -7,5 +7,5 @@ build_rust_toolchain=1.54.0
 # pushed), the `Makefile` needs to be changed accordingly.
 latest_stable=`git rev-parse HEAD`
 
-docker buildx build --load --build-arg BUILD_RUST_TOOLCHAIN=$build_rust_toolchain --tag actyx/cosmos:node-manager-win-builder-$latest_stable .
-docker buildx build --push --build-arg BUILD_RUST_TOOLCHAIN=$build_rust_toolchain --tag actyx/cosmos:node-manager-win-builder-$latest_stable .
+docker buildx build --load --build-arg BUILD_RUST_TOOLCHAIN=$build_rust_toolchain --tag actyx/util:node-manager-win-builder-$latest_stable .
+docker buildx build --push --build-arg BUILD_RUST_TOOLCHAIN=$build_rust_toolchain --tag actyx/util:node-manager-win-builder-$latest_stable .
