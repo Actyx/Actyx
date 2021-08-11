@@ -72,7 +72,7 @@ pub fn run_task<I: serde::de::DeserializeOwned + Sync + Send + 'static, O: serde
         }
     };
     let callback = callback.root(&mut cx);
-    let queue = cx.queue();
+    let queue = cx.channel();
     std::thread::spawn(move || {
         let res = executor(input);
         queue.send(move |mut cx| {
