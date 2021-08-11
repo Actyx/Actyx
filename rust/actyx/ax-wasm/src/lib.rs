@@ -1,5 +1,7 @@
-use std::{collections::BTreeMap, io, time::Duration};
-
+use crate::{
+    admin_protocol::{AdminRequest, Node},
+    errors::{ax_err, ActyxOSCode},
+};
 use actyx_sdk::service::OffsetsResponse;
 use admin_protocol::{AdminProtocol, AdminResponse, ConnectedNodeDetails, NodesInspectResponse, NodesLsResponse};
 use derive_more::From;
@@ -7,7 +9,6 @@ use errors::ActyxOSResult;
 use events_protocol::{EventsProtocol, EventsRequest, EventsResponse};
 use futures::{
     channel::{mpsc, oneshot},
-    future::BoxFuture,
     select, Future, StreamExt,
 };
 use js_sys::Promise;
@@ -21,17 +22,13 @@ use libp2p::{
     Multiaddr, NetworkBehaviour, PeerId, Swarm, Transport,
 };
 use libp2p_streaming_response::{StreamingResponse, StreamingResponseEvent};
-use once_cell::sync::{Lazy, OnceCell};
-use serde::Serialize;
-use wasm_bindgen_futures::future_to_promise;
-
-use crate::{
-    admin_protocol::AdminRequest,
-    errors::{ax_err, ActyxOSCode},
-};
 use log::{error, info};
+use once_cell::sync::OnceCell;
+use serde::Serialize;
+use std::{collections::BTreeMap, io, time::Duration};
+use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
-use wasm_bindgen::{__rt::IntoJsResult, prelude::*};
+use wasm_bindgen_futures::future_to_promise;
 
 mod admin_protocol;
 mod errors;
@@ -45,19 +42,6 @@ pub fn main() {
     info!("Setup panic hook");
 }
 
-//#[wasm_bindgen]
-//pub async fn start() -> Result<(), JsValue> {
-//    convert_result(run().await)
-//}
-
-fn convert_result<T, E: std::fmt::Debug>(result: std::result::Result<T, E>) -> Result<T, JsValue> {
-    result.map_err(|err| js_sys::Error::new(&format!("WASM Internal Error: {:?}", err)).into())
-}
-
-fn map_err<T, E: Into<anyhow::Error>>(res: Result<T, E>) -> Result<T, JsValue> {
-    res.map_err(Into::<anyhow::Error>::into)
-        .map_err(|e| js_sys::Error::new(&format!("Error: {:#}", e)).into())
-}
 #[derive(Debug)]
 enum Either<A, B> {
     Left(A),
@@ -66,13 +50,18 @@ enum Either<A, B> {
 
 // TODO: handle streams
 // TODO: handle multiple nodes!
-type Channel = Either<(AdminRequest, oneshot::Sender<AdminResponse>), (EventsRequest, oneshot::Sender<EventsResponse>)>;
+type Channel = Either<
+    (AdminRequest, oneshot::Sender<ActyxOSResult<AdminResponse>>),
+    (EventsRequest, oneshot::Sender<ActyxOSResult<EventsResponse>>),
+>;
 static SWARM: OnceCell<mpsc::Sender<Channel>> = OnceCell::new();
 
 #[wasm_bindgen]
 pub struct ActyxAdminApi {}
 
-fn to_promise(fut: impl Future<Output = anyhow::Result<impl Serialize>> + 'static) -> Promise {
+fn to_promise(
+    fut: impl Future<Output = std::result::Result<impl Serialize, impl std::fmt::Display>> + 'static,
+) -> Promise {
     future_to_promise(async move {
         fut.await
             //            .and_then(|x| JsValue::from_serde(&x).map_err(|x| anyhow::anyhow!("wtf"))
@@ -81,9 +70,67 @@ fn to_promise(fut: impl Future<Output = anyhow::Result<impl Serialize>> + 'stati
     })
 }
 
+macro_rules! request {
+    ($($either:ident)::+, $req:expr, $($resp:ident)::+ ) => {
+        async move {
+            let (tx, rx) = oneshot::channel();
+            SWARM
+                .get()
+                .expect("struct created through `new`")
+                .clone()
+                .start_send($($either)::+(($req, tx)))
+                .unwrap();
+
+            if let Ok(r) = rx.await {
+                match r {
+                    Ok($($resp)::+ (x)) => Ok(x),
+                    Err(e)  => Err(e),
+                    _ => ax_err(ActyxOSCode::ERR_INTERNAL_ERROR, "Unexpected response".into())
+                }
+            } else {
+                ax_err(ActyxOSCode::ERR_NODE_UNREACHABLE, "".into())
+            }
+
+        }
+    };
+//    ($($either:ident)::+, $req:expr, match { $($body:tt)* }) => {
+//        async move {
+//            let (tx, rx) = oneshot::channel();
+//            SWARM
+//                .get()
+//                .expect("struct created through `new`")
+//                .clone()
+//                .start_send($($either)::+(($req, tx)))
+//                .unwrap();
+//
+//            match rx.await?? {
+//                $($body)*,
+//                _ => anyhow::bail!("Received unknown response")
+//            }
+//
+//        }
+//    };
+}
+
+macro_rules! admin {
+    ($req:expr, $($resp:ident)::+ ) => {
+        request!(Either::Left, $req, $($resp)::+)
+    };
+}
+
+macro_rules! events {
+    ($req:expr, $($resp:ident)::+ ) => {
+        request!(Either::Right, $req, $($resp)::+)
+    };
+ //   ($req:expr, match { $($body:tt)* }) => {
+ //       request!(Either::Right, $req, match { $($body)* })
+ //   };
+}
+
 #[wasm_bindgen]
 impl ActyxAdminApi {
     #[wasm_bindgen(constructor)]
+    #[allow(unused_must_use)]
     pub fn new(private_key: String) -> Self {
         let (tx, rx) = mpsc::channel(64);
 
@@ -98,111 +145,92 @@ impl ActyxAdminApi {
         Self {}
     }
 
-    fn _offsets(&self) -> impl Future<Output = anyhow::Result<OffsetsResponse>> + 'static {
-        async move {
-            let (tx, rx) = oneshot::channel();
-            SWARM
-                .get()
-                .expect("struct created through `new`")
-                .clone()
-                .start_send(Either::Right((EventsRequest::Offsets, tx)))
-                .unwrap();
-
-            if let EventsResponse::Offsets(x) = rx.await? {
-                Ok(x)
-            } else {
-                anyhow::bail!("Received unknown response")
-            }
-        }
+    // Events API
+    fn _offsets(&self) -> impl Future<Output = ActyxOSResult<OffsetsResponse>> + 'static {
+        events!(EventsRequest::Offsets, EventsResponse::Offsets)
     }
     // Unfortunately promises can't be typed, they always end up as `Promise<any>` in the ts
     // definition file. Synchronous function can be annotated with `#[wasm_bindgen(typescript_type = "..")]`
     pub fn offsets(&mut self) -> Promise {
         to_promise(self._offsets())
     }
-    fn _get_settings(&self, scope: String) -> impl Future<Output = anyhow::Result<serde_json::Value>> + 'static {
-        async move {
-            let (tx, rx) = oneshot::channel();
-            SWARM
-                .get()
-                .expect("struct created through `new`")
-                .clone()
-                .start_send(Either::Left((
-                    AdminRequest::SettingsGet {
-                        scope: scope.into(),
-                        no_defaults: false,
-                    },
-                    tx,
-                )))
-                .unwrap();
-            if let AdminResponse::SettingsGetResponse(x) = rx.await? {
-                Ok(x)
-            } else {
-                anyhow::bail!("Received unknown response")
-            }
-        }
-    }
-    fn _get_schema(&self, scope: String) -> impl Future<Output = anyhow::Result<serde_json::Value>> + 'static {
-        async move {
-            let (tx, rx) = oneshot::channel();
-            SWARM
-                .get()
-                .expect("struct created through `new`")
-                .clone()
-                .start_send(Either::Left((AdminRequest::SettingsSchema { scope: scope.into() }, tx)))
-                .unwrap();
 
-            if let AdminResponse::SettingsSchemaResponse(x) = rx.await? {
-                Ok(x)
-            } else {
-                anyhow::bail!("Received unknown response")
-            }
-        }
-    }
-    fn _nodes_ls(&self) -> impl Future<Output = anyhow::Result<NodesLsResponse>> + 'static {
-        async move {
-            let (tx, rx) = oneshot::channel();
-            SWARM
-                .get()
-                .expect("struct created through `new`")
-                .clone()
-                .start_send(Either::Left((AdminRequest::NodesLs, tx)))
-                .unwrap();
+    // TODO stream
+    //    fn query(&self, query: QueryRequest) -> impl Future<Output = ActyxOSResult<EventsResponse>> {
+    //        events!(EventsRequest::Query(query), match {
+    //        })
+    //        todo!()
+    //    }
 
-            if let AdminResponse::NodesLsResponse(x) = rx.await? {
-                Ok(x)
-            } else {
-                anyhow::bail!("Received unknown response")
-            }
-        }
+    //Query(QueryRequest),
+    //Subscribe(SubscribeRequest),
+    //SubscribeMonotonic(SubscribeMonotonicRequest),
+    //Publish(PublishRequest),
+
+    // Admin API
+    fn _get_settings(&self, scope: String) -> impl Future<Output = ActyxOSResult<serde_json::Value>> + 'static {
+        admin!(
+            AdminRequest::SettingsGet {
+                scope: scope.into(),
+                no_defaults: false,
+            },
+            AdminResponse::SettingsGetResponse
+        )
+    }
+    pub fn get_settings(&mut self, scope: String) -> Promise {
+        let fut = self._get_settings(scope);
+        to_promise(fut)
+    }
+
+    fn _set_settings(
+        &self,
+        scope: String,
+        json: serde_json::Value,
+    ) -> impl Future<Output = ActyxOSResult<serde_json::Value>> + 'static {
+        admin!(
+            AdminRequest::SettingsSet {
+                scope,
+                json,
+                ignore_errors: false,
+            },
+            AdminResponse::SettingsSetResponse
+        )
+    }
+
+    pub fn set_settings(&mut self, scope: String, json: JsValue) -> Promise {
+        let json = JsValue::into_serde(&json).expect("JSON.stringify is compatible with serde_json::Value");
+        let fut = self._set_settings(scope, json);
+        to_promise(fut)
+    }
+
+    fn _get_schema(&self, scope: String) -> impl Future<Output = ActyxOSResult<serde_json::Value>> + 'static {
+        admin!(
+            AdminRequest::SettingsSchema { scope: scope.into() },
+            AdminResponse::SettingsSchemaResponse
+        )
+    }
+    pub fn get_schema(&mut self, scope: String) -> Promise {
+        let fut = self._get_schema(scope);
+        to_promise(fut)
+    }
+    fn _nodes_ls(&self) -> impl Future<Output = ActyxOSResult<NodesLsResponse>> + 'static {
+        admin!(AdminRequest::NodesLs, AdminResponse::NodesLsResponse)
     }
     pub fn nodes_ls(&mut self) -> Promise {
         let fut = self._nodes_ls();
         to_promise(fut)
     }
-    fn _nodes_inspect(&self) -> impl Future<Output = anyhow::Result<NodesInspectResponse>> + 'static {
-        async move {
-            let (tx, rx) = oneshot::channel();
-            SWARM
-                .get()
-                .expect("struct created through `new`")
-                .clone()
-                .start_send(Either::Left((AdminRequest::NodesInspect, tx)))
-                .unwrap();
 
-            if let AdminResponse::NodesInspectResponse(x) = rx.await? {
-                Ok(x)
-            } else {
-                anyhow::bail!("Received unknown response")
-            }
-        }
+    fn _nodes_inspect(&self) -> impl Future<Output = ActyxOSResult<NodesInspectResponse>> + 'static {
+        admin!(AdminRequest::NodesInspect, AdminResponse::NodesInspectResponse)
     }
+
     pub fn nodes_inspect(&mut self) -> Promise {
         let fut = self._nodes_inspect();
         to_promise(fut)
     }
     // node manager functions. TODO: refactor into smaller function
-    fn _get_node_details(&self) -> impl Future<Output = anyhow::Result<ConnectedNodeDetails>> + 'static {
+    fn _get_node_details(&self) -> impl Future<Output = ActyxOSResult<ConnectedNodeDetails>> + 'static {
         let x = futures::future::try_join5(
             self._nodes_ls(),
             self._nodes_inspect(),
@@ -229,7 +257,22 @@ impl ActyxAdminApi {
         }
     }
     pub fn get_node_details(&mut self) -> Promise {
-        to_promise(self._get_node_details())
+        let fut = self._get_node_details();
+        to_promise(async move {
+            let addr = "FIXME".into();
+            match fut.await {
+                Err(e) if e.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => {
+                    eprintln!("returning unreachable node {}", addr);
+                    Ok(Node::UnreachableNode { addr })
+                }
+                Err(e) if e.code() == ActyxOSCode::ERR_UNAUTHORIZED => Ok(Node::UnauthorizedNode { addr }),
+                Ok(details) => Ok(Node::ReachableNode { addr, details }),
+                Err(e) => {
+                    eprintln!("error getting node details: {}", e);
+                    Err(anyhow::anyhow!(e))
+                }
+            }
+        })
     }
 }
 
@@ -258,22 +301,20 @@ async fn run(private_key: &str, mut rx: mpsc::Receiver<Channel>) -> anyhow::Resu
     )
     .await?;
     info!("Connected to {} at {}", remote_peer, remote_addr);
-    let x = swarm
-        .behaviour_mut()
-        .admin_api
-        .request(remote_peer, AdminRequest::NodesLs);
 
-    let mut pending_requests = BTreeMap::new();
+    let mut pending_event_requests = BTreeMap::new();
+    let mut pending_admin_requests = BTreeMap::new();
     loop {
         select! {
             request = rx.select_next_some() => {
                 match request {
-                    Either::Left(_) => {
-                        todo!()
+                    Either::Left((request, tx)) => {
+                        let id = swarm.behaviour_mut().admin_api.request(remote_peer, request);
+                        pending_admin_requests.insert(id, tx);
                     },
                     Either::Right((request, tx)) => {
                         let id = swarm.behaviour_mut().events_api.request(remote_peer, request);
-                        pending_requests.insert(id, tx);
+                        pending_event_requests.insert(id, tx);
                     },
                 }
             },
@@ -287,19 +328,34 @@ async fn run(private_key: &str, mut rx: mpsc::Receiver<Channel>) -> anyhow::Resu
                             payload,
                             ..
                         })) => {
-                        if let Some(tx) = pending_requests.remove(&request_id) {
-                            if tx.send(payload).is_err() {
+                        if let Some(tx) = pending_event_requests.remove(&request_id) {
+                            if tx.send(Ok(payload)).is_err() {
                                 error!("FIXME");
                             }
 
                         }
                     },
-                    // TODO
+                    SwarmEvent::Behaviour(
+                        OutEvent::Admin(
+                        StreamingResponseEvent::ResponseReceived{
+                            request_id,
+                            payload,
+                            ..
+                        })) => {
+                        if let Some(tx) = pending_admin_requests.remove(&request_id) {
+                            if tx.send(payload).is_err() {
+                                error!("FIXME");
+                            }
+
+                        }
+                    }
+
+                    // TODO error handling
                     _ => {},
                 }
             },
             complete => {
-                error!("Stream ended unexpectidely!");
+                error!("Stream ended!");
                 break;
             }
         }

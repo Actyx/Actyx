@@ -108,10 +108,6 @@ use actyx_sdk::service::OffsetsResponse;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct Nothing {}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct ConnectedNodeDetails {
     pub node_id: NodeId,
     pub display_name: String,

@@ -39,7 +39,14 @@ use libp2p::{
 };
 use libp2p_streaming_response::{ChannelId, StreamingResponse, StreamingResponseConfig, StreamingResponseEvent};
 use parking_lot::Mutex;
-use std::{collections::{BTreeMap, BTreeSet}, convert::TryFrom, pin::Pin, str::FromStr, sync::Arc, time::Duration};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    convert::TryFrom,
+    pin::Pin,
+    str::FromStr,
+    sync::Arc,
+    time::Duration,
+};
 use swarm::event_store_ref::EventStoreRef;
 use tokio::time::{timeout_at, Instant};
 use tracing::*;
