@@ -89,7 +89,7 @@ docker-platform-armv7 = linux/arm/v7
 docker-platform-arm = linux/arm/v6
 
 # Mapping from os to builder image name
-image-linux = actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION)
+image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
 image-darwin = actyx/osxbuilder:a042cc707998b83704f3cf5d3f0ededc7143d1c3
@@ -192,10 +192,10 @@ prepare-docker:
 	# used for windows and android rust builds
 	docker pull actyx/util:buildrs-x64-$(IMAGE_VERSION)
 	# used for linux rust builds
-	docker pull actyx/cosmos:musl-aarch64-unknown-linux-musl-$(IMAGE_VERSION)
-	docker pull actyx/cosmos:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
-	docker pull actyx/cosmos:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
-	docker pull actyx/cosmos:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
+	docker pull actyx/util:musl-aarch64-unknown-linux-musl-$(IMAGE_VERSION)
+	docker pull actyx/util:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
+	docker pull actyx/util:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
+	docker pull actyx/util:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
 	docker pull actyx/util:node-manager-win-builder
 
 prepare-docker-crosscompile:
@@ -356,7 +356,7 @@ validate-node-manager-bindings:
 		npm install && \
 		npm run build
 
-node-manager-win: prepare-docker
+node-manager-win:
 	docker run \
 	-v `pwd`:/src \
 	-w /src/js/node-manager \
@@ -526,7 +526,7 @@ docker-$(1):
 	  --platform $(docker-platform-$(1)) \
 	  $(docker-build-args) \
 	  -f docker/actyx/Dockerfile \
-	  --tag actyx/cosmos:actyx-$(1)-$(GIT_COMMIT) \
+	  --tag actyx/actyx-ci:actyx-$(1)-$(GIT_COMMIT) \
 	  --load \
 	  .
 endef
