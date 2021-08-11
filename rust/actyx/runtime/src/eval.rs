@@ -3,7 +3,7 @@ use crate::{
     value::{Value, ValueKind},
 };
 use actyx_sdk::language::{BinOp, Ind, Index, Num, SimpleExpr, SortKey};
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, bail, ensure};
 use cbor_data::{CborBuilder, CborOwned, Encoder, WithOutput, Writer};
 use std::{cmp::Ordering, collections::BTreeMap};
 
@@ -160,12 +160,11 @@ impl<'a> Context<'a> {
             }
             SimpleExpr::FuncCall(f) => match f.name.as_str() {
                 "IsDefined" => {
-                    if f.args.len() != 1 {
-                        return Err(anyhow!(
-                            "wrong number of arguments: 'IsDefined' takes 1 argument but {} were provided",
-                            f.args.len()
-                        ));
-                    }
+                    ensure!(
+                        f.args.len() == 1,
+                        "wrong number of arguments: 'IsDefined' takes 1 argument but {} were provided",
+                        f.args.len()
+                    );
                     let defined = self.eval(&f.args[0]).is_ok();
                     Ok(self.value(|b| b.encode_bool(defined)))
                 }
