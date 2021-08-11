@@ -10,7 +10,7 @@ plugins {
 apply from: '../actyx-local/actyx.properties'
 
 // 102000000 is the version code that would have been applied to ActyxOS 1.2
-def verCode = { -> ("git log --oneline".execute().text.readLines().size() + 102000000) as Integer }
+def verCode = { -> ("git log --oneline".execute().text.readLines().size() + 102011000) as Integer }
 def dirty = !"git status --porcelain".execute().text.isBlank()
 def verName = System.getenv('ACTYX_VERSION')
   ?: "0.0.0_dev-" + "git rev-parse HEAD".execute().text.trim().concat(dirty? "_dirty" : "")
