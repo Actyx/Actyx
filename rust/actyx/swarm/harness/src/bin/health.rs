@@ -246,14 +246,14 @@ fn main() {
                     }
                     let before = petgraph::algo::has_path_connecting(&top, n1.node, n2.node, None);
                     let after = petgraph::algo::has_path_connecting(&next_top, n1.node, n2.node, None);
-                    let changed = node.into_iter().any(|n| n == n1.node || n == n2.node);
+                    // In some cases the roaming peers will reconnect to a peer before the
+                    // peer noticed it was disconnected.
+                    let changed = node.into_iter().any(|n| n == n1.node);
                     match (before, after, changed) {
-                        // In some cases the roaming peers will reconnect to a peer before the
-                        // peer noticed it was disconnected.
-                        /*(true, true, true) => {
+                        (true, true, true) => {
                             events.push((n1, n2, false));
                             events.push((n1, n2, true));
-                        }*/
+                        }
                         (true, false, _) => {
                             events.push((n1, n2, false));
                         }
