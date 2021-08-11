@@ -115,11 +115,23 @@ pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
                 render_simple_expr(w, pred)?;
                 w.write_str(" => ")?;
                 render_simple_expr(w, expr)?;
+                w.write_char(' ')?;
             }
-            w.write_str(" ENDCASE")
+            w.write_str("ENDCASE")
         }
         SimpleExpr::BinOp(e) => render_simple_pair(w, &e.1, e.0.as_str(), &e.2),
         SimpleExpr::AggrOp(e) => render_unary_function(w, e.0.as_str(), &e.1),
+        SimpleExpr::FuncCall(f) => {
+            w.write_str(&f.name)?;
+            w.write_char('(')?;
+            for (idx, expr) in f.args.iter().enumerate() {
+                if idx > 0 {
+                    w.write_str(", ")?;
+                }
+                render_simple_expr(w, expr)?;
+            }
+            w.write_char(')')
+        }
     }
 }
 
