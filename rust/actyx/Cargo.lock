@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "actyx_sdk"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "actyx_sdk_macros",
  "anyhow",
