@@ -8,14 +8,28 @@ image: /images/defaults/default.svg
 
 ## What is Actyx?
 
-*High-level explanation of what Actyx is*
+At a high-level Actyx is a decentralized event database, streaming and processing toolkit for developers.
+It allows you to build local-first cooperative applications which cooperate without any backend systems.
 
-- Piece of software that runs on edge, mobile devices or desktop PCs
-- decentralized event database, streaming and processing engine that allows you to easily build local-first cooperative apps.
-- open-source toolkit that helps developers build apps that cooperate locally, without a backend.
-- Actyx nodes build swarms that communicate via LAN / WLAN network using peer-to-peer communication
-- Information is disseminated in the form of events (event sourcing)
-- toolkit consists of Actyx (node), CLI & Node Manager to manage node, SDKs with useful abstractions to interact with events and build apps
+Practically speaking, Actyx is two things.
+First, it's a piece of software — written in Rust — that you run on one or more computers for event persistence and streaming.
+Second, it's a Typescript framework which provides an opinionated programming model for implementing distributed, but eventually consistent state-machines.
+
+As a developer your write your application using the SDKs or the Pond Framework.
+You then run it alongside Actyx on one or more devices.
+The SDKs and the Pond Framework then continuously communicate with the local Actyx process to perform their work.
+
+From an architectural stand-point, Actyx allows you to build decentralized applications using events and event-sourcing.
+Events are persisted in and streamed across the swarm of inter-connected Actyx devices — normally in the local-area network.
+Your application, or rather the Pond framework, uses these events to compute state which your code observes and reacts to.
+
+Actyx itself is built using [libp2p](https://github.com/libp2p), [ipfs-embed](https://github.com/ipfs-rust/ipfs-embed), 
+[Banyan trees](https://github.com/Actyx/banyan), and other technologies.
+The Actyx nodes discover each other in the network and use different protocols (gossip, bitswap) to quickly and safely 
+keep a totally-ordered, append-only event log in sync across all devices.
+The events in the log, as well as re-orderings thereof after partitions, feed into the APIs, SDKs and the Actyx Pond framework.
+
+In order to operate and monitor Actyx nodes, you can use either the CLI or the Node Manager, an Electron-app.
 
 ## Actyx architecture
 
