@@ -9,6 +9,6 @@ Here are the commands:
 
 ## Automatic Versioning
 
-The `versionCode` is basically the number of commits in the git repository (plus 102000000 to not interfere with already released versions.)
+The `versionCode` is basically the number of commits in the git repository (plus 102011000 to not interfere with already released versions.)
 
 The `versionName` of the APK is either the value of `$ACTYX_VERSION` environment variable if it is set or "0.0.0_dev-" plus the git hash of the current `HEAD` with a dirty marker.
