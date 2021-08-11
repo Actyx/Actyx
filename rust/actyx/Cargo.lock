@@ -239,9 +239,9 @@ checksum = "9d6e24d2cce90c53b948c46271bfb053e4bdc2db9b5d3f65e20f8cf28a1b7fc3"
 
 [[package]]
 name = "assert_cmd"
-version = "1.0.8"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c98233c6673d8601ab23e77eb38f999c51100d46c5703b17288c57fddf3a1ffe"
+checksum = "54f002ce7d0c5e809ebb02be78fd503aeed4a511fd0fcaff6e6914cbdabbfa33"
 dependencies = [
  "bstr",
  "doc-comment",
@@ -1684,9 +1684,9 @@ dependencies = [
 
 [[package]]
 name = "filetime"
-version = "0.2.14"
+version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d34cfa13a63ae058bfa601fe9e313bbdb3746427c1459185464ce0fcf62e1e8"
+checksum = "975ccf83d8d9d0d84682850a38c8169027be83368805971cc4f238c2b245bc98"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
@@ -1788,9 +1788,9 @@ checksum = "2022715d62ab30faffd124d40b76f4134a550a87792276512b18d63272333394"
 
 [[package]]
 name = "fslock"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b14c83e47c73f7d62d907ae24a1a98e9132df3c33eb6c54fcf4bce0dbc41d5af"
+checksum = "fbc585f4fe7227b37ef0216444c87ca8ab6051622e4e2bc75d4bed4ea5106148"
 dependencies = [
  "libc",
  "winapi",
@@ -2759,9 +2759,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.98"
+version = "0.2.99"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "320cfe77175da3a483efed4bc0adc1968ca050b098ce4f2f1c13a56626128790"
+checksum = "a7f823d141fe0a24df1e23b4af4e3c7ba9e5966ec514ea068c93024aa7deb765"
 
 [[package]]
 name = "libipld"
@@ -3645,9 +3645,9 @@ dependencies = [
 
 [[package]]
 name = "native-tls"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8d96b2e1c8da3957d58100b09f102c6d9cfdfced01b7ec5a8974044bb09dbd4"
+checksum = "48ba9f7719b5a0f42f338907614285fb5fd70e53858141f69898a1fb7203b24d"
 dependencies = [
  "lazy_static",
  "libc",
@@ -3663,9 +3663,9 @@ dependencies = [
 
 [[package]]
 name = "neon"
-version = "0.8.3"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05c562b89fa7f9707f02056abe25a37ec290ca4a4f1596edbd7aa1aa7b87af1d"
+checksum = "158d44fdd9cc93d5051c15e970727e94e4440c3c585c77b2f482df397a661fcf"
 dependencies = [
  "cslice",
  "neon-build",
@@ -3677,15 +3677,15 @@ dependencies = [
 
 [[package]]
 name = "neon-build"
-version = "0.8.3"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9c55f6d310757b9fe6cd96a376609548a252da31828f935a7f59106533a89e9"
+checksum = "067f30e1bb8bec9a0f2be115fd54430dd66472872c7c1491473618a405c1daac"
 
 [[package]]
 name = "neon-macros"
-version = "0.8.3"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47065bc93b16f41fcfe29cad7d4d2a3e299b4389a3c9b429ba7a55f69a057fff"
+checksum = "72adff7fd8a79dc3a18e565086179fa7608c555dd0e553e4eafebf9033b6a01c"
 dependencies = [
  "quote",
  "syn",
@@ -3693,9 +3693,9 @@ dependencies = [
 
 [[package]]
 name = "neon-runtime"
-version = "0.8.3"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be313e6cf11f469653ee1b137b9203f5d604f2b496d423e96c5e251b51eead03"
+checksum = "be066c504047007b93709dc164c42f9f19c2ff365e7bf71240c8f88c92f2e687"
 dependencies = [
  "cfg-if 1.0.0",
  "libloading 0.6.7",
@@ -3763,9 +3763,9 @@ dependencies = [
 
 [[package]]
 name = "netsim-embed-router"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "101406e5ae177748f1e0ba309b4ba1ccbf7d5898046c42299b60c1bc094ce0ce"
+checksum = "43b108c88d477023d72a217ee21b6fbedac622d4a84499f3408fa9e8691fef0b"
 dependencies = [
  "async-global-executor",
  "futures 0.3.16",
@@ -5135,9 +5135,9 @@ dependencies = [
 
 [[package]]
 name = "rkyv"
-version = "0.7.9"
+version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3b30254774091bad43024509fd74d06999c52871a8a9548ef2572c56ab7791e"
+checksum = "cdbfdec6dd814f3d13a57513aa59217f6f009ad1d5a9d16770513c6ab3c41a0e"
 dependencies = [
  "bytecheck",
  "hashbrown 0.11.2",
@@ -5149,9 +5149,9 @@ dependencies = [
 
 [[package]]
 name = "rkyv_derive"
-version = "0.7.9"
+version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "933f73e4a76d2c4ea35b5c3aea561b3bc3078cb55a7da30c20760fb207a4a75e"
+checksum = "685d8ebe7258adfdbf6dfa33db3ddcfdaa50caeba2096e3409ad2f2b9e2b133b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5920,9 +5920,9 @@ dependencies = [
 
 [[package]]
 name = "tar"
-version = "0.4.35"
+version = "0.4.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d779dc6aeff029314570f666ec83f19df7280bb36ef338442cfa8c604021b80"
+checksum = "8190d9cdacf6ee1b080605fd719b58d80a9fcbcea64db6744b26f743da02e447"
 dependencies = [
  "filetime",
  "libc",

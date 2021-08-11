@@ -246,14 +246,14 @@ fn main() {
                     }
                     let before = petgraph::algo::has_path_connecting(&top, n1.node, n2.node, None);
                     let after = petgraph::algo::has_path_connecting(&next_top, n1.node, n2.node, None);
-                    let changed = node.into_iter().any(|n| n == n1.node || n == n2.node);
+                    // In some cases the roaming peers will reconnect to a peer before the
+                    // peer noticed it was disconnected.
+                    let changed = node.into_iter().any(|n| n == n1.node);
                     match (before, after, changed) {
-                        // In some cases the roaming peers will reconnect to a peer before the
-                        // peer noticed it was disconnected.
-                        /*(true, true, true) => {
+                        (true, true, true) => {
                             events.push((n1, n2, false));
                             events.push((n1, n2, true));
-                        }*/
+                        }
                         (true, false, _) => {
                             events.push((n1, n2, false));
                         }
@@ -272,18 +272,19 @@ fn main() {
                     tracing::info!("waiting for {} to disconnect from {}", a.id, b.id);
                 }
                 let id = a.id;
+                let id2 = b.id;
                 let peer_id = b.peer_id;
                 let fut = sim.machine(id).select(|ev| {
                     match ev {
                         Event::Connected(peer_id2) => {
                             if peer_id == *peer_id2 {
-                                tracing::info!("{} connected to {}", id, peer_id2);
+                                tracing::info!("{} connected to {}", id, id2);
                                 return Some(is_connected);
                             }
                         }
                         Event::Disconnected(peer_id2) => {
                             if peer_id == *peer_id2 {
-                                tracing::info!("{} disconnected from {}", id, peer_id2);
+                                tracing::info!("{} disconnected from {}", id, id2);
                                 return Some(!is_connected);
                             }
                         }
@@ -291,7 +292,7 @@ fn main() {
                     }
                     None
                 });
-                match timeout(Duration::from_secs(80), fut).await {
+                match timeout(Duration::from_secs(120), fut).await {
                     Ok(Some(true)) => {}
                     Ok(_) => panic!(),
                     Err(_) => {
@@ -303,12 +304,12 @@ fn main() {
                 for ev in machine.drain() {
                     match ev {
                         Event::Connected(peer_id) => {
-                            tracing::error!("{} connected to {}", machine.id(), peer_id);
-                            //panic!("unexpected connection event");
+                            let n = nodes.iter().find(|n| n.peer_id == peer_id).unwrap();
+                            tracing::error!("{} connected to {}", machine.id(), n.id);
                         }
                         Event::Disconnected(peer_id) => {
-                            tracing::error!("{} disconnected from {}", machine.id(), peer_id);
-                            //panic!("unexpected disconnection event");
+                            let n = nodes.iter().find(|n| n.peer_id == peer_id).unwrap();
+                            tracing::error!("{} disconnected from {}", machine.id(), n.id);
                         }
                         _ => {}
                     }

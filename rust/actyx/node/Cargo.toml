@@ -75,7 +75,7 @@ name = "node"
 
 [dev-dependencies]
 actyx_sdk = { path = "../../sdk", features = ["client"] }
-assert_cmd = "1.0.7"
+assert_cmd = "2.0.0"
 criterion = { version = "0.3.4", features = ["html_reports", "async_tokio" ] }
 escargot = "0.5.2"
 maplit = "1.0.2"
