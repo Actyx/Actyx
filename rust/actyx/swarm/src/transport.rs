@@ -11,6 +11,7 @@ use libp2p::{
     plaintext::PlainText2Config,
     pnet::{PnetConfig, PreSharedKey},
     tcp::TokioTcpConfig,
+    websocket::WsConfig,
     yamux::YamuxConfig,
     PeerId, Transport,
 };
@@ -33,6 +34,43 @@ pub async fn build_transport(
     } else {
         TokioDnsConfig::system(tcp).context("Creating TokioDnsConfig")?
     };
+    let maybe_encrypted = match psk {
+        Some(psk) => {
+            EitherTransport::Left(base_transport.and_then(move |socket, _| PnetConfig::new(psk).handshake(socket)))
+        }
+        None => EitherTransport::Right(base_transport),
+    };
+    let xx_keypair = noise::Keypair::<noise::X25519Spec>::new()
+        .into_authentic(&key_pair)
+        .unwrap();
+    let noise_config = noise::NoiseConfig::xx(xx_keypair).into_authenticated();
+    let yamux_config = YamuxConfig::default();
+    let transport = maybe_encrypted
+        .upgrade()
+        .authenticate_with_version(noise_config, AuthenticationVersion::V1SimultaneousOpen)
+        .multiplex(yamux_config)
+        .timeout(upgrade_timeout)
+        .map(|(peer_id, muxer), _| (peer_id, StreamMuxerBox::new(muxer)))
+        .map_err(|err| io::Error::new(io::ErrorKind::Other, err))
+        .boxed();
+    Ok(transport)
+}
+
+pub async fn build_transport_with_ws(
+    key_pair: identity::Keypair,
+    psk: Option<PreSharedKey>,
+    upgrade_timeout: Duration,
+) -> anyhow::Result<Boxed<(PeerId, StreamMuxerBox)>> {
+    let tcp = TokioTcpConfig::new().nodelay(true);
+    let base_transport = if cfg!(target_os = "android") {
+        // No official support for DNS on Android.
+        // see https://github.com/Actyx/Cosmos/issues/6582
+        TokioDnsConfig::custom(tcp, ResolverConfig::cloudflare(), Default::default())
+            .context("Creating TokioDnsConfig")?
+    } else {
+        TokioDnsConfig::system(tcp).context("Creating TokioDnsConfig")?
+    };
+    let base_transport = WsConfig::new(base_transport);
     let maybe_encrypted = match psk {
         Some(psk) => {
             EitherTransport::Left(base_transport.and_then(move |socket, _| PnetConfig::new(psk).handshake(socket)))

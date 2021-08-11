@@ -4,6 +4,7 @@
 members = [
   "api",
   "ax",
+  "ax-wasm",
   "ax-futures-util",
   "certs",
   "settings",

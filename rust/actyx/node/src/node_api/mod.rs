@@ -39,13 +39,7 @@ use libp2p::{
 };
 use libp2p_streaming_response::{ChannelId, StreamingResponse, StreamingResponseConfig, StreamingResponseEvent};
 use parking_lot::Mutex;
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    convert::TryFrom,
-    pin::Pin,
-    sync::Arc,
-    time::Duration,
-};
+use std::{collections::{BTreeMap, BTreeSet}, convert::TryFrom, pin::Pin, str::FromStr, sync::Arc, time::Duration};
 use swarm::event_store_ref::EventStoreRef;
 use tokio::time::{timeout_at, Instant};
 use tracing::*;
@@ -556,7 +550,12 @@ pub(crate) async fn mk_swarm(
     // rust-libp2p sets `IPV6_V6ONLY` (or the platform equivalent) [0]. This is
     // why we have to to bind to ip4 and ip6 manually.
     // [0] https://github.com/libp2p/rust-libp2p/blob/master/transports/tcp/src/lib.rs#L322
-    for addr in bind_to.to_multiaddrs() {
+    for addr in //bind_to.to_multiaddrs().chain(
+        vec!["/ip4/0.0.0.0/tcp/4459/ws", "/ip6/::1/tcp/4459/ws"]
+            .into_iter()
+            .map(|x| Multiaddr::from_str(x).unwrap())
+    //)
+    {
         debug!("Admin API trying to bind to {}", addr);
         swarm.listen_on(addr.clone()).with_context(|| {
             let port = addr
@@ -682,7 +681,7 @@ impl Future for SwarmFuture {
 
 async fn mk_transport(id_keys: identity::Keypair) -> anyhow::Result<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {
     let peer_id = id_keys.public().into_peer_id();
-    let transport = swarm::transport::build_transport(id_keys, None, Duration::from_secs(20))
+    let transport = swarm::transport::build_transport_with_ws(id_keys, None, Duration::from_secs(20))
         .await
         .context("Building libp2p transport")?;
     Ok((peer_id, transport))

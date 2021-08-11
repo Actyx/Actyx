@@ -43,7 +43,7 @@ fn main() -> anyhow::Result<()> {
         network.machines_mut()[0].up();
         for machine in &mut network.machines_mut()[1..] {
             loop {
-                if let Some(Event::Connected(peer)) = timeout(Duration::from_secs(20), machine.recv()).await? {
+                if let Some(Event::Connected(peer)) = timeout(Duration::from_secs(10), machine.recv()).await? {
                     if peer == peers[0].0 {
                         tracing::info!("connected");
                         break;
