@@ -304,12 +304,12 @@ fn main() {
                 for ev in machine.drain() {
                     match ev {
                         Event::Connected(peer_id) => {
-                            tracing::error!("{} connected to {}", machine.id(), peer_id);
-                            //panic!("unexpected connection event");
+                            let n = nodes.iter().find(|n| n.peer_id == peer_id).unwrap();
+                            tracing::error!("{} connected to {}", machine.id(), n.id);
                         }
                         Event::Disconnected(peer_id) => {
-                            tracing::error!("{} disconnected from {}", machine.id(), peer_id);
-                            //panic!("unexpected disconnection event");
+                            let n = nodes.iter().find(|n| n.peer_id == peer_id).unwrap();
+                            tracing::error!("{} disconnected from {}", machine.id(), n.id);
                         }
                         _ => {}
                     }
