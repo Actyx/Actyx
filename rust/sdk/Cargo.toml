@@ -1,6 +1,6 @@
 [package]
 name = "actyx_sdk"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Actyx AG <developer@actyx.io>"]
 edition = "2018"
 description = "Tools for interacting with the services of an Actyx node"
@@ -15,7 +15,7 @@ categories = ["network-programming"]
 features = ["client", "dataflow"]
 
 [features]
-client = ["reqwest", "url", "bytes"]
+client = ["reqwest", "url", "bytes", "rand"]
 dataflow = ["abomonation", "abomonation_derive"]
 sqlite = ["rusqlite"]
 postgresql = ["postgres-types", "bytes"]
