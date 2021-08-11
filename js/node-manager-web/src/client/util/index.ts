@@ -22,6 +22,8 @@ import {
   GetNodeDetailsResponse,
   GetNodesDetailsRequest,
   NodeType,
+  QueryRequest,
+  QueryResponse,
 } from '../../common/types'
 import { ActyxAdminApi } from 'ax-wasm'
 
@@ -153,7 +155,10 @@ export const createUserKeyPair = async (
 }
 export const generateSwarmKey = mkRpc(RPC_GenerateSwarmKey)
 export const signAppManifest = mkRpc(RPC_SignAppManifest)
-export const query = mkRpc(RPC_Query)
+export const query = async (req: QueryRequest): Promise<QueryResponse> => {
+  const response = await api.query(req.query)
+  return response
+}
 
 export { Wizard, WizardFailure, WizardInput, WizardSuccess } from './wizard'
 

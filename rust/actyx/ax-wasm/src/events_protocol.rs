@@ -20,6 +20,19 @@ impl Codec for EventsProtocol {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum EventDiagnostic {
+    Event(EventResponse<Payload>),
+    Diagnostic(Diagnostic),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeManagerEventsRes {
+    pub events: Option<Vec<EventDiagnostic>>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum EventsRequest {

@@ -1,16 +1,17 @@
 use crate::{
     admin_protocol::{AdminRequest, Node},
     errors::{ax_err, ActyxOSCode},
+    events_protocol::EventDiagnostic,
 };
-use actyx_sdk::service::OffsetsResponse;
+use actyx_sdk::{
+    language::Query,
+    service::{OffsetsResponse, Order, QueryRequest},
+};
 use admin_protocol::{AdminProtocol, AdminResponse, ConnectedNodeDetails, NodesInspectResponse, NodesLsResponse};
 use derive_more::From;
 use errors::ActyxOSResult;
-use events_protocol::{EventsProtocol, EventsRequest, EventsResponse};
-use futures::{
-    channel::{mpsc, oneshot},
-    select, Future, StreamExt,
-};
+use events_protocol::{EventsProtocol, EventsRequest, EventsResponse, NodeManagerEventsRes};
+use futures::{channel::mpsc, select, Future, StreamExt};
 use js_sys::Promise;
 use libp2p::{
     core::{muxing::StreamMuxerBox, transport::Boxed, upgrade::AuthenticationVersion, ConnectedPoint},
@@ -51,8 +52,8 @@ enum Either<A, B> {
 // TODO: handle streams
 // TODO: handle multiple nodes!
 type Channel = Either<
-    (AdminRequest, oneshot::Sender<ActyxOSResult<AdminResponse>>),
-    (EventsRequest, oneshot::Sender<ActyxOSResult<EventsResponse>>),
+    (AdminRequest, mpsc::Sender<ActyxOSResult<AdminResponse>>),
+    (EventsRequest, mpsc::Sender<ActyxOSResult<EventsResponse>>),
 >;
 static SWARM: OnceCell<mpsc::Sender<Channel>> = OnceCell::new();
 
@@ -73,7 +74,7 @@ fn to_promise(
 macro_rules! request {
     ($($either:ident)::+, $req:expr, $($resp:ident)::+ ) => {
         async move {
-            let (tx, rx) = oneshot::channel();
+            let (tx, mut rx) = mpsc::channel(1);
             SWARM
                 .get()
                 .expect("struct created through `new`")
@@ -81,7 +82,7 @@ macro_rules! request {
                 .start_send($($either)::+(($req, tx)))
                 .unwrap();
 
-            if let Ok(r) = rx.await {
+            if let Some(r) = rx.next().await {
                 match r {
                     Ok($($resp)::+ (x)) => Ok(x),
                     Err(e)  => Err(e),
@@ -156,11 +157,42 @@ impl ActyxAdminApi {
     }
 
     // TODO stream
-    //    fn query(&self, query: QueryRequest) -> impl Future<Output = ActyxOSResult<EventsResponse>> {
-    //        events!(EventsRequest::Query(query), match {
-    //        })
-    //        todo!()
-    //    }
+    fn _query(&self, query: Query) -> impl Future<Output = ActyxOSResult<NodeManagerEventsRes>> {
+        let request = QueryRequest {
+            lower_bound: None,
+            upper_bound: None,
+            query,
+            order: Order::Asc,
+        };
+        async move {
+            let (tx, rx) = mpsc::channel(256);
+            SWARM
+                .get()
+                .expect("struct created through `new`")
+                .clone()
+                .start_send(Either::Right((EventsRequest::Query(request), tx)))
+                .unwrap();
+
+            let out = rx
+                .filter_map(|x| async move {
+                    match x {
+                        Ok(EventsResponse::Diagnostic(d)) => Some(EventDiagnostic::Diagnostic(d)),
+                        Ok(EventsResponse::Event(e)) => Some(EventDiagnostic::Event(e)),
+                        // TODO err
+                        _ => None,
+                    }
+                })
+                .collect::<Vec<_>>()
+                .await;
+            Ok(NodeManagerEventsRes { events: Some(out) })
+        }
+    }
+
+    pub fn query(&mut self, query: String) -> Promise {
+        // FIXME
+        let query = query.parse().unwrap();
+        to_promise(self._query(query))
+    }
 
     //Query(QueryRequest),
     //Subscribe(SubscribeRequest),
@@ -328,12 +360,21 @@ async fn run(private_key: &str, mut rx: mpsc::Receiver<Channel>) -> anyhow::Resu
                             payload,
                             ..
                         })) => {
-                        if let Some(tx) = pending_event_requests.remove(&request_id) {
-                            if tx.send(Ok(payload)).is_err() {
+                        if let Some(tx) = pending_event_requests.get_mut(&request_id) {
+                            if tx.start_send(Ok(payload)).is_err() {
+                                pending_event_requests.remove(&request_id);
                                 error!("FIXME");
                             }
 
                         }
+                    },
+                    SwarmEvent::Behaviour(
+                        OutEvent::Events(
+                        StreamingResponseEvent::ResponseFinished{
+                            request_id,
+                            ..
+                        })) => {
+                        pending_event_requests.remove(&request_id);
                     },
                     SwarmEvent::Behaviour(
                         OutEvent::Admin(
@@ -342,13 +383,22 @@ async fn run(private_key: &str, mut rx: mpsc::Receiver<Channel>) -> anyhow::Resu
                             payload,
                             ..
                         })) => {
-                        if let Some(tx) = pending_admin_requests.remove(&request_id) {
-                            if tx.send(payload).is_err() {
+                        if let Some(mut tx) = pending_admin_requests.remove(&request_id) {
+                            if tx.start_send(payload).is_err() {
                                 error!("FIXME");
                             }
 
                         }
                     }
+                    SwarmEvent::Behaviour(
+                        OutEvent::Admin(
+                        StreamingResponseEvent::ResponseFinished{
+                            request_id,
+                            ..
+                        })) => {
+                        pending_admin_requests.remove(&request_id);
+                    },
+
 
                     // TODO error handling
                     _ => {},

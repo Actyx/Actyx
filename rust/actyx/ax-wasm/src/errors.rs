@@ -79,9 +79,7 @@ impl ActyxOSError {
             message: message.into(),
         }
     }
-    pub fn internal(message: impl Into<String>) -> Self {
-        Self::new(ActyxOSCode::ERR_INTERNAL_ERROR, message)
-    }
+
     pub fn code(&self) -> ActyxOSCode {
         self.code
     }
