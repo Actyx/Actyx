@@ -16,6 +16,7 @@ chrono = { version = "0.4", features = ["wasmbind"] }
 console_error_panic_hook = "0.1.6"
 console_log = "0.2.0"
 crossbeam = "0.8.1"
+crypto = { path = "../crypto", default-features = false }
 derive_more = "0.99.16"
 futures = "0.3.16"
 futures-timer = { version = "3.0.1", features = ["wasm-bindgen"] }

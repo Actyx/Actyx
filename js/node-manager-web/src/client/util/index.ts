@@ -25,9 +25,9 @@ import {
   QueryRequest,
   QueryResponse,
 } from '../../common/types'
-import { ActyxAdminApi } from 'ax-wasm'
+import { ActyxAdminApi, create_private_key } from 'ax-wasm'
 
-const api = new ActyxAdminApi('0oym7jtFXHERwneFUMOzzgInvJEjk9ZOVhe0AHpMDOuU=')
+const api = new ActyxAdminApi('127.0.0.1', '0oym7jtFXHERwneFUMOzzgInvJEjk9ZOVhe0AHpMDOuU=')
 export const getFolderFromUser = (): Promise<Option<string>> =>
   new Promise((resolve) => {
     resolve(none)
@@ -96,14 +96,6 @@ export const waitForFatalError = (): Promise<FatalError> =>
     // })
   })
 
-export const waitForNoUserKeysFound = (): Promise<void> =>
-  new Promise((resolve) => {
-    resolve()
-    // ipcRenderer.once(IpcToClient.NoUserKeysFound, () => {
-    //   resolve()
-    // })
-  })
-
 const mkRpc =
   <Req, Resp>(rpc: RPC<Req, Resp>) =>
   (req: Req): Promise<Resp> =>
@@ -143,14 +135,10 @@ export const getNodesDetails = async ({
 }
 export const setSettings = mkRpc(RPC_SetSettings)
 export const shutdownNode = mkRpc(RPC_ShutdownNode)
-// export const createUserKeyPair = mkRpc(RPC_CreateUserKeyPair)
-export const createUserKeyPair = async (
-  req: CreateUserKeyPairRequest,
-): Promise<CreateUserKeyPairResponse> => {
+export const createUserKeyPair = async (): Promise<CreateUserKeyPairResponse> => {
+  const privateKey = create_private_key()
   return {
-    privateKeyPath: 'FIXME',
-    publicKey: 'FIXME',
-    publicKeyPath: 'FIXME',
+    privateKey,
   }
 }
 export const generateSwarmKey = mkRpc(RPC_GenerateSwarmKey)

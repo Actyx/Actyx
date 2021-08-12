@@ -8,6 +8,8 @@ import { Button } from '../components/basics'
 import { SolidStarIcon, UnsolidStarIcon } from '../components/icons'
 import { useStore } from '../store'
 import { StoreState } from '../store/types'
+import { some } from 'fp-ts/lib/OptionT'
+import { fromNullable } from 'fp-ts/lib/OptionT'
 
 const nodeTypeToText = (type: NodeType) => {
   switch (type) {

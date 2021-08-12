@@ -10,6 +10,7 @@ export const StoreData = io.type({
     disabled: io.boolean,
     userId: io.string,
   }),
+  privateKey: io.union([io.undefined, io.string]),
 })
 
 export type StoreData = io.TypeOf<typeof StoreData>
@@ -135,9 +136,7 @@ export const CreateUserKeyPairRequest = io.type({
 export type CreateUserKeyPairRequest = io.TypeOf<typeof CreateUserKeyPairRequest>
 
 export const CreateUserKeyPairResponse = io.type({
-  privateKeyPath: io.string,
-  publicKeyPath: io.string,
-  publicKey: io.string,
+  privateKey: io.string,
 })
 export type CreateUserKeyPairResponse = io.TypeOf<typeof CreateUserKeyPairResponse>
 

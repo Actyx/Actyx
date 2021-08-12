@@ -35,29 +35,15 @@ const Initial: WizardInput<void> = ({ execute, executing }) => (
 
 const mkSuccess =
   (onDone: () => void): WizardSuccess<CreateUserKeyPairResponse> =>
-  ({ result: { privateKeyPath, publicKey, publicKeyPath } }) =>
+  ({ result: { privateKey } }) =>
     (
       <>
         <p className="text-xl pb-6">User key pair created</p>
         <p className="text-gray-400">The Actyx Node Manager created a user key pair for you.</p>
         <SimpleInput
           className="mt-6"
-          label="Your private key was saved at"
-          value={privateKeyPath}
-          disabled
-          inputClassName="text-sm text-gray-600"
-        />
-        <SimpleInput
-          className="mt-4"
-          label="Your public key was saved at"
-          value={publicKeyPath}
-          disabled
-          inputClassName="text-sm text-gray-600"
-        />
-        <SimpleInput
-          className="mt-4"
-          label="Your public key is"
-          value={publicKey}
+          label="Your private key is"
+          value={privateKey}
           disabled
           inputClassName="text-sm text-gray-600"
         />
@@ -83,7 +69,7 @@ const Screen = () => {
   } = useAppState()
 
   const execute = (): Promise<Either<string, CreateUserKeyPairResponse>> =>
-    createUserKeyPair(null)
+    createUserKeyPair()
       .then((r) => right(r))
       .catch((e) => left(e))
 

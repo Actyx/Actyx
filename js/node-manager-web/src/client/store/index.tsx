@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useReducer, useState } from 'react'
 import { IpcFromClient, IpcToClient } from '../../common/ipc'
+import { v4 as uuidv4 } from 'uuid'
 import { StoreData as Data } from '../../common/types'
 import { StoreAction, StoreActionKey, StoreState, StoreStateKey } from './types'
 
@@ -14,29 +15,46 @@ const reducer = (state: StoreState, action: StoreAction): StoreState => {
   }
 }
 
-const saveAndReloadDataViaIpc = (new_data: Data | null, onData: (data: Data) => void) => {
-  // ipcRenderer.once(IpcToClient.StoreLoaded, (event, arg) => {
-  //   onData(arg as Data)
-  // })
-  // ipcRenderer.send(IpcFromClient.LoadStore, new_data)
-  onData({ analytics: { disabled: true, userId: 'dev' }, preferences: { favoriteNodeAddrs: [] } })
-}
+// const saveAndReloadDataViaIpc = (new_data: Data | null, onData: (data: Data) => void) => {
+//   // ipcRenderer.once(IpcToClient.StoreLoaded, (event, arg) => {
+//   //   onData(arg as Data)
+//   // })
+//   // ipcRenderer.send(IpcFromClient.LoadStore, new_data)
+//   onData({ analytics: { disabled: true, userId: 'dev' }, preferences: { favoriteNodeAddrs: [] } })
+// }
 
 const Context = React.createContext<StoreState | undefined>(undefined)
+
+const INITIAL_STORE_DATA: Data = {
+  preferences: {
+    favoriteNodeAddrs: [],
+  },
+  analytics: {
+    disabled: false,
+    userId: uuidv4(),
+  },
+  privateKey: undefined,
+}
 
 export const StoreProvider: React.FC<{}> = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, { key: StoreStateKey.Initial })
 
+  const id = 'ax-node-manager'
+  if (!localStorage.getItem(id)) {
+    localStorage.setItem(id, JSON.stringify(INITIAL_STORE_DATA))
+  }
   const updateAndReload = (data: Data | null) => {
-    saveAndReloadDataViaIpc(data, (data) => {
-      dispatch({
-        key: StoreActionKey.HasLoaded,
-        data,
-        actions: {
-          reload: () => updateAndReload(null),
-          updateAndReload,
-        },
-      })
+    if (data) {
+      localStorage.setItem(id, JSON.stringify(data))
+    }
+    dispatch({
+      key: StoreActionKey.HasLoaded,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      data: JSON.parse(localStorage.getItem(id)!),
+      actions: {
+        reload: () => updateAndReload(null),
+        updateAndReload,
+      },
     })
   }
 

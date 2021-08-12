@@ -8,6 +8,7 @@ import { getFolderFromUser, Wizard, WizardFailure, WizardSuccess, WizardInput } 
 import { Either, left, right } from 'fp-ts/lib/Either'
 import { FatalError } from '../../common/ipc'
 import { safeErrorToStr } from '../../common/util'
+import { useStore } from 'client/store'
 
 const Screen = () => {
   const {
@@ -15,7 +16,7 @@ const Screen = () => {
   } = useAppState()
 
   const execute = ({ location }: Input): Promise<Either<FatalError, Success>> => {
-    return createUserKeyPair(location ? `${location.folder}/${location.name}` : null)
+    return createUserKeyPair()
       .then((resp) => right(resp))
       .catch((e) => left(e))
   }
@@ -38,11 +39,10 @@ interface Input {
       }
 }
 interface Success {
-  privateKeyPath: string
-  publicKeyPath: string
-  publicKey: string
+  privateKey: string
 }
 
+// FIXME: download key
 const Initial: WizardInput<Input> = ({ execute, executing }) => {
   const [folder, setFolder] = useState('')
   const [name, setName] = useState('')
@@ -111,32 +111,15 @@ const Initial: WizardInput<Input> = ({ execute, executing }) => {
   )
 }
 
-const Success: WizardSuccess<Success> = ({
-  restart,
-  result: { privateKeyPath, publicKeyPath, publicKey },
-}) => (
+const Success: WizardSuccess<Success> = ({ restart, result: { privateKey } }) => (
   <>
     <p className="mb-2">Successfully generated user key pair.</p>
     <p>You can now use this key pair to interact with Actyx nodes.</p>
     <div>
       <SimpleInput
         className="mt-4"
-        label="Your private key was saved at"
-        value={privateKeyPath}
-        disabled
-        inputClassName="text-sm text-gray-600"
-      />
-      <SimpleInput
-        className="mt-4"
-        label="Your public key was saved at"
-        value={publicKeyPath}
-        disabled
-        inputClassName="text-sm text-gray-600"
-      />
-      <SimpleInput
-        className="mt-4"
-        label="Your public key is"
-        value={publicKey}
+        label="Your private key is"
+        value={privateKey}
         disabled
         inputClassName="text-sm text-gray-600"
       />

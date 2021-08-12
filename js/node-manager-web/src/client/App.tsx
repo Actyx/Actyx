@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import { hot } from 'react-hot-loader'
 import {
   NodesOverview,
   NodeDetail,
@@ -87,4 +86,4 @@ const Content: React.FC = () => {
   }
 }
 
-export default hot(module)(Root)
+export default Root

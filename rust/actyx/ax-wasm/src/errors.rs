@@ -90,6 +90,11 @@ impl From<RecvError> for ActyxOSError {
         ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("Error waiting on channel: {}", err))
     }
 }
+impl From<std::io::Error> for ActyxOSError {
+    fn from(err: std::io::Error) -> ActyxOSError {
+        ActyxOSCode::ERR_IO.with_message(format!("IO Errpr: {}", err))
+    }
+}
 impl<T> From<SendError<T>> for ActyxOSError {
     fn from(err: SendError<T>) -> ActyxOSError {
         ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("Error sending on channel: {}", err))

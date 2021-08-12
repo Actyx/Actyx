@@ -25,6 +25,8 @@ export const safeErrorToStr = (err: unknown): string => {
       } else {
         return (err as any).shortMessage
       }
+    } else if (Object.prototype.hasOwnProperty.call(err, 'message')) {
+      return (err as any).message
     }
   }
   return JSON.stringify(err, (_, v) => (typeof v === 'function' ? '<func>' : v))

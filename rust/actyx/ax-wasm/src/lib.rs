@@ -8,10 +8,12 @@ use actyx_sdk::{
     service::{OffsetsResponse, Order, QueryRequest},
 };
 use admin_protocol::{AdminProtocol, AdminResponse, ConnectedNodeDetails, NodesInspectResponse, NodesLsResponse};
+use crypto::PrivateKey;
 use derive_more::From;
-use errors::ActyxOSResult;
+use errors::{ActyxOSError, ActyxOSResult};
 use events_protocol::{EventsProtocol, EventsRequest, EventsResponse, NodeManagerEventsRes};
-use futures::{channel::mpsc, select, Future, StreamExt};
+use futures::{channel::mpsc, future, select, Future, StreamExt, TryFutureExt};
+use futures_timer::Delay;
 use js_sys::Promise;
 use libp2p::{
     core::{muxing::StreamMuxerBox, transport::Boxed, upgrade::AuthenticationVersion, ConnectedPoint},
@@ -24,9 +26,10 @@ use libp2p::{
 };
 use libp2p_streaming_response::{StreamingResponse, StreamingResponseEvent};
 use log::{error, info};
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
+use parking_lot::Mutex;
 use serde::Serialize;
-use std::{collections::BTreeMap, io, time::Duration};
+use std::{collections::BTreeMap, io, sync::Arc, time::Duration};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::future_to_promise;
@@ -35,12 +38,17 @@ mod admin_protocol;
 mod errors;
 mod events_protocol;
 
-#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(start)]
 pub fn main() {
-    let _ = console_log::init_with_level(log::Level::Debug);
+    let _ = console_log::init_with_level(log::Level::Info);
     ::console_error_panic_hook::set_once();
     info!("Setup panic hook");
+}
+
+#[wasm_bindgen]
+pub fn create_private_key() -> String {
+    let key = PrivateKey::generate();
+    key.to_string()
 }
 
 #[derive(Debug)]
@@ -55,100 +63,99 @@ type Channel = Either<
     (AdminRequest, mpsc::Sender<ActyxOSResult<AdminResponse>>),
     (EventsRequest, mpsc::Sender<ActyxOSResult<EventsResponse>>),
 >;
-static SWARM: OnceCell<mpsc::Sender<Channel>> = OnceCell::new();
+static SWARMS: Lazy<Mutex<BTreeMap<Multiaddr, Arc<Mutex<mpsc::Sender<Channel>>>>>> = Lazy::new(|| Default::default());
 
 #[wasm_bindgen]
-pub struct ActyxAdminApi {}
+pub struct ActyxAdminApi {
+    host: Multiaddr,
+    tx: Arc<Mutex<mpsc::Sender<Channel>>>,
+}
 
 fn to_promise(
     fut: impl Future<Output = std::result::Result<impl Serialize, impl std::fmt::Display>> + 'static,
 ) -> Promise {
     future_to_promise(async move {
         fut.await
-            //            .and_then(|x| JsValue::from_serde(&x).map_err(|x| anyhow::anyhow!("wtf"))
             .map(|e| JsValue::from_serde(&e).unwrap())
             .map_err(|e| js_sys::Error::new(&format!("Error: {:#}", e)).into())
     })
 }
 
 macro_rules! request {
-    ($($either:ident)::+, $req:expr, $($resp:ident)::+ ) => {
-        async move {
+    ($tx:expr, $($either:ident)::+, $req:expr, $($resp:ident)::+ ) => {
+        {
             let (tx, mut rx) = mpsc::channel(1);
-            SWARM
-                .get()
-                .expect("struct created through `new`")
-                .clone()
-                .start_send($($either)::+(($req, tx)))
-                .unwrap();
+            $tx
+              .lock()
+              .clone()
+              .start_send($($either)::+(($req, tx)))
+              .unwrap();
 
-            if let Some(r) = rx.next().await {
-                match r {
-                    Ok($($resp)::+ (x)) => Ok(x),
-                    Err(e)  => Err(e),
-                    _ => ax_err(ActyxOSCode::ERR_INTERNAL_ERROR, "Unexpected response".into())
+            async move {
+                if let Some(r) = rx.next().await {
+                    match r {
+                        Ok($($resp)::+ (x)) => Ok(x),
+                        Err(e)  => Err(e),
+                        _ => ax_err(ActyxOSCode::ERR_INTERNAL_ERROR, "Unexpected response".into())
+                    }
+                } else {
+                    ax_err(ActyxOSCode::ERR_NODE_UNREACHABLE, "".into())
                 }
-            } else {
-                ax_err(ActyxOSCode::ERR_NODE_UNREACHABLE, "".into())
-            }
 
+            }
         }
     };
-//    ($($either:ident)::+, $req:expr, match { $($body:tt)* }) => {
-//        async move {
-//            let (tx, rx) = oneshot::channel();
-//            SWARM
-//                .get()
-//                .expect("struct created through `new`")
-//                .clone()
-//                .start_send($($either)::+(($req, tx)))
-//                .unwrap();
-//
-//            match rx.await?? {
-//                $($body)*,
-//                _ => anyhow::bail!("Received unknown response")
-//            }
-//
-//        }
-//    };
 }
 
 macro_rules! admin {
-    ($req:expr, $($resp:ident)::+ ) => {
-        request!(Either::Left, $req, $($resp)::+)
+    ($tx:expr, $req:expr, $($resp:ident)::+ ) => {
+        request!($tx, Either::Left, $req, $($resp)::+)
     };
 }
 
 macro_rules! events {
-    ($req:expr, $($resp:ident)::+ ) => {
-        request!(Either::Right, $req, $($resp)::+)
+    ($tx:expr, $req:expr, $($resp:ident)::+ ) => {
+        request!($tx, Either::Right, $req, $($resp)::+)
     };
- //   ($req:expr, match { $($body:tt)* }) => {
- //       request!(Either::Right, $req, match { $($body)* })
- //   };
+}
+
+impl Drop for ActyxAdminApi {
+    fn drop(&mut self) {
+        if Arc::strong_count(&self.tx) == 2 {
+            SWARMS.lock().remove(&self.host);
+        }
+    }
 }
 
 #[wasm_bindgen]
 impl ActyxAdminApi {
     #[wasm_bindgen(constructor)]
     #[allow(unused_must_use)]
-    pub fn new(private_key: String) -> Self {
-        let (tx, rx) = mpsc::channel(64);
+    pub fn new(host: String, private_key: String) -> Self {
+        let addr: Multiaddr = format!("/ip4/{}/tcp/4459/ws", host)
+            .parse()
+            .expect("Invalid host. Only ipv4 format supported");
+        let tx = SWARMS
+            .lock()
+            .entry(addr.clone())
+            .or_insert_with(|| {
+                let (tx, rx) = mpsc::channel(64);
 
-        SWARM.set(tx).expect("Though shall not init twice!");
-        // TODO: Move this to a webworker.
-        // Right now, this basically just spawns the promise to wherever.
-        future_to_promise(async move {
-            // TODO: expose via public interface
-            run(&*private_key, rx).await.unwrap();
-            Ok("XX".into())
-        });
-        Self {}
+                // TODO: Move this to a webworker.
+                // Right now, this basically just spawns the promise to wherever.
+                future_to_promise(async move {
+                    run(&*private_key, rx).await.unwrap();
+                    Ok("XX".into())
+                });
+                Arc::new(Mutex::new(tx))
+            })
+            .clone();
+        Self { host: addr, tx }
     }
 
     // Events API
     fn _offsets(&self) -> impl Future<Output = ActyxOSResult<OffsetsResponse>> + 'static {
-        events!(EventsRequest::Offsets, EventsResponse::Offsets)
+        events!(self.tx, EventsRequest::Offsets, EventsResponse::Offsets)
     }
     // Unfortunately promises can't be typed, they always end up as `Promise<any>` in the ts
     // definition file. Synchronous function can be annotated with `#[wasm_bindgen(typescript_type = "..")]`
@@ -157,19 +164,19 @@ impl ActyxAdminApi {
     }
 
     // TODO stream
-    fn _query(&self, query: Query) -> impl Future<Output = ActyxOSResult<NodeManagerEventsRes>> {
-        let request = QueryRequest {
-            lower_bound: None,
-            upper_bound: None,
-            query,
-            order: Order::Asc,
-        };
+    fn _query(&self, query: String) -> impl Future<Output = ActyxOSResult<NodeManagerEventsRes>> {
+        let mut swarm_tx = self.tx.lock().clone();
         async move {
+            let request = QueryRequest {
+                lower_bound: None,
+                upper_bound: None,
+                query: query
+                    .parse()
+                    .map_err(|e| ActyxOSCode::ERR_INVALID_INPUT.with_message(format!("{}", e)))?,
+                order: Order::Asc,
+            };
             let (tx, rx) = mpsc::channel(256);
-            SWARM
-                .get()
-                .expect("struct created through `new`")
-                .clone()
+            swarm_tx
                 .start_send(Either::Right((EventsRequest::Query(request), tx)))
                 .unwrap();
 
@@ -189,19 +196,13 @@ impl ActyxAdminApi {
     }
 
     pub fn query(&mut self, query: String) -> Promise {
-        // FIXME
-        let query = query.parse().unwrap();
         to_promise(self._query(query))
     }
-
-    //Query(QueryRequest),
-    //Subscribe(SubscribeRequest),
-    //SubscribeMonotonic(SubscribeMonotonicRequest),
-    //Publish(PublishRequest),
 
     // Admin API
     fn _get_settings(&self, scope: String) -> impl Future<Output = ActyxOSResult<serde_json::Value>> + 'static {
         admin!(
+            self.tx,
             AdminRequest::SettingsGet {
                 scope: scope.into(),
                 no_defaults: false,
@@ -220,6 +221,7 @@ impl ActyxAdminApi {
         json: serde_json::Value,
     ) -> impl Future<Output = ActyxOSResult<serde_json::Value>> + 'static {
         admin!(
+            self.tx,
             AdminRequest::SettingsSet {
                 scope,
                 json,
@@ -237,6 +239,7 @@ impl ActyxAdminApi {
 
     fn _get_schema(&self, scope: String) -> impl Future<Output = ActyxOSResult<serde_json::Value>> + 'static {
         admin!(
+            self.tx,
             AdminRequest::SettingsSchema { scope: scope.into() },
             AdminResponse::SettingsSchemaResponse
         )
@@ -246,7 +249,7 @@ impl ActyxAdminApi {
         to_promise(fut)
     }
     fn _nodes_ls(&self) -> impl Future<Output = ActyxOSResult<NodesLsResponse>> + 'static {
-        admin!(AdminRequest::NodesLs, AdminResponse::NodesLsResponse)
+        admin!(self.tx, AdminRequest::NodesLs, AdminResponse::NodesLsResponse)
     }
     pub fn nodes_ls(&mut self) -> Promise {
         let fut = self._nodes_ls();
@@ -254,7 +257,7 @@ impl ActyxAdminApi {
     }
 
     fn _nodes_inspect(&self) -> impl Future<Output = ActyxOSResult<NodesInspectResponse>> + 'static {
-        admin!(AdminRequest::NodesInspect, AdminResponse::NodesInspectResponse)
+        admin!(self.tx, AdminRequest::NodesInspect, AdminResponse::NodesInspectResponse)
     }
 
     pub fn nodes_inspect(&mut self) -> Promise {

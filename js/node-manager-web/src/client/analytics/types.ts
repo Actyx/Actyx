@@ -11,7 +11,7 @@ export interface AnalyticsActions {
   setSettings: () => void
   shutdownNode: () => void
   generatedSwarmKey: () => void
-  createdUserKeyPair: (wasDefault: boolean) => void
+  createdUserKeyPair: () => void
   gotFatalError: (error: FatalError) => void
   gotError: (errorMsg: string) => void
 }

@@ -443,6 +443,7 @@ const Screen = () => {
     } catch (error) {
       console.error(error)
       setQueryRunning(false)
+      const e = safeErrorToStr(error)
       setQueryError(safeErrorToStr(error))
     }
   }

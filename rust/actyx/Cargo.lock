@@ -552,6 +552,7 @@ dependencies = [
  "console_error_panic_hook",
  "console_log",
  "crossbeam",
+ "crypto",
  "derive_more",
  "futures 0.3.16",
  "futures-timer",

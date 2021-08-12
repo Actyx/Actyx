@@ -5,7 +5,6 @@ import {
   generateSwarmKey,
   getNodesDetails,
   setSettings,
-  waitForNoUserKeysFound,
   shutdownNode,
   query,
 } from '../util'
@@ -16,6 +15,7 @@ import {
   GenerateSwarmKeyResponse,
   SignAppManifestResponse,
   QueryResponse,
+  SwarmOffsets,
 } from '../../common/types'
 import { AppState, AppAction, AppStateKey, AppActionKey } from './types'
 import { useAnalytics } from '../analytics'
@@ -24,7 +24,9 @@ import { FatalError } from '../../common/ipc'
 import { safeErrorToStr } from '../../common/util'
 import deepEqual from 'fast-deep-equal'
 import { OffsetInfo } from '../offsets'
-import { none, Option, some } from 'fp-ts/lib/Option'
+import { none, Option, some, fromNullable, map } from 'fp-ts/lib/Option'
+import { useStore } from '../store'
+import { store } from 'fp-ts/lib/Store'
 
 const POLLING_INTERVAL_MS = 1_000
 
@@ -98,6 +100,7 @@ export const reducer =
 interface Data {
   nodes: Node[]
   offsets: Option<OffsetInfo>
+  privateKey: Option<String>
 }
 
 interface Actions {
@@ -105,7 +108,7 @@ interface Actions {
   remNodes: (addrs: string[]) => void
   setSettings: (addr: string, settings: object) => Promise<void>
   shutdownNode: (addr: string) => Promise<void>
-  createUserKeyPair: (privateKeyPath: string | null) => Promise<CreateUserKeyPairResponse>
+  createUserKeyPair: () => Promise<CreateUserKeyPairResponse>
   generateSwarmKey: () => Promise<GenerateSwarmKeyResponse>
   signAppManifest: ({
     pathToManifest,
@@ -135,7 +138,16 @@ export const AppStateProvider: React.FC<{
   const [state, dispatch] = useReducer(reducer(analytics), {
     key: AppStateKey.Overview,
   })
-  const [data, setData] = useState<Data>({ nodes: [], offsets: none })
+  const [data, setData] = useState<Data>({ nodes: [], offsets: none, privateKey: none })
+
+  const store = useStore()
+  const privateKey: string | undefined = store.key === 'Loaded' ? store.data.privateKey : undefined
+
+  console.log('priv', privateKey)
+  useEffect(() => {
+    setData((current) => ({ ...current, privateKey: fromNullable(privateKey) }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [privateKey])
 
   const actions: Actions = {
     // Wrap addNodes and add the node as loading as soon as the request
@@ -184,11 +196,18 @@ export const AppStateProvider: React.FC<{
       }
       return shutdownNode({ addr })
     },
-    createUserKeyPair: (privateKeyPath) => {
+    createUserKeyPair: async () => {
       if (analytics) {
-        analytics.createdUserKeyPair(privateKeyPath === null)
+        analytics.createdUserKeyPair()
       }
-      return createUserKeyPair({ privateKeyPath })
+      const key = await createUserKeyPair()
+      if (store.key === 'Loaded') {
+        store.actions.updateAndReload({
+          ...store.data,
+          privateKey: key.privateKey,
+        })
+      }
+      return key
     },
     generateSwarmKey: () => {
       if (analytics) {
@@ -214,11 +233,11 @@ export const AppStateProvider: React.FC<{
   }
 
   useEffect(() => {
-    ;(async () => {
-      await waitForNoUserKeysFound()
+    if (store.key === 'Loaded' && !store.data.privateKey) {
       dispatch({ key: AppActionKey.ShowSetupUserKey })
-    })()
-  }, [])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store.key])
 
   useEffect(() => {
     let unmounted = false
