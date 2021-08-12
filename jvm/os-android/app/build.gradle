@@ -35,7 +35,7 @@ android {
     testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     buildConfigField "int", "MIN_SDK_API_LEVEL", "$minSdkVersion.apiLevel"
     ndk {
-      abiFilters 'x86', 'arm64-v8a', 'armeabi-v7a'
+      abiFilters 'x86', 'x86_64', 'arm64-v8a', 'armeabi-v7a'
     }
   }
   signingConfigs {
@@ -88,7 +88,7 @@ dependencies {
   androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 }
 
-def archs = ["x86", "arm64-v8a", "armeabi-v7a"]
+def archs = ["x86", "x86_64", "arm64-v8a", "armeabi-v7a"]
 def nativeLibs = ["axosnodeffi"]
 task checkExternalLibsExist() {
   // this is the task setup. Doing things here means they are executed on each gradle run
