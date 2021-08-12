@@ -229,6 +229,7 @@ module.exports = {
       ],
     },
     'reference/aql',
+    'reference/rust-sdk'
   ],
   tutorialSidebar: [
     {
