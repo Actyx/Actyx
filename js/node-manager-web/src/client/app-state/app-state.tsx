@@ -110,6 +110,7 @@ interface Actions {
   setSettings: (addr: string, privateKey: string, settings: object) => Promise<void>
   shutdownNode: (addr: string, privateKey: string) => Promise<void>
   createUserKeyPair: () => Promise<CreateUserKeyPairResponse>
+  setUserKeyPair: (privateKey: string) => void
   generateSwarmKey: () => Promise<GenerateSwarmKeyResponse>
   signAppManifest: ({
     pathToManifest,
@@ -209,6 +210,14 @@ export const AppStateProvider: React.FC<{
         })
       }
       return key
+    },
+    setUserKeyPair: (privateKey) => {
+      if (store.key === 'Loaded') {
+        store.actions.updateAndReload({
+          ...store.data,
+          privateKey,
+        })
+      }
     },
     generateSwarmKey: () => {
       if (analytics) {

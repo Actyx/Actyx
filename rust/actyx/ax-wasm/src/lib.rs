@@ -20,7 +20,7 @@ use log::{error, info};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use serde::Serialize;
-use std::{collections::BTreeMap, io, net::SocketAddr, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, io, net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
 use util::formats::{
     ax_err,
     events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
@@ -43,6 +43,12 @@ pub fn main() {
 pub fn create_private_key() -> String {
     let key = PrivateKey::generate();
     key.to_string()
+}
+
+#[wasm_bindgen]
+pub fn validate_private_key(input: String) -> std::result::Result<(), JsValue> {
+    PrivateKey::from_str(&*input).map_err(|e| JsValue::from_str(&*format!("{:#}", e)))?;
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -138,6 +144,7 @@ impl ActyxAdminApi {
     #[wasm_bindgen(constructor)]
     #[allow(unused_must_use)]
     pub fn new(host: String, private_key: String) -> Self {
+        // FIXME remove unwrap
         let addr = to_multiaddr(&*host).expect("Invalid input");
 
         let tx = SWARMS

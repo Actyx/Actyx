@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { SimpleCanvas } from '../components/SimpleCanvas'
 import { Layout } from '../components/Layout'
 import { Button, SimpleInput } from '../components/basics'
@@ -6,6 +6,7 @@ import { Wizard, WizardFailure, WizardSuccess, WizardInput } from '../util'
 import { Either, left, right } from 'fp-ts/lib/Either'
 import { useAppState, AppActionKey } from '../app-state'
 import { CreateUserKeyPairResponse } from '../../common/types'
+import { validate_private_key } from 'ax-wasm'
 
 const DefaultDirectoryHelpLink: React.FC = ({ children }) => (
   <a
@@ -18,20 +19,38 @@ const DefaultDirectoryHelpLink: React.FC = ({ children }) => (
   </a>
 )
 
-const Initial: WizardInput<void> = ({ execute, executing }) => (
-  <>
-    <p className="text-xl pb-6">No user key pair found</p>
+const Initial: WizardInput<string | undefined> = ({ execute, executing }) => {
+  const [privKey, setPrivKey] = useState('')
+  return (
+    <>
+      <p className="text-xl pb-6">No user key pair found</p>
 
-    <p className="pb-10 text-gray-400">
-      The Actyx Node Manager needs a user key pair to authenticate itself with Actyx nodes. If you
-      already have a key pair, please save it in the{' '}
-      <DefaultDirectoryHelpLink>default key pair directory</DefaultDirectoryHelpLink>.
-    </p>
-    <Button onClick={() => execute()} working={executing}>
-      Create new user key pair
-    </Button>
-  </>
-)
+      <p className="pb-10 text-gray-400">
+        The Actyx Node Manager needs a user key pair to authenticate itself with Actyx nodes. If you
+        already have a key pair, please provide it here:
+      </p>
+
+      <SimpleInput
+        className="mt-4"
+        label="Enter private key"
+        placeholder="Private key"
+        setValue={setPrivKey}
+        value={privKey}
+        button={{
+          text: 'Ok',
+          onClick: () => execute(privKey),
+          disabled: executing,
+        }}
+        disabled={executing}
+      />
+      <div className="mt-10">
+        <Button onClick={() => execute(undefined)} working={executing}>
+          Create new user key pair
+        </Button>
+      </div>
+    </>
+  )
+}
 
 const mkSuccess =
   (onDone: () => void): WizardSuccess<CreateUserKeyPairResponse> =>
@@ -40,6 +59,7 @@ const mkSuccess =
       <>
         <p className="text-xl pb-6">User key pair created</p>
         <p className="text-gray-400">The Actyx Node Manager created a user key pair for you.</p>
+
         <SimpleInput
           className="mt-6"
           label="Your private key is"
@@ -65,14 +85,26 @@ const Failure: WizardFailure<string> = ({ restart, reason }) => (
 const Screen = () => {
   const {
     dispatch,
-    actions: { createUserKeyPair },
+    actions: { createUserKeyPair, setUserKeyPair },
   } = useAppState()
 
-  const execute = (): Promise<Either<string, CreateUserKeyPairResponse>> =>
-    createUserKeyPair()
-      .then((r) => right(r))
-      .catch((e) => left(e))
-
+  const execute = async (
+    maybeInput?: string,
+  ): Promise<Either<string, CreateUserKeyPairResponse>> => {
+    if (maybeInput) {
+      try {
+        validate_private_key(maybeInput)
+        setUserKeyPair(maybeInput)
+        return right({ privateKey: maybeInput })
+      } catch (e) {
+        return left(e)
+      }
+    } else {
+      return await createUserKeyPair()
+        .then((r) => right(r))
+        .catch((e) => left(e))
+    }
+  }
   return (
     <Layout title="Setup a user key">
       <SimpleCanvas>

@@ -101,22 +101,7 @@ export const waitForFatalError = (): Promise<FatalError> =>
 const mkRpc =
   <Req, Resp>(rpc: RPC<Req, Resp>) =>
   (req: Req): Promise<Resp> =>
-    new Promise((resolve, reject) => {
-      // ipcRenderer.once(rpc.ipcCode, (_, arg) => {
-      //   if (isLeft(arg)) {
-      //     console.log(`got error: ${JSON.stringify(arg.left)}`)
-      //     reject(arg.left)
-      //   } else {
-      //     const resp = rpc.response.decode(arg.right)
-      //     if (isLeft(resp)) {
-      //       reject(`error decoding response for IPC RPC ${rpc.ipcCode}: ${ioErrToStr(resp.left)}`)
-      //       return
-      //     }
-      //     resolve(resp.right)
-      //   }
-      // })
-      // ipcRenderer.send(rpc.ipcCode, rpc.request.encode(req))
-    })
+    new Promise((resolve, reject) => {})
 
 //export const getNodesDetails = mkRpc(RPC_GetNodesDetails)
 export const getNodesDetails = async (
