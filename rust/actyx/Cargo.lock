@@ -567,6 +567,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "serde_json",
+ "util",
  "wasm-bindgen",
  "wasm-bindgen-futures",
 ]

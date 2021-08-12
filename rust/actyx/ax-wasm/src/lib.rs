@@ -1,23 +1,14 @@
-use crate::{
-    admin_protocol::{AdminRequest, Node},
-    errors::{ax_err, ActyxOSCode},
-    events_protocol::EventDiagnostic,
-};
-use actyx_sdk::{
-    language::Query,
-    service::{OffsetsResponse, Order, QueryRequest},
-};
-use admin_protocol::{AdminProtocol, AdminResponse, ConnectedNodeDetails, NodesInspectResponse, NodesLsResponse};
+use crate::types::{ConnectedNodeDetails, EventDiagnostic, Node, NodeManagerEventsRes};
+use actyx_sdk::service::{OffsetsResponse, Order, QueryRequest};
 use crypto::PrivateKey;
 use derive_more::From;
-use errors::{ActyxOSError, ActyxOSResult};
-use events_protocol::{EventsProtocol, EventsRequest, EventsResponse, NodeManagerEventsRes};
-use futures::{channel::mpsc, future, select, Future, StreamExt, TryFutureExt};
-use futures_timer::Delay;
+use futures::{channel::mpsc, select, Future, StreamExt};
 use js_sys::Promise;
 use libp2p::{
     core::{muxing::StreamMuxerBox, transport::Boxed, upgrade::AuthenticationVersion, ConnectedPoint},
-    identity, noise,
+    identity,
+    multiaddr::Protocol,
+    noise,
     ping::{Ping, PingConfig, PingEvent},
     swarm::SwarmEvent,
     wasm_ext::{ffi, ExtTransport},
@@ -26,17 +17,23 @@ use libp2p::{
 };
 use libp2p_streaming_response::{StreamingResponse, StreamingResponseEvent};
 use log::{error, info};
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use serde::Serialize;
 use std::{collections::BTreeMap, io, sync::Arc, time::Duration};
+use util::{
+    formats::{
+        ax_err,
+        events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
+        ActyxOSCode, ActyxOSResult, AdminProtocol, AdminRequest, AdminResponse, NodesInspectResponse, NodesLsResponse,
+    },
+    SocketAddrHelper,
+};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::future_to_promise;
 
-mod admin_protocol;
-mod errors;
-mod events_protocol;
+mod types;
 
 #[wasm_bindgen(start)]
 pub fn main() {
@@ -63,11 +60,11 @@ type Channel = Either<
     (AdminRequest, mpsc::Sender<ActyxOSResult<AdminResponse>>),
     (EventsRequest, mpsc::Sender<ActyxOSResult<EventsResponse>>),
 >;
-static SWARMS: Lazy<Mutex<BTreeMap<Multiaddr, Arc<Mutex<mpsc::Sender<Channel>>>>>> = Lazy::new(|| Default::default());
+static SWARMS: Lazy<Mutex<BTreeMap<String, Arc<Mutex<mpsc::Sender<Channel>>>>>> = Lazy::new(|| Default::default());
 
 #[wasm_bindgen]
 pub struct ActyxAdminApi {
-    host: Multiaddr,
+    host: String,
     tx: Arc<Mutex<mpsc::Sender<Channel>>>,
 }
 
@@ -132,25 +129,24 @@ impl ActyxAdminApi {
     #[wasm_bindgen(constructor)]
     #[allow(unused_must_use)]
     pub fn new(host: String, private_key: String) -> Self {
-        let addr: Multiaddr = format!("/ip4/{}/tcp/4459/ws", host)
-            .parse()
-            .expect("Invalid host. Only ipv4 format supported");
+        let addr: SocketAddrHelper = host.parse().expect("Invalid host");
+
         let tx = SWARMS
             .lock()
-            .entry(addr.clone())
+            .entry(host.clone())
             .or_insert_with(|| {
                 let (tx, rx) = mpsc::channel(64);
 
                 // TODO: Move this to a webworker.
                 // Right now, this basically just spawns the promise to wherever.
                 future_to_promise(async move {
-                    run(&*private_key, rx).await.unwrap();
+                    run(addr, &*private_key, rx).await.unwrap();
                     Ok("XX".into())
                 });
                 Arc::new(Mutex::new(tx))
             })
             .clone();
-        Self { host: addr, tx }
+        Self { host, tx }
     }
 
     // Events API
@@ -325,16 +321,12 @@ struct RequestBehaviour {
     ping: Ping,
 }
 
-async fn run(private_key: &str, mut rx: mpsc::Receiver<Channel>) -> anyhow::Result<()> {
+async fn run(addr: SocketAddrHelper, private_key: &str, mut rx: mpsc::Receiver<Channel>) -> anyhow::Result<()> {
     let mut bytes = base64::decode(&private_key.as_bytes()[1..])?;
     let pri = identity::ed25519::SecretKey::from_bytes(&mut bytes[..])?;
     let kp = identity::ed25519::Keypair::from(pri);
     let mut swarm = mk_swarm(identity::Keypair::Ed25519(kp))?;
-    let (remote_peer, remote_addr) = poll_until_connected(
-        &mut swarm,
-        std::iter::once("/ip4/127.0.0.1/tcp/4459/ws".parse().unwrap()),
-    )
-    .await?;
+    let (remote_peer, remote_addr) = poll_until_connected(&mut swarm, addr.to_multiaddrs()).await?;
     info!("Connected to {} at {}", remote_peer, remote_addr);
 
     let mut pending_event_requests = BTreeMap::new();
@@ -453,7 +445,8 @@ async fn poll_until_connected(
     potential_addresses: impl Iterator<Item = Multiaddr>,
 ) -> ActyxOSResult<(PeerId, Multiaddr)> {
     let mut to_try = 0usize;
-    for addr in potential_addresses {
+    for mut addr in potential_addresses {
+        addr.push(Protocol::Ws("/".into()));
         info!("Trying to connect to {}", addr);
         Swarm::dial_addr(&mut swarm, addr).expect("Connection limit exceeded");
         to_try += 1;
