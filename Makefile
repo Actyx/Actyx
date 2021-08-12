@@ -101,7 +101,7 @@ osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 ma
 binaries = ax ax.exe actyx-linux actyx.exe
 
 # targets for which we need a .so file for android
-android_so_targets = i686-linux-android aarch64-linux-android armv7-linux-androideabi
+android_so_targets = x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
 
 CARGO := RUST_BACKTRACE=1  cargo +$(BUILD_RUST_TOOLCHAIN)
 
@@ -378,10 +378,15 @@ node-manager-mac-linux:
 # combines all the .so files to build actyxos on android
 android-libaxosnodeffi: \
 	jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so \
+	jvm/os-android/app/src/main/jniLibs/x86_64/libaxosnodeffi.so \
 	jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so \
 	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so
 
 jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so: rust/actyx/target/i686-linux-android/release/libaxosnodeffi.so
+	mkdir -p $(dir $@)
+	cp $< $@
+
+jvm/os-android/app/src/main/jniLibs/x86_64/libaxosnodeffi.so: rust/actyx/target/x86_64-linux-android/release/libaxosnodeffi.so
 	mkdir -p $(dir $@)
 	cp $< $@
 
