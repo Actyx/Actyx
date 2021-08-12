@@ -89,8 +89,8 @@ export const Node = io.union([ReachableNode, UnauthorizedNode, UnreachableNode, 
 export type Node = io.TypeOf<typeof Node>
 
 // Helpers
-const RequestWithAddr = io.type({ addr: io.string })
-const RequestWithAddrs = io.type({ addrs: io.array(io.string) })
+const RequestWithAddr = io.type({ addr: io.string, privateKey: io.string })
+const RequestWithAddrs = io.array(RequestWithAddr)
 const EmptyRequest = io.type({})
 const Void = io.void
 
@@ -194,6 +194,7 @@ export type EventDiagnostic = io.TypeOf<typeof EventDiagnostic>
 export const QueryRequest = io.type({
   addr: io.string,
   query: io.string,
+  privateKey: io.string,
 })
 export type QueryRequest = io.TypeOf<typeof QueryRequest>
 export const QueryResponse = io.type({

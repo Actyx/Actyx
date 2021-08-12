@@ -20,14 +20,11 @@ use log::{error, info};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use serde::Serialize;
-use std::{collections::BTreeMap, io, sync::Arc, time::Duration};
-use util::{
-    formats::{
-        ax_err,
-        events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSResult, AdminProtocol, AdminRequest, AdminResponse, NodesInspectResponse, NodesLsResponse,
-    },
-    SocketAddrHelper,
+use std::{collections::BTreeMap, io, net::SocketAddr, sync::Arc, time::Duration};
+use util::formats::{
+    ax_err,
+    events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
+    ActyxOSCode, ActyxOSResult, AdminProtocol, AdminRequest, AdminResponse, NodesInspectResponse, NodesLsResponse,
 };
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
@@ -123,13 +120,25 @@ impl Drop for ActyxAdminApi {
         }
     }
 }
+fn to_multiaddr(input: &str) -> anyhow::Result<Multiaddr> {
+    let s = if let Ok(socket) = input.parse::<SocketAddr>() {
+        socket
+    } else {
+        format!("{}:4459", input).parse()?
+    };
+    Ok(match s {
+        SocketAddr::V4(v4) => format!("/ip4/{}/tcp/{}/ws", v4.ip(), v4.port()),
+        SocketAddr::V6(v6) => format!("/ip6/{}/tcp/{}/ws", v6.ip(), v6.port()),
+    }
+    .parse()?)
+}
 
 #[wasm_bindgen]
 impl ActyxAdminApi {
     #[wasm_bindgen(constructor)]
     #[allow(unused_must_use)]
     pub fn new(host: String, private_key: String) -> Self {
-        let addr: SocketAddrHelper = host.parse().expect("Invalid host");
+        let addr = to_multiaddr(&*host).expect("Invalid input");
 
         let tx = SWARMS
             .lock()
@@ -321,12 +330,12 @@ struct RequestBehaviour {
     ping: Ping,
 }
 
-async fn run(addr: SocketAddrHelper, private_key: &str, mut rx: mpsc::Receiver<Channel>) -> anyhow::Result<()> {
+async fn run(addr: Multiaddr, private_key: &str, mut rx: mpsc::Receiver<Channel>) -> anyhow::Result<()> {
     let mut bytes = base64::decode(&private_key.as_bytes()[1..])?;
     let pri = identity::ed25519::SecretKey::from_bytes(&mut bytes[..])?;
     let kp = identity::ed25519::Keypair::from(pri);
     let mut swarm = mk_swarm(identity::Keypair::Ed25519(kp))?;
-    let (remote_peer, remote_addr) = poll_until_connected(&mut swarm, addr.to_multiaddrs()).await?;
+    let (remote_peer, remote_addr) = poll_until_connected(&mut swarm, std::iter::once(addr)).await?;
     info!("Connected to {} at {}", remote_peer, remote_addr);
 
     let mut pending_event_requests = BTreeMap::new();

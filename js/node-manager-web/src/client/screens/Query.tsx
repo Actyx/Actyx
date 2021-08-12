@@ -1,5 +1,6 @@
 import React, { CSSProperties, useEffect, useRef, useState } from 'react'
 import { Layout } from '../components/Layout'
+import { toUndefined } from 'fp-ts/lib/Option'
 import { useAppState } from '../app-state'
 import { SimpleCanvas } from '../components/SimpleCanvas'
 import clsx from 'clsx'
@@ -335,7 +336,7 @@ const Results = ({
 
 const Screen = () => {
   const {
-    data: { nodes },
+    data: { nodes, privateKey },
     actions: { query },
   } = useAppState()
 
@@ -429,7 +430,11 @@ const Screen = () => {
       return
     }
     try {
-      const { events } = await query({ addr: selectedNodeAddr, query: queryStr })
+      const { events } = await query({
+        addr: selectedNodeAddr,
+        query: queryStr,
+        privateKey: toUndefined(privateKey)!,
+      })
       if (!events) {
         console.log(`node doesn't support querying`)
         setQueryRunning(false)
@@ -443,7 +448,6 @@ const Screen = () => {
     } catch (error) {
       console.error(error)
       setQueryRunning(false)
-      const e = safeErrorToStr(error)
       setQueryError(safeErrorToStr(error))
     }
   }

@@ -21,13 +21,15 @@ import {
   GetNodeDetailsRequest,
   GetNodeDetailsResponse,
   GetNodesDetailsRequest,
+  Node,
   NodeType,
   QueryRequest,
   QueryResponse,
+  SetSettingsRequest,
+  SetSettingsResponse,
 } from '../../common/types'
 import { ActyxAdminApi, create_private_key } from 'ax-wasm'
 
-const api = new ActyxAdminApi('127.0.0.1', '0oym7jtFXHERwneFUMOzzgInvJEjk9ZOVhe0AHpMDOuU=')
 export const getFolderFromUser = (): Promise<Option<string>> =>
   new Promise((resolve) => {
     resolve(none)
@@ -117,23 +119,35 @@ const mkRpc =
     })
 
 //export const getNodesDetails = mkRpc(RPC_GetNodesDetails)
-export const getNodesDetails = async ({
-  addrs,
-}: GetNodesDetailsRequest): Promise<GetNodeDetailsResponse> => {
-  if (addrs.length === 0) {
+export const getNodesDetails = async (
+  nodes: GetNodesDetailsRequest,
+): Promise<GetNodeDetailsResponse> => {
+  if (nodes.length === 0) {
     return []
   }
   try {
-    // FIXME
-    const details = await api.get_node_details()
-    const ret = [{ ...details, addr: addrs[0] }]
-    return ret
+    return Promise.all(
+      nodes.map(async ({ addr, privateKey }) => {
+        const api = new ActyxAdminApi(addr, privateKey)
+
+        const details: Node = await api.get_node_details()
+        return { ...details, addr }
+      }),
+    )
   } catch (e) {
     console.error(e)
     return []
   }
 }
-export const setSettings = mkRpc(RPC_SetSettings)
+export const setSettings = async ({
+  addr,
+  privateKey,
+  settings,
+}: SetSettingsRequest): Promise<SetSettingsResponse> => {
+  const api = new ActyxAdminApi(addr, privateKey)
+  const response = await api.set_settings('com.actyx', settings)
+  return response
+}
 export const shutdownNode = mkRpc(RPC_ShutdownNode)
 export const createUserKeyPair = async (): Promise<CreateUserKeyPairResponse> => {
   const privateKey = create_private_key()
@@ -143,8 +157,9 @@ export const createUserKeyPair = async (): Promise<CreateUserKeyPairResponse> =>
 }
 export const generateSwarmKey = mkRpc(RPC_GenerateSwarmKey)
 export const signAppManifest = mkRpc(RPC_SignAppManifest)
-export const query = async (req: QueryRequest): Promise<QueryResponse> => {
-  const response = await api.query(req.query)
+export const query = async ({ addr, query, privateKey }: QueryRequest): Promise<QueryResponse> => {
+  const api = new ActyxAdminApi(addr, privateKey)
+  const response = await api.query(query)
   return response
 }
 

@@ -27,6 +27,7 @@ import { OffsetInfo } from '../offsets'
 import { none, Option, some, fromNullable, map } from 'fp-ts/lib/Option'
 import { useStore } from '../store'
 import { store } from 'fp-ts/lib/Store'
+import { StringType } from 'io-ts'
 
 const POLLING_INTERVAL_MS = 1_000
 
@@ -100,14 +101,14 @@ export const reducer =
 interface Data {
   nodes: Node[]
   offsets: Option<OffsetInfo>
-  privateKey: Option<String>
+  privateKey: Option<string>
 }
 
 interface Actions {
   addNodes: (addrs: string[]) => void
   remNodes: (addrs: string[]) => void
-  setSettings: (addr: string, settings: object) => Promise<void>
-  shutdownNode: (addr: string) => Promise<void>
+  setSettings: (addr: string, privateKey: string, settings: object) => Promise<void>
+  shutdownNode: (addr: string, privateKey: string) => Promise<void>
   createUserKeyPair: () => Promise<CreateUserKeyPairResponse>
   generateSwarmKey: () => Promise<GenerateSwarmKeyResponse>
   signAppManifest: ({
@@ -117,7 +118,7 @@ interface Actions {
     pathToManifest: string
     pathToCertificate: string
   }) => Promise<SignAppManifestResponse>
-  query: (args: { addr: string; query: string }) => Promise<QueryResponse>
+  query: (args: { addr: string; privateKey: string; query: string }) => Promise<QueryResponse>
 }
 
 export type AppDispatch = (action: AppAction) => void
@@ -188,13 +189,13 @@ export const AppStateProvider: React.FC<{
       if (analytics) {
         analytics.setSettings()
       }
-      return setSettings({ addr, settings })
+      return setSettings({ addr, settings, privateKey: privateKey! })
     },
     shutdownNode: (addr) => {
       if (analytics) {
         analytics.shutdownNode()
       }
-      return shutdownNode({ addr })
+      return shutdownNode({ addr, privateKey: privateKey! })
     },
     createUserKeyPair: async () => {
       if (analytics) {
@@ -246,7 +247,9 @@ export const AppStateProvider: React.FC<{
     const getDetailsAndUpdate = async () => {
       console.log('getting node information')
       try {
-        const nodes = await getNodesDetails({ addrs: data.nodes.map((n) => n.addr) })
+        const nodes = await getNodesDetails(
+          data.nodes.map((n) => ({ addr: n.addr, privateKey: privateKey! })),
+        )
         const offsetsInfo = OffsetInfo.of(data.nodes)
         if (!unmounted) {
           if (!deepEqual(data.nodes, nodes) || !deepEqual(data.offsets, some(offsetsInfo))) {

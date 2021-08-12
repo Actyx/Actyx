@@ -18,7 +18,6 @@ import {
   SearchIcon,
 } from './icons'
 import { ClassName } from '../react'
-import { getNodesDetails } from '../util'
 import { useAppState, AppActionKey, AppStateKey } from '../app-state'
 
 // Inspiration: https://codepen.io/robstinson/pen/zYBGNQB

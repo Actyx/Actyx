@@ -557,10 +557,14 @@ pub(crate) async fn mk_swarm(
     // rust-libp2p sets `IPV6_V6ONLY` (or the platform equivalent) [0]. This is
     // why we have to to bind to ip4 and ip6 manually.
     // [0] https://github.com/libp2p/rust-libp2p/blob/master/transports/tcp/src/lib.rs#L322
+    let port = util::free_port(0)?;
     for addr in //bind_to.to_multiaddrs().chain(
-        vec!["/ip4/0.0.0.0/tcp/4459/ws", "/ip6/::1/tcp/4459/ws"]
-            .into_iter()
-            .map(|x| Multiaddr::from_str(x).unwrap())
+        vec![
+            format!("/ip4/0.0.0.0/tcp/{}/ws", port),
+            format!("/ip6/::1/tcp/{}/ws", port),
+        ]
+        .into_iter()
+        .map(|x| Multiaddr::from_str(&*x).unwrap())
     //)
     {
         debug!("Admin API trying to bind to {}", addr);
