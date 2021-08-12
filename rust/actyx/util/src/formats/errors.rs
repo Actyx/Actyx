@@ -1,6 +1,7 @@
 #![allow(clippy::upper_case_acronyms)]
 use crossbeam::channel::{RecvError, SendError};
 use serde::{Deserialize, Serialize};
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown")))]
 use settings::{RepositoryError, ValidationError};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
@@ -99,6 +100,7 @@ impl<T> From<SendError<T>> for ActyxOSError {
     }
 }
 
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown")))]
 impl From<RepositoryError> for ActyxOSError {
     fn from(err: RepositoryError) -> ActyxOSError {
         let code = match err {
@@ -119,6 +121,7 @@ impl From<RepositoryError> for ActyxOSError {
         code.with_message(format!("{}", err))
     }
 }
+
 impl Display for ActyxOSError {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self.code {

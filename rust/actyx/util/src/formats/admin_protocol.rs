@@ -39,20 +39,32 @@ pub enum AdminRequest {
     NodesInspect,
     NodesShutdown,
     SettingsGet {
+        #[cfg(not(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown")))]
         scope: settings::Scope,
+        #[cfg(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown"))]
+        scope: String,
         no_defaults: bool,
     },
     SettingsSet {
+        #[cfg(not(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown")))]
         scope: settings::Scope,
+        #[cfg(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown"))]
+        scope: String,
         json: serde_json::Value,
         ignore_errors: bool,
     },
     SettingsSchema {
+        #[cfg(not(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown")))]
         scope: settings::Scope,
+        #[cfg(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown"))]
+        scope: String,
     },
     SettingsScopes,
     SettingsUnset {
+        #[cfg(not(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown")))]
         scope: settings::Scope,
+        #[cfg(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown"))]
+        scope: String,
     },
 }
 

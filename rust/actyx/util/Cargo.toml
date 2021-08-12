@@ -25,11 +25,13 @@ serde = { version = "1.0.126", features = ["derive"] }
 serde_cbor = { version = "0.11.1", features = ["tags"] }
 serde_json = "1.0.64"
 serde_yaml = "0.8.17"
-settings = { path = "../settings" }
 tracing = "0.1.26"
 tracing-log = "0.1.2"
 tracing-subscriber = "0.2.19"
 winres = { git = "https://github.com/Actyx/winres", branch = "cross_compile" }
+
+[target.'cfg(not(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown")))'.dependencies]
+settings = { path = "../settings" }
 
 [dev-dependencies]
 pin-utils = "0.1.0"
