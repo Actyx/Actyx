@@ -1,4 +1,4 @@
-<div style="text-align: center">
+<div align="center">
 
 [![discord](https://img.shields.io/discord/697349510409617408?style=flat-square)](https://discord.gg/262yJhc)
 [![license](https://img.shields.io/crates/l/actyx_sdk?style=flat-square)](#licensing)
