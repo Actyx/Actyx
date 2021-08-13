@@ -35,6 +35,7 @@
 
 mod dh;
 mod keystore;
+#[cfg(feature = "legacy")]
 mod legacy;
 mod pair;
 mod private;
@@ -43,6 +44,7 @@ mod signature;
 
 pub use dh::*;
 pub use keystore::{KeyStore, KeyStoreRef};
+#[cfg(feature = "legacy")]
 pub use legacy::LegacyKeyId;
 pub use pair::KeyPair;
 pub use private::PrivateKey;

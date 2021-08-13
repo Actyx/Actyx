@@ -49,12 +49,15 @@ fn setup() {
 }
 
 #[tokio::test]
+#[cfg(feature = "migration-v1")]
 async fn migration() -> anyhow::Result<()> {
     // Run these tests sequentially
     migration_dir().await?;
     migration_v1_find_old_working_dir().await?;
     Ok(())
 }
+
+#[allow(unused)]
 async fn migration_dir() -> anyhow::Result<()> {
     setup();
     for entry in fs::read_dir("tests/migration-test-data")? {
@@ -113,6 +116,8 @@ async fn migration_dir() -> anyhow::Result<()> {
     }
     Ok(())
 }
+
+#[allow(unused)]
 async fn migration_v1_find_old_working_dir() -> anyhow::Result<()> {
     setup();
     // actyxos: ActyxOS on Docker v1

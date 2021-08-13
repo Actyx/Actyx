@@ -57,6 +57,7 @@ android-bins = actyx.apk actyx.aab
 
 CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
+CARGO_BUILD_ARGS ?= --features migration-v1
 
 export BUILD_RUST_TOOLCHAIN ?= 1.54.0
 
@@ -446,7 +447,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
-	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*) --target $(TARGET)
+	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --bin $$(basename $$*) --target $(TARGET)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 

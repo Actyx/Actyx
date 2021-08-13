@@ -3786,6 +3786,7 @@ dependencies = [
  "backtrace",
  "base64 0.13.0",
  "bytes",
+ "cfg-if 1.0.0",
  "chrono",
  "criterion",
  "crossbeam",
