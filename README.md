@@ -17,7 +17,7 @@
 # Actyx
 
 <div align="center">
-<img src="web/Actyx-Icon-Transparent.svg" height="64pt" />    <a href="https://www.local-first-cooperation.org/"><img src="web/lfc-logo.svg" height="64pt" /></a>
+<img src="web/Actyx-Icon-Transparent.svg" height="128pt" />    <a href="https://www.local-first-cooperation.org/"><img src="web/lfc-logo.svg" height="128pt" /></a>
 </div>
 
 Actyx is a **decentralized** event **database**, **streaming** and **processing** engine that allows you to easily build [local-first cooperative](https://www.local-first-cooperation.org/) apps.
