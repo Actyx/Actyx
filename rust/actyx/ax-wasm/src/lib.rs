@@ -1,17 +1,12 @@
 use crate::types::{ConnectedNodeDetails, EventDiagnostic, Node, NodeManagerEventsRes};
-use actyx_sdk::{
-    service::{self as sdk, Order, QueryRequest},
-    OffsetMap, StreamId,
-};
+use actyx_sdk::service::{self as sdk, Order, QueryRequest};
 use crypto::PrivateKey;
 use derive_more::From;
 use futures::{channel::mpsc, select, Future, StreamExt};
 use js_sys::Promise;
 use libp2p::{
     core::{muxing::StreamMuxerBox, transport::Boxed, upgrade::AuthenticationVersion, ConnectedPoint},
-    identity,
-    multiaddr::Protocol,
-    noise,
+    identity, noise,
     ping::{Ping, PingConfig, PingEvent},
     swarm::SwarmEvent,
     wasm_ext::{ffi, ExtTransport},
@@ -23,7 +18,7 @@ use log::{error, info};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use serde::Serialize;
-use std::{collections::BTreeMap, io, net::SocketAddr, num::NonZeroU64, str::FromStr, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, io, net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
 use util::formats::{
     ax_err,
     events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
@@ -52,10 +47,6 @@ pub fn create_private_key() -> String {
 pub fn validate_private_key(input: String) -> std::result::Result<(), JsValue> {
     PrivateKey::from_str(&*input).map_err(|e| JsValue::from_str(&*format!("{:#}", e)))?;
     Ok(())
-}
-#[wasm_bindgen(typescript_type = "whatever")]
-pub fn w00t(input: String) -> u32 {
-    0u32
 }
 
 #[derive(Debug)]
@@ -152,18 +143,18 @@ export type OffsetsResponse = { present: { [stream_id: string]: number }, toRepl
 "#;
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(typescript_type = "(_: number) => number")]
-    pub type MyClosure;
-    #[wasm_bindgen(typescript_type = "(_: String) => number")]
-    pub type MyOtherClosure;
+//    #[wasm_bindgen(typescript_type = "(_: number) => number")]
+//    pub type MyClosure;
+//    #[wasm_bindgen(typescript_type = "(_: String) => number")]
+//    pub type MyOtherClosure;
     #[wasm_bindgen(typescript_type = "Promise<OffsetsResponse>")]
     pub type PromiseOffsetsResponse;
 }
 
-#[wasm_bindgen]
-pub fn pass_closure(closure: MyClosure, closure_2: MyOtherClosure) -> u32 {
-    0u32
-}
+//#[wasm_bindgen]
+//pub fn pass_closure(closure: MyClosure, closure_2: MyOtherClosure) -> u32 {
+//    0u32
+//}
 
 #[wasm_bindgen]
 impl ActyxAdminApi {
@@ -243,7 +234,7 @@ impl ActyxAdminApi {
         admin!(
             self.tx,
             AdminRequest::SettingsGet {
-                scope: scope.into(),
+                scope: to_scope(&*scope),
                 no_defaults: false,
             },
             AdminResponse::SettingsGetResponse
@@ -262,7 +253,7 @@ impl ActyxAdminApi {
         admin!(
             self.tx,
             AdminRequest::SettingsSet {
-                scope,
+                scope: to_scope(&*scope),
                 json,
                 ignore_errors: false,
             },
@@ -279,7 +270,9 @@ impl ActyxAdminApi {
     fn _get_schema(&self, scope: String) -> impl Future<Output = ActyxOSResult<serde_json::Value>> + 'static {
         admin!(
             self.tx,
-            AdminRequest::SettingsSchema { scope: scope.into() },
+            AdminRequest::SettingsSchema {
+                scope: to_scope(&*scope)
+            },
             AdminResponse::SettingsSchemaResponse
         )
     }
@@ -525,4 +518,15 @@ async fn poll_until_connected(
     }
     info!("Swarm exited unexpectedly");
     ax_err(ActyxOSCode::ERR_INTERNAL_ERROR, "Swarm exited unexpectedly".into())
+}
+
+// This is a dirty hack to get around the `settings` dependency when targeting wasm, but have the
+// code compile successfully with the default target set.
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown")))]
+fn to_scope(_: &str) -> settings::Scope {
+    unreachable!()
+}
+#[cfg(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown"))]
+fn to_scope(s: &str) -> String {
+    s.into()
 }

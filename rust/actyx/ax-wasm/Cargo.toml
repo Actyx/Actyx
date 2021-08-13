@@ -35,5 +35,9 @@ util = { path = "../util" }
 wasm-bindgen = { version = "0.2.75", features = ["serde-serialize"] }
 wasm-bindgen-futures = "0.4.25"
 
+[target.'cfg(not(any(target_os = "emscripten", target_os = "wasi", target_os = "unknown")))'.dependencies]
+settings = { path = "../settings" }
+
+
 # future: for using a service worker
 #web-sys = { version = "0.3.52", features = ["console","Document","HtmlElement","HtmlInputElement","MessageEvent","Window","Worker"] }
