@@ -1,6 +1,6 @@
 <div align="center">
 
-![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
+![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)
 [![discord](https://img.shields.io/discord/697349510409617408?style=flat-square)](https://discord.gg/262yJhc)
 [![license](https://img.shields.io/crates/l/actyx_sdk?style=flat-square)](#licensing)
 
