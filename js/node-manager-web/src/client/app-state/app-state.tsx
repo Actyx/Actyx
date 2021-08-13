@@ -16,6 +16,7 @@ import {
   SignAppManifestResponse,
   QueryResponse,
   SwarmOffsets,
+  EventDiagnostic,
 } from '../../common/types'
 import { AppState, AppAction, AppStateKey, AppActionKey } from './types'
 import { useAnalytics } from '../analytics'
@@ -119,7 +120,11 @@ interface Actions {
     pathToManifest: string
     pathToCertificate: string
   }) => Promise<SignAppManifestResponse>
-  query: (args: { addr: string; privateKey: string; query: string }) => Promise<QueryResponse>
+  query: (args: {
+    addr: string
+    privateKey: string
+    query: string
+  }) => AsyncIterable<EventDiagnostic>
 }
 
 export type AppDispatch = (action: AppAction) => void

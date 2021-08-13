@@ -8,6 +8,7 @@ import { isValidMultiAddr, isValidMultiAddrWithPeerId } from '../../common/util'
 import Ajv from 'ajv'
 import draft6 from 'ajv/lib/refs/json-schema-draft-06.json'
 import { useAppState } from '../app-state'
+import { toUndefined } from 'fp-ts/lib/Option'
 
 const eq = (a: Settings, b: Settings): boolean => deepEqual(a, b, { strict: false })
 
@@ -48,7 +49,7 @@ const validateAgainstSchema = (
     return []
   } else {
     if (ajv.errors) {
-      return ajv.errors.map((e) => `${e.instancePath}: ${e.message}`)
+      return ajv.errors.map((e) => `${e.dataPath}: ${e.message}`)
     } else {
       throw "schema validator failed but didn't return errors"
     }
@@ -253,6 +254,7 @@ interface Props {
 export const SettingsEditor: React.FC<Props> = ({ node: { addr, details } }) => {
   const {
     actions: { setSettings },
+    data: { privateKey },
   } = useAppState()
 
   const [state, dispatch] = useReducer(reducer, {
@@ -280,7 +282,7 @@ export const SettingsEditor: React.FC<Props> = ({ node: { addr, details } }) => 
   const updateSettings = async () => {
     dispatch({ key: 'SavingToRemote', settings: state.editor })
     if (state.editor !== null) {
-      await setSettings(addr, state.editor)
+      await setSettings(addr, toUndefined(privateKey)!, state.editor)
       dispatch({ key: 'Initial', initial: state.editor })
     }
   }

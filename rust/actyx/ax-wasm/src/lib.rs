@@ -2,7 +2,7 @@ use crate::types::{ConnectedNodeDetails, EventDiagnostic, Node, NodeManagerEvent
 use actyx_sdk::service::{self as sdk, Order, QueryRequest};
 use crypto::PrivateKey;
 use derive_more::From;
-use futures::{channel::mpsc, select, Future, StreamExt};
+use futures::{channel::mpsc, pin_mut, select, Future, StreamExt};
 use js_sys::Promise;
 use libp2p::{
     core::{muxing::StreamMuxerBox, transport::Boxed, upgrade::AuthenticationVersion, ConnectedPoint},
@@ -61,7 +61,8 @@ type Channel = Either<
     (AdminRequest, mpsc::Sender<ActyxOSResult<AdminResponse>>),
     (EventsRequest, mpsc::Sender<ActyxOSResult<EventsResponse>>),
 >;
-static SWARMS: Lazy<Mutex<BTreeMap<String, Arc<Mutex<mpsc::Sender<Channel>>>>>> = Lazy::new(|| Default::default());
+#[allow(clippy::type_complexity)]
+static SWARMS: Lazy<Mutex<BTreeMap<String, Arc<Mutex<mpsc::Sender<Channel>>>>>> = Lazy::new(Default::default);
 
 #[wasm_bindgen]
 pub struct ActyxAdminApi {
@@ -143,18 +144,11 @@ export type OffsetsResponse = { present: { [stream_id: string]: number }, toRepl
 "#;
 #[wasm_bindgen]
 extern "C" {
-//    #[wasm_bindgen(typescript_type = "(_: number) => number")]
-//    pub type MyClosure;
-//    #[wasm_bindgen(typescript_type = "(_: String) => number")]
-//    pub type MyOtherClosure;
+    #[wasm_bindgen(typescript_type = "(events: EventDiagnostic, err?: Error) => void")]
+    pub type QueryCallback;
     #[wasm_bindgen(typescript_type = "Promise<OffsetsResponse>")]
     pub type PromiseOffsetsResponse;
 }
-
-//#[wasm_bindgen]
-//pub fn pass_closure(closure: MyClosure, closure_2: MyOtherClosure) -> u32 {
-//    0u32
-//}
 
 #[wasm_bindgen]
 impl ActyxAdminApi {
@@ -227,6 +221,52 @@ impl ActyxAdminApi {
 
     pub fn query(&mut self, query: String) -> Promise {
         to_promise(self._query(query))
+    }
+
+    pub fn query_cb(&mut self, query: String, cb: QueryCallback) {
+        let cb: js_sys::Function = JsCast::unchecked_into(cb);
+        let x = move |event: Option<ActyxOSResult<EventDiagnostic>>| match event {
+            Some(Ok(e)) => cb.call1(&JsValue::null(), &JsValue::from_serde(&e).expect("valid json")),
+            Some(Err(e)) => cb.call2(
+                &JsValue::null(),
+                &JsValue::null(),
+                &JsValue::from_str(&*format!("{:#}", e)),
+            ),
+            None => cb.call1(&JsValue::null(), &JsValue::null()),
+        };
+        let mut swarm_tx = self.tx.lock().clone();
+        let fut = async move {
+            let request = QueryRequest {
+                lower_bound: None,
+                upper_bound: None,
+                query: query
+                    .parse()
+                    .map_err(|e| ActyxOSCode::ERR_INVALID_INPUT.with_message(format!("{}", e)))?,
+                order: Order::Asc,
+            };
+            let (tx, rx) = mpsc::channel(256);
+            swarm_tx
+                .start_send(Either::Right((EventsRequest::Query(request), tx)))
+                .unwrap();
+
+            let stream = rx.filter_map(|x| async move {
+                match x {
+                    Ok(EventsResponse::Diagnostic(d)) => Some(Ok(EventDiagnostic::Diagnostic(d))),
+                    Ok(EventsResponse::Event(e)) => Some(Ok(EventDiagnostic::Event(e))),
+                    Err(e) => Some(Err(e)),
+                    _ => None,
+                }
+            });
+            pin_mut!(stream);
+            while let Some(res) = stream.next().await {
+                // TODO handle err
+                let _ = x(Some(res));
+            }
+            // Signal finish
+            let _ = x(None);
+            Result::Ok::<_, anyhow::Error>(())
+        };
+        let _ = to_promise(fut);
     }
 
     // Admin API
@@ -393,6 +433,7 @@ async fn run(addr: Multiaddr, private_key: &str, mut rx: mpsc::Receiver<Channel>
                         })) => {
                         if let Some(tx) = pending_event_requests.get_mut(&request_id) {
                             if tx.start_send(Ok(payload)).is_err() {
+                                // TODO: cancel request
                                 pending_event_requests.remove(&request_id);
                                 error!("FIXME");
                             }
@@ -414,6 +455,7 @@ async fn run(addr: Multiaddr, private_key: &str, mut rx: mpsc::Receiver<Channel>
                             payload,
                             ..
                         })) => {
+                        // all admin requests are oneshot
                         if let Some(mut tx) = pending_admin_requests.remove(&request_id) {
                             if tx.start_send(payload).is_err() {
                                 error!("FIXME");

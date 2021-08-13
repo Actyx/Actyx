@@ -430,21 +430,20 @@ const Screen = () => {
       return
     }
     try {
-      const { events } = await query({
+      setQueryRunning(true)
+      setQueryError('')
+      const q = query({
         addr: selectedNodeAddr,
         query: queryStr,
         privateKey: toUndefined(privateKey)!,
       })
-      if (!events) {
-        console.log(`node doesn't support querying`)
-        setQueryRunning(false)
-        setQueryError("This node doesn't support queries. Please update to Actyx 2.2.0 or later.")
-        return
+      const results: EventDiagnostic[] = []
+      for await (const ev of q) {
+        results.push(ev)
+        setAllEvents([...results])
+        //TODO: Abort query
       }
       setQueryRunning(false)
-      setCheckedIxs([...Array(events.length)])
-      setAllEvents(events)
-      setQueryError('')
     } catch (error) {
       console.error(error)
       setQueryRunning(false)

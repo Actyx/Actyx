@@ -35,8 +35,7 @@ const mkAnalyticsActions = (client: AmplitudeClient | null): AnalyticsActions =>
     setSettings: () => logEvent({ key: 'SetSettings' }),
     shutdownNode: () => logEvent({ key: 'ShutdownNode' }),
     generatedSwarmKey: () => logEvent({ key: 'GeneratedSwarmKey' }),
-    createdUserKeyPair: (wasDefault: boolean) =>
-      logEvent({ key: 'CreatedUserKeyPair', wasDefault }),
+    createdUserKeyPair: () => logEvent({ key: 'CreatedUserKeyPair', wasDefault: false }),
     gotFatalError: ({ shortMessage, details }) =>
       logEvent({
         key: 'GotFatalError',

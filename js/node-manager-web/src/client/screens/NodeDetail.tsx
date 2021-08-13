@@ -8,6 +8,7 @@ import { Button, Tabs } from '../components/basics'
 import { SettingsEditor } from '../components/SettingsEditor'
 import clsx from 'clsx'
 import { NodesOverview } from '.'
+import { toUndefined } from 'fp-ts/lib/Option'
 
 const Peers: React.FC<{ node: ReachableNodeT }> = ({
   node: {
@@ -31,6 +32,7 @@ const Actions: React.FC<{ node: ReachableNodeT }> = ({ node: { addr } }) => {
   const [shuttingDown, setShuttingDown] = useState(false)
   const {
     actions: { shutdownNode },
+    data: { privateKey },
   } = useAppState()
   return (
     <div className="">
@@ -39,7 +41,7 @@ const Actions: React.FC<{ node: ReachableNodeT }> = ({ node: { addr } }) => {
         color="red"
         onClick={() => {
           setShuttingDown(true)
-          shutdownNode(addr)
+          shutdownNode(addr, toUndefined(privateKey)!)
         }}
         working={shuttingDown}
         small

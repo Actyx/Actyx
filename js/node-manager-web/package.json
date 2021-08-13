@@ -7,7 +7,9 @@
     "build": "parcel build ./src/index.html",
     "clean": "rm -rf dist .cache",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "lint:fix": "npm run lint -- --fix"
+    "lint:fix": "npm run lint -- --fix",
+    "tsc": "tsc",
+    "tsc:watch": "tsc --watch"
   },
   "repository": {
     "type": "git",
@@ -21,6 +23,8 @@
   "homepage": "https://github.com/Actyx/Actyx#readme",
   "devDependencies": {
     "@parcel/transformer-toml": "^2.0.0-rc.0",
+    "@types/amplitude-js": "^8.0.1",
+    "@types/deep-equal": "^1.0.1",
     "@types/react": "^17.0.17",
     "@types/react-dom": "^17.0.9",
     "@types/react-select": "^4.0.17",

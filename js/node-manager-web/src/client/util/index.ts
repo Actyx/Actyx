@@ -18,6 +18,7 @@ import packageJson from '../../../package.json'
 import {
   CreateUserKeyPairRequest,
   CreateUserKeyPairResponse,
+  EventDiagnostic,
   GetNodeDetailsRequest,
   GetNodeDetailsResponse,
   GetNodesDetailsRequest,
@@ -29,7 +30,10 @@ import {
   SetSettingsResponse,
 } from '../../common/types'
 import { ActyxAdminApi, create_private_key } from 'ax-wasm'
-
+type MyFun = (_: string) => string
+const x: MyFun = (y: string) => {
+  return y
+}
 export const getFolderFromUser = (): Promise<Option<string>> =>
   new Promise((resolve) => {
     resolve(none)
@@ -101,7 +105,7 @@ export const waitForFatalError = (): Promise<FatalError> =>
 const mkRpc =
   <Req, Resp>(rpc: RPC<Req, Resp>) =>
   (req: Req): Promise<Resp> =>
-    new Promise((resolve, reject) => {})
+    Promise.reject()
 
 //export const getNodesDetails = mkRpc(RPC_GetNodesDetails)
 export const getNodesDetails = async (
@@ -142,10 +146,58 @@ export const createUserKeyPair = async (): Promise<CreateUserKeyPairResponse> =>
 }
 export const generateSwarmKey = mkRpc(RPC_GenerateSwarmKey)
 export const signAppManifest = mkRpc(RPC_SignAppManifest)
-export const query = async ({ addr, query, privateKey }: QueryRequest): Promise<QueryResponse> => {
+export const query = ({
+  addr,
+  query,
+  privateKey,
+}: QueryRequest): AsyncIterable<EventDiagnostic> => {
+  const buffer: EventDiagnostic[] = []
+  let done = false
+  let err: Error | undefined = undefined
   const api = new ActyxAdminApi(addr, privateKey)
-  const response = await api.query(query)
-  return response
+  const pending: { res: (_: IteratorResult<EventDiagnostic>) => void; rej: (_: Error) => void }[] =
+    []
+  api.query_cb(query, (ev?: EventDiagnostic, e?: Error) => {
+    const p = pending.pop()
+    if (p) {
+      const { res, rej } = p
+      if (e) rej(e)
+      // buffer is empty
+      if (ev) {
+        res({ done: false, value: ev })
+      } else {
+        res({ done: true, value: undefined })
+      }
+    } else {
+      if (e) err = e
+      if (ev) {
+        buffer.push(ev)
+      } else {
+        done = true
+      }
+    }
+  })
+  return {
+    [Symbol.asyncIterator]: () => ({
+      next: (value?: any) => {
+        if (err) return Promise.reject(err)
+        else {
+          if (done) {
+            return Promise.resolve({ done, value: buffer.pop() })
+          } else {
+            const value = buffer.pop()
+            if (value) {
+              return Promise.resolve({ done, value })
+            } else {
+              return new Promise((res, rej) => {
+                pending.push({ res, rej })
+              })
+            }
+          }
+        }
+      },
+    }),
+  }
 }
 
 export { Wizard, WizardFailure, WizardInput, WizardSuccess } from './wizard'
