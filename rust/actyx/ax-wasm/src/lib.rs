@@ -1,5 +1,8 @@
 use crate::types::{ConnectedNodeDetails, EventDiagnostic, Node, NodeManagerEventsRes};
-use actyx_sdk::service::{OffsetsResponse, Order, QueryRequest};
+use actyx_sdk::{
+    service::{self as sdk, Order, QueryRequest},
+    OffsetMap, StreamId,
+};
 use crypto::PrivateKey;
 use derive_more::From;
 use futures::{channel::mpsc, select, Future, StreamExt};
@@ -20,14 +23,14 @@ use log::{error, info};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use serde::Serialize;
-use std::{collections::BTreeMap, io, net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, io, net::SocketAddr, num::NonZeroU64, str::FromStr, sync::Arc, time::Duration};
 use util::formats::{
     ax_err,
     events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
     ActyxOSCode, ActyxOSResult, AdminProtocol, AdminRequest, AdminResponse, NodesInspectResponse, NodesLsResponse,
 };
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
+use wasm_bindgen::{prelude::*, JsCast};
 use wasm_bindgen_futures::future_to_promise;
 
 mod types;
@@ -49,6 +52,10 @@ pub fn create_private_key() -> String {
 pub fn validate_private_key(input: String) -> std::result::Result<(), JsValue> {
     PrivateKey::from_str(&*input).map_err(|e| JsValue::from_str(&*format!("{:#}", e)))?;
     Ok(())
+}
+#[wasm_bindgen(typescript_type = "whatever")]
+pub fn w00t(input: String) -> u32 {
+    0u32
 }
 
 #[derive(Debug)]
@@ -139,6 +146,25 @@ fn to_multiaddr(input: &str) -> anyhow::Result<Multiaddr> {
     .parse()?)
 }
 
+#[wasm_bindgen(typescript_custom_section)]
+const ADDITIONAL_TYLES: &'static str = r#"
+export type OffsetsResponse = { present: { [stream_id: string]: number }, toReplicate: { [stream_id: string]: number } }
+"#;
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(typescript_type = "(_: number) => number")]
+    pub type MyClosure;
+    #[wasm_bindgen(typescript_type = "(_: String) => number")]
+    pub type MyOtherClosure;
+    #[wasm_bindgen(typescript_type = "Promise<OffsetsResponse>")]
+    pub type PromiseOffsetsResponse;
+}
+
+#[wasm_bindgen]
+pub fn pass_closure(closure: MyClosure, closure_2: MyOtherClosure) -> u32 {
+    0u32
+}
+
 #[wasm_bindgen]
 impl ActyxAdminApi {
     #[wasm_bindgen(constructor)]
@@ -166,13 +192,14 @@ impl ActyxAdminApi {
     }
 
     // Events API
-    fn _offsets(&self) -> impl Future<Output = ActyxOSResult<OffsetsResponse>> + 'static {
+    fn _offsets(&self) -> impl Future<Output = ActyxOSResult<sdk::OffsetsResponse>> + 'static {
         events!(self.tx, EventsRequest::Offsets, EventsResponse::Offsets)
     }
     // Unfortunately promises can't be typed, they always end up as `Promise<any>` in the ts
     // definition file. Synchronous function can be annotated with `#[wasm_bindgen(typescript_type = "..")]`
-    pub fn offsets(&mut self) -> Promise {
-        to_promise(self._offsets())
+    pub fn offsets(&mut self) -> PromiseOffsetsResponse {
+        let x = to_promise(self._offsets());
+        JsCast::unchecked_into(x)
     }
 
     // TODO stream
@@ -461,8 +488,7 @@ async fn poll_until_connected(
     potential_addresses: impl Iterator<Item = Multiaddr>,
 ) -> ActyxOSResult<(PeerId, Multiaddr)> {
     let mut to_try = 0usize;
-    for mut addr in potential_addresses {
-        addr.push(Protocol::Ws("/".into()));
+    for addr in potential_addresses {
         info!("Trying to connect to {}", addr);
         Swarm::dial_addr(&mut swarm, addr).expect("Connection limit exceeded");
         to_try += 1;
