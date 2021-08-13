@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <style>
+      .b6e2af42-5f64-441c-83df-7cc604f2189a {
+        opacity: 0.5;
+        filter: url(#be118d41-3b46-470e-9f6d-af30dc44f932);
+      }
+
+      .aee5cf90-60b8-462a-9abe-ca80465238e2 {
+        fill: #7f7f7f;
+      }
+
+      .ac43d235-69b6-4078-8ff7-551dbfe3a81a {
+        fill: url(#ab234f34-07f7-4712-98d8-c740c3428881);
+      }
+
+      .f6fbc07a-9560-4ad9-9f53-905af1129972 {
+        fill: #fff;
+        stroke: #fff;
+        stroke-miterlimit: 10;
+        stroke-width: 2px;
+      }
+    </style>
+    <filter id="be118d41-3b46-470e-9f6d-af30dc44f932" name="dropShadow">
+      <feGaussianBlur stdDeviation="5" in="SourceAlpha"/>
+      <feOffset dy="6"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <linearGradient id="ab234f34-07f7-4712-98d8-c740c3428881" x1="512" y1="100.5" x2="512" y2="923.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2c8ff2"/>
+      <stop offset="1" stop-color="#005cef"/>
+    </linearGradient>
+  </defs>
+  <g id="ef72bd40-004e-4064-8c41-2b2cc8d3dc48" data-name="Layer 1">
+    <g class="b6e2af42-5f64-441c-83df-7cc604f2189a">
+      <rect class="aee5cf90-60b8-462a-9abe-ca80465238e2" x="100.5" y="102.5" width="823" height="819.39" rx="183"/>
+    </g>
+  </g>
+  <g id="a9a63ac9-3e7d-43b1-9ecd-122a3199d264" data-name="Layer 1 copy">
+    <rect class="ac43d235-69b6-4078-8ff7-551dbfe3a81a" x="100.5" y="100.5" width="823" height="823" rx="183"/>
+  </g>
+  <g id="a772156e-40aa-4363-9221-70032d0058ab" data-name="Layer 5">
+    <g class="b6e2af42-5f64-441c-83df-7cc604f2189a">
+      <path class="aee5cf90-60b8-462a-9abe-ca80465238e2" d="M778.62,677.05V350.23a4.84,4.84,0,0,0-2.4-4.19L497.56,184a4.76,4.76,0,0,0-4.81,0L218.9,343.25a4.85,4.85,0,0,0,0,8.38l134.52,78.21,139.33-81a4.76,4.76,0,0,1,4.81,0l136.93,79.61a4.83,4.83,0,0,1,2.4,4.19v162h0l-74,43-65.36,38a4.81,4.81,0,0,1-4.81,0L355.83,596.05a4.86,4.86,0,0,1-2.41-4.19v-162L214.09,511a4.83,4.83,0,0,0-2.4,4.19V674.26a4.86,4.86,0,0,0,2.4,4.19l278.66,162a4.76,4.76,0,0,0,4.81,0l139.33-81,65.36,38a4.81,4.81,0,0,0,4.81,0l132.12-76.82a4.85,4.85,0,0,0,0-8.38Z"/>
+    </g>
+  </g>
+  <g id="bcbf386e-544f-45f7-af95-bd5d5e463eba" data-name="Layer 3">
+    <path class="f6fbc07a-9560-4ad9-9f53-905af1129972" d="M780.61,676.91V349.8a4.83,4.83,0,0,0-2.42-4.19L497.33,183.45a4.86,4.86,0,0,0-4.84,0l-276,159.36a4.84,4.84,0,0,0,0,8.39l135.59,78.28L492.49,348.4a4.86,4.86,0,0,1,4.84,0l138,79.68a4.85,4.85,0,0,1,2.42,4.2V594.43h0l-74.55,43-65.88,38a4.81,4.81,0,0,1-4.84,0l-138-79.68a4.83,4.83,0,0,1-2.42-4.19V429.48L211.62,510.66a4.85,4.85,0,0,0-2.42,4.19V674.11a4.86,4.86,0,0,0,2.43,4.2L492.49,840.46a4.81,4.81,0,0,0,4.84,0l140.43-81.08,65.88,38a4.86,4.86,0,0,0,4.84,0l133.17-76.89a4.83,4.83,0,0,0,0-8.38Z"/>
+  </g>
+</svg>
