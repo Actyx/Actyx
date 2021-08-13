@@ -1,5 +1,7 @@
 <div align="center">
 
+# Actyx
+
 ![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)
 [![discord](https://img.shields.io/discord/697349510409617408?style=flat-square)](https://discord.gg/262yJhc)
 [![license](https://img.shields.io/crates/l/actyx_sdk?style=flat-square)](#licensing)
@@ -14,8 +16,6 @@
 ![contributors](https://img.shields.io/github/contributors/Actyx/Actyx?style=flat-square)
 
 ---
-
-# Actyx
 
 <img src="web/Actyx-Icon-Transparent.svg" height="128pt" />    <a href="https://www.local-first-cooperation.org/"><img src="web/lfc-logo.svg" height="128pt" /></a>
 </div>
