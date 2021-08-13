@@ -32,6 +32,8 @@ You’re also very welcome to drop us a line in [the forum](https://community.ac
 - full-fledged support for event-sourcing, guaranteeing eventual consistency
 - [query language](https://developer.actyx.com/docs/reference/aql) for extracting and summarizing events (still growing)
 
+For our high-level roadmap please check out [this wiki page](https://github.com/Actyx/Actyx/wiki/Roadmap).
+
 ## Quick demo
 
 To try it out, clone the repo and start Actyx from within the `rust/actyx` directory (you’ll want to compile with `--release` for more serious testing):
