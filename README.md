@@ -12,11 +12,10 @@
 ![commits](https://img.shields.io/github/commit-activity/m/Actyx/Actyx?style=flat-square)
 ![contributors](https://img.shields.io/github/contributors/Actyx/Actyx?style=flat-square)
 
-</div>
+---
 
 # Actyx
 
-<div align="center">
 <img src="web/Actyx-Icon-Transparent.svg" height="128pt" />    <a href="https://www.local-first-cooperation.org/"><img src="web/lfc-logo.svg" height="128pt" /></a>
 </div>
 
