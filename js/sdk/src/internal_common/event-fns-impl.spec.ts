@@ -5,7 +5,6 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { chunksOf } from 'fp-ts/lib/Array'
-import { Subject } from '../../node_modules/rxjs'
 import {
   ActyxEvent,
   allEvents,
@@ -16,9 +15,10 @@ import {
   NodeId,
   Where,
 } from '..'
+import { Subject } from '../../node_modules/rxjs'
 import { SnapshotStore } from '../snapshotStore'
 import { EventFnsFromEventStoreV2 } from './event-fns-impl'
-import { EventStore } from './eventStore'
+import { testEventStore } from './testEventStore'
 import { emitter, mkTimeline } from './testHelper'
 import { Event, Events } from './types'
 
@@ -141,7 +141,7 @@ const setup = () => {
   const srcC = emitter('C')
   const tl = mkTimeline(srcC(5), srcB(6), srcA(7), srcA(8), srcB(9), srcC(10))
 
-  const store = EventStore.test()
+  const store = testEventStore()
   const fns = EventFnsFromEventStoreV2(NodeId.of('noop'), store, SnapshotStore.noop)
 
   return { store, fns, tl }
