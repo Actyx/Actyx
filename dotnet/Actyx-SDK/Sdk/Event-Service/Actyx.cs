@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 using Actyx.Sdk.Formats;
 using Actyx.Sdk.Utils;
 
@@ -88,7 +89,7 @@ namespace Actyx
                 Query = query.Query,
                 UpperBound = await Present(),
             });
-            var events = wireEvents.OfType<EventOnWire>().Select(ActyxEvent.From(NodeId)).ToList();
+            var events = wireEvents.OfType<EventOnWire>().Select(MkAxEvt.From(NodeId)).ToList();
             var offset = wireEvents.OfType<OffsetsOnWire>().Last();
 
             return new EventChunk(query.LowerBound, offset.Offsets, events);
@@ -103,10 +104,10 @@ namespace Actyx
                 UpperBound = upperBound,
             }, chunkSize));
 
-        public async Task<IList<ActyxEvent>> QueryKnownRange(RangeQuery query)
+        public async Task<IList<ActyxEvent<JToken>>> QueryKnownRange(RangeQuery query)
         {
             var wireEvents = await QueryKnown(query);
-            var events = wireEvents.OfType<EventOnWire>().Select(ActyxEvent.From(NodeId)).ToList();
+            var events = wireEvents.OfType<EventOnWire>().Select(MkAxEvt.From(NodeId)).ToList();
 
             return events;
         }
@@ -124,15 +125,15 @@ namespace Actyx
                     query.Order
                 )
                 .OfType<EventOnWire>()
-                .Select(ActyxEvent.From(NodeId))
+                .Select(MkAxEvt.From(NodeId))
                 .Buffer(chunkSize)
                 .Select(query.Order == EventsOrder.Asc ? BookKeepingOnChunk(query.LowerBound) : ReverseBookKeepingOnChunk(query.UpperBound));
         }
 
-        public IObservable<ActyxEvent> Subscribe(EventSubscription sub) => store
+        public IObservable<ActyxEvent<JToken>> Subscribe(EventSubscription sub) => store
             .Subscribe(sub.LowerBound ?? new OffsetMap(), sub.Query ?? SelectAllEvents.Instance)
             .OfType<EventOnWire>()
-            .Select(ActyxEvent.From(NodeId));
+            .Select(MkAxEvt.From(NodeId));
 
         public IObservable<EventChunk> SubscribeChunked(EventSubscription sub) =>
             SubscribeChunked(sub, new ChunkingOptions { MaxChunkSize = 1000, MaxChunkTime = TimeSpan.FromMilliseconds(5) });
@@ -141,13 +142,13 @@ namespace Actyx
              store
                 .Subscribe(sub.LowerBound ?? new OffsetMap(), sub.Query ?? SelectAllEvents.Instance)
                 .OfType<EventOnWire>()
-                .Select(ActyxEvent.From(NodeId))
+                .Select(MkAxEvt.From(NodeId))
                 .Buffer(
                     chunkConfig.MaxChunkTime ?? TimeSpan.FromMilliseconds(5),
                     chunkConfig.MaxChunkSize ?? 1000
                 )
                 .Where(x => x.Count > 0)
-                .Select(ActyxEvent.OrderByEventKey)
+                .Select(ActyxEvent<JToken>.OrderByEventKey)
                 .Select(BookKeepingOnChunk(sub.LowerBound));
 
 
@@ -163,7 +164,7 @@ namespace Actyx
             return wireEvents;
         }
 
-        private static Func<IList<ActyxEvent>, EventChunk> BookKeepingOnChunk(OffsetMap initialLowerBound)
+        private static Func<IList<ActyxEvent<JToken>>, EventChunk> BookKeepingOnChunk(OffsetMap initialLowerBound)
         {
             var lowerBound = initialLowerBound == null ? new OffsetMap() : new OffsetMap(initialLowerBound);
             return events =>
@@ -177,7 +178,7 @@ namespace Actyx
             };
         }
 
-        private static Func<IList<ActyxEvent>, EventChunk> ReverseBookKeepingOnChunk(OffsetMap initialUpperBound)
+        private static Func<IList<ActyxEvent<JToken>>, EventChunk> ReverseBookKeepingOnChunk(OffsetMap initialUpperBound)
         {
             var upperBound = initialUpperBound == null ? new OffsetMap() : new OffsetMap(initialUpperBound);
             return events =>
@@ -215,6 +216,13 @@ namespace Actyx
                 publishedMetadata.Timestamp, publishedMetadata.Lamport, publishedMetadata.Offset,
                 this.AppId, publishedMetadata.Stream, tags, this.NodeId);
         }
+
+        // FIXME.
+        public IObservable<ActyxEvent<E>> ObserveLatest<E>(IFrom<E> f) => store
+            .Subscribe(new OffsetMap(), f)
+            .OfType<EventOnWire>()
+            .Select(MkAxEvt.DeserTyped<E>(NodeId));
+
 
         public async Task<ActyxEventMetadata> Publish(IEventDraft eventDraft)
         {

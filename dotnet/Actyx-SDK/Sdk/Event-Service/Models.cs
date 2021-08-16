@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 using Actyx.Sdk.Formats;
 
 namespace Actyx
@@ -87,7 +88,7 @@ namespace Actyx
          *
          * @returns A Promise that resolves to the complete set of queries events.
          */
-        public Task<IList<ActyxEvent>> QueryKnownRange(RangeQuery query);
+        public Task<IList<ActyxEvent<JToken>>> QueryKnownRange(RangeQuery query);
 
         /**
          * Get all known events between the given offsets, in chunks.
@@ -150,7 +151,9 @@ namespace Actyx
          *
          * @returns A function that can be called in order to cancel the subscription.
          */
-        public IObservable<ActyxEvent> Subscribe(EventSubscription sub);
+        public IObservable<ActyxEvent<JToken>> Subscribe(EventSubscription sub);
+
+        public IObservable<ActyxEvent<E>> ObserveLatest<E>(IFrom<E> f);
 
         /**
          * Emit an event with tags attached.
