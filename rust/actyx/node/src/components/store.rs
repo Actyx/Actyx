@@ -4,6 +4,7 @@ use actyx_sdk::NodeId;
 use anyhow::Result;
 use api::formats::Licensing;
 use api::NodeInfo;
+use chrono::{DateTime, Utc};
 use crossbeam::channel::{Receiver, Sender};
 use crypto::KeyStoreRef;
 use parking_lot::Mutex;
@@ -119,6 +120,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 self.keystore.clone(),
                 self.node_cycle_count,
                 cfg.licensing.clone(),
+                self.started_at,
             );
             // client creation is setting up some tokio timers and therefore
             // needs to be called with a tokio runtime
@@ -208,6 +210,7 @@ pub(crate) struct Store {
     db: Arc<Mutex<rusqlite::Connection>>,
     number_of_threads: Option<usize>,
     node_cycle_count: NodeCycleCount,
+    started_at: DateTime<Utc>,
 }
 
 impl Store {
@@ -235,6 +238,7 @@ impl Store {
             db,
             number_of_threads: None,
             node_cycle_count,
+            started_at: Utc::now(),
         })
     }
 }

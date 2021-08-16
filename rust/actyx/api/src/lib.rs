@@ -12,15 +12,13 @@ use actyx_util::{ax_panic, formats::NodeErrorContext};
 use anyhow::Result;
 use crossbeam::channel::Sender;
 use futures::future::try_join_all;
-use std::{net::SocketAddr, panic::panic_any, sync::Arc};
-use swarm::BanyanStore;
+use std::net::SocketAddr;
+use swarm::{event_store_ref::EventStoreRef, BanyanStore};
 use warp::*;
 
 pub use crate::events::service::EventService;
 use crate::util::hyper_serve::serve_it;
-pub use crate::util::NodeInfo;
-pub use crate::util::{AppMode, BearerToken, Token};
-use swarm::event_store_ref::EventStoreRef;
+pub use crate::util::{AppMode, BearerToken, NodeInfo, Token};
 
 pub async fn run(
     node_info: NodeInfo,
@@ -48,7 +46,9 @@ pub async fn run(
         .collect::<Result<Vec<_>>>();
     let tasks = match tasks {
         Ok(t) => t,
-        Err(e) => panic_any(Arc::new(e)),
+        Err(e) => {
+            ax_panic!(e);
+        }
     };
 
     // now we know that binding was successful
@@ -69,7 +69,7 @@ fn routes(
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let event_service = events::service::EventService::new(event_store, node_info.node_id);
     let events = events::routes(node_info.clone(), event_service);
-    let node_id = node::route(node_info.clone());
+    let node = node::route(node_info.clone(), store.clone());
     let auth = auth::route(node_info);
 
     let api_path = path!("api" / "v2" / ..);
@@ -81,7 +81,7 @@ fn routes(
     path("ipfs")
         .and(ipfs_file_gateway::route(store))
         .or(api_path.and(path("events")).and(events))
-        .or(api_path.and(path!("node" / "id")).and(node_id))
+        .or(api_path.and(path("node")).and(node))
         .or(api_path.and(path("auth")).and(auth))
         .recover(|r| async { rejections::handle_rejection(r) })
         .with(cors)

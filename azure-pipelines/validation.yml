@@ -24,6 +24,9 @@ stages:
         pool:
           name: Native
         steps:
+          - checkout: self
+            clean: true
+            path: "s"
           - bash: |
               set -e
               make validate-js assert-clean
@@ -37,6 +40,9 @@ stages:
         pool:
           name: Native
         steps:
+          - checkout: self
+            clean: true
+            path: "s"
           - bash: |
               set -e
               make validate-dotnet assert-clean
@@ -50,6 +56,9 @@ stages:
         pool:
           name: Native
         steps:
+          - checkout: self
+            clean: true
+            path: "s"
           - bash: |
               set -e
               make validate-os assert-clean
@@ -63,6 +72,9 @@ stages:
         pool:
           name: Native
         steps:
+          - checkout: self
+            clean: true
+            path: "s"
           - bash: |
               set -e
               make validate-netsim assert-clean
@@ -76,6 +88,9 @@ stages:
         pool:
           name: Native
         steps:
+          - checkout: self
+            clean: true
+            path: "s"
           - bash: |
               set -e
               chmod -R 777 .
@@ -90,6 +105,9 @@ stages:
         pool:
           name: Native
         steps:
+          - checkout: self
+            clean: true
+            path: "s"
           - bash: |
               set -e
               make validate-node-manager-bindings assert-clean
@@ -101,7 +119,8 @@ stages:
           name: Native
         steps:
           - checkout: self
-            persistCredentials: true
+            clean: true
+            path: "s"
           - bash: |
               set -e
               echo "Building cosmos-release"

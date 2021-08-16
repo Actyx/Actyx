@@ -95,6 +95,7 @@ pub(crate) fn route(node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,),
 mod tests {
     use actyx_sdk::app_id;
     use certs::{AppManifest, TrialAppManifest};
+    use chrono::Utc;
     use crypto::{KeyStore, PrivateKey, PublicKey};
     use hyper::http;
     use parking_lot::lock_api::RwLock;
@@ -115,6 +116,7 @@ mod tests {
             token_validity: 300,
             ax_public_key: PrivateKey::generate().into(),
             licensing: Licensing::default(),
+            started_at: Utc::now(),
         };
         route(auth_args)
     }
@@ -156,6 +158,7 @@ mod tests {
             token_validity: 300,
             ax_public_key: PrivateKey::generate().into(),
             licensing: Licensing::default(),
+            started_at: Utc::now(),
         };
 
         let resp = test::request()

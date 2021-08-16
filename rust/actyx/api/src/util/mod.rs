@@ -5,6 +5,7 @@ use std::{str::FromStr, time::Duration};
 
 use actyx_sdk::{AppId, NodeId, Timestamp};
 use actyx_util::formats::NodeCycleCount;
+use chrono::{DateTime, Utc};
 use crypto::{KeyStoreRef, PublicKey};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -20,10 +21,17 @@ pub struct NodeInfo {
     pub cycles: NodeCycleCount,
     pub ax_public_key: PublicKey,
     pub licensing: Licensing,
+    pub started_at: DateTime<Utc>,
 }
 
 impl NodeInfo {
-    pub fn new(node_id: NodeId, key_store: KeyStoreRef, cycles: NodeCycleCount, licensing: Licensing) -> Self {
+    pub fn new(
+        node_id: NodeId,
+        key_store: KeyStoreRef,
+        cycles: NodeCycleCount,
+        licensing: Licensing,
+        started_at: DateTime<Utc>,
+    ) -> Self {
         Self {
             node_id,
             key_store,
@@ -31,6 +39,7 @@ impl NodeInfo {
             token_validity: get_token_validity(),
             ax_public_key: get_ax_public_key(),
             licensing,
+            started_at,
         }
     }
 }

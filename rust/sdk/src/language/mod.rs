@@ -8,6 +8,18 @@ use crate::{tags::Tag, AppId, EventKey, LamportTimestamp, StreamId, Timestamp};
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+/// A [`Query`] can be constructed using the Actyx Query Language (AQL). For an in-depth overview
+/// see the [docs](https://developer.actyx.com/docs/reference/aql).
+///
+/// ```
+/// use actyx_sdk::language::Query;
+///
+/// let query: Query = r#"
+/// FEATURES(some features)  -- this is optional
+/// FROM 'mytag1' & 'mytag2' -- the only mandatory part
+/// SELECT _.value           -- optional list of transformations
+/// END                      -- optional"#.parse().unwrap();
+/// ```
 pub struct Query {
     pub features: Vec<String>,
     pub from: TagExpr,
@@ -119,17 +131,18 @@ pub enum Index {
     Expr(SimpleExpr),
 }
 
-fn is_ident(s: &str) -> bool {
-    s == "_"
-        || !s.is_empty()
-            && s.chars().next().unwrap().is_lowercase()
-            && s.chars().all(|c: char| c.is_lowercase() || c.is_numeric() || c == '_')
-}
+pub use parser::is_ident;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Ind {
     pub head: Arc<SimpleExpr>,
     pub tail: NonEmptyVec<Index>,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+pub struct FuncCall {
+    pub name: String,
+    pub args: Arc<[SimpleExpr]>,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -183,6 +196,7 @@ decl_op! {
         Ge -> ">=",
         Eq -> "=",
         Ne -> "!=",
+        Alt -> "//",
     }
 }
 
@@ -214,6 +228,7 @@ pub enum SimpleExpr {
     BinOp(Arc<(BinOp, SimpleExpr, SimpleExpr)>),
     Not(Arc<SimpleExpr>),
     AggrOp(Arc<(AggrOp, SimpleExpr)>),
+    FuncCall(FuncCall),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -268,6 +283,11 @@ impl SimpleExpr {
                 }
                 SimpleExpr::Not(e) => e.traverse(f),
                 SimpleExpr::AggrOp(a) => a.1.traverse(f),
+                SimpleExpr::FuncCall(c) => {
+                    for expr in c.args.iter() {
+                        expr.traverse(f);
+                    }
+                }
             }
         }
     }
@@ -279,7 +299,7 @@ impl std::fmt::Display for SimpleExpr {
     }
 }
 
-#[allow(clippy::clippy::should_implement_trait)]
+#[allow(clippy::should_implement_trait)]
 impl SimpleExpr {
     pub fn add(self, other: SimpleExpr) -> Self {
         SimpleExpr::BinOp(Arc::new((BinOp::Add, self, other)))
@@ -326,12 +346,14 @@ impl SimpleExpr {
     pub fn ne(self, other: SimpleExpr) -> Self {
         SimpleExpr::BinOp(Arc::new((BinOp::Ne, self, other)))
     }
+    pub fn alt(self, other: SimpleExpr) -> Self {
+        SimpleExpr::BinOp(Arc::new((BinOp::Alt, self, other)))
+    }
 }
 
 #[cfg(test)]
 mod for_tests {
-    use super::*;
-    use crate::language::parser::ContextError;
+    use super::{parser::Context, *};
     use once_cell::sync::OnceCell;
     use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
     use std::{cell::RefCell, convert::TryInto, str::FromStr};
@@ -379,14 +401,18 @@ mod for_tests {
 
     thread_local! {
         static DEPTH: RefCell<usize> = RefCell::new(0);
+        static CTX: RefCell<Context> = RefCell::new(Context::Simple);
     }
 
     macro_rules! arb {
-        ($T:ident: $g:ident => $($n:ident)*, $($rec:ident)*, $($e:ident)*) => {{
+        ($T:ident: $g:ident => $($n:ident$({$extra:expr})?)*, $($rec:ident)*, $($rec2:ident$({$extra2:expr})?)*, $($e:ident)*) => {{
             $(
                 #[allow(non_snake_case)]
                 fn $n(g: &mut Gen) -> $T {
-                    $T::$n(Arbitrary::arbitrary(g))
+                    $(let prev = CTX.with(|c| c.replace($extra));)*
+                    let ret = $T::$n(Arbitrary::arbitrary(g));
+                    $(CTX.with(|c| c.replace(prev)); stringify!($extra);)*
+                    ret
                 }
             )*
             $(
@@ -397,23 +423,31 @@ mod for_tests {
             )*
             $(
                 #[allow(non_snake_case)]
+                fn $rec2(g: &mut Gen) -> $T {
+                    $(let prev = CTX.with(|c| c.replace($extra2));)*
+                    let ret = $T::$rec2(Arbitrary::arbitrary(g));
+                    $(CTX.with(|c| c.replace(prev)); stringify!($extra2);)*
+                    ret
+                }
+            )*
+            $(
+                #[allow(non_snake_case)]
                 fn $e(_g: &mut Gen) -> $T {
                     $T::$e
                 }
             )*
-            let choices = DEPTH.with(|depth| -> &[fn(&mut Gen) -> $T] {
-                if *depth.borrow() > 4 {
-                    &[$($n as fn(&mut Gen) -> $T,)* $($e,)*][..]
-                } else {
-                    &[$($n,)* $($rec,)* $($e,)*][..]
-                }
-            });
+            let depth = DEPTH.with(|d| *d.borrow());
+            let ctx = CTX.with(|c| *c.borrow());
+            let choices = if depth > 5 {
+                &[$($n as fn(&mut Gen) -> $T,)* $($e,)*][..]
+            } else if ctx == Context::Aggregate {
+                &[$($n,)* $($rec,)* $($rec2,)* $($e,)*][..]
+            } else {
+                &[$($n,)* $($rec,)* $($e,)*][..]
+            };
+            DEPTH.with(|d| *d.borrow_mut() += 1);
             let ret = ($g.choose(choices).unwrap())($g);
-            match &ret {
-                $($T::$n(_) => {})*
-                $($T::$rec(_) => { DEPTH.with(|d| *d.borrow_mut() += 1) })*
-                $($T::$e => {})*
-            }
+            DEPTH.with(|d| *d.borrow_mut() -= 1);
             ret
         }};
     }
@@ -486,7 +520,7 @@ mod for_tests {
 
     impl Arbitrary for Index {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(Index: g => String Number, Expr,)
+            arb!(Index: g => String Number, Expr,,)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             match self {
@@ -522,6 +556,23 @@ mod for_tests {
         }
     }
 
+    impl Arbitrary for FuncCall {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                name: "Ab".to_owned(),
+                args: Vec::arbitrary(g).into(),
+            }
+        }
+
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            let name = self.name.clone();
+            Box::new(self.args.to_vec().shrink().map(move |args| Self {
+                name: name.clone(),
+                args: args.into(),
+            }))
+        }
+    }
+
     impl Arbitrary for Arr {
         fn arbitrary(g: &mut Gen) -> Self {
             Self {
@@ -548,7 +599,8 @@ mod for_tests {
         fn arbitrary(g: &mut Gen) -> Self {
             arb!(SimpleExpr: g =>
                 Variable Number String Bool,
-                Indexing Object Array Cases BinOp Not AggrOp,
+                Indexing Object Array Cases BinOp Not FuncCall,
+                AggrOp{ Context::Simple },
                 Null
             )
         }
@@ -561,13 +613,14 @@ mod for_tests {
                 BinOp(x,)
                 Not(x, (**x).clone())
                 AggrOp(x,)
+                FuncCall(x,)
                 , Null)
         }
     }
 
     impl Arbitrary for TagAtom {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(TagAtom: g => Tag FromTime ToTime FromLamport ToLamport AppId, , AllEvents IsLocal)
+            arb!(TagAtom: g => Tag FromTime ToTime FromLamport ToLamport AppId, , , AllEvents IsLocal)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             shrink!(TagAtom: self => Tag FromTime ToTime FromLamport ToLamport AppId, , AllEvents IsLocal)
@@ -576,7 +629,7 @@ mod for_tests {
 
     impl Arbitrary for TagExpr {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(TagExpr: g => Atom, And Or,)
+            arb!(TagExpr: g => Atom, And Or,,)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             shrink!(TagExpr: self => Atom, And(x, x.0.clone(), x.1.clone()) Or(x, x.0.clone(), x.1.clone()),)
@@ -585,7 +638,7 @@ mod for_tests {
 
     impl Arbitrary for Operation {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(Operation: g => Filter Select Aggregate,,)
+            arb!(Operation: g => Filter Select Aggregate{ Context::Aggregate },,,)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             shrink!(Operation: self => Filter Select Aggregate,,)
@@ -600,11 +653,14 @@ mod for_tests {
                 let len = Vec::<()>::arbitrary(g).len().max(1);
                 (0..len).map(|_| g.choose(choices).unwrap()).collect()
             }
-            Self {
+            let prev = CTX.with(|c| c.replace(Context::Simple));
+            let ret = Self {
                 features: Vec::<bool>::arbitrary(g).into_iter().map(|_| word(g)).collect(),
                 from: TagExpr::arbitrary(g),
                 ops: Arbitrary::arbitrary(g),
-            }
+            };
+            CTX.with(|c| c.replace(prev));
+            ret
         }
 
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
@@ -641,10 +697,7 @@ mod for_tests {
             let s = q.to_string();
             let p = match Query::from_str(&s) {
                 Ok(p) => p,
-                Err(e) => match e.downcast::<ContextError>() {
-                    Ok(_) => return TestResult::discard(),
-                    Err(e) => return TestResult::error(e.to_string()),
-                },
+                Err(e) => return TestResult::error(e.to_string()),
             };
             if q == p {
                 TestResult::passed()
@@ -654,7 +707,7 @@ mod for_tests {
         }
         let mut q = QuickCheck::new();
         if std::env::var_os("QUICKCHECK_TESTS").is_none() {
-            q = q.tests(10_000);
+            q = q.tests(200);
         }
         q.max_tests(1_000_000)
             .gen(Gen::new(10))

@@ -53,18 +53,18 @@ endif
 architectures = aarch64 x86_64 armv7 arm
 unix-bins = actyx-linux ax
 windows-bins = actyx.exe ax.exe actyx-x64.msi
-android-bins = actyx.apk
+android-bins = actyx.apk actyx.aab
 
 CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
 
 export BUILD_RUST_TOOLCHAIN ?= 1.54.0
 
-# The stable image version is the git commit hash inside `Actyx/Cosmos`, with
+# The stable image version is the git commit hash inside `Actyx/Actyx`, with
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 804ae71c44c8deae9597992eba76669047d41b36
+export LATEST_STABLE_IMAGE_VERSION := 0c6ed1ec7665d45d73bdcb974993175e4676542c
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -89,7 +89,7 @@ docker-platform-armv7 = linux/arm/v7
 docker-platform-arm = linux/arm/v6
 
 # Mapping from os to builder image name
-image-linux = actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION)
+image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
 image-darwin = actyx/osxbuilder:a042cc707998b83704f3cf5d3f0ededc7143d1c3
@@ -101,7 +101,7 @@ osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 ma
 binaries = ax ax.exe actyx-linux actyx.exe
 
 # targets for which we need a .so file for android
-android_so_targets = i686-linux-android aarch64-linux-android armv7-linux-androideabi
+android_so_targets = x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
 
 CARGO := RUST_BACKTRACE=1  cargo +$(BUILD_RUST_TOOLCHAIN)
 
@@ -192,10 +192,10 @@ prepare-docker:
 	# used for windows and android rust builds
 	docker pull actyx/util:buildrs-x64-$(IMAGE_VERSION)
 	# used for linux rust builds
-	docker pull actyx/cosmos:musl-aarch64-unknown-linux-musl-$(IMAGE_VERSION)
-	docker pull actyx/cosmos:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
-	docker pull actyx/cosmos:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
-	docker pull actyx/cosmos:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
+	docker pull actyx/util:musl-aarch64-unknown-linux-musl-$(IMAGE_VERSION)
+	docker pull actyx/util:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
+	docker pull actyx/util:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
+	docker pull actyx/util:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
 	docker pull actyx/util:node-manager-win-builder
 
 prepare-docker-crosscompile:
@@ -262,6 +262,7 @@ validate-netsim: diagnostics
 	rust/actyx/target/release/quickcheck_interleaved
 	rust/actyx/target/release/quickcheck_stress_single_store
 	rust/actyx/target/release/quickcheck_ephemeral
+	rust/actyx/target/release/health
 	rust/actyx/target/release/read_only
 
 .PHONY: validate-os-android
@@ -355,7 +356,7 @@ validate-node-manager-bindings:
 		npm install && \
 		npm run build
 
-node-manager-win: prepare-docker
+node-manager-win:
 	docker run \
 	-v `pwd`:/src \
 	-w /src/js/node-manager \
@@ -377,10 +378,15 @@ node-manager-mac-linux:
 # combines all the .so files to build actyxos on android
 android-libaxosnodeffi: \
 	jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so \
+	jvm/os-android/app/src/main/jniLibs/x86_64/libaxosnodeffi.so \
 	jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so \
 	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so
 
 jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so: rust/actyx/target/i686-linux-android/release/libaxosnodeffi.so
+	mkdir -p $(dir $@)
+	cp $< $@
+
+jvm/os-android/app/src/main/jniLibs/x86_64/libaxosnodeffi.so: rust/actyx/target/x86_64-linux-android/release/libaxosnodeffi.so
 	mkdir -p $(dir $@)
 	cp $< $@
 
@@ -445,7 +451,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
-	  cargo --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*) --target $(TARGET)
+	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*) --target $(TARGET)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 
@@ -466,7 +472,7 @@ $(soTargetPatterns): cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-	  cargo --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) --target $(TARGET)
+	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) --target $(TARGET)
 
 # create these so that they belong to the current user (Docker would create as root)
 # (formulating as rule dependencies only runs mkdir when they are missing)
@@ -474,7 +480,7 @@ cargo-init: $(CARGO_HOME)/git $(CARGO_HOME)/registry
 $(CARGO_HOME)/%:
 	mkdir -p $@
 
-jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnodeffi make-always
+jvm/os-android/app/build/outputs/bundle/release/app-release.aab: android-libaxosnodeffi make-always
 	jvm/os-android/bin/get-keystore.sh
 	docker run \
 	  -u builder \
@@ -483,11 +489,32 @@ jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnod
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-      ./gradlew --stacktrace ktlintCheck build assembleRelease
+      ./gradlew --stacktrace ktlintCheck build bundleRelease
 
-dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
+dist/bin/actyx.apk: jvm/os-android/app/build/outputs/bundle/release/app-release.aab make-always
+	jvm/os-android/bin/get-keystore.sh
+	rm -f dist/bin/actyx.apks
+	docker run \
+	  -u builder \
+	  -v `pwd`:/src \
+	  -w /src/jvm/os-android \
+	  --rm \
+	  $(DOCKER_FLAGS) \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
+      java -jar /usr/local/lib/bundletool.jar build-apks \
+				--bundle /src/$< \
+				--output=/src/dist/bin/actyx.apks \
+				--ks=/src/jvm/os-android/actyx-local/axosandroid.jks \
+				--ks-key-alias=axosandroid \
+				--ks-pass=pass:$(shell grep actyxKeyPassword jvm/os-android/actyx-local/actyx.properties|cut -f2 -d\") \
+				--mode=universal
+	unzip -o dist/bin/actyx.apks universal.apk
+	mv -f universal.apk dist/bin/actyx.apk
+
+dist/bin/actyx.aab: jvm/os-android/app/build/outputs/bundle/release/app-release.aab
 	mkdir -p $(dir $@)
 	cp $< $@
+
 
 dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/actyx.exe make-always
 	docker run \
@@ -504,7 +531,7 @@ docker-$(1):
 	  --platform $(docker-platform-$(1)) \
 	  $(docker-build-args) \
 	  -f docker/actyx/Dockerfile \
-	  --tag actyx/cosmos:actyx-$(1)-$(GIT_COMMIT) \
+	  --tag actyx/actyx-ci:actyx-$(1)-$(GIT_COMMIT) \
 	  --load \
 	  .
 endef

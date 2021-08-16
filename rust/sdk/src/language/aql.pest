@@ -1,6 +1,8 @@
 main_query = { SOI ~ features? ~ query ~ EOI }
 main_tag_expr = { SOI ~ tag_expr ~ EOI }
 main_simple_expr = { SOI ~ simple_expr ~ EOI }
+main_ident = @{ SOI ~ ident ~ EOI }
+main_func_name = @{ SOI ~ func_name ~ EOI }
 
 // queries
 query = { "FROM" ~ tag_expr ~ query_op* ~ "END"? }
@@ -33,7 +35,8 @@ stream_id = @{ crypt_char{43} ~ "-" ~ natural }
 crypt_char = { "." | "/" | 'a'..'z' | 'A'..'Z' | '0'..'9' }
 
 // identifiers
-ident = @{ "_" | LOWERCASE_LETTER ~ ( LOWERCASE_LETTER | NUMBER | "_" )* }
+ident = @{ "_" | &( LOWERCASE | UPPERCASE ~ LOWERCASE ) ~ ( ALPHABETIC | NUMBER | "_" )+ }
+func_name = @{ UPPERCASE ~ LOWERCASE ~ ( ALPHABETIC | NUMBER | "_" )* }
 var = { ident }
 index = _{ "." ~ ident | "[" ~ natural ~ "]" | "[" ~ string ~ "]" | "[" ~ simple_expr ~ "]" }
 
@@ -61,11 +64,12 @@ tag_to = { "to(" ~ ( isodate | natural ~ ( "/" ~ stream_id )? ) ~ ")" }
 tag_app = ${ "appId(" ~ app_id ~ ")" }
 
 // expressions
-simple_expr = { simple_atom ~ ( simple_op ~ simple_atom )* }
-simple_op = _{ add | sub | mul | div | modulo | pow | and | or | xor | le | lt | ge | gt | eq | ne }
+simple_expr = { simple_atom ~ ( binary_op ~ simple_atom )* }
+binary_op = _{ alternative | add | sub | mul | div | modulo | pow | and | or | xor | le | lt | ge | gt | eq | ne }
 var_index = { var ~ index* }
 expr_index = { "(" ~ simple_expr ~ ")" ~ index* }
-simple_atom = _{ decimal | var_index | string | expr_index | simple_not | object | array | null | bool | simple_cases | aggr_op }
+func_call = { func_name ~ "(" ~ ( simple_expr ~ ("," ~ simple_expr)* )? ~ ")" }
+simple_atom = _{ decimal | func_call | var_index | string | expr_index | simple_not | object | array | null | bool | simple_cases | aggr_op }
 simple_not = { not ~ simple_atom }
 simple_cases = { ( "CASE" ~ simple_expr ~ "=>" ~ simple_expr )+ ~ "ENDCASE" }
 
@@ -95,6 +99,7 @@ gt = { ">" }
 ge = { ">=" | "≥" }
 eq = { "=" }
 ne = { "!=" | "≠" }
+alternative = { "//" }
 
 WHITESPACE = _{ WHITE_SPACE }
 COMMENT = _{ "--" ~ ( !("\n"|"\r") ~ ANY )* }

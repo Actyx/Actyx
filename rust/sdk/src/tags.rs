@@ -364,7 +364,7 @@ impl TagSet {
 impl Add for &TagSet {
     type Output = TagSet;
     fn add(self, rhs: Self) -> Self::Output {
-        self.union(&rhs)
+        self.union(rhs)
     }
 }
 

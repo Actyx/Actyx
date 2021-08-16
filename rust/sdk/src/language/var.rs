@@ -1,7 +1,7 @@
-use std::{convert::TryFrom, ops::Deref};
+use std::{convert::TryFrom, ops::Deref, str::FromStr};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Var(String);
+pub struct Var(pub(crate) String);
 
 #[derive(Debug, Clone)]
 pub struct NoVar;
@@ -12,21 +12,11 @@ impl std::fmt::Display for NoVar {
     }
 }
 
-fn is_var(s: &str) -> bool {
-    s == "_"
-        || s.chars().next().into_iter().any(|c| c.is_lowercase())
-            && s.chars().all(|c| c.is_lowercase() || c.is_numeric() || c == '_')
-}
-
 impl TryFrom<&str> for Var {
     type Error = NoVar;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        if is_var(value) {
-            Ok(Self(value.to_owned()))
-        } else {
-            Err(NoVar)
-        }
+        Self::from_str(value).map_err(|_| NoVar)
     }
 }
 
@@ -34,11 +24,7 @@ impl TryFrom<String> for Var {
     type Error = NoVar;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        if is_var(&value) {
-            Ok(Self(value))
-        } else {
-            Err(NoVar)
-        }
+        Self::try_from(value.as_str())
     }
 }
 
@@ -82,7 +68,7 @@ impl quickcheck::Arbitrary for Var {
                     first = false;
                     *g.choose(&choices[0..26]).unwrap()
                 } else {
-                    *g.choose(&choices).unwrap()
+                    *g.choose(choices).unwrap()
                 }
             })
             .collect::<String>();
@@ -93,6 +79,6 @@ impl quickcheck::Arbitrary for Var {
         }
     }
     fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-        Box::new(self.0.shrink().filter(|v| is_var(v)).map(Self))
+        Box::new(self.0.shrink().filter_map(|v| Self::from_str(&v).ok()))
     }
 }

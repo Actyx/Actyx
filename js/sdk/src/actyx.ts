@@ -11,6 +11,7 @@ import { SnapshotStore } from './snapshotStore'
 import { ActyxOpts, ActyxTestOpts, AppId, AppManifest, NodeId } from './types'
 import { mkV1eventStore } from './v1'
 import { makeWsMultiplexerV2, v2getNodeId, WebsocketEventStoreV2 } from './v2'
+import { getToken, v2WaitForSwarmSync } from './v2/utils'
 
 /** Access all sorts of functionality related to the Actyx system! @public */
 export type Actyx = EventFns & {
@@ -19,6 +20,12 @@ export type Actyx = EventFns & {
 
   /** Dispose of this Actyx connector, cancelling all ongoing subscriptions and freeing all underlying ressources. @public */
   dispose: () => void
+
+  /** Wait for the connected node to be in sync with the swarm. This is on a
+   * best-effort basis and waits at most 30 seconds after the point in time the
+   * node has been started. This can be used in order to reduce stale state
+   * inside the application when started together with an Actyx node. @public */
+  waitForSync: () => Promise<void>
 }
 
 /**
@@ -39,15 +46,19 @@ export type TestActyx = TestEventFns & {
 }
 
 const createV2 = async (manifest: AppManifest, opts: ActyxOpts, nodeId: string): Promise<Actyx> => {
-  const ws = await makeWsMultiplexerV2(manifest, opts)
+  const token = await getToken(opts, manifest)
+  const ws = await makeWsMultiplexerV2(opts, token)
   const eventStore = new WebsocketEventStoreV2(ws, AppId.of(manifest.appId))
   // No snapshotstore impl available for V2 prod
   const fns = EventFnsFromEventStoreV2(nodeId, eventStore, SnapshotStore.noop)
+
+  const waitForSync = async () => v2WaitForSwarmSync(opts, token, fns.offsets)
 
   return {
     ...fns,
     nodeId,
     dispose: () => ws.close(),
+    waitForSync,
   }
 }
 
@@ -60,6 +71,7 @@ const createV1 = async (opts: ActyxOpts): Promise<Actyx> => {
     ...fns,
     nodeId: sourceId,
     dispose: () => close(),
+    waitForSync: () => Promise.resolve(),
   }
 }
 

@@ -69,6 +69,14 @@ module.exports = {
     },
     {
       type: 'category',
+      label: 'Structured queries',
+      collapsed: true,
+      items: [
+        'how-to/structured-queries/query-events-with-aql',
+      ],
+    },
+    {
+      type: 'category',
       label: 'User Auth',
       collapsed: true,
       items: [
@@ -221,6 +229,7 @@ module.exports = {
       ],
     },
     'reference/aql',
+    'reference/rust-sdk'
   ],
   tutorialSidebar: [
     {

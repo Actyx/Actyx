@@ -1,4 +1,24 @@
+<div align="center">
+
 # Actyx
+
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](#contributing)
+[![discord](https://img.shields.io/discord/697349510409617408?style=flat-square)](https://discord.gg/262yJhc)
+[![license](https://img.shields.io/crates/l/actyx_sdk?style=flat-square)](#licensing)
+
+[![dockerhub](https://img.shields.io/docker/v/actyx/actyx/latest?label=Actyx%20version&style=flat-square)](https://hub.docker.com/repository/docker/actyx/actyx)
+[![Rust SDK](https://img.shields.io/crates/v/actyx_sdk?label=Rust%20SDK&style=flat-square)](https://crates.io/crates/actyx_sdk)
+[![C#/.Net SDK](https://img.shields.io/nuget/v/Actyx.Sdk?label=C%23%2F.Net%20SDK&style=flat-square)](https://www.nuget.org/packages/Actyx.Sdk/)
+[![JS/TS SDK](https://img.shields.io/npm/v/@actyx/sdk?label=JS%2FTS%20SDK&style=flat-square)](https://www.npmjs.com/package/@actyx/sdk)
+[![JS/TS Pond](https://img.shields.io/npm/v/@actyx/pond?label=JS%2FTS%20Pond&style=flat-square)](https://www.npmjs.com/package/@actyx/pond)
+
+![commits](https://img.shields.io/github/commit-activity/m/Actyx/Actyx?style=flat-square)
+![contributors](https://img.shields.io/github/contributors/Actyx/Actyx?style=flat-square)
+
+---
+
+<img src="web/Actyx-Icon-Transparent.svg" height="128pt" />    <a href="https://www.local-first-cooperation.org/"><img src="web/lfc-logo.svg" height="128pt" /></a>
+</div>
 
 Actyx is a **decentralized** event **database**, **streaming** and **processing** engine that allows you to easily build [local-first cooperative](https://www.local-first-cooperation.org/) apps.
 For more information on how to use it, please refer to [developer.actyx.com](https://developer.actyx.com).
@@ -11,6 +31,8 @@ You’re also very welcome to drop us a line in [the forum](https://community.ac
 - tag-based and time-based indexing of events
 - full-fledged support for event-sourcing, guaranteeing eventual consistency
 - [query language](https://developer.actyx.com/docs/reference/aql) for extracting and summarizing events (still growing)
+
+For our high-level roadmap please check out [this wiki page](https://github.com/Actyx/Actyx/wiki/Roadmap).
 
 ## Quick demo
 
@@ -25,9 +47,13 @@ cargo run --bin actyx
 In another terminal, also in `rust/actyx`, interact with the running Actyx process using the CLI:
 
 ```sh
-cargo run --bin ax -- events query localhost 'FROM allEvents'
-# or, to get the listen addresses
-cargo run --bin ax -- events query localhost 'FROM "discovery" SELECT _["NewListenAddr"]'
+# first create your keypair:
+cargo run --bin ax users keygen
+
+# then ask for all events:
+cargo run --bin ax events query localhost 'FROM allEvents'
+# or get the listen addresses from the discovery mechanism:
+cargo run --bin ax events query localhost 'FROM "discovery" FILTER IsDefined(_.NewListenAddr) SELECT _.NewListenAddr[1]'
 ```
 
 The last argument is an [AQL expression](https://developer.actyx.com/docs/reference/aql), you can play around a little bit with the `'discovery'` and (after some time) `'metrics'` events that Actyx emits by itself.
@@ -37,7 +63,7 @@ Our full-fledged event-sourcing support lives in [the Pond library](js/pond/READ
 ## How to get Actyx
 
 For up-to-date binaries built for a variety of host systems please refer to [Actyx Releases](https://developer.actyx.com/releases).
-If you want to build it yourself from source, you’ll need GNU make (version 4.2 or later), the current stable Rust toolchain, and node.js (`nvm`) or .Net development environments for the respective SDKs.
+If you want to build it yourself from source, you’ll need GNU make (version 4.2 or later), the current stable Rust toolchain, and language-specific development environments for building the respective SDKs.
 
 Common commands are:
 

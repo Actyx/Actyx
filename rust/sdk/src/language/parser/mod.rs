@@ -4,13 +4,14 @@
 use std::{convert::TryInto, str::FromStr, sync::Arc};
 
 use super::{
-    non_empty::NonEmptyVec, AggrOp, Arr, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, TagAtom, TagExpr,
+    non_empty::NonEmptyVec, AggrOp, Arr, FuncCall, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, TagAtom, TagExpr,
 };
 use crate::{language::SortKey, tags::Tag, Timestamp};
 use anyhow::{bail, ensure, Result};
 use chrono::{TimeZone, Utc};
 use once_cell::sync::Lazy;
 use pest::{prec_climber::PrecClimber, Parser};
+use unicode_normalization::UnicodeNormalization;
 use utils::*;
 
 #[derive(Debug, Clone)]
@@ -29,7 +30,7 @@ struct Aql;
 mod utils;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Context {
+pub(crate) enum Context {
     Simple,
     Aggregate,
 }
@@ -134,11 +135,11 @@ fn r_string(p: P) -> Result<String> {
 
 fn r_var(p: P, ctx: Context) -> Result<SimpleExpr> {
     let mut p = p.inner()?;
-    let s = p.string()?;
+    let s = p.next().ok_or(NoVal("no var"))?.as_str();
     if s == "_" {
         ensure!(ctx != Context::Aggregate, ContextError::CurrentValueInAggregate);
     }
-    let head = SimpleExpr::Variable(s.try_into()?);
+    let head = SimpleExpr::Variable(super::var::Var(s.nfc().collect()));
     let mut tail = vec![];
     for mut i in p {
         match i.as_rule() {
@@ -266,12 +267,26 @@ fn r_aggr(p: P, ctx: Context) -> Result<SimpleExpr> {
     })
 }
 
+fn r_func_call(p: P, ctx: Context) -> Result<FuncCall> {
+    let mut p = p.inner()?;
+    let name = p.string()?;
+    let mut args = vec![];
+    for p in p {
+        args.push(r_simple_expr(p, ctx)?);
+    }
+    Ok(FuncCall {
+        name,
+        args: args.into(),
+    })
+}
+
 fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
     static CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
         use pest::prec_climber::{Assoc::*, Operator};
         let op = Operator::new;
 
         PrecClimber::new(vec![
+            op(Rule::alternative, Left),
             op(Rule::or, Left),
             op(Rule::xor, Left),
             op(Rule::and, Left),
@@ -297,6 +312,7 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
             Rule::bool => SimpleExpr::Bool(r_bool(p)),
             Rule::simple_cases => SimpleExpr::Cases(r_cases(p, ctx)?),
             Rule::aggr_op => r_aggr(p, ctx)?,
+            Rule::func_call => SimpleExpr::FuncCall(r_func_call(p, ctx)?),
             x => bail!("unexpected token: {:?}", x),
         })
     }
@@ -321,6 +337,7 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
                 Rule::ge => lhs?.ge(rhs?),
                 Rule::eq => lhs?.eq(rhs?),
                 Rule::ne => lhs?.ne(rhs?),
+                Rule::alternative => lhs?.alt(rhs?),
                 x => bail!("unexpected token: {:?}", x),
             })
         },
@@ -390,11 +407,25 @@ impl FromStr for SimpleExpr {
     }
 }
 
+impl FromStr for super::var::Var {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let p = Aql::parse(Rule::main_ident, s)?.single()?;
+        Ok(Self(p.as_str().nfc().collect()))
+    }
+}
+
+pub fn is_ident(s: &str) -> bool {
+    Aql::parse(Rule::main_ident, s).is_ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{tag, NodeId, StreamId};
+    use crate::{language::var::Var, tag, NodeId, StreamId};
     use pest::{fails_with, Parser};
+    use std::convert::TryFrom;
 
     #[test]
     fn tag() -> Result<()> {
@@ -436,7 +467,8 @@ mod tests {
             parser: Aql,
             input: "5+3!",
             rule: Rule::main_simple_expr,
-            positives: vec![Rule::EOI, Rule::add, Rule::sub, Rule::mul, Rule::div, Rule::modulo, Rule::pow, Rule::and, Rule::or, Rule::xor, Rule::lt, Rule::le, Rule::gt, Rule::ge, Rule::eq, Rule::ne],
+            positives: vec![Rule::EOI, Rule::add, Rule::sub, Rule::mul, Rule::div, Rule::modulo, Rule::pow, Rule::and,
+                Rule::or, Rule::xor, Rule::lt, Rule::le, Rule::gt, Rule::ge, Rule::eq, Rule::ne, Rule::alternative],
             negatives: vec![],
             pos: 3
         };
@@ -571,6 +603,77 @@ mod tests {
     }
 
     #[test]
+    fn ident() {
+        let p = |s: &str, e: Option<&str>| {
+            let q = s.parse::<Query>();
+            if let Some(err) = e {
+                let e = q.unwrap_err().to_string();
+                assert!(e.contains(err), "received: {}", e);
+                None
+            } else {
+                match q.unwrap().ops[0].clone() {
+                    Operation::Select(v) => Some(v.to_vec()),
+                    _ => None,
+                }
+            }
+        };
+        let ind = |s: &str| {
+            SimpleExpr::Indexing(Ind {
+                head: Arc::new(SimpleExpr::Variable(Var::try_from("_").unwrap())),
+                tail: NonEmptyVec::try_from(vec![Index::String(s.to_owned())]).unwrap(),
+            })
+        };
+        let s = |s: &str| Index::String(s.to_owned());
+        let n = |n: u64| SimpleExpr::Number(Num::Natural(n));
+        let v = |s: &str| SimpleExpr::Variable(Var::try_from(s).unwrap());
+
+        p("FROM 'x' SELECT _.H", Some("expected ident"));
+        p("FROM 'x' SELECT _.HE", Some("expected ident"));
+        assert_eq!(
+            p("FROM 'x' SELECT i, iIö, PσΔ", None),
+            Some(vec![v("i"), v("iIö"), v("PσΔ")])
+        );
+        assert_eq!(
+            p("FROM 'x' SELECT _.i, _.iIö, _.PσΔ", None),
+            Some(vec![ind("i"), ind("iIö"), ind("PσΔ")])
+        );
+        assert_eq!(
+            p("FROM 'x' SELECT { i: 1 iIö: 2 PσΔ: 3 }", None),
+            Some(vec![SimpleExpr::Object(Obj {
+                props: Arc::from(vec![(s("i"), n(1)), (s("iIö"), n(2)), (s("PσΔ"), n(3))].as_slice())
+            })])
+        )
+    }
+
+    #[test]
+    fn index() {
+        let p = |s: &str| s.parse::<SimpleExpr>().unwrap();
+        assert_eq!(
+            p("a['ª']"),
+            SimpleExpr::Indexing(Ind {
+                head: Arc::new(SimpleExpr::Variable(Var::try_from("a").unwrap())),
+                tail: vec![Index::String("ª".to_owned())].try_into().unwrap()
+            })
+        );
+        assert_eq!(
+            p("a.ª"),
+            SimpleExpr::Indexing(Ind {
+                head: Arc::new(SimpleExpr::Variable(Var::try_from("a").unwrap())),
+                tail: vec![Index::String("ª".to_owned())].try_into().unwrap()
+            })
+        );
+        assert_eq!(p("a['ª']").to_string(), "a.ª");
+
+        assert_eq!(
+            p("{ⓐ:1}"),
+            SimpleExpr::Object(Obj {
+                props: vec![(Index::String("ⓐ".to_owned()), SimpleExpr::Number(Num::Natural(1)))].into()
+            })
+        );
+        assert_eq!(p("{ⓐ:1}").to_string(), "{ ⓐ: 1 }");
+    }
+
+    #[test]
     fn aggregate() {
         let p = |s: &str, e: Option<&str>| {
             let q = s.parse::<Query>();
@@ -599,6 +702,49 @@ mod tests {
         p(
             "FROM 'x' AGGREGATE { a: LAST(_ + 1) b: FIRST(_.a.b) c: MIN(1 / _) d: MAX([_]) e: SUM(1.3 * _) }",
             None,
+        );
+    }
+
+    #[test]
+    fn func_call() {
+        let p = |s: &str, e: Option<&str>| {
+            let q = s.parse::<Query>();
+            if let Some(err) = e {
+                let e = q.unwrap_err().to_string();
+                assert!(e.contains(err), "received: {}", e);
+                None
+            } else {
+                match q.unwrap().ops[0].clone() {
+                    Operation::Select(v) => Some(v.to_vec()),
+                    _ => None,
+                }
+            }
+        };
+
+        assert_eq!(
+            p("FROM 'x' SELECT Func()", None),
+            Some(vec![SimpleExpr::FuncCall(FuncCall {
+                name: "Func".to_owned(),
+                args: vec![].into()
+            })])
+        );
+        assert_eq!(
+            p("FROM 'x' SELECT Fÿnc('x')", None),
+            Some(vec![SimpleExpr::FuncCall(FuncCall {
+                name: "Fÿnc".to_owned(),
+                args: vec![SimpleExpr::String("x".to_owned())].into()
+            })])
+        );
+        assert_eq!(
+            p("FROM 'x' SELECT Func(x, 'x')", None),
+            Some(vec![SimpleExpr::FuncCall(FuncCall {
+                name: "Func".to_owned(),
+                args: vec![
+                    SimpleExpr::Variable(Var::try_from("x").unwrap()),
+                    SimpleExpr::String("x".to_owned())
+                ]
+                .into()
+            })])
         );
     }
 }

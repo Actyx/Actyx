@@ -27,7 +27,7 @@
     "jasmine-check": "1.0.0-rc.0",
     "jest": "26.6.3",
     "license-check-and-add": "^3.0.4",
-    "madge": "3.4.4",
+    "madge": "5.0.1",
     "moment": "2.29",
     "node-fetch": "^2.6.1",
     "prettier": "1.13.7",
@@ -57,12 +57,12 @@
     "datastore",
     "offline-first"
   ],
-  "license": "GPL-3.0-only",
+  "license": "Apache-2.0",
   "main": "./lib/index.js",
   "name": "@actyx/pond",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Actyx/Cosmos.git"
+    "url": "git+https://github.com/Actyx/Actyx.git"
   },
   "scripts": {
     "api:accept": "api-extractor run -l",
