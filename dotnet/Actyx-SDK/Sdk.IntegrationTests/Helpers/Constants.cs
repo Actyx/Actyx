@@ -11,7 +11,5 @@ namespace Sdk.IntegrationTests.Helpers
             DisplayName = "ax http client tests",
             Version = typeof(Constants).Assembly.GetName().Version.ToString(),
         };
-
-        public static IEnumerable<string> Tags => new List<string>() { "42", "order", "dotnet" };
     }
 }

@@ -74,7 +74,7 @@ namespace Actyx.CLI
             };
             cmd.Handler = CommandHandler.Create<AppManifest, bool, string, OffsetMap, OffsetMap, Aql, EventsOrder>(async (manifest, websocket, node, lowerBound, upperBound, query, order) =>
             {
-                var eventStore = await MkStore(manifest, websocket, node);
+                using var eventStore = await MkStore(manifest, websocket, node);
                 await eventStore
                     .Query(lowerBound, upperBound, query, order)
                     .ForEachAsync(Serializer<IResponseMessage>());
@@ -91,7 +91,7 @@ namespace Actyx.CLI
             };
             cmd.Handler = CommandHandler.Create<AppManifest, bool, string, OffsetMap, Aql>(async (manifest, websocket, node, lowerBound, query) =>
             {
-                var eventStore = await MkStore(manifest, websocket, node);
+                using var eventStore = await MkStore(manifest, websocket, node);
                 await eventStore
                     .Subscribe(lowerBound, query)
                     .ForEachAsync(Serializer<IResponseMessage>());
@@ -110,7 +110,7 @@ namespace Actyx.CLI
             };
             cmd.Handler = CommandHandler.Create<AppManifest, bool, string, OffsetMap, string, Aql>(async (manifest, websocket, node, lowerBound, session, query) =>
             {
-                var eventStore = await MkStore(manifest, websocket, node);
+                using var eventStore = await MkStore(manifest, websocket, node);
                 await eventStore
                     .SubscribeMonotonic(session, lowerBound, query)
                     .ForEachAsync(Serializer<ISubscribeMonotonicResponse>());
@@ -126,7 +126,7 @@ namespace Actyx.CLI
             };
             cmd.Handler = CommandHandler.Create<AppManifest, bool, string>(async (manifest, websocket, node) =>
             {
-                var eventStore = await MkStore(manifest, websocket, node);
+                using var eventStore = await MkStore(manifest, websocket, node);
                 var offsets = await eventStore.Offsets();
                 Serializer<OffsetsResponse>()(offsets);
             });
@@ -150,7 +150,7 @@ namespace Actyx.CLI
             };
             cmd.Handler = CommandHandler.Create<AppManifest, bool, string, IEnumerable<EventDraft>>(async (manifest, websocket, node, events) =>
             {
-                var eventStore = await MkStore(manifest, websocket, node);
+                using var eventStore = await MkStore(manifest, websocket, node);
                 var response = await eventStore.Publish(events.Cast<IEventDraft>());
                 Serializer<PublishResponse>()(response);
             });

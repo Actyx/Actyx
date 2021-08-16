@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Actyx.Sdk.AxHttpClient;
@@ -27,12 +28,20 @@ namespace Actyx.CLI
             };
             var serializer = EventStoreSerializer.Create();
             var converter = new JsonContentConverter(serializer);
-            var axHttpClient = await AxHttpClient.Create("http://localhost:4454/api/v2/", manifest, converter);
-            Uri axWs = new($"ws://localhost:4454/api/v2/events?{axHttpClient.Token}");
-            using var wsrpcClient = new WsrpcClient(axWs);
-            using var store = new WebsocketEventStore(wsrpcClient, axHttpClient.NodeId);
+            var apiUri = new Uri("http://localhost:4454/api/v2/");
+            var httpClient = new AuthenticatedClient(manifest, new Uri(apiUri, "events/"), new Uri(apiUri, "auth"), converter);
+            var token = await httpClient.GetToken();
 
-            List<string> tags = new() { RandomString(8) };
+            var nodeIdReq = new HttpRequestMessage(HttpMethod.Get, new Uri(apiUri, "node/id"));
+            nodeIdReq.Headers.Add("Accept", "application/json");
+            nodeIdReq.Content = converter.ToContent(manifest);
+            var nodeIdResp = await httpClient.Fetch(nodeIdReq);
+            var nodeId = new NodeId(await nodeIdResp.Content.ReadAsStringAsync());
+
+            using var wsrpcClient = new WsrpcClient(new Uri($"ws://localhost:4454/api/v2/events?{token}"));
+            using var store = new WebsocketEventStore(wsrpcClient, nodeId, manifest.AppId);
+
+            List<string> tags = new() { AxRandom.String(8) };
 
             var persisted =
                 Observable
@@ -41,7 +50,7 @@ namespace Actyx.CLI
                     {
                         List<IEventDraft> events = new()
                         {
-                            new EventDraft { Tags = tags, Payload = RandomString(20) },
+                            new EventDraft { Tags = tags, Payload = AxRandom.String(20) },
                         };
                         return Observable
                             .FromAsync(() => store.Publish(events))
@@ -68,14 +77,6 @@ namespace Actyx.CLI
             {
                 p.ShouldDeepEqual(s);
             }
-        }
-
-        private static readonly Random random = new();
-        public static string RandomString(int length)
-        {
-            const string chars = "abcdefghijklmnopqrstuvwxyz";
-            return new string(Enumerable.Repeat(chars, length)
-              .Select(s => s[random.Next(s.Length)]).ToArray());
         }
     }
 }

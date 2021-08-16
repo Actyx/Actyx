@@ -1,107 +1,91 @@
 ﻿using System;
+using System.Linq;
 using System.Net.Http;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
-using Actyx.Sdk.Formats;
 using Actyx.Sdk.Utils;
 using Actyx.Sdk.Utils.Extensions;
+using Newtonsoft.Json.Linq;
 
 namespace Actyx.Sdk.AxHttpClient
 {
+    /// Provides typed, JSON-based access to resources via relative paths.
     public class AxHttpClient : IAxHttpClient
     {
         private readonly HttpClient httpClient;
-        private readonly UriBuilder uriBuilder;
-        private readonly AppManifest manifest;
-        private readonly JsonContentConverter converter;
-        public string Token { get; private set; }
-        public NodeId NodeId { get; private set; }
-        public string AppId => manifest.AppId;
+        protected readonly Uri baseUri;
+        protected readonly JsonContentConverter converter;
 
-        private AxHttpClient(HttpClient httpClient, string baseUrl, AppManifest manifest, JsonContentConverter converter)
+        public AxHttpClient(
+            Uri baseUri,
+            JsonContentConverter converter)
         {
-            ThrowIf.Argument.IsNull(baseUrl, nameof(baseUrl));
-            ThrowIf.Argument.IsNull(manifest, nameof(manifest));
+            ThrowIf.Argument.IsNull(baseUri, nameof(baseUri));
+            if (!baseUri.Scheme.Equals("http"))
+            {
+                throw new ArgumentException($"Only http scheme allowed. Received '{baseUri.Scheme}'.");
+            }
+            if (!baseUri.IsAbsoluteUri)
+            {
+                throw new ArgumentException($"`baseUri` needs to be an absolute. Received '{baseUri}'.");
+            }
+
             ThrowIf.Argument.IsNull(converter, nameof(converter));
 
-            if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri uri))
-            {
-                throw new ArgumentException($"Base url needs to be an absolute, i.e. 'http://localhost:4454'. Received '{baseUrl}'.");
-            }
-            if (!uri.Scheme.Equals("http"))
-            {
-                throw new ArgumentException($"Only http scheme allowed, i.e. 'http://localhost:4454'. Received '{baseUrl}'.");
-            }
-            uriBuilder = new UriBuilder(uri)
-            {
-                Path = HttpApiPath.API_V2_PATH,
-            };
-
-            this.httpClient = httpClient;
-            this.manifest = manifest;
+            this.baseUri = baseUri;
             this.converter = converter;
+
+            httpClient = new HttpClient();
         }
 
-        public static async Task<AxHttpClient> Create(string baseUrl, AppManifest manifest, JsonContentConverter converter)
+        public virtual Task<HttpResponseMessage> DoFetch(HttpRequestMessage request) =>
+            Fetch(request);
+
+
+        public async Task<HttpResponseMessage> Fetch(HttpRequestMessage request)
         {
-            var httpClient = new HttpClient();
-            var client = new AxHttpClient(httpClient, baseUrl, manifest, converter)
-            {
-                NodeId = await GetNodeId(httpClient, new Uri(baseUrl)),
-            };
-            client.Token = (await GetToken(httpClient, client.uriBuilder.Uri, manifest, converter)).Token;
-
-            return client;
-        }
-
-        public static async Task<NodeId> GetNodeId(HttpClient httpClient, Uri baseUri)
-        {
-            var uri = baseUri + HttpApiPath.NODE_ID_SEG;
-            var nodeIdResponse = await httpClient.GetAsync(uri);
-            await nodeIdResponse.EnsureSuccessStatusCodeCustom();
-            var nodeId = await nodeIdResponse.Content.ReadAsStringAsync();
-            return new NodeId(nodeId);
-        }
-
-        public Task<HttpResponseMessage> Post<T>(string path, T payload, bool xndjson = false) =>
-            FetchWithRetryOnUnauthorized(() =>
-            {
-                var uri = MkApiUrl(path);
-                var request = new HttpRequestMessage(HttpMethod.Post, uri);
-                request.Headers.Add("Accept", xndjson ? "application/x-ndjson" : "application/json");
-                request.Headers.Add("Authorization", $"Bearer {Token}");
-                request.Content = converter.ToContent(payload);
-                return httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-            });
-
-        public Task<HttpResponseMessage> Get(string path) =>
-            FetchWithRetryOnUnauthorized(() =>
-            {
-                var uri = MkApiUrl(path);
-                var request = new HttpRequestMessage(HttpMethod.Get, uri);
-                request.Headers.Add("Authorization", $"Bearer {Token}");
-                request.Headers.Add("Accept", "application/json");
-                return httpClient.SendAsync(request);
-            });
-
-        public static async Task<AuthenticationResponse> GetToken(HttpClient httpClient, Uri baseUri, AppManifest manifest, JsonContentConverter converter)
-        {
-            var response = await httpClient.PostAsync(baseUri + HttpApiPath.AUTH_SEG, converter.ToContent(manifest));
+            var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             await response.EnsureSuccessStatusCodeCustom();
-            return await converter.FromContent<AuthenticationResponse>(response.Content);
-        }
-
-        private string MkApiUrl(string path) => uriBuilder.Uri + path;
-
-        private async Task<HttpResponseMessage> FetchWithRetryOnUnauthorized(Func<Task<HttpResponseMessage>> request)
-        {
-            var response = await request();
-            if (response.IsUnauthorized())
-            {
-                Token = (await GetToken(httpClient, uriBuilder.Uri, manifest, converter)).Token;
-                response = await request();
-            }
-
             return response;
         }
+
+        public async Task<Res> Get<Res>(string path)
+        {
+            var uri = new Uri(baseUri, path);
+            var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add("Accept", "application/json");
+            var response = await DoFetch(request);
+            return await converter.FromContent<Res>(response.Content);
+        }
+
+        public async Task<Res> Post<Req, Res>(string path, Req payload)
+        {
+            var uri = new Uri(baseUri, path);
+            var request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Headers.Add("Accept", "application/json");
+            request.Content = converter.ToContent(payload);
+            var response = await DoFetch(request);
+            return await converter.FromContent<Res>(response.Content);
+        }
+
+        public IObservable<Res> Stream<Req, Res>(string path, Req payload)
+        {
+            var uri = new Uri(baseUri, path);
+            var request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Headers.Add("Accept", "application/x-ndjson");
+            request.Content = converter.ToContent(payload);
+            return Observable
+                .FromAsync(() => DoFetch(request))
+                .SelectMany(response =>
+                    Observable
+                        .FromAsync(async () => await response.EnsureSuccessStatusCodeCustom())
+                        .SelectMany(_ => response.Content!
+                            .ReadFromNdjsonAsync().ToObservable()
+                            .TrySelect(EventStore.Protocol.DeserializeJson<Res>, LogDecodingError))
+                );
+        }
+
+        private static void LogDecodingError(JToken json, Exception error) =>
+            Console.Error.WriteLine($"Error decoding {json}: {error.Message}");
     }
 }
