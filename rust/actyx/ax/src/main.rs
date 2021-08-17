@@ -15,7 +15,9 @@ use structopt::{
 #[derive(StructOpt, Debug)]
 #[structopt(
     name = "Actyx CLI",
-    about = "The Actyx Command Line Interface (CLI) is a unified tool to manage your Actyx nodes",
+    about = concat!(
+        "\nThe Actyx Command Line Interface (CLI) is a unified tool to manage your Actyx nodes.\n\n",
+        include_str!("../../../../NOTICE")),
     version = env!("AX_CLI_VERSION"),
 )]
 struct Opt {
