@@ -52,7 +52,3 @@ With the current Actyx Pond infrastructure, it is necessary to retain compatibil
 :::note
 In a future version Actyx and Actyx Pond will support the registration of schema migration handlers that transform an event stream from one schema version to another. With this, the app code can be modified to work with the new types and the translation of old events is done by the infrastructure, splitting the management of backward compatibility from the evolution of the program code.
 :::
-
-The next section addresses another concern that arises from the event-sourced nature of Actyx:
-with an ever-growing event log, waking up a fish would take longer the longer it has existed.
-This is addressed using snapshots.
