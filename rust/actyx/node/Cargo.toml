@@ -8,6 +8,9 @@ version = "0.1.0"
 name = "actyx-linux"
 path = "src/bin/linux.rs"
 
+[features]
+migration-v1 = ["crypto/legacy"]
+
 [build-dependencies]
 prost-build = "0.8.0"
 
@@ -19,6 +22,7 @@ ax-futures-util = { path = "../ax-futures-util" }
 backtrace = "0.3.60"
 base64 = "0.13.0"
 bytes = "1.0.1"
+cfg-if = "1.0.0"
 chrono = { features = ["serde"], version = "0.4.19" }
 crossbeam = "0.8.1"
 crypto = { path = "../crypto/" }

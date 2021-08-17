@@ -8,6 +8,9 @@ edition = "2018"
 name = "actyx"
 path = "src/main.rs"
 
+[features]
+migration-v1 = ["node/migration-v1"]
+
 [build-dependencies]
 util = { path = "../util" }
 
