@@ -13,6 +13,8 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::time::timeout;
 
+const FEATURES: &str = "migration-v1";
+
 fn setup() {
     util::setup_logger();
     // make sure actyx-linux binary is built and available
@@ -24,6 +26,7 @@ fn setup() {
         for msg in CargoBuild::new()
             .manifest_path("../Cargo.toml")
             .bin("actyx-linux")
+            .features(FEATURES)
             .exec()
             .unwrap()
         {
