@@ -14,7 +14,6 @@ This conceptual guide explains the limitations of Actyx in real-world factory so
 - [Performance](#performance)
   - [Application and Fish startup time](#application-and-fish-startup-time)
   - [The effect of semantic snapshots](#the-effect-of-semantic-snapshots)
-  - [The effect of state snapshots](#the-effect-of-state-snapshots)
   - [Large application state](#large-application-state)
   - [Latency implications of large number of fishes and sources](#latency-implications-of-large-number-of-fishes-and-sources)
   - [Pathological time travel performance when reconnecting a device that was offline for a long time](#pathological-time-travel-performance-when-reconnecting-a-device-that-was-offline-for-a-long-time)
@@ -95,16 +94,12 @@ While there are vast differences between languages, runtimes, CPU architectures,
 
 ### Application and Fish startup time
 
-Bringing a Fish up to date for the first time in an application run (we say “hydrating” or “waking up” the Fish) requires a starting point (which can be a semantic or state snapshot) and the application of all following events.
+Bringing a Fish up to date for the first time in an application run (we say “hydrating” or “waking up” the Fish) requires a starting point and the application of all following events.
 If a Fish requires a large number of events for starting up then it will take a correspondingly long time until the first state is available and the first command can be processed — the startup time is proportional to the number of events selected by the subscription (see below for the effect of snapshots).
 
 Our recommendation is to structure your fishes such that each requires less than 1,000 events.
 This means that fishes are best used to model process workflows (which rarely have more than 1,000 steps).
 Fishes are not ideal for accumulating statistical data over long time periods; a better solution for that use-case is to export the events into a time-series database.
-
-:::tip
-If you need to create long-running fishes that accumulate many events — like a registry for currently open work orders — then you can mitigate the resulting issues with state snapshots as described below.
-:::
 
 ### The effect of semantic snapshots
 
@@ -118,27 +113,12 @@ Semantic snapshots help a lot if in typical cases:
 
 As such, semantic snapshots can make a Fish viable even though it violates the recommendation in the previous section.
 
-### Large application state
-
-State snapshots can be problematic when the business logic state is large.
-If for example a Fish holds data structures with a volume of 100MB in memory, then storing a snapshot requires serializing this live data structure to JSON (which may separately take more than 100MB) and then sending it to Actyx for safe keeping.
-Restoring a snapshot also requires both the serialized and the in-memory data structures to be live at the same time.
-
-The above characteristics can cause problems especially in browser apps, where such memory usage spikes may lead to the app getting killed by the Javascript runtime.
-Actual limits depend both on the runtime environment (which version of which browser) and on the available system memory, which in turn is handled differently between desktop PCs and tablet computers.
-
-We recommend to keep per Fish memory usage below 10MB.
-
-:::tip You are seeing much higher memory usage than expected?
-Keep in mind that starting with Pond version 2.1 you can directly modify the `state` parameter to the `onEvent` function, which will reduce memory pressure compared to making a copy.
-:::
-
 ### Latency implications of large number of fishes and sources
 
 With current Actyx versions the internal event dispatch latency is proportional to both the number of Fishes and the number of devices in the swarm.
-The effect of this depends very much on the CPU that is running Actyx: for example 100 sources times 500 Fishes on an Intel Atom processor (rugged Android tablet from around 2015) lead to an internal latency of 3 sec (e.g. between button click and subsequent fish state update).
+The effect of this depends very much on the CPU that is running Actyx: for example 100 sources times 500 Fishes on an Intel Atom processor (rugged Android tablet from around 2015) lead to an internal latency of more than a second (e.g. between button click and subsequent fish state update).
 
-We are working on improving this characteristic starting with release 1.1.5 and expect to remove this bottleneck in a future release.
+We are working on removing this bottleneck in a future release.
 Until then we recommend to keep the product of woken up Fishes and swarm sources below 1,000, at least on tablet computers.
 
 :::tip
