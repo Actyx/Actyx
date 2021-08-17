@@ -1,15 +1,16 @@
-use std::{collections::VecDeque, path::Path, str::FromStr};
-
-use anyhow::Result;
+use anyhow::{Context, Result};
 use futures::prelude::*;
 use libipld::cid::Cid;
+use std::{collections::VecDeque, path::Path, str::FromStr};
 use swarm::BanyanStore;
 use tracing::*;
 use warp::{
     filters::BoxedFilter,
+    host::Authority,
     http::header::{HeaderValue, CONTENT_TYPE},
     hyper::{Body, Response},
-    path, Filter, Reply,
+    path::{self, Peek},
+    Filter, Rejection, Reply,
 };
 
 /// an ipfs query contains a root cid and a path into it
@@ -79,4 +80,43 @@ pub fn route(store: BanyanStore) -> BoxedFilter<(impl Reply,)> {
         })
         .and_then(move |query: IpfsQuery| handle_query(store.clone(), query).map_err(crate::util::reject))
         .boxed()
+}
+
+fn extract_sub(input: &str) -> anyhow::Result<Cid> {
+    let (sub, _) = input
+        .split_once(".actyx.localhost")
+        .ok_or_else(|| anyhow::anyhow!("No subdomain given before .actyx.localhost"))?;
+    Ok(sub.parse()?)
+}
+
+fn files_query_extract() -> impl Filter<Extract = (IpfsQuery,), Error = Rejection> + Clone {
+    path::peek().and(warp::get()).and(warp::host::optional()).and_then(
+        |tail: Peek, authority: Option<Authority>| async move {
+            if let Some(a) = authority {
+                extract_sub(a.host())
+                    .context("Sub domain must be a valid multihash")
+                    .map(|root| {
+                        let path = tail
+                            .as_str()
+                            .split('/')
+                            .filter(|x| !x.is_empty())
+                            .map(|x| x.to_owned())
+                            .collect();
+                        IpfsQuery { root, path }
+                    })
+                    .map_err(crate::util::reject)
+            } else {
+                Err(warp::reject::not_found())
+            }
+        },
+    )
+}
+
+pub fn files_route(store: BanyanStore) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    files_query_extract()
+        .and_then(move |query| {
+            println!("files_filter {:?}", query);
+            handle_query(store.clone(), query).map_err(crate::util::reject)
+        })
+        .or(warp::path!("add").and(warp::path::end()).and(warp::post()).map(|| "Ok"))
 }

@@ -78,11 +78,13 @@ fn routes(
         .allow_headers(vec!["accept", "authorization", "content-type"])
         .allow_methods(&[http::Method::GET, http::Method::POST]);
 
-    path("ipfs")
-        .and(ipfs_file_gateway::route(store))
-        .or(api_path.and(path("events")).and(events))
+    api_path
+        .and(path("events"))
+        .and(events)
         .or(api_path.and(path("node")).and(node))
         .or(api_path.and(path("auth")).and(auth))
+        .or(ipfs_file_gateway::files_route(store.clone()))
+        .or(path("ipfs").and(ipfs_file_gateway::route(store)))
         .recover(|r| async { rejections::handle_rejection(r) })
         .with(cors)
 }
