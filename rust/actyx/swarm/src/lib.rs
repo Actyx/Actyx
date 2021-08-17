@@ -30,6 +30,7 @@ pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
 use actyx_sdk::app_id;
 pub use prune::RetainConfig;
+pub use unixfs_v1::dir::builder::{BufferingTreeBuilder, TreeOptions};
 
 use crate::gossip::Gossip;
 pub use crate::gossip_protocol::{GossipMessage, RootMap, RootUpdate};
@@ -897,9 +898,10 @@ impl BanyanStore {
     /// `TempPin`.
     /// Blobs are encoded as [unixfs-v1](https://docs.ipfs.io/concepts/file-systems/#unix-file-system-unixfs)
     /// files.
-    pub fn add(&self, tmp: &TempPin, reader: impl Read) -> Result<Cid> {
+    pub fn add(&self, tmp: &TempPin, reader: impl Read) -> Result<(Cid, usize)> {
         let mut adder = FileAdder::default();
         let mut reader = BufReader::with_capacity(adder.size_hint(), reader);
+        let mut bytes_read = 0usize;
         loop {
             match reader.fill_buf()? {
                 x if x.is_empty() => {
@@ -910,7 +912,7 @@ impl BanyanStore {
                         self.ipfs().insert(&block)?;
                         root = Some(cid)
                     }
-                    return Ok(root.expect("must return a root"));
+                    return Ok((root.expect("must return a root"), bytes_read));
                 }
                 x => {
                     let mut total = 0;
@@ -924,6 +926,7 @@ impl BanyanStore {
                         total += consumed;
                     }
                     reader.consume(total);
+                    bytes_read += total;
                 }
             }
         }

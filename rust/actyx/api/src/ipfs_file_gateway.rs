@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
+use bytes::BufMut;
 use futures::prelude::*;
 use libipld::cid::Cid;
 use std::{collections::VecDeque, path::Path, str::FromStr};
-use swarm::BanyanStore;
+use swarm::{BanyanStore, Block, BufferingTreeBuilder, TreeOptions};
 use tracing::*;
 use warp::{
     filters::BoxedFilter,
@@ -10,7 +11,7 @@ use warp::{
     http::header::{HeaderValue, CONTENT_TYPE},
     hyper::{Body, Response},
     path::{self, Peek},
-    Filter, Rejection, Reply,
+    Buf, Filter, Rejection, Reply,
 };
 
 /// an ipfs query contains a root cid and a path into it
@@ -85,7 +86,7 @@ pub fn route(store: BanyanStore) -> BoxedFilter<(impl Reply,)> {
 fn extract_sub(input: &str) -> anyhow::Result<Cid> {
     let (sub, _) = input
         .split_once(".actyx.localhost")
-        .ok_or_else(|| anyhow::anyhow!("No subdomain given before .actyx.localhost"))?;
+        .context("No subdomain given before .actyx.localhost")?;
     Ok(sub.parse()?)
 }
 
@@ -96,12 +97,19 @@ fn files_query_extract() -> impl Filter<Extract = (IpfsQuery,), Error = Rejectio
                 extract_sub(a.host())
                     .context("Sub domain must be a valid multihash")
                     .map(|root| {
-                        let path = tail
-                            .as_str()
-                            .split('/')
-                            .filter(|x| !x.is_empty())
-                            .map(|x| x.to_owned())
-                            .collect();
+                        let path = {
+                            let p = tail
+                                .as_str()
+                                .split('/')
+                                .filter(|x| !x.is_empty())
+                                .map(|x| x.to_owned())
+                                .collect::<VecDeque<_>>();
+                            if !p.is_empty() {
+                                p
+                            } else {
+                                std::iter::once("index.html".to_string()).collect()
+                            }
+                        };
                         IpfsQuery { root, path }
                     })
                     .map_err(crate::util::reject)
@@ -113,10 +121,53 @@ fn files_query_extract() -> impl Filter<Extract = (IpfsQuery,), Error = Rejectio
 }
 
 pub fn files_route(store: BanyanStore) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    let add = add(store.clone());
     files_query_extract()
-        .and_then(move |query| {
-            println!("files_filter {:?}", query);
-            handle_query(store.clone(), query).map_err(crate::util::reject)
+        .and_then(move |query| handle_query(store.clone(), query).map_err(crate::util::reject))
+        .or(add)
+}
+
+fn add(store: BanyanStore) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("add")
+        .and(warp::path::end())
+        .and(warp::multipart::form().max_length(128 << 20))
+        .and_then(move |mut form: warp::multipart::FormData| {
+            let store = store.clone();
+            async move {
+                let mut opts = TreeOptions::default();
+                opts.wrap_with_directory();
+                let mut builder = BufferingTreeBuilder::new(opts);
+                let tmp = store.ipfs().create_temp_pin()?;
+                while let Some(part) = form.try_next().await? {
+                    tracing::debug!("part {:?}", part);
+                    let name = part.filename().context("No filename provided")?.to_string();
+
+                    // TODO: use a named pin and store it somewhere?
+                    let data = part
+                        .stream()
+                        .try_fold(Vec::new(), |mut vec, data| {
+                            vec.put(data);
+                            async move { Ok(vec) }
+                        })
+                        .await?;
+                    let (cid, bytes_written) = store.add(&tmp, data.reader())?;
+                    builder.put_link(&*name, cid, bytes_written as u64)?;
+                }
+                let mut root = None;
+                for node in builder.build() {
+                    let node = node.context("Constructing a directory node")?;
+                    // convert to v1 cid
+                    let cid = Cid::new_v1(0x71, *node.cid.hash());
+                    store.ipfs().temp_pin(&tmp, &cid)?;
+                    root = Some(cid);
+                    let block = Block::new_unchecked(cid, node.block.to_vec());
+                    store.ipfs().insert(&block)?;
+                }
+                Ok(root.context("No files provided")?.to_string())
+            }
+            .map_err(|e| {
+                tracing::error!("got err {:#}", e);
+                crate::util::reject(e)
+            })
         })
-        .or(warp::path!("add").and(warp::path::end()).and(warp::post()).map(|| "Ok"))
 }

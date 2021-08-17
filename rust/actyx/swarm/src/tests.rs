@@ -256,7 +256,7 @@ async fn test_add_cat() -> Result<()> {
     let mut rng = rand::thread_rng();
     rng.fill_bytes(&mut data);
     let tmp = store.ipfs().create_temp_pin()?;
-    let root = store.add(&tmp, &data[..])?;
+    let (root, _) = store.add(&tmp, &data[..])?;
     let mut buf = Vec::with_capacity(16_000_000);
     store.cat(&root, &mut buf)?;
     assert_eq!(buf, data);
