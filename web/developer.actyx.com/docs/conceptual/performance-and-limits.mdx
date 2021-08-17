@@ -113,20 +113,12 @@ Semantic snapshots help a lot if in typical cases:
 
 As such, semantic snapshots can make a Fish viable even though it violates the recommendation in the previous section.
 
-### Latency implications of large number of fishes and sources
+### Latency implications of large number of peers
 
-With current Actyx versions the internal event dispatch latency is proportional to both the number of Fishes and the number of devices in the swarm.
-The effect of this depends very much on the CPU that is running Actyx: for example 100 sources times 500 Fishes on an Intel Atom processor (rugged Android tablet from around 2015) lead to an internal latency of more than a second (e.g. between button click and subsequent fish state update).
+With current Actyx versions the internal event publication latency is proportional to the number of connected peers.
+The effect of this depends very much on the connectivity: for example 20 connected peers on a cloud network can see an internal latency of more than a second (e.g. time until the call to `Publish` resolves).
 
 We are working on removing this bottleneck in a future release.
-Until then we recommend to keep the product of woken up Fishes and swarm sources below 1,000, at least on tablet computers.
-
-:::tip
-With current Pond versions, Fishes will never be stopped and their resources released (we are working on a feature in this direction).
-This may lead to exceeding the above recommended limit or exceeding the available main memory.
-
-Since this happens mostly on tablets with dynamic end-user workflows (like opening and closing work orders), an easy remedy is to restart the app — provided that after the restart less Fishes are woken up.
-:::
 
 ### Pathological time travel performance when reconnecting a device that was offline for a long time
 
@@ -139,7 +131,7 @@ The optimal scenario would be to first catch up and then insert all 100 chunks i
 The worst-case scenario would be that every chunk causes a time travel, with each subsequent time travel being more costly than the previous (due to added events).
 Thereby, the Fish would process some events potentially a hundred times, more likely ten times (since chunks are ordered per device they come from).
 
-To avoid this issue, we recommend using `Pond.waitForSwarmSync()` to delay app startup until Actyx is up-to-date with the rest of the swarm.
+To avoid this issue, we recommend using `Pond.waitForSwarmSync()` or `Actyx.waitForSync()` to delay app startup until Actyx is up-to-date with the rest of the swarm.
 
 ## Illustrative Examples
 
