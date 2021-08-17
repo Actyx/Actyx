@@ -118,16 +118,6 @@ Semantic snapshots help a lot if in typical cases:
 
 As such, semantic snapshots can make a Fish viable even though it violates the recommendation in the previous section.
 
-### The effect of state snapshots
-
-State snapshots are written when the Fish’s event history is longer than 1,000 events and snapshots are enabled by providing a corresponding (de)serialization configuration.
-When starting a Fish, the most recent state snapshot is used, thereby limiting the number of events that need to be applied.
-This can help if the required events are large in number or dispersed over a long time range and many devices — which are both factors in requiring a longer time to find and deliver the events to the business logic.
-It can also help if the business logic is computationally expensive, by reusing previously computed results.
-
-One important aspect to keep in mind is that these snapshots are local to each device.
-Therefore they don’t help when waking up a Fish for the first time on a given device — plowing through 10,000,000 events will take a long time even when the events can be found and delivered quickly.
-
 ### Large application state
 
 State snapshots can be problematic when the business logic state is large.
