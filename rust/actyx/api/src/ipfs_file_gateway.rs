@@ -14,6 +14,8 @@ use warp::{
     Buf, Filter, Rejection, Reply,
 };
 
+use crate::ans::ActyxNamingService;
+
 /// an ipfs query contains a root cid and a path into it
 #[derive(Debug, Clone)]
 pub struct IpfsQuery {
@@ -83,38 +85,45 @@ pub fn route(store: BanyanStore) -> BoxedFilter<(impl Reply,)> {
         .boxed()
 }
 
-fn extract_sub(input: &str) -> anyhow::Result<Cid> {
+fn extract_sub(ans: ActyxNamingService, input: &str) -> anyhow::Result<Cid> {
     let (sub, _) = input
         .split_once(".actyx.localhost")
         .context("No subdomain given before .actyx.localhost")?;
-    Ok(sub.parse()?)
+    if let Ok(cid) = sub.parse() {
+        Ok(cid)
+    } else {
+        ans.get(sub).context("No ANS Record found")
+    }
 }
 
-fn files_query_extract() -> impl Filter<Extract = (IpfsQuery,), Error = Rejection> + Clone {
+fn files_query_extract(ans: ActyxNamingService) -> impl Filter<Extract = (IpfsQuery,), Error = Rejection> + Clone {
     path::peek().and(warp::get()).and(warp::host::optional()).and_then(
-        |tail: Peek, authority: Option<Authority>| async move {
-            if let Some(a) = authority {
-                extract_sub(a.host())
-                    .context("Sub domain must be a valid multihash")
-                    .map(|root| {
-                        let path = {
-                            let p = tail
-                                .as_str()
-                                .split('/')
-                                .filter(|x| !x.is_empty())
-                                .map(|x| x.to_owned())
-                                .collect::<VecDeque<_>>();
-                            if !p.is_empty() {
-                                p
-                            } else {
-                                std::iter::once("index.html".to_string()).collect()
-                            }
-                        };
-                        IpfsQuery { root, path }
-                    })
-                    .map_err(crate::util::reject)
-            } else {
-                Err(warp::reject::not_found())
+        move |tail: Peek, authority: Option<Authority>| {
+            let ans = ans.clone();
+            async move {
+                if let Some(a) = authority {
+                    extract_sub(ans, a.host())
+                        .context("Sub domain must be a valid multihash")
+                        .map(|root| {
+                            let path = {
+                                let p = tail
+                                    .as_str()
+                                    .split('/')
+                                    .filter(|x| !x.is_empty())
+                                    .map(|x| x.to_owned())
+                                    .collect::<VecDeque<_>>();
+                                if !p.is_empty() {
+                                    p
+                                } else {
+                                    std::iter::once("index.html".to_string()).collect()
+                                }
+                            };
+                            IpfsQuery { root, path }
+                        })
+                        .map_err(crate::util::reject)
+                } else {
+                    Err(warp::reject::not_found())
+                }
             }
         },
     )
@@ -122,8 +131,10 @@ fn files_query_extract() -> impl Filter<Extract = (IpfsQuery,), Error = Rejectio
 
 pub fn files_route(store: BanyanStore) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     let add = add(store.clone());
-    files_query_extract()
-        .and_then(move |query| handle_query(store.clone(), query).map_err(crate::util::reject))
+    let ans = ActyxNamingService::new(store.clone());
+    naming_route(ans.clone())
+        .or(files_query_extract(ans)
+            .and_then(move |query| handle_query(store.clone(), query).map_err(crate::util::reject)))
         .or(add)
 }
 
@@ -169,5 +180,42 @@ fn add(store: BanyanStore) -> impl Filter<Extract = impl Reply, Error = Rejectio
                 tracing::error!("got err {:#}", e);
                 crate::util::reject(e)
             })
+        })
+}
+
+fn naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    get_naming_route(ans.clone()).or(set_naming_route(ans))
+}
+
+fn set_naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("ans" / String)
+        .and(warp::path::end())
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(move |name: String, maybe_cid: String| {
+            let ans = ans.clone();
+            async move {
+                tracing::debug!(%name, ?maybe_cid, "ANS POST");
+                let cid: Cid = maybe_cid.parse()?;
+                ans.set(name, cid).await?;
+                Ok(warp::reply())
+            }
+            .map_err(crate::util::reject)
+        })
+}
+
+fn get_naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("ans" / String)
+        .and(warp::path::end())
+        .and(warp::get())
+        .and_then(move |name: String| {
+            let result = ans.get(&*name);
+            async move {
+                if let Some(x) = result {
+                    Ok(x.to_string())
+                } else {
+                    Err(warp::reject::not_found())
+                }
+            }
         })
 }
