@@ -119,10 +119,10 @@ fn files_query_extract(ans: ActyxNamingService) -> impl Filter<Extract = (IpfsQu
                                     .filter(|x| !x.is_empty())
                                     .map(|x| x.to_owned())
                                     .collect::<VecDeque<_>>();
-                                if !p.is_empty() {
-                                    p
-                                } else {
+                                if p.is_empty() {
                                     std::iter::once("index.html".to_string()).collect()
+                                } else {
+                                    p
                                 }
                             };
                             IpfsQuery { root, path }
@@ -184,18 +184,22 @@ fn add(store: BanyanStore) -> impl Filter<Extract = impl Reply, Error = Rejectio
                 Ok(root.context("No files provided")?.to_string())
             }
             .map_err(|e| {
-                tracing::error!("got err {:#}", e);
+                tracing::error!("Error adding files {:#}", e);
                 crate::util::reject(e)
             })
         })
 }
 
 fn naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    get_naming_route(ans.clone()).or(set_naming_route(ans))
+    warp::path("ans").and(
+        get_naming_route(ans.clone())
+            .or(set_naming_route(ans.clone()))
+            .or(rm_naming_route(ans)),
+    )
 }
 
 fn set_naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    warp::path!("ans" / String)
+    warp::path::param()
         .and(warp::path::end())
         .and(warp::post())
         .and(warp::body::json())
@@ -212,13 +216,29 @@ fn set_naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply
 }
 
 fn get_naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    warp::path!("ans" / String)
+    warp::path::param()
         .and(warp::path::end())
         .and(warp::get())
         .and_then(move |name: String| {
             let result = ans.get(&*name);
             async move {
                 if let Some(x) = result {
+                    Ok(x.to_string())
+                } else {
+                    Err(warp::reject::not_found())
+                }
+            }
+        })
+}
+
+fn rm_naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path::param()
+        .and(warp::path::end())
+        .and(warp::delete())
+        .and_then(move |name: String| {
+            let ans = ans.clone();
+            async move {
+                if let Some(x) = ans.remove(&*name).await.map_err(crate::util::reject)? {
                     Ok(x.to_string())
                 } else {
                     Err(warp::reject::not_found())

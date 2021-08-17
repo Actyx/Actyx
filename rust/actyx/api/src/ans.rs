@@ -18,9 +18,9 @@ use crate::BanyanStore;
 
 // TODO: Add added removed etc
 #[derive(DagCbor, Debug)]
-pub struct NameRecord {
-    name: String,
-    cid: Cid,
+pub enum NameRecord {
+    Add { name: String, cid: Cid },
+    Remove { name: String },
 }
 
 #[derive(Clone)]
@@ -51,9 +51,13 @@ impl ActyxNamingService {
                     }
                 };
                 match DagCborCodec.decode(event.2.as_slice()) {
-                    Ok(NameRecord { name, cid }) => {
-                        tracing::debug!(%name, %cid, "ANS update");
+                    Ok(NameRecord::Add { name, cid }) => {
+                        tracing::debug!(%name, %cid, "ANS Addition");
                         state_c.lock().insert(name, cid);
+                    }
+                    Ok(NameRecord::Remove { name }) => {
+                        tracing::debug!(%name, "ANS Removal");
+                        state_c.lock().remove(&*name);
                     }
                     Err(e) => {
                         tracing::error!("Error decoding ANS record: {:?}", e);
@@ -70,7 +74,7 @@ impl ActyxNamingService {
 
     pub async fn set(&self, name: impl Into<String>, cid: Cid) -> anyhow::Result<Option<Cid>> {
         let name: String = name.into();
-        let record = NameRecord {
+        let record = NameRecord::Add {
             name: name.clone(),
             cid,
         };
@@ -84,11 +88,26 @@ impl ActyxNamingService {
             )
             .await?;
 
-        let maybe_old = self.state.lock().insert(name, cid);
-        Ok(maybe_old)
+        Ok(self.state.lock().insert(name, cid))
     }
 
     pub fn get(&self, name: &str) -> Option<Cid> {
         self.state.lock().get(name).cloned()
+    }
+
+    pub async fn remove(&self, name: &str) -> anyhow::Result<Option<Cid>> {
+        let name: String = name.into();
+        let record = NameRecord::Remove { name: name.clone() };
+        let mut buffer = vec![];
+        record.encode(DagCborCodec, &mut buffer)?;
+        self.store
+            .append(
+                0.into(),
+                app_id!("com.actyx"),
+                vec![(tags!("ans"), Payload::from_slice(&buffer))],
+            )
+            .await?;
+
+        Ok(self.state.lock().remove(&*name))
     }
 }
