@@ -88,7 +88,7 @@ namespace Actyx
                 Query = query.Query,
                 UpperBound = await Present(),
             });
-            var events = wireEvents.OfType<EventOnWire>().Select(ActyxEvent.From(store.NodeId)).ToList();
+            var events = wireEvents.OfType<EventOnWire>().Select(ActyxEvent.From(NodeId)).ToList();
             var offset = wireEvents.OfType<OffsetsOnWire>().Last();
 
             return new EventChunk(query.LowerBound, offset.Offsets, events);
@@ -106,7 +106,7 @@ namespace Actyx
         public async Task<IList<ActyxEvent>> QueryKnownRange(RangeQuery query)
         {
             var wireEvents = await QueryKnown(query);
-            var events = wireEvents.OfType<EventOnWire>().Select(ActyxEvent.From(store.NodeId)).ToList();
+            var events = wireEvents.OfType<EventOnWire>().Select(ActyxEvent.From(NodeId)).ToList();
 
             return events;
         }
@@ -124,7 +124,7 @@ namespace Actyx
                     query.Order
                 )
                 .OfType<EventOnWire>()
-                .Select(ActyxEvent.From(store.NodeId))
+                .Select(ActyxEvent.From(NodeId))
                 .Buffer(chunkSize)
                 .Select(query.Order == EventsOrder.Asc ? BookKeepingOnChunk(query.LowerBound) : ReverseBookKeepingOnChunk(query.UpperBound));
         }
@@ -132,7 +132,7 @@ namespace Actyx
         public IObservable<ActyxEvent> Subscribe(EventSubscription sub) => store
             .Subscribe(sub.LowerBound ?? new OffsetMap(), sub.Query ?? SelectAllEvents.Instance)
             .OfType<EventOnWire>()
-            .Select(ActyxEvent.From(store.NodeId));
+            .Select(ActyxEvent.From(NodeId));
 
         public IObservable<EventChunk> SubscribeChunked(EventSubscription sub) =>
             SubscribeChunked(sub, new ChunkingOptions { MaxChunkSize = 1000, MaxChunkTime = TimeSpan.FromMilliseconds(5) });
@@ -141,7 +141,7 @@ namespace Actyx
              store
                 .Subscribe(sub.LowerBound ?? new OffsetMap(), sub.Query ?? SelectAllEvents.Instance)
                 .OfType<EventOnWire>()
-                .Select(ActyxEvent.From(store.NodeId))
+                .Select(ActyxEvent.From(NodeId))
                 .Buffer(
                     chunkConfig.MaxChunkTime ?? TimeSpan.FromMilliseconds(5),
                     chunkConfig.MaxChunkSize ?? 1000

@@ -10,23 +10,23 @@ namespace Sdk.IntegrationTests
 {
     public class ActyxTests
     {
-        public static IEnumerable<object[]> Clients()
+        public static IEnumerable<object[]> Opts()
         {
             foreach (var transport in new Transport?[] {
                 null,
                 Transport.Http,
+                Transport.WebSocket,
             })
             {
-                var opts = transport is not null ? new ActyxOpts() { Transport = (Transport)transport } : null;
-                yield return new object[] { Actyx.Actyx.Create(Constants.TrialManifest, opts) };
+                yield return new object[] { transport is not null ? new ActyxOpts() { Transport = (Transport)transport } : null };
             }
         }
 
         [Theory]
-        [MemberData(nameof(Clients))]
-        public async void QueryAllKnownAutoCapped(Task<Actyx.Actyx> clientTask)
+        [MemberData(nameof(Opts))]
+        public async void QueryAllKnownAutoCapped(ActyxOpts opts)
         {
-            var client = await clientTask;
+            var client = await Actyx.Actyx.Create(Constants.TrialManifest, opts);
             var meta = await client.Publish(new EventDraft { Tags = new string[] { "Hello", "World" }, Payload = "Hello world" });
             var known = await client.QueryAllKnown(new AutoCappedQuery());
 

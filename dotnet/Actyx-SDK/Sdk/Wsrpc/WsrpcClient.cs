@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
@@ -60,7 +61,8 @@ namespace Actyx.Sdk.Wsrpc
                     var isComplete = res is Complete;
                     if (isComplete) { upstreamCompletedOrError = true; }
                     return !isComplete;
-                }).SelectMany(res =>
+                })
+                .SelectMany(res =>
                 {
                     switch (res)
                     {

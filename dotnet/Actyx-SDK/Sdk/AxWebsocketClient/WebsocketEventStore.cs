@@ -16,11 +16,14 @@ namespace Actyx.Sdk.AxWebsocketClient
     {
         private readonly WsrpcClient wsrpcClient;
         public NodeId NodeId { get; private set; }
+        public string AppId { get; private set; }
 
-        public WebsocketEventStore(WsrpcClient wsrpcClient, NodeId nodeId)
+        public WebsocketEventStore(WsrpcClient wsrpcClient, NodeId nodeId, string appId)
         {
             this.wsrpcClient = wsrpcClient;
             NodeId = nodeId;
+            AppId = appId;
+
             wsrpcClient.Start();
         }
 

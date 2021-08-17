@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Actyx.Sdk.AxHttpClient;
 using Actyx.Sdk.AxWebsocketClient;
@@ -13,22 +14,29 @@ namespace Actyx
     {
         public static readonly JsonProtocol Protocol = new(EventStoreSerializer.Create());
 
-        public async static Task<IEventStore> Create(AppManifest manifest, ActyxOpts options)
+        public static async Task<IEventStore> Create(AppManifest manifest, ActyxOpts options)
         {
             ThrowIf.Argument.IsNull(options, nameof(options));
 
-            string basePath = $"{options.Host}:{options.Port}/api/v2/";
+            var apiUri = new UriBuilder("http", options.Host, (int)options.Port, "api/v2/").Uri;
             var converter = new JsonContentConverter(EventStoreSerializer.Create());
-            var axHttpClient = await AxHttpClient.Create($"http://{basePath}", manifest, converter);
+            var authenticatedClient = new AuthenticatedClient(manifest, new Uri(apiUri, "events/"), new Uri(apiUri, "auth"), converter);
+
+            var nodeIdReq = new HttpRequestMessage(HttpMethod.Get, new Uri(apiUri, "node/id")) { Content = converter.ToContent(manifest) };
+            var nodeIdResp = await authenticatedClient.Fetch(nodeIdReq);
+            var nodeId = new NodeId(await nodeIdResp.Content.ReadAsStringAsync());
 
             if (options.Transport == Transport.Http)
             {
-                return new HttpEventStore(axHttpClient, converter);
+                return new HttpEventStore(authenticatedClient, nodeId, manifest.AppId);
             }
-
-            Uri axWs = new($"ws://{basePath}events?{axHttpClient.Token}");
-            var wsrpcClient = new WsrpcClient(axWs);
-            return new WebsocketEventStore(wsrpcClient, axHttpClient.NodeId);
+            else
+            {
+                var token = await authenticatedClient.GetToken();
+                var wsrpcUri = new UriBuilder("ws", options.Host, (int)options.Port, "api/v2/events") { Query = token }.Uri;
+                var wsrpcClient = new WsrpcClient(wsrpcUri);
+                return new WebsocketEventStore(wsrpcClient, nodeId, manifest.AppId);
+            }
         }
     }
 
@@ -36,6 +44,7 @@ namespace Actyx
     public interface IEventStore : IDisposable
     {
         NodeId NodeId { get; }
+        string AppId { get; }
 
         /**
          * Request the full present of the store, so the maximum CONTIGUOUS offset for each source that the store has seen and ingested.
