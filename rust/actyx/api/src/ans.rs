@@ -4,7 +4,7 @@ use actyx_sdk::{app_id, tag, tags, Payload};
 use futures::StreamExt;
 use libipld::cbor::DagCborCodec;
 use libipld::cid::Cid;
-use libipld::codec::{Codec,  Encode};
+use libipld::codec::{Codec, Encode};
 use libipld::DagCbor;
 use parking_lot::Mutex;
 use trees::{

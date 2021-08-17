@@ -45,12 +45,13 @@ fn content_type_from_ext(query: &IpfsQuery) -> Option<HeaderValue> {
     HeaderValue::from_str(mime).ok()
 }
 
-fn content_type_from_first_chunk(chunk: &[u8]) -> Option<HeaderValue> {
+fn content_type_from_content(chunk: &[u8]) -> Option<HeaderValue> {
     let mime = tree_magic::from_u8(chunk);
     debug!("detected mime type {} from content", mime);
     HeaderValue::from_str(&mime).ok()
 }
 
+#[tracing::instrument(level = "debug", skip(store))]
 async fn handle_query(store: BanyanStore, query: IpfsQuery) -> Result<Response<Body>, anyhow::Error> {
     let content_header_from_ext = content_type_from_ext(&query);
     let tmp = store.ipfs().create_temp_pin()?;
@@ -60,16 +61,22 @@ async fn handle_query(store: BanyanStore, query: IpfsQuery) -> Result<Response<B
     } else {
         return Err(anyhow::anyhow!("file not found"));
     };
+
     store.ipfs().sync(&cid, store.ipfs().peers()).await?;
     let mut buf = vec![];
     store.cat(&cid, &mut buf)?;
-    let content_header_from_content = content_type_from_first_chunk(&buf);
-    let mut resp = Response::new(Body::from(buf));
     // extension takes precedence over content
-    if let Some(ct) = content_header_from_ext.or(content_header_from_content) {
+    if let Some(ct) = content_header_from_ext.or_else(|| {
+        tracing::span!(tracing::Level::DEBUG, "Detecting content-type", %cid, size=buf.len());
+        // This is fairly expensive.
+        content_type_from_content(&buf)
+    }) {
+        let mut resp = Response::new(Body::from(buf));
         resp.headers_mut().insert(CONTENT_TYPE, ct);
+        Ok(resp)
+    } else {
+        Ok(Response::new(Body::from(buf)))
     }
-    Ok(resp)
 }
 
 pub fn route(store: BanyanStore) -> BoxedFilter<(impl Reply,)> {
