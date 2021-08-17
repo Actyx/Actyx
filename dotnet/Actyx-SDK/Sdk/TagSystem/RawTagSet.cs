@@ -22,6 +22,7 @@ namespace Actyx
             return new RawTagSet(onlyLocal, new List<RawTag>(rawTags));
         }
 
+        // TODO: Investigate backing with an immutable list, to create less copies.
         internal readonly List<RawTag> rawTags;
         internal readonly bool onlyLocal;
 
@@ -33,8 +34,10 @@ namespace Actyx
 
         internal RawTagSet CopyWith(RawTag anotherTag)
         {
-            var copy = new List<RawTag>(rawTags);
-            copy.Add(anotherTag);
+            var copy = new List<RawTag>(rawTags)
+            {
+                anotherTag
+            };
             return new RawTagSet(this.onlyLocal, copy);
         }
 

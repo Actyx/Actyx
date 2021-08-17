@@ -21,22 +21,18 @@ namespace Actyx
             string rawTagString, Func<E, string> extractId
         )
         {
-            Func<object, string> genericExtractId = (object eventData) =>
+            string genericExtractId(object eventData)
             {
-                if (eventData is E)
+
+                return eventData switch
                 {
-                    return extractId((E)eventData);
-                }
-                else if (eventData is null)
-                {
-                    return null;
-                }
-                else
-                {
-                    // This should really not happen, is probably fine if we throw an exception.
-                    throw new Exception($"Encountered unexpected concrete type with data {eventData.ToString()} when trying to automatically extract id for tag {rawTagString}, please file a bug report.");
-                }
-            };
+                    null => null,
+                    E e => extractId(e),
+                    _ =>
+                        // This should really not happen, is probably fine if we throw an exception.
+                        throw new Exception($"Encountered unexpected concrete type with data {eventData} when trying to automatically extract id for tag {rawTagString}, please file a bug report."),
+                };
+            }
 
             return new RawTag(rawTagString, genericExtractId);
         }
