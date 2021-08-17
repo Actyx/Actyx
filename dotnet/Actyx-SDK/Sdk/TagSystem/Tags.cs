@@ -21,18 +21,7 @@ namespace Actyx
             );
         }
 
-        // public Tags(params string[] AllOfThese) : this(new List<string>(AllOfThese)) { }
-
-        // public Tags(params ITags<E>[] AllOfThese) : this(new List<ITags<E>>(AllOfThese)) { }
-
-        // public Tags(List<string> AllOfThese) : this(AllOfThese, false) { }
-
-        // public Tags(List<ITags<E>> AllOfThese) : this(AllOfThese, false) { }
-
-        // public Tags(List<ITags<E>> AllOfThese, bool OnlyLocal) : this(AllOfThese.SelectMany(x => x.Underlying.rawTags), OnlyLocal)
-        // {
-
-        // }
+        // TODO Add more constructors
 
         public Tags(List<string> AllOfThese, bool OnlyLocal) : this(
             RawTagSet.Create(
