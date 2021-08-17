@@ -14,8 +14,7 @@ This conceptual guide explains the limitations of Actyx in real-world factory so
 - [Performance](#performance)
   - [Application and Fish startup time](#application-and-fish-startup-time)
   - [The effect of semantic snapshots](#the-effect-of-semantic-snapshots)
-  - [Large application state](#large-application-state)
-  - [Latency implications of large number of fishes and sources](#latency-implications-of-large-number-of-fishes-and-sources)
+  - [Latency implications of large number of peers](#latency-implications-of-large-number-of-peers)
   - [Pathological time travel performance when reconnecting a device that was offline for a long time](#pathological-time-travel-performance-when-reconnecting-a-device-that-was-offline-for-a-long-time)
 - [Illustrative Examples](#illustrative-examples)
   - [Machine Connectors](#machine-connectors)
@@ -116,7 +115,7 @@ As such, semantic snapshots can make a Fish viable even though it violates the r
 ### Latency implications of large number of peers
 
 With current Actyx versions the internal event publication latency is proportional to the number of connected peers.
-The effect of this depends very much on the connectivity: for example 20 connected peers on a cloud network can see an internal latency of more than a second (e.g. time until the call to `Publish` resolves).
+The effect of this depends very much on the connectivity: for example 20 connected peers on a cloud network can see an internal latency of more than a second (e.g. time until the call to `publish` resolves).
 
 We are working on removing this bottleneck in a future release.
 
@@ -139,11 +138,14 @@ To avoid this issue, we recommend using `Pond.waitForSwarmSync()` or `Actyx.wait
 
 Machine connectors that only make machine state and counters available in the Actyx swarm can be made without running into the above-mentioned issues.
 The best way to do so is to emit all state and counter updates as events — typically a complete set is emitted every time.
-If for some reason you need to write partial updates (e.g. only a subset of counters) in some events, make sure to persist the full set within a single event at regular intervals and mark that as a semantic snapshot.
-This way starting up the machine connector’s related Fishes will always be quick.
+You can then use `Actyx.observeLatest` to keep track of the latest known machine state.
 
-The only performance consideration for machine connectors is that they produce data at a steady rate that is often higher than the data rates produced by human operators.
-Therefore you need to plan the available disk space according to update frequency times event size for at least one year; we will release a future Actyx version with ephemeral event streams which will give you the possibility to place a fixed limit on disk usage and thus solve this issue permanently.
+If for some reason you need to write partial updates (e.g. only a subset of counters) in some events, you can use a Fish to construct a full state from the partial updates.
+It is recommended to still emit the complete state from time to time. The Fish can treat that as a semantic snapshot:  
+This way, starting up the machine connector’s related Fishes will always be quick.
+
+The other performance consideration for machine connectors is that they produce data at a steady rate that is often higher than the data rates produced by human operators.
+Therefore you need to plan the available disk space according to update frequency times event size (compressed) for at least one year; we will release a future Actyx version with ephemeral event streams which will give you the possibility to place a fixed limit on disk usage and thus solve this issue permanently.
 
 ### Production Data Acquisition
 
