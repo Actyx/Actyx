@@ -19,7 +19,7 @@ const helloWorldFish = {
   fishId: FishId.of('HelloWorld-Example', 'getting-started', 0), // For caching
   initialState: 'Hello world!',
   onEvent: (_oldState: unknown, event: unknown, _metadata: Metadata) => event,
-  where: Tag('dummy'),
+  where: Tag('example-tag'),
   // where: allEvents,
 }
 ```
@@ -62,7 +62,7 @@ npm start
 You should see our initial greeting logged to the console – unless your swarm already has some events tagged with `dummy`, in
 which case you will see the latest one!
 
-Hint: Try `pond.emit(Tag('dummy'), 'Eye eye')`
+Hint: Try `pond.emit(Tag('example-tag'), 'Eye eye')`
 :::
 
 To bring a fish to life we need to create a pond in which it can breathe.
