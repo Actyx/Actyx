@@ -295,9 +295,6 @@ export const NodeId: {
 };
 
 // @public
-export const noEvents: Where<never>;
-
-// @public
 export type Offset = number;
 
 // @public
