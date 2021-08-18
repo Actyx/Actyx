@@ -17,6 +17,7 @@ import {
   NodeId,
   PendingEmission,
   StateWithProvenance,
+  TaggedEvent,
   Tags,
   TestEvent,
   toEventPredicate,
@@ -162,8 +163,19 @@ export type Pond = {
    * @param event  - The event itself.
    * @returns        A `PendingEmission` object that can be used to register
    *                 callbacks with the emission’s completion.
+   *
+   * @deprecated Use `publish` instead, and always await the Promise.
    */
   emit<E>(tags: Tags<E>, event: E): PendingEmission
+
+  /**
+   * Publish any number of events.
+   *
+   * @param events - Events to publish. Use `Tag('foo').apply(event)` to create an array of `TaggedEvent`.
+   *
+   * @returns        A Promise that resolves to the emitted event’s metadata.
+   */
+  publish(events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]>
 
   /* AGGREGATION */
 
@@ -432,6 +444,9 @@ class Pond2Impl implements Pond {
   emit = <E>(tags: Tags<E>, payload: E): PendingEmission => {
     return this.actyx.emit(tags.apply(payload))
   }
+
+  publish = (events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]> =>
+    this.actyx.emit(events).toPromise()
 
   private getCachedOrInitialize = <S, E>(
     subscriptionSet: Where<E>,
