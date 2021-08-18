@@ -217,11 +217,46 @@ namespace Actyx
                 this.AppId, publishedMetadata.Stream, tags, this.NodeId);
         }
 
-        // FIXME.
-        public IObservable<ActyxEvent<E>> ObserveLatest<E>(IFrom<E> f) => store
-            .Subscribe(new OffsetMap(), f)
-            .OfType<EventOnWire>()
-            .Select(MkAxEvt.DeserTyped<E>(NodeId));
+        public IObservable<ActyxEvent<E>> ObserveLatest<E>(IFrom<E> f) {
+            var deser = MkAxEvt.DeserTyped<E>(NodeId);
+            EventOnWire latest = null;
+
+            ActyxEvent<E>[] empty =  new ActyxEvent<E>[] {};
+
+            bool live = false;
+
+            ActyxEvent<E>[] EmitIfLatest(IResponseMessage r) {
+                Console.WriteLine(r);
+                try {
+                if (r is OffsetsOnWire)
+                {
+                    live = true;
+                    if (latest != null) {
+                        return new[] { deser(latest) };
+                    }
+                }
+                else if (r is EventOnWire evt) 
+                {
+                    // FIXME use full key
+                    if (latest is null || evt.Lamport > latest.Lamport) {
+                        latest = evt;
+
+                        if (live) {
+                            return new[] { deser(latest) };
+                        }
+                    }
+                }
+                } catch (Exception e) {
+                    Console.WriteLine(e);
+                }
+
+                return empty;
+            }
+
+            return store
+                .Subscribe(new OffsetMap(), f)
+                .SelectMany(EmitIfLatest);
+        }
 
 
         public async Task<ActyxEventMetadata> Publish(IEventDraft eventDraft)
