@@ -344,7 +344,8 @@ export interface EventFns {
    *
    * @returns        A Promise that resolves to the persisted event’s metadata, in the same order they were passed into the function.
    */
-  publish: (events: ReadonlyArray<TaggedEvent>) => Promise<Metadata[]>
+  publish(event: TaggedEvent): Promise<Metadata>
+  publish(events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]>
 }
 
 /** EventFns for unit-tests. @public */

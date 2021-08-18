@@ -532,7 +532,15 @@ export const EventFnsFromEventStoreV2 = (
     return pendingEmission(allPersisted)
   }
 
-  const publish = (taggedEvents: ReadonlyArray<TaggedEvent>) => emit(taggedEvents).toPromise()
+  const publish = (taggedEvents: ReadonlyArray<TaggedEvent> | TaggedEvent) => {
+    if (taggedEvents instanceof Array) {
+      return emit(taggedEvents).toPromise()
+    } else {
+      return emit([taggedEvents as TaggedEvent])
+        .toPromise()
+        .then(x => x[0])
+    }
+  }
 
   // FIXME properly type EventStore. (This runs without error because in production mode the ws event store does not use io-ts.)
   const wrapAql = (e: { type: string }): AqlResponse => {
