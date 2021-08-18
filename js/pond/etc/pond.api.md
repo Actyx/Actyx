@@ -13,6 +13,7 @@ import { Metadata } from '@actyx/sdk';
 import { Milliseconds } from '@actyx/sdk';
 import { NodeId } from '@actyx/sdk';
 import { PendingEmission } from '@actyx/sdk';
+import { TaggedEvent } from '@actyx/sdk';
 import { Tags } from '@actyx/sdk';
 import { TestEvent } from '@actyx/sdk';
 import { Where } from '@actyx/sdk';
@@ -177,6 +178,7 @@ export type PendingCommand = {
 // @public
 export type Pond = {
     emit<E>(tags: Tags<E>, event: E): PendingEmission;
+    publish(events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]>;
     observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void, stoppedByError?: (err: unknown) => void): CancelSubscription;
     observeAll<ESeed, S>(seedEventsSelector: Where<ESeed>, makeFish: (seedEvent: ESeed) => Fish<S, any> | undefined, opts: ObserveAllOpts, callback: (states: S[]) => void): CancelSubscription;
     observeOne<ESeed, S>(seedEventSelector: Where<ESeed>, makeFish: (seedEvent: ESeed) => Fish<S, any>, callback: (newState: S) => void, stoppedByError?: (err: unknown) => void): CancelSubscription;
