@@ -331,6 +331,8 @@ export interface EventFns {
    * @param events - Events to emit.
    *
    * @returns        A `PendingEmission` object that can be used to register callbacks with the emission’s completion.
+   *
+   * @deprecated Use `publish` instead, and always await the Promise.
    */
   emit: (events: ReadonlyArray<TaggedEvent>) => PendingEmission
 
