@@ -71,7 +71,9 @@ fn routes(
     let event_service = events::service::EventService::new(event_store, node_info.node_id);
     let events = events::routes(node_info.clone(), event_service);
     let node = node::route(node_info.clone(), store.clone());
-    let auth = auth::route(node_info);
+    let auth = auth::route(node_info.clone());
+
+    let files_route = ipfs_file_gateway::files_route(store.clone(), node_info);
 
     let api_path = path!("api" / "v2" / ..);
     let cors = cors()
@@ -84,7 +86,7 @@ fn routes(
         .and(events)
         .or(api_path.and(path("node")).and(node))
         .or(api_path.and(path("auth")).and(auth))
-        .or(ipfs_file_gateway::files_route(store.clone()))
+        .or(files_route)
         .or(path("ipfs").and(ipfs_file_gateway::route(store)))
         .recover(|r| async { rejections::handle_rejection(r) })
         .with(cors)

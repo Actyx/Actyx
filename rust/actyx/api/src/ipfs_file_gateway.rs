@@ -1,3 +1,4 @@
+use actyx_sdk::AppId;
 use anyhow::{Context, Result};
 use bytes::BufMut;
 use futures::prelude::*;
@@ -14,7 +15,11 @@ use warp::{
     Buf, Filter, Rejection, Reply,
 };
 
-use crate::ans::{ActyxNamingService, PersistenceLevel};
+use crate::{
+    ans::{ActyxNamingService, PersistenceLevel},
+    util::filters::{authenticate, header_token},
+    NodeInfo,
+};
 
 /// an ipfs query contains a root cid and a path into it
 #[derive(Debug, Clone)]
@@ -136,10 +141,13 @@ fn files_query_extract(ans: ActyxNamingService) -> impl Filter<Extract = (IpfsQu
     )
 }
 
-pub fn files_route(store: BanyanStore) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+pub fn files_route(
+    store: BanyanStore,
+    node_info: NodeInfo,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     let add = add(store.clone());
     let ans = ActyxNamingService::new(store.clone());
-    naming_route(ans.clone())
+    naming_route(ans.clone(), node_info)
         .or(files_query_extract(ans)
             .and_then(move |query| handle_query(store.clone(), query).map_err(crate::util::reject)))
         .or(add)
@@ -190,20 +198,27 @@ fn add(store: BanyanStore) -> impl Filter<Extract = impl Reply, Error = Rejectio
         })
 }
 
-fn naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+fn naming_route(
+    ans: ActyxNamingService,
+    node_info: NodeInfo,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path("ans").and(
         get_naming_route(ans.clone())
-            .or(set_naming_route(ans.clone()))
-            .or(rm_naming_route(ans)),
+            .or(set_naming_route(ans.clone(), node_info.clone()))
+            .or(rm_naming_route(ans, node_info)),
     )
 }
 
-fn set_naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+fn set_naming_route(
+    ans: ActyxNamingService,
+    node_info: NodeInfo,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path::param()
         .and(warp::path::end())
         .and(warp::post())
+        .and(authorize(node_info))
         .and(warp::body::json())
-        .and_then(move |name: String, maybe_cid: String| {
+        .and_then(move |name: String, _app_id: AppId, maybe_cid: String| {
             let ans = ans.clone();
             async move {
                 tracing::debug!(%name, ?maybe_cid, "ANS POST");
@@ -231,11 +246,15 @@ fn get_naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply
         })
 }
 
-fn rm_naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+fn rm_naming_route(
+    ans: ActyxNamingService,
+    node_info: NodeInfo,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path::param()
         .and(warp::path::end())
         .and(warp::delete())
-        .and_then(move |name: String| {
+        .and(authorize(node_info))
+        .and_then(move |name: String, _app_id: AppId| {
             let ans = ans.clone();
             async move {
                 if let Some(x) = ans.remove(&*name).await.map_err(crate::util::reject)? {
@@ -245,4 +264,8 @@ fn rm_naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply,
                 }
             }
         })
+}
+
+fn authorize(node_info: NodeInfo) -> impl Filter<Extract = (AppId,), Error = Rejection> + Clone {
+    authenticate(node_info, header_token())
 }
