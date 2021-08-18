@@ -52,6 +52,38 @@ stages:
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
       - job:
+        displayName: validate-rust
+        pool:
+          name: Native
+        steps:
+          - checkout: self
+            clean: true
+            path: "s"
+          - bash: |
+              set -e
+              make validate-rust assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+      - job:
+        displayName: validate-release
+        pool:
+          name: Native
+        steps:
+          - checkout: self
+            clean: true
+            path: "s"
+          - bash: |
+              set -e
+              make validate-release assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+      - job:
         displayName: validate-os
         pool:
           name: Native
