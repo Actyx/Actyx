@@ -532,8 +532,11 @@ export const EventFnsFromEventStoreV2 = (
     return pendingEmission(allPersisted)
   }
 
-  const publish = (taggedEvents: ReadonlyArray<TaggedEvent> | TaggedEvent) => {
-    if (taggedEvents instanceof Array) {
+  // TS doesn’t understand how we are implementing this overload.
+  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+  // @ts-ignore
+  const publish: EventFns['publish'] = (taggedEvents: ReadonlyArray<TaggedEvent> | TaggedEvent) => {
+    if (Array.isArray(taggedEvents)) {
       return emit(taggedEvents).toPromise()
     } else {
       return emit([taggedEvents as TaggedEvent])
