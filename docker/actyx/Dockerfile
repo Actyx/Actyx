@@ -31,6 +31,7 @@ FROM --platform=$BUILDPLATFORM crossbuild AS build
 # all dependencies needed for building
 COPY rust rust
 COPY protocols protocols
+COPY NOTICE NOTICE
 
 RUN cargo install \
     --target ${CARGO_BUILD_TARGET} \
