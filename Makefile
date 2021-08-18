@@ -120,7 +120,7 @@ all-ANDROID := $(android-bins)
 all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t macos-aarch64/$t)
 
 docker-platforms = $(foreach arch,$(architectures),$(docker-platform-$(arch)))
-docker-build-args = --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg CARGO_BUILD_ARGS=\'$(CARGO_BUILD_ARGS)\'
+docker-build-args = --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg CARGO_BUILD_ARGS="$(CARGO_BUILD_ARGS)"
 docker-multiarch-build-args = $(docker-build-args) --platform $(shell echo $(docker-platforms) | sed 's/ /,/g')
 
 export CARGO_HOME ?= $(HOME)/.cargo
@@ -576,3 +576,11 @@ docker-current:
 # This is here to ensure that we use the same build-args here and in artifacts.yml
 docker-multiarch-build-args:
 	@echo $(docker-multiarch-build-args)
+
+docker-push-actyx:
+	docker buildx build \
+		$(docker-multiarch-build-args) \
+		--push \
+		--tag actyx/actyx-ci:actyx-$(GIT_COMMIT) $(ADDITIONAL_DOCKER_ARGS) \
+		-f docker/actyx/Dockerfile \
+		.
