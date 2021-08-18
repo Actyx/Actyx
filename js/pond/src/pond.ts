@@ -187,6 +187,19 @@ export type Pond = {
   ): CancelSubscription
 
   /**
+   * Read the current state of a Fish.
+   *
+   * Caching is done based on the `fishId` inside the `fish`, i.e. if a fish with the included
+   * `fishId` is already known, that other Fish’s ongoing aggregation will be used instead of
+   * starting a new one.
+   *
+   * @param fish       - Complete Fish information.
+   *
+   * @returns A Promise that resolves to the Fish’s latest known state. If the Fish was stopped due to an error, the Promise will reject with that error.
+   */
+  currentState<S, E>(fish: Fish<S, E>): Promise<S>
+
+  /**
    * Create Fish from events and observe them all.
    * Note that if a Fish created from some event f0 will also observe events earlier than f0, if they are selected by `where`
    *
@@ -451,6 +464,18 @@ class Pond2Impl implements Pond {
     stoppedByError?: (err: unknown) => void,
   ): CancelSubscription => {
     return omitObservable(stoppedByError, callback, this.observeTagBased0<S, E>(fish).states)
+  }
+
+  currentState = <S, E>(fish: Fish<S, E>): Promise<S> => {
+    const states = this.observeTagBased0<S, E>(fish).states
+    if (states.hasError) {
+      return Promise.reject(states.thrownError)
+    }
+
+    return states
+      .take(1)
+      .toPromise()
+      .then(x => x.state)
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
