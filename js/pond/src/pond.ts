@@ -466,11 +466,17 @@ class Pond2Impl implements Pond {
     return omitObservable(stoppedByError, callback, this.observeTagBased0<S, E>(fish).states)
   }
 
-  currentState = <S, E>(fish: Fish<S, E>): Promise<S> =>
-    this.observeTagBased0<S, E>(fish)
-      .states.take(1)
+  currentState = <S, E>(fish: Fish<S, E>): Promise<S> => {
+    const states = this.observeTagBased0<S, E>(fish).states
+    if (states.hasError) {
+      return Promise.reject(states.thrownError)
+    }
+
+    return states
+      .take(1)
       .toPromise()
       .then(x => x.state)
+  }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
   private run0 = <S, EWrite, ReadBack = false>(
