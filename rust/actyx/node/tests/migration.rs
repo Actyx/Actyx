@@ -13,6 +13,8 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::time::timeout;
 
+const FEATURES: &str = "migration-v1";
+
 fn setup() {
     util::setup_logger();
     // make sure actyx-linux binary is built and available
@@ -24,6 +26,7 @@ fn setup() {
         for msg in CargoBuild::new()
             .manifest_path("../Cargo.toml")
             .bin("actyx-linux")
+            .features(FEATURES)
             .exec()
             .unwrap()
         {
@@ -49,12 +52,15 @@ fn setup() {
 }
 
 #[tokio::test]
+#[cfg(feature = "migration-v1")]
 async fn migration() -> anyhow::Result<()> {
     // Run these tests sequentially
     migration_dir().await?;
     migration_v1_find_old_working_dir().await?;
     Ok(())
 }
+
+#[allow(unused)]
 async fn migration_dir() -> anyhow::Result<()> {
     setup();
     for entry in fs::read_dir("tests/migration-test-data")? {
@@ -113,6 +119,8 @@ async fn migration_dir() -> anyhow::Result<()> {
     }
     Ok(())
 }
+
+#[allow(unused)]
 async fn migration_v1_find_old_working_dir() -> anyhow::Result<()> {
     setup();
     // actyxos: ActyxOS on Docker v1

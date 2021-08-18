@@ -57,6 +57,7 @@ android-bins = actyx.apk actyx.aab
 
 CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
+CARGO_BUILD_ARGS ?= --features migration-v1
 
 export BUILD_RUST_TOOLCHAIN ?= 1.54.0
 
@@ -215,7 +216,7 @@ prepare-js:
 
 # execute linter, style checker and tests for everything
 # THIS TARGET IS NOT RUN FOR PR VALIDATION — see azure-piplines
-validate: validate-os validate-netsim validate-os-android validate-js validate-dotnet assert-clean
+validate: validate-rust validate-os validate-netsim validate-release validate-os-android validate-js validate-dotnet assert-clean
 
 # declare all the validate targets to be phony
 .PHONY: validate-os validate-os-android validate-js validate-dotnet
@@ -245,6 +246,22 @@ validate-os: diagnostics
 	cd rust/actyx && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
 	cd rust/actyx && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 	cd rust/actyx && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
+
+.PHONY: validate-rust
+# execute fmt check, clippy and tests for rust/actyx
+validate-rust: diagnostics
+	cd rust/sdk && $(CARGO) fmt --all -- --check
+	cd rust/sdk && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
+	cd rust/sdk && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
+	cd rust/sdk && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
+
+.PHONY: validate-release
+# execute fmt check, clippy and tests for rust/actyx
+validate-release: diagnostics
+	cd rust/release && $(CARGO) fmt --all -- --check
+	cd rust/release && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
+	cd rust/release && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
+	cd rust/release && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
 
 validate-netsim: diagnostics
 	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release -j $(CARGO_BUILD_JOBS)
@@ -451,7 +468,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
-	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*) --target $(TARGET)
+	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --bin $$(basename $$*) --target $(TARGET)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 

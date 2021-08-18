@@ -73,12 +73,13 @@ pub fn assert_v1(v1_working_dir: impl AsRef<Path>) -> anyhow::Result<V1Directory
     //     ├── default-topic-blocks.sqlite
     let db_dir: PathBuf = {
         let apps_dir = "apps";
-        if v1_working_dir.as_ref().join(apps_dir).is_dir() {
-            anyhow::ensure!(
-                !v1_working_dir.as_ref().join(NODE_DB_FILENAME).exists(),
-                "`apps` dir exist, but also a `node.sqlite` in the working dir root. V1 directory seems malformed."
-            );
-            v1_working_dir.as_ref().join(apps_dir)
+        let with_apps = v1_working_dir.as_ref().join(apps_dir);
+        if with_apps.is_dir() {
+            if with_apps.join(NODE_DB_FILENAME).exists() {
+                with_apps
+            } else {
+                v1_working_dir.as_ref().into()
+            }
         } else {
             v1_working_dir.as_ref().into()
         }
@@ -101,7 +102,8 @@ pub fn assert_v1(v1_working_dir: impl AsRef<Path>) -> anyhow::Result<V1Directory
         .context("Getting topic from old settings db")?
         .as_str()
         .unwrap()
-        .to_string();
+        .to_string()
+        .replace('/', "_");
 
     let store_dir = v1_working_dir.as_ref().join("store");
     let index_db = store_dir.join(&topic);
@@ -109,12 +111,12 @@ pub fn assert_v1(v1_working_dir: impl AsRef<Path>) -> anyhow::Result<V1Directory
 
     anyhow::ensure!(
         std::fs::metadata(&index_db).is_ok(),
-        "{} does not exist",
+        "index DB {} does not exist",
         index_db.display()
     );
     anyhow::ensure!(
         std::fs::metadata(&blocks_db).is_ok(),
-        "{} does not exist",
+        "blocks DB {} does not exist",
         blocks_db.display()
     );
     Ok(V1Directory {

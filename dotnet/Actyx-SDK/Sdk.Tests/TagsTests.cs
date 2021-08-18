@@ -97,11 +97,6 @@ namespace Sdk.Tests
             );
         }
 
-        private void AssertAql(IFrom<object> selector, string expectedTagExpr)
-        {
-            Assert.Equal("FROM " + expectedTagExpr, selector.ToAql());
-        }
-
         private void AssertAql<T>(IFrom<T> selector, string expectedTagExpr)
         {
             Assert.Equal("FROM " + expectedTagExpr, selector.ToAql());
