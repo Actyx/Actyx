@@ -144,12 +144,7 @@ stages:
                   MASTER_TAG="--tag actyx/actyx-ci:actyx-latest"
               fi
 
-              docker buildx build \
-                $(make docker-multiarch-build-args) \
-                --push \
-                --tag actyx/actyx-ci:actyx-$GIT_COMMIT $MASTER_TAG \
-                -f docker/actyx/Dockerfile \
-                .
+              make -e ADDITIONAL_DOCKER_ARGS=$MASTER_TAG docker-push-actyx
 
               make assert-clean
             env:
