@@ -178,6 +178,7 @@ export type PendingCommand = {
 export type Pond = {
     emit<E>(tags: Tags<E>, event: E): PendingEmission;
     observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void, stoppedByError?: (err: unknown) => void): CancelSubscription;
+    currentState<S, E>(fish: Fish<S, E>): Promise<S>;
     observeAll<ESeed, S>(seedEventsSelector: Where<ESeed>, makeFish: (seedEvent: ESeed) => Fish<S, any> | undefined, opts: ObserveAllOpts, callback: (states: S[]) => void): CancelSubscription;
     observeOne<ESeed, S>(seedEventSelector: Where<ESeed>, makeFish: (seedEvent: ESeed) => Fish<S, any>, callback: (newState: S) => void, stoppedByError?: (err: unknown) => void): CancelSubscription;
     run<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>): PendingCommand;
