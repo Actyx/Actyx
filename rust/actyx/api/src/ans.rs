@@ -1,12 +1,12 @@
-use std::{collections::BTreeMap, sync::Arc};
-
 use actyx_sdk::{app_id, tag, tags, Payload};
-use futures::StreamExt;
+use futures::{StreamExt, TryFutureExt};
 use libipld::cbor::DagCborCodec;
 use libipld::cid::Cid;
 use libipld::codec::{Codec, Encode};
 use libipld::DagCbor;
 use parking_lot::Mutex;
+///! Actyx Naming Service
+use std::{collections::BTreeMap, sync::Arc};
 use trees::{
     query::{LamportQuery, TagExprQuery, TimeQuery},
     tags::{ScopedTag, ScopedTagSet, TagScope},
@@ -14,19 +14,35 @@ use trees::{
 
 use crate::BanyanStore;
 
-///! Actyx Naming Service
-
-// TODO: Add added removed etc
+#[derive(DagCbor, Debug, Clone, Copy)]
+pub enum PersistenceLevel {
+    /// Bits are only resolved on demand, and not protected from garbage collection
+    Ephemeral,
+    /// Bits are prefetched and aliased right away
+    Prefetch,
+}
 #[derive(DagCbor, Debug)]
-pub enum NameRecord {
-    Add { name: String, cid: Cid },
-    Remove { name: String },
+pub enum NameRecordEvent {
+    Add {
+        name: String,
+        cid: Cid,
+        level: PersistenceLevel,
+    },
+    Remove {
+        name: String,
+    },
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct NameRecord {
+    pub cid: Cid,
+    pub level: PersistenceLevel,
 }
 
 #[derive(Clone)]
 pub struct ActyxNamingService {
     ingest_handle: Arc<tokio::task::JoinHandle<()>>,
-    state: Arc<Mutex<BTreeMap<String, Cid>>>,
+    state: Arc<Mutex<BTreeMap<String, NameRecord>>>,
     store: BanyanStore,
 }
 
@@ -40,31 +56,48 @@ impl ActyxNamingService {
     pub fn new(store: BanyanStore) -> Self {
         let state = Arc::new(Mutex::new(BTreeMap::new()));
         let state_c = state.clone();
-        let mut stream = store.stream_filtered_stream_ordered(mk_query());
-        let ingest_handle = tokio::spawn(async move {
-            while let Some(event) = stream.next().await {
-                let event = match event {
-                    Ok(event) => event,
-                    Err(err) => {
-                        tracing::warn!("{}", err);
-                        continue;
-                    }
-                };
-                match DagCborCodec.decode(event.2.as_slice()) {
-                    Ok(NameRecord::Add { name, cid }) => {
-                        tracing::debug!(%name, %cid, "ANS Addition");
-                        state_c.lock().insert(name, cid);
-                    }
-                    Ok(NameRecord::Remove { name }) => {
-                        tracing::debug!(%name, "ANS Removal");
-                        state_c.lock().remove(&*name);
-                    }
-                    Err(e) => {
-                        tracing::error!("Error decoding ANS record: {:?}", e);
-                    }
-                };
-            }
-        });
+        let store_c = store.clone();
+        let ingest_handle =
+            tokio::spawn(async move {
+                let mut stream = store_c.stream_filtered_stream_ordered(mk_query());
+                while let Some(event) = stream.next().await {
+                    let event = match event {
+                        Ok(event) => event,
+                        Err(err) => {
+                            tracing::warn!(%err, "Error streaming events");
+                            continue;
+                        }
+                    };
+                    match DagCborCodec.decode(event.2.as_slice()) {
+                        Ok(NameRecordEvent::Add { name, cid, level }) => {
+                            tracing::debug!(%name, %cid, "Record Addition");
+                            if let PersistenceLevel::Prefetch = level {
+                                // Try to sync right away on a best effort basis
+                                let name_c = name.clone();
+                                tokio::spawn(store_c.ipfs().clone().sync(&cid, store_c.ipfs().peers()).map_err(
+                                    move |e| {
+                                        tracing::error!(%cid, name=%name_c, error=%e, "Error prefetching");
+                                    },
+                                ));
+
+                                if let Err(e) = store_c.ipfs().alias(&*name, Some(&cid)) {
+                                    tracing::error!(%name, error=%e, "Error aliasing");
+                                }
+                            }
+
+                            state_c.lock().insert(name, NameRecord { cid, level });
+                        }
+                        Ok(NameRecordEvent::Remove { name }) => {
+                            tracing::debug!(%name, "Record removal");
+                            let _ = store_c.ipfs().alias(&*name, None);
+                            state_c.lock().remove(&*name);
+                        }
+                        Err(e) => {
+                            tracing::error!(error=%e, "Error decoding ANS record");
+                        }
+                    };
+                }
+            });
         Self {
             store,
             ingest_handle: Arc::new(ingest_handle),
@@ -72,11 +105,17 @@ impl ActyxNamingService {
         }
     }
 
-    pub async fn set(&self, name: impl Into<String>, cid: Cid) -> anyhow::Result<Option<Cid>> {
+    pub async fn set(
+        &self,
+        name: impl Into<String>,
+        cid: Cid,
+        level: PersistenceLevel,
+    ) -> anyhow::Result<Option<NameRecord>> {
         let name: String = name.into();
-        let record = NameRecord::Add {
+        let record = NameRecordEvent::Add {
             name: name.clone(),
             cid,
+            level,
         };
         let mut buffer = vec![];
         record.encode(DagCborCodec, &mut buffer)?;
@@ -88,16 +127,16 @@ impl ActyxNamingService {
             )
             .await?;
 
-        Ok(self.state.lock().insert(name, cid))
+        Ok(self.state.lock().insert(name, NameRecord { cid, level }))
     }
 
-    pub fn get(&self, name: &str) -> Option<Cid> {
+    pub fn get(&self, name: &str) -> Option<NameRecord> {
         self.state.lock().get(name).cloned()
     }
 
-    pub async fn remove(&self, name: &str) -> anyhow::Result<Option<Cid>> {
+    pub async fn remove(&self, name: &str) -> anyhow::Result<Option<NameRecord>> {
         let name: String = name.into();
-        let record = NameRecord::Remove { name: name.clone() };
+        let record = NameRecordEvent::Remove { name: name.clone() };
         let mut buffer = vec![];
         record.encode(DagCborCodec, &mut buffer)?;
         self.store

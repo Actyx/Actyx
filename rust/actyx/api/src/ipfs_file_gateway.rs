@@ -14,7 +14,7 @@ use warp::{
     Buf, Filter, Rejection, Reply,
 };
 
-use crate::ans::ActyxNamingService;
+use crate::ans::{ActyxNamingService, PersistenceLevel};
 
 /// an ipfs query contains a root cid and a path into it
 #[derive(Debug, Clone)]
@@ -99,7 +99,7 @@ fn extract_sub(ans: ActyxNamingService, input: &str) -> anyhow::Result<Cid> {
     if let Ok(cid) = sub.parse() {
         Ok(cid)
     } else {
-        ans.get(sub).context("No ANS Record found")
+        ans.get(sub).context("No ANS Record found").map(|x| x.cid)
     }
 }
 
@@ -208,7 +208,7 @@ fn set_naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply
             async move {
                 tracing::debug!(%name, ?maybe_cid, "ANS POST");
                 let cid: Cid = maybe_cid.parse()?;
-                ans.set(name, cid).await?;
+                ans.set(name, cid, PersistenceLevel::Prefetch).await?;
                 Ok(warp::reply())
             }
             .map_err(crate::util::reject)
@@ -220,7 +220,7 @@ fn get_naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply
         .and(warp::path::end())
         .and(warp::get())
         .and_then(move |name: String| {
-            let result = ans.get(&*name);
+            let result = ans.get(&*name).map(|x| x.cid);
             async move {
                 if let Some(x) = result {
                     Ok(x.to_string())
@@ -239,7 +239,7 @@ fn rm_naming_route(ans: ActyxNamingService) -> impl Filter<Extract = impl Reply,
             let ans = ans.clone();
             async move {
                 if let Some(x) = ans.remove(&*name).await.map_err(crate::util::reject)? {
-                    Ok(x.to_string())
+                    Ok(x.cid.to_string())
                 } else {
                     Err(warp::reject::not_found())
                 }

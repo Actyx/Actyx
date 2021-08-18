@@ -895,9 +895,9 @@ impl BanyanStore {
     }
 
     /// Adds a binary blob to the store. Requires aliasing and flushing before dropping the
-    /// `TempPin`.
-    /// Blobs are encoded as [unixfs-v1](https://docs.ipfs.io/concepts/file-systems/#unix-file-system-unixfs)
-    /// files.
+    /// `TempPin`.  Blobs are encoded as [unxifs-v1] files.
+    ///
+    /// [unixfs-v1]: https://docs.ipfs.io/concepts/file-systems/#unix-file-system-unixfs
     pub fn add(&self, tmp: &TempPin, reader: impl Read) -> Result<(Cid, usize)> {
         let mut adder = FileAdder::default();
         let mut reader = BufReader::with_capacity(adder.size_hint(), reader);
