@@ -107,7 +107,12 @@ export interface Tags<E> extends Where<E> {
   local(): Tags<E>
 
   /**
-   * Apply these tags to a bunch of events that can be legally emitted.
+   * Apply these tags to an event that they may legally be attached to (according to the tag's type `E`).
+   */
+  apply(event: E): TaggedEvent
+
+  /**
+   * Apply these tags to a list of events that they may legally be attached to.
    */
   apply(...events: E[]): ReadonlyArray<TaggedEvent>
 
@@ -199,8 +204,22 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: ReadonlyArray<TagInternal>): 
 
     local: () => req<E>(true, rawTags),
 
-    apply: (...events) =>
-      events.map(event => ({ event, tags: rawTags.flatMap(autoExtract(event)) })),
+    // TS cannot fathom our awesome "if arg list length is 1, there is not a list of args but just a single arg" logic
+    /* eslint-disable @typescript-eslint/ban-ts-ignore */
+    // @ts-ignore
+    apply: (...events: E[]) => {
+      if (events.length === 1) {
+        const event = events[0]
+        const res: TaggedEvent = { event, tags: rawTags.flatMap(autoExtract(event)) }
+        return res
+      } else {
+        const res: ReadonlyArray<TaggedEvent> = events.map(event => ({
+          event,
+          tags: rawTags.flatMap(autoExtract(event)),
+        }))
+        return res
+      }
+    },
 
     onlyLocalEvents,
 
