@@ -333,6 +333,16 @@ export interface EventFns {
    * @returns        A `PendingEmission` object that can be used to register callbacks with the emission’s completion.
    */
   emit: (events: ReadonlyArray<TaggedEvent>) => PendingEmission
+
+  /**
+   * Publish a number of events with tags attached.
+   * This function is the same as `emit`, only it directly returns the Promise.
+   *
+   * @param events - Events to publish.
+   *
+   * @returns        A Promise that resolves to the persisted event’s metadata, in the same order they were passed into the function.
+   */
+  publish: (events: ReadonlyArray<TaggedEvent>) => Promise<Metadata[]>
 }
 
 /** EventFns for unit-tests. @public */

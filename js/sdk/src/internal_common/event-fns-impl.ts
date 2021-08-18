@@ -532,6 +532,8 @@ export const EventFnsFromEventStoreV2 = (
     return pendingEmission(allPersisted)
   }
 
+  const publish = (taggedEvents: ReadonlyArray<TaggedEvent>) => emit(taggedEvents).toPromise()
+
   // FIXME properly type EventStore. (This runs without error because in production mode the ws event store does not use io-ts.)
   const wrapAql = (e: { type: string }): AqlResponse => {
     const actualType = e.type
@@ -573,5 +575,6 @@ export const EventFnsFromEventStoreV2 = (
     observeBestMatch,
     observeUnorderedReduce,
     emit,
+    publish,
   }
 }
