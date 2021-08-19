@@ -74,6 +74,41 @@ namespace Actyx
             return aql;
         }
     }
+    
+    /** Query for ObserveLatest. @beta  */
+    public class LatestQuery<E>
+    {
+        /** Statement to select specific events. */
+        public IFrom<E> Query { get; set; }
+
+        /**
+         * Starting point for the query. Everything up-to-and-including `lowerBound` will be omitted from the result.
+         * Defaults to empty map, which means no lower bound at all.
+         * Sources not listed in the `lowerBound` will be delivered in full. */
+        public OffsetMap LowerBound { get; set; }
+    
+        /** The order to find max for. Defaults to `Lamport`.  */
+        public EventOrder eventOrder { get; set; }
+    }
+
+    /** Which clock to compare events by. Defaults to `Lamport`. @beta */
+    public enum EventOrder {
+        /**
+         * Comparison according to Lamport clock, which is a logical clock,
+         * meaning it preserves causal order even when wall clocks on devices are off.
+         *
+         * On the flip-side, for any two events where neither is a cause of the other,
+         * lamport-order may be different from timestamp-order, if the devices creating the events
+         * where disconnected from each other at the time.
+         */
+        Lamport,
+
+        /**
+         * Comparison according to wall clock time logged at event creation.
+         * If the system clock on a device is wrong, the event's timestamp will also be wrong. */
+        Timestamp
+    }
+
 
     public interface IEventFns
     {
