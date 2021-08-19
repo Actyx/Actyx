@@ -84,13 +84,13 @@ const submitScore = async (score: number): Promise<void> => {
   //console.log(`submitting score ${score}`)
 }
 
-const submitFeedback = async (feedback: string): Promise<void> => {
+const submitFeedback = async (feedback: string, score: number | undefined): Promise<void> => {
   const res = await fetch('/.netlify/functions/nps', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ feedback }),
+    body: JSON.stringify({ feedback, score }),
   })
 
   if (res.status !== 200) {
@@ -173,7 +173,7 @@ const FeedbackView: React.FC<{ clickAway: () => void; submit: (feedback: string)
       <SubmitFeedbackButton
         className="button button--outline button--primary"
         onClick={onSubmit}
-        disabled={!!!input}
+        disabled={!input}
         tabIndex={2}
       >
         Submit
@@ -205,6 +205,7 @@ export const NpsSurvey = ({ showAfterMs, hideAfterMs }: Props): React.ReactEleme
   hideAfterMs = hideAfterMs === undefined ? HIDE_AFTER_SECONDS * 1000 : hideAfterMs
 
   const [cookies, setCookie] = useCookies([DONT_SHOW_COOKIE_NAME])
+  const [score, setScore] = useState<number | undefined>(undefined)
 
   const [state, setState] = useState<State>('not-shown-yet')
 
@@ -248,14 +249,15 @@ export const NpsSurvey = ({ showAfterMs, hideAfterMs }: Props): React.ReactEleme
     setState('clicked-away')
   }
 
-  const onSubmitScore = (result: number) => {
-    submitScore(result)
+  const onSubmitScore = (score: number) => {
+    submitScore(score)
+    setScore(score)
     setState('showing-feedback')
     disableForSec(DONT_SHOW_FOR_SECONDS_AFTER_SUBMISSION)
   }
 
   const onSubmitFeedback = (feedback: string) => {
-    submitFeedback(feedback)
+    submitFeedback(feedback, score)
     setState('thank-you')
   }
 
