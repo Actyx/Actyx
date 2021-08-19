@@ -90,4 +90,5 @@ fn routes(
         .or(path("ipfs").and(ipfs_file_gateway::route(store)))
         .recover(|r| async { rejections::handle_rejection(r) })
         .with(cors)
+
 }

@@ -35,3 +35,4 @@ panic = "abort"
 # wait for ipfs-embed 0.23
 ipfs-embed = { git = "https://github.com/dvc94ch/ipfs-embed", branch = "sim-open-2" }
 libp2p = { git = "https://github.com/dvc94ch/rust-libp2p", branch = "sim-open-2" }
+unixfs-v1 = { git = "https://github.com/wngr/unixfsv1" }

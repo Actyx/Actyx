@@ -73,8 +73,8 @@ async fn handle_query(store: BanyanStore, query: IpfsQuery) -> Result<Response<B
     // extension takes precedence over content
     if let Some(ct) = content_header_from_ext.or_else(|| {
         tracing::span!(tracing::Level::DEBUG, "Detecting content-type", %cid, size=buf.len());
-        // This is fairly expensive.
-        content_type_from_content(&buf)
+        // This is fairly expensive, so only look at the first kb
+        content_type_from_content(&buf[0..buf.len().min(1024)])
     }) {
         let mut resp = Response::new(Body::from(buf));
         resp.headers_mut().insert(CONTENT_TYPE, ct);
@@ -93,7 +93,12 @@ pub fn route(store: BanyanStore) -> BoxedFilter<(impl Reply,)> {
                     .map_err(|_| warp::reject::not_found()),
             )
         })
-        .and_then(move |query: IpfsQuery| handle_query(store.clone(), query).map_err(crate::util::reject))
+        .and_then(move |query: IpfsQuery| {
+            handle_query(store.clone(), query).map_err(|e| {
+                tracing::error!(%e, "Error serving query");
+                crate::util::reject(e)
+            })
+        })
         .boxed()
 }
 
@@ -156,6 +161,7 @@ pub fn files_route(
 fn add(store: BanyanStore) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("add")
         .and(warp::path::end())
+        // TODO: add auth
         .and(warp::multipart::form().max_length(128 << 20))
         .and_then(move |mut form: warp::multipart::FormData| {
             let store = store.clone();
@@ -177,16 +183,17 @@ fn add(store: BanyanStore) -> impl Filter<Extract = impl Reply, Error = Rejectio
                         })
                         .await?;
                     let (cid, bytes_written) = store.add(&tmp, data.reader())?;
+                    // 0x70: dag-pb
+                    // 0x71: dag-cbor
+                    tracing::debug!(%cid, %bytes_written, %name, "Added");
                     builder.put_link(&*name, cid, bytes_written as u64)?;
                 }
                 let mut root = None;
                 for node in builder.build() {
                     let node = node.context("Constructing a directory node")?;
-                    // convert to v1 cid
-                    let cid = Cid::new_v1(0x71, *node.cid.hash());
-                    store.ipfs().temp_pin(&tmp, &cid)?;
-                    root = Some(cid);
-                    let block = Block::new_unchecked(cid, node.block.to_vec());
+                    store.ipfs().temp_pin(&tmp, &node.cid)?;
+                    root = Some(node.cid);
+                    let block = Block::new_unchecked(node.cid, node.block.to_vec());
                     store.ipfs().insert(&block)?;
                 }
                 Ok(root.context("No files provided")?.to_string())
