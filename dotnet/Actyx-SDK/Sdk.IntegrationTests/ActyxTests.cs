@@ -49,7 +49,7 @@ namespace Sdk.IntegrationTests
             await client.Publish(tag.Apply("bar"));
 
             var observed = new List<string>();
-            var values = client.ObserveLatest(tag).ToAsyncEnumerable().GetAsyncEnumerator();
+            var values = client.ObserveLatest<string>(new () { Query = tag }).ToAsyncEnumerable().GetAsyncEnumerator();
 
             await values.MoveNextAsync();
             values.Current.Should().Equals("bar");

@@ -74,7 +74,7 @@ namespace Actyx
             return aql;
         }
     }
-    
+
     /** Query for ObserveLatest. @beta  */
     public class LatestQuery<E>
     {
@@ -86,7 +86,7 @@ namespace Actyx
          * Defaults to empty map, which means no lower bound at all.
          * Sources not listed in the `lowerBound` will be delivered in full. */
         public OffsetMap LowerBound { get; set; }
-    
+
         /** The order to find max for. Defaults to `Lamport`.  */
         public EventOrder eventOrder { get; set; }
     }
@@ -188,7 +188,19 @@ namespace Actyx
          */
         public IObservable<ActyxEvent<JToken>> Subscribe(EventSubscription sub);
 
-        public IObservable<ActyxEvent<E>> ObserveLatest<E>(IFrom<E> f);
+
+        /**
+         * Observe always the **latest** event matching the given query.
+         * If there is an existing event fitting the query, the Observable will deliver that event.
+         * Afterwards, the Observable will supply a new value whenever a new event becomes known that is younger than the previously passed one.
+         *
+         * @param query          - Query to select the set of events.
+         *
+         * @returns An Observable with all the new latest events.
+         *
+         * @beta
+         */
+        public IObservable<ActyxEvent<E>> ObserveLatest<E>(LatestQuery<E> query);
 
         /**
          * Emit an event with tags attached.

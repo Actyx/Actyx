@@ -217,7 +217,7 @@ namespace Actyx
                 this.AppId, publishedMetadata.Stream, tags, this.NodeId);
         }
 
-        public IObservable<ActyxEvent<E>> ObserveLatest<E>(IFrom<E> f) {
+        public IObservable<ActyxEvent<E>> ObserveLatest<E>(LatestQuery<E> q) {
             var deser = MkAxEvt.DeserTyped<E>(NodeId);
             EventOnWire latest = null;
 
@@ -226,27 +226,27 @@ namespace Actyx
             bool live = false;
 
             ActyxEvent<E>[] EmitIfLatest(IResponseMessage r) {
-                Console.WriteLine(r);
                 try {
-                if (r is OffsetsOnWire)
-                {
-                    live = true;
-                    if (latest != null) {
-                        return new[] { deser(latest) };
-                    }
-                }
-                else if (r is EventOnWire evt) 
-                {
-                    // FIXME use full key
-                    if (latest is null || evt.Lamport > latest.Lamport) {
-                        latest = evt;
-
-                        if (live) {
+                    if (r is OffsetsOnWire)
+                    {
+                        live = true;
+                        if (latest != null) {
                             return new[] { deser(latest) };
                         }
                     }
-                }
+                    else if (r is EventOnWire evt)
+                    {
+                        // FIXME use full key
+                        if (latest is null || evt.Lamport > latest.Lamport) {
+                            latest = evt;
+
+                            if (live) {
+                                return new[] { deser(latest) };
+                            }
+                        }
+                    }
                 } catch (Exception e) {
+                    // Improve me.
                     Console.WriteLine(e);
                 }
 
@@ -254,7 +254,7 @@ namespace Actyx
             }
 
             return store
-                .Subscribe(new OffsetMap(), f)
+                .Subscribe(q.LowerBound, q.Query)
                 .SelectMany(EmitIfLatest);
         }
 
