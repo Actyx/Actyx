@@ -39,19 +39,11 @@ export type DecideRelease = (
   Petitioner: Node,
 ) => boolean
 
-export type TakeOwnershipResult<T> =
-  | {
-      type: 'success'
-      currentState: T
-    }
-  | {
-      type: 'rejected-by-owner'
-    }
-  | {
-      // This record already belonged to us.
-      type: 'already-ours'
-      currentState: T
-    }
+export type TakeOwnershipResult<T> = {
+  type: 'success' | 'rejected-by-owner' | 'already-ours'
+  // Latest known state of the record. May already be outdated, even if we succeeded in claiming the record.
+  state: T
+}
 
 /** A successful state update. */
 export type UpdatedState<T> = {
@@ -89,6 +81,14 @@ export interface OwnedRecordSystem {
    */
   list<T, A>(recordClass: RecordClass<T, A>): Promise<RecordId<T, A>[]>
   list<T, A>(recordClass: RecordClass<T, A>, parameters: Partial<A>): Promise<RecordId<T, A>[]>
+
+  /**
+   * List all records we know to be owned be the specified node.
+   *
+   * @param nodeId  Node whose records to list. Defaults to our own.
+   *
+   **/
+  listOwned(nodeId?: NodeId): Promise<RecordId<unknown>[]>
 
   /**
    * Observe the current state of any record.
@@ -131,6 +131,18 @@ export interface OwnedRecordSystem {
    *          The Promise will NEVER resolve as long as the current owner of the record is not reachable.
    */
   takeOwnership<T>(recordId: RecordId<T>, pin: boolean): Promise<TakeOwnershipResult<T>>
+
+  /**
+   * Creates an *owned copy* of an existing record.
+   * This can be used to progress when facing an unresponsive record owner.
+   *
+   * @param recordId  The source record to make a copy of.
+   * @param pin       Whether to immediately pin the record. Pinning does nothing besides passing `pinned=true` to the local `DecideRelease` logic.
+   *
+   * @returns The id of the **new** record created from the old record id.
+   *          The record has **different** `uniqueId`, identical `readonlyData`, and a state equal to the source record’s latest state known to this node.
+   */
+  copy<T>(recordId: RecordId<T>, pin: boolean): Promise<RecordId<T>>
 
   /**
    * Push ownership of a record to another node.
