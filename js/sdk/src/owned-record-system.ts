@@ -1,9 +1,26 @@
-import { NodeId } from './types'
+import { CancelSubscription, NodeId } from './types'
 
-export type RecordId<T> = {
+/** Class of some records. All records of a given class should have the same type. */
+export type RecordClass<T, A> = {
+  className: string
+
+  /** The value type of records of this class. */
+  _phantomDataMut: T
+
+  /** The static (readonly) part of records of this class. */
+  _phantomDataReadonly: A
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type RecordId<T, A = any> = {
+  /** Globally unique id for this record. (`eventId` of the event that created it) */
   uniqueId: string
 
-  _pantomData: T
+  /** Class of the record. */
+  recordClass: RecordClass<T, A>
+
+  /** Arbitrary readonly-data associated with the record. Can be any JSON-serializable value. */
+  readonlyData: A
 }
 
 export type Node = {
@@ -17,7 +34,7 @@ export type Node = {
 /** Whether to release a currently owned record to another node. */
 export type DecideRelease = (
   pinned: boolean,
-  recordId: RecordId<unknown>,
+  recordId: RecordId<unknown, unknown>,
   currentState: unknown,
   Petitioner: Node,
 ) => boolean
@@ -29,6 +46,11 @@ export type TakeOwnershipResult<T> =
     }
   | {
       type: 'rejected-by-owner'
+    }
+  | {
+      // This record already belonged to us.
+      type: 'already-ours'
+      currentState: T
     }
 
 /** A successful state update. */
@@ -48,10 +70,30 @@ export interface OwnedRecordSystem {
    * Create a new uniquely identified record.
    *
    * @param initialState The initial state of the record.
+   * @param readonlyData Static data associated with the record.
    * @param pin          Whether to immediately pin the record locally. Defaults to false.
+   *                     Pinning does nothing besides passing `pinned=true` to the local `DecideRelease` logic.
    *
    */
-  create<T>(initialState: T, pin?: boolean): Promise<RecordId<T>>
+  create<T, A>(initialState: T, readonlyData: A, pin?: boolean): Promise<RecordId<T, A>>
+
+  /**
+   * List all locally known instances of a given record class.
+   *
+   * @param recordClass  Class of records to find.
+   * @param parameters   Optionally, partial readonly-data of this class, to restrict the set of instances that will be found.
+   *                     (Every returned `RecordId` will agree with `parameters` as far as values in `parameters` have been defined.
+   *
+   * @returns   A Promise that resolves to the locally known set of matching record ids.
+   *
+   */
+  list<T, A>(recordClass: RecordClass<T, A>): Promise<RecordId<T, A>[]>
+  list<T, A>(recordClass: RecordClass<T, A>, parameters: Partial<A>): Promise<RecordId<T, A>[]>
+
+  /**
+   * Observe the current state of any record.
+   */
+  observe<T>(recordId: RecordId<T>, cb: (state: T) => void): CancelSubscription
 
   /**
    * Mutate a record.
@@ -62,6 +104,7 @@ export interface OwnedRecordSystem {
    *
    * @returns A Promise that resolves to the updated state, once mutation has been completed.
    *          The Promise will NEVER resolve while the current owner of the record is unreachable.
+   *          The Promise will reject if `recordId.readonlyData` is defined but does not match the actual readonly-data of the record.
    */
   mutate<T>(recordId: RecordId<T>, doMutate: (state: T) => void): Promise<UpdatedState<T>>
 
@@ -74,10 +117,28 @@ export interface OwnedRecordSystem {
    *
    * @returns A Promise that resolves to the updated state, once mutation has been completed.
    *          The Promise will NEVER resolve while the current owner of the record is unreachable.
+   *          The Promise will reject if `recordId.readonlyData` is defined but does not match the actual readonly-data of the record.
    **/
   replace<T>(recordId: RecordId<T>, mkNewState: (state: T) => T): Promise<UpdatedState<T>>
 
-  takeOwnership<T>(recordId: RecordId<T>): Promise<TakeOwnershipResult<T>>
+  /**
+   * Take ownership of a record.
+   *
+   * @param recordId  The record to take ownership of.
+   * @param pin       Whether to immediately pin the record. Pinning does nothing besides passing `pinned=true` to the local `DecideRelease` logic.
+   *
+   * @returns A Promise that reports whether ownership was transfered, or the current owner’s `DecideRelease` logic rejected the transfer.
+   *          The Promise will NEVER resolve as long as the current owner of the record is not reachable.
+   */
+  takeOwnership<T>(recordId: RecordId<T>, pin: boolean): Promise<TakeOwnershipResult<T>>
+
+  /**
+   * Push ownership of a record to another node.
+   *
+   * @param target    Node id of the node that should gain ownership. If the target node is unknown, an exception is thrown.
+   * @param recordId  The record to transfer.
+   */
+  pushOwnership(target: NodeId, recordId: RecordId<unknown>): void
 
   /** Set the logic used to decide wether to release owned records to other nodes. Defaults to: `(pinned) => !pinned`  */
   setReleaseDecisionLogic(decisionLogic: DecideRelease): boolean
