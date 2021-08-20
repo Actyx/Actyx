@@ -1,5 +1,6 @@
 use anyhow::Context;
-use futures::{future::BoxFuture, FutureExt};
+use futures::{future::BoxFuture, AsyncRead, FutureExt};
+use ipfs_embed::multiaddr::Protocol;
 use libp2p::{
     core::{
         either::{EitherOutput, EitherTransport},
@@ -17,9 +18,22 @@ use libp2p::{
     yamux::YamuxConfig,
     PeerId, Transport,
 };
-use libp2p_maybe_transport::{MaybeUpgrade, UpgradeMaybe};
+use libp2p_maybe_transport::{combined, MaybeUpgrade, UpgradeMaybe};
 use soketto::handshake;
 use std::{io, time::Duration};
+
+fn maybe_upgrade(r: TcpStream) -> BoxFuture<'static, Result<TcpStream, TcpStream>> {
+    async move {
+        let mut buffer = [0; 3];
+        if r.0.peek(&mut buffer).await.is_ok() && buffer == *b"GET" {
+            tracing::info!("It's probably HTTP :-)");
+            Ok(r)
+        } else {
+            Err(r)
+        }
+    }
+    .boxed()
+}
 
 /// Builds the transport that serves as a common ground for all connections.
 ///
@@ -38,7 +52,10 @@ pub async fn build_transport(
     } else {
         TokioDnsConfig::system(tcp).context("Creating TokioDnsConfig")?
     };
-    let base_transport = MaybeUpgrade::<_, WsConfig<_>, Upgrader>::new(base_transport);
+    let base_transport = combined::CombinedTransport::new(base_transport, WsConfig::new, maybe_upgrade, |mut addr| {
+        addr.push(Protocol::Ws("/".into()));
+        addr
+    });
     let maybe_encrypted = match psk {
         Some(psk) => {
             EitherTransport::Left(base_transport.and_then(move |socket, _| PnetConfig::new(psk).handshake(socket)))
@@ -75,28 +92,6 @@ impl UpgradeMaybe<Tcp, WsConfig<Tcp>> for Upgrader {
                 let stream = inner; //upgrade.map_err(Error::Transport).await?;
                 tracing::debug!("incoming connection from"); // {}", remote1);
 
-                //                    let stream = if use_tls {
-                //                        // begin TLS session
-                //                        let server = tls_config.server.expect("for use_tls we checked server is not none");
-                //
-                //                        tracing::debug!("awaiting TLS handshake with {}", remote1);
-                //
-                //                        let stream = server
-                //                            .accept(stream)
-                //                            .map_err(move |e| {
-                //                                debug!("TLS handshake with {} failed: {}", remote1, e);
-                //                                Error::Tls(tls::Error::from(e))
-                //                            })
-                //                            .await?;
-                //
-                //                        let stream: TlsOrPlain<_> = EitherOutput::First(EitherOutput::Second(stream));
-                //
-                //                        stream
-                //                    } else {
-                //                        // continue with plain stream
-                //                        EitherOutput::Second(stream)
-                //                    };
-                //
                 let stream = EitherOutput::Second(stream);
                 tracing::debug!("receiving websocket handshake request"); //, remote2);
 
