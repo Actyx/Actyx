@@ -132,6 +132,7 @@ pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
             }
             w.write_char(')')
         }
+        SimpleExpr::SubQuery(q) => render_query(w, q),
     }
 }
 

@@ -1,22 +1,13 @@
 use crate::{eval::Context, value::Value};
-use actyx_sdk::language::{AggrOp, Num, SimpleExpr, Traverse};
+use actyx_sdk::language::{AggrOp, Num, SimpleExpr, Var};
 use anyhow::{anyhow, bail};
 use cbor_data::Encoder;
-use std::{cmp::Ordering, marker::PhantomData, ops::AddAssign};
+use futures::{future::BoxFuture, FutureExt};
+use std::{cmp::Ordering, marker::PhantomData, ops::AddAssign, sync::Arc};
 
 pub trait Aggregator {
     fn feed(&mut self, input: Value) -> anyhow::Result<()>;
     fn flush(&mut self, cx: &Context) -> anyhow::Result<Value>;
-}
-
-impl Aggregator for () {
-    fn feed(&mut self, _input: Value) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    fn flush(&mut self, cx: &Context) -> anyhow::Result<Value> {
-        Ok(cx.value(|b| b.encode_u64(42)))
-    }
 }
 
 trait SumOp {
@@ -189,149 +180,185 @@ impl Aggregator for Max {
     }
 }
 
-pub type AggrState = Vec<((AggrOp, SimpleExpr), Box<dyn Aggregator + Send + Sync + 'static>)>;
-
-pub struct Aggregate {
-    pub expr: SimpleExpr,
-    state: AggrState,
+struct AggrState {
+    key: Arc<(AggrOp, SimpleExpr)>,
+    aggregator: Box<dyn Aggregator + Send + Sync + 'static>,
+    variable: u32,
 }
 
-impl PartialEq for Aggregate {
-    fn eq(&self, other: &Self) -> bool {
-        self.expr == other.expr
-    }
+struct Aggregate {
+    expr: SimpleExpr,
+    state: Vec<AggrState>,
 }
-
-impl std::fmt::Debug for Aggregate {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Aggregate({:?})", self.expr)
-    }
-}
-
-impl Aggregate {
-    pub fn new(expr: SimpleExpr) -> Self {
-        let mut state: AggrState = vec![];
-        expr.traverse(&mut |e| match e {
-            SimpleExpr::AggrOp(a) => {
-                let op: Box<dyn Aggregator + Send + Sync> = match a.0 {
-                    AggrOp::Sum => Box::new(Sum::<AddOp>::default()),
-                    AggrOp::Prod => Box::new(Sum::<MulOp>::default()),
-                    AggrOp::Min => Box::new(Min(None)),
-                    AggrOp::Max => Box::new(Max(None)),
-                    AggrOp::First => Box::new(First(None)),
-                    AggrOp::Last => Box::new(Last(None)),
-                };
-                match state.binary_search_by_key(&&**a, |x| &x.0) {
-                    Ok(_found) => {}
-                    Err(idx) => state.insert(idx, ((**a).clone(), op)),
-                };
-                Traverse::Stop
-            }
-            _ => Traverse::Descend,
-        });
-        Self { expr, state }
-    }
-
-    pub async fn apply(&mut self, cx: &mut Context<'_>) -> Vec<anyhow::Result<Value>> {
-        let mut errors = vec![];
-        for ((_op, expr), agg) in self.state.iter_mut() {
-            match cx.eval(expr).await {
-                Ok(v) => {
-                    if let Err(e) = agg.feed(v) {
-                        errors.push(Err(e))
+impl super::Processor for Aggregate {
+    fn apply<'a, 'b: 'a>(&'a mut self, cx: &'a Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
+        async move {
+            let mut errors = vec![];
+            for aggr in self.state.iter_mut() {
+                match cx.eval(&aggr.key.1).await {
+                    Ok(v) => {
+                        if let Err(e) = aggr.aggregator.feed(v) {
+                            errors.push(Err(e))
+                        }
                     }
+                    Err(e) => errors.push(Err(e)),
                 }
-                Err(e) => errors.push(Err(e)),
             }
+            errors
         }
-        errors
+        .boxed()
     }
 
-    pub async fn flush(&mut self, cx: &Context<'_>) -> anyhow::Result<Value> {
-        let mut cx = cx.child();
-        cx.bind_aggregation(&mut self.state);
-        cx.eval(&self.expr).await
+    fn flush<'a, 'b: 'a>(&'a mut self, cx: &'a Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
+        async move {
+            let mut cx = cx.child();
+            for aggr in self.state.iter_mut() {
+                cx.bind_placeholder(format!("!{}", aggr.variable), aggr.aggregator.flush(&cx));
+            }
+            vec![cx.eval(&self.expr).await]
+        }
+        .boxed()
     }
+}
+
+pub(super) fn aggregate(expr: &SimpleExpr) -> Box<dyn super::Processor> {
+    let mut state = Vec::<AggrState>::new();
+    let mut counter: u32 = 0;
+    let expr = expr.rewrite(&mut |e| match e {
+        SimpleExpr::AggrOp(a) => {
+            let name = match state.binary_search_by_key(&a, |x| &x.key) {
+                Ok(found) => state[found].variable,
+                Err(idx) => {
+                    let aggregator: Box<dyn Aggregator + Send + Sync> = match a.0 {
+                        AggrOp::Sum => Box::new(Sum::<AddOp>::default()),
+                        AggrOp::Prod => Box::new(Sum::<MulOp>::default()),
+                        AggrOp::Min => Box::new(Min(None)),
+                        AggrOp::Max => Box::new(Max(None)),
+                        AggrOp::First => Box::new(First(None)),
+                        AggrOp::Last => Box::new(Last(None)),
+                    };
+                    counter += 1;
+                    state.insert(
+                        idx,
+                        AggrState {
+                            key: a.clone(),
+                            aggregator,
+                            variable: counter,
+                        },
+                    );
+                    counter
+                }
+            };
+            // it is important that these internal variables are not legal in user queries,
+            // hence the exclamation mark
+            Some(SimpleExpr::Variable(Var::internal(format!("!{}", name))))
+        }
+        // leave sub-queries alone
+        SimpleExpr::SubQuery(_) => Some(e.clone()),
+        _ => None,
+    });
+
+    Box::new(Aggregate { expr, state })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{operation::Operation, query::Query};
+    use crate::{
+        operation::{Operation, Processor},
+        query::Query,
+    };
     use actyx_sdk::{
         language::{self, SortKey},
         NodeId,
     };
+    use swarm::event_store_ref::EventStoreRef;
 
-    fn a(s: &str) -> Aggregate {
+    fn a(s: &str) -> Box<dyn Processor> {
         let s = format!("FROM 'x' AGGREGATE {}", s);
         let q = Query::from(s.parse::<language::Query>().unwrap());
         match q.stages.into_iter().next().unwrap() {
-            Operation::Aggregate(a) => a,
+            Operation::Aggregate(a) => aggregate(&a),
             _ => panic!(),
         }
     }
-    fn ctx() -> Context<'static> {
-        Context::new(SortKey {
-            lamport: Default::default(),
-            stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
-        })
+    fn store() -> EventStoreRef {
+        EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
     }
-    async fn apply(a: &mut Aggregate, cx: &mut Context<'_>, v: u64) -> Vec<Value> {
+    fn ctx(store: &EventStoreRef) -> Context<'_> {
+        Context::new(
+            SortKey {
+                lamport: Default::default(),
+                stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
+            },
+            store,
+        )
+    }
+    async fn apply<'a, 'b: 'a>(a: &'a mut dyn Processor, cx: &'a mut Context<'b>, v: u64) -> Vec<Value> {
         cx.incr();
         cx.bind("_", cx.value(|b| b.encode_u64(v)));
         a.apply(cx).await.into_iter().collect::<anyhow::Result<_>>().unwrap()
     }
-    async fn flush(a: &mut Aggregate, cx: &Context<'_>) -> String {
-        a.flush(cx).await.unwrap().cbor().to_string()
+    async fn flush<'a, 'b: 'a>(a: &'a mut dyn Processor, cx: &'a Context<'b>) -> String {
+        a.flush(cx)
+            .await
+            .into_iter()
+            .next()
+            .unwrap()
+            .unwrap()
+            .cbor()
+            .to_string()
     }
 
     #[tokio::test]
     async fn sum() {
         let mut s = a("42 - SUM(_ * 2)");
-        let mut cx = ctx();
+        let store = store();
+        let mut cx = ctx(&store);
 
-        assert_eq!(apply(&mut s, &mut cx, 1).await, vec![]);
-        assert_eq!(apply(&mut s, &mut cx, 2).await, vec![]);
-        assert_eq!(flush(&mut s, &cx).await, "36");
+        assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
+        assert_eq!(flush(&mut *s, &cx).await, "36");
 
         let mut s = a("CASE SUM(_ ≥ 2) => 11 CASE TRUE => 12 ENDCASE");
 
-        assert_eq!(apply(&mut s, &mut cx, 1).await, vec![]);
-        assert_eq!(flush(&mut s, &cx).await, "12");
-        assert_eq!(apply(&mut s, &mut cx, 2).await, vec![]);
-        assert_eq!(flush(&mut s, &cx).await, "11");
+        assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
+        assert_eq!(flush(&mut *s, &cx).await, "12");
+        assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
+        assert_eq!(flush(&mut *s, &cx).await, "11");
     }
 
     #[tokio::test]
     async fn product() {
         let mut s = a("42 - PRODUCT(_ * 2)");
-        let mut cx = ctx();
+        let store = store();
+        let mut cx = ctx(&store);
 
-        assert_eq!(apply(&mut s, &mut cx, 1).await, vec![]);
-        assert_eq!(apply(&mut s, &mut cx, 2).await, vec![]);
-        assert_eq!(flush(&mut s, &cx).await, "34");
+        assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
+        assert_eq!(flush(&mut *s, &cx).await, "34");
 
         let mut s = a("CASE PRODUCT(_ ≥ 2) => 11 CASE TRUE => 12 ENDCASE");
 
-        assert_eq!(apply(&mut s, &mut cx, 2).await, vec![]);
-        assert_eq!(flush(&mut s, &cx).await, "11");
-        assert_eq!(apply(&mut s, &mut cx, 1).await, vec![]);
-        assert_eq!(flush(&mut s, &cx).await, "12");
+        assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
+        assert_eq!(flush(&mut *s, &cx).await, "11");
+        assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
+        assert_eq!(flush(&mut *s, &cx).await, "12");
     }
 
     #[tokio::test]
     async fn min_max() {
         let mut s = a("[FIRST(_), LAST(_), MIN(_), MAX(_)]");
-        let mut cx = ctx();
+        let store = store();
+        let mut cx = ctx(&store);
 
-        assert_eq!(apply(&mut s, &mut cx, 2).await, vec![]);
-        assert_eq!(flush(&mut s, &cx).await, "[2, 2, 2, 2]");
-        assert_eq!(apply(&mut s, &mut cx, 1).await, vec![]);
-        assert_eq!(flush(&mut s, &cx).await, "[2, 1, 1, 2]");
-        assert_eq!(apply(&mut s, &mut cx, 4).await, vec![]);
-        assert_eq!(flush(&mut s, &cx).await, "[2, 4, 1, 4]");
-        assert_eq!(apply(&mut s, &mut cx, 3).await, vec![]);
-        assert_eq!(flush(&mut s, &cx).await, "[2, 3, 1, 4]");
+        assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
+        assert_eq!(flush(&mut *s, &cx).await, "[2, 2, 2, 2]");
+        assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
+        assert_eq!(flush(&mut *s, &cx).await, "[2, 1, 1, 2]");
+        assert_eq!(apply(&mut *s, &mut cx, 4).await, vec![]);
+        assert_eq!(flush(&mut *s, &cx).await, "[2, 4, 1, 4]");
+        assert_eq!(apply(&mut *s, &mut cx, 3).await, vec![]);
+        assert_eq!(flush(&mut *s, &cx).await, "[2, 3, 1, 4]");
     }
 }

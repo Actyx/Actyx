@@ -1,11 +1,12 @@
 use crate::{
     eval::Context,
-    operation::{Aggregate, Filter, Operation, Select},
+    operation::{Operation, Processor},
     value::Value,
 };
 use actyx_sdk::language;
+use swarm::event_store_ref::EventStoreRef;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Query {
     pub features: Vec<String>,
     pub from: language::TagExpr,
@@ -13,24 +14,44 @@ pub struct Query {
 }
 
 impl Query {
-    /// Feed a new value into this processing pipeline, or feed None to flush aggregations.
-    pub async fn feed(&mut self, input: Option<Value>) -> Vec<Result<Value, String>> {
+    /// run a query in the given evaluation context and collect all results
+    pub async fn eval(query: &language::Query, cx: &Context<'_>) -> Result<Value, anyhow::Error> {
+        todo!()
+    }
+
+    pub fn make_feeder(&self, store: EventStoreRef) -> Feeder {
+        let processors = self.stages.iter().map(|op| op.make_processor()).collect();
+        Feeder { processors, store }
+    }
+
+    pub fn feeder_from(stages: &[language::Operation], store: EventStoreRef) -> Feeder {
+        let processors = stages
+            .iter()
+            .map(|s| Operation::from(s.clone()).make_processor())
+            .collect();
+        Feeder { processors, store }
+    }
+}
+
+pub struct Feeder {
+    processors: Vec<Box<dyn Processor>>,
+    store: EventStoreRef,
+}
+impl Feeder {
+    pub async fn feed(&mut self, input: Option<Value>) -> Vec<Result<Value, anyhow::Error>> {
         // create storage space for one context per stage
         let mut ctx = Vec::<Option<Context<'_>>>::new();
-        ctx.resize_with(self.stages.len(), || None);
+        ctx.resize_with(self.processors.len(), || None);
         let mut ctx = &mut ctx[..];
 
-        let mut cx = Context::new(input.as_ref().map(|x| x.key()).unwrap_or_default());
+        // create the outermost context, stored on the stack
+        let mut cx = Context::new(input.as_ref().map(|x| x.key()).unwrap_or_default(), &self.store);
 
         // set up per-iteration state
-        let mut cx = &mut cx;
-        let mut input = vec![Ok(input).transpose()];
+        let mut cx = &mut cx; // reference to the current context
+        let mut input = vec![Ok(input).transpose()]; // inputs to be delivered to the current stage
 
-        fn adapt(r: anyhow::Result<Value>) -> Option<Result<Value, String>> {
-            Some(r.map_err(|e| e.to_string()))
-        }
-
-        for op in self.stages.iter_mut() {
+        for op in self.processors.iter_mut() {
             // create fresh child context, stored in the ctx slice
             let (curr_ctx, rest) = ctx.split_first_mut().unwrap();
             ctx = rest;
@@ -42,10 +63,10 @@ impl Query {
                 match input {
                     Some(Ok(v)) => {
                         cx.bind("_", v);
-                        output.extend(op.apply(cx).await.into_iter().map(adapt));
+                        output.extend(op.apply(cx).await.into_iter().map(Some));
                     }
                     None => {
-                        output.extend(op.flush(cx).await.into_iter().map(adapt));
+                        output.extend(op.flush(cx).await.into_iter().map(Some));
                         output.push(None);
                     }
                     Some(Err(e)) => output.push(Some(Err(e))),
@@ -63,16 +84,9 @@ impl Query {
 
 impl From<language::Query> for Query {
     fn from(q: language::Query) -> Self {
-        let mut stages = vec![];
+        let stages = q.ops.into_iter().map(Operation::from).collect();
         let from = q.from;
         let features = q.features;
-        for op in q.ops {
-            match op {
-                language::Operation::Filter(f) => stages.push(Operation::Filter(Filter::new(f))),
-                language::Operation::Select(s) => stages.push(Operation::Select(Select::new(s))),
-                language::Operation::Aggregate(a) => stages.push(Operation::Aggregate(Aggregate::new(a))),
-            }
-        }
         Self { features, from, stages }
     }
 }
@@ -88,14 +102,18 @@ mod tests {
             stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
         }
     }
+    fn store() -> EventStoreRef {
+        EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
+    }
 
     async fn feed(q: &str, v: &str) -> Vec<String> {
-        let mut q = Query::from(q.parse::<language::Query>().unwrap());
-        let v = Context::new(key()).eval(&v.parse().unwrap()).await.unwrap();
-        q.feed(Some(v))
+        let q = Query::from(q.parse::<language::Query>().unwrap());
+        let v = Context::new(key(), &store()).eval(&v.parse().unwrap()).await.unwrap();
+        q.make_feeder(store())
+            .feed(Some(v))
             .await
             .into_iter()
-            .map(|v| v.map(|v| v.value().to_string()).unwrap_or_else(|e| e))
+            .map(|v| v.map(|v| v.value().to_string()).unwrap_or_else(|e| e.to_string()))
             .collect()
     }
 

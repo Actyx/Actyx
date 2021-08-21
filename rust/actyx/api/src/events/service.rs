@@ -95,9 +95,10 @@ impl EventService {
         };
         let lower_bound = request.lower_bound.unwrap_or_default();
 
-        let mut query = Query::from(request.query);
+        let query = Query::from(request.query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Query)?;
+        let mut query = query.make_feeder(self.store.clone());
 
         let mut stream = match request.order {
             Order::Asc => {
@@ -118,26 +119,24 @@ impl EventService {
         }
         .stop_on_error();
 
-        let gen = Gen::new(move |co: Co<QueryResponse>| async move {
-            while let Some(ev) = stream.next().await {
-                let vs = query.feed(Some(to_value(&ev))).await;
-                for v in vs {
-                    co.yield_(match v {
-                        Ok(v) => QueryResponse::Event(to_event(v, Some(&ev))),
-                        Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e)),
-                    })
-                    .await;
-                }
-            }
-
-            let vs = query.feed(None).await;
+        async fn y(co: &Co<QueryResponse>, vs: Vec<anyhow::Result<Value>>, event: Option<&Event<Payload>>) {
             for v in vs {
                 co.yield_(match v {
-                    Ok(v) => QueryResponse::Event(to_event(v, None)),
-                    Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e)),
+                    Ok(v) => QueryResponse::Event(to_event(v, event)),
+                    Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e.to_string())),
                 })
                 .await;
             }
+        }
+
+        let gen = Gen::new(move |co: Co<QueryResponse>| async move {
+            while let Some(ev) = stream.next().await {
+                let vs = query.feed(Some(to_value(&ev))).await;
+                y(&co, vs, Some(&ev)).await;
+            }
+
+            let vs = query.feed(None).await;
+            y(&co, vs, None).await;
 
             co.yield_(QueryResponse::Offsets(OffsetMapResponse { offsets: upper_bound }))
                 .await;

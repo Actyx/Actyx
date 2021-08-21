@@ -12,6 +12,8 @@ derive_more = "0.99.16"
 futures = "0.3.16"
 itertools = "0.10.1"
 tracing = "0.1.26"
+swarm = { path = "../swarm" }
+parking_lot = "0.11.1"
 
 [dev-dependencies]
 criterion = "0.3.5"

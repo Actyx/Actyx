@@ -280,6 +280,19 @@ fn r_func_call(p: P, ctx: Context) -> Result<FuncCall> {
     })
 }
 
+fn r_sub_query(p: P, _ctx: Context) -> Result<Query> {
+    let mut p = p.inner()?;
+    let mut f = p.next().ok_or(NoVal("main query"))?;
+    let features = if f.as_rule() == Rule::features {
+        let features = f.inner()?.map(|mut ff| ff.string()).collect::<Result<_>>()?;
+        f = p.next().ok_or(NoVal("FROM"))?;
+        features
+    } else {
+        vec![]
+    };
+    r_query(features, f)
+}
+
 fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
     static CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
         use pest::prec_climber::{Assoc::*, Operator};
@@ -313,6 +326,7 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
             Rule::simple_cases => SimpleExpr::Cases(r_cases(p, ctx)?),
             Rule::aggr_op => r_aggr(p, ctx)?,
             Rule::func_call => SimpleExpr::FuncCall(r_func_call(p, ctx)?),
+            Rule::sub_query => SimpleExpr::SubQuery(r_sub_query(p, ctx)?),
             x => bail!("unexpected token: {:?}", x),
         })
     }
@@ -376,16 +390,8 @@ impl FromStr for Query {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut p = Aql::parse(Rule::main_query, s)?.single()?.inner()?;
-        let mut f = p.next().ok_or(NoVal("main query"))?;
-        let features = if f.as_rule() == Rule::features {
-            let features = f.inner()?.map(|mut ff| ff.string()).collect::<Result<_>>()?;
-            f = p.next().ok_or(NoVal("FROM"))?;
-            features
-        } else {
-            vec![]
-        };
-        r_query(features, f)
+        let p = Aql::parse(Rule::main_query, s)?.single()?;
+        r_sub_query(p, Context::Simple)
     }
 }
 

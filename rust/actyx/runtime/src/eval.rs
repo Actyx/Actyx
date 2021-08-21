@@ -1,5 +1,5 @@
 use crate::{
-    operation::AggrState,
+    query::Query,
     value::{Value, ValueKind},
 };
 use actyx_sdk::language::{BinOp, Ind, Index, Num, SimpleExpr, SortKey};
@@ -7,21 +7,22 @@ use anyhow::{anyhow, bail, ensure};
 use cbor_data::{CborBuilder, CborOwned, Encoder, WithOutput, Writer};
 use futures::{future::BoxFuture, FutureExt};
 use std::{cmp::Ordering, collections::BTreeMap};
+use swarm::event_store_ref::EventStoreRef;
 
 pub struct Context<'a> {
     sort_key: SortKey,
-    bindings: BTreeMap<String, Value>,
+    bindings: BTreeMap<String, anyhow::Result<Value>>,
     parent: Option<&'a Context<'a>>,
-    aggregation: Option<&'a mut AggrState>,
+    store: &'a EventStoreRef,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(sort_key: SortKey) -> Self {
+    pub fn new(sort_key: SortKey, store: &'a EventStoreRef) -> Self {
         Self {
             sort_key,
             bindings: BTreeMap::new(),
             parent: None,
-            aggregation: None,
+            store,
         }
     }
 
@@ -30,7 +31,7 @@ impl<'a> Context<'a> {
             sort_key: self.sort_key,
             bindings: BTreeMap::new(),
             parent: Some(self),
-            aggregation: None,
+            store: &*self.store,
         }
     }
 
@@ -51,24 +52,28 @@ impl<'a> Context<'a> {
     }
 
     pub fn bind(&mut self, name: impl Into<String>, value: Value) {
-        self.bindings.insert(name.into(), value);
+        self.bindings.insert(name.into(), Ok(value));
     }
 
-    pub fn lookup(&self, name: &str) -> Option<&Value> {
+    pub fn bind_placeholder(&mut self, name: String, value: anyhow::Result<Value>) {
+        self.bindings.insert(name, value);
+    }
+
+    pub fn lookup(&self, name: &str) -> Option<&anyhow::Result<Value>> {
         self.bindings
             .get(name)
             .or_else(|| self.parent.and_then(|c| c.lookup(name)))
     }
 
-    pub fn bind_aggregation(&mut self, state: &'a mut AggrState) {
-        self.aggregation = Some(state);
-    }
-
-    pub fn eval<'b>(&'b mut self, expr: &'b SimpleExpr) -> BoxFuture<'b, anyhow::Result<Value>> {
+    pub fn eval<'c>(&'c self, expr: &'c SimpleExpr) -> BoxFuture<'c, anyhow::Result<Value>> {
         async move {
             match expr {
                 SimpleExpr::Variable(v) => {
-                    let v = self.lookup(v).ok_or_else(|| anyhow!("variable '{}' is not bound", v))?;
+                    let v = self
+                        .lookup(v)
+                        .ok_or_else(|| anyhow!("variable '{}' is not bound", v))?
+                        .as_ref()
+                        .map_err(|e| anyhow!("{}", e))?;
                     Ok(self.value(|b| b.write_trusting(v.as_slice())))
                 }
                 SimpleExpr::Indexing(Ind { head, tail }) => {
@@ -146,20 +151,7 @@ impl<'a> Context<'a> {
                     Ok(self.value(|b| b.encode_bool(v)))
                 }
                 SimpleExpr::BinOp(b) => self.bin_op(&b.1, b.0, &b.2).await,
-                SimpleExpr::AggrOp(a) => {
-                    // AggrOp can only occur in the expression of an AGGREGATE clause, which will only be
-                    // evaluated within Aggregate::flush(), meaning that the context will have a parent
-                    // and a bound aggregation state
-                    let idx = self
-                        .aggregation
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("no aggregation state"))?
-                        .binary_search_by_key(&&**a, |x| &x.0)
-                        .map_err(|_| anyhow!("no aggregation result for {}({})", a.0.as_str(), a.1))?;
-                    // evaluate in the parent context as there is no additional value inside this child
-                    // context, and we already have self.aggregation borrowed
-                    self.aggregation.as_mut().unwrap()[idx].1.flush(self.parent.unwrap())
-                }
+                SimpleExpr::AggrOp(a) => bail!("unreplaced AGGREGATION operator: {}", a.0.as_str()),
                 SimpleExpr::FuncCall(f) => match f.name.as_str() {
                     "IsDefined" => {
                         ensure!(
@@ -172,12 +164,13 @@ impl<'a> Context<'a> {
                     }
                     _ => Err(anyhow!("undefined function '{}'", f.name)),
                 },
+                SimpleExpr::SubQuery(q) => Query::eval(q, self).await,
             }
         }
         .boxed()
     }
 
-    async fn bin_op<'b>(&'b mut self, l: &'b SimpleExpr, op: BinOp, r: &'b SimpleExpr) -> anyhow::Result<Value> {
+    async fn bin_op<'c>(&'c self, l: &'c SimpleExpr, op: BinOp, r: &'c SimpleExpr) -> anyhow::Result<Value> {
         match op {
             BinOp::Add => self.eval(l).await?.add(&self.eval(r).await?),
             BinOp::Sub => self.eval(l).await?.sub(&self.eval(r).await?),
@@ -270,16 +263,23 @@ mod tests {
         block_on(eval(cx, s)).unwrap().parse::<bool>().unwrap()
     }
 
-    fn ctx() -> Context<'static> {
-        Context::new(SortKey {
-            lamport: Default::default(),
-            stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
-        })
+    fn mk_store() -> EventStoreRef {
+        EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
+    }
+    fn ctx(store: &EventStoreRef) -> Context<'_> {
+        Context::new(
+            SortKey {
+                lamport: Default::default(),
+                stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
+            },
+            store,
+        )
     }
 
     #[tokio::test]
     async fn simple() {
-        let mut cx = ctx();
+        let store = mk_store();
+        let mut cx = ctx(&store);
         cx.bind(
             "x",
             Value::new(cx.sort_key, |b| {
@@ -309,7 +309,8 @@ mod tests {
 
     #[tokio::test]
     async fn primitives() {
-        let mut cx = ctx();
+        let store = mk_store();
+        let mut cx = ctx(&store);
         assert_eq!(eval(&mut cx, "NULL").await.unwrap(), "null");
         assert_eq!(eval(&mut cx, "TRUE").await.unwrap(), "true");
         assert_eq!(eval(&mut cx, "FALSE").await.unwrap(), "false");
@@ -328,7 +329,8 @@ mod tests {
 
     #[tokio::test]
     async fn boolean() {
-        let mut cx = ctx();
+        let store = mk_store();
+        let mut cx = ctx(&store);
 
         assert_eq!(eval(&mut cx, "FALSE ∧ FALSE").await.unwrap(), "false");
         assert_eq!(eval(&mut cx, "FALSE ∧ TRUE").await.unwrap(), "false");
@@ -359,7 +361,8 @@ mod tests {
 
     #[tokio::test]
     async fn compare() {
-        let mut cx = ctx();
+        let store = mk_store();
+        let mut cx = ctx(&store);
 
         assert_eq!(
             eval(&mut cx, "NULL = NULL ∧ NULL ≥ NULL ∧ NULL ≤ NULL").await.unwrap(),
@@ -372,7 +375,8 @@ mod tests {
 
         #[allow(clippy::bool_comparison)]
         fn prop_bool(left: bool, right: bool) -> bool {
-            let mut cx = ctx();
+            let store = mk_store();
+            let mut cx = ctx(&store);
             cx.bind("a", cx.value(|b| b.encode_bool(left)));
             cx.bind("b", cx.value(|b| b.encode_bool(right)));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
@@ -386,7 +390,8 @@ mod tests {
         quickcheck(prop_bool as fn(bool, bool) -> bool);
 
         fn prop_u64(left: u64, right: u64) -> bool {
-            let mut cx = ctx();
+            let store = mk_store();
+            let mut cx = ctx(&store);
             cx.bind("a", cx.value(|b| b.encode_u64(left)));
             cx.bind("b", cx.value(|b| b.encode_u64(right)));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
@@ -404,7 +409,8 @@ mod tests {
             if left.is_nan() || right.is_nan() {
                 return TestResult::discard();
             }
-            let mut cx = ctx();
+            let store = mk_store();
+            let mut cx = ctx(&store);
             cx.bind("a", cx.value(|b| b.encode_f64(left)));
             cx.bind("b", cx.value(|b| b.encode_f64(right)));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
@@ -418,7 +424,8 @@ mod tests {
         quickcheck(prop_f64 as fn(f64, f64) -> TestResult);
 
         fn prop_str(left: String, right: String) -> bool {
-            let mut cx = ctx();
+            let store = mk_store();
+            let mut cx = ctx(&store);
             cx.bind("a", cx.value(|b| b.encode_str(left.as_str())));
             cx.bind("b", cx.value(|b| b.encode_str(right.as_str())));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
@@ -436,7 +443,8 @@ mod tests {
 
     #[tokio::test]
     async fn constructors() {
-        let mut cx = ctx();
+        let store = mk_store();
+        let mut cx = ctx(&store);
         assert_eq!(eval(&mut cx, "([1,'x',NULL])[0]").await.unwrap(), "1");
         assert_eq!(eval(&mut cx, "([1,'x',NULL])[1]").await.unwrap(), "\"x\"");
         assert_eq!(eval(&mut cx, "([1,'x',NULL])[2]").await.unwrap(), "null");
@@ -473,7 +481,8 @@ mod tests {
 
     #[tokio::test]
     async fn arithmetic() {
-        let mut cx = ctx();
+        let store = mk_store();
+        let mut cx = ctx(&store);
         assert_eq!(eval(&mut cx, "1+2").await.unwrap(), "3");
         assert_eq!(eval(&mut cx, "1+2*3^2%5").await.unwrap(), "4");
         assert_eq!(eval(&mut cx, "1.0+2.0*3.0^2.0%5.0").await.unwrap(), "4.0");
@@ -492,7 +501,8 @@ mod tests {
 
     #[tokio::test]
     async fn indexing() {
-        let mut cx = ctx();
+        let store = mk_store();
+        let mut cx = ctx(&store);
         assert_eq!(eval(&mut cx, "([42])[0]").await.unwrap(), "42");
         assert_eq!(eval(&mut cx, "([42])[1-1]").await.unwrap(), "42");
         assert_eq!(eval(&mut cx, "({x:12}).x").await.unwrap(), "12");
@@ -502,7 +512,8 @@ mod tests {
 
     #[tokio::test]
     async fn cases() {
-        let mut cx = ctx();
+        let store = mk_store();
+        let mut cx = ctx(&store);
         assert_eq!(
             eval(&mut cx, "CASE 5 ≤ 5 => 42 CASE TRUE => NULL ENDCASE")
                 .await
@@ -530,14 +541,16 @@ mod tests {
 
     #[tokio::test]
     async fn alternative() {
-        let mut cx = ctx();
+        let store = mk_store();
+        let mut cx = ctx(&store);
         assert_eq!(eval(&mut cx, "5 // 6").await.unwrap(), "5");
         assert_eq!(eval(&mut cx, "(5).a // 6").await.unwrap(), "6");
     }
 
     #[tokio::test]
     async fn builtin_functions() {
-        let mut cx = ctx();
+        let store = mk_store();
+        let mut cx = ctx(&store);
 
         assert_eq!(eval(&mut cx, "IsDefined(1)").await.unwrap(), "true");
         assert_eq!(eval(&mut cx, "IsDefined(1 + '')").await.unwrap(), "false");

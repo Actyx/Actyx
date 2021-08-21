@@ -69,7 +69,8 @@ binary_op = _{ alternative | add | sub | mul | div | modulo | pow | and | or | x
 var_index = { var ~ index* }
 expr_index = { "(" ~ simple_expr ~ ")" ~ index* }
 func_call = { func_name ~ "(" ~ ( simple_expr ~ ("," ~ simple_expr)* )? ~ ")" }
-simple_atom = _{ decimal | func_call | var_index | string | expr_index | simple_not | object | array | null | bool | simple_cases | aggr_op }
+simple_atom = _{ decimal | func_call | var_index | string | expr_index | simple_not | object | array | null | bool | simple_cases | aggr_op | sub_query }
+sub_query = { features? ~ query }
 simple_not = { not ~ simple_atom }
 simple_cases = { ( "CASE" ~ simple_expr ~ "=>" ~ simple_expr )+ ~ "ENDCASE" }
 

@@ -3,9 +3,15 @@ use cbor_data::Encoder;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use futures::executor::block_on;
 use runtime::{eval::Context, query::Query, value::Value};
+use swarm::event_store_ref::EventStoreRef;
+
+fn store() -> EventStoreRef {
+    EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
+}
 
 fn v() -> Value {
-    let cx = Context::new(Default::default());
+    let store = store();
+    let cx = Context::new(Default::default(), &store);
     cx.value(|b| {
         b.encode_dict(|b| {
             b.with_key("x", |b| b.encode_u64(5));
@@ -19,12 +25,12 @@ const QUERY: &str = "FROM allEvents FILTER _.x > 3 | _.y = 'hello' SELECT [_.x +
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("nnop", |b| {
-        let mut query = Query::from("FROM allEvents".parse::<language::Query>().unwrap());
+        let mut query = Query::from("FROM allEvents".parse::<language::Query>().unwrap()).make_feeder(store());
         let value = v();
         b.iter(|| black_box(block_on(query.feed(Some(value.clone())))));
     });
     c.bench_function("feed value", |b| {
-        let mut query = Query::from(QUERY.parse::<language::Query>().unwrap());
+        let mut query = Query::from(QUERY.parse::<language::Query>().unwrap()).make_feeder(store());
         let value = v();
         b.iter(|| black_box(block_on(query.feed(Some(value.clone())))));
     });

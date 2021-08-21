@@ -5,7 +5,7 @@ mod render;
 pub use self::non_empty::NonEmptyVec;
 use self::render::render_tag_expr;
 use crate::{tags::Tag, AppId, EventKey, LamportTimestamp, StreamId, Timestamp};
-use std::sync::Arc;
+use std::{convert::TryInto, sync::Arc};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 /// A [`Query`] can be constructed using the Actyx Query Language (AQL). For an in-depth overview
@@ -213,10 +213,11 @@ decl_op! {
 }
 
 mod var;
+pub use var::Var;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum SimpleExpr {
-    Variable(var::Var),
+    Variable(Var),
     Indexing(Ind),
     Number(Num),
     String(String),
@@ -229,6 +230,7 @@ pub enum SimpleExpr {
     Not(Arc<SimpleExpr>),
     AggrOp(Arc<(AggrOp, SimpleExpr)>),
     FuncCall(FuncCall),
+    SubQuery(Query),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -288,6 +290,90 @@ impl SimpleExpr {
                         expr.traverse(f);
                     }
                 }
+                SimpleExpr::SubQuery(_) => {
+                    // descending into a subquery is fishy, needs to be done explicitly
+                }
+            }
+        }
+    }
+
+    pub fn rewrite(&self, f: &mut impl FnMut(&SimpleExpr) -> Option<SimpleExpr>) -> Self {
+        if let Some(expr) = f(self) {
+            return expr;
+        }
+        match self {
+            SimpleExpr::Variable(_v) => self.clone(),
+            SimpleExpr::Indexing(Ind { head, tail }) => {
+                let head = Arc::new(head.rewrite(f));
+                let tail = tail
+                    .iter()
+                    .map(|i| match i {
+                        Index::String(_) => i.clone(),
+                        Index::Number(_) => i.clone(),
+                        Index::Expr(e) => Index::Expr(e.rewrite(f)),
+                    })
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                SimpleExpr::Indexing(Ind { head, tail })
+            }
+            SimpleExpr::Number(_n) => self.clone(),
+            SimpleExpr::String(_s) => self.clone(),
+            SimpleExpr::Object(Obj { props }) => {
+                let props = props
+                    .iter()
+                    .map(|(i, e)| {
+                        let i = match i {
+                            Index::String(_s) => i.clone(),
+                            Index::Number(_n) => i.clone(),
+                            Index::Expr(e) => Index::Expr(e.rewrite(f)),
+                        };
+                        let e = e.rewrite(f);
+                        (i, e)
+                    })
+                    .collect();
+                SimpleExpr::Object(Obj { props })
+            }
+            SimpleExpr::Array(Arr { items }) => {
+                let items = items.iter().map(|e| e.rewrite(f)).collect::<Vec<_>>();
+                SimpleExpr::Array(Arr { items: items.into() })
+            }
+            SimpleExpr::Null => self.clone(),
+            SimpleExpr::Bool(_) => self.clone(),
+            SimpleExpr::Cases(c) => {
+                let c = c
+                    .iter()
+                    .map(|(cond, expr)| (cond.rewrite(f), expr.rewrite(f)))
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                SimpleExpr::Cases(c)
+            }
+            SimpleExpr::BinOp(o) => SimpleExpr::BinOp(Arc::new((o.0, o.1.rewrite(f), o.2.rewrite(f)))),
+            SimpleExpr::Not(e) => SimpleExpr::Not(Arc::new(e.rewrite(f))),
+            SimpleExpr::AggrOp(a) => SimpleExpr::AggrOp(Arc::new((a.0, a.1.rewrite(f)))),
+            SimpleExpr::FuncCall(FuncCall { name, args }) => {
+                let args = args.iter().map(|e| e.rewrite(f)).collect();
+                SimpleExpr::FuncCall(FuncCall {
+                    name: name.clone(),
+                    args,
+                })
+            }
+            SimpleExpr::SubQuery(q) => {
+                let features = q.features.clone();
+                let from = q.from.clone();
+                let ops = q
+                    .ops
+                    .iter()
+                    .map(|op| match op {
+                        Operation::Filter(e) => Operation::Filter(e.rewrite(f)),
+                        Operation::Select(e) => {
+                            Operation::Select(e.iter().map(|e| e.rewrite(f)).collect::<Vec<_>>().try_into().unwrap())
+                        }
+                        Operation::Aggregate(a) => Operation::Aggregate(a.rewrite(f)),
+                    })
+                    .collect();
+                SimpleExpr::SubQuery(Query { features, from, ops })
             }
         }
     }
@@ -599,7 +685,7 @@ mod for_tests {
         fn arbitrary(g: &mut Gen) -> Self {
             arb!(SimpleExpr: g =>
                 Variable Number String Bool,
-                Indexing Object Array Cases BinOp Not FuncCall,
+                Indexing Object Array Cases BinOp Not FuncCall SubQuery,
                 AggrOp{ Context::Simple },
                 Null
             )
@@ -614,6 +700,7 @@ mod for_tests {
                 Not(x, (**x).clone())
                 AggrOp(x,)
                 FuncCall(x,)
+                SubQuery(x,)
                 , Null)
         }
     }

@@ -43,6 +43,12 @@ impl std::fmt::Display for Var {
 }
 
 impl Var {
+    /// For internal use only
+    ///
+    /// If you create invalid variables and serialize the expression, be prepared for breakage.
+    pub fn internal(s: String) -> Self {
+        Self(s)
+    }
     pub fn into_inner(self) -> String {
         self.0
     }

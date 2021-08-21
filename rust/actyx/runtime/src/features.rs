@@ -146,18 +146,18 @@ impl Features {
 
 fn features_op(feat: &mut Features, op: &Operation) {
     match op {
-        Operation::Filter(f) => features_simple(feat, &f.expr),
+        Operation::Filter(f) => features_simple(feat, f),
         Operation::Select(s) => {
-            if s.exprs.len() > 1 {
+            if s.len() > 1 {
                 feat.add(multiEmission);
             }
-            for expr in s.exprs.iter() {
+            for expr in s.iter() {
                 features_simple(feat, expr);
             }
         }
         Operation::Aggregate(a) => {
             feat.add(aggregate);
-            features_simple(feat, &a.expr);
+            features_simple(feat, a);
         }
     }
 }

@@ -18,6 +18,7 @@ use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
 };
+use trees::query::TagExprError;
 
 #[derive(Debug, Clone, derive_more::Display, derive_more::Error)]
 pub enum Error {
@@ -100,8 +101,8 @@ pub enum EventStoreRequest {
     },
 }
 
-use trees::query::TagExprError;
 use EventStoreRequest::*;
+
 impl EventStoreRef {
     pub fn new(f: impl Fn(EventStoreRequest) -> Result<(), Error> + Send + Sync + 'static) -> Self {
         Self { tx: Arc::new(f) }
