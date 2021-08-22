@@ -82,7 +82,7 @@ impl Processor for Select {
 
 #[cfg(test)]
 mod tests {
-    use actyx_sdk::{language::SortKey, NodeId};
+    use actyx_sdk::{language::SortKey, NodeId, OffsetMap};
     use cbor_data::Encoder;
 
     use super::*;
@@ -106,8 +106,7 @@ mod tests {
     #[tokio::test]
     async fn filter() {
         let mut f = Filter(simple_expr("_ > 5 + a"));
-        let store = store();
-        let mut cx = Context::new(key(), &store);
+        let mut cx = Context::owned(key(), store(), OffsetMap::empty(), OffsetMap::empty());
         cx.bind("a", cx.value(|b| b.encode_f64(3.0)));
 
         cx.bind("_", cx.value(|b| b.encode_i64(8)));
@@ -121,8 +120,7 @@ mod tests {
     #[tokio::test]
     async fn select() {
         let mut s = Select(vec![simple_expr("_.x + a")].try_into().unwrap());
-        let store = store();
-        let mut cx = Context::new(key(), &store);
+        let mut cx = Context::owned(key(), store(), OffsetMap::empty(), OffsetMap::empty());
         cx.bind("a", cx.value(|b| b.encode_f64(0.5)));
 
         cx.bind(

@@ -3,7 +3,10 @@ use crate::{
     operation::{Operation, Processor},
     value::Value,
 };
-use actyx_sdk::language;
+use actyx_sdk::{language, OffsetMap};
+use ax_futures_util::ReceiverExt;
+use cbor_data::{Encoder, Writer};
+use futures::StreamExt;
 use swarm::event_store_ref::EventStoreRef;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -16,26 +19,86 @@ pub struct Query {
 impl Query {
     /// run a query in the given evaluation context and collect all results
     pub async fn eval(query: &language::Query, cx: &Context<'_>) -> Result<Value, anyhow::Error> {
-        todo!()
+        let mut feeder = Query::feeder_from(
+            &query.ops,
+            cx.store.as_ref().clone(),
+            cx.from_offsets_excluding.as_ref().clone(),
+            cx.to_offsets_including.as_ref().clone(),
+        );
+        let mut stream = cx
+            .store
+            .bounded_forward(
+                query.from.clone(),
+                cx.from_offsets_excluding.as_ref().clone(),
+                cx.to_offsets_including.as_ref().clone(),
+                true,
+            )
+            .await?
+            .stop_on_error();
+
+        let mut results = vec![];
+        while let Some(ev) = stream.next().await {
+            let value = Value::from((ev.key, ev.payload.clone()));
+            let vs = feeder.feed(Some(value)).await;
+            results.reserve(vs.len());
+            for v in vs {
+                results.push(v?);
+            }
+        }
+
+        let vs = feeder.feed(None).await;
+        results.reserve(vs.len());
+        for v in vs {
+            results.push(v?);
+        }
+        Ok(cx.value(move |b| {
+            b.encode_array(move |b| {
+                for v in results.drain(..) {
+                    b.write_trusting(v.as_slice());
+                }
+            })
+        }))
     }
 
-    pub fn make_feeder(&self, store: EventStoreRef) -> Feeder {
+    pub fn make_feeder(
+        &self,
+        store: EventStoreRef,
+        from_offsets_excluding: OffsetMap,
+        to_offsets_including: OffsetMap,
+    ) -> Feeder {
         let processors = self.stages.iter().map(|op| op.make_processor()).collect();
-        Feeder { processors, store }
+        Feeder {
+            processors,
+            store,
+            from_offsets_excluding,
+            to_offsets_including,
+        }
     }
 
-    pub fn feeder_from(stages: &[language::Operation], store: EventStoreRef) -> Feeder {
+    pub fn feeder_from(
+        stages: &[language::Operation],
+        store: EventStoreRef,
+        from_offsets_excluding: OffsetMap,
+        to_offsets_including: OffsetMap,
+    ) -> Feeder {
         let processors = stages
             .iter()
             .map(|s| Operation::from(s.clone()).make_processor())
             .collect();
-        Feeder { processors, store }
+        Feeder {
+            processors,
+            store,
+            from_offsets_excluding,
+            to_offsets_including,
+        }
     }
 }
 
 pub struct Feeder {
     processors: Vec<Box<dyn Processor>>,
     store: EventStoreRef,
+    from_offsets_excluding: OffsetMap,
+    to_offsets_including: OffsetMap,
 }
 impl Feeder {
     pub async fn feed(&mut self, input: Option<Value>) -> Vec<Result<Value, anyhow::Error>> {
@@ -45,7 +108,12 @@ impl Feeder {
         let mut ctx = &mut ctx[..];
 
         // create the outermost context, stored on the stack
-        let mut cx = Context::new(input.as_ref().map(|x| x.key()).unwrap_or_default(), &self.store);
+        let mut cx = Context::new(
+            input.as_ref().map(|x| x.key()).unwrap_or_default(),
+            &self.store,
+            &self.from_offsets_excluding,
+            &self.to_offsets_including,
+        );
 
         // set up per-iteration state
         let mut cx = &mut cx; // reference to the current context
@@ -78,6 +146,7 @@ impl Feeder {
             }
         }
 
+        // get rid of the Option wrapper and the possibly trailing None
         input.into_iter().flatten().collect()
     }
 }
@@ -108,8 +177,11 @@ mod tests {
 
     async fn feed(q: &str, v: &str) -> Vec<String> {
         let q = Query::from(q.parse::<language::Query>().unwrap());
-        let v = Context::new(key(), &store()).eval(&v.parse().unwrap()).await.unwrap();
-        q.make_feeder(store())
+        let v = Context::owned(key(), store(), OffsetMap::empty(), OffsetMap::empty())
+            .eval(&v.parse().unwrap())
+            .await
+            .unwrap();
+        q.make_feeder(store(), OffsetMap::empty(), OffsetMap::empty())
             .feed(Some(v))
             .await
             .into_iter()

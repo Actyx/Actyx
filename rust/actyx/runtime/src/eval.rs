@@ -2,27 +2,55 @@ use crate::{
     query::Query,
     value::{Value, ValueKind},
 };
-use actyx_sdk::language::{BinOp, Ind, Index, Num, SimpleExpr, SortKey};
+use actyx_sdk::{
+    language::{BinOp, Ind, Index, Num, SimpleExpr, SortKey},
+    OffsetMap,
+};
 use anyhow::{anyhow, bail, ensure};
 use cbor_data::{CborBuilder, CborOwned, Encoder, WithOutput, Writer};
 use futures::{future::BoxFuture, FutureExt};
-use std::{cmp::Ordering, collections::BTreeMap};
+use std::{borrow::Cow, cmp::Ordering, collections::BTreeMap};
 use swarm::event_store_ref::EventStoreRef;
 
 pub struct Context<'a> {
     sort_key: SortKey,
     bindings: BTreeMap<String, anyhow::Result<Value>>,
     parent: Option<&'a Context<'a>>,
-    store: &'a EventStoreRef,
+    pub store: Cow<'a, EventStoreRef>,
+    pub from_offsets_excluding: Cow<'a, OffsetMap>,
+    pub to_offsets_including: Cow<'a, OffsetMap>,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(sort_key: SortKey, store: &'a EventStoreRef) -> Self {
+    pub fn new(
+        sort_key: SortKey,
+        store: &'a EventStoreRef,
+        from_offsets_excluding: &'a OffsetMap,
+        to_offsets_including: &'a OffsetMap,
+    ) -> Self {
         Self {
             sort_key,
             bindings: BTreeMap::new(),
             parent: None,
-            store,
+            store: Cow::Borrowed(store),
+            from_offsets_excluding: Cow::Borrowed(from_offsets_excluding),
+            to_offsets_including: Cow::Borrowed(to_offsets_including),
+        }
+    }
+
+    pub fn owned(
+        sort_key: SortKey,
+        store: EventStoreRef,
+        from_offsets_excluding: OffsetMap,
+        to_offsets_including: OffsetMap,
+    ) -> Self {
+        Self {
+            sort_key,
+            bindings: BTreeMap::new(),
+            parent: None,
+            store: Cow::Owned(store),
+            from_offsets_excluding: Cow::Owned(from_offsets_excluding),
+            to_offsets_including: Cow::Owned(to_offsets_including),
         }
     }
 
@@ -31,7 +59,9 @@ impl<'a> Context<'a> {
             sort_key: self.sort_key,
             bindings: BTreeMap::new(),
             parent: Some(self),
-            store: &*self.store,
+            store: Cow::Borrowed(self.store.as_ref()),
+            from_offsets_excluding: Cow::Borrowed(self.from_offsets_excluding.as_ref()),
+            to_offsets_including: Cow::Borrowed(self.to_offsets_including.as_ref()),
         }
     }
 
@@ -266,20 +296,21 @@ mod tests {
     fn mk_store() -> EventStoreRef {
         EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
     }
-    fn ctx(store: &EventStoreRef) -> Context<'_> {
-        Context::new(
+    fn ctx() -> Context<'static> {
+        Context::owned(
             SortKey {
                 lamport: Default::default(),
                 stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
             },
-            store,
+            mk_store(),
+            OffsetMap::empty(),
+            OffsetMap::empty(),
         )
     }
 
     #[tokio::test]
     async fn simple() {
-        let store = mk_store();
-        let mut cx = ctx(&store);
+        let mut cx = ctx();
         cx.bind(
             "x",
             Value::new(cx.sort_key, |b| {
@@ -309,8 +340,7 @@ mod tests {
 
     #[tokio::test]
     async fn primitives() {
-        let store = mk_store();
-        let mut cx = ctx(&store);
+        let mut cx = ctx();
         assert_eq!(eval(&mut cx, "NULL").await.unwrap(), "null");
         assert_eq!(eval(&mut cx, "TRUE").await.unwrap(), "true");
         assert_eq!(eval(&mut cx, "FALSE").await.unwrap(), "false");
@@ -329,8 +359,7 @@ mod tests {
 
     #[tokio::test]
     async fn boolean() {
-        let store = mk_store();
-        let mut cx = ctx(&store);
+        let mut cx = ctx();
 
         assert_eq!(eval(&mut cx, "FALSE ∧ FALSE").await.unwrap(), "false");
         assert_eq!(eval(&mut cx, "FALSE ∧ TRUE").await.unwrap(), "false");
@@ -361,8 +390,7 @@ mod tests {
 
     #[tokio::test]
     async fn compare() {
-        let store = mk_store();
-        let mut cx = ctx(&store);
+        let mut cx = ctx();
 
         assert_eq!(
             eval(&mut cx, "NULL = NULL ∧ NULL ≥ NULL ∧ NULL ≤ NULL").await.unwrap(),
@@ -375,8 +403,7 @@ mod tests {
 
         #[allow(clippy::bool_comparison)]
         fn prop_bool(left: bool, right: bool) -> bool {
-            let store = mk_store();
-            let mut cx = ctx(&store);
+            let mut cx = ctx();
             cx.bind("a", cx.value(|b| b.encode_bool(left)));
             cx.bind("b", cx.value(|b| b.encode_bool(right)));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
@@ -390,8 +417,7 @@ mod tests {
         quickcheck(prop_bool as fn(bool, bool) -> bool);
 
         fn prop_u64(left: u64, right: u64) -> bool {
-            let store = mk_store();
-            let mut cx = ctx(&store);
+            let mut cx = ctx();
             cx.bind("a", cx.value(|b| b.encode_u64(left)));
             cx.bind("b", cx.value(|b| b.encode_u64(right)));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
@@ -409,8 +435,7 @@ mod tests {
             if left.is_nan() || right.is_nan() {
                 return TestResult::discard();
             }
-            let store = mk_store();
-            let mut cx = ctx(&store);
+            let mut cx = ctx();
             cx.bind("a", cx.value(|b| b.encode_f64(left)));
             cx.bind("b", cx.value(|b| b.encode_f64(right)));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
@@ -424,8 +449,7 @@ mod tests {
         quickcheck(prop_f64 as fn(f64, f64) -> TestResult);
 
         fn prop_str(left: String, right: String) -> bool {
-            let store = mk_store();
-            let mut cx = ctx(&store);
+            let mut cx = ctx();
             cx.bind("a", cx.value(|b| b.encode_str(left.as_str())));
             cx.bind("b", cx.value(|b| b.encode_str(right.as_str())));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
@@ -443,8 +467,7 @@ mod tests {
 
     #[tokio::test]
     async fn constructors() {
-        let store = mk_store();
-        let mut cx = ctx(&store);
+        let mut cx = ctx();
         assert_eq!(eval(&mut cx, "([1,'x',NULL])[0]").await.unwrap(), "1");
         assert_eq!(eval(&mut cx, "([1,'x',NULL])[1]").await.unwrap(), "\"x\"");
         assert_eq!(eval(&mut cx, "([1,'x',NULL])[2]").await.unwrap(), "null");
@@ -481,8 +504,7 @@ mod tests {
 
     #[tokio::test]
     async fn arithmetic() {
-        let store = mk_store();
-        let mut cx = ctx(&store);
+        let mut cx = ctx();
         assert_eq!(eval(&mut cx, "1+2").await.unwrap(), "3");
         assert_eq!(eval(&mut cx, "1+2*3^2%5").await.unwrap(), "4");
         assert_eq!(eval(&mut cx, "1.0+2.0*3.0^2.0%5.0").await.unwrap(), "4.0");
@@ -501,8 +523,7 @@ mod tests {
 
     #[tokio::test]
     async fn indexing() {
-        let store = mk_store();
-        let mut cx = ctx(&store);
+        let mut cx = ctx();
         assert_eq!(eval(&mut cx, "([42])[0]").await.unwrap(), "42");
         assert_eq!(eval(&mut cx, "([42])[1-1]").await.unwrap(), "42");
         assert_eq!(eval(&mut cx, "({x:12}).x").await.unwrap(), "12");
@@ -512,8 +533,7 @@ mod tests {
 
     #[tokio::test]
     async fn cases() {
-        let store = mk_store();
-        let mut cx = ctx(&store);
+        let mut cx = ctx();
         assert_eq!(
             eval(&mut cx, "CASE 5 ≤ 5 => 42 CASE TRUE => NULL ENDCASE")
                 .await
@@ -541,16 +561,14 @@ mod tests {
 
     #[tokio::test]
     async fn alternative() {
-        let store = mk_store();
-        let mut cx = ctx(&store);
+        let mut cx = ctx();
         assert_eq!(eval(&mut cx, "5 // 6").await.unwrap(), "5");
         assert_eq!(eval(&mut cx, "(5).a // 6").await.unwrap(), "6");
     }
 
     #[tokio::test]
     async fn builtin_functions() {
-        let store = mk_store();
-        let mut cx = ctx(&store);
+        let mut cx = ctx();
 
         assert_eq!(eval(&mut cx, "IsDefined(1)").await.unwrap(), "true");
         assert_eq!(eval(&mut cx, "IsDefined(1 + '')").await.unwrap(), "false");

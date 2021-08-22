@@ -270,7 +270,7 @@ mod tests {
     };
     use actyx_sdk::{
         language::{self, SortKey},
-        NodeId,
+        NodeId, OffsetMap,
     };
     use swarm::event_store_ref::EventStoreRef;
 
@@ -285,13 +285,15 @@ mod tests {
     fn store() -> EventStoreRef {
         EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
     }
-    fn ctx(store: &EventStoreRef) -> Context<'_> {
-        Context::new(
+    fn ctx() -> Context<'static> {
+        Context::owned(
             SortKey {
                 lamport: Default::default(),
                 stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
             },
-            store,
+            store(),
+            OffsetMap::empty(),
+            OffsetMap::empty(),
         )
     }
     async fn apply<'a, 'b: 'a>(a: &'a mut dyn Processor, cx: &'a mut Context<'b>, v: u64) -> Vec<Value> {
@@ -313,8 +315,7 @@ mod tests {
     #[tokio::test]
     async fn sum() {
         let mut s = a("42 - SUM(_ * 2)");
-        let store = store();
-        let mut cx = ctx(&store);
+        let mut cx = ctx();
 
         assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
         assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
@@ -331,8 +332,7 @@ mod tests {
     #[tokio::test]
     async fn product() {
         let mut s = a("42 - PRODUCT(_ * 2)");
-        let store = store();
-        let mut cx = ctx(&store);
+        let mut cx = ctx();
 
         assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
         assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
@@ -349,8 +349,7 @@ mod tests {
     #[tokio::test]
     async fn min_max() {
         let mut s = a("[FIRST(_), LAST(_), MIN(_), MAX(_)]");
-        let store = store();
-        let mut cx = ctx(&store);
+        let mut cx = ctx();
 
         assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
         assert_eq!(flush(&mut *s, &cx).await, "[2, 2, 2, 2]");

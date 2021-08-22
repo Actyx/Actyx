@@ -203,7 +203,6 @@ dependencies = [
  "swarm",
  "thiserror",
  "tokio",
- "tokio-stream",
  "tracing",
  "tracing-subscriber",
  "tree_magic",
@@ -532,6 +531,7 @@ dependencies = [
  "pin-project-lite",
  "rand 0.8.4",
  "tokio",
+ "tokio-stream",
  "tracing",
 ]
 
@@ -5165,6 +5165,7 @@ version = "0.1.0"
 dependencies = [
  "actyx_sdk",
  "anyhow",
+ "ax-futures-util",
  "cbor-data",
  "criterion",
  "derive_more",

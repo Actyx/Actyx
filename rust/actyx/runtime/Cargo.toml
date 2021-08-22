@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 actyx_sdk = { path = "../../sdk" }
+ax-futures-util = { path = "../ax-futures-util" }
 anyhow = "1.0.42"
 cbor-data = "0.5.0"
 derive_more = "0.99.16"

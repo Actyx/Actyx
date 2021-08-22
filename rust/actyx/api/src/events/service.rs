@@ -7,10 +7,8 @@ use actyx_sdk::{
     },
     AppId, Event, NodeId, OffsetMap, OffsetOrMin, Payload,
 };
-use futures::{
-    future::ready,
-    stream::{BoxStream, StreamExt},
-};
+use ax_futures_util::ReceiverExt;
+use futures::stream::{BoxStream, StreamExt};
 use genawaiter::sync::{Co, Gen};
 use runtime::{
     features::{Endpoint, Features},
@@ -19,20 +17,6 @@ use runtime::{
 };
 use std::{convert::TryFrom, num::NonZeroU64};
 use swarm::event_store_ref::EventStoreRef;
-use tokio::sync::mpsc::Receiver;
-use tokio_stream::wrappers::ReceiverStream;
-
-trait ReceiverExt<T> {
-    fn stop_on_error(self) -> BoxStream<'static, T>;
-}
-impl<T: Send + 'static, E: std::fmt::Debug + Send + 'static> ReceiverExt<T> for Receiver<Result<T, E>> {
-    fn stop_on_error(self) -> BoxStream<'static, T> {
-        ReceiverStream::new(self)
-            .take_while(|x| ready(x.is_ok()))
-            .map(|x| x.unwrap())
-            .boxed()
-    }
-}
 
 #[derive(Clone)]
 pub struct EventService {
@@ -98,7 +82,7 @@ impl EventService {
         let query = Query::from(request.query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Query)?;
-        let mut query = query.make_feeder(self.store.clone());
+        let mut query = query.make_feeder(self.store.clone(), lower_bound.clone(), upper_bound.clone());
 
         let mut stream = match request.order {
             Order::Asc => {
@@ -153,10 +137,12 @@ impl EventService {
         let present = self.store.offsets().await?.present();
         let lower_bound = request.lower_bound.unwrap_or_default();
 
-        let mut query = Query::from(request.query);
+        let query = Query::from(request.query);
         let tag_expr = query.from.clone();
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Subscribe)?;
+        // no sub-queries supported yet, so no OffsetMap needed
+        let mut query = query.make_feeder(self.store.clone(), OffsetMap::empty(), OffsetMap::empty());
 
         let mut bounded = self
             .store
@@ -168,16 +154,21 @@ impl EventService {
             .unbounded_forward(tag_expr, present.clone())
             .await?
             .stop_on_error();
+
+        async fn y(co: &Co<SubscribeResponse>, vs: Vec<anyhow::Result<Value>>, event: Option<&Event<Payload>>) {
+            for v in vs {
+                co.yield_(match v {
+                    Ok(v) => SubscribeResponse::Event(to_event(v, event)),
+                    Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e.to_string())),
+                })
+                .await;
+            }
+        }
+
         let gen = Gen::new(move |co: Co<SubscribeResponse>| async move {
             while let Some(ev) = bounded.next().await {
                 let vs = query.feed(Some(to_value(&ev))).await;
-                for v in vs {
-                    co.yield_(match v {
-                        Ok(v) => SubscribeResponse::Event(to_event(v, Some(&ev))),
-                        Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
-                    })
-                    .await;
-                }
+                y(&co, vs, Some(&ev)).await;
             }
 
             co.yield_(SubscribeResponse::Offsets(OffsetMapResponse { offsets: present }))
@@ -185,13 +176,7 @@ impl EventService {
 
             while let Some(ev) = unbounded.next().await {
                 let vs = query.feed(Some(to_value(&ev))).await;
-                for v in vs {
-                    co.yield_(match v {
-                        Ok(v) => SubscribeResponse::Event(to_event(v, Some(&ev))),
-                        Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
-                    })
-                    .await;
-                }
+                y(&co, vs, Some(&ev)).await;
             }
         });
 
@@ -208,10 +193,12 @@ impl EventService {
             StartFrom::LowerBound(x) => x.clone(),
         };
 
-        let mut query = Query::from(request.query);
+        let query = Query::from(request.query);
         let tag_expr = query.from.clone();
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::SubscribeMonotonic)?;
+        // no sub-queries supported yet, so no OffsetMap needed
+        let mut query = query.make_feeder(self.store.clone(), OffsetMap::empty(), OffsetMap::empty());
 
         let mut bounded = self
             .store
@@ -234,19 +221,27 @@ impl EventService {
                 .map(|event| event.key),
         };
 
+        async fn y(
+            co: &Co<SubscribeMonotonicResponse>,
+            vs: Vec<anyhow::Result<Value>>,
+            event: Option<&Event<Payload>>,
+        ) {
+            for v in vs {
+                co.yield_(match v {
+                    Ok(v) => SubscribeMonotonicResponse::Event {
+                        event: to_event(v, event),
+                        caught_up: true,
+                    },
+                    Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e.to_string())),
+                })
+                .await;
+            }
+        }
+
         let gen = Gen::new(move |co: Co<SubscribeMonotonicResponse>| async move {
             while let Some(ev) = bounded.next().await {
                 let vs = query.feed(Some(to_value(&ev))).await;
-                for v in vs {
-                    co.yield_(match v {
-                        Ok(v) => SubscribeMonotonicResponse::Event {
-                            event: to_event(v, Some(&ev)),
-                            caught_up: true,
-                        },
-                        Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
-                    })
-                    .await;
-                }
+                y(&co, vs, Some(&ev)).await;
             }
 
             co.yield_(SubscribeMonotonicResponse::Offsets(OffsetMapResponse {
@@ -259,16 +254,7 @@ impl EventService {
                 if key > latest {
                     latest = key;
                     let vs = query.feed(Some(to_value(&ev))).await;
-                    for v in vs {
-                        co.yield_(match v {
-                            Ok(v) => SubscribeMonotonicResponse::Event {
-                                event: to_event(v, Some(&ev)),
-                                caught_up: true,
-                            },
-                            Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
-                        })
-                        .await;
-                    }
+                    y(&co, vs, Some(&ev)).await;
                 } else {
                     co.yield_(SubscribeMonotonicResponse::TimeTravel { new_start: ev.key })
                         .await;

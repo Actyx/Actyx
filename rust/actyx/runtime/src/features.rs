@@ -68,6 +68,7 @@ features! {
     eventKeyRange: Beta [],
     multiEmission: Alpha [Subscribe SubscribeMonotonic],
     aggregate: Alpha [Subscribe SubscribeMonotonic],
+    subQuery: Alpha [Subscribe SubscribeMonotonic],
 }
 
 #[derive(Debug, Clone, Copy, derive_more::Display)]
@@ -185,9 +186,18 @@ fn features_tag(feat: &mut Features, expr: &TagExpr) {
     }
 }
 
-fn features_simple(_feat: &mut Features, expr: &SimpleExpr) {
-    // currently there are no features to be found
-    expr.traverse(&mut |_| Traverse::Stop);
+fn features_simple(feat: &mut Features, expr: &SimpleExpr) {
+    expr.traverse(&mut |e| match e {
+        SimpleExpr::SubQuery(q) => {
+            features_tag(feat, &q.from);
+            for op in q.ops.iter() {
+                features_op(feat, &Operation::from(op.clone()));
+            }
+            feat.add(subQuery);
+            Traverse::Descend
+        }
+        _ => Traverse::Descend,
+    });
 }
 
 #[cfg(test)]

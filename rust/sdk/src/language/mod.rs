@@ -240,6 +240,7 @@ pub enum Traverse {
 }
 
 impl SimpleExpr {
+    /// Traverse all parts of the expression, including expressions in sub-queries
     pub fn traverse(&self, f: &mut impl FnMut(&SimpleExpr) -> Traverse) {
         if f(self) == Traverse::Descend {
             match self {
@@ -290,13 +291,26 @@ impl SimpleExpr {
                         expr.traverse(f);
                     }
                 }
-                SimpleExpr::SubQuery(_) => {
-                    // descending into a subquery is fishy, needs to be done explicitly
+                SimpleExpr::SubQuery(q) => {
+                    for op in q.ops.iter() {
+                        match op {
+                            Operation::Filter(e) => e.traverse(f),
+                            Operation::Select(e) => {
+                                for expr in e.iter() {
+                                    expr.traverse(f);
+                                }
+                            }
+                            Operation::Aggregate(e) => e.traverse(f),
+                        }
+                    }
                 }
             }
         }
     }
 
+    /// Rewrite parts of the expression tree where the provided function returns Some
+    ///
+    /// Also traverses into the expressions contained in sub-queries.
     pub fn rewrite(&self, f: &mut impl FnMut(&SimpleExpr) -> Option<SimpleExpr>) -> Self {
         if let Some(expr) = f(self) {
             return expr;

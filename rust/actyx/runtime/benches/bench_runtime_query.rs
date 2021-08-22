@@ -1,4 +1,4 @@
-use actyx_sdk::language;
+use actyx_sdk::{language, OffsetMap};
 use cbor_data::Encoder;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use futures::executor::block_on;
@@ -10,8 +10,7 @@ fn store() -> EventStoreRef {
 }
 
 fn v() -> Value {
-    let store = store();
-    let cx = Context::new(Default::default(), &store);
+    let cx = Context::owned(Default::default(), store(), OffsetMap::empty(), OffsetMap::empty());
     cx.value(|b| {
         b.encode_dict(|b| {
             b.with_key("x", |b| b.encode_u64(5));
@@ -25,12 +24,20 @@ const QUERY: &str = "FROM allEvents FILTER _.x > 3 | _.y = 'hello' SELECT [_.x +
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("nnop", |b| {
-        let mut query = Query::from("FROM allEvents".parse::<language::Query>().unwrap()).make_feeder(store());
+        let mut query = Query::from("FROM allEvents".parse::<language::Query>().unwrap()).make_feeder(
+            store(),
+            OffsetMap::empty(),
+            OffsetMap::empty(),
+        );
         let value = v();
         b.iter(|| black_box(block_on(query.feed(Some(value.clone())))));
     });
     c.bench_function("feed value", |b| {
-        let mut query = Query::from(QUERY.parse::<language::Query>().unwrap()).make_feeder(store());
+        let mut query = Query::from(QUERY.parse::<language::Query>().unwrap()).make_feeder(
+            store(),
+            OffsetMap::empty(),
+            OffsetMap::empty(),
+        );
         let value = v();
         b.iter(|| black_box(block_on(query.feed(Some(value.clone())))));
     });
