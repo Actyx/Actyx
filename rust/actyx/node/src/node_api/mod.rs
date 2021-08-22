@@ -43,7 +43,6 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
     pin::Pin,
-    str::FromStr,
     sync::Arc,
     time::Duration,
 };

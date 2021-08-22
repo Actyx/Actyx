@@ -1,25 +1,23 @@
 use anyhow::Context;
-use futures::{future::BoxFuture, AsyncRead, FutureExt};
+use futures::{future::BoxFuture, FutureExt};
 use ipfs_embed::multiaddr::Protocol;
 use libp2p::{
     core::{
-        either::{EitherOutput, EitherTransport},
+        either::EitherTransport,
         muxing::StreamMuxerBox,
         transport::{Boxed, MemoryTransport},
         upgrade::AuthenticationVersion,
-        ConnectedPoint,
     },
     dns::{ResolverConfig, TokioDnsConfig},
     identity, noise,
     plaintext::PlainText2Config,
     pnet::{PnetConfig, PreSharedKey},
     tcp::{tokio::TcpStream, TokioTcpConfig},
-    websocket::{framed::Connection, wrap_connection, WsConfig},
+    websocket::WsConfig,
     yamux::YamuxConfig,
     PeerId, Transport,
 };
-use libp2p_maybe_transport::{combined, MaybeUpgrade, UpgradeMaybe};
-use soketto::handshake;
+use libp2p_combined_transport::CombinedTransport;
 use std::{io, time::Duration};
 
 fn maybe_upgrade(r: TcpStream) -> BoxFuture<'static, Result<TcpStream, TcpStream>> {
@@ -52,7 +50,7 @@ pub async fn build_transport(
     } else {
         TokioDnsConfig::system(tcp).context("Creating TokioDnsConfig")?
     };
-    let base_transport = combined::CombinedTransport::new(base_transport, WsConfig::new, maybe_upgrade, |mut addr| {
+    let base_transport = CombinedTransport::new(base_transport, WsConfig::new, maybe_upgrade, |mut addr| {
         addr.push(Protocol::Ws("/".into()));
         addr
     });
@@ -76,73 +74,6 @@ pub async fn build_transport(
         .map_err(|err| io::Error::new(io::ErrorKind::Other, err))
         .boxed();
     Ok(transport)
-}
-
-#[derive(Clone)]
-struct Upgrader;
-type Tcp = TokioDnsConfig<TokioTcpConfig>;
-impl UpgradeMaybe<Tcp, WsConfig<Tcp>> for Upgrader {
-    type UpgradeFuture = BoxFuture<'static, Result<<WsConfig<Tcp> as Transport>::Output, <Tcp as Transport>::Output>>;
-
-    fn try_upgrade(inner: TcpStream) -> Self::UpgradeFuture {
-        async move {
-            let mut buffer = [0; 3];
-            if inner.0.peek(&mut buffer).await.is_ok() && buffer == *b"GET" {
-                tracing::info!("It's probably HTTP :-)");
-                let stream = inner; //upgrade.map_err(Error::Transport).await?;
-                tracing::debug!("incoming connection from"); // {}", remote1);
-
-                let stream = EitherOutput::Second(stream);
-                tracing::debug!("receiving websocket handshake request"); //, remote2);
-
-                let mut server = handshake::Server::new(stream);
-
-                //                    if use_deflate {
-                //                        server.add_extension(Box::new(Deflate::new(connection::Mode::Server)));
-                //                    }
-
-                let ws_key = {
-                    let request = server
-                        .receive_request()
-                        //.map_err(|e| Error::Handshake(Box::new(e)))
-                        .await
-                        .expect("FIXME");
-                    request.into_key()
-                };
-
-                tracing::debug!("accepting websocket handshake request"); // from {}", remote2);
-
-                let response = handshake::server::Response::Accept {
-                    key: &ws_key,
-                    protocol: None,
-                };
-
-                server
-                    .send_response(&response)
-                    //.map_err(|e| Error::Handshake(Box::new(e)))
-                    .await
-                    .expect("FIXME");
-
-                let conn = {
-                    let builder = server.into_builder();
-                    //                        builder.set_max_message_size(max_size);
-                    //                        builder.set_max_frame_size(max_size);
-                    Connection::new(builder)
-                };
-
-                Ok(wrap_connection(
-                    conn,
-                    // unused FIXME rm
-                    ConnectedPoint::Dialer {
-                        address: "/ip4/127.0.0.1/tcp/4242".parse().unwrap(),
-                    },
-                ))
-            } else {
-                Err(inner)
-            }
-        }
-        .boxed()
-    }
 }
 
 pub async fn build_dev_transport(
