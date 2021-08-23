@@ -13,6 +13,7 @@ use actyx_util::{ax_panic, formats::NodeErrorContext};
 use anyhow::Result;
 use crossbeam::channel::Sender;
 use futures::future::try_join_all;
+use std::fmt;
 use std::net::SocketAddr;
 use swarm::{event_store_ref::EventStoreRef, BanyanStore};
 use warp::*;
@@ -80,6 +81,19 @@ fn routes(
         .allow_headers(vec!["accept", "authorization", "content-type"])
         .allow_methods(&[http::Method::GET, http::Method::POST, http::Method::PUT]);
 
+    let log = warp::log::custom(|info| {
+        tracing::debug!(
+            remote_addr=%OptFmt(info.remote_addr()),
+            method=%info.method(),
+            path=%info.path(),
+            version=?info.version(),
+            status=%info.status().as_u16(),
+            referer=%OptFmt(info.referer()),
+            user_agent=%OptFmt(info.user_agent()),
+            elapsed=?info.elapsed(),
+            "Processed request"
+        );
+    });
     files::root_serve(store)
         .or(api_path.and(
             path("events")
@@ -90,6 +104,17 @@ fn routes(
         ))
         .recover(|r| async { rejections::handle_rejection(r) })
         .with(cors)
-        // TODO: debug level
-        .with(warp::trace::request())
+        .with(log)
+}
+
+struct OptFmt<T>(Option<T>);
+
+impl<T: fmt::Display> fmt::Display for OptFmt<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(ref t) = self.0 {
+            fmt::Display::fmt(t, f)
+        } else {
+            f.write_str("-")
+        }
+    }
 }
