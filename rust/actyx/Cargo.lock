@@ -6481,8 +6481,9 @@ dependencies = [
 
 [[package]]
 name = "unixfs-v1"
-version = "0.1.0"
-source = "git+https://github.com/wngr/unixfsv1#ee5b680c83ee196c002cc1ee5a13cb82620fd82c"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54957941d8267395b03ab6dba0c5fdb16c1f5851aee9470bf5027b311ded1ab0"
 dependencies = [
  "either",
  "filetime",
