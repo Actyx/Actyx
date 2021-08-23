@@ -1,8 +1,8 @@
 mod ans;
 mod auth;
 mod events;
+mod files;
 pub mod formats;
-mod ipfs_file_gateway;
 mod node;
 mod rejections;
 #[cfg(test)]
@@ -72,23 +72,24 @@ fn routes(
     let events = events::routes(node_info.clone(), event_service);
     let node = node::route(node_info.clone(), store.clone());
     let auth = auth::route(node_info.clone());
-
-    let files_route = ipfs_file_gateway::files_route(store.clone(), node_info);
+    let files = files::route(store.clone(), node_info);
 
     let api_path = path!("api" / "v2" / ..);
     let cors = cors()
         .allow_any_origin()
         .allow_headers(vec!["accept", "authorization", "content-type"])
-        .allow_methods(&[http::Method::GET, http::Method::POST]);
+        .allow_methods(&[http::Method::GET, http::Method::POST, http::Method::PUT]);
 
-    api_path
-        .and(path("events"))
-        .and(events)
-        .or(api_path.and(path("node")).and(node))
-        .or(api_path.and(path("auth")).and(auth))
-        .or(files_route)
-        .or(path("ipfs").and(ipfs_file_gateway::route(store)))
+    files::root_serve(store)
+        .or(api_path.and(
+            path("events")
+                .and(events)
+                .or(path("node").and(node))
+                .or(path("auth").and(auth))
+                .or(path("files").and(files)),
+        ))
         .recover(|r| async { rejections::handle_rejection(r) })
         .with(cors)
-
+        // TODO: debug level
+        .with(warp::trace::request())
 }
