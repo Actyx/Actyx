@@ -13,9 +13,9 @@ use std::{borrow::Cow, cmp::Ordering, collections::BTreeMap};
 use swarm::event_store_ref::EventStoreRef;
 
 pub struct Context<'a> {
-    sort_key: SortKey,
+    pub sort_key: SortKey,
     bindings: BTreeMap<String, anyhow::Result<Value>>,
-    parent: Option<&'a Context<'a>>,
+    pub parent: Option<&'a Context<'a>>,
     pub store: Cow<'a, EventStoreRef>,
     pub from_offsets_excluding: Cow<'a, OffsetMap>,
     pub to_offsets_including: Cow<'a, OffsetMap>,
