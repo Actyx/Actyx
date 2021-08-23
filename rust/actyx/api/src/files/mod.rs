@@ -10,6 +10,7 @@ use warp::{path, Buf, Filter, Rejection, Reply};
 
 use crate::{
     ans::{ActyxNamingService, PersistenceLevel},
+    rejections::ApiError,
     util::filters::{authenticate, header_token},
     NodeInfo,
 };
@@ -17,18 +18,6 @@ use crate::{
 use self::ipfs::{extract_query_from_host, extract_query_from_path, handle_query, IpfsQuery};
 
 mod ipfs;
-
-//pub fn files_route(
-//    store: BanyanStore,
-//    node_info: NodeInfo,
-//) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-//    let add = add(store.clone());
-//    let ans = ActyxNamingService::new(store.clone());
-//    naming_route(ans.clone(), node_info)
-//        .or(extract_query_from_host(ans)
-//            .and_then(move |query| handle_query(store.clone(), query).map_err(crate::util::reject)))
-//        .or(add)
-//}
 
 /// Serve GET requests for the server's root, interpreting the full path as a directory query.
 /// GET http://:id.actyx.localhost:<port>/query/into/the/directory
@@ -97,7 +86,11 @@ fn delete_name_or_cid(store: BanyanStore) -> impl Filter<Extract = (impl Reply,)
         .and_then(move |cid_or_name: String| {
             let ans = ans.clone();
             async move {
-                if let Some(x) = ans.remove(&*cid_or_name).await.map_err(crate::util::reject)? {
+                if let Some(x) = ans
+                    .remove(&*cid_or_name)
+                    .await
+                    .map_err(|_| warp::reject::custom(ApiError::Internal))?
+                {
                     Ok(x.cid.to_string())
                 } else {
                     // TODO: Remove cid? Removing a named pin will unalias the block, so GC will
@@ -129,18 +122,18 @@ fn update_name(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error
 fn add(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::post()
         .and(warp::path::end())
-        // TODO: add auth
         .and(warp::multipart::form().max_length(128 << 20))
         .and_then(move |mut form: warp::multipart::FormData| {
             let store = store.clone();
             async move {
-                let mut opts = TreeOptions::default();
-                opts.wrap_with_directory();
-                let mut builder = BufferingTreeBuilder::new(opts);
                 let tmp = store.ipfs().create_temp_pin()?;
+                let mut added_files = vec![];
                 while let Some(part) = form.try_next().await? {
                     tracing::debug!("part {:?}", part);
-                    let name = part.filename().context("No filename provided")?.to_string();
+                    let name = {
+                        let n = part.filename().context("No filename provided")?;
+                        n.strip_prefix('/').unwrap_or(n).to_string()
+                    };
 
                     // TODO: use a named pin and store it somewhere?
                     let data = part
@@ -152,16 +145,29 @@ fn add(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejec
                         .await?;
                     let (cid, bytes_written) = store.add(&tmp, data.reader())?;
                     tracing::debug!(%cid, %bytes_written, %name, "Added");
-                    builder.put_link(&*name, cid, bytes_written as u64)?;
+                    added_files.push((name, (cid, bytes_written)));
                 }
+
                 let mut root = None;
-                for node in builder.build() {
-                    let node = node.context("Constructing a directory node")?;
-                    store.ipfs().temp_pin(&tmp, &node.cid)?;
-                    root = Some(node.cid);
-                    let block = Block::new_unchecked(node.cid, node.block.to_vec());
-                    store.ipfs().insert(&block)?;
-                }
+                if added_files.len() > 1 {
+                    let mut opts = TreeOptions::default();
+                    opts.wrap_with_directory();
+
+                    let mut builder = BufferingTreeBuilder::new(opts);
+                    for (name, (cid, bytes_written)) in added_files {
+                        builder.put_link(&*name, cid, bytes_written as u64)?;
+                    }
+                    for node in builder.build() {
+                        let node = node.context("Constructing a directory node")?;
+                        store.ipfs().temp_pin(&tmp, &node.cid)?;
+                        root = Some(node.cid);
+                        let block = Block::new_unchecked(node.cid, node.block.to_vec());
+                        store.ipfs().insert(&block)?;
+                    }
+                } else if let Some((_, (cid, _))) = added_files.first() {
+                    // TODO: What about the name?
+                    root = Some(*cid);
+                };
                 Ok(root.context("No files provided")?.to_string())
             }
             .map_err(|e| {

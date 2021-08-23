@@ -11,7 +11,7 @@ use warp::{
     Filter, Rejection,
 };
 
-use crate::ans::ActyxNamingService;
+use crate::{ans::ActyxNamingService, rejections::ApiError};
 
 /// an ipfs query contains a root cid and a path into it
 #[derive(Debug, Clone)]
@@ -93,23 +93,19 @@ pub(crate) fn extract_query_from_host(
                 extract_name_or_cid_from_host(&ans, a.host())
                     .context("Sub domain must be a valid multihash")
                     .map(|root| {
-                        let path =
-                            full_path.as_str()
-                                .split('/')
-                                .filter(|x| !x.is_empty())
-                                .map(|x| x.to_owned())
-                                .collect::<VecDeque<_>>()
-                            //                            if p.is_empty() {
-                            //                                // FIXME: move this somewhere else to serve single files from the
-                            //                                // root
-                            //                                std::iter::once("index.html".to_string()).collect()
-                            //                            } else {
-                            //                                p
-                            //                            }
-                        ;
+                        let path = full_path
+                            .as_str()
+                            .split('/')
+                            .filter(|x| !x.is_empty())
+                            .map(|x| x.to_owned())
+                            .collect::<VecDeque<_>>();
                         IpfsQuery { root, path }
                     })
-                    .map_err(crate::util::reject)
+                    .map_err(|e: anyhow::Error| {
+                        warp::reject::custom(ApiError::BadRequest {
+                            cause: format!("{}", e),
+                        })
+                    })
             } else {
                 Err(warp::reject::not_found())
             };
@@ -138,7 +134,11 @@ pub(crate) fn extract_query_from_path(
             })
         };
 
-        let r = check().map_err(crate::util::reject);
+        let r = check().map_err(|e: anyhow::Error| {
+            warp::reject::custom(ApiError::BadRequest {
+                cause: format!("{}", e),
+            })
+        });
         async move { r }
     })
 }

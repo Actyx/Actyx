@@ -127,8 +127,6 @@ impl reject::Reject for Crash {}
 pub fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
     let api_err = if r.is_not_found() {
         ApiError::NotFound
-    } else if r.find::<reject::MethodNotAllowed>().is_some() {
-        ApiError::MethodNotAllowed
     } else if let Some(umt) = r.find::<reject::UnsupportedMediaType>() {
         ApiError::UnsupportedMediaType { msg: umt.to_string() }
     } else if let Some(e) = r.find::<ApiError>() {
@@ -141,6 +139,8 @@ pub fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
         ApiError::BadRequest {
             cause: e.source().map_or("unknown".to_string(), |e| e.to_string()),
         }
+    } else if r.find::<reject::MethodNotAllowed>().is_some() {
+        ApiError::MethodNotAllowed
     } else {
         warn!("unhandled rejection: {:?}", r);
         ApiError::Internal
