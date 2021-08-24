@@ -1,4 +1,5 @@
-import * as io from 'io-ts'
+import * as io from "io-ts";
+import { ActyxAdminApi } from "../../../../rust/actyx/ax-wasm/pkg/ax_wasm";
 
 // Disk store
 
@@ -11,31 +12,31 @@ export const StoreData = io.type({
     userId: io.string,
   }),
   privateKey: io.union([io.undefined, io.string]),
-})
+});
 
-export type StoreData = io.TypeOf<typeof StoreData>
+export type StoreData = io.TypeOf<typeof StoreData>;
 
 // Basics
 
 export const Peer = io.type({
   peerId: io.string,
   addrs: io.array(io.string),
-})
+});
 
-export type Peer = io.TypeOf<typeof Peer>
+export type Peer = io.TypeOf<typeof Peer>;
 
 export const Connection = io.type({
   peerId: io.string,
   addr: io.string,
-})
+});
 
-export type Connection = io.TypeOf<typeof Connection>
+export type Connection = io.TypeOf<typeof Connection>;
 
 export const SwarmOffsets = io.type({
   present: io.record(io.string, io.Int),
   toReplicate: io.record(io.string, io.Int),
-})
-export type SwarmOffsets = io.TypeOf<typeof SwarmOffsets>
+});
+export type SwarmOffsets = io.TypeOf<typeof SwarmOffsets>;
 
 export const NodeSwarmState = io.type({
   peerId: io.string,
@@ -44,15 +45,15 @@ export const NodeSwarmState = io.type({
   adminAddrs: io.array(io.string),
   connections: io.array(Connection),
   knownPeers: io.array(Peer),
-})
+});
 
-export type NodeSwarmState = io.TypeOf<typeof NodeSwarmState>
+export type NodeSwarmState = io.TypeOf<typeof NodeSwarmState>;
 
 export const enum NodeType {
-  Reachable = 'reachableNode',
-  Unauthorized = 'unauthorizedNode',
-  Unreachable = 'unreachableNode',
-  Loading = 'loading',
+  Reachable = "reachableNode",
+  Unauthorized = "unauthorizedNode",
+  Unreachable = "unreachableNode",
+  Loading = "loading",
 }
 
 export const ReachableNode = io.type({
@@ -70,102 +71,112 @@ export const ReachableNode = io.type({
     swarmState: NodeSwarmState,
     offsets: io.union([io.null, SwarmOffsets]),
   }),
-})
-export type ReachableNode = io.TypeOf<typeof ReachableNode>
+});
+export type ReachableNode = io.TypeOf<typeof ReachableNode>;
 const UnauthorizedNode = io.type({
   type: io.literal(NodeType.Unauthorized),
   addr: io.string,
-})
+});
 const UnreachableNode = io.type({
   type: io.literal(NodeType.Unreachable),
   addr: io.string,
-})
+});
 const LoadingNode = io.type({
   type: io.literal(NodeType.Loading),
   addr: io.string,
-})
+});
 
-export const Node = io.union([ReachableNode, UnauthorizedNode, UnreachableNode, LoadingNode])
-export type Node = io.TypeOf<typeof Node>
+export const Node = io.union([
+  ReachableNode,
+  UnauthorizedNode,
+  UnreachableNode,
+  LoadingNode,
+]);
+export type Node = io.TypeOf<typeof Node>;
 
 // Helpers
-const RequestWithAddr = io.type({ addr: io.string, privateKey: io.string })
-const RequestWithAddrs = io.array(RequestWithAddr)
-const EmptyRequest = io.type({})
-const Void = io.void
+const RequestWithAddr = io.type({ addr: io.string, privateKey: io.string });
+const RequestWithAddrs = io.array(RequestWithAddr);
+const EmptyRequest = io.type({});
+const Void = io.void;
 
 // Get node details
-export const GetNodeDetailsRequest = RequestWithAddr
-export type GetNodeDetailsRequest = io.TypeOf<typeof GetNodeDetailsRequest>
+export const GetNodeDetailsRequest = RequestWithAddr;
+export type GetNodeDetailsRequest = io.TypeOf<typeof GetNodeDetailsRequest>;
 
-export const GetNodeDetailsResponse = io.array(Node)
-export type GetNodeDetailsResponse = io.TypeOf<typeof GetNodeDetailsResponse>
+export const GetNodeDetailsResponse = io.array(Node);
+export type GetNodeDetailsResponse = io.TypeOf<typeof GetNodeDetailsResponse>;
 
 // Get nodes details
-export const GetNodesDetailsRequest = RequestWithAddrs
-export type GetNodesDetailsRequest = io.TypeOf<typeof GetNodesDetailsRequest>
+export type GetNodesDetailsRequest = {
+  addr: string;
+  api: ActyxAdminApi;
+}[];
 
-export const GetNodesDetailsResponse = io.array(Node)
-export type GetNodesDetailsResponse = io.TypeOf<typeof GetNodesDetailsResponse>
+export const GetNodesDetailsResponse = io.array(Node);
+export type GetNodesDetailsResponse = io.TypeOf<typeof GetNodesDetailsResponse>;
 
 // Get node settings
-export const GetSettingsRequest = RequestWithAddr
-export type GetSettingsRequest = io.TypeOf<typeof GetSettingsRequest>
+export const GetSettingsRequest = RequestWithAddr;
+export type GetSettingsRequest = io.TypeOf<typeof GetSettingsRequest>;
 
 export const GetSettingsResponse = io.type({
   settings: io.unknown,
-})
-export type GetSettingsResponse = io.TypeOf<typeof GetSettingsResponse>
+});
+export type GetSettingsResponse = io.TypeOf<typeof GetSettingsResponse>;
 
 // Set node settings
-export const SetSettingsRequest = io.intersection([
-  RequestWithAddr,
-  io.type({
-    settings: io.unknown,
-  }),
-])
-export type SetSettingsRequest = io.TypeOf<typeof SetSettingsRequest>
+export type SetSettingsRequest = {
+  settings: unknown;
+  api: ActyxAdminApi;
+};
 
-export const SetSettingsResponse = Void
-export type SetSettingsResponse = io.TypeOf<typeof SetSettingsResponse>
+export const SetSettingsResponse = Void;
+export type SetSettingsResponse = io.TypeOf<typeof SetSettingsResponse>;
 
 // Create a user key pair
 export const CreateUserKeyPairRequest = io.type({
   privateKeyPath: io.union([io.string, io.null]),
-})
-export type CreateUserKeyPairRequest = io.TypeOf<typeof CreateUserKeyPairRequest>
+});
+export type CreateUserKeyPairRequest = io.TypeOf<
+  typeof CreateUserKeyPairRequest
+>;
 
 export const CreateUserKeyPairResponse = io.type({
   privateKey: io.string,
-})
-export type CreateUserKeyPairResponse = io.TypeOf<typeof CreateUserKeyPairResponse>
+});
+export type CreateUserKeyPairResponse = io.TypeOf<
+  typeof CreateUserKeyPairResponse
+>;
 
 // Generate a swarm key
-export const GenerateSwarmKeyRequest = EmptyRequest
-export type GenerateSwarmKeyRequest = io.TypeOf<typeof GenerateSwarmKeyRequest>
+export const GenerateSwarmKeyRequest = EmptyRequest;
+export type GenerateSwarmKeyRequest = io.TypeOf<typeof GenerateSwarmKeyRequest>;
 
 export const GenerateSwarmKeyResponse = io.type({
   swarmKey: io.string,
-})
-export type GenerateSwarmKeyResponse = io.TypeOf<typeof GenerateSwarmKeyResponse>
+});
+export type GenerateSwarmKeyResponse = io.TypeOf<
+  typeof GenerateSwarmKeyResponse
+>;
 
 // Create signed app manifest
 export const SignAppManifestRequest = io.type({
   pathToManifest: io.string,
   pathToCertificate: io.string,
-})
+});
 
-export type SignAppManifestRequest = io.TypeOf<typeof SignAppManifestRequest>
+export type SignAppManifestRequest = io.TypeOf<typeof SignAppManifestRequest>;
 
-export const SignAppManifestResponse = io.type({})
-export type SignAppManifestResponse = io.TypeOf<typeof SignAppManifestResponse>
+export const SignAppManifestResponse = io.type({});
+export type SignAppManifestResponse = io.TypeOf<typeof SignAppManifestResponse>;
 
 // Shutdown node
-export const ShutdownNodeRequest = RequestWithAddr
-export type ShutdownNodeRequest = io.TypeOf<typeof ShutdownNodeRequest>
+export const ShutdownNodeRequest = RequestWithAddr;
+export type ShutdownNodeRequest = io.TypeOf<typeof ShutdownNodeRequest>;
 
-export const ShutdownNodeResponse = Void
-export type ShutdownNodeResponse = io.TypeOf<typeof ShutdownNodeResponse>
+export const ShutdownNodeResponse = Void;
+export type ShutdownNodeResponse = io.TypeOf<typeof ShutdownNodeResponse>;
 
 export const EventResponse = io.type({
   lamport: io.number,
@@ -181,23 +192,21 @@ export const EventResponse = io.type({
   appId: io.string,
   /// The actual, app-specific event payload
   payload: io.unknown,
-})
-export type EventResponse = io.TypeOf<typeof EventResponse>
+});
+export type EventResponse = io.TypeOf<typeof EventResponse>;
 export const Diagnostic = io.type({
-  severity: io.union([io.literal('warning'), io.literal('error')]),
+  severity: io.union([io.literal("warning"), io.literal("error")]),
   message: io.string,
-})
-export type Diagnostic = io.TypeOf<typeof Diagnostic>
-export const EventDiagnostic = io.union([EventResponse, Diagnostic])
-export type EventDiagnostic = io.TypeOf<typeof EventDiagnostic>
+});
+export type Diagnostic = io.TypeOf<typeof Diagnostic>;
+export const EventDiagnostic = io.union([EventResponse, Diagnostic]);
+export type EventDiagnostic = io.TypeOf<typeof EventDiagnostic>;
 
-export const QueryRequest = io.type({
-  addr: io.string,
-  query: io.string,
-  privateKey: io.string,
-})
-export type QueryRequest = io.TypeOf<typeof QueryRequest>
+export type QueryRequest = {
+  query: string;
+  api: ActyxAdminApi;
+};
 export const QueryResponse = io.type({
   events: io.union([io.null, io.array(EventDiagnostic)]),
-})
-export type QueryResponse = io.TypeOf<typeof QueryResponse>
+});
+export type QueryResponse = io.TypeOf<typeof QueryResponse>;

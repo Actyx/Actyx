@@ -1,12 +1,12 @@
-import React, { useState } from 'react'
-import { SimpleCanvas } from '../components/SimpleCanvas'
-import { Layout } from '../components/Layout'
-import { Button, SimpleInput } from '../components/basics'
-import { Wizard, WizardFailure, WizardSuccess, WizardInput } from '../util'
-import { Either, left, right } from 'fp-ts/lib/Either'
-import { useAppState, AppActionKey } from '../app-state'
-import { CreateUserKeyPairResponse } from '../../common/types'
-import { validate_private_key } from 'ax-wasm'
+import React, { useState } from "react";
+import { SimpleCanvas } from "../components/SimpleCanvas";
+import { Layout } from "../components/Layout";
+import { Button, SimpleInput } from "../components/basics";
+import { Wizard, WizardFailure, WizardSuccess, WizardInput } from "../util";
+import { Either, left, right } from "fp-ts/lib/Either";
+import { useAppState, AppActionKey } from "../app-state";
+import { CreateUserKeyPairResponse } from "../../common/types";
+import { validate_private_key } from "ax-wasm";
 
 const DefaultDirectoryHelpLink: React.FC = ({ children }) => (
   <a
@@ -17,17 +17,17 @@ const DefaultDirectoryHelpLink: React.FC = ({ children }) => (
   >
     {children}
   </a>
-)
+);
 
 const Initial: WizardInput<string | undefined> = ({ execute, executing }) => {
-  const [privKey, setPrivKey] = useState('')
+  const [privKey, setPrivKey] = useState("");
   return (
     <>
       <p className="text-xl pb-6">No user key pair found</p>
 
       <p className="pb-10 text-gray-400">
-        The Actyx Node Manager needs a user key pair to authenticate itself with Actyx nodes. If you
-        already have a key pair, please provide it here:
+        The Actyx Node Manager needs a user key pair to authenticate itself with
+        Actyx nodes. If you already have a key pair, please provide it here:
       </p>
 
       <SimpleInput
@@ -37,7 +37,7 @@ const Initial: WizardInput<string | undefined> = ({ execute, executing }) => {
         setValue={setPrivKey}
         value={privKey}
         button={{
-          text: 'Ok',
+          text: "Ok",
           onClick: () => execute(privKey),
           disabled: executing,
         }}
@@ -49,8 +49,8 @@ const Initial: WizardInput<string | undefined> = ({ execute, executing }) => {
         </Button>
       </div>
     </>
-  )
-}
+  );
+};
 
 const mkSuccess =
   (onDone: () => void): WizardSuccess<CreateUserKeyPairResponse> =>
@@ -58,7 +58,9 @@ const mkSuccess =
     (
       <>
         <p className="text-xl pb-6">User key pair created</p>
-        <p className="text-gray-400">The Actyx Node Manager created a user key pair for you.</p>
+        <p className="text-gray-400">
+          The Actyx Node Manager created a user key pair for you.
+        </p>
 
         <SimpleInput
           className="mt-6"
@@ -71,52 +73,56 @@ const mkSuccess =
           Ok
         </Button>
       </>
-    )
+    );
 
 const Failure: WizardFailure<string> = ({ restart, reason }) => (
   <>
-    <p className="text-xl text-red-500 font-medium pb-6">Error creating user key pair</p>
+    <p className="text-xl text-red-500 font-medium pb-6">
+      Error creating user key pair
+    </p>
 
     <p className="pb-10 text-gray-400">{reason}</p>
     <Button onClick={restart}>Try again</Button>
   </>
-)
+);
 
 const Screen = () => {
   const {
     dispatch,
     actions: { createUserKeyPair, setUserKeyPair },
-  } = useAppState()
+  } = useAppState();
 
   const execute = async (
-    maybeInput?: string,
+    maybeInput?: string
   ): Promise<Either<string, CreateUserKeyPairResponse>> => {
     if (maybeInput) {
       try {
-        validate_private_key(maybeInput)
-        setUserKeyPair(maybeInput)
-        return right({ privateKey: maybeInput })
+        validate_private_key(maybeInput);
+        setUserKeyPair(maybeInput);
+        return right({ privateKey: maybeInput });
       } catch (e) {
-        return left(e)
+        return left(e);
       }
     } else {
       return await createUserKeyPair()
         .then((r) => right(r))
-        .catch((e) => left(e))
+        .catch((e) => left(e));
     }
-  }
+  };
   return (
     <Layout title="Setup a user key">
       <SimpleCanvas>
         <Wizard
           failure={Failure}
-          success={mkSuccess(() => dispatch({ key: AppActionKey.ShowOverview }))}
+          success={mkSuccess(() =>
+            dispatch({ key: AppActionKey.ShowOverview })
+          )}
           input={Initial}
           execute={execute}
         />
       </SimpleCanvas>
     </Layout>
-  )
-}
+  );
+};
 
-export default Screen
+export default Screen;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from "react";
 import {
   NodesOverview,
   NodeDetail,
@@ -11,22 +11,22 @@ import {
   SwarmKey,
   Preferences,
   Query,
-} from './screens'
-import { AppStateProvider, useAppState, AppStateKey } from './app-state'
-import { Provider as AnalyticsProvider, useAnalytics } from './analytics'
-import '../index.css'
-import { waitForFatalError } from './util'
-import { FatalError as FatalErrorT } from '../common/ipc'
-import { StoreProvider } from './store'
+} from "./screens";
+import { AppStateProvider, useAppState, AppStateKey } from "./app-state";
+import { Provider as AnalyticsProvider, useAnalytics } from "./analytics";
+import "../index.css";
+import { waitForFatalError } from "./util";
+import { FatalError as FatalErrorT } from "../common/ipc";
+import { StoreProvider } from "./store";
 
 const Root = () => {
-  const [fatalError, setFatalError] = useState<null | FatalErrorT>(null)
+  const [fatalError, setFatalError] = useState<null | FatalErrorT>(null);
 
   useEffect(() => {
-    ;(async () => {
-      setFatalError(await waitForFatalError())
-    })()
-  }, [])
+    (async () => {
+      setFatalError(await waitForFatalError());
+    })();
+  }, []);
 
   return (
     <StoreProvider>
@@ -44,46 +44,46 @@ const Root = () => {
         </AppStateProvider>
       </AnalyticsProvider>
     </StoreProvider>
-  )
-}
+  );
+};
 
 const Content: React.FC = () => {
-  const { state } = useAppState()
-  const [haveLoggedStartup, setHaveLoggedStartup] = useState(false)
-  const analytics = useAnalytics()
+  const { state } = useAppState();
+  const [haveLoggedStartup, setHaveLoggedStartup] = useState(false);
+  const analytics = useAnalytics();
 
   useEffect(() => {
     if (analytics) {
       setHaveLoggedStartup((haveLogged) => {
         if (!haveLogged) {
-          analytics.startedApp()
+          analytics.startedApp();
         }
-        return true
-      })
+        return true;
+      });
     }
-  }, [analytics, haveLoggedStartup])
+  }, [analytics, haveLoggedStartup]);
   switch (state.key) {
     case AppStateKey.Overview:
-      return <NodesOverview />
+      return <NodesOverview />;
     case AppStateKey.SetupUserKey:
-      return <SetupUserKey />
+      return <SetupUserKey />;
     case AppStateKey.NodeDetail:
-      return <NodeDetail {...state} />
+      return <NodeDetail {...state} />;
     case AppStateKey.About:
-      return <About />
+      return <About />;
     case AppStateKey.NodeAuth:
-      return <NodeAuth />
+      return <NodeAuth />;
     case AppStateKey.AppSigning:
-      return <AppSigning />
+      return <AppSigning />;
     case AppStateKey.Diagnostics:
-      return <Diagnostics />
+      return <Diagnostics />;
     case AppStateKey.Preferences:
-      return <Preferences />
+      return <Preferences />;
     case AppStateKey.SwarmKey:
-      return <SwarmKey />
+      return <SwarmKey />;
     case AppStateKey.Query:
-      return <Query />
+      return <Query />;
   }
-}
+};
 
-export default Root
+export default Root;

@@ -1,26 +1,26 @@
-import React from 'react'
-import clsx from 'clsx'
-import { BackgroundColorSpectrum } from '../../tailwind'
-import { semigroupAll } from 'fp-ts/lib/Semigroup'
+import React from "react";
+import clsx from "clsx";
+import { BackgroundColorSpectrum } from "../../tailwind";
+import { semigroupAll } from "fp-ts/lib/Semigroup";
 
 interface Props {
-  color?: BackgroundColorSpectrum
-  working?: boolean
-  pinging?: boolean
-  pingColor?: BackgroundColorSpectrum
-  small?: boolean
-  icon?: JSX.Element
-  outline?: boolean
+  color?: BackgroundColorSpectrum;
+  working?: boolean;
+  pinging?: boolean;
+  pingColor?: BackgroundColorSpectrum;
+  small?: boolean;
+  icon?: JSX.Element;
+  outline?: boolean;
   fontWeight?:
-    | 'thin'
-    | 'extralight'
-    | 'light'
-    | 'normal'
-    | 'medium'
-    | 'semibold'
-    | 'bold'
-    | 'extrabold'
-    | 'black'
+    | "thin"
+    | "extralight"
+    | "light"
+    | "normal"
+    | "medium"
+    | "semibold"
+    | "bold"
+    | "extrabold"
+    | "black";
 }
 
 const E: React.FC<Props & React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
@@ -37,28 +37,28 @@ const E: React.FC<Props & React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
   fontWeight,
   ...props
 }) => {
-  const colorSpectrum = color || 'gray'
-  const backgroundColor = outline ? 'inherit' : `${colorSpectrum}-200`
-  const hoverColor = outline ? `${colorSpectrum}-100` : `${colorSpectrum}-300`
-  const pingingColor = `${pingColor || colorSpectrum}-300`
-  const borderColor = outline ? `${colorSpectrum}-300` : 'inherit'
-  fontWeight = fontWeight || 'medium'
-  disabled = disabled || working
+  const colorSpectrum = color || "gray";
+  const backgroundColor = outline ? "inherit" : `${colorSpectrum}-200`;
+  const hoverColor = outline ? `${colorSpectrum}-100` : `${colorSpectrum}-300`;
+  const pingingColor = `${pingColor || colorSpectrum}-300`;
+  const borderColor = outline ? `${colorSpectrum}-300` : "inherit";
+  fontWeight = fontWeight || "medium";
+  disabled = disabled || working;
   return (
-    <span className={clsx('relative inline-flex rounded-md', className)}>
+    <span className={clsx("relative inline-flex rounded-md", className)}>
       <button
         className={clsx(
-          'inline-flex items-center leading-6 rounded-md transition ease-in-out duration-150 focus:outline-none',
+          "inline-flex items-center leading-6 rounded-md transition ease-in-out duration-150 focus:outline-none",
           `font-${fontWeight}`,
           `bg-${backgroundColor}`,
           [!disabled && `hover:bg-${hoverColor}`],
           [disabled && `cursor-not-allowed`],
           {
-            'px-4 py-2 text-base': !small,
-            'px-2 py-1 text-sm': small,
-            'opacity-50': disabled,
+            "px-4 py-2 text-base": !small,
+            "px-2 py-1 text-sm": small,
+            "opacity-50": disabled,
           },
-          [outline && `border border-${borderColor}`],
+          [outline && `border border-${borderColor}`]
         )}
         disabled={disabled}
         {...props}
@@ -95,11 +95,13 @@ const E: React.FC<Props & React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
               className={`inline-flex rounded-full h-3 w-3 bg-${pingingColor} opacity-75`}
             ></span>
           </span>
-          <span className={`relative inline-flex rounded-full h-3 w-3 bg-${pingingColor}`}></span>
+          <span
+            className={`relative inline-flex rounded-full h-3 w-3 bg-${pingingColor}`}
+          ></span>
         </div>
       )}
     </span>
-  )
-}
+  );
+};
 
-export default E
+export default E;

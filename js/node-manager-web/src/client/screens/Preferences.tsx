@@ -1,14 +1,15 @@
-import { SimpleCanvas } from '../components/SimpleCanvas'
-import React from 'react'
-import { Layout } from '../components/Layout'
-import { useStore } from '../store'
-import { StoreStateKey } from '../store/types'
+import { SimpleCanvas } from "../components/SimpleCanvas";
+import React from "react";
+import { Layout } from "../components/Layout";
+import { useStore } from "../store";
+import { StoreStateKey } from "../store/types";
 
 const Analytics = () => {
-  const store = useStore()
-  const checked = store.key === StoreStateKey.Loaded && store.data.analytics.disabled
+  const store = useStore();
+  const checked =
+    store.key === StoreStateKey.Loaded && store.data.analytics.disabled;
   const onChange = (isChecked: boolean) => {
-    console.log(`onChange(isChecked: ${isChecked})`)
+    console.log(`onChange(isChecked: ${isChecked})`);
     if (store.key === StoreStateKey.Loaded) {
       store.actions.updateAndReload({
         ...store.data,
@@ -16,9 +17,9 @@ const Analytics = () => {
           ...store.data.analytics,
           disabled: isChecked,
         },
-      })
+      });
     }
-  }
+  };
   return (
     <label className="inline-flex items-center p-1">
       <input
@@ -26,10 +27,12 @@ const Analytics = () => {
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
       />
-      <span className="ml-2">Disable anonymous aggregate user behaviour analytics</span>
+      <span className="ml-2">
+        Disable anonymous aggregate user behaviour analytics
+      </span>
     </label>
-  )
-}
+  );
+};
 
 const Screen: React.FC<{}> = () => {
   return (
@@ -43,7 +46,7 @@ const Screen: React.FC<{}> = () => {
         </div>
       </SimpleCanvas>
     </Layout>
-  )
-}
+  );
+};
 
-export default Screen
+export default Screen;

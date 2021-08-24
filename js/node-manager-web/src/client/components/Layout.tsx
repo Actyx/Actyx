@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import clsx from 'clsx'
+import React, { useState } from "react";
+import clsx from "clsx";
 import {
   BarChartIcon,
   Cube3DIcon,
@@ -16,31 +16,31 @@ import {
   ClipboardIcon,
   ClipboardCheckedIcon,
   SearchIcon,
-} from './icons'
-import { ClassName } from '../react'
-import { useAppState, AppActionKey, AppStateKey } from '../app-state'
+} from "./icons";
+import { ClassName } from "../react";
+import { useAppState, AppActionKey, AppStateKey } from "../app-state";
 
 // Inspiration: https://codepen.io/robstinson/pen/zYBGNQB
 const NavButton: React.FC<{
-  onClick: () => void
-  text: string
-  icon: JSX.Element
-  bottom?: boolean
-  active?: boolean
-  hidden?: boolean
+  onClick: () => void;
+  text: string;
+  icon: JSX.Element;
+  bottom?: boolean;
+  active?: boolean;
+  hidden?: boolean;
 }> = ({ hidden, children, onClick, bottom, text, icon, active }) => (
   <div
-    className={clsx('px-2 w-full', {
-      'mt-auto': bottom,
+    className={clsx("px-2 w-full", {
+      "mt-auto": bottom,
     })}
     hidden={hidden}
   >
     <button
       className={clsx(
-        'flex items-center justify-left px-2 flex-shrink-0 w-full h-10 mt-2 rounded hover:bg-gray-300 focus:outline-none',
+        "flex items-center justify-left px-2 flex-shrink-0 w-full h-10 mt-2 rounded hover:bg-gray-300 focus:outline-none",
         {
-          'bg-gray-300': active,
-        },
+          "bg-gray-300": active,
+        }
       )}
       onClick={onClick}
     >
@@ -48,14 +48,14 @@ const NavButton: React.FC<{
       <span className="ml-2">{text}</span>
     </button>
   </div>
-)
+);
 
 interface InputProps {
-  placeholder?: string
-  onSubmit: (value: string) => void
-  buttonText?: string
-  validator?: (value: string) => boolean
-  transformer?: (value: string) => string
+  placeholder?: string;
+  onSubmit: (value: string) => void;
+  buttonText?: string;
+  validator?: (value: string) => boolean;
+  transformer?: (value: string) => string;
 }
 
 export const Input: React.FC<InputProps & ClassName> = ({
@@ -66,33 +66,39 @@ export const Input: React.FC<InputProps & ClassName> = ({
   validator,
   transformer,
 }) => {
-  const [val, setVal] = useState('')
+  const [val, setVal] = useState("");
   const doSubmit = () => {
     if (!validator || validator(val)) {
-      onSubmit(val)
-      setVal('')
+      onSubmit(val);
+      setVal("");
     }
-  }
+  };
   const onKeyUp = (event: React.KeyboardEvent) => {
-    if (event.key === 'Enter') {
-      doSubmit()
+    if (event.key === "Enter") {
+      doSubmit();
     }
-  }
+  };
   return (
     <>
       <input
         type="text"
         placeholder={placeholder}
         className={clsx(
-          'block text-sm w-60 rounded-md bg-white border-transparent focus:border-gray-300 focus:ring-0',
+          "block text-sm w-60 rounded-md bg-white border-transparent focus:border-gray-300 focus:ring-0",
           className,
           {
-            'border-red-500 focus:border-red-500': !!(val && validator && !validator(val)),
-          },
+            "border-red-500 focus:border-red-500": !!(
+              val &&
+              validator &&
+              !validator(val)
+            ),
+          }
         )}
         onKeyUp={onKeyUp}
         value={val}
-        onChange={(e) => setVal(transformer ? transformer(e.target.value) : e.target.value)}
+        onChange={(e) =>
+          setVal(transformer ? transformer(e.target.value) : e.target.value)
+        }
       />
       {buttonText && (
         <button
@@ -104,22 +110,27 @@ export const Input: React.FC<InputProps & ClassName> = ({
         </button>
       )}
     </>
-  )
-}
+  );
+};
 interface ActionProps {
-  text: string
-  target: (() => void) | string
-  disabled?: boolean
+  text: string;
+  target: (() => void) | string;
+  disabled?: boolean;
 }
-export const Action: React.FC<ActionProps & ClassName> = ({ className, text, target, disabled }) =>
-  typeof target === 'function' ? (
+export const Action: React.FC<ActionProps & ClassName> = ({
+  className,
+  text,
+  target,
+  disabled,
+}) =>
+  typeof target === "function" ? (
     <button
       className={clsx(
-        'flex items-center justify-center h-10 px-4 ml-2 text-sm font-medium rounded hover:bg-gray-300 focus:outline-none',
+        "flex items-center justify-center h-10 px-4 ml-2 text-sm font-medium rounded hover:bg-gray-300 focus:outline-none",
         {
-          'cursor-not-allowed': disabled,
+          "cursor-not-allowed": disabled,
         },
-        className,
+        className
       )}
       onClick={target}
       disabled={disabled}
@@ -129,8 +140,8 @@ export const Action: React.FC<ActionProps & ClassName> = ({ className, text, tar
   ) : (
     <a
       className={clsx(
-        'flex items-center justify-center h-10 px-4 ml-2 text-sm font-medium rounded hover:bg-gray-300 focus:outline-none',
-        className,
+        "flex items-center justify-center h-10 px-4 ml-2 text-sm font-medium rounded hover:bg-gray-300 focus:outline-none",
+        className
       )}
       href={target}
       target="_blank"
@@ -138,22 +149,25 @@ export const Action: React.FC<ActionProps & ClassName> = ({ className, text, tar
     >
       {text}
     </a>
-  )
+  );
 
 interface MenuItem {
-  text: string
-  target: (() => void) | string
+  text: string;
+  target: (() => void) | string;
 }
 
 interface MenuProps {
-  items: MenuItem[]
+  items: MenuItem[];
 }
 export const Menu: React.FC<MenuProps & ClassName> = ({ className, items }) => {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   return (
     <button
-      className={clsx('relative ml-2 text-sm focus:outline-none group', className)}
+      className={clsx(
+        "relative ml-2 text-sm focus:outline-none group",
+        className
+      )}
       onClick={() => setOpen((current) => !current)}
     >
       <div className="flex items-center justify-between w-10 h-10 rounded hover:bg-gray-300">
@@ -169,14 +183,14 @@ export const Menu: React.FC<MenuProps & ClassName> = ({ className, items }) => {
       </div>
       <div
         className={clsx(
-          'absolute right-0 flex flex-col items-start w-44 pb-1 bg-white border border-gray-300 shadow-lg group-focus:flex',
+          "absolute right-0 flex flex-col items-start w-44 pb-1 bg-white border border-gray-300 shadow-lg group-focus:flex",
           {
             hidden: !open,
-          },
+          }
         )}
       >
         {items.map(({ text, target }, i) =>
-          typeof target === 'function' ? (
+          typeof target === "function" ? (
             <button
               key={text + i}
               className="w-full px-4 py-2 text-left hover:bg-gray-300"
@@ -194,17 +208,17 @@ export const Menu: React.FC<MenuProps & ClassName> = ({ className, items }) => {
             >
               {text}
             </a>
-          ),
+          )
         )}
       </div>
     </button>
-  )
-}
+  );
+};
 interface LayoutProps {
-  title?: string
-  input?: InputProps
-  actions?: ActionProps[]
-  menuItems?: MenuItem[]
+  title?: string;
+  input?: InputProps;
+  actions?: ActionProps[];
+  menuItems?: MenuItem[];
 }
 
 export const Layout: React.FC<LayoutProps & ClassName> = ({
@@ -215,25 +229,25 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
   actions,
   menuItems,
 }) => {
-  const { state, dispatch } = useAppState()
+  const { state, dispatch } = useAppState();
 
-  const hideMenuItems = state.key === AppStateKey.SetupUserKey
+  const hideMenuItems = state.key === AppStateKey.SetupUserKey;
 
   const menuProps: MenuProps = {
     items: [
       {
-        target: 'https://community.actyx.com/',
-        text: 'Get help',
+        target: "https://community.actyx.com/",
+        text: "Get help",
       } as MenuItem,
       {
-        target: 'https://www.actyx.com/contact',
-        text: 'Contact Actyx',
+        target: "https://www.actyx.com/contact",
+        text: "Contact Actyx",
       } as MenuItem,
     ].concat(menuItems || []),
-  }
+  };
 
   return (
-    <div className={clsx('flex w-screen h-screen text-gray-700', className)}>
+    <div className={clsx("flex w-screen h-screen text-gray-700", className)}>
       <div className="flex flex-col items-center w-44 pb-4 overflow-auto border-r border-gray-300 flex-shrink-0">
         <div className="flex items-center justify-center mb-4 flex-shrink-0 w-full h-16 bg-gray-100">
           <NodeManagerIcon width={12} height={12} />
@@ -242,7 +256,10 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
           onClick={() => dispatch({ key: AppActionKey.ShowOverview })}
           icon={<InboxIcon />}
           text="Nodes"
-          active={state.key === AppStateKey.Overview || state.key === AppStateKey.NodeDetail}
+          active={
+            state.key === AppStateKey.Overview ||
+            state.key === AppStateKey.NodeDetail
+          }
           hidden={hideMenuItems}
         />
         <NavButton
@@ -312,14 +329,21 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
           {actions &&
             actions.length > 0 &&
             actions.map((a, i) => (
-              <Action key={a.text + i} className={clsx({ 'ml-auto': !input && i === 0 })} {...a} />
+              <Action
+                key={a.text + i}
+                className={clsx({ "ml-auto": !input && i === 0 })}
+                {...a}
+              />
             ))}
-          <Menu className={clsx({ 'ml-auto': !input && !actions })} {...menuProps} />
+          <Menu
+            className={clsx({ "ml-auto": !input && !actions })}
+            {...menuProps}
+          />
         </div>
         <div className="flex-grow p-4 max-w-full overflow-auto overflow-x-auto flex-shrink bg-gray-200">
           {children}
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
