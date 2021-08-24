@@ -63,7 +63,7 @@ use libp2p::{
     swarm::{OneShotHandlerConfig, SubstreamProtocol},
 };
 use libp2p::{Multiaddr, PeerId};
-use protocol::{RequestId, StreamingResponseMessage};
+use protocol::StreamingResponseMessage;
 use std::task::{Context, Poll};
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -73,7 +73,7 @@ use thiserror::Error;
 
 mod protocol;
 
-pub use protocol::{Codec, SequenceNo, StreamingResponseConfig};
+pub use protocol::{Codec, RequestId, SequenceNo, StreamingResponseConfig};
 
 #[derive(Error, Debug)]
 pub enum StreamingResponseError {
@@ -161,6 +161,8 @@ pub struct StreamingResponse<TCodec: Codec> {
     /// Map from (PeerId, ConnectionId) tuple to a map from RequestId to the last
     /// sequence_no
     open_channels: BTreeMap<(PeerId, ConnectionId), BTreeMap<RequestId, SequenceNo>>,
+    /// Map from outbound request ids to PeerId
+    outgoing_requests: BTreeMap<RequestId, PeerId>,
 }
 
 impl<TCodec> StreamingResponse<TCodec>
@@ -173,6 +175,7 @@ where
             open_channels: Default::default(),
             events: Default::default(),
             next_request_id: RequestId(0),
+            outgoing_requests: Default::default(),
         }
     }
 
@@ -190,6 +193,19 @@ where
             handler: NotifyHandler::Any,
         });
         id
+    }
+
+    /// Cancel an ongoing request
+    pub fn cancel_request(&mut self, id: RequestId) {
+        if let Some(peer_id) = self.outgoing_requests.remove(&id) {
+            let event = StreamingResponseMessage::CancelRequest { id };
+            self.events.push_back(NetworkBehaviourAction::NotifyHandler {
+                event,
+                peer_id,
+                // Can't name a specific peer connection here.
+                handler: NotifyHandler::Any,
+            });
+        }
     }
 
     /// Initiates sending a response given a `ChannelIdentifier`. This function
@@ -357,10 +373,13 @@ where
                     payload,
                 }
             }
-            Rx(StreamingResponseMessage::ResponseEnd { seq_no, id }) => StreamingResponseEvent::ResponseFinished {
-                sequence_no: seq_no,
-                request_id: id,
-            },
+            Rx(StreamingResponseMessage::ResponseEnd { seq_no, id }) => {
+                let _ = self.outgoing_requests.remove(&id);
+                StreamingResponseEvent::ResponseFinished {
+                    sequence_no: seq_no,
+                    request_id: id,
+                }
+            }
             Tx => {
                 return;
             }
