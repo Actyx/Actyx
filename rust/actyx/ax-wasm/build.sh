@@ -4,6 +4,9 @@ WASMOPT_VERSION=101
 WASMBINDGEN_VERSION=0.2.76
 OUT=./pkg
 
+echo "Running cargo build"
+cargo build --release --target wasm32-unknown-unknown
+
 if [ -d $OUT ]; then
   echo "Clearing output directory '$OUT'"
   rm -rf $OUT
@@ -26,6 +29,7 @@ wasm-bindgen ../target/wasm32-unknown-unknown/release/ax_wasm.wasm \
   --target web \
   --typescript \
   --weak-refs
+  # --reference-types TODO: wasm-opt crashes with that flag
 
 echo "Generating package.json"
 cat <<EOF >> $OUT/package.json

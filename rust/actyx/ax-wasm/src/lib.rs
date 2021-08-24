@@ -13,8 +13,8 @@ use libp2p::{
     yamux::YamuxConfig,
     Multiaddr, NetworkBehaviour, PeerId, Swarm, Transport,
 };
-use libp2p_streaming_response::{StreamingResponse, StreamingResponseEvent};
-use log::{error, info};
+use libp2p_streaming_response::{RequestId, StreamingResponse, StreamingResponseEvent};
+use log::*;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -34,7 +34,7 @@ mod types;
 pub fn main() {
     let _ = console_log::init_with_level(log::Level::Info);
     ::console_error_panic_hook::set_once();
-    info!("Setup panic hook");
+    debug!("Setup panic hook");
 }
 
 #[wasm_bindgen]
@@ -75,7 +75,7 @@ fn to_promise(
 ) -> Promise {
     future_to_promise(async move {
         fut.await
-            .map(|e| JsValue::from_serde(&e).unwrap())
+            .map(|e| JsValue::from_serde(&e).expect("Serialize trait bound"))
             .map_err(|e| js_sys::Error::new(&format!("Error: {:#}", e)).into())
     })
 }
@@ -129,7 +129,7 @@ fn to_multiaddr(input: &str) -> anyhow::Result<Multiaddr> {
     let s = if let Ok(socket) = input.parse::<SocketAddr>() {
         socket
     } else {
-        format!("{}:4459", input).parse()?
+        format!("{}:4458", input).parse()?
     };
     Ok(match s {
         SocketAddr::V4(v4) => format!("/ip4/{}/tcp/{}/ws", v4.ip(), v4.port()),
@@ -144,7 +144,7 @@ export type OffsetsResponse = { present: { [stream_id: string]: number }, toRepl
 "#;
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(typescript_type = "(events: EventDiagnostic, err?: Error) => void")]
+    #[wasm_bindgen(typescript_type = "(events: EventDiagnostic[], err?: Error) => void")]
     pub type QueryCallback;
     #[wasm_bindgen(typescript_type = "Promise<OffsetsResponse>")]
     pub type PromiseOffsetsResponse;
@@ -155,6 +155,7 @@ impl ActyxAdminApi {
     #[wasm_bindgen(constructor)]
     #[allow(unused_must_use)]
     pub fn new(host: String, private_key: String) -> Self {
+        // TODO: validate and convert private key
         // FIXME remove unwrap
         let addr = to_multiaddr(&*host).expect("Invalid input");
 
@@ -225,7 +226,7 @@ impl ActyxAdminApi {
 
     pub fn query_cb(&mut self, query: String, cb: QueryCallback) {
         let cb: js_sys::Function = JsCast::unchecked_into(cb);
-        let x = move |event: Option<ActyxOSResult<EventDiagnostic>>| match event {
+        let x = move |event: Option<ActyxOSResult<Vec<EventDiagnostic>>>| match event {
             Some(Ok(e)) => cb.call1(&JsValue::null(), &JsValue::from_serde(&e).expect("valid json")),
             Some(Err(e)) => cb.call2(
                 &JsValue::null(),
@@ -249,20 +250,22 @@ impl ActyxAdminApi {
                 .start_send(Either::Right((EventsRequest::Query(request), tx)))
                 .unwrap();
 
-            let stream = rx.filter_map(|x| async move {
-                match x {
-                    Ok(EventsResponse::Diagnostic(d)) => Some(Ok(EventDiagnostic::Diagnostic(d))),
-                    Ok(EventsResponse::Event(e)) => Some(Ok(EventDiagnostic::Event(e))),
-                    Err(e) => Some(Err(e)),
-                    _ => None,
-                }
-            });
+            let stream = rx
+                .filter_map(|x| async move {
+                    match x {
+                        Ok(EventsResponse::Diagnostic(d)) => Some(Ok(EventDiagnostic::Diagnostic(d))),
+                        Ok(EventsResponse::Event(e)) => Some(Ok(EventDiagnostic::Event(e))),
+                        Err(e) => Some(Err(e)),
+                        _ => None,
+                    }
+                })
+                .ready_chunks(50);
             pin_mut!(stream);
             while let Some(res) = stream.next().await {
-                // TODO handle err
-                let _ = x(Some(res));
+                let _ = x(Some(res.into_iter().collect::<ActyxOSResult<Vec<_>>>()));
+                futures_timer::Delay::new(Duration::from_millis(500)).await;
             }
-            // Signal finish
+            // Signal end of stream
             let _ = x(None);
             Result::Ok::<_, anyhow::Error>(())
         };
@@ -336,7 +339,7 @@ impl ActyxAdminApi {
         let fut = self._nodes_inspect();
         to_promise(fut)
     }
-    // node manager functions. TODO: refactor into smaller function
+
     fn _get_node_details(&self) -> impl Future<Output = ActyxOSResult<ConnectedNodeDetails>> + 'static {
         let x = futures::future::try_join5(
             self._nodes_ls(),
@@ -397,32 +400,80 @@ struct RequestBehaviour {
     ping: Ping,
 }
 
+// this must not fail
 async fn run(addr: Multiaddr, private_key: &str, mut rx: mpsc::Receiver<Channel>) -> anyhow::Result<()> {
     let mut bytes = base64::decode(&private_key.as_bytes()[1..])?;
     let pri = identity::ed25519::SecretKey::from_bytes(&mut bytes[..])?;
     let kp = identity::ed25519::Keypair::from(pri);
     let mut swarm = mk_swarm(identity::Keypair::Ed25519(kp))?;
-    let (remote_peer, remote_addr) = poll_until_connected(&mut swarm, std::iter::once(addr)).await?;
-    info!("Connected to {} at {}", remote_peer, remote_addr);
 
-    let mut pending_event_requests = BTreeMap::new();
-    let mut pending_admin_requests = BTreeMap::new();
+    let mut connected_to = None;
+    let mut pending_admin_requests: BTreeMap<RequestId, mpsc::Sender<ActyxOSResult<AdminResponse>>> =
+        Default::default();
+    let mut pending_event_requests: BTreeMap<RequestId, mpsc::Sender<ActyxOSResult<EventsResponse>>> =
+        Default::default();
     loop {
+        if connected_to.is_none() {
+            // Retry connection after a connection failure. After the retries, the loop will sit in
+            // the `futures::select` below waiting for new input. After new input has been
+            // received, a new connection attempt is started.
+            if let Err(e) = {
+                let mut tries = 3;
+                loop {
+                    match poll_until_connected(&mut swarm, std::iter::once(addr.clone())).await {
+                        Err(e) if tries > 0 => {
+                            tries -= 1;
+                            warn!("Error connecting to {}: {}. Retrying {} more times.", addr, e, tries);
+                            futures_timer::Delay::new(Duration::from_secs(tries * 2)).await;
+                        }
+                        Ok((remote_peer, remote_addr)) => {
+                            info!("Connected to {} at {}", remote_peer, remote_addr);
+                            connected_to.replace(remote_peer);
+                            break Ok((remote_peer, remote_addr));
+                        }
+                        o => break o,
+                    }
+                }
+            } {
+                error!("Error reconnecting to {}", addr);
+                pending_event_requests.retain(|_, tx| {
+                    let _ = tx.start_send(Err(e.clone()));
+                    false
+                });
+                pending_admin_requests.retain(|_, tx| {
+                    let _ = tx.start_send(Err(e.clone()));
+                    false
+                });
+            }
+        }
         select! {
-            request = rx.select_next_some() => {
-                match request {
-                    Either::Left((request, tx)) => {
-                        let id = swarm.behaviour_mut().admin_api.request(remote_peer, request);
-                        pending_admin_requests.insert(id, tx);
-                    },
-                    Either::Right((request, tx)) => {
-                        let id = swarm.behaviour_mut().events_api.request(remote_peer, request);
-                        pending_event_requests.insert(id, tx);
-                    },
+            x = rx.next() => {
+                if let Some(request) = x {
+                    match request {
+                        Either::Left((request, mut tx)) => {
+                            if let Some(p) = connected_to {
+                                let id = swarm.behaviour_mut().admin_api.request(p, request);
+                                pending_admin_requests.insert(id, tx);
+                            } else {
+                                let _ = tx.start_send(Err(ActyxOSCode::ERR_NODE_UNREACHABLE.with_message("")));
+                            }
+                        },
+                        Either::Right((request, mut tx)) => {
+                            if let Some(p) = connected_to {
+                                let id = swarm.behaviour_mut().events_api.request(p, request);
+                                pending_event_requests.insert(id, tx);
+                            } else {
+                                let _ = tx.start_send(Err(ActyxOSCode::ERR_NODE_UNREACHABLE.with_message("")));
+                            }
+                        },
+                    }
+                } else {
+                    info!("Receiver dropped, disconnecting ..");
+                    break;
                 }
             },
             ev = swarm.select_next_some() => {
-                info!("Received {:?}", ev);
+                debug!("Received {:?}", ev);
                 match ev {
                     SwarmEvent::Behaviour(
                         OutEvent::Events(
@@ -433,9 +484,8 @@ async fn run(addr: Multiaddr, private_key: &str, mut rx: mpsc::Receiver<Channel>
                         })) => {
                         if let Some(tx) = pending_event_requests.get_mut(&request_id) {
                             if tx.start_send(Ok(payload)).is_err() {
-                                // TODO: cancel request
                                 pending_event_requests.remove(&request_id);
-                                error!("FIXME");
+                                swarm.behaviour_mut().events_api.cancel_request(request_id);
                             }
 
                         }
@@ -457,10 +507,7 @@ async fn run(addr: Multiaddr, private_key: &str, mut rx: mpsc::Receiver<Channel>
                         })) => {
                         // all admin requests are oneshot
                         if let Some(mut tx) = pending_admin_requests.remove(&request_id) {
-                            if tx.start_send(payload).is_err() {
-                                error!("FIXME");
-                            }
-
+                            let _ =  tx.start_send(payload).is_err();
                         }
                     }
                     SwarmEvent::Behaviour(
@@ -471,8 +518,17 @@ async fn run(addr: Multiaddr, private_key: &str, mut rx: mpsc::Receiver<Channel>
                         })) => {
                         pending_admin_requests.remove(&request_id);
                     },
-
-
+                    SwarmEvent::ConnectionClosed {
+                        peer_id,
+                        num_established,
+                        cause,
+                        ..
+                    } => {
+                        error!("Connection to {} closed: {:?}", peer_id, cause);
+                        if num_established == 0 {
+                            connected_to = None;
+                        }
+                    },
                     // TODO error handling
                     _ => {},
                 }
