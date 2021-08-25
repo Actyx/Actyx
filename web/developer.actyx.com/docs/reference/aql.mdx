@@ -52,7 +52,8 @@ Hereby, `<tag_expr>` is a boolean expression composed from the following basic a
 - `'mytag'` or `"mytag"` matches all events that carry this tag.
   Tags are arbitrary non-empty Unicode strings.
   Quoting is only needed for the used delimiter: if your tag is enclosed in single quotes, single quotes within the tag need to be repeated, e.g. `'o''clock'`.
-  The analogue goes for double quotes.
+  The analogue goes for double quotes. 
+  Tags created by `Tag.withId()` are attached to events as `<tag>:<id>` and can be queried as such: `mytag:myid`.
 
 - `isLocal` matches all events that were emitted by the local Actyx node.
 
