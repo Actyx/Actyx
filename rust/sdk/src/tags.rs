@@ -100,6 +100,10 @@ impl Tag {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
+    pub fn with_id(self, id: impl std::fmt::Display) -> TagSet {
+        TagSet::from(vec![self.clone(), self + format!(":{}", id)])
+    }
 }
 
 impl TryFrom<&str> for Tag {
