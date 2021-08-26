@@ -1,5 +1,5 @@
 import * as io from "io-ts";
-import { ActyxAdminApi } from "../../../../rust/actyx/ax-wasm/pkg/ax_wasm";
+import { ActyxAdminApi } from "ax-wasm";
 
 // Disk store
 

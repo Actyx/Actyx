@@ -36,7 +36,7 @@ import {
 import { useStore } from "../store";
 import { store } from "fp-ts/lib/Store";
 import { StringType } from "io-ts";
-import { ActyxAdminApi } from "../../../../../rust/actyx/ax-wasm/pkg/ax_wasm";
+import { ActyxAdminApi } from "ax-wasm";
 
 const POLLING_INTERVAL_MS = 1_000;
 
