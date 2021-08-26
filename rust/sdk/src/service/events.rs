@@ -102,7 +102,6 @@ impl<T> From<Event<T>> for EventResponse<T> {
     }
 }
 
-#[cfg(test)]
 impl EventResponse<Payload> {
     /// Try to extract the given type from the generic payload and return a new
     /// event envelope if successful. The produced payload is deserialized as efficiently
