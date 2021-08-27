@@ -19,7 +19,7 @@ ipfs-embed = { version = "0.22.3", default-features = false, features = ["tokio"
 ipfs-sqlite-block-store = "0.6.1"
 itertools = "0.10.1"
 libipld = { version = "0.12.0", default-features = false }
-libp2p = { version = "0.39.1", default-features = false, features = ["tcp-tokio", "plaintext", "websocket"] }
+libp2p = { version = "0.40.0", default-features = false, features = ["tcp-tokio", "plaintext", "websocket"] }
 libp2p-combined-transport = "0.1.0"
 maplit = "1.0.2"
 names = "0.11.0"

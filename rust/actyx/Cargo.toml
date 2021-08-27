@@ -34,6 +34,14 @@ panic = "abort"
 
 [patch.crates-io]
 # wait for ipfs-embed 0.23
-ipfs-embed = { git = "https://github.com/dvc94ch/ipfs-embed", branch = "sim-open-2" }
-libp2p = { git = "https://github.com/dvc94ch/rust-libp2p", branch = "sim-open-2" }
+ipfs-embed = { git = "https://github.com/Actyx/ipfs-embed", branch = "sim-open" }
+libp2p = { git = "https://github.com/Actyx/rust-libp2p", branch = "sim-open" }
 #libp2p = { path = "../../../rust-libp2p" }
+libp2p-bitswap = { git = "https://github.com/Actyx/libp2p-bitswap", branch = "sim-open" }
+libp2p-broadcast = { git = "https://github.com/Actyx/libp2p-broadcast", branch = "sim-open-2" }
+libp2p-quic = { git = "https://github.com/Actyx/libp2p-quic", branch = "sim-open-2" }
+libp2p-blake-streams = { git = "https://github.com/Actyx/blake-streams", branch = "sim-open" }
+js-sys = { git = "https://github.com/rustwasm/wasm-bindgen", rev = "6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f" }
+wasm-bindgen = { git = "https://github.com/rustwasm/wasm-bindgen", rev = "6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f" }
+web-sys = { git = "https://github.com/rustwasm/wasm-bindgen", rev = "6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f" }
+libp2p-combined-transport = { path = "../../../libp2p-combined-transport" }

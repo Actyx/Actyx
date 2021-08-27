@@ -274,7 +274,7 @@ where
 
 impl<TCodec> NetworkBehaviour for StreamingResponse<TCodec>
 where
-    TCodec: Codec + Send + Clone + 'static,
+    TCodec: Codec + Send + Clone + std::fmt::Debug + 'static,
     TCodec::Request: Send + 'static,
     TCodec::Response: Send + 'static,
 {
@@ -401,6 +401,7 @@ where
 }
 
 /// Transmission between the `OneShotHandler` and `StreamingResponse`.
+#[derive(Debug)]
 pub enum HandlerEvent<TCodec: Codec> {
     /// We received a `Message` from a remote.
     Rx(StreamingResponseMessage<TCodec>),

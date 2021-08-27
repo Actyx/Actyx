@@ -690,7 +690,7 @@ impl Future for SwarmFuture {
 }
 
 async fn mk_transport(id_keys: identity::Keypair) -> anyhow::Result<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {
-    let peer_id = id_keys.public().into_peer_id();
+    let peer_id = id_keys.public().to_peer_id();
     let transport = swarm::transport::build_transport(id_keys, None, Duration::from_secs(20))
         .await
         .context("Building libp2p transport")?;

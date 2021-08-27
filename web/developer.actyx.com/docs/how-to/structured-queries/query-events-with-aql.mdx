@@ -124,6 +124,13 @@ FROM from(2021-08-06T14:09:00Z) & to(2021-08-06T14:11:00Z)
 When published, each event can be tagged with an arbitrary number of tags. Check out [conceptual guide on tags](../../conceptual/tags.mdx) or our [how-to guides for business logic](../actyx-pond/introduction.mdx) for more info.
 :::
 
+:::info Tags with IDs
+By convention, events corresponding to a specific instance of a domain entity are tagged with `<entity>:<id>`.
+When using [Actyx Pond](../../how-to/actyx-pond/introduction.mdx), you will have come across [the `Tag.withId()` helper](../../how-to/actyx-pond/guides/typed-tags.mdx).
+It uses this convention as well.
+So, e.g., you'd use `FROM 'machine:42'` to select events that have been tagged with `Tag<MachineEvent>('machine').withId(42)`.
+:::
+
 ## Query events by app ID
 
 You could add also use a query such as the following to get the events for a specific appId and tag:

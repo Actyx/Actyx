@@ -15,8 +15,8 @@ use std::{
 /// `Serialize` and `Deserialize` impls have to be provided. Implement this trait
 /// to specialize the [`StreamingResponse`].
 pub trait Codec {
-    type Request: Send + Serialize + DeserializeOwned;
-    type Response: Send + Serialize + DeserializeOwned;
+    type Request: Send + Serialize + DeserializeOwned + std::fmt::Debug;
+    type Response: Send + Serialize + DeserializeOwned + std::fmt::Debug;
 
     fn protocol_info() -> &'static [u8];
 }

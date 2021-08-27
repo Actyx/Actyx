@@ -567,10 +567,10 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "serde_json",
- "settings",
  "util",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-futures-executor",
 ]
 
 [[package]]
@@ -715,8 +715,7 @@ checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 [[package]]
 name = "blake-streams-core"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b5ea96bd3f1623fd4ccb2f3cd6818eb967c448395e2f1c8165446a6e2dc02cd"
+source = "git+https://github.com/Actyx/blake-streams?branch=sim-open#038f0c8e6d438b812e775cab6669dec8538c7916"
 dependencies = [
  "anyhow",
  "bao",
@@ -2666,7 +2665,7 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.22.4"
-source = "git+https://github.com/dvc94ch/ipfs-embed?branch=sim-open-2#d71030e3c217f254007b1e96d48c8063aff094a9"
+source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#247bc5439047c4aa01719da884c2c9f3f55211e4"
 dependencies = [
  "anyhow",
  "async-io",
@@ -2769,9 +2768,8 @@ dependencies = [
 
 [[package]]
 name = "js-sys"
-version = "0.3.52"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce791b7ca6638aae45be056e068fc756d871eb3b3b10b8efa62d1c9cec616752"
+version = "0.3.53"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
 dependencies = [
  "wasm-bindgen",
 ]
@@ -2965,8 +2963,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p"
-version = "0.39.1"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.40.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "atomic",
  "bytes 1.0.1",
@@ -2978,6 +2976,7 @@ dependencies = [
  "libp2p-identify",
  "libp2p-kad",
  "libp2p-mdns",
+ "libp2p-metrics",
  "libp2p-mplex",
  "libp2p-noise",
  "libp2p-ping",
@@ -3000,8 +2999,7 @@ dependencies = [
 [[package]]
 name = "libp2p-bitswap"
 version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c8e698cfd7957f2d8865fd765efb45dee026cb4f1c1699f7ae57069c5796a64"
+source = "git+https://github.com/Actyx/libp2p-bitswap?branch=sim-open#a439f1b88eedb57577999911727d1efd97421191"
 dependencies = [
  "async-trait",
  "fnv",
@@ -3018,8 +3016,7 @@ dependencies = [
 [[package]]
 name = "libp2p-blake-streams"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bccba9d69fd351782353526462e2529848d85339bec9f4ba8633247704ce5ff"
+source = "git+https://github.com/Actyx/blake-streams?branch=sim-open#038f0c8e6d438b812e775cab6669dec8538c7916"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3034,8 +3031,7 @@ dependencies = [
 [[package]]
 name = "libp2p-broadcast"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b652d72fe39c12745c38b358de0cb2964ca71362e2edc1c97622d87068ed3e5e"
+source = "git+https://github.com/Actyx/libp2p-broadcast?branch=sim-open-2#315c46e6e7a7da2d81958b9e328a982995b43f92"
 dependencies = [
  "fnv",
  "futures 0.3.16",
@@ -3045,8 +3041,6 @@ dependencies = [
 [[package]]
 name = "libp2p-combined-transport"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7091bd51912f9f316a420b82f2b4c684bf5f5041c4a482efcee9827605cb319e"
 dependencies = [
  "futures 0.3.16",
  "libp2p",
@@ -3055,8 +3049,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-core"
-version = "0.29.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.30.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "asn1_der",
  "bs58",
@@ -3088,8 +3082,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-dns"
-version = "0.29.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.30.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
  "libp2p-core",
@@ -3100,8 +3094,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-gossipsub"
-version = "0.32.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.33.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "asynchronous-codec",
  "base64 0.13.0",
@@ -3125,8 +3119,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-identify"
-version = "0.30.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.31.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
  "libp2p-core",
@@ -3140,8 +3134,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-kad"
-version = "0.31.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.32.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "arrayvec 0.5.2",
  "asynchronous-codec",
@@ -3165,8 +3159,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-mdns"
-version = "0.31.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.32.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "async-io",
  "data-encoding",
@@ -3184,9 +3178,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "libp2p-metrics"
+version = "0.1.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
+dependencies = [
+ "libp2p-core",
+ "libp2p-identify",
+ "libp2p-kad",
+ "libp2p-ping",
+ "libp2p-swarm",
+ "open-metrics-client",
+]
+
+[[package]]
 name = "libp2p-mplex"
-version = "0.29.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.30.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "asynchronous-codec",
  "bytes 1.0.1",
@@ -3202,8 +3209,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-noise"
-version = "0.32.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.33.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "bytes 1.0.1",
  "curve25519-dalek",
@@ -3223,8 +3230,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-ping"
-version = "0.30.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.31.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
  "libp2p-core",
@@ -3237,8 +3244,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-plaintext"
-version = "0.29.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.30.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "asynchronous-codec",
  "bytes 1.0.1",
@@ -3254,7 +3261,7 @@ dependencies = [
 [[package]]
 name = "libp2p-pnet"
 version = "0.21.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
  "log",
@@ -3267,8 +3274,7 @@ dependencies = [
 [[package]]
 name = "libp2p-quic"
 version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efab133f41ec02c6554c10c31e919f24ccca21c61316b1ddc473d1604fc3728a"
+source = "git+https://github.com/Actyx/libp2p-quic?branch=sim-open-2#80bf75972c30c9748108ba3fcec98757ccde99e0"
 dependencies = [
  "anyhow",
  "async-global-executor",
@@ -3291,8 +3297,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-request-response"
-version = "0.12.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.13.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "async-trait",
  "bytes 1.0.1",
@@ -3322,8 +3328,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-swarm"
-version = "0.30.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.31.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "either",
  "futures 0.3.16",
@@ -3338,7 +3344,7 @@ dependencies = [
 [[package]]
 name = "libp2p-swarm-derive"
 version = "0.24.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "quote",
  "syn",
@@ -3346,8 +3352,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-tcp"
-version = "0.29.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.30.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
  "futures-timer",
@@ -3362,8 +3368,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-wasm-ext"
-version = "0.29.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.30.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
  "js-sys",
@@ -3375,8 +3381,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-websocket"
-version = "0.30.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.31.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "either",
  "futures 0.3.16",
@@ -3392,8 +3398,8 @@ dependencies = [
 
 [[package]]
 name = "libp2p-yamux"
-version = "0.33.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+version = "0.34.0"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
  "libp2p-core",
@@ -3432,9 +3438,9 @@ dependencies = [
 
 [[package]]
 name = "libsecp256k1"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd1137239ab33b41aa9637a88a28249e5e70c40a42ccc92db7f12cc356c1fcd7"
+checksum = "c9d220bc1feda2ac231cb78c3d26f27676b8cf82c96971f7aeef3d0cf2797c73"
 dependencies = [
  "arrayref",
  "base64 0.12.3",
@@ -3630,18 +3636,18 @@ dependencies = [
 
 [[package]]
 name = "minicbor"
-version = "0.8.1"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51aa5bb0ca22415daca596a227b507f880ad1b2318a87fa9325312a5d285ca0d"
+checksum = "f6dced2db4cf71eff54673f123588a8f7ec25339aab89dc6b5d01e66a2225f34"
 dependencies = [
  "minicbor-derive",
 ]
 
 [[package]]
 name = "minicbor-derive"
-version = "0.6.4"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54999f917cd092b13904737e26631aa2b2b88d625db68e4bab461dcd8006c788"
+checksum = "355264ec26c23aae1d8d4599356cbd7e84134182b8feb9573acbd6d68c09c73e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3767,7 +3773,7 @@ dependencies = [
 [[package]]
 name = "multistream-select"
 version = "0.11.0"
-source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open-2#1dced70ed616c4f6fca1eb6624f815f4b7610e03"
+source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "bytes 1.0.1",
  "futures 0.3.16",
@@ -4194,6 +4200,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
+name = "open-metrics-client"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7337d80c23c2d8b1349563981bc4fb531220733743ba8115454a67b181173f0d"
+dependencies = [
+ "dtoa",
+ "itoa",
+ "open-metrics-client-derive-text-encode",
+ "owning_ref",
+]
+
+[[package]]
+name = "open-metrics-client-derive-text-encode"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a15c83b586f00268c619c1cb3340ec1a6f59dd9ba1d9833a273a68e6d5cd8ffc"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "openssl"
 version = "0.10.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4243,6 +4272,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53cdc5b785b7a58c5aad8216b3dfa114df64b0b06ae6e1501cef91df2fbdf8f9"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "owning_ref"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ff55baddef9e4ad00f88b6c743a2a8062d4c6ade126c2a528644b8e444d52ce"
+dependencies = [
+ "stable_deref_trait",
 ]
 
 [[package]]
@@ -5982,6 +6020,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
+name = "stable_deref_trait"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
+
+[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7022,9 +7066,8 @@ checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
 
 [[package]]
 name = "wasm-bindgen"
-version = "0.2.75"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b608ecc8f4198fe8680e2ed18eccab5f0cd4caaf3d83516fa5fb2e927fda2586"
+version = "0.2.76"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
 dependencies = [
  "cfg-if 1.0.0",
  "serde",
@@ -7034,9 +7077,8 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-backend"
-version = "0.2.75"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "580aa3a91a63d23aac5b6b267e2d13cb4f363e31dce6c352fca4752ae12e479f"
+version = "0.2.76"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
 dependencies = [
  "bumpalo",
  "lazy_static",
@@ -7061,9 +7103,8 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro"
-version = "0.2.75"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "171ebf0ed9e1458810dfcb31f2e766ad6b3a89dbda42d8901f2b268277e5f09c"
+version = "0.2.76"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
 dependencies = [
  "quote",
  "wasm-bindgen-macro-support",
@@ -7071,9 +7112,8 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro-support"
-version = "0.2.75"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c2657dd393f03aa2a659c25c6ae18a13a4048cebd220e147933ea837efc589f"
+version = "0.2.76"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7084,9 +7124,22 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-shared"
-version = "0.2.75"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e0c4a743a309662d45f4ede961d7afa4ba4131a59a639f29b0069c3798bbcc2"
+version = "0.2.76"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
+
+[[package]]
+name = "wasm-futures-executor"
+version = "0.1.0"
+source = "git+https://github.com/wngr/wasm-futures-executor#a1a3c1df330c9626b230075e90c7cff0392c71db"
+dependencies = [
+ "futures 0.3.16",
+ "futures-task",
+ "js-sys",
+ "log",
+ "parking_lot 0.11.1",
+ "wasm-bindgen",
+ "web-sys",
+]
 
 [[package]]
 name = "wasm-timer"
@@ -7105,9 +7158,8 @@ dependencies = [
 
 [[package]]
 name = "web-sys"
-version = "0.3.52"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01c70a82d842c9979078c772d4a1344685045f1a5628f677c2b2eab4dd7d2696"
+version = "0.3.53"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
