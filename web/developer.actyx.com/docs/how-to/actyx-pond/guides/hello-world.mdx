@@ -13,13 +13,13 @@ application, you can _observe_ a fish’s state meaning you get real-time update
 Let’s start with a very simple fish.
 
 ```typescript
-import { FishId, Metadata, allEvents, noEvents } from '@actyx/pond'
+import { FishId, Metadata, allEvents, Tag } from '@actyx/pond'
 
 const helloWorldFish = {
   fishId: FishId.of('HelloWorld-Example', 'getting-started', 0), // For caching
   initialState: 'Hello world!',
-  onEvent: (_oldState: string, event: any, _metadata: Metadata) => event,
-  where: allEvents,
+  onEvent: (_oldState: unknown, event: unknown, _metadata: Metadata) => event,
+  where: Tag('example-tag'),
 }
 ```
 
@@ -31,9 +31,9 @@ The `initialState` defines what state we are in before having seen any events. F
 send out a general greeting: _Hello, world!_
 
 Finally, we're providing a `where` clause describing which events this fish is interested in. By
-passing `allEvents` we do in fact select all events created by the application; we might also pass
-`noEvents` to process no events and always stay at the initial state. But of course, there is
-rich functionality for selecting only _some_ events. We will get to that later.
+passing `allEvents` we would in fact select all events; which probably results in reading some internal
+Actyx events.
+By instead requiring any specific tag that is found on 0 events, we preserve the initial state.
 
 For now, let's see how the friendly fish can give us a warm greeting:
 
@@ -58,8 +58,10 @@ npm install
 npm start
 ```
 
-You should see our initial greeting logged to the console – unless your swarm already has some events, in
-which case you will see the latest one!
+You should see our initial greeting logged to the console – unless your swarm already has some events tagged with `example-tag`,
+in which case you will see the latest one!
+
+Hint: Try adding `await pond.emit(Tag('example-tag'), 'Eye eye').toPromise()` to the `main` function.
 :::
 
 To bring a fish to life we need to create a pond in which it can breathe.

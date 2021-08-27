@@ -262,11 +262,5 @@ const union = <E>(sets: Tags<unknown>[]): Where<E> => {
  */
 export const allEvents: Tags<unknown> = req(false, [])
 
-/**
- * A `Where` expression that selects no events.
- * @public
- */
-export const noEvents: Where<never> = union([])
-
 /** @internal */
 export const escapeTag = (tag: TagInternal) => "'" + tag.tag.replace(/'/g, "''") + "'"

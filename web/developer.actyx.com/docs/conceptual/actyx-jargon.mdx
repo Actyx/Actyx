@@ -15,19 +15,18 @@ Actyx is a piece of software that you deploy to your device. It is packaged in v
 
 ### Node
 
-An Actyx node is a device that runs Actyx. The device can be physical, e.g. a tablet, or virtual, e.g. a virtual machine. There is one special type of node, see [bootstrap node](#bootstrap-node) below.
+A node is a device that runs Actyx. The device can be physical, e.g. a tablet, or virtual, e.g. a virtual machine.
+
+It is possible to run multiple instances of Actyx on one machine. In that case, one would say that the machine was running multiple nodes.
 
 ### Swarm
 
 An Actyx swarm is a group of Actyx nodes that are configured with the same Swarm Key. Nodes inside a swarm are connected to each other and exchange events.
 
-### Bootstrap node
-
-A boostrap node is an Actyx node like any other with one exception: It does not store or distribute events. It only connects to other nodes and its purpose is to serve as a directory for all nodes that form a swarm. When a new node connects to the bootstrap node, it gets a list of all other nodes in the swarm which facilitates peer discovery.
-
 ### App
 
-An app is a piece of software that runs on a device that also runs Actyx. On that device, the app interacts locally with Actyx through Actyx's APIs. The packaging of the app (e.g. as a Docker container or Android APK) depends on the device it is running on.
+An app is a piece of software that runs on a device that also runs Actyx. On that device, the app interacts locally with Actyx through Actyx's APIs.
+The packaging of the app (e.g. as a Docker container or Android APK) depends on the device it is running on.
 
 ### Pond
 
