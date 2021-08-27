@@ -27,13 +27,13 @@ use util::formats::{
 use wasm_bindgen::JsValue;
 use wasm_bindgen::{prelude::*, JsCast};
 use wasm_bindgen_futures::future_to_promise;
-//use wasm_futures_executor::ThreadPool;
+use wasm_futures_executor::ThreadPool;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    let _ = console_log::init_with_level(log::Level::Debug);
+    let _ = console_log::init_with_level(log::Level::Info);
     ::console_error_panic_hook::set_once();
-    debug!("Setup panic hook");
+    debug!("Setup logging");
 }
 
 #[wasm_bindgen]
@@ -62,10 +62,10 @@ type Channel = Either<
 >;
 #[allow(clippy::type_complexity)]
 static SWARMS: Lazy<Mutex<BTreeMap<String, Arc<Mutex<mpsc::Sender<Channel>>>>>> = Lazy::new(Default::default);
-//static THREAD_POOL: Lazy<Mutex<ThreadPool>> = Lazy::new(|| {
-//    let tp = ThreadPool::new(2).unwrap();
-//    Mutex::new(tp)
-//});
+static THREAD_POOL: Lazy<Mutex<ThreadPool>> = Lazy::new(|| {
+    let tp = ThreadPool::new(1).unwrap();
+    Mutex::new(tp)
+});
 
 #[wasm_bindgen]
 pub struct ActyxAdminApi {
@@ -170,16 +170,18 @@ impl ActyxAdminApi {
 
                 // TODO: Move this to a webworker.
                 // Right now, this basically just spawns the promise to wherever.
-                future_to_promise(async move {
-                    //
-                    //                    run(addr, &*private_key, rx).await.unwrap();
-                    //                    Ok("XX".into())
-                    //                });
-                    //THREAD_POOL.lock().spawn_ok(async move {
+                //future_to_promise(async move {
+                //
+                //                    run(addr, &*private_key, rx).await.unwrap();
+                //                    Ok("XX".into())
+                //                });
+                THREAD_POOL.lock().spawn_ok(async move {
+                    error!("Hi from future!");
+                    //                wasm_bindgen_futures::spawn_local(async move {
                     if let Err(e) = run(addr.clone(), &*private_key, rx).await {
                         error!("Error spawning swarm for {}: {:#}", addr, e)
                     }
-                    Ok("".into())
+                    //Ok("".into());
                 });
 
                 Arc::new(Mutex::new(tx))

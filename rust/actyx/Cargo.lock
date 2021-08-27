@@ -570,6 +570,7 @@ dependencies = [
  "util",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-futures-executor",
 ]
 
 [[package]]
@@ -2962,6 +2963,7 @@ dependencies = [
 [[package]]
 name = "libp2p"
 version = "0.40.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "atomic",
  "bytes 1.0.1",
@@ -3049,6 +3051,7 @@ dependencies = [
 [[package]]
 name = "libp2p-core"
 version = "0.30.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "asn1_der",
  "bs58",
@@ -3082,6 +3085,7 @@ dependencies = [
 [[package]]
 name = "libp2p-dns"
 version = "0.30.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "futures 0.3.16",
  "libp2p-core",
@@ -3093,6 +3097,7 @@ dependencies = [
 [[package]]
 name = "libp2p-gossipsub"
 version = "0.33.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "asynchronous-codec",
  "base64 0.13.0",
@@ -3118,6 +3123,7 @@ dependencies = [
 [[package]]
 name = "libp2p-identify"
 version = "0.31.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "futures 0.3.16",
  "futures-timer",
@@ -3132,6 +3138,7 @@ dependencies = [
 [[package]]
 name = "libp2p-kad"
 version = "0.32.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "arrayvec 0.5.2",
  "asynchronous-codec",
@@ -3156,6 +3163,7 @@ dependencies = [
 [[package]]
 name = "libp2p-mdns"
 version = "0.32.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "async-io",
  "data-encoding",
@@ -3175,6 +3183,7 @@ dependencies = [
 [[package]]
 name = "libp2p-metrics"
 version = "0.1.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "libp2p-core",
  "libp2p-identify",
@@ -3187,6 +3196,7 @@ dependencies = [
 [[package]]
 name = "libp2p-mplex"
 version = "0.30.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "asynchronous-codec",
  "bytes 1.0.1",
@@ -3203,6 +3213,7 @@ dependencies = [
 [[package]]
 name = "libp2p-noise"
 version = "0.33.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "bytes 1.0.1",
  "curve25519-dalek",
@@ -3223,6 +3234,7 @@ dependencies = [
 [[package]]
 name = "libp2p-ping"
 version = "0.31.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "futures 0.3.16",
  "futures-timer",
@@ -3236,6 +3248,7 @@ dependencies = [
 [[package]]
 name = "libp2p-plaintext"
 version = "0.30.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "asynchronous-codec",
  "bytes 1.0.1",
@@ -3251,6 +3264,7 @@ dependencies = [
 [[package]]
 name = "libp2p-pnet"
 version = "0.21.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "futures 0.3.16",
  "log",
@@ -3287,6 +3301,7 @@ dependencies = [
 [[package]]
 name = "libp2p-request-response"
 version = "0.13.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "async-trait",
  "bytes 1.0.1",
@@ -3316,6 +3331,7 @@ dependencies = [
 [[package]]
 name = "libp2p-swarm"
 version = "0.31.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "either",
  "futures 0.3.16",
@@ -3330,6 +3346,7 @@ dependencies = [
 [[package]]
 name = "libp2p-swarm-derive"
 version = "0.24.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "quote",
  "syn",
@@ -3338,6 +3355,7 @@ dependencies = [
 [[package]]
 name = "libp2p-tcp"
 version = "0.30.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "futures 0.3.16",
  "futures-timer",
@@ -3353,6 +3371,7 @@ dependencies = [
 [[package]]
 name = "libp2p-wasm-ext"
 version = "0.30.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "futures 0.3.16",
  "js-sys",
@@ -3365,6 +3384,7 @@ dependencies = [
 [[package]]
 name = "libp2p-websocket"
 version = "0.31.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "either",
  "futures 0.3.16",
@@ -3381,6 +3401,7 @@ dependencies = [
 [[package]]
 name = "libp2p-yamux"
 version = "0.34.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "futures 0.3.16",
  "libp2p-core",
@@ -3754,6 +3775,7 @@ dependencies = [
 [[package]]
 name = "multistream-select"
 version = "0.11.0"
+source = "git+https://github.com/wngr/rust-libp2p?branch=ow/wasm#a171f223aec7b090215d1dd7e99fc79496a6ccb5"
 dependencies = [
  "bytes 1.0.1",
  "futures 0.3.16",
@@ -7071,9 +7093,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-futures"
-version = "0.4.25"
+version = "0.4.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16646b21c3add8e13fdb8f20172f8a28c3dbf62f45406bcff0233188226cfe0c"
+checksum = "95fded345a6559c2cfee778d562300c581f7d4ff3edb9b0d230d69800d213972"
 dependencies = [
  "cfg-if 1.0.0",
  "js-sys",
@@ -7106,6 +7128,21 @@ dependencies = [
 name = "wasm-bindgen-shared"
 version = "0.2.76"
 source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
+
+[[package]]
+name = "wasm-futures-executor"
+version = "0.1.0"
+source = "git+https://github.com/wngr/wasm-futures-executor#5b653e009e739b26bdc07c684c75d1e5f153b2c1"
+dependencies = [
+ "async-lock",
+ "futures 0.3.16",
+ "js-sys",
+ "log",
+ "parking_lot 0.11.1",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
 
 [[package]]
 name = "wasm-timer"

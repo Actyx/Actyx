@@ -34,4 +34,4 @@ serde_json = "1.0.66"
 util = { path = "../util" }
 wasm-bindgen = { version = "0.2.75", features = ["serde-serialize"] }
 wasm-bindgen-futures = "0.4.25"
-#wasm-futures-executor = { git = "https://github.com/wngr/wasm-futures-executor" }
+wasm-futures-executor = { git = "https://github.com/wngr/wasm-futures-executor" }
