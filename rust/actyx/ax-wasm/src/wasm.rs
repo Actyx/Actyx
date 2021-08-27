@@ -27,11 +27,11 @@ use util::formats::{
 use wasm_bindgen::JsValue;
 use wasm_bindgen::{prelude::*, JsCast};
 use wasm_bindgen_futures::future_to_promise;
-use wasm_futures_executor::ThreadPool;
+//use wasm_futures_executor::ThreadPool;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    let _ = console_log::init_with_level(log::Level::Info);
+    let _ = console_log::init_with_level(log::Level::Debug);
     ::console_error_panic_hook::set_once();
     debug!("Setup panic hook");
 }
@@ -62,10 +62,10 @@ type Channel = Either<
 >;
 #[allow(clippy::type_complexity)]
 static SWARMS: Lazy<Mutex<BTreeMap<String, Arc<Mutex<mpsc::Sender<Channel>>>>>> = Lazy::new(Default::default);
-static THREAD_POOL: Lazy<Mutex<ThreadPool>> = Lazy::new(|| {
-    let tp = ThreadPool::new(2).unwrap();
-    Mutex::new(tp)
-});
+//static THREAD_POOL: Lazy<Mutex<ThreadPool>> = Lazy::new(|| {
+//    let tp = ThreadPool::new(2).unwrap();
+//    Mutex::new(tp)
+//});
 
 #[wasm_bindgen]
 pub struct ActyxAdminApi {
@@ -170,13 +170,16 @@ impl ActyxAdminApi {
 
                 // TODO: Move this to a webworker.
                 // Right now, this basically just spawns the promise to wherever.
-                //                future_to_promise(async move {
-                //
-                //                    run(addr, &*private_key, rx).await.unwrap();
-                //                    Ok("XX".into())
-                //                });
-                THREAD_POOL.lock().spawn_ok(async move {
-                    run(addr, &*private_key, rx).await.unwrap();
+                future_to_promise(async move {
+                    //
+                    //                    run(addr, &*private_key, rx).await.unwrap();
+                    //                    Ok("XX".into())
+                    //                });
+                    //THREAD_POOL.lock().spawn_ok(async move {
+                    if let Err(e) = run(addr.clone(), &*private_key, rx).await {
+                        error!("Error spawning swarm for {}: {:#}", addr, e)
+                    }
+                    Ok("".into())
                 });
 
                 Arc::new(Mutex::new(tx))
@@ -552,7 +555,6 @@ async fn run(addr: Multiaddr, private_key: &str, mut rx: mpsc::Receiver<Channel>
     Ok(())
 }
 
-// FIXME move ThreadPool into global
 fn mk_swarm(kp: identity::Keypair) -> anyhow::Result<Swarm<RequestBehaviour>> {
     let peer_id: PeerId = kp.public().into();
     let transport = mk_transport(kp)?;
@@ -593,9 +595,11 @@ async fn poll_until_connected(
     for addr in potential_addresses {
         info!("Trying to connect to {}", addr);
         Swarm::dial_addr(&mut swarm, addr).expect("Connection limit exceeded");
+        info!("addr dialed");
         to_try += 1;
     }
     while let Some(event) = swarm.next().await {
+        debug!("Connection attempt, ev: {:?}", event);
         match event {
             SwarmEvent::ConnectionEstablished { endpoint, peer_id, .. } => {
                 let addr = match endpoint {

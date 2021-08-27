@@ -5,9 +5,8 @@ WASMBINDGEN_VERSION=0.2.76
 OUT=./pkg
 
 echo "Running cargo build"
-# This should pick up the toolchain set in ./rust-toolchain.toml and
-# the options set in .cargon/config
-cargo build --release
+# This should pick up the toolchain set in ./rust-toolchain.toml
+cargo build --release --target wasm32-unknown-unknown
 
 if [ -d $OUT ]; then
   echo "Clearing output directory '$OUT'"

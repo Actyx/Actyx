@@ -570,7 +570,6 @@ dependencies = [
  "util",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-futures-executor",
 ]
 
 [[package]]
@@ -2625,8 +2624,7 @@ dependencies = [
 [[package]]
 name = "instant"
 version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bee0328b1209d157ef001c94dd85b4f8f64139adb0eac2659f4b08382b2f474d"
+source = "git+https://github.com/wngr/instant#092475ef90193aa388277a40dbf7d1919fbe50a4"
 dependencies = [
  "cfg-if 1.0.0",
  "js-sys",
@@ -2964,11 +2962,13 @@ dependencies = [
 [[package]]
 name = "libp2p"
 version = "0.40.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "atomic",
  "bytes 1.0.1",
  "futures 0.3.16",
+ "futures-timer",
+ "getrandom 0.2.3",
+ "instant",
  "lazy_static",
  "libp2p-core",
  "libp2p-dns",
@@ -2993,7 +2993,6 @@ dependencies = [
  "parking_lot 0.11.1",
  "pin-project 1.0.8",
  "smallvec",
- "wasm-timer",
 ]
 
 [[package]]
@@ -3050,7 +3049,6 @@ dependencies = [
 [[package]]
 name = "libp2p-core"
 version = "0.30.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "asn1_der",
  "bs58",
@@ -3059,6 +3057,7 @@ dependencies = [
  "fnv",
  "futures 0.3.16",
  "futures-timer",
+ "instant",
  "lazy_static",
  "libsecp256k1",
  "log",
@@ -3083,7 +3082,6 @@ dependencies = [
 [[package]]
 name = "libp2p-dns"
 version = "0.30.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
  "libp2p-core",
@@ -3095,7 +3093,6 @@ dependencies = [
 [[package]]
 name = "libp2p-gossipsub"
 version = "0.33.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "asynchronous-codec",
  "base64 0.13.0",
@@ -3103,6 +3100,7 @@ dependencies = [
  "bytes 1.0.1",
  "fnv",
  "futures 0.3.16",
+ "futures-timer",
  "hex_fmt",
  "libp2p-core",
  "libp2p-swarm",
@@ -3120,22 +3118,20 @@ dependencies = [
 [[package]]
 name = "libp2p-identify"
 version = "0.31.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
+ "futures-timer",
  "libp2p-core",
  "libp2p-swarm",
  "log",
  "prost 0.8.0",
  "prost-build 0.8.0",
  "smallvec",
- "wasm-timer",
 ]
 
 [[package]]
 name = "libp2p-kad"
 version = "0.32.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "arrayvec 0.5.2",
  "asynchronous-codec",
@@ -3143,6 +3139,7 @@ dependencies = [
  "either",
  "fnv",
  "futures 0.3.16",
+ "futures-timer",
  "libp2p-core",
  "libp2p-swarm",
  "log",
@@ -3154,13 +3151,11 @@ dependencies = [
  "uint",
  "unsigned-varint",
  "void",
- "wasm-timer",
 ]
 
 [[package]]
 name = "libp2p-mdns"
 version = "0.32.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "async-io",
  "data-encoding",
@@ -3180,7 +3175,6 @@ dependencies = [
 [[package]]
 name = "libp2p-metrics"
 version = "0.1.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "libp2p-core",
  "libp2p-identify",
@@ -3193,7 +3187,6 @@ dependencies = [
 [[package]]
 name = "libp2p-mplex"
 version = "0.30.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "asynchronous-codec",
  "bytes 1.0.1",
@@ -3210,7 +3203,6 @@ dependencies = [
 [[package]]
 name = "libp2p-noise"
 version = "0.33.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "bytes 1.0.1",
  "curve25519-dalek",
@@ -3231,21 +3223,19 @@ dependencies = [
 [[package]]
 name = "libp2p-ping"
 version = "0.31.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
+ "futures-timer",
  "libp2p-core",
  "libp2p-swarm",
  "log",
  "rand 0.7.3",
  "void",
- "wasm-timer",
 ]
 
 [[package]]
 name = "libp2p-plaintext"
 version = "0.30.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "asynchronous-codec",
  "bytes 1.0.1",
@@ -3261,7 +3251,6 @@ dependencies = [
 [[package]]
 name = "libp2p-pnet"
 version = "0.21.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
  "log",
@@ -3298,7 +3287,6 @@ dependencies = [
 [[package]]
 name = "libp2p-request-response"
 version = "0.13.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "async-trait",
  "bytes 1.0.1",
@@ -3311,7 +3299,6 @@ dependencies = [
  "rand 0.7.3",
  "smallvec",
  "unsigned-varint",
- "wasm-timer",
 ]
 
 [[package]]
@@ -3329,22 +3316,20 @@ dependencies = [
 [[package]]
 name = "libp2p-swarm"
 version = "0.31.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "either",
  "futures 0.3.16",
+ "futures-timer",
  "libp2p-core",
  "log",
  "rand 0.7.3",
  "smallvec",
  "void",
- "wasm-timer",
 ]
 
 [[package]]
 name = "libp2p-swarm-derive"
 version = "0.24.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "quote",
  "syn",
@@ -3353,7 +3338,6 @@ dependencies = [
 [[package]]
 name = "libp2p-tcp"
 version = "0.30.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
  "futures-timer",
@@ -3369,7 +3353,6 @@ dependencies = [
 [[package]]
 name = "libp2p-wasm-ext"
 version = "0.30.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
  "js-sys",
@@ -3382,7 +3365,6 @@ dependencies = [
 [[package]]
 name = "libp2p-websocket"
 version = "0.31.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "either",
  "futures 0.3.16",
@@ -3399,7 +3381,6 @@ dependencies = [
 [[package]]
 name = "libp2p-yamux"
 version = "0.34.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "futures 0.3.16",
  "libp2p-core",
@@ -3773,7 +3754,6 @@ dependencies = [
 [[package]]
 name = "multistream-select"
 version = "0.11.0"
-source = "git+https://github.com/Actyx/rust-libp2p?branch=sim-open#9eecb895de76b5d32ddab62945d13efc5d4c6722"
 dependencies = [
  "bytes 1.0.1",
  "futures 0.3.16",
@@ -7126,20 +7106,6 @@ dependencies = [
 name = "wasm-bindgen-shared"
 version = "0.2.76"
 source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
-
-[[package]]
-name = "wasm-futures-executor"
-version = "0.1.0"
-source = "git+https://github.com/wngr/wasm-futures-executor#a1a3c1df330c9626b230075e90c7cff0392c71db"
-dependencies = [
- "futures 0.3.16",
- "futures-task",
- "js-sys",
- "log",
- "parking_lot 0.11.1",
- "wasm-bindgen",
- "web-sys",
-]
 
 [[package]]
 name = "wasm-timer"
