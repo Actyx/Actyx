@@ -288,7 +288,7 @@ pub struct RequestBehaviour {
 }
 
 async fn mk_transport(keypair: identity::Keypair) -> ActyxOSResult<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {
-    let peer_id = keypair.public().into_peer_id();
+    let peer_id = keypair.public().to_peer_id();
     let transport = swarm::transport::build_transport(keypair, None, Duration::from_secs(20))
         .await
         .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error creating libp2p transport")?;
