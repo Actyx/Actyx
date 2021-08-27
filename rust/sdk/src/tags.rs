@@ -105,6 +105,7 @@ impl Tag {
     /// # Example
     ///
     /// ```
+    /// use actyx_sdk::{TagSet, tags, tag};
     /// let tags: TagSet = tag!("machine").with_id("Drill-404");
     /// assert_eq!(tags, tags!("machine", "machine:Drill-404"));
     /// ```
