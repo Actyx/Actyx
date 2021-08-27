@@ -20,7 +20,6 @@ const helloWorldFish = {
   initialState: 'Hello world!',
   onEvent: (_oldState: unknown, event: unknown, _metadata: Metadata) => event,
   where: Tag('example-tag'),
-  // where: allEvents,
 }
 ```
 
@@ -59,10 +58,10 @@ npm install
 npm start
 ```
 
-You should see our initial greeting logged to the console – unless your swarm already has some events tagged with `dummy`, in
-which case you will see the latest one!
+You should see our initial greeting logged to the console – unless your swarm already has some events tagged with `example-tag`,
+in which case you will see the latest one!
 
-Hint: Try `pond.emit(Tag('example-tag'), 'Eye eye')`
+Hint: Try adding `await pond.publish(Tag('example-tag'), 'Eye eye')` to the `main` function.
 :::
 
 To bring a fish to life we need to create a pond in which it can breathe.
