@@ -61,7 +61,7 @@ npm start
 You should see our initial greeting logged to the console – unless your swarm already has some events tagged with `example-tag`,
 in which case you will see the latest one!
 
-Hint: Try adding `await pond.publish(Tag('example-tag'), 'Eye eye')` to the `main` function.
+Hint: Try adding `await pond.emit(Tag('example-tag'), 'Eye eye').toPromise()` to the `main` function.
 :::
 
 To bring a fish to life we need to create a pond in which it can breathe.
