@@ -101,8 +101,8 @@ impl Tag {
         self.0.len()
     }
 
-    pub fn with_id(self, id: impl std::fmt::Display) -> TagSet {
-        TagSet::from(vec![self.clone(), self + format!(":{}", id)])
+    pub fn with_id(self, id: impl Into<String>) -> TagSet {
+        vec![self.clone(), self + format!(":{}", id.into())].into()
     }
 }
 

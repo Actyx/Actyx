@@ -107,19 +107,19 @@ impl EventResponse<Payload> {
     /// event envelope if successful. The produced payload is deserialized as efficiently
     /// as possible and may therefore still reference memory owned by the `Payload`.
     /// You may need to `.clone()` it to remove this dependency.
-    pub fn extract<'a, T>(&'a self) -> EventResponse<T>
+    pub fn extract<'a, T>(&'a self) -> Result<EventResponse<T>, serde_cbor::Error>
     where
         T: Deserialize<'a> + Clone,
     {
-        EventResponse {
+        Ok(EventResponse {
             stream: self.stream,
             lamport: self.lamport,
             offset: self.offset,
             timestamp: self.timestamp,
             tags: self.tags.clone(),
             app_id: self.app_id.clone(),
-            payload: self.payload.extract::<T>().unwrap(),
-        }
+            payload: self.payload.extract::<T>()?,
+        })
     }
 }
 
