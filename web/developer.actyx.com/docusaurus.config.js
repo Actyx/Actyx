@@ -97,12 +97,7 @@ module.exports = {
           label: 'Forum',
           position: 'right',
           to: 'https://community.actyx.com/',
-        },
-        {
-          href: 'https://github.com/Actyx/Actyx',
-          position: 'right',
-          className: 'header-github-link',
-        },
+        }
       ],
     },
     footer: {
