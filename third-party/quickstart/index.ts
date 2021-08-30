@@ -5,7 +5,8 @@ const HelloWorldFish = {
   fishId: FishId.of('com.example.quickstart', 'quickstart', 0),
   initialState: 'Hello, World!',
   onEvent: (_oldState: any, event: any, _metadata: Metadata) => event,
-  where: allEvents,
+  where: Tag('example-tag'),
+  // where: allEvents,
 }
 
 const main = async () => {
