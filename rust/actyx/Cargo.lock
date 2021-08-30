@@ -2483,8 +2483,7 @@ dependencies = [
 [[package]]
 name = "if-addrs"
 version = "0.6.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28538916eb3f3976311f5dfbe67b5362d0add1293d0a9cad17debf86f8e3aa48"
+source = "git+https://github.com/Actyx/get_if_addrs?branch=aru/android-native#43b702c7a697b1872db01c0a3d865d3f227f07f5"
 dependencies = [
  "if-addrs-sys",
  "libc",
@@ -2494,8 +2493,7 @@ dependencies = [
 [[package]]
 name = "if-addrs-sys"
 version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de74b9dd780476e837e5eb5ab7c88b49ed304126e412030a0adba99c8efe79ea"
+source = "git+https://github.com/Actyx/get_if_addrs?branch=aru/android-native#43b702c7a697b1872db01c0a3d865d3f227f07f5"
 dependencies = [
  "cc",
  "libc",
