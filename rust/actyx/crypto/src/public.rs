@@ -93,7 +93,7 @@ pub fn peer_id_to_node_id(peer_id: libp2p::core::PeerId) -> anyhow::Result<NodeI
 impl From<PublicKey> for libp2p::core::PeerId {
     fn from(pb: PublicKey) -> libp2p::core::PeerId {
         let public = pb.into();
-        libp2p::core::PeerId::from_public_key(public)
+        libp2p::core::PeerId::from_public_key(&public)
     }
 }
 

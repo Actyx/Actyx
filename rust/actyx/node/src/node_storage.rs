@@ -1,8 +1,8 @@
-use std::{convert::TryFrom, io, path::Path, str::FromStr, sync::Arc};
+use std::{convert::TryFrom, path::Path, str::FromStr, sync::Arc};
 
 use actyx_sdk::NodeId;
 use anyhow::{bail, Context};
-use crypto::{KeyStore, LegacyKeyId, PublicKey};
+use crypto::PublicKey;
 use derive_more::{Display, Error};
 use parking_lot::Mutex;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
@@ -66,13 +66,21 @@ impl NodeStorage {
     pub fn migrate(conn: &mut Connection) -> anyhow::Result<()> {
         let version = NodeStorage::version(conn)?;
         match version {
-            0 | 1 => {
+            0 | 1 => Self::migrate_v1(version, conn),
+            2 => Ok(()),
+            _ => unreachable!(),
+        }
+    }
+
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "migration-v1")] {
+            fn migrate_v1(version: u32, conn: &mut Connection) -> anyhow::Result<()> {
                 let ks = Self::query_keystore(conn)?
-                    .map(|dump| KeyStore::restore(io::Cursor::new(dump)))
+                    .map(|dump| crypto::KeyStore::restore(std::io::Cursor::new(dump)))
                     .unwrap()?;
 
                 if version == 0 {
-                    let v0_key_id = LegacyKeyId::from_str(&*conn.query_row(
+                    let v0_key_id = crypto::LegacyKeyId::from_str(&*conn.query_row(
                         "SELECT value FROM node WHERE name='node_id'",
                         [],
                         |row| row.get::<_, String>(0),
@@ -100,8 +108,10 @@ impl NodeStorage {
                 }
                 Ok(())
             }
-            2 => Ok(()),
-            _ => unreachable!(),
+        } else {
+            fn migrate_v1(_version: u32, _conn: &mut Connection) -> anyhow::Result<()> {
+                Err(anyhow::anyhow!("migration from ActyxOS v1 not built in, please use official binaries"))
+            }
         }
     }
 
@@ -228,11 +238,6 @@ impl NodeStorage {
 
 #[cfg(test)]
 mod test {
-    use std::{io, time::Duration};
-
-    use crypto::KeyStore;
-    use rusqlite::backup::Backup;
-
     use super::*;
 
     #[test]
@@ -249,6 +254,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "migration-v1")]
     fn should_migrate_v0() -> anyhow::Result<()> {
         // assert error
         let mem = load_test_db("tests/node_v0.sqlite")?;
@@ -269,7 +275,7 @@ mod test {
 
         let ks = storage
             .get_keystore()?
-            .map(|dump| KeyStore::restore(io::Cursor::new(dump)))
+            .map(|dump| crypto::KeyStore::restore(std::io::Cursor::new(dump)))
             .unwrap()?;
         let node_id: NodeId = ks.get_pair(expected_node_id.into()).unwrap().pub_key().into();
         assert_eq!(node_id, expected_node_id);
@@ -277,6 +283,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "migration-v1")]
     fn should_migrate_v1() -> anyhow::Result<()> {
         // assert error
         let mem = load_test_db("tests/node_v1.sqlite")?;
@@ -297,7 +304,7 @@ mod test {
 
         let ks = storage
             .get_keystore()?
-            .map(|dump| KeyStore::restore(io::Cursor::new(dump)))
+            .map(|dump| crypto::KeyStore::restore(std::io::Cursor::new(dump)))
             .unwrap()?;
         let node_id: NodeId = ks.get_pair(expected_node_id.into()).unwrap().pub_key().into();
         assert_eq!(node_id, expected_node_id);
@@ -305,11 +312,12 @@ mod test {
     }
 
     /// Load a sqlite database into a mutable in-memory database
+    #[cfg(feature = "migration-v1")]
     fn load_test_db(path: &str) -> anyhow::Result<Connection> {
         let mut mem = Connection::open_in_memory()?;
         let v0 = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
-        let backup = Backup::new(&v0, &mut mem)?;
-        backup.run_to_completion(1000, Duration::from_secs(1), None)?;
+        let backup = rusqlite::backup::Backup::new(&v0, &mut mem)?;
+        backup.run_to_completion(1000, std::time::Duration::from_secs(1), None)?;
         std::mem::drop(backup);
         Ok(mem)
     }

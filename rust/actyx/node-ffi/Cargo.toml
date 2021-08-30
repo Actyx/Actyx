@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Actyx AG"]
 edition = "2018"
 
+[features]
+migration-v1 = ["node/migration-v1"]
+
 [dependencies]
 settings = { path = "../settings" }
 node = { path = "../node" }

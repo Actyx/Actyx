@@ -152,7 +152,7 @@ impl VersionsFile {
         changes.sort();
 
         let just_changes: Vec<Change> = changes.clone().into_iter().map(|c| c.1).collect();
-        let new_version = apply_changes(&product, &last_version, &just_changes);
+        let new_version = apply_changes(product, &last_version, &just_changes);
 
         Ok(CalculationResult {
             prev_commit: last_hash,

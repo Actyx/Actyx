@@ -295,7 +295,7 @@ Overview:"#
                     eprintln!("Already exists. Exiting");
                     return Ok(());
                 } else {
-                    repo.checkout(&*branch_name, &commit)?;
+                    repo.checkout(&*branch_name, commit)?;
                     eprintln!("Done.");
                 }
 

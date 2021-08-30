@@ -57,6 +57,7 @@ android-bins = actyx.apk actyx.aab
 
 CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
+CARGO_BUILD_ARGS ?= --features migration-v1
 
 export BUILD_RUST_TOOLCHAIN ?= 1.54.0
 
@@ -119,7 +120,7 @@ all-ANDROID := $(android-bins)
 all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t macos-aarch64/$t)
 
 docker-platforms = $(foreach arch,$(architectures),$(docker-platform-$(arch)))
-docker-build-args = --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT)
+docker-build-args = --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg CARGO_BUILD_ARGS="$(CARGO_BUILD_ARGS)"
 docker-multiarch-build-args = $(docker-build-args) --platform $(shell echo $(docker-platforms) | sed 's/ /,/g')
 
 export CARGO_HOME ?= $(HOME)/.cargo
@@ -215,7 +216,7 @@ prepare-js:
 
 # execute linter, style checker and tests for everything
 # THIS TARGET IS NOT RUN FOR PR VALIDATION — see azure-piplines
-validate: validate-os validate-netsim validate-os-android validate-js validate-dotnet assert-clean
+validate: validate-rust validate-os validate-netsim validate-release validate-os-android validate-js validate-dotnet assert-clean
 
 # declare all the validate targets to be phony
 .PHONY: validate-os validate-os-android validate-js validate-dotnet
@@ -245,6 +246,22 @@ validate-os: diagnostics
 	cd rust/actyx && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
 	cd rust/actyx && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 	cd rust/actyx && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
+
+.PHONY: validate-rust
+# execute fmt check, clippy and tests for rust/actyx
+validate-rust: diagnostics
+	cd rust/sdk && $(CARGO) fmt --all -- --check
+	cd rust/sdk && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
+	cd rust/sdk && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
+	cd rust/sdk && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
+
+.PHONY: validate-release
+# execute fmt check, clippy and tests for rust/actyx
+validate-release: diagnostics
+	cd rust/release && $(CARGO) fmt --all -- --check
+	cd rust/release && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
+	cd rust/release && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
+	cd rust/release && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
 
 validate-netsim: diagnostics
 	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release -j $(CARGO_BUILD_JOBS)
@@ -451,7 +468,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
-	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*) --target $(TARGET)
+	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --bin $$(basename $$*) --target $(TARGET)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 
@@ -472,7 +489,7 @@ $(soTargetPatterns): cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) --target $(TARGET)
+	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --target $(TARGET)
 
 # create these so that they belong to the current user (Docker would create as root)
 # (formulating as rule dependencies only runs mkdir when they are missing)
@@ -559,3 +576,11 @@ docker-current:
 # This is here to ensure that we use the same build-args here and in artifacts.yml
 docker-multiarch-build-args:
 	@echo $(docker-multiarch-build-args)
+
+docker-push-actyx:
+	docker buildx build \
+		$(docker-multiarch-build-args) \
+		--push \
+		--tag actyx/actyx-ci:actyx-$(GIT_COMMIT) $(ADDITIONAL_DOCKER_ARGS) \
+		-f docker/actyx/Dockerfile \
+		.

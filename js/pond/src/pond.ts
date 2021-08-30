@@ -17,6 +17,7 @@ import {
   NodeId,
   PendingEmission,
   StateWithProvenance,
+  TaggedEvent,
   Tags,
   TestEvent,
   toEventPredicate,
@@ -162,8 +163,19 @@ export type Pond = {
    * @param event  - The event itself.
    * @returns        A `PendingEmission` object that can be used to register
    *                 callbacks with the emission’s completion.
+   *
+   * @deprecated Use `publish` instead, and always await the Promise.
    */
   emit<E>(tags: Tags<E>, event: E): PendingEmission
+
+  /**
+   * Publish any number of events.
+   *
+   * @param events - Events to publish. Use `Tag('foo').apply(event)` to create an array of `TaggedEvent`.
+   *
+   * @returns        A Promise that resolves to the emitted event’s metadata.
+   */
+  publish(events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]>
 
   /* AGGREGATION */
 
@@ -185,6 +197,19 @@ export type Pond = {
     callback: (newState: S) => void,
     stoppedByError?: (err: unknown) => void,
   ): CancelSubscription
+
+  /**
+   * Read the current state of a Fish.
+   *
+   * Caching is done based on the `fishId` inside the `fish`, i.e. if a fish with the included
+   * `fishId` is already known, that other Fish’s ongoing aggregation will be used instead of
+   * starting a new one.
+   *
+   * @param fish       - Complete Fish information.
+   *
+   * @returns A Promise that resolves to the Fish’s latest known state. If the Fish was stopped due to an error, the Promise will reject with that error.
+   */
+  currentState<S, E>(fish: Fish<S, E>): Promise<S>
 
   /**
    * Create Fish from events and observe them all.
@@ -420,6 +445,9 @@ class Pond2Impl implements Pond {
     return this.actyx.emit(tags.apply(payload))
   }
 
+  publish = (events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]> =>
+    this.actyx.emit(events).toPromise()
+
   private getCachedOrInitialize = <S, E>(
     subscriptionSet: Where<E>,
     initialState: S,
@@ -451,6 +479,18 @@ class Pond2Impl implements Pond {
     stoppedByError?: (err: unknown) => void,
   ): CancelSubscription => {
     return omitObservable(stoppedByError, callback, this.observeTagBased0<S, E>(fish).states)
+  }
+
+  currentState = <S, E>(fish: Fish<S, E>): Promise<S> => {
+    const states = this.observeTagBased0<S, E>(fish).states
+    if (states.hasError) {
+      return Promise.reject(states.thrownError)
+    }
+
+    return states
+      .take(1)
+      .toPromise()
+      .then(x => x.state)
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.

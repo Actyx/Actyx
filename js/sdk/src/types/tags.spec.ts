@@ -163,23 +163,34 @@ describe('tag automatic id extraction', () => {
     fooId: 'my-foo',
   }
 
+  const foo2: FooWithId = {
+    eventType: 'foo',
+    fooId: 'second-foo',
+  }
+
   const FooTag = Tag<FooWithId>('foo', foo => foo.fooId)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const BarTag = Tag<any>('bar')
 
   it('should extract id from events when applying', () => {
-    expect(FooTag.apply(foo1)[0].tags).toEqual(['foo', 'foo:my-foo'])
+    expect(FooTag.apply(foo1).tags).toEqual(['foo', 'foo:my-foo'])
+  })
+
+  it('should extract id from multiple events when applying', () => {
+    const evts = FooTag.apply(foo1, foo2)
+    expect(evts[0].tags).toEqual(['foo', 'foo:my-foo'])
+    expect(evts[1].tags).toEqual(['foo', 'foo:second-foo'])
   })
 
   it('should keep applying when ANDed with other tags', () => {
-    expect(FooTag.and(BarTag).apply(foo1)[0].tags).toEqual(['foo', 'foo:my-foo', 'bar'])
-    expect(BarTag.and(FooTag).apply(foo1)[0].tags).toEqual(['bar', 'foo', 'foo:my-foo'])
+    expect(FooTag.and(BarTag).apply(foo1).tags).toEqual(['foo', 'foo:my-foo', 'bar'])
+    expect(BarTag.and(FooTag).apply(foo1).tags).toEqual(['bar', 'foo', 'foo:my-foo'])
   })
 
   it('should not apply when already having a custom id specified', () => {
     const fooCustom = FooTag.withId('custom override')
 
-    expect(fooCustom.apply(foo1)[0].tags).toEqual(['foo', 'foo:custom override'])
-    expect(fooCustom.and(BarTag).apply(foo1)[0].tags).toEqual(['foo', 'foo:custom override', 'bar'])
+    expect(fooCustom.apply(foo1).tags).toEqual(['foo', 'foo:custom override'])
+    expect(fooCustom.and(BarTag).apply(foo1).tags).toEqual(['foo', 'foo:custom override', 'bar'])
   })
 })

@@ -8,6 +8,9 @@ version = "0.1.0"
 name = "actyx-linux"
 path = "src/bin/linux.rs"
 
+[features]
+migration-v1 = ["crypto/legacy"]
+
 [build-dependencies]
 prost-build = "0.8.0"
 
@@ -19,6 +22,7 @@ ax-futures-util = { path = "../ax-futures-util" }
 backtrace = "0.3.60"
 base64 = "0.13.0"
 bytes = "1.0.1"
+cfg-if = "1.0.0"
 chrono = { features = ["serde"], version = "0.4.19" }
 crossbeam = "0.8.1"
 crypto = { path = "../crypto/" }
@@ -30,7 +34,7 @@ futures = { version = "0.3.15", features = ["compat"], package = "futures" }
 hex = "0.4.3"
 ipfs-sqlite-block-store = "0.6.1"
 libipld = "0.12.0"
-libp2p = { version = "0.39.1", default-features = false, features = ["gossipsub", "ping"] }
+libp2p = { version = "0.40.0", default-features = false, features = ["gossipsub", "ping"] }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 maplit = "1.0.2"
 multihash = "0.14.0"

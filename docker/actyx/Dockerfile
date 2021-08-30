@@ -12,11 +12,12 @@ ENV CARGO_BUILD_TARGET=armv7-unknown-linux-musleabihf
 
 # actual build image
 FROM --platform=$BUILDPLATFORM build-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} AS crossbuild
-ENV     CARGO_HOME=/usr/local/cargo \
+ENV CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
 ARG RUSTVER=1.54.0
 ARG ACTYX_VERSION=2.0.0_dev-unknown
 ENV ACTYX_VERSION=${ACTYX_VERSION}
+ARG CARGO_BUILD_ARGS
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- \
     --default-toolchain ${RUSTVER} \
@@ -30,11 +31,13 @@ FROM --platform=$BUILDPLATFORM crossbuild AS build
 # all dependencies needed for building
 COPY rust rust
 COPY protocols protocols
+COPY NOTICE NOTICE
 
 RUN cargo install \
     --target ${CARGO_BUILD_TARGET} \
     --path rust/actyx/node \
     --locked \
+    ${CARGO_BUILD_ARGS} \
     --bin actyx-linux
 
 # final prod image

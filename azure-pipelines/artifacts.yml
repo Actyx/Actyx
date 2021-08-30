@@ -141,15 +141,10 @@ stages:
               MASTER_TAG=""
               if [ "$GIT_COMMIT" == "$head_of_master" ]; then
                   echo "Running on HEAD of master ($head_of_master), tagging image as latest"
-                  MASTER_TAG="--tag actyx/actyx-ci:actyx-latest"
+                  make -e ADDITIONAL_DOCKER_ARGS="--tag actyx/actyx-ci:actyx-latest" docker-push-actyx
+              else
+                  make docker-push-actyx
               fi
-
-              docker buildx build \
-                $(make docker-multiarch-build-args) \
-                --push \
-                --tag actyx/actyx-ci:actyx-$GIT_COMMIT $MASTER_TAG \
-                -f docker/actyx/Dockerfile \
-                .
 
               make assert-clean
             env:

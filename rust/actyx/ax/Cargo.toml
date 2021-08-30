@@ -31,7 +31,7 @@ hyper = { version = "0.14.10", features = ["stream"], package = "hyper" }
 ipfs-sqlite-block-store = "0.6.1"
 lazy_static = "1"
 libipld = "0.12.0"
-libp2p = { version = "0.39.1", default-features = false }
+libp2p = { version = "0.40.0", default-features = false }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 maplit = "1.0.2"
 prettytable-rs = "0.8.0"

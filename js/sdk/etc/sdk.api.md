@@ -117,6 +117,7 @@ export type EventChunk = {
 
 // @public
 export interface EventFns {
+    // @deprecated
     emit: (events: ReadonlyArray<TaggedEvent>) => PendingEmission;
     observeBestMatch: <E>(query: Where<E>, shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean, onReplaced: (event: E, metadata: Metadata) => void) => CancelSubscription;
     // @beta
@@ -126,6 +127,9 @@ export interface EventFns {
     observeUnorderedReduce: <R, E>(query: Where<E>, reduce: (acc: R, event: E, metadata: Metadata) => R, initial: R, onUpdate: (result: R) => void) => CancelSubscription;
     offsets: () => Promise<OffsetsResponse>;
     present: () => Promise<OffsetMap>;
+    publish(event: TaggedEvent): Promise<Metadata>;
+    // (undocumented)
+    publish(events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]>;
     queryAllKnown: (query: AutoCappedQuery) => Promise<EventChunk>;
     queryAllKnownChunked: (query: AutoCappedQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
     // @beta
@@ -295,9 +299,6 @@ export const NodeId: {
 };
 
 // @public
-export const noEvents: Where<never>;
-
-// @public
 export type Offset = number;
 
 // @public
@@ -388,6 +389,7 @@ export type TaggedEvent = Readonly<{
 export interface Tags<E> extends Where<E> {
     and<E1>(tag: Tags<E1>): Tags<Extract<E1, E>>;
     and(tag: string): Tags<E>;
+    apply(event: E): TaggedEvent;
     apply(...events: E[]): ReadonlyArray<TaggedEvent>;
     local(): Tags<E>;
 }

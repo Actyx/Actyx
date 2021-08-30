@@ -532,6 +532,19 @@ export const EventFnsFromEventStoreV2 = (
     return pendingEmission(allPersisted)
   }
 
+  // TS doesn’t understand how we are implementing this overload.
+  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+  // @ts-ignore
+  const publish: EventFns['publish'] = (taggedEvents: ReadonlyArray<TaggedEvent> | TaggedEvent) => {
+    if (Array.isArray(taggedEvents)) {
+      return emit(taggedEvents).toPromise()
+    } else {
+      return emit([taggedEvents as TaggedEvent])
+        .toPromise()
+        .then(x => x[0])
+    }
+  }
+
   // FIXME properly type EventStore. (This runs without error because in production mode the ws event store does not use io-ts.)
   const wrapAql = (e: { type: string }): AqlResponse => {
     const actualType = e.type
@@ -573,5 +586,6 @@ export const EventFnsFromEventStoreV2 = (
     observeBestMatch,
     observeUnorderedReduce,
     emit,
+    publish,
   }
 }

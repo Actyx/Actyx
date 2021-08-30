@@ -16,7 +16,11 @@ use tracing::*;
 use util::version::NodeVersion;
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "actyx", about = "Actyx on Windows", rename_all = "kebab-case")]
+#[structopt(
+    name = "actyx",
+    about = concat!("\n", include_str!("../../../../NOTICE")),
+    rename_all = "kebab-case"
+)]
 pub struct Opts {
     #[structopt(long, env = "ACTYX_PATH")]
     /// Path where to store all the data of the Actyx node

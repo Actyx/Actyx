@@ -26,7 +26,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
     convert::{Into, TryFrom},
-    io::{Read, Seek, SeekFrom, Write},
+    io::{Read, Seek, Write},
     sync::Arc,
 };
 
@@ -255,14 +255,15 @@ impl KeyStore {
     /// Recreate a store from a reader that yields the bytes previously written by `dump()`
     pub fn restore(mut src: impl Read + Seek) -> Result<Self> {
         match Self::restore0(&mut src) {
+            #[cfg(feature = "legacy")]
             Err(e) => {
                 // Try legacy v1 (ActyxOS) conversion
-                src.seek(SeekFrom::Start(0))?;
+                src.seek(std::io::SeekFrom::Start(0))?;
                 match Self::restore_legacy_v1(&mut src) {
                     Err(v1_err) => {
                         // Try legacy v0 conversion
                         // Return original error
-                        src.seek(SeekFrom::Start(0))?;
+                        src.seek(std::io::SeekFrom::Start(0))?;
                         Self::restore_legacy_v0(src).map_err(|v0_err| {
                             let ctx = format!(
                                 "Also tried legacy conversions, which failed: v1: {}; v0: {}",
@@ -371,6 +372,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "legacy")]
     fn must_restore_from_v1_dump_format() -> anyhow::Result<()> {
         // base64 encoded v1 keystore
         let base64 = "V9DuJKgD3E7GEypiWNdV2Ugx6e6W2E87BYeWkvPTXhczxIwRL3dcbHlYYTBq/j5zP0rD7IdSpCuKQqOiJ09aYTxwLfOpf/zhjEWeQkvJJqJxe8LY8vLq++RASTNu1pB2WLM0Xro7Il/TNpizH0gMcbzZFyTbye2NWOXiejbBPAU=";
@@ -379,6 +381,7 @@ mod tests {
         Ok(())
     }
     #[test]
+    #[cfg(feature = "legacy")]
     fn must_restore_from_legacy_v0_dump_format() -> anyhow::Result<()> {
         // base64 encoded v0 keystore
         let base64 = "jK5aKMCq3qgbtkt6lKMaOpGXzMnnSz9dud/rzcz2gLqaB5NYlaTntbqser+fTgeL7uq/MhFP8lRhbXcFty41beeYqG5P+mI4UUx5KFguqK1dFzm41uRO47APXNWhQwidX+ncuKZSWzutjxiM5K0mRt0odp2HkSbweKkt9PTZJWNxhwg+AnpRd5gwcHcsO63OC119zuYVreOMyCmLUzxRJQ==";
