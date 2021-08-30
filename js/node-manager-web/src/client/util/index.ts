@@ -111,7 +111,8 @@ export const getNodesDetails = async (
   try {
     return Promise.all(
       nodes.map(async ({ addr, api }) => {
-        const details: Node = await api.get_node_details();
+        const api2 = await api;
+        const details: Node = await api2.get_node_details();
         return { ...details, addr };
       })
     );
@@ -124,7 +125,8 @@ export const setSettings = async ({
   api,
   settings,
 }: SetSettingsRequest): Promise<SetSettingsResponse> => {
-  const response = await api.set_settings("com.actyx", settings);
+  const api2 = await api;
+  const response = await api2.set_settings("com.actyx", settings);
   return response;
 };
 export const shutdownNode = mkRpc(RPC_ShutdownNode);
@@ -148,26 +150,28 @@ export const query = ({
     res: (_: IteratorResult<EventDiagnostic[]>) => void;
     rej: (_: Error) => void;
   }[] = [];
-  api.query_cb(query, (ev?: EventDiagnostic[], e?: Error) => {
-    const p = pending.pop();
-    if (p) {
-      const { res, rej } = p;
-      if (e) rej(e);
-      // buffer is empty
-      if (ev) {
-        res({ done: false, value: ev });
+  api.then((inner) =>
+    inner.query_cb(query, (ev?: EventDiagnostic[], e?: Error) => {
+      const p = pending.pop();
+      if (p) {
+        const { res, rej } = p;
+        if (e) rej(e);
+        // buffer is empty
+        if (ev) {
+          res({ done: false, value: ev });
+        } else {
+          res({ done: true, value: undefined });
+        }
       } else {
-        res({ done: true, value: undefined });
+        if (e) err = e;
+        if (ev) {
+          buffer.push(ev);
+        } else {
+          done = true;
+        }
       }
-    } else {
-      if (e) err = e;
-      if (ev) {
-        buffer.push(ev);
-      } else {
-        done = true;
-      }
-    }
-  });
+    })
+  );
   return {
     [Symbol.asyncIterator]: () => ({
       next: (value?: any) => {

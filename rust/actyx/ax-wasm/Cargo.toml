@@ -35,3 +35,6 @@ util = { path = "../util" }
 wasm-bindgen = { version = "0.2.75", features = ["serde-serialize"] }
 wasm-bindgen-futures = "0.4.25"
 wasm-futures-executor = { git = "https://github.com/wngr/wasm-futures-executor" }
+
+[dependencies]
+tokio = { version = "1.10.1", features = ["sync", "parking_lot"] }

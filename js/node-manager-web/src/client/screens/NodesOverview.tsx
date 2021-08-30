@@ -10,6 +10,7 @@ import { useStore } from "../store";
 import { StoreState } from "../store/types";
 import { some } from "fp-ts/lib/OptionT";
 import { fromNullable } from "fp-ts/lib/OptionT";
+import { validateAddr } from "ax-wasm";
 
 const nodeTypeToText = (type: NodeType) => {
   switch (type) {
@@ -133,10 +134,6 @@ const Screen: React.FC<{}> = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [favoriteNodeAddrs]);
 
-  const inputValidator = (addr: string) =>
-    addr !== "" &&
-    !nodes.map((n) => n.addr).includes(addr) &&
-    nodeAddrValid(addr);
   const viewNode = (addr: string) =>
     dispatch({ key: AppActionKey.ShowNodeDetail, addr });
   const remNode = (addr: string) => remNodes([addr]);
@@ -148,7 +145,7 @@ const Screen: React.FC<{}> = () => {
         onSubmit: (val) => addNodes([val]),
         placeholder: "Node address",
         buttonText: "Add node",
-        validator: inputValidator,
+        validator: validateAddr,
       }}
       actions={[
         {

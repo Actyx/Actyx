@@ -110,7 +110,7 @@ export type GetNodeDetailsResponse = io.TypeOf<typeof GetNodeDetailsResponse>;
 // Get nodes details
 export type GetNodesDetailsRequest = {
   addr: string;
-  api: ActyxAdminApi;
+  api: Promise<ActyxAdminApi>;
 }[];
 
 export const GetNodesDetailsResponse = io.array(Node);
@@ -128,7 +128,7 @@ export type GetSettingsResponse = io.TypeOf<typeof GetSettingsResponse>;
 // Set node settings
 export type SetSettingsRequest = {
   settings: unknown;
-  api: ActyxAdminApi;
+  api: Promise<ActyxAdminApi>;
 };
 
 export const SetSettingsResponse = Void;
@@ -204,7 +204,7 @@ export type EventDiagnostic = io.TypeOf<typeof EventDiagnostic>;
 
 export type QueryRequest = {
   query: string;
-  api: ActyxAdminApi;
+  api: Promise<ActyxAdminApi>;
 };
 export const QueryResponse = io.type({
   events: io.union([io.null, io.array(EventDiagnostic)]),

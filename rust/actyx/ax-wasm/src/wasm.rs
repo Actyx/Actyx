@@ -62,10 +62,7 @@ type Channel = Either<
 >;
 #[allow(clippy::type_complexity)]
 static SWARMS: Lazy<Mutex<BTreeMap<String, Arc<Mutex<mpsc::Sender<Channel>>>>>> = Lazy::new(Default::default);
-static THREAD_POOL: Lazy<Mutex<ThreadPool>> = Lazy::new(|| {
-    let tp = ThreadPool::new(1).unwrap();
-    Mutex::new(tp)
-});
+static THREAD_POOL: tokio::sync::OnceCell<ThreadPool> = tokio::sync::OnceCell::const_new();
 
 #[wasm_bindgen]
 pub struct ActyxAdminApi {
@@ -128,6 +125,7 @@ impl Drop for ActyxAdminApi {
         }
     }
 }
+
 fn to_multiaddr(input: &str) -> anyhow::Result<Multiaddr> {
     let s = if let Ok(socket) = input.parse::<SocketAddr>() {
         socket
@@ -139,6 +137,11 @@ fn to_multiaddr(input: &str) -> anyhow::Result<Multiaddr> {
         SocketAddr::V6(v6) => format!("/ip6/{}/tcp/{}/ws", v6.ip(), v6.port()),
     }
     .parse()?)
+}
+
+#[wasm_bindgen(js_name = "validateAddr")]
+pub fn validate_addr(input: &str) -> bool {
+    to_multiaddr(input).is_ok()
 }
 
 #[wasm_bindgen(typescript_custom_section)]
@@ -155,39 +158,35 @@ extern "C" {
 
 #[wasm_bindgen]
 impl ActyxAdminApi {
-    #[wasm_bindgen(constructor)]
-    #[allow(unused_must_use)]
-    pub fn new(host: String, private_key: String) -> Self {
+    // async constructor
+    #[wasm_bindgen]
+    pub async fn new(host: String, private_key: String) -> Result<ActyxAdminApi, JsValue> {
         // TODO: validate and convert private key
-        // FIXME remove unwrap
-        let addr = to_multiaddr(&*host).expect("Invalid input");
+        let addr = to_multiaddr(&*host).map_err(|e| JsValue::from(format!("Invalid host: {}", e)))?;
+        let kp = parse_private_key(&*private_key).map_err(|e| JsValue::from(format!("Invalid private key: {}", e)))?;
 
-        let tx = SWARMS
-            .lock()
-            .entry(host.clone())
-            .or_insert_with(|| {
-                let (tx, rx) = mpsc::channel(64);
+        let mut swarms = SWARMS.lock();
+        let tx = if let Some(tx) = swarms.get(&host) {
+            tx.clone()
+        } else {
+            let (tx, rx) = mpsc::channel(64);
 
-                // TODO: Move this to a webworker.
-                // Right now, this basically just spawns the promise to wherever.
-                //future_to_promise(async move {
-                //
-                //                    run(addr, &*private_key, rx).await.unwrap();
-                //                    Ok("XX".into())
-                //                });
-                THREAD_POOL.lock().spawn_ok(async move {
-                    error!("Hi from future!");
-                    //                wasm_bindgen_futures::spawn_local(async move {
-                    if let Err(e) = run(addr.clone(), &*private_key, rx).await {
+            // TODO: Spawn libp2p futures across the whole thread pool. This doesn't work at the moment, as the
+            // WebSocket transport is !Send.
+            THREAD_POOL
+                .get_or_try_init(|| ThreadPool::new(1))
+                .await?
+                .spawn_ok(async move {
+                    if let Err(e) = run(addr.clone(), kp, rx).await {
                         error!("Error spawning swarm for {}: {:#}", addr, e)
                     }
-                    //Ok("".into());
                 });
 
-                Arc::new(Mutex::new(tx))
-            })
-            .clone();
-        Self { host, tx }
+            let tx = Arc::new(Mutex::new(tx));
+            swarms.insert(host.clone(), tx.clone());
+            tx
+        };
+        Ok(Self { host, tx })
     }
 
     // Events API
@@ -414,12 +413,16 @@ struct RequestBehaviour {
     ping: Ping,
 }
 
-// this must not fail
-async fn run(addr: Multiaddr, private_key: &str, mut rx: mpsc::Receiver<Channel>) -> anyhow::Result<()> {
-    let mut bytes = base64::decode(&private_key.as_bytes()[1..])?;
+fn parse_private_key(input: &str) -> anyhow::Result<identity::Keypair> {
+    let mut bytes = base64::decode(&input.as_bytes()[1..])?;
     let pri = identity::ed25519::SecretKey::from_bytes(&mut bytes[..])?;
     let kp = identity::ed25519::Keypair::from(pri);
-    let mut swarm = mk_swarm(identity::Keypair::Ed25519(kp))?;
+    Ok(identity::Keypair::Ed25519(kp))
+}
+
+// this must not fail
+async fn run(addr: Multiaddr, kp: identity::Keypair, mut rx: mpsc::Receiver<Channel>) -> anyhow::Result<()> {
+    let mut swarm = mk_swarm(kp)?;
 
     let mut connected_to = None;
     let mut pending_admin_requests: BTreeMap<RequestId, mpsc::Sender<ActyxOSResult<AdminResponse>>> =

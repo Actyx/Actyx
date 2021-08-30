@@ -111,7 +111,7 @@ interface Data {
   nodes: Node[];
   offsets: Option<OffsetInfo>;
   privateKey: Option<string>;
-  apis: { [_: string]: ActyxAdminApi };
+  apis: { [_: string]: Promise<ActyxAdminApi> };
 }
 
 interface Actions {
@@ -134,7 +134,7 @@ interface Actions {
     pathToCertificate: string;
   }) => Promise<SignAppManifestResponse>;
   query: (args: {
-    api: ActyxAdminApi;
+    api: Promise<ActyxAdminApi>;
     query: string;
   }) => AsyncIterable<EventDiagnostic[]>;
 }
@@ -190,7 +190,7 @@ export const AppStateProvider: React.FC<{
         }
         const apis = addrs.reduce((agg, a) => {
           if (!agg[a]) {
-            const api = new ActyxAdminApi(a, toUndefined(current.privateKey)!);
+            const api = ActyxAdminApi.new(a, toUndefined(current.privateKey)!);
             return {
               ...agg,
               [a]: api,

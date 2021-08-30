@@ -567,6 +567,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "serde_json",
+ "tokio",
  "util",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -2768,7 +2769,7 @@ dependencies = [
 [[package]]
 name = "js-sys"
 version = "0.3.53"
-source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=965b88cf7eddf607e59af40e09c0967056c5974f#965b88cf7eddf607e59af40e09c0967056c5974f"
 dependencies = [
  "wasm-bindgen",
 ]
@@ -6387,9 +6388,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.9.0"
+version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b7b349f11a7047e6d1276853e612d152f5e8a352c61917887cc2169e2366b4c"
+checksum = "92036be488bb6594459f2e03b60e42df6f937fe6ca5c5ffdcb539c6b84dc40f5"
 dependencies = [
  "autocfg 1.0.1",
  "bytes 1.0.1",
@@ -7069,7 +7070,7 @@ checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
 [[package]]
 name = "wasm-bindgen"
 version = "0.2.76"
-source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=965b88cf7eddf607e59af40e09c0967056c5974f#965b88cf7eddf607e59af40e09c0967056c5974f"
 dependencies = [
  "cfg-if 1.0.0",
  "serde",
@@ -7080,7 +7081,7 @@ dependencies = [
 [[package]]
 name = "wasm-bindgen-backend"
 version = "0.2.76"
-source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=965b88cf7eddf607e59af40e09c0967056c5974f#965b88cf7eddf607e59af40e09c0967056c5974f"
 dependencies = [
  "bumpalo",
  "lazy_static",
@@ -7106,7 +7107,7 @@ dependencies = [
 [[package]]
 name = "wasm-bindgen-macro"
 version = "0.2.76"
-source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=965b88cf7eddf607e59af40e09c0967056c5974f#965b88cf7eddf607e59af40e09c0967056c5974f"
 dependencies = [
  "quote",
  "wasm-bindgen-macro-support",
@@ -7115,7 +7116,7 @@ dependencies = [
 [[package]]
 name = "wasm-bindgen-macro-support"
 version = "0.2.76"
-source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=965b88cf7eddf607e59af40e09c0967056c5974f#965b88cf7eddf607e59af40e09c0967056c5974f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7127,18 +7128,18 @@ dependencies = [
 [[package]]
 name = "wasm-bindgen-shared"
 version = "0.2.76"
-source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=965b88cf7eddf607e59af40e09c0967056c5974f#965b88cf7eddf607e59af40e09c0967056c5974f"
 
 [[package]]
 name = "wasm-futures-executor"
 version = "0.1.0"
-source = "git+https://github.com/wngr/wasm-futures-executor#5b653e009e739b26bdc07c684c75d1e5f153b2c1"
+source = "git+https://github.com/wngr/wasm-futures-executor#0ffa9fd0514b5dba974c28bd1eda6901d41594a7"
 dependencies = [
- "async-lock",
  "futures 0.3.16",
  "js-sys",
  "log",
  "parking_lot 0.11.1",
+ "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -7162,7 +7163,7 @@ dependencies = [
 [[package]]
 name = "web-sys"
 version = "0.3.53"
-source = "git+https://github.com/rustwasm/wasm-bindgen?rev=6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f#6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f"
+source = "git+https://github.com/rustwasm/wasm-bindgen?rev=965b88cf7eddf607e59af40e09c0967056c5974f#965b88cf7eddf607e59af40e09c0967056c5974f"
 dependencies = [
  "js-sys",
  "wasm-bindgen",

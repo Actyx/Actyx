@@ -40,8 +40,8 @@ libp2p-bitswap = { git = "https://github.com/Actyx/libp2p-bitswap", branch = "si
 libp2p-broadcast = { git = "https://github.com/Actyx/libp2p-broadcast", branch = "sim-open-2" }
 libp2p-quic = { git = "https://github.com/Actyx/libp2p-quic", branch = "sim-open-2" }
 libp2p-blake-streams = { git = "https://github.com/Actyx/blake-streams", branch = "sim-open" }
-js-sys = { git = "https://github.com/rustwasm/wasm-bindgen", rev = "6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f" }
-wasm-bindgen = { git = "https://github.com/rustwasm/wasm-bindgen", rev = "6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f" }
-web-sys = { git = "https://github.com/rustwasm/wasm-bindgen", rev = "6ab9ac0f0f6853e1ceed8006a0ffe3a4c0c8323f" }
+js-sys = { git = "https://github.com/rustwasm/wasm-bindgen", rev = "965b88cf7eddf607e59af40e09c0967056c5974f" }
+wasm-bindgen = { git = "https://github.com/rustwasm/wasm-bindgen", rev = "965b88cf7eddf607e59af40e09c0967056c5974f" }
+web-sys = { git = "https://github.com/rustwasm/wasm-bindgen", rev = "965b88cf7eddf607e59af40e09c0967056c5974f" }
 libp2p-combined-transport = { path = "../../../libp2p-combined-transport" }
 instant = { git = "https://github.com/wngr/instant" }
