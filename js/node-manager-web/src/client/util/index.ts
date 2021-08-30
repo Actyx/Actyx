@@ -1,4 +1,4 @@
-import { none, Option, some } from "fp-ts/lib/Option";
+import { none, Option, some } from "fp-ts/lib/Option"
 import {
   FatalError,
   IpcFromClient,
@@ -8,10 +8,10 @@ import {
   RPC_CreateUserKeyPair,
   RPC_GenerateSwarmKey,
   RPC_ShutdownNode,
-} from "../../common/ipc";
-import { isLeft } from "fp-ts/lib/Either";
-import { ioErrToStr } from "../../common/util";
-import packageJson from "../../../package.json";
+} from "../../common/ipc"
+import { isLeft } from "fp-ts/lib/Either"
+import { ioErrToStr } from "../../common/util"
+import packageJson from "../../../package.json"
 import {
   CreateUserKeyPairRequest,
   CreateUserKeyPairResponse,
@@ -25,12 +25,12 @@ import {
   QueryResponse,
   SetSettingsRequest,
   SetSettingsResponse,
-} from "../../common/types";
-import { ActyxAdminApi, create_private_key } from "ax-wasm";
+} from "../../common/types"
+import { ActyxAdminApi, create_private_key } from "ax-wasm"
 
 export const getFolderFromUser = (): Promise<Option<string>> =>
   new Promise((resolve) => {
-    resolve(none);
+    resolve(none)
     // const cleanUpIpcHandlers = () => {
     //   ipcRenderer.removeAllListeners(IpcToClient.FolderSelected)
     //   ipcRenderer.removeAllListeners(IpcToClient.FolderSelectedCancelled)
@@ -46,11 +46,11 @@ export const getFolderFromUser = (): Promise<Option<string>> =>
     //   resolve(none)
     // })
     // ipcRenderer.send(IpcFromClient.SelectFolder)
-  });
+  })
 
 export const getFileFromUser = (exts?: string[]): Promise<Option<string>> =>
   new Promise((resolve) => {
-    resolve(none);
+    resolve(none)
     // const cleanUpIpcHandlers = () => {
     //   ipcRenderer.removeAllListeners(IpcToClient.FileSelected)
     //   ipcRenderer.removeAllListeners(IpcToClient.FileSelectedCancelled)
@@ -66,24 +66,24 @@ export const getFileFromUser = (exts?: string[]): Promise<Option<string>> =>
     //   resolve(none)
     // })
     // ipcRenderer.send(IpcFromClient.SelectFile, exts)
-  });
+  })
 
 export const getIsDev = (): Promise<boolean> =>
   new Promise((resolve) => {
-    resolve(true);
+    resolve(true)
     //   ipcRenderer.once(IpcToClient.GotIsDev, (_, isDev) => {
     //     resolve(isDev)
     //   })
     //   ipcRenderer.send(IpcFromClient.GetIsDev)
-  });
+  })
 
 export const shutdownApp = () => {
   // ipcRenderer.send(IpcFromClient.Shutdown)
-};
+}
 
 export const toggleDevTools = () => {
   // ipcRenderer.send(IpcFromClient.ToggleDevTools)
-};
+}
 
 export const waitForFatalError = (): Promise<FatalError> =>
   new Promise((resolve) => {
@@ -94,110 +94,110 @@ export const waitForFatalError = (): Promise<FatalError> =>
     //   }
     //   resolve(arg)
     // })
-  });
+  })
 
 const mkRpc =
   <Req, Resp>(rpc: RPC<Req, Resp>) =>
   (req: Req): Promise<Resp> =>
-    Promise.reject();
+    Promise.reject()
 
 //export const getNodesDetails = mkRpc(RPC_GetNodesDetails)
 export const getNodesDetails = async (
   nodes: GetNodesDetailsRequest
 ): Promise<GetNodeDetailsResponse> => {
   if (nodes.length === 0) {
-    return [];
+    return []
   }
   try {
     return Promise.all(
       nodes.map(async ({ addr, api }) => {
-        const api2 = await api;
-        const details: Node = await api2.get_node_details();
-        return { ...details, addr };
+        const api2 = await api
+        const details: Node = await api2.get_node_details()
+        return { ...details, addr }
       })
-    );
+    )
   } catch (e) {
-    console.error(e);
-    return [];
+    console.error(e)
+    return []
   }
-};
+}
 export const setSettings = async ({
   api,
   settings,
 }: SetSettingsRequest): Promise<SetSettingsResponse> => {
-  const api2 = await api;
-  const response = await api2.set_settings("com.actyx", settings);
-  return response;
-};
-export const shutdownNode = mkRpc(RPC_ShutdownNode);
+  const api2 = await api
+  const response = await api2.set_settings("com.actyx", settings)
+  return response
+}
+export const shutdownNode = mkRpc(RPC_ShutdownNode)
 export const createUserKeyPair =
   async (): Promise<CreateUserKeyPairResponse> => {
-    const privateKey = create_private_key();
+    const privateKey = create_private_key()
     return {
       privateKey,
-    };
-  };
-export const generateSwarmKey = mkRpc(RPC_GenerateSwarmKey);
-export const signAppManifest = mkRpc(RPC_SignAppManifest);
+    }
+  }
+export const generateSwarmKey = mkRpc(RPC_GenerateSwarmKey)
+export const signAppManifest = mkRpc(RPC_SignAppManifest)
 export const query = ({
   query,
   api,
 }: QueryRequest): AsyncIterable<EventDiagnostic[]> => {
-  const buffer: EventDiagnostic[][] = [];
-  let done = false;
-  let err: Error | undefined = undefined;
+  const buffer: EventDiagnostic[][] = []
+  let done = false
+  let err: Error | undefined = undefined
   const pending: {
-    res: (_: IteratorResult<EventDiagnostic[]>) => void;
-    rej: (_: Error) => void;
-  }[] = [];
+    res: (_: IteratorResult<EventDiagnostic[]>) => void
+    rej: (_: Error) => void
+  }[] = []
   api.then((inner) =>
     inner.query_cb(query, (ev?: EventDiagnostic[], e?: Error) => {
-      const p = pending.pop();
+      const p = pending.pop()
       if (p) {
-        const { res, rej } = p;
-        if (e) rej(e);
+        const { res, rej } = p
+        if (e) rej(e)
         // buffer is empty
         if (ev) {
-          res({ done: false, value: ev });
+          res({ done: false, value: ev })
         } else {
-          res({ done: true, value: undefined });
+          res({ done: true, value: undefined })
         }
       } else {
-        if (e) err = e;
+        if (e) err = e
         if (ev) {
-          buffer.push(ev);
+          buffer.push(ev)
         } else {
-          done = true;
+          done = true
         }
       }
     })
-  );
+  )
   return {
     [Symbol.asyncIterator]: () => ({
       next: (value?: any) => {
-        if (err) return Promise.reject(err);
+        if (err) return Promise.reject(err)
         else {
           if (done) {
-            return Promise.resolve({ done, value: buffer.pop() });
+            return Promise.resolve({ done, value: buffer.pop() })
           } else {
-            const value = buffer.pop();
+            const value = buffer.pop()
             if (value) {
-              return Promise.resolve({ done, value });
+              return Promise.resolve({ done, value })
             } else {
               return new Promise((res, rej) => {
-                pending.push({ res, rej });
-              });
+                pending.push({ res, rej })
+              })
             }
           }
         }
       },
     }),
-  };
-};
+  }
+}
 
-export { Wizard, WizardFailure, WizardInput, WizardSuccess } from "./wizard";
+export { Wizard, WizardFailure, WizardInput, WizardSuccess } from "./wizard"
 
 export const saveToClipboard = (str: string) =>
-  navigator.clipboard.writeText(str);
+  navigator.clipboard.writeText(str)
 
-export const getPackageVersion = (): string => packageJson.version;
+export const getPackageVersion = (): string => packageJson.version

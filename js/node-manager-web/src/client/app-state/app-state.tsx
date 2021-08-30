@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useReducer, useState } from "react";
+import React, { useContext, useEffect, useReducer, useState } from "react"
 import {
   signAppManifest,
   createUserKeyPair,
@@ -7,7 +7,7 @@ import {
   setSettings,
   shutdownNode,
   query,
-} from "../util";
+} from "../util"
 import {
   CreateUserKeyPairResponse,
   NodeType,
@@ -17,14 +17,14 @@ import {
   QueryResponse,
   SwarmOffsets,
   EventDiagnostic,
-} from "../../common/types";
-import { AppState, AppAction, AppStateKey, AppActionKey } from "./types";
-import { useAnalytics } from "../analytics";
-import { AnalyticsActions } from "../analytics/types";
-import { FatalError } from "../../common/ipc";
-import { safeErrorToStr } from "../../common/util";
-import deepEqual from "fast-deep-equal";
-import { OffsetInfo } from "../offsets";
+} from "../../common/types"
+import { AppState, AppAction, AppStateKey, AppActionKey } from "./types"
+import { useAnalytics } from "../analytics"
+import { AnalyticsActions } from "../analytics/types"
+import { FatalError } from "../../common/ipc"
+import { safeErrorToStr } from "../../common/util"
+import deepEqual from "fast-deep-equal"
+import { OffsetInfo } from "../offsets"
 import {
   none,
   Option,
@@ -32,13 +32,13 @@ import {
   fromNullable,
   map,
   toUndefined,
-} from "fp-ts/lib/Option";
-import { useStore } from "../store";
-import { store } from "fp-ts/lib/Store";
-import { StringType } from "io-ts";
-import { ActyxAdminApi } from "ax-wasm";
+} from "fp-ts/lib/Option"
+import { useStore } from "../store"
+import { store } from "fp-ts/lib/Store"
+import { StringType } from "io-ts"
+import { ActyxAdminApi } from "ax-wasm"
 
-const POLLING_INTERVAL_MS = 1_000;
+const POLLING_INTERVAL_MS = 1_000
 
 export const reducer =
   (analytics: AnalyticsActions | undefined) =>
@@ -46,135 +46,135 @@ export const reducer =
     switch (action.key) {
       case AppActionKey.ShowOverview: {
         if (analytics) {
-          analytics.viewedScreen("Overview");
+          analytics.viewedScreen("Overview")
         }
-        return { ...state, key: AppStateKey.Overview };
+        return { ...state, key: AppStateKey.Overview }
       }
       case AppActionKey.ShowSetupUserKey: {
         if (analytics) {
-          analytics.viewedScreen("SetupUserKey");
+          analytics.viewedScreen("SetupUserKey")
         }
-        return { ...state, key: AppStateKey.SetupUserKey };
+        return { ...state, key: AppStateKey.SetupUserKey }
       }
       case AppActionKey.ShowAbout: {
         if (analytics) {
-          analytics.viewedScreen("About");
+          analytics.viewedScreen("About")
         }
-        return { ...state, key: AppStateKey.About };
+        return { ...state, key: AppStateKey.About }
       }
       case AppActionKey.ShowAppSigning: {
         if (analytics) {
-          analytics.viewedScreen("AppSigning");
+          analytics.viewedScreen("AppSigning")
         }
-        return { ...state, key: AppStateKey.AppSigning };
+        return { ...state, key: AppStateKey.AppSigning }
       }
       case AppActionKey.ShowNodeAuth: {
         if (analytics) {
-          analytics.viewedScreen("NodeAuth");
+          analytics.viewedScreen("NodeAuth")
         }
-        return { ...state, key: AppStateKey.NodeAuth };
+        return { ...state, key: AppStateKey.NodeAuth }
       }
       case AppActionKey.ShowDiagnostics: {
         if (analytics) {
-          analytics.viewedScreen("Diagnostics");
+          analytics.viewedScreen("Diagnostics")
         }
-        return { ...state, key: AppStateKey.Diagnostics };
+        return { ...state, key: AppStateKey.Diagnostics }
       }
       case AppActionKey.ShowNodeDetail: {
         if (analytics) {
-          analytics.viewedScreen("NodeDetail");
+          analytics.viewedScreen("NodeDetail")
         }
-        return { ...state, ...action, key: AppStateKey.NodeDetail };
+        return { ...state, ...action, key: AppStateKey.NodeDetail }
       }
       case AppActionKey.ShowGenerateSwarmKey: {
         if (analytics) {
-          analytics.viewedScreen("GenerateSwarmKey");
+          analytics.viewedScreen("GenerateSwarmKey")
         }
-        return { ...state, ...action, key: AppStateKey.SwarmKey };
+        return { ...state, ...action, key: AppStateKey.SwarmKey }
       }
       case AppActionKey.ShowPreferences: {
         if (analytics) {
-          analytics.viewedScreen("Preferences");
+          analytics.viewedScreen("Preferences")
         }
-        return { ...state, ...action, key: AppStateKey.Preferences };
+        return { ...state, ...action, key: AppStateKey.Preferences }
       }
       case AppActionKey.ShowQuery: {
         if (analytics) {
-          analytics.viewedScreen("Query");
+          analytics.viewedScreen("Query")
         }
-        return { ...state, ...action, key: AppStateKey.Query };
+        return { ...state, ...action, key: AppStateKey.Query }
       }
     }
-  };
+  }
 
 interface Data {
-  nodes: Node[];
-  offsets: Option<OffsetInfo>;
-  privateKey: Option<string>;
-  apis: { [_: string]: Promise<ActyxAdminApi> };
+  nodes: Node[]
+  offsets: Option<OffsetInfo>
+  privateKey: Option<string>
+  apis: { [_: string]: Promise<ActyxAdminApi> }
 }
 
 interface Actions {
-  addNodes: (addrs: string[]) => void;
-  remNodes: (addrs: string[]) => void;
+  addNodes: (addrs: string[]) => void
+  remNodes: (addrs: string[]) => void
   setSettings: (
     addr: string,
     privateKey: string,
     settings: object
-  ) => Promise<void>;
-  shutdownNode: (addr: string, privateKey: string) => Promise<void>;
-  createUserKeyPair: () => Promise<CreateUserKeyPairResponse>;
-  setUserKeyPair: (privateKey: string) => void;
-  generateSwarmKey: () => Promise<GenerateSwarmKeyResponse>;
+  ) => Promise<void>
+  shutdownNode: (addr: string, privateKey: string) => Promise<void>
+  createUserKeyPair: () => Promise<CreateUserKeyPairResponse>
+  setUserKeyPair: (privateKey: string) => void
+  generateSwarmKey: () => Promise<GenerateSwarmKeyResponse>
   signAppManifest: ({
     pathToManifest,
     pathToCertificate,
   }: {
-    pathToManifest: string;
-    pathToCertificate: string;
-  }) => Promise<SignAppManifestResponse>;
+    pathToManifest: string
+    pathToCertificate: string
+  }) => Promise<SignAppManifestResponse>
   query: (args: {
-    api: Promise<ActyxAdminApi>;
-    query: string;
-  }) => AsyncIterable<EventDiagnostic[]>;
+    api: Promise<ActyxAdminApi>
+    query: string
+  }) => AsyncIterable<EventDiagnostic[]>
 }
 
-export type AppDispatch = (action: AppAction) => void;
+export type AppDispatch = (action: AppAction) => void
 const AppStateContext = React.createContext<
   | {
-      state: AppState;
-      data: Data;
-      actions: Actions;
-      dispatch: AppDispatch;
+      state: AppState
+      data: Data
+      actions: Actions
+      dispatch: AppDispatch
     }
   | undefined
->(undefined);
+>(undefined)
 
 export const AppStateProvider: React.FC<{
-  setFatalError: (error: FatalError) => void;
+  setFatalError: (error: FatalError) => void
 }> = ({ children, setFatalError }) => {
-  const analytics = useAnalytics();
+  const analytics = useAnalytics()
   const [state, dispatch] = useReducer(reducer(analytics), {
     key: AppStateKey.Overview,
-  });
+  })
   const [data, setData] = useState<Data>({
     nodes: [],
     offsets: none,
     privateKey: none,
     apis: {},
-  });
+  })
 
-  const store = useStore();
+  const store = useStore()
   const privateKey: string | undefined =
-    store.key === "Loaded" ? store.data.privateKey : undefined;
+    store.key === "Loaded" ? store.data.privateKey : undefined
 
   useEffect(() => {
     setData((current) => ({
       ...current,
       privateKey: fromNullable(privateKey),
-    }));
+    }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [privateKey]);
+  }, [privateKey])
 
   const actions: Actions = {
     // Wrap addNodes and add the node as loading as soon as the request
@@ -184,21 +184,21 @@ export const AppStateProvider: React.FC<{
         if (analytics) {
           addrs.forEach((addr) => {
             if (current.nodes.find((node) => node.addr !== addr)) {
-              analytics.addedNode();
+              analytics.addedNode()
             }
-          });
+          })
         }
         const apis = addrs.reduce((agg, a) => {
           if (!agg[a]) {
-            const api = ActyxAdminApi.new(a, toUndefined(current.privateKey)!);
+            const api = ActyxAdminApi.new(a, toUndefined(current.privateKey)!)
             return {
               ...agg,
               [a]: api,
-            };
+            }
           } else {
-            return agg;
+            return agg
           }
-        }, current.apis);
+        }, current.apis)
         return {
           ...current,
           apis,
@@ -209,110 +209,110 @@ export const AppStateProvider: React.FC<{
               offsets: null,
             }))
           ),
-        };
-      });
+        }
+      })
     },
     remNodes: (addrs) => {
       if (analytics) {
         addrs.forEach(() => {
-          analytics.removedNode();
-        });
+          analytics.removedNode()
+        })
       }
       setData((current) => {
         const apis = Object.entries(current.apis).reduce((agg, [addr, api]) => {
           if (addrs.includes(addr)) {
-            return agg;
+            return agg
           } else {
-            return { ...agg, [addr]: api };
+            return { ...agg, [addr]: api }
           }
-        }, {});
+        }, {})
         return {
           ...current,
           apis,
           nodes: current.nodes.filter((n) => !addrs.includes(n.addr)),
-        };
-      });
+        }
+      })
     },
     setSettings: (addr, settings) => {
       if (analytics) {
-        analytics.setSettings();
+        analytics.setSettings()
       }
-      return setSettings({ settings, api: data.apis[addr] });
+      return setSettings({ settings, api: data.apis[addr] })
     },
     shutdownNode: (addr) => {
       if (analytics) {
-        analytics.shutdownNode();
+        analytics.shutdownNode()
       }
-      return shutdownNode({ addr, privateKey: privateKey! });
+      return shutdownNode({ addr, privateKey: privateKey! })
     },
     createUserKeyPair: async () => {
       if (analytics) {
-        analytics.createdUserKeyPair();
+        analytics.createdUserKeyPair()
       }
-      const key = await createUserKeyPair();
+      const key = await createUserKeyPair()
       if (store.key === "Loaded") {
         store.actions.updateAndReload({
           ...store.data,
           privateKey: key.privateKey,
-        });
+        })
       }
-      return key;
+      return key
     },
     setUserKeyPair: (privateKey) => {
       if (store.key === "Loaded") {
         store.actions.updateAndReload({
           ...store.data,
           privateKey,
-        });
+        })
       }
     },
     generateSwarmKey: () => {
       if (analytics) {
-        analytics.generatedSwarmKey();
+        analytics.generatedSwarmKey()
       }
-      return generateSwarmKey({});
+      return generateSwarmKey({})
     },
     signAppManifest: ({ pathToManifest, pathToCertificate }) => {
       if (analytics) {
-        analytics.signedAppManifest();
+        analytics.signedAppManifest()
       }
       return signAppManifest({
         pathToManifest,
         pathToCertificate,
-      });
+      })
     },
     query: (args) => {
       if (analytics) {
-        analytics.queriedEvents(args.query);
+        analytics.queriedEvents(args.query)
       }
-      return query(args);
+      return query(args)
     },
-  };
+  }
 
   useEffect(() => {
     if (store.key === "Loaded" && !store.data.privateKey) {
-      dispatch({ key: AppActionKey.ShowSetupUserKey });
+      dispatch({ key: AppActionKey.ShowSetupUserKey })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.key]);
+  }, [store.key])
 
   useEffect(() => {
-    let unmounted = false;
+    let unmounted = false
 
-    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let timeout: ReturnType<typeof setTimeout> | null = null
     const getDetailsAndUpdate = async () => {
-      console.log("getting node information");
+      console.log("getting node information")
       try {
         const nodes = await getNodesDetails(
           data.nodes.map((n) => ({ addr: n.addr, api: data.apis[n.addr] }))
-        );
-        const offsetsInfo = OffsetInfo.of(data.nodes);
+        )
+        const offsetsInfo = OffsetInfo.of(data.nodes)
         if (!unmounted) {
           if (
             !deepEqual(data.nodes, nodes) ||
             !deepEqual(data.offsets, some(offsetsInfo))
           ) {
-            console.log(`+++ updating app-state/nodes +++`);
+            console.log(`+++ updating app-state/nodes +++`)
             setData({
               ...data,
               offsets: some(offsetsInfo),
@@ -324,45 +324,45 @@ export const AppStateProvider: React.FC<{
                   )
                 )
                 .sort((n1, n2) => n1.addr.localeCompare(n2.addr)),
-            });
+            })
           }
           timeout = setTimeout(() => {
-            getDetailsAndUpdate();
-          }, POLLING_INTERVAL_MS);
+            getDetailsAndUpdate()
+          }, POLLING_INTERVAL_MS)
         }
       } catch (error) {
         const fatalError: FatalError =
           typeof error === "object" &&
           Object.prototype.hasOwnProperty.call(error, "shortMessage")
             ? (error as FatalError)
-            : { shortMessage: safeErrorToStr(error) };
-        setFatalError(fatalError);
+            : { shortMessage: safeErrorToStr(error) }
+        setFatalError(fatalError)
       }
-    };
+    }
 
     if (state.key !== "SetupUserKey") {
-      timeout = setTimeout(getDetailsAndUpdate, POLLING_INTERVAL_MS);
+      timeout = setTimeout(getDetailsAndUpdate, POLLING_INTERVAL_MS)
     }
 
     return () => {
-      unmounted = true;
+      unmounted = true
       if (timeout !== null) {
-        clearTimeout(timeout);
+        clearTimeout(timeout)
       }
-    };
-  }, [data, state.key, setFatalError]);
+    }
+  }, [data, state.key, setFatalError])
 
   return (
     <AppStateContext.Provider value={{ state, data, actions, dispatch }}>
       {children}
     </AppStateContext.Provider>
-  );
-};
+  )
+}
 
 export const useAppState = () => {
-  const c = useContext(AppStateContext);
+  const c = useContext(AppStateContext)
   if (c === undefined) {
-    throw "AppStateContext is undefined";
+    throw "AppStateContext is undefined"
   }
-  return c;
-};
+  return c
+}

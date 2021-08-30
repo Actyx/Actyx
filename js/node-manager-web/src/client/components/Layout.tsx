@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import clsx from "clsx";
+import React, { useState } from "react"
+import clsx from "clsx"
 import {
   BarChartIcon,
   Cube3DIcon,
@@ -16,18 +16,18 @@ import {
   ClipboardIcon,
   ClipboardCheckedIcon,
   SearchIcon,
-} from "./icons";
-import { ClassName } from "../react";
-import { useAppState, AppActionKey, AppStateKey } from "../app-state";
+} from "./icons"
+import { ClassName } from "../react"
+import { useAppState, AppActionKey, AppStateKey } from "../app-state"
 
 // Inspiration: https://codepen.io/robstinson/pen/zYBGNQB
 const NavButton: React.FC<{
-  onClick: () => void;
-  text: string;
-  icon: JSX.Element;
-  bottom?: boolean;
-  active?: boolean;
-  hidden?: boolean;
+  onClick: () => void
+  text: string
+  icon: JSX.Element
+  bottom?: boolean
+  active?: boolean
+  hidden?: boolean
 }> = ({ hidden, children, onClick, bottom, text, icon, active }) => (
   <div
     className={clsx("px-2 w-full", {
@@ -48,14 +48,14 @@ const NavButton: React.FC<{
       <span className="ml-2">{text}</span>
     </button>
   </div>
-);
+)
 
 interface InputProps {
-  placeholder?: string;
-  onSubmit: (value: string) => void;
-  buttonText?: string;
-  validator?: (value: string) => boolean;
-  transformer?: (value: string) => string;
+  placeholder?: string
+  onSubmit: (value: string) => void
+  buttonText?: string
+  validator?: (value: string) => boolean
+  transformer?: (value: string) => string
 }
 
 export const Input: React.FC<InputProps & ClassName> = ({
@@ -66,18 +66,18 @@ export const Input: React.FC<InputProps & ClassName> = ({
   validator,
   transformer,
 }) => {
-  const [val, setVal] = useState("");
+  const [val, setVal] = useState("")
   const doSubmit = () => {
     if (!validator || validator(val)) {
-      onSubmit(val);
-      setVal("");
+      onSubmit(val)
+      setVal("")
     }
-  };
+  }
   const onKeyUp = (event: React.KeyboardEvent) => {
     if (event.key === "Enter") {
-      doSubmit();
+      doSubmit()
     }
-  };
+  }
   return (
     <>
       <input
@@ -110,12 +110,12 @@ export const Input: React.FC<InputProps & ClassName> = ({
         </button>
       )}
     </>
-  );
-};
+  )
+}
 interface ActionProps {
-  text: string;
-  target: (() => void) | string;
-  disabled?: boolean;
+  text: string
+  target: (() => void) | string
+  disabled?: boolean
 }
 export const Action: React.FC<ActionProps & ClassName> = ({
   className,
@@ -149,18 +149,18 @@ export const Action: React.FC<ActionProps & ClassName> = ({
     >
       {text}
     </a>
-  );
+  )
 
 interface MenuItem {
-  text: string;
-  target: (() => void) | string;
+  text: string
+  target: (() => void) | string
 }
 
 interface MenuProps {
-  items: MenuItem[];
+  items: MenuItem[]
 }
 export const Menu: React.FC<MenuProps & ClassName> = ({ className, items }) => {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false)
 
   return (
     <button
@@ -212,13 +212,13 @@ export const Menu: React.FC<MenuProps & ClassName> = ({ className, items }) => {
         )}
       </div>
     </button>
-  );
-};
+  )
+}
 interface LayoutProps {
-  title?: string;
-  input?: InputProps;
-  actions?: ActionProps[];
-  menuItems?: MenuItem[];
+  title?: string
+  input?: InputProps
+  actions?: ActionProps[]
+  menuItems?: MenuItem[]
 }
 
 export const Layout: React.FC<LayoutProps & ClassName> = ({
@@ -229,9 +229,9 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
   actions,
   menuItems,
 }) => {
-  const { state, dispatch } = useAppState();
+  const { state, dispatch } = useAppState()
 
-  const hideMenuItems = state.key === AppStateKey.SetupUserKey;
+  const hideMenuItems = state.key === AppStateKey.SetupUserKey
 
   const menuProps: MenuProps = {
     items: [
@@ -244,7 +244,7 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
         text: "Contact Actyx",
       } as MenuItem,
     ].concat(menuItems || []),
-  };
+  }
 
   return (
     <div className={clsx("flex w-screen h-screen text-gray-700", className)}>
@@ -345,5 +345,5 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

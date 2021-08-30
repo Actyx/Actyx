@@ -1,16 +1,16 @@
-import React from "react";
-import clsx from "clsx";
-import { BackgroundColorSpectrum } from "../../tailwind";
-import { semigroupAll } from "fp-ts/lib/Semigroup";
+import React from "react"
+import clsx from "clsx"
+import { BackgroundColorSpectrum } from "../../tailwind"
+import { semigroupAll } from "fp-ts/lib/Semigroup"
 
 interface Props {
-  color?: BackgroundColorSpectrum;
-  working?: boolean;
-  pinging?: boolean;
-  pingColor?: BackgroundColorSpectrum;
-  small?: boolean;
-  icon?: JSX.Element;
-  outline?: boolean;
+  color?: BackgroundColorSpectrum
+  working?: boolean
+  pinging?: boolean
+  pingColor?: BackgroundColorSpectrum
+  small?: boolean
+  icon?: JSX.Element
+  outline?: boolean
   fontWeight?:
     | "thin"
     | "extralight"
@@ -20,7 +20,7 @@ interface Props {
     | "semibold"
     | "bold"
     | "extrabold"
-    | "black";
+    | "black"
 }
 
 const E: React.FC<Props & React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
@@ -37,13 +37,13 @@ const E: React.FC<Props & React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
   fontWeight,
   ...props
 }) => {
-  const colorSpectrum = color || "gray";
-  const backgroundColor = outline ? "inherit" : `${colorSpectrum}-200`;
-  const hoverColor = outline ? `${colorSpectrum}-100` : `${colorSpectrum}-300`;
-  const pingingColor = `${pingColor || colorSpectrum}-300`;
-  const borderColor = outline ? `${colorSpectrum}-300` : "inherit";
-  fontWeight = fontWeight || "medium";
-  disabled = disabled || working;
+  const colorSpectrum = color || "gray"
+  const backgroundColor = outline ? "inherit" : `${colorSpectrum}-200`
+  const hoverColor = outline ? `${colorSpectrum}-100` : `${colorSpectrum}-300`
+  const pingingColor = `${pingColor || colorSpectrum}-300`
+  const borderColor = outline ? `${colorSpectrum}-300` : "inherit"
+  fontWeight = fontWeight || "medium"
+  disabled = disabled || working
   return (
     <span className={clsx("relative inline-flex rounded-md", className)}>
       <button
@@ -101,7 +101,7 @@ const E: React.FC<Props & React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
         </div>
       )}
     </span>
-  );
-};
+  )
+}
 
-export default E;
+export default E

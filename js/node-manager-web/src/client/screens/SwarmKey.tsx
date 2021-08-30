@@ -1,22 +1,22 @@
-import { SimpleCanvas } from "../components/SimpleCanvas";
-import React, { useState } from "react";
-import { Layout } from "../components/Layout";
-import { Button, SimpleInput } from "../components/basics";
-import { useAppState } from "../app-state";
-import { saveToClipboard } from "../util";
-import { Wizard, WizardFailure, WizardSuccess, WizardInput } from "../util";
-import { Either, left, right } from "fp-ts/lib/Either";
-import { ClipboardCheckedIcon, ClipboardIcon } from "../components/icons";
+import { SimpleCanvas } from "../components/SimpleCanvas"
+import React, { useState } from "react"
+import { Layout } from "../components/Layout"
+import { Button, SimpleInput } from "../components/basics"
+import { useAppState } from "../app-state"
+import { saveToClipboard } from "../util"
+import { Wizard, WizardFailure, WizardSuccess, WizardInput } from "../util"
+import { Either, left, right } from "fp-ts/lib/Either"
+import { ClipboardCheckedIcon, ClipboardIcon } from "../components/icons"
 
 const Screen = () => {
   const {
     actions: { generateSwarmKey },
-  } = useAppState();
+  } = useAppState()
 
   const execute = (): Promise<Either<string, Success>> =>
     generateSwarmKey()
       .then((resp) => right(resp))
-      .catch((e) => left(e));
+      .catch((e) => left(e))
 
   return (
     <Layout title="Swarm Key Generator">
@@ -29,11 +29,11 @@ const Screen = () => {
         />
       </SimpleCanvas>
     </Layout>
-  );
-};
+  )
+}
 
 interface Success {
-  swarmKey: string;
+  swarmKey: string
 }
 
 const Initial: WizardInput<{}> = ({ execute, executing }) => {
@@ -48,15 +48,15 @@ const Initial: WizardInput<{}> = ({ execute, executing }) => {
         </div>
       </div>
     </>
-  );
-};
+  )
+}
 
 const Success: WizardSuccess<Success> = ({ restart, result: { swarmKey } }) => {
-  const [copiedToClipboard, setCopiedToClipboard] = useState(false);
+  const [copiedToClipboard, setCopiedToClipboard] = useState(false)
   const toClipboard = () => {
-    saveToClipboard(swarmKey);
-    setCopiedToClipboard(true);
-  };
+    saveToClipboard(swarmKey)
+    setCopiedToClipboard(true)
+  }
 
   return (
     <>
@@ -83,8 +83,8 @@ const Success: WizardSuccess<Success> = ({ restart, result: { swarmKey } }) => {
         </div>
       </div>
     </>
-  );
-};
+  )
+}
 
 const Failed: WizardFailure<string> = ({ restart, reason }) => (
   <>
@@ -94,6 +94,6 @@ const Failed: WizardFailure<string> = ({ restart, reason }) => (
       Back
     </Button>
   </>
-);
+)
 
-export default Screen;
+export default Screen

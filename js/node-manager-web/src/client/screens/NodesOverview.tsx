@@ -1,45 +1,45 @@
-import React, { useEffect } from "react";
-import { NodeType, Node } from "../../common/types";
-import { nodeAddrValid } from "../../common/util";
-import { Layout } from "../components/Layout";
-import { useAppState, AppActionKey } from "../app-state";
-import clsx from "clsx";
-import { Button } from "../components/basics";
-import { SolidStarIcon, UnsolidStarIcon } from "../components/icons";
-import { useStore } from "../store";
-import { StoreState } from "../store/types";
-import { some } from "fp-ts/lib/OptionT";
-import { fromNullable } from "fp-ts/lib/OptionT";
-import { validateAddr } from "ax-wasm";
+import React, { useEffect } from "react"
+import { NodeType, Node } from "../../common/types"
+import { nodeAddrValid } from "../../common/util"
+import { Layout } from "../components/Layout"
+import { useAppState, AppActionKey } from "../app-state"
+import clsx from "clsx"
+import { Button } from "../components/basics"
+import { SolidStarIcon, UnsolidStarIcon } from "../components/icons"
+import { useStore } from "../store"
+import { StoreState } from "../store/types"
+import { some } from "fp-ts/lib/OptionT"
+import { fromNullable } from "fp-ts/lib/OptionT"
+import { validateAddr } from "ax-wasm"
 
 const nodeTypeToText = (type: NodeType) => {
   switch (type) {
     case NodeType.Reachable:
-      return "Connected";
+      return "Connected"
     case NodeType.Unauthorized:
-      return "Not authorized";
+      return "Not authorized"
     case NodeType.Unreachable:
-      return "Disconnected";
+      return "Disconnected"
     case NodeType.Loading:
-      return "Loading";
+      return "Loading"
   }
-};
+}
 
 const isFavorite = (store: StoreState, node: Node) =>
   store.key === "Loaded" &&
-  store.data.preferences.favoriteNodeAddrs.includes(node.addr);
+  store.data.preferences.favoriteNodeAddrs.includes(node.addr)
 
 const NodeCard: React.FC<{ node: Node; remove: () => void; view: () => void }> =
   ({ node, remove, view }) => {
-    const store = useStore();
+    const store = useStore()
 
     const toggleFavorite = () => {
-      isFavorite(store, node) ? unmkFavorite() : mkFavorite();
-    };
+      isFavorite(store, node) ? unmkFavorite() : mkFavorite()
+    }
 
     const mkFavorite = () => {
       if (store.key !== "Loaded") {
-        return;
+        return
       }
       store.actions.updateAndReload({
         ...store.data,
@@ -49,12 +49,12 @@ const NodeCard: React.FC<{ node: Node; remove: () => void; view: () => void }> =
             node.addr,
           ]),
         },
-      });
-    };
+      })
+    }
 
     const unmkFavorite = () => {
       if (store.key !== "Loaded") {
-        return;
+        return
       }
       store.actions.updateAndReload({
         ...store.data,
@@ -64,8 +64,8 @@ const NodeCard: React.FC<{ node: Node; remove: () => void; view: () => void }> =
             (addr) => addr !== node.addr
           ),
         },
-      });
-    };
+      })
+    }
 
     return (
       <div key={node.addr} className="bg-white rounded p-4 w-56 relative">
@@ -113,30 +113,30 @@ const NodeCard: React.FC<{ node: Node; remove: () => void; view: () => void }> =
           </Button>
         </div>
       </div>
-    );
-  };
+    )
+  }
 
 const Screen: React.FC<{}> = () => {
   const {
     dispatch,
     actions: { addNodes, remNodes },
     data: { nodes },
-  } = useAppState();
+  } = useAppState()
 
-  const store = useStore();
+  const store = useStore()
   const favoriteNodeAddrs =
-    store.key === "Loaded" ? store.data.preferences.favoriteNodeAddrs : [];
+    store.key === "Loaded" ? store.data.preferences.favoriteNodeAddrs : []
 
   useEffect(() => {
     addNodes(
       favoriteNodeAddrs.filter((a) => !nodes.map((n) => n.addr).includes(a))
-    );
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [favoriteNodeAddrs]);
+  }, [favoriteNodeAddrs])
 
   const viewNode = (addr: string) =>
-    dispatch({ key: AppActionKey.ShowNodeDetail, addr });
-  const remNode = (addr: string) => remNodes([addr]);
+    dispatch({ key: AppActionKey.ShowNodeDetail, addr })
+  const remNode = (addr: string) => remNodes([addr])
 
   return (
     <Layout
@@ -170,7 +170,7 @@ const Screen: React.FC<{}> = () => {
         ))}
       </div>
     </Layout>
-  );
-};
+  )
+}
 
-export default Screen;
+export default Screen

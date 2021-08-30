@@ -1,12 +1,12 @@
-import React from "react";
-import clsx from "clsx";
-import { BackgroundColor } from "../tailwind";
+import React from "react"
+import clsx from "clsx"
+import { BackgroundColor } from "../tailwind"
 
 export const SimpleCanvas: React.FC<{ bgColor?: BackgroundColor }> = ({
   bgColor,
   children,
 }) => {
-  const bgColorClass = `bg-${bgColor || "white"}`;
+  const bgColorClass = `bg-${bgColor || "white"}`
   return (
     <div
       className={clsx(
@@ -16,5 +16,5 @@ export const SimpleCanvas: React.FC<{ bgColor?: BackgroundColor }> = ({
     >
       {children}
     </div>
-  );
-};
+  )
+}

@@ -1,20 +1,20 @@
-import React, { useEffect, useState } from "react";
-import AceEditor from "react-ace";
-import "ace-builds/src-noconflict/mode-json";
-import "ace-builds/src-noconflict/theme-textmate";
-import { ClassName } from "../react";
-import clsx from "clsx";
-import eq from "deep-equal";
+import React, { useEffect, useState } from "react"
+import AceEditor from "react-ace"
+import "ace-builds/src-noconflict/mode-json"
+import "ace-builds/src-noconflict/theme-textmate"
+import { ClassName } from "../react"
+import clsx from "clsx"
+import eq from "deep-equal"
 
 interface Props {
-  json?: object | null;
-  onChanged: (json: object) => void;
-  onDirtied?: () => void;
-  readOnly?: boolean;
+  json?: object | null
+  onChanged: (json: object) => void
+  onDirtied?: () => void
+  readOnly?: boolean
 }
 
 const toStr = (json: object | null | undefined, format?: boolean): string =>
-  json ? JSON.stringify(json, null, format ? 2 : 0) : "";
+  json ? JSON.stringify(json, null, format ? 2 : 0) : ""
 
 export const JsonEditor: React.FC<Props & ClassName> = ({
   json,
@@ -23,35 +23,35 @@ export const JsonEditor: React.FC<Props & ClassName> = ({
   className,
   readOnly,
 }) => {
-  const [str, setStr] = useState(toStr(json, true));
+  const [str, setStr] = useState(toStr(json, true))
   useEffect(() => {
     setStr((curr) => {
       try {
-        const currentObj = JSON.parse(curr);
+        const currentObj = JSON.parse(curr)
         if (!eq(json, currentObj)) {
-          return toStr(json, true);
+          return toStr(json, true)
         } else {
-          return curr;
+          return curr
         }
       } catch (error) {
-        return toStr(json, true);
+        return toStr(json, true)
       }
-    });
+    })
     //setStr(toStr(json, true))
-  }, [json]);
+  }, [json])
 
   const onChange = (val: string) => {
     try {
-      const parsed = JSON.parse(val);
-      setStr(val);
-      onChanged(parsed);
+      const parsed = JSON.parse(val)
+      setStr(val)
+      onChanged(parsed)
     } catch (error) {
       if (onDirtied) {
-        onDirtied();
+        onDirtied()
       }
-      setStr(val);
+      setStr(val)
     }
-  };
+  }
 
   return (
     <div className={clsx("max-w-full max-h-full", className)}>
@@ -79,5 +79,5 @@ export const JsonEditor: React.FC<Props & ClassName> = ({
         }}
       />
     </div>
-  );
-};
+  )
+}

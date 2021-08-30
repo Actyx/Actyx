@@ -1,33 +1,33 @@
-import { SimpleCanvas } from "../components/SimpleCanvas";
-import React, { useEffect, useReducer, useState } from "react";
-import { Layout } from "../components/Layout";
-import { Button, SimpleInput } from "../components/basics";
-import { useAppState } from "../app-state";
-import { isNone } from "fp-ts/lib/Option";
+import { SimpleCanvas } from "../components/SimpleCanvas"
+import React, { useEffect, useReducer, useState } from "react"
+import { Layout } from "../components/Layout"
+import { Button, SimpleInput } from "../components/basics"
+import { useAppState } from "../app-state"
+import { isNone } from "fp-ts/lib/Option"
 import {
   getFolderFromUser,
   Wizard,
   WizardFailure,
   WizardSuccess,
   WizardInput,
-} from "../util";
-import { Either, left, right } from "fp-ts/lib/Either";
-import { FatalError } from "../../common/ipc";
-import { safeErrorToStr } from "../../common/util";
-import { useStore } from "client/store";
+} from "../util"
+import { Either, left, right } from "fp-ts/lib/Either"
+import { FatalError } from "../../common/ipc"
+import { safeErrorToStr } from "../../common/util"
+import { useStore } from "client/store"
 
 const Screen = () => {
   const {
     actions: { createUserKeyPair },
-  } = useAppState();
+  } = useAppState()
 
   const execute = ({
     location,
   }: Input): Promise<Either<FatalError, Success>> => {
     return createUserKeyPair()
       .then((resp) => right(resp))
-      .catch((e) => left(e));
-  };
+      .catch((e) => left(e))
+  }
 
   return (
     <Layout title="Node Authentication">
@@ -40,46 +40,46 @@ const Screen = () => {
         />
       </SimpleCanvas>
     </Layout>
-  );
-};
+  )
+}
 
 interface Input {
   location:
     | undefined
     | {
-        folder: string;
-        name: string;
-      };
+        folder: string
+        name: string
+      }
 }
 interface Success {
-  privateKey: string;
+  privateKey: string
 }
 
 // FIXME: download key
 const Initial: WizardInput<Input> = ({ execute, executing }) => {
-  const [folder, setFolder] = useState("");
-  const [name, setName] = useState("");
+  const [folder, setFolder] = useState("")
+  const [name, setName] = useState("")
 
   const selectFolder = async () => {
-    const folder = await getFolderFromUser();
+    const folder = await getFolderFromUser()
     if (isNone(folder)) {
-      console.log(`did not get folder`);
-      return;
+      console.log(`did not get folder`)
+      return
     }
-    console.log(`got folder ${folder.value}`);
-    setFolder(folder.value);
-  };
+    console.log(`got folder ${folder.value}`)
+    setFolder(folder.value)
+  }
 
   const doExecute = () => {
     if (folder === "" || name === "") {
-      return;
+      return
     }
-    execute({ location: { folder, name } });
-  };
+    execute({ location: { folder, name } })
+  }
 
   const doExecuteDefault = () => {
-    execute({ location: undefined });
-  };
+    execute({ location: undefined })
+  }
 
   return (
     <>
@@ -125,8 +125,8 @@ const Initial: WizardInput<Input> = ({ execute, executing }) => {
         </div>
       </div>
     </>
-  );
-};
+  )
+}
 
 const Success: WizardSuccess<Success> = ({
   restart,
@@ -148,7 +148,7 @@ const Success: WizardSuccess<Success> = ({
       </Button>
     </div>
   </>
-);
+)
 
 const Failed: WizardFailure<FatalError> = ({
   restart,
@@ -164,6 +164,6 @@ const Failed: WizardFailure<FatalError> = ({
       Back
     </Button>
   </>
-);
+)
 
-export default Screen;
+export default Screen

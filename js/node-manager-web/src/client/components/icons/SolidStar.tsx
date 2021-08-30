@@ -1,6 +1,6 @@
-import React from "react";
-import { IconType } from "./types";
-import clsx from "clsx";
+import React from "react"
+import { IconType } from "./types"
+import clsx from "clsx"
 
 const Icon: IconType = ({ height = 5, width = 5, className }) => (
   <svg
@@ -17,6 +17,6 @@ const Icon: IconType = ({ height = 5, width = 5, className }) => (
       fill="#fcbf29"
     />
   </svg>
-);
+)
 
-export default Icon;
+export default Icon

@@ -1,11 +1,11 @@
-import React, { useState } from "react";
-import clsx from "clsx";
-import { ClassName } from "../../react";
+import React, { useState } from "react"
+import clsx from "clsx"
+import { ClassName } from "../../react"
 
 const Rider: React.FC<{
-  active: boolean;
-  text: string;
-  onClick: () => void;
+  active: boolean
+  text: string
+  onClick: () => void
 }> = ({ active, text, onClick }) => (
   <li
     onClick={onClick}
@@ -19,7 +19,7 @@ const Rider: React.FC<{
   >
     {text}
   </li>
-);
+)
 const Content: React.FC<ClassName & { elem: JSX.Element; hidden: boolean }> = ({
   elem,
   hidden,
@@ -28,14 +28,14 @@ const Content: React.FC<ClassName & { elem: JSX.Element; hidden: boolean }> = ({
   <div hidden={hidden} className={clsx("", className)}>
     {elem}
   </div>
-);
+)
 
 interface Props {
   tabs: {
-    text: string;
-    elem: JSX.Element;
-  }[];
-  contentClassName?: string;
+    text: string
+    elem: JSX.Element
+  }[]
+  contentClassName?: string
 }
 
 const E: React.FC<Props & ClassName> = ({
@@ -43,7 +43,7 @@ const E: React.FC<Props & ClassName> = ({
   className,
   contentClassName,
 }) => {
-  const [current, setCurrent] = useState(0);
+  const [current, setCurrent] = useState(0)
   return (
     <div
       className={clsx(
@@ -77,7 +77,7 @@ const E: React.FC<Props & ClassName> = ({
         ))}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default E;
+export default E

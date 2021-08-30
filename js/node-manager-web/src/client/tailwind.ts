@@ -184,7 +184,7 @@ export type BackgroundColor =
   | "pink-600"
   | "pink-700"
   | "pink-800"
-  | "pink-900";
+  | "pink-900"
 
 export type BackgroundColorSpectrum =
   | "gray"
@@ -194,4 +194,4 @@ export type BackgroundColorSpectrum =
   | "blue"
   | "indigo"
   | "purple"
-  | "pink";
+  | "pink"

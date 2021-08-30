@@ -1,8 +1,8 @@
-import { SimpleCanvas } from "../components/SimpleCanvas";
-import React from "react";
-import { Layout } from "../components/Layout";
-import { useAppState } from "../app-state";
-import { getPackageVersion } from "../util";
+import { SimpleCanvas } from "../components/SimpleCanvas"
+import React from "react"
+import { Layout } from "../components/Layout"
+import { useAppState } from "../app-state"
+import { getPackageVersion } from "../util"
 
 const DocsLink: React.FC = ({ children }) => (
   <a
@@ -13,7 +13,7 @@ const DocsLink: React.FC = ({ children }) => (
   >
     {children}
   </a>
-);
+)
 
 const ForumLink: React.FC = ({ children }) => (
   <a
@@ -24,7 +24,7 @@ const ForumLink: React.FC = ({ children }) => (
   >
     {children}
   </a>
-);
+)
 
 const ActyxLink: React.FC = ({ children }) => (
   <a
@@ -35,7 +35,7 @@ const ActyxLink: React.FC = ({ children }) => (
   >
     {children}
   </a>
-);
+)
 
 const AnalyticsLink: React.FC = ({ children }) => (
   <a
@@ -46,7 +46,7 @@ const AnalyticsLink: React.FC = ({ children }) => (
   >
     {children}
   </a>
-);
+)
 
 const Screen: React.FC<{}> = () => (
   <Layout title="About">
@@ -77,6 +77,6 @@ const Screen: React.FC<{}> = () => (
       </div>
     </SimpleCanvas>
   </Layout>
-);
+)
 
-export default Screen;
+export default Screen

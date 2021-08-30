@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { NodeType, ReachableNode as ReachableNodeT } from "../../common/types";
-import { Layout } from "../components/Layout";
-import { useAppState, AppActionKey } from "../app-state";
-import { Error } from "../components/Error";
-import { SimpleCanvas } from "../components/SimpleCanvas";
-import { Button, Tabs } from "../components/basics";
-import { SettingsEditor } from "../components/SettingsEditor";
-import clsx from "clsx";
-import { NodesOverview } from ".";
-import { toUndefined } from "fp-ts/lib/Option";
+import React, { useEffect, useState } from "react"
+import { NodeType, ReachableNode as ReachableNodeT } from "../../common/types"
+import { Layout } from "../components/Layout"
+import { useAppState, AppActionKey } from "../app-state"
+import { Error } from "../components/Error"
+import { SimpleCanvas } from "../components/SimpleCanvas"
+import { Button, Tabs } from "../components/basics"
+import { SettingsEditor } from "../components/SettingsEditor"
+import clsx from "clsx"
+import { NodesOverview } from "."
+import { toUndefined } from "fp-ts/lib/Option"
 
 const Peers: React.FC<{ node: ReachableNodeT }> = ({
   node: {
@@ -26,22 +26,22 @@ const Peers: React.FC<{ node: ReachableNodeT }> = ({
       </p>
     ))}
   </div>
-);
+)
 
 const Actions: React.FC<{ node: ReachableNodeT }> = ({ node: { addr } }) => {
-  const [shuttingDown, setShuttingDown] = useState(false);
+  const [shuttingDown, setShuttingDown] = useState(false)
   const {
     actions: { shutdownNode },
     data: { privateKey },
-  } = useAppState();
+  } = useAppState()
   return (
     <div className="">
       <Button
         className=""
         color="red"
         onClick={() => {
-          setShuttingDown(true);
-          shutdownNode(addr, toUndefined(privateKey)!);
+          setShuttingDown(true)
+          shutdownNode(addr, toUndefined(privateKey)!)
         }}
         working={shuttingDown}
         small
@@ -53,8 +53,8 @@ const Actions: React.FC<{ node: ReachableNodeT }> = ({ node: { addr } }) => {
         as a system service.
       </p>
     </div>
-  );
-};
+  )
+}
 
 const Info: React.FC<{ node: ReachableNodeT }> = ({ node: { details } }) => {
   const Row: React.FC<{ field: string; value: string; gray?: boolean }> = ({
@@ -72,7 +72,7 @@ const Info: React.FC<{ node: ReachableNodeT }> = ({ node: { details } }) => {
         {value}
       </dd>
     </div>
-  );
+  )
 
   return (
     <div className="">
@@ -85,8 +85,8 @@ const Info: React.FC<{ node: ReachableNodeT }> = ({ node: { details } }) => {
         <Row field="Version" value={details.version} />
       </dl>
     </div>
-  );
-};
+  )
+}
 
 const Offsets: React.FC<{ node: ReachableNodeT }> = ({
   node: {
@@ -95,10 +95,10 @@ const Offsets: React.FC<{ node: ReachableNodeT }> = ({
 }) => {
   const {
     data: { nodes },
-  } = useAppState();
+  } = useAppState()
   const allReachableNodes = nodes.filter(
     (n) => n.type === NodeType.Reachable
-  ) as ReachableNodeT[];
+  ) as ReachableNodeT[]
 
   const Row: React.FC<{ field: string; value: string; gray?: boolean }> = ({
     field,
@@ -117,18 +117,18 @@ const Offsets: React.FC<{ node: ReachableNodeT }> = ({
         {value}
       </dd>
     </div>
-  );
+  )
 
   const streamDisp = (streamName: string) => {
-    const nodeId = streamName.slice(0, -2);
+    const nodeId = streamName.slice(0, -2)
     const match = allReachableNodes.find(
       (node) => node.details.nodeId === nodeId
-    );
+    )
     if (!match) {
-      return nodeId;
+      return nodeId
     }
-    return `${match.details.displayName} (${match.addr})`;
-  };
+    return `${match.details.displayName} (${match.addr})`
+  }
 
   if (offsets === null) {
     return (
@@ -136,7 +136,7 @@ const Offsets: React.FC<{ node: ReachableNodeT }> = ({
         The node&apos;s version of Actyx doesn&apos;t support this feature yet.
         Please upgrade to a later version.
       </p>
-    );
+    )
   }
 
   return (
@@ -153,7 +153,7 @@ const Offsets: React.FC<{ node: ReachableNodeT }> = ({
               const toReplicate =
                 streamId in offsets.toReplicate
                   ? offsets.toReplicate[streamId]
-                  : 0;
+                  : 0
               return (
                 <Row
                   key={"offsets" + streamId}
@@ -164,13 +164,13 @@ const Offsets: React.FC<{ node: ReachableNodeT }> = ({
                   }
                   gray={!(ix % 2)}
                 />
-              );
+              )
             })
         )}
       </dl>
     </div>
-  );
-};
+  )
+}
 
 const Addresses: React.FC<{ node: ReachableNodeT }> = ({
   node: {
@@ -236,8 +236,8 @@ const Addresses: React.FC<{ node: ReachableNodeT }> = ({
         )}
       </div>
     </>
-  );
-};
+  )
+}
 
 const ReachableNode: React.FC<{ node: ReachableNodeT }> = ({ node }) => (
   <Tabs
@@ -270,14 +270,14 @@ const ReachableNode: React.FC<{ node: ReachableNodeT }> = ({ node }) => (
       },
     ]}
   />
-);
+)
 
 const Screen: React.FC<{ addr: string }> = ({ addr }) => {
   const {
     dispatch,
     data: { nodes },
-  } = useAppState();
-  const node = nodes.find((n) => n.addr === addr);
+  } = useAppState()
+  const node = nodes.find((n) => n.addr === addr)
   if (!node) {
     return (
       <Layout title="Error">
@@ -285,18 +285,18 @@ const Screen: React.FC<{ addr: string }> = ({ addr }) => {
           <p>No data available about node {addr}.</p>
         </Error>
       </Layout>
-    );
+    )
   }
 
   if (node.type !== NodeType.Reachable) {
-    dispatch({ key: AppActionKey.ShowOverview });
+    dispatch({ key: AppActionKey.ShowOverview })
     return (
       <Layout title="Error">
         <Error>
           <p>Node {addr} not connected.</p>
         </Error>
       </Layout>
-    );
+    )
   }
 
   return (
@@ -313,7 +313,7 @@ const Screen: React.FC<{ addr: string }> = ({ addr }) => {
         <ReachableNode node={node} />
       </SimpleCanvas>
     </Layout>
-  );
-};
+  )
+}
 
-export default Screen;
+export default Screen

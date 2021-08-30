@@ -1,4 +1,4 @@
-import { StoreData as Data } from "../../common/types";
+import { StoreData as Data } from "../../common/types"
 
 export const enum StoreStateKey {
   Loaded = "Loaded",
@@ -7,25 +7,25 @@ export const enum StoreStateKey {
 }
 
 interface LoadedActions {
-  updateAndReload: (new_: Data) => void;
-  reload: () => void;
+  updateAndReload: (new_: Data) => void
+  reload: () => void
 }
 
 interface Loaded {
-  key: StoreStateKey.Loaded;
-  data: Data;
-  actions: LoadedActions;
+  key: StoreStateKey.Loaded
+  data: Data
+  actions: LoadedActions
 }
 interface LoadingOrSaving {
-  key: StoreStateKey.LoadingOrSaving;
+  key: StoreStateKey.LoadingOrSaving
 }
 
 interface Initial {
-  key: StoreStateKey.Initial;
+  key: StoreStateKey.Initial
 }
 
 // Any error will actually be fatal for simplicity
-export type StoreState = Initial | Loaded | LoadingOrSaving;
+export type StoreState = Initial | Loaded | LoadingOrSaving
 
 export const enum StoreActionKey {
   HasLoaded = "HasLoaded",
@@ -33,15 +33,15 @@ export const enum StoreActionKey {
 }
 
 interface HasLoaded {
-  key: StoreActionKey.HasLoaded;
-  data: Data;
-  actions: LoadedActions;
+  key: StoreActionKey.HasLoaded
+  data: Data
+  actions: LoadedActions
 }
 
 interface LoadOrSave {
-  key: StoreActionKey.LoadOrSave;
+  key: StoreActionKey.LoadOrSave
 }
 
-export type StoreAction = HasLoaded | LoadOrSave;
+export type StoreAction = HasLoaded | LoadOrSave
 
-export type Dispatch = (action: StoreAction) => void;
+export type Dispatch = (action: StoreAction) => void

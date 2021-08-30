@@ -1,24 +1,19 @@
-import React, { useContext, useEffect, useReducer, useState } from "react";
-import { IpcFromClient, IpcToClient } from "../../common/ipc";
-import { v4 as uuidv4 } from "uuid";
-import { StoreData as Data } from "../../common/types";
-import {
-  StoreAction,
-  StoreActionKey,
-  StoreState,
-  StoreStateKey,
-} from "./types";
+import React, { useContext, useEffect, useReducer, useState } from "react"
+import { IpcFromClient, IpcToClient } from "../../common/ipc"
+import { v4 as uuidv4 } from "uuid"
+import { StoreData as Data } from "../../common/types"
+import { StoreAction, StoreActionKey, StoreState, StoreStateKey } from "./types"
 
 const reducer = (state: StoreState, action: StoreAction): StoreState => {
   switch (action.key) {
     case StoreActionKey.LoadOrSave: {
-      return { ...state, key: StoreStateKey.LoadingOrSaving };
+      return { ...state, key: StoreStateKey.LoadingOrSaving }
     }
     case StoreActionKey.HasLoaded: {
-      return { ...action, key: StoreStateKey.Loaded };
+      return { ...action, key: StoreStateKey.Loaded }
     }
   }
-};
+}
 
 // const saveAndReloadDataViaIpc = (new_data: Data | null, onData: (data: Data) => void) => {
 //   // ipcRenderer.once(IpcToClient.StoreLoaded, (event, arg) => {
@@ -28,7 +23,7 @@ const reducer = (state: StoreState, action: StoreAction): StoreState => {
 //   onData({ analytics: { disabled: true, userId: 'dev' }, preferences: { favoriteNodeAddrs: [] } })
 // }
 
-const Context = React.createContext<StoreState | undefined>(undefined);
+const Context = React.createContext<StoreState | undefined>(undefined)
 
 const INITIAL_STORE_DATA: Data = {
   preferences: {
@@ -39,18 +34,18 @@ const INITIAL_STORE_DATA: Data = {
     userId: uuidv4(),
   },
   privateKey: undefined,
-};
+}
 
 export const StoreProvider: React.FC<{}> = ({ children }) => {
-  const [state, dispatch] = useReducer(reducer, { key: StoreStateKey.Initial });
+  const [state, dispatch] = useReducer(reducer, { key: StoreStateKey.Initial })
 
-  const id = "ax-node-manager";
+  const id = "ax-node-manager"
   if (!localStorage.getItem(id)) {
-    localStorage.setItem(id, JSON.stringify(INITIAL_STORE_DATA));
+    localStorage.setItem(id, JSON.stringify(INITIAL_STORE_DATA))
   }
   const updateAndReload = (data: Data | null) => {
     if (data) {
-      localStorage.setItem(id, JSON.stringify(data));
+      localStorage.setItem(id, JSON.stringify(data))
     }
     dispatch({
       key: StoreActionKey.HasLoaded,
@@ -60,25 +55,25 @@ export const StoreProvider: React.FC<{}> = ({ children }) => {
         reload: () => updateAndReload(null),
         updateAndReload,
       },
-    });
-  };
+    })
+  }
 
   useEffect(() => {
-    (async () => {
+    ;(async () => {
       if (state.key === "Initial") {
-        updateAndReload(null);
+        updateAndReload(null)
       }
-    })();
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.key]);
+  }, [state.key])
 
-  return <Context.Provider value={state}>{children}</Context.Provider>;
-};
+  return <Context.Provider value={state}>{children}</Context.Provider>
+}
 
 export const useStore = () => {
-  const c = useContext(Context);
+  const c = useContext(Context)
   if (c === undefined) {
-    throw "Store context is undefined";
+    throw "Store context is undefined"
   }
-  return c;
-};
+  return c
+}

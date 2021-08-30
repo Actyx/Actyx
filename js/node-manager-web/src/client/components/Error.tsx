@@ -1,6 +1,6 @@
-import React from "react";
-import { ClassName } from "../react";
-import clsx from "clsx";
+import React from "react"
+import { ClassName } from "../react"
+import clsx from "clsx"
 
 export const Error: React.FC<ClassName> = ({ className, children }) => (
   <div
@@ -14,4 +14,4 @@ export const Error: React.FC<ClassName> = ({ className, children }) => (
       {children}
     </div>
   </div>
-);
+)

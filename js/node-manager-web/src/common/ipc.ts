@@ -1,4 +1,4 @@
-import * as io from "io-ts";
+import * as io from "io-ts"
 import {
   SignAppManifestRequest,
   SignAppManifestResponse,
@@ -14,7 +14,7 @@ import {
   ShutdownNodeResponse,
   QueryRequest,
   QueryResponse,
-} from "./types";
+} from "./types"
 
 export const enum IpcFromClient {
   SelectFolder = "select-folder",
@@ -38,14 +38,14 @@ export const enum IpcToClient {
 }
 
 export interface FatalError {
-  shortMessage: string;
-  details?: string;
+  shortMessage: string
+  details?: string
 }
 
 export interface RPC<Req, Resp> {
-  request: io.Type<Req, object, unknown>;
-  response: io.Type<Resp, object | void, unknown>;
-  ipcCode: string;
+  request: io.Type<Req, object, unknown>
+  response: io.Type<Resp, object | void, unknown>
+  ipcCode: string
 }
 
 const mkRPC = <Req, Resp>(
@@ -57,28 +57,28 @@ const mkRPC = <Req, Resp>(
   ipcCode,
   request,
   response,
-});
+})
 
 export const RPC_ShutdownNode = mkRPC(
   "ShutdownNode",
   ShutdownNodeRequest,
   ShutdownNodeResponse
-);
+)
 
 export const RPC_CreateUserKeyPair = mkRPC(
   "CreateUserKeyPair",
   CreateUserKeyPairRequest,
   CreateUserKeyPairResponse
-);
+)
 
 export const RPC_GenerateSwarmKey = mkRPC(
   "GenerateSwarmKey",
   GenerateSwarmKeyRequest,
   GenerateSwarmKeyResponse
-);
+)
 
 export const RPC_SignAppManifest = mkRPC(
   "SignAppManifest",
   SignAppManifestRequest,
   SignAppManifestResponse
-);
+)

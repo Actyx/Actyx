@@ -23,6 +23,7 @@ module.exports = {
     "react/prop-types": "off",
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "warn",
+    "prettier/prettier": ["error", { semi: false }],
   },
   env: {
     browser: true,
@@ -34,4 +35,4 @@ module.exports = {
       version: "17.0.2",
     },
   },
-};
+}

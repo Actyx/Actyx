@@ -1,20 +1,20 @@
-import React from "react";
-import { ClassName } from "../../react";
-import clsx from "clsx";
-import { Button } from "./";
+import React from "react"
+import { ClassName } from "../../react"
+import clsx from "clsx"
+import { Button } from "./"
 
 interface InputProps {
-  disabled?: boolean;
-  label: string;
-  placeholder?: string;
-  value: string;
-  setValue?: (s: string) => void;
-  inputClassName?: string;
+  disabled?: boolean
+  label: string
+  placeholder?: string
+  value: string
+  setValue?: (s: string) => void
+  inputClassName?: string
   button?: {
-    text: string;
-    onClick: () => void;
-    disabled?: boolean;
-  };
+    text: string
+    onClick: () => void
+    disabled?: boolean
+  }
 }
 
 const Input: React.FC<InputProps & ClassName> = ({
@@ -62,6 +62,6 @@ const Input: React.FC<InputProps & ClassName> = ({
       )}
     </div>
   </div>
-);
+)
 
-export default Input;
+export default Input

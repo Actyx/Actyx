@@ -1,75 +1,75 @@
-import React from "react";
+import React from "react"
 import {
   Node,
   NodeType,
   ReachableNode as ReachableNodeT,
-} from "../../common/types";
-import { Layout } from "../components/Layout";
-import { useAppState } from "../app-state";
-import { SimpleCanvas } from "../components/SimpleCanvas";
-import { Button, Tabs } from "../components/basics";
-import { shutdownApp, toggleDevTools } from "../util";
-import { useStore } from "../store";
-import clsx from "clsx";
+} from "../../common/types"
+import { Layout } from "../components/Layout"
+import { useAppState } from "../app-state"
+import { SimpleCanvas } from "../components/SimpleCanvas"
+import { Button, Tabs } from "../components/basics"
+import { shutdownApp, toggleDevTools } from "../util"
+import { useStore } from "../store"
+import clsx from "clsx"
 import {
   HslPercentageSpectrum,
   RedToGreenPercentageSpectrum,
-} from "../util/color";
-import { OffsetInfo, Offset } from "../offsets";
-import { isNone } from "fp-ts/lib/Option";
+} from "../util/color"
+import { OffsetInfo, Offset } from "../offsets"
+import { isNone } from "fp-ts/lib/Option"
 
 const isConnectedTo = (from: ReachableNodeT, to: Node) => {
   if (to.type === NodeType.Reachable) {
     return from.details.swarmState.knownPeers
       .map(({ peerId }) => peerId)
-      .includes(to.details.swarmState.peerId);
+      .includes(to.details.swarmState.peerId)
   } else {
     return (
       from.details.swarmState.knownPeers
         .map(({ addrs }) => addrs.includes(to.addr))
         .filter((x) => x).length > 0
-    );
+    )
   }
-};
+}
 
 const nodeDisplayName = (node: Node) =>
   node.type === NodeType.Reachable
     ? `${node.details.displayName} (${node.addr})`
-    : node.addr;
+    : node.addr
 
 const Connected = () => (
   <span className="text-green-300 font-xs font-medium">Connected</span>
-);
+)
 const Disconnected = () => (
   <span className="text-red-300 font-xs font-medium">Not connected</span>
-);
+)
 
 const OffsetMatrix: React.FC<{ nodes: Node[]; offsets: OffsetInfo }> = ({
   nodes,
   offsets,
 }) => {
-  const headerSize = 44;
-  const cellWidth = 16;
-  const cellHeight = 8;
+  const headerSize = 44
+  const cellWidth = 16
+  const cellHeight = 8
 
-  const mkRedGreenColor = HslPercentageSpectrum(0, 120, undefined, 75);
+  const mkRedGreenColor = HslPercentageSpectrum(0, 120, undefined, 75)
 
   const offsetToString = (offset: Offset) => {
     if (typeof offset === "number") {
-      return offset.toString();
+      return offset.toString()
     } else if (offset === "NoOffsetFound") {
-      return "!None";
+      return "!None"
     } else if (offset === "SourceNotReachable") {
-      return "!Source";
+      return "!Source"
     } else if (offset === "TargetNotReachable") {
-      return "!Target";
+      return "!Target"
     } else if (offset === "SourceDoesntSupportOffsets") {
-      return "!Version";
+      return "!Version"
     }
-  };
+  }
 
   // We ignore all loading nodes
-  nodes = nodes.filter((n) => n.type !== NodeType.Loading);
+  nodes = nodes.filter((n) => n.type !== NodeType.Loading)
 
   return (
     <div className="w-max">
@@ -119,12 +119,12 @@ const OffsetMatrix: React.FC<{ nodes: Node[]; offsets: OffsetInfo }> = ({
                   {nodeDisplayName(from)}
                 </div>
                 {nodes.map((to, ix) => {
-                  const offset = offsets.matrix[from.addr][to.addr];
-                  const highestKnown = offsets.highestKnown[to.addr];
+                  const offset = offsets.matrix[from.addr][to.addr]
+                  const highestKnown = offsets.highestKnown[to.addr]
                   const percentage =
                     typeof offset !== "number"
                       ? 0
-                      : (100 * offset) / highestKnown;
+                      : (100 * offset) / highestKnown
                   return (
                     <div
                       key={`om-from-${from.addr}-to-${to.addr}`}
@@ -137,10 +137,10 @@ const OffsetMatrix: React.FC<{ nodes: Node[]; offsets: OffsetInfo }> = ({
                     >
                       {offsetToString(offset)}
                     </div>
-                  );
+                  )
                 })}
               </div>
-            );
+            )
           })}
           <div className="pt-3 text-sm text-gray-400">
             <p>{offsetToString("NoOffsetFound")}: no offsets found.</p>
@@ -158,8 +158,8 @@ const OffsetMatrix: React.FC<{ nodes: Node[]; offsets: OffsetInfo }> = ({
         </>
       )}
     </div>
-  );
-};
+  )
+}
 const ReachableNode: React.FC<{ node: ReachableNodeT; others: Node[] }> = ({
   node,
   others,
@@ -175,14 +175,14 @@ const ReachableNode: React.FC<{ node: ReachableNodeT; others: Node[] }> = ({
       ))}
     </ul>
   </li>
-);
+)
 
 const UnreachableNode: React.FC<{ node: Node }> = ({ node }) => (
   <li className="text-gray-500 pb-3">
     <span className="font-medium">{nodeDisplayName(node)}</span> is not
     reachable
   </li>
-);
+)
 
 const SwarmConnectivity: React.FC<{ nodes: Node[] }> = ({ nodes }) => {
   return (
@@ -209,12 +209,12 @@ const SwarmConnectivity: React.FC<{ nodes: Node[] }> = ({ nodes }) => {
         </ul>
       )}
     </div>
-  );
-};
+  )
+}
 
 const NodeManager: React.FC = () => {
-  const { state, data } = useAppState();
-  const store = useStore();
+  const { state, data } = useAppState()
+  const store = useStore()
   return (
     <div>
       <Button className="mb-3" color="yellow" onClick={toggleDevTools} small>
@@ -244,13 +244,13 @@ const NodeManager: React.FC = () => {
         {JSON.stringify(data, null, 2)}
       </pre>
     </div>
-  );
-};
+  )
+}
 
 const Screen: React.FC = () => {
   const {
     data: { nodes, offsets },
-  } = useAppState();
+  } = useAppState()
 
   return (
     <Layout title={`Diagnostics`}>
@@ -281,7 +281,7 @@ const Screen: React.FC = () => {
         </div>
       </SimpleCanvas>
     </Layout>
-  );
-};
+  )
+}
 
-export default Screen;
+export default Screen

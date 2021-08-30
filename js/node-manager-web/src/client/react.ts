@@ -1,3 +1,3 @@
 export interface ClassName {
-  className?: string;
+  className?: string
 }
