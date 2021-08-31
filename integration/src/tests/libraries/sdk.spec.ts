@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Actyx, AqlResponse, EventsSortOrder, Tag } from '@actyx/sdk'
+import { trialManifest } from '../../http-client'
 import { runOnEvery } from '../../infrastructure/hosts'
 import { randomString } from '../../util'
 
@@ -88,41 +89,55 @@ describe('@actyx/sdk', () => {
     })
   })
 
+  test('AQL syntax error', async () => {
+    await runOnEvery(async (node) => {
+      const actyx = await Actyx.of(trialManifest, {
+        actyxPort: node._private.apiPort,
+      })
+
+      const badQuery = actyx.queryAql('garbage')
+      await expect(badQuery).rejects.toBeTruthy()
+
+      const badQueryChunked = new Promise((res, rej) =>
+        actyx.queryAqlChunked('garbage', 1, res, rej),
+      )
+      await expect(badQueryChunked).rejects.toBeTruthy()
+
+      actyx.dispose()
+    })
+  })
+
   test('AQL predecessor', async () => {
     await runOnEvery(async (node) => {
-      const actyx = await Actyx.of(
-        {
-          appId: 'com.example.aql-test',
-          displayName: 'My Example App',
-          version: '1.0.0',
-        },
-        {
-          actyxPort: node._private.apiPort,
-        },
-      )
+      const actyx = await Actyx.of(trialManifest, {
+        actyxPort: node._private.apiPort,
+      })
 
       const tagString = randomString()
       const tag = Tag<number>(tagString)
       const evts = await actyx.publish(tag.apply(4, 5))
       const laterEvt = evts[1]
 
-      const predecessor = await new Promise((resolve) => {
+      const predecessor = await new Promise((resolve, reject) => {
         const cancel = actyx.queryAqlChunked(
           {
             order: EventsSortOrder.Descending,
-            query: `FROM '${tagString}' & to(${laterEvt.eventId})`,
+            query: `FEATURES(eventKeyRange) FROM '${tagString}' & to(${laterEvt.eventId})`,
           },
           1,
           (chunk: AqlResponse[]) => {
             resolve(chunk[0])
             cancel() // stop retrieving after getting the first result
           },
+          reject,
         )
       })
 
       expect(predecessor).toMatchObject({
         payload: 4,
       })
+
+      actyx.dispose()
     })
   })
 })

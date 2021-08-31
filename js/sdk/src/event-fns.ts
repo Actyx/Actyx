@@ -225,6 +225,7 @@ export interface EventFns {
     query: AqlQuery,
     chunkSize: number,
     onChunk: (chunk: AqlResponse[]) => Promise<void> | void,
+    onError: (err: unknown) => void,
   ) => CancelSubscription
 
   /**

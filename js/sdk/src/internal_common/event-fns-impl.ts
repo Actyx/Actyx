@@ -586,6 +586,7 @@ export const EventFnsFromEventStoreV2 = (
     query: AqlQuery,
     chunkSize: number,
     onChunk: (chunk: AqlResponse[]) => Promise<void> | void,
+    onError: (err: unknown) => void,
   ): CancelSubscription => {
     const [aql, ord] = getQueryAndOrd(query)
 
@@ -601,7 +602,7 @@ export const EventFnsFromEventStoreV2 = (
         void 0,
         1,
       )
-      .subscribe()
+      .subscribe({ error: onError })
 
     return () => rxSub.unsubscribe()
   }
