@@ -186,6 +186,7 @@ dependencies = [
  "env_logger 0.9.0",
  "futures 0.3.16",
  "genawaiter",
+ "http",
  "hyper",
  "itertools 0.10.1",
  "libipld",
@@ -194,6 +195,7 @@ dependencies = [
  "multihash",
  "num-traits",
  "parking_lot 0.11.1",
+ "percent-encoding",
  "pin-project 1.0.8",
  "runtime",
  "serde",
@@ -6531,8 +6533,7 @@ dependencies = [
 [[package]]
 name = "unixfs-v1"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54957941d8267395b03ab6dba0c5fdb16c1f5851aee9470bf5027b311ded1ab0"
+source = "git+https://github.com/wngr/unixfsv1#e12c623e274c83e2f982823f0d5908bcfa88fdca"
 dependencies = [
  "either",
  "filetime",

@@ -1,12 +1,16 @@
-use std::collections::VecDeque;
+use std::{fmt::Write, str::FromStr};
 
 use actyx_sdk::AppId;
 use anyhow::Context;
 use bytes::BufMut;
 use futures::prelude::*;
+use http::Uri;
 use libipld::cid::Cid;
 use swarm::{BanyanStore, Block, BufferingTreeBuilder, TreeOptions};
-use warp::{path, Buf, Filter, Rejection, Reply};
+use warp::{
+    path::{self, FullPath},
+    Buf, Filter, Rejection, Reply,
+};
 
 use crate::{
     ans::{ActyxNamingService, PersistenceLevel},
@@ -15,7 +19,7 @@ use crate::{
     NodeInfo,
 };
 
-use self::ipfs::{extract_query_from_host, extract_query_from_path, handle_query, IpfsQuery};
+use self::ipfs::{extract_query_from_host, extract_query_from_path, IpfsQuery};
 
 mod ipfs;
 
@@ -24,33 +28,60 @@ mod ipfs;
 /// where :id is either an (ANS) name or a CIDv1 (checked in that order). If the path is empty, and
 /// the :id resolves to a directory with multiple files, `index.html` is appended to the query.
 pub fn root_serve(store: BanyanStore) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    extract_query_from_host(ActyxNamingService::new(store.clone()))
-        .and_then(move |query| query_root_or_index(store.clone(), query).map_err(crate::util::reject))
+    warp::header::optional(http::header::ACCEPT.as_str())
+        .and(extract_query_from_host(ActyxNamingService::new(store.clone())))
+        .and(warp::path::full())
+        .and_then(
+            move |accept_header: Option<String>, query: IpfsQuery, uri_path: FullPath| {
+                serve_unixfs_node(store.clone(), query, uri_path, accept_header, true).map_err(crate::util::reject)
+            },
+        )
 }
 
-async fn query_root_or_index(store: BanyanStore, query: IpfsQuery) -> anyhow::Result<hyper::Response<hyper::Body>> {
-    match handle_query(store.clone(), query.clone()).await {
-        Err(e) if query.path.is_empty() => {
-            handle_query(
-                store,
-                IpfsQuery {
-                    root: query.root,
-                    path: {
-                        let mut vec = VecDeque::with_capacity(1);
-                        vec.push_front("index.html".to_string());
-                        vec
-                    },
-                },
-            )
-            .map(|x| {
-                x.context("Resolved neither with empty path nor with `index.html`")
-                    .with_context(|| format!("{:#}", e))
-            })
-            .await
+async fn serve_unixfs_node(
+    store: BanyanStore,
+    query: IpfsQuery,
+    uri_path: FullPath,
+    accept_headers: Option<String>,
+    auto_serve_index_html: bool,
+) -> anyhow::Result<impl Reply> {
+    Ok(match store.unixfs_resolve_path(query.root, query.path).await? {
+        swarm::FileNode::Directory {
+            children,
+            name,
+            own_cid,
+        } => {
+            if accept_headers
+                .as_deref()
+                .map(|x| x.to_lowercase().contains("text/html"))
+                .unwrap_or_default()
+            {
+                if let Some(index_html) = auto_serve_index_html
+                    .then(|| children.iter().find(|x| &*x.name == "index.html"))
+                    .flatten()
+                {
+                    ipfs::get_file(store, index_html.cid, &index_html.name).await?
+                } else if !uri_path.as_str().ends_with('/') {
+                    // Add trailing slash so the links in the directory listings
+                    // work as intended.
+                    warp::redirect(Uri::from_str(&[uri_path.as_str(), "/"].concat())?).into_response()
+                } else {
+                    let body = render_directory_listing(name, own_cid, children)?;
+                    warp::reply::html(body).into_response()
+                }
+            } else {
+                warp::reply::json(&swarm::FileNode::Directory {
+                    children,
+                    name,
+                    own_cid,
+                })
+                .into_response()
+            }
         }
-        o => o,
-    }
+        swarm::FileNode::File { cid, name } => ipfs::get_file(store, cid, &name).await?,
+    })
 }
+
 // api/v2/files
 //   POST: add files
 // api/v2/files/:id
@@ -71,11 +102,65 @@ pub fn route(
         .or(update_name(store))
 }
 
+//fn prefetch(store: BanyanStore, app_id: AppId) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+//    warp::post()
+//}
+
+// TODO: Make this a bit nicer. Also take the path to `node` into account to provide upwards
+// traversal.
+fn render_directory_listing(name: String, cid: Cid, children: Vec<swarm::Child>) -> anyhow::Result<String> {
+    let mut body = String::new();
+
+    write!(
+        &mut body,
+        r#"
+<!DOCTYPE html>
+<head>
+<title>Actyx Files: Directory {}</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<table>
+  <tr>
+    <th>Name</th>
+    <th>Size</th>
+    <th>Cid</th>
+  </tr>
+  <tr>
+    <td>. ({})</a></td>
+    <td></td>
+    <td>{}</td>
+  </tr>"#,
+        name, name, cid
+    )?;
+    for swarm::Child { cid, name, size } in children {
+        write!(
+            &mut body,
+            r#"
+<tr>
+  <td><a href='{}'>{}</a></td>
+  <td>{}</td>
+  <td>{}</td>
+</tr>"#,
+            name, name, size, cid
+        )?;
+    }
+    write!(&mut body, "</table></body>")?;
+
+    Ok(body)
+}
+
 fn get(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::get().and(
-        extract_query_from_path(ActyxNamingService::new(store.clone()))
-            .and_then(move |query: IpfsQuery| query_root_or_index(store.clone(), query).map_err(crate::util::reject)),
-    )
+    warp::get()
+        .and(warp::header::optional(http::header::ACCEPT.as_str()))
+        .and(extract_query_from_path(ActyxNamingService::new(store.clone())))
+        .and(warp::path::full())
+        .and_then(
+            move |accept_header: Option<String>, query: IpfsQuery, uri_path: FullPath| {
+                serve_unixfs_node(store.clone(), query, uri_path, accept_header, false).map_err(crate::util::reject)
+            },
+        )
 }
 
 fn delete_name_or_cid(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
@@ -119,6 +204,13 @@ fn update_name(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error
         })
 }
 
+// TODO:
+// Add standard outbound retention 2h
+// emit internal events with stream 0; app_id into payload, file size, file name
+// directory listing; api and html (if accept header html)
+// additional endpoint: prefetch to provide an AQL query, which is a subscription. results in a set
+// of cids, named pin per app id. query is active for 14 days (needs persistence), should be
+// configurable via node settings; defaults to '[]'
 fn add(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::post()
         .and(warp::path::end())

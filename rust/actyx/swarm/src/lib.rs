@@ -30,7 +30,10 @@ pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
 use actyx_sdk::app_id;
 pub use prune::RetainConfig;
-pub use unixfs_v1::dir::builder::{BufferingTreeBuilder, TreeOptions};
+pub use unixfs_v1::{
+    dir::builder::{BufferingTreeBuilder, TreeOptions},
+    FlatUnixFs, PBLink, UnixFsType,
+};
 
 use crate::gossip::Gossip;
 pub use crate::gossip_protocol::{GossipMessage, RootMap, RootUpdate};
@@ -850,6 +853,62 @@ impl BanyanStore {
         &self.data.ipfs
     }
 
+    /// Resolves a [`Cid`] to a unixfs-v1 [`FileNode`] descriptor. Any needed intermediate blocks
+    /// are fetched automatically. The actual data is not resolved.
+    pub async fn unixfs_resolve(&self, cid: Cid, name: Option<String>) -> anyhow::Result<FileNode> {
+        let peers = self.ipfs().peers();
+        let tmp = self.ipfs().create_temp_pin()?;
+        self.ipfs().temp_pin(&tmp, &cid)?;
+        let block = self.ipfs().fetch(&cid, peers.clone()).await?;
+
+        match FlatUnixFs::try_parse(block.data()).map_err(|e| anyhow::anyhow!("Error parsing block (: {}", e))? {
+            flat if flat.data.Type == UnixFsType::Directory => {
+                let mut children = Vec::with_capacity(flat.links.len());
+                #[allow(non_snake_case)]
+                for PBLink { Hash, Name, Tsize } in flat.links {
+                    let cid = Cid::try_from(Hash.as_deref().unwrap_or_default())?;
+                    let name = Name.unwrap_or_default().to_string();
+                    let size = Tsize.unwrap_or_default();
+                    children.push(Child { cid, name, size });
+                }
+                Ok(FileNode::Directory {
+                    children,
+                    own_cid: cid,
+                    name: name.unwrap_or_else(|| "/".into()),
+                })
+            }
+            file if file.data.Type == UnixFsType::File => Ok(FileNode::File {
+                name: name.unwrap_or_default(),
+                cid,
+            }),
+            // Other file types are not supported
+            other => {
+                anyhow::bail!("Unsupported file type {:?}", other.data.Type);
+            }
+        }
+    }
+
+    /// Resolves a [`Cid`] and a relative path to a unixfs-v1 [`FileNode`] descriptor. Any needed
+    /// intermediate blocks are fetched automatically. The actual data is not resolved.
+    pub async fn unixfs_resolve_path(&self, cid: Cid, mut path: VecDeque<String>) -> anyhow::Result<FileNode> {
+        let mut n = self.unixfs_resolve(cid, None).await?;
+        while let Some(segment) = path.pop_front() {
+            match n {
+                FileNode::Directory { children, own_cid, .. } => {
+                    if let Some(x) = children.iter().find(|x| x.name == segment) {
+                        n = self.unixfs_resolve(x.cid, Some(segment)).await?;
+                    } else {
+                        anyhow::bail!("Path {} not found inside {}", segment, own_cid);
+                    }
+                }
+                FileNode::File { name, .. } => {
+                    anyhow::bail!("Found file {} while looking for directory {}", name, segment)
+                }
+            }
+        }
+        Ok(n)
+    }
+
     /// Traverse a path to a `Cid`. Used for traversing unixfsv1 directories. Make sure you pin
     /// the cid before traversing it.
     pub async fn traverse(&self, cid: &Cid, mut path: VecDeque<String>) -> Result<Option<Cid>> {
@@ -876,8 +935,8 @@ impl BanyanStore {
         Ok(Some(block.into_inner().0))
     }
 
-    /// Retrieves a binary blob from the store. Make sure to sync the `Cid` first as this
-    /// doesn't do any networking.
+    /// Retrieves the contents of a unixfs-v1 File  from the store. Make sure to sync the `Cid`
+    /// first as this doesn't do any networking.
     pub fn cat(&self, cid: &Cid, writer: impl Write) -> Result<()> {
         let mut writer = BufWriter::new(writer);
         let block = self.ipfs().get(cid)?;
@@ -895,7 +954,7 @@ impl BanyanStore {
     }
 
     /// Adds a binary blob to the store. Requires aliasing and flushing before dropping the
-    /// `TempPin`.  Blobs are encoded as [unxifs-v1] files.
+    /// `TempPin`.  Blobs are encoded as [unixfs-v1] files.
     ///
     /// [unixfs-v1]: https://docs.ipfs.io/concepts/file-systems/#unix-file-system-unixfs
     pub fn add(&self, tmp: &TempPin, reader: impl Read) -> Result<(Cid, usize)> {
@@ -1365,4 +1424,26 @@ impl AxTreeExt for Tree {
             },
         }
     }
+}
+#[derive(Debug, Serialize)]
+pub struct Child {
+    pub name: String,
+    #[serde(with = "::util::serde_str")]
+    pub cid: Cid,
+    pub size: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub enum FileNode {
+    Directory {
+        children: Vec<Child>,
+        #[serde(with = "::util::serde_str")]
+        own_cid: Cid,
+        name: String,
+    },
+    File {
+        name: String,
+        #[serde(with = "::util::serde_str")]
+        cid: Cid,
+    },
 }

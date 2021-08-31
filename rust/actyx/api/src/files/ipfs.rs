@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use libipld::cid::Cid;
+use percent_encoding::percent_decode_str;
 use std::{collections::VecDeque, path::Path, str::FromStr};
 use swarm::BanyanStore;
 use tracing::*;
@@ -34,9 +35,8 @@ impl FromStr for IpfsQuery {
     }
 }
 
-fn content_type_from_ext(query: &IpfsQuery) -> Option<HeaderValue> {
-    let filename = query.path.back()?;
-    let ext = Path::new(filename).extension()?.to_str()?;
+fn content_type_from_ext(name: &str) -> Option<HeaderValue> {
+    let ext = Path::new(name).extension()?.to_str()?;
     let mime = mime_guess::from_ext(ext).first_raw()?;
     debug!("detected mime type {} from extension ({})", mime, ext);
     HeaderValue::from_str(mime).ok()
@@ -49,15 +49,10 @@ fn content_type_from_content(chunk: &[u8]) -> Option<HeaderValue> {
 }
 
 #[tracing::instrument(level = "debug", skip(store))]
-pub(crate) async fn handle_query(store: BanyanStore, query: IpfsQuery) -> Result<Response<Body>, anyhow::Error> {
-    let content_header_from_ext = content_type_from_ext(&query);
+pub(crate) async fn get_file(store: BanyanStore, cid: Cid, name: &str) -> Result<Response<Body>, anyhow::Error> {
+    let content_header_from_ext = content_type_from_ext(name);
     let tmp = store.ipfs().create_temp_pin()?;
-    store.ipfs().temp_pin(&tmp, &query.root)?;
-    let cid = if let Some(cid) = store.traverse(&query.root, query.path).await? {
-        cid
-    } else {
-        return Err(anyhow::anyhow!("file not found"));
-    };
+    store.ipfs().temp_pin(&tmp, &cid)?;
 
     store.ipfs().sync(&cid, store.ipfs().peers()).await?;
     let mut buf = vec![];
@@ -90,16 +85,20 @@ pub(crate) fn extract_query_from_host(
     warp::get().and(path::full()).and(warp::host::optional()).and_then(
         move |full_path: FullPath, authority: Option<Authority>| {
             let r = if let Some(a) = authority {
-                extract_name_or_cid_from_host(&ans, a.host())
-                    .context("Sub domain must be a valid multihash")
-                    .map(|root| {
-                        let path = full_path
-                            .as_str()
-                            .split('/')
-                            .filter(|x| !x.is_empty())
-                            .map(|x| x.to_owned())
-                            .collect::<VecDeque<_>>();
-                        IpfsQuery { root, path }
+                percent_decode_str(full_path.as_str())
+                    .decode_utf8()
+                    .map_err(Into::into)
+                    .and_then(|decoded| {
+                        extract_name_or_cid_from_host(&ans, a.host())
+                            .context("Sub domain must be a valid multihash")
+                            .map(|root| {
+                                let path = decoded
+                                    .split('/')
+                                    .filter(|x| !x.is_empty())
+                                    .map(|x| x.to_owned())
+                                    .collect::<VecDeque<_>>();
+                                IpfsQuery { root, path }
+                            })
                     })
                     .map_err(|e: anyhow::Error| {
                         warp::reject::custom(ApiError::BadRequest {
@@ -117,9 +116,10 @@ pub(crate) fn extract_query_from_host(
 pub(crate) fn extract_query_from_path(
     ans: ActyxNamingService,
 ) -> impl Filter<Extract = (IpfsQuery,), Error = Rejection> + Clone {
-    path::tail().and_then(move |full_path: Tail| {
+    path::tail().and_then(move |path_tail: Tail| {
         let check = || {
-            let mut path = full_path.as_str().split('/').filter(|x| !x.is_empty());
+            let decoded = percent_decode_str(path_tail.as_str()).decode_utf8()?;
+            let mut path = decoded.split('/').filter(|x| !x.is_empty());
 
             let maybe_root = path.next().context("Empty root path")?;
             let root: Cid = ans
