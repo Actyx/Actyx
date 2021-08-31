@@ -74,7 +74,6 @@ namespace Actyx.Sdk.Formats
         // Offset of this event inside its stream
         public ulong Offset { private set; get; }
 
-        
         public int CompareTo(ActyxEventMetadata other)
         {
             // If other is not a valid object reference, this instance is greater.

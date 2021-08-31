@@ -218,6 +218,13 @@ namespace Actyx
         }
 
         public IObservable<ActyxEvent<E>> ObserveLatest<E>(LatestQuery<E> q) {
+            return store
+                .Subscribe(q.LowerBound, q.Query)
+                .SelectMany(MkEmitIf<E>((candidate, current) => candidate.CompareTo(current) > 0));
+        }
+
+        private Func<IResponseMessage, ActyxEvent<E>[]> MkEmitIf<E>(Func<EventOnWire, EventOnWire, bool> shouldReplaceCur)
+        {
             var deser = MkAxEvt.DeserTyped<E>(NodeId);
             EventOnWire latest = null;
 
@@ -225,7 +232,7 @@ namespace Actyx
 
             bool live = false;
 
-            ActyxEvent<E>[] EmitIfLatest(IResponseMessage r) {
+            ActyxEvent<E>[] EmitIfConditionMet(IResponseMessage r) {
                 try {
                     if (r is OffsetsOnWire)
                     {
@@ -236,8 +243,7 @@ namespace Actyx
                     }
                     else if (r is EventOnWire evt)
                     {
-                        // FIXME use full key
-                        if (latest is null || evt.Lamport > latest.Lamport) {
+                        if (latest is null || shouldReplaceCur(evt, latest)) {
                             latest = evt;
 
                             if (live) {
@@ -253,11 +259,14 @@ namespace Actyx
                 return empty;
             }
 
-            return store
-                .Subscribe(q.LowerBound, q.Query)
-                .SelectMany(EmitIfLatest);
+            return EmitIfConditionMet;
         }
 
+        public IObservable<ActyxEvent<E>> ObserveEarliest<E>(LatestQuery<E> q) {
+            return store
+                .Subscribe(q.LowerBound, q.Query)
+                .SelectMany(MkEmitIf<E>((candidate, current) => candidate.CompareTo(current) < 0));
+        }
 
         public async Task<ActyxEventMetadata> Publish(IEventDraft eventDraft)
         {
