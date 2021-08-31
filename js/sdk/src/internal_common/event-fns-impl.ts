@@ -564,10 +564,37 @@ export const EventFnsFromEventStoreV2 = (
 
   const queryAql = async (query: string): Promise<AqlResponse[]> => {
     return eventStore
-      .queryUnchecked(query)
+      .queryUnchecked(query, EventsSortOrder.Ascending)
       .map(wrapAql)
       .toArray()
       .toPromise()
+  }
+
+  const queryAqlChunked = (
+    query: {
+      /** Query as AQL string */
+      query: string
+      /** Desired chunk size. Defaults to 128. */
+      chunkSize?: number
+      /** Desired order of delivery. Defaults to 'Asc' */
+      ord?: EventsSortOrder
+    },
+    onChunk: (chunk: AqlResponse[]) => Promise<void> | void,
+  ): CancelSubscription => {
+    const buffered = eventStore
+      .queryUnchecked(query.query, query.ord || EventsSortOrder.Ascending)
+      .map(wrapAql)
+      .bufferCount(query.chunkSize || 128)
+
+    const rxSub = buffered
+      .mergeScan(
+        (_a: void, chunk: AqlResponse[]) => Observable.from(Promise.resolve(onChunk(chunk))),
+        void 0,
+        1,
+      )
+      .subscribe()
+
+    return () => rxSub.unsubscribe()
   }
 
   return {
@@ -578,6 +605,7 @@ export const EventFnsFromEventStoreV2 = (
     queryAllKnown,
     queryAllKnownChunked,
     queryAql,
+    queryAqlChunked,
     subscribe,
     subscribeChunked,
     subscribeMonotonic,

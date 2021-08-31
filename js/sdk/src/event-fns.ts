@@ -153,7 +153,7 @@ export interface EventFns {
    * @param chunkSize   - Maximum size of chunks. Chunks may be smaller than this.
    * @param onChunk     - Callback that will be invoked with every chunk, in sequence.
    *
-   * @returns A function that can be called in order to cancel the subscription.
+   * @returns A function that can be called in order to cancel the delivery of further chunks.
    */
   queryKnownRangeChunked: (
     query: RangeQuery,
@@ -199,6 +199,27 @@ export interface EventFns {
    * @beta
    */
   queryAql: (query: string) => Promise<AqlResponse[]>
+
+  /**
+   * Run a custom AQL query and get the response messages in chunks.
+   *
+   * @param query       - Query parameters
+   *
+   * @returns A function that can be called in order to cancel the delivery of further chunks.
+   *
+   * @beta
+   */
+  queryAqlChunked: (
+    query: {
+      /** Query as AQL string */
+      query: string
+      /** Desired chunk size. Defaults to 128. */
+      chunkSize?: number
+      /** Desired order of delivery. Defaults to 'Asc' */
+      ord?: EventsSortOrder
+    },
+    onChunk: (chunk: AqlResponse[]) => Promise<void> | void,
+  ) => CancelSubscription
 
   /**
    * Subscribe to all events fitting the `query` after `lowerBound`.
