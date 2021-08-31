@@ -27,6 +27,8 @@ pub enum NameRecordEvent {
     Add {
         name: String,
         cid: Cid,
+        /// Indicates whether a valid auth token is required to get the files
+        public: bool,
         level: PersistenceLevel,
     },
     Remove {
@@ -36,8 +38,14 @@ pub enum NameRecordEvent {
 impl Encode<DagCborCodec> for NameRecordEvent {
     fn encode<W: std::io::Write>(&self, c: DagCborCodec, w: &mut W) -> anyhow::Result<()> {
         let io = match (*self).clone() {
-            Self::Add { name, cid, level } => NameRecordEventIo::Add {
+            Self::Add {
                 name,
+                cid,
+                level,
+                public,
+            } => NameRecordEventIo::Add {
+                name,
+                public,
                 cid: cid.to_string(),
                 level,
             },
@@ -49,9 +57,15 @@ impl Encode<DagCborCodec> for NameRecordEvent {
 impl Decode<DagCborCodec> for NameRecordEvent {
     fn decode<R: std::io::Read + std::io::Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
         Ok(match NameRecordEventIo::decode(c, r)? {
-            NameRecordEventIo::Add { name, cid, level } => Self::Add {
+            NameRecordEventIo::Add {
+                name,
+                cid,
+                level,
+                public,
+            } => Self::Add {
                 name,
                 cid: cid.parse()?,
+                public,
                 level,
             },
             NameRecordEventIo::Remove { name } => Self::Remove { name },
@@ -64,6 +78,7 @@ enum NameRecordEventIo {
         name: String,
         /// Must not use cid, as the referenced data would be pinned recursively with the root maps
         cid: String,
+        public: bool,
         level: PersistenceLevel,
     },
     Remove {
@@ -75,6 +90,7 @@ enum NameRecordEventIo {
 pub struct NameRecord {
     pub cid: Cid,
     pub level: PersistenceLevel,
+    pub public: bool,
 }
 
 #[derive(Clone)]
@@ -107,7 +123,12 @@ impl ActyxNamingService {
                         }
                     };
                     match DagCborCodec.decode(event.2.as_slice()) {
-                        Ok(NameRecordEvent::Add { name, cid, level }) => {
+                        Ok(NameRecordEvent::Add {
+                            name,
+                            cid,
+                            level,
+                            public,
+                        }) => {
                             tracing::debug!(%name, %cid, "Record Addition");
                             if let PersistenceLevel::Prefetch = level {
                                 // Try to sync right away on a best effort basis
@@ -123,7 +144,7 @@ impl ActyxNamingService {
                                 }
                             }
 
-                            state_c.lock().insert(name, NameRecord { cid, level });
+                            state_c.lock().insert(name, NameRecord { cid, level, public });
                         }
                         Ok(NameRecordEvent::Remove { name }) => {
                             tracing::debug!(%name, "Record removal");
@@ -148,12 +169,14 @@ impl ActyxNamingService {
         name: impl Into<String>,
         cid: Cid,
         level: PersistenceLevel,
+        public: bool,
     ) -> anyhow::Result<Option<NameRecord>> {
         let name: String = name.into();
         let record = NameRecordEvent::Add {
             name: name.clone(),
             cid,
             level,
+            public,
         };
         let mut buffer = vec![];
         record.encode(DagCborCodec, &mut buffer)?;
@@ -165,7 +188,7 @@ impl ActyxNamingService {
             )
             .await?;
 
-        Ok(self.state.lock().insert(name, NameRecord { cid, level }))
+        Ok(self.state.lock().insert(name, NameRecord { cid, level, public }))
     }
 
     pub fn get(&self, name: &str) -> Option<NameRecord> {

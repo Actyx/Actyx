@@ -12,14 +12,13 @@ use warp::{
     Buf, Filter, Rejection, Reply,
 };
 
+use self::ipfs::{extract_query_from_host, extract_query_from_path, IpfsQuery};
 use crate::{
     ans::{ActyxNamingService, PersistenceLevel},
     rejections::ApiError,
-    util::filters::{authenticate, header_token},
+    util::filters::{authenticate, header_or_query_token},
     NodeInfo,
 };
-
-use self::ipfs::{extract_query_from_host, extract_query_from_path, IpfsQuery};
 
 mod ipfs;
 
@@ -27,21 +26,37 @@ mod ipfs;
 /// GET http://:id.actyx.localhost:<port>/query/into/the/directory
 /// where :id is either an (ANS) name or a CIDv1 (checked in that order). If the path is empty, and
 /// the :id resolves to a directory with multiple files, `index.html` is appended to the query.
-pub fn root_serve(store: BanyanStore) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+pub fn root_serve(
+    store: BanyanStore,
+    node_info: NodeInfo,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::header::optional(http::header::ACCEPT.as_str())
-        .and(extract_query_from_host(ActyxNamingService::new(store.clone())))
+        .and(extract_query_from_host(
+            node_info,
+            ActyxNamingService::new(store.clone()),
+        ))
         .and(warp::path::full())
+        .and(query_raw_opt())
         .and_then(
-            move |accept_header: Option<String>, query: IpfsQuery, uri_path: FullPath| {
-                serve_unixfs_node(store.clone(), query, uri_path, accept_header, true).map_err(crate::util::reject)
+            move |accept_header: Option<String>, query: IpfsQuery, uri_path: FullPath, raw_query: Option<String>| {
+                serve_unixfs_node(store.clone(), query, uri_path, raw_query, accept_header, true)
+                    .map_err(crate::util::reject)
             },
         )
+}
+
+fn query_raw_opt() -> impl Filter<Extract = (Option<String>,), Error = Rejection> + Clone {
+    warp::filters::query::raw()
+        .map(Some)
+        .recover(|_| async move { Ok(None) })
+        .unify()
 }
 
 async fn serve_unixfs_node(
     store: BanyanStore,
     query: IpfsQuery,
     uri_path: FullPath,
+    raw_query: Option<String>,
     accept_headers: Option<String>,
     auto_serve_index_html: bool,
 ) -> anyhow::Result<impl Reply> {
@@ -64,9 +79,14 @@ async fn serve_unixfs_node(
                 } else if !uri_path.as_str().ends_with('/') {
                     // Add trailing slash so the links in the directory listings
                     // work as intended.
-                    warp::redirect(Uri::from_str(&[uri_path.as_str(), "/"].concat())?).into_response()
+                    let uri = format!(
+                        "{}/{}",
+                        uri_path.as_str(),
+                        raw_query.map(|q| format!("?{}", q)).unwrap_or_default(),
+                    );
+                    warp::redirect(Uri::from_str(&uri)?).into_response()
                 } else {
-                    let body = render_directory_listing(name, own_cid, children)?;
+                    let body = render_directory_listing(name, own_cid, children, raw_query)?;
                     warp::reply::html(body).into_response()
                 }
             } else {
@@ -94,12 +114,12 @@ pub fn route(
     node_info: NodeInfo,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let auth = authorize(node_info);
-    auth.map(|_| ())
-        .untuple_one()
-        .and(add(store.clone()))
-        .or(get(store.clone()))
-        .or(delete_name_or_cid(store.clone()))
-        .or(update_name(store))
+    auth.map(|_| ()).untuple_one().and(
+        add(store.clone())
+            .or(get(store.clone()))
+            .or(delete_name_or_cid(store.clone()))
+            .or(update_name(store)),
+    )
 }
 
 //fn prefetch(store: BanyanStore, app_id: AppId) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
@@ -108,8 +128,14 @@ pub fn route(
 
 // TODO: Make this a bit nicer. Also take the path to `node` into account to provide upwards
 // traversal.
-fn render_directory_listing(name: String, cid: Cid, children: Vec<swarm::Child>) -> anyhow::Result<String> {
+fn render_directory_listing(
+    name: String,
+    cid: Cid,
+    children: Vec<swarm::Child>,
+    raw_query: Option<String>,
+) -> anyhow::Result<String> {
     let mut body = String::new();
+    let query = raw_query.map(|q| format!("?{}", q)).unwrap_or_default();
 
     write!(
         &mut body,
@@ -139,11 +165,11 @@ fn render_directory_listing(name: String, cid: Cid, children: Vec<swarm::Child>)
             &mut body,
             r#"
 <tr>
-  <td><a href='{}'>{}</a></td>
+  <td><a href='{}{}'>{}</a></td>
   <td>{}</td>
   <td>{}</td>
 </tr>"#,
-            name, name, size, cid
+            name, query, name, size, cid
         )?;
     }
     write!(&mut body, "</table></body>")?;
@@ -156,9 +182,11 @@ fn get(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejec
         .and(warp::header::optional(http::header::ACCEPT.as_str()))
         .and(extract_query_from_path(ActyxNamingService::new(store.clone())))
         .and(warp::path::full())
+        .and(query_raw_opt())
         .and_then(
-            move |accept_header: Option<String>, query: IpfsQuery, uri_path: FullPath| {
-                serve_unixfs_node(store.clone(), query, uri_path, accept_header, false).map_err(crate::util::reject)
+            move |accept_header: Option<String>, query: IpfsQuery, uri_path: FullPath, raw_query: Option<String>| {
+                serve_unixfs_node(store.clone(), query, uri_path, raw_query, accept_header, false)
+                    .map_err(crate::util::reject)
             },
         )
 }
@@ -197,7 +225,7 @@ fn update_name(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error
             async move {
                 tracing::debug!(%name, ?maybe_cid, "ANS POST");
                 let cid: Cid = maybe_cid.parse()?;
-                ans.set(name, cid, PersistenceLevel::Prefetch).await?;
+                ans.set(name, cid, PersistenceLevel::Prefetch, true).await?;
                 Ok(warp::reply())
             }
             .map_err(crate::util::reject)
@@ -270,5 +298,5 @@ fn add(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejec
 }
 
 fn authorize(node_info: NodeInfo) -> impl Filter<Extract = (AppId,), Error = Rejection> + Clone {
-    authenticate(node_info, header_token())
+    authenticate(node_info, header_or_query_token())
 }

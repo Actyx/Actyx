@@ -8,7 +8,7 @@ use warp::*;
 
 use crate::{
     util::{
-        filters::{accept_text, authenticate, header_token},
+        filters::{accept_text, authenticate, header_or_query_token},
         reject, Result,
     },
     NodeInfo,
@@ -57,7 +57,7 @@ fn filter_info(
     path("info")
         .and(path::end())
         .and(get())
-        .and(authenticate(node_info.clone(), header_token()))
+        .and(authenticate(node_info.clone(), header_or_query_token()))
         .and(with_store(store))
         .and(with_node_info(node_info))
         .and_then(handle_info)

@@ -3,7 +3,7 @@ use warp::filters::*;
 use warp::*;
 
 use crate::events::{http::handlers, service::EventService};
-use crate::util::filters::{accept_json, accept_ndjson, authenticate, header_token};
+use crate::util::filters::{accept_json, accept_ndjson, authenticate, header_or_query_token};
 use crate::NodeInfo;
 
 pub fn with_service(
@@ -13,7 +13,7 @@ pub fn with_service(
 }
 
 fn authorize(node_info: NodeInfo) -> impl Filter<Extract = (AppId,), Error = Rejection> + Clone {
-    authenticate(node_info, header_token())
+    authenticate(node_info, header_or_query_token())
 }
 
 pub fn offsets(

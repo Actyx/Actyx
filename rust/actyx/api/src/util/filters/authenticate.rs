@@ -1,5 +1,6 @@
 use actyx_sdk::{types::Binary, AppId};
 use crypto::SignedMessage;
+use futures::FutureExt;
 use std::convert::TryInto;
 use tracing::{debug, info};
 use warp::{reject, Filter, Rejection};
@@ -64,6 +65,52 @@ pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Cl
             res
         } else {
             Err(ApiError::MissingAuthorizationHeader.into())
+        }
+    })
+}
+
+pub fn header_or_query_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
+    query_token().or(header_token()).unify()
+}
+
+pub fn header_or_query_token_opt() -> impl Filter<Extract = (Option<Token>,), Error = Rejection> + Clone {
+    header_or_query_token()
+        .map(Some)
+        .recover(|e: Rejection| async move {
+            if let Some(ApiError::MissingAuthorizationHeader) = e.find() {
+                Result::<_, Rejection>::Ok(None)
+            } else if let Some(ApiError::MissingTokenParameter) = e.find() {
+                Result::<_, Rejection>::Ok(None)
+            } else {
+                Err(e)
+            }
+        })
+        .unify()
+}
+
+pub(crate) fn authenticate_optional(
+    node_info: NodeInfo,
+    token: impl Filter<Extract = (Option<Token>,), Error = Rejection> + Clone,
+) -> impl Filter<Extract = (Option<AppId>,), Error = Rejection> + Clone {
+    token.and_then(move |t: Option<Token>| {
+        if let Some(t) = t {
+            let auth_args = node_info.clone();
+            async move {
+                let res = verify(auth_args, t)
+                    .map(|bearer_token| bearer_token.app_id)
+                    .map(Some)
+                    // TODO: add necessary checks for the flow from the PRD
+                    .map_err(warp::reject::custom);
+                if res.is_err() {
+                    info!("Auth failed: {:?}", res);
+                } else {
+                    debug!("Auth succeeded: {:?}", res);
+                }
+                res
+            }
+            .left_future()
+        } else {
+            async move { Ok(None) }.right_future()
         }
     })
 }

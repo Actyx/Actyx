@@ -73,7 +73,7 @@ fn routes(
     let events = events::routes(node_info.clone(), event_service);
     let node = node::route(node_info.clone(), store.clone());
     let auth = auth::route(node_info.clone());
-    let files = files::route(store.clone(), node_info);
+    let files = files::route(store.clone(), node_info.clone());
 
     let api_path = path!("api" / "v2" / ..);
     let cors = cors()
@@ -94,7 +94,7 @@ fn routes(
             "Processed request"
         );
     });
-    files::root_serve(store)
+    files::root_serve(store, node_info)
         .or(api_path.and(
             path("events")
                 .and(events)

@@ -1,3 +1,4 @@
+use actyx_sdk::AppId;
 use anyhow::{Context, Result};
 use libipld::cid::Cid;
 use percent_encoding::percent_decode_str;
@@ -12,7 +13,12 @@ use warp::{
     Filter, Rejection,
 };
 
-use crate::{ans::ActyxNamingService, rejections::ApiError};
+use crate::{
+    ans::ActyxNamingService,
+    rejections::ApiError,
+    util::filters::{authenticate_optional, header_or_query_token_opt},
+    NodeInfo,
+};
 
 /// an ipfs query contains a root cid and a path into it
 #[derive(Debug, Clone)]
@@ -71,27 +77,45 @@ pub(crate) async fn get_file(store: BanyanStore, cid: Cid, name: &str) -> Result
     }
 }
 
-pub(crate) fn extract_name_or_cid_from_host(ans: &ActyxNamingService, input: &str) -> anyhow::Result<Cid> {
+pub(crate) fn extract_name_or_cid_from_host(
+    ans: &ActyxNamingService,
+    input: &str,
+    token_valid: bool,
+) -> anyhow::Result<Cid> {
     let (sub, _) = input
         .split_once(".actyx.localhost")
         .context("No subdomain given before .actyx.localhost")?;
-    sub.parse()
-        .or_else(|_| ans.get(sub).context("No ANS Record found").map(|x| x.cid))
+
+    if let Some(record) = ans.get(sub) {
+        if !record.public && !token_valid {
+            Err(ApiError::MissingAuthorizationHeader.into())
+        } else {
+            Ok(record.cid)
+        }
+    } else if !token_valid {
+        // Providing cids always needs an auth header
+        Err(ApiError::MissingAuthorizationHeader.into())
+    } else {
+        sub.parse().context("Not a valid multihash")
+    }
 }
 
 pub(crate) fn extract_query_from_host(
+    node_info: NodeInfo,
     ans: ActyxNamingService,
 ) -> impl Filter<Extract = (IpfsQuery,), Error = Rejection> + Clone {
-    warp::get().and(path::full()).and(warp::host::optional()).and_then(
-        move |full_path: FullPath, authority: Option<Authority>| {
-            let r = if let Some(a) = authority {
-                percent_decode_str(full_path.as_str())
-                    .decode_utf8()
-                    .map_err(Into::into)
-                    .and_then(|decoded| {
-                        extract_name_or_cid_from_host(&ans, a.host())
-                            .context("Sub domain must be a valid multihash")
-                            .map(|root| {
+    warp::get()
+        .and(path::full())
+        .and(warp::host::optional())
+        .and(authenticate_optional(node_info, header_or_query_token_opt()))
+        .and_then(
+            move |full_path: FullPath, authority: Option<Authority>, app_id: Option<AppId>| {
+                let r = if let Some(a) = authority {
+                    percent_decode_str(full_path.as_str())
+                        .decode_utf8()
+                        .map_err(Into::into)
+                        .and_then(|decoded| {
+                            extract_name_or_cid_from_host(&ans, a.host(), app_id.is_some()).map(|root| {
                                 let path = decoded
                                     .split('/')
                                     .filter(|x| !x.is_empty())
@@ -99,18 +123,18 @@ pub(crate) fn extract_query_from_host(
                                     .collect::<VecDeque<_>>();
                                 IpfsQuery { root, path }
                             })
-                    })
-                    .map_err(|e: anyhow::Error| {
-                        warp::reject::custom(ApiError::BadRequest {
-                            cause: format!("{}", e),
                         })
-                    })
-            } else {
-                Err(warp::reject::not_found())
-            };
-            async move { r }
-        },
-    )
+                        .map_err(|e: anyhow::Error| {
+                            warp::reject::custom(ApiError::BadRequest {
+                                cause: format!("{}", e),
+                            })
+                        })
+                } else {
+                    Err(warp::reject::not_found())
+                };
+                async move { r }
+            },
+        )
 }
 
 pub(crate) fn extract_query_from_path(
