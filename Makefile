@@ -279,7 +279,8 @@ validate-netsim: diagnostics
 	rust/actyx/target/release/quickcheck_interleaved
 	rust/actyx/target/release/quickcheck_stress_single_store
 	rust/actyx/target/release/quickcheck_ephemeral
-	rust/actyx/target/release/health
+        # https://github.com/Actyx/Actyx/issues/160
+	# rust/actyx/target/release/health
 	rust/actyx/target/release/read_only
 
 .PHONY: validate-os-android
