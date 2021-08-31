@@ -572,11 +572,8 @@ export const EventFnsFromEventStoreV2 = (
 
   const queryAqlChunked = (
     query: {
-      /** Query as AQL string */
       query: string
-      /** Desired chunk size. Defaults to 128. */
       chunkSize?: number
-      /** Desired order of delivery. Defaults to 'Asc' */
       ord?: EventsSortOrder
     },
     onChunk: (chunk: AqlResponse[]) => Promise<void> | void,
@@ -586,6 +583,7 @@ export const EventFnsFromEventStoreV2 = (
       .map(wrapAql)
       .bufferCount(query.chunkSize || 128)
 
+    // The only way to avoid parallel invocations is to use mergeScan with final arg=1
     const rxSub = buffered
       .mergeScan(
         (_a: void, chunk: AqlResponse[]) => Observable.from(Promise.resolve(onChunk(chunk))),
