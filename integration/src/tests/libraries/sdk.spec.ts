@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Actyx, AqlResponse, EventsSortOrder, Tag } from '@actyx/sdk'
 import { runOnEvery } from '../../infrastructure/hosts'
+import { randomString } from '../../util'
 
 describe('@actyx/sdk', () => {
   test('node unreachable', async () => {
@@ -100,14 +101,16 @@ describe('@actyx/sdk', () => {
         },
       )
 
-      const evts = await actyx.publish(Tag('foo').apply(4, 5))
+      const tagString = randomString()
+      const tag = Tag<number>(tagString)
+      const evts = await actyx.publish(tag.apply(4, 5))
       const laterEvt = evts[1]
 
       const predecessor = await new Promise((resolve) => {
         const cancel = actyx.queryAqlChunked(
           {
             order: EventsSortOrder.Descending,
-            query: `FROM 'foo' & to(${laterEvt.eventId})`,
+            query: `FROM '${tagString}' & to(${laterEvt.eventId})`,
           },
           1,
           (chunk: AqlResponse[]) => {
