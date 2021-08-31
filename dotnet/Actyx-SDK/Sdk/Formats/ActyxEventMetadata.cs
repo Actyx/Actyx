@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Actyx.Sdk.Formats
 {
-    public class ActyxEventMetadata
+    public class ActyxEventMetadata : IComparable<ActyxEventMetadata>
     {
         private static int MaxLamportLength => uint.MaxValue.ToString("D").Length;
         private static string MkEventId(ulong lamport, string stream)
@@ -72,5 +73,15 @@ namespace Actyx.Sdk.Formats
 
         // Offset of this event inside its stream
         public ulong Offset { private set; get; }
+
+        
+        public int CompareTo(ActyxEventMetadata other)
+        {
+            // If other is not a valid object reference, this instance is greater.
+            if (other == null) return 1;
+
+            int c = Lamport.CompareTo(other.Lamport);
+            return c == 0 ? Stream.CompareTo(other.Stream) : c;
+        }
     }
 }
