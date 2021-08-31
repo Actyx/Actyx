@@ -59,7 +59,3 @@ import { Pond, Tag, Fish, FishId } from '@actyx/pond'
 
 ## Recommended VSCode plugins
 - [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) for live source code linting
-
-## Contributing
-
-PRs are very welcome. Please review the contribution notes in [the root README](https://github.com/Actyx/Actyx/blob/master/README.md#contributing).

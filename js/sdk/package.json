@@ -68,7 +68,7 @@
     "datastore",
     "offline-first"
   ],
-  "license": "Apache-2.0",
+  "license": "GPL-2.0-only",
   "main": "./lib/index.js",
   "name": "@actyx/sdk",
   "repository": {
