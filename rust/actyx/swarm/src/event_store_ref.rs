@@ -330,11 +330,15 @@ impl EventStoreHandler {
 impl Drop for EventStoreHandler {
     fn drop(&mut self) {
         let mut streams = self.state.stream.lock();
-        tracing::info!(
-            "stopping store with {} ongoing persist calls and {} ongoing queries",
-            self.state.persist.load(Ordering::Relaxed),
-            streams.len()
-        );
+        let ongoing_persist_calls = self.state.persist.load(Ordering::Relaxed);
+        let ongoing_queries = streams.len();
+        if ongoing_persist_calls > 0 || ongoing_queries > 1 {
+            tracing::info!(
+                "stopping store with {} ongoing persist calls and {} ongoing queries",
+                ongoing_persist_calls,
+                ongoing_queries
+            );
+        }
         for (_id, (handle, stream)) in streams.iter() {
             handle.abort();
             if let Some(stream) = stream {
