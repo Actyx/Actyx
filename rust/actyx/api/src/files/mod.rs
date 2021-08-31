@@ -1,11 +1,12 @@
-use std::{fmt::Write, str::FromStr};
+use std::{collections::BTreeMap, fmt::Write, path::Path, str::FromStr};
 
-use actyx_sdk::AppId;
+use actyx_sdk::{app_id, tags, AppId, Payload};
 use anyhow::Context;
 use bytes::BufMut;
 use futures::prelude::*;
 use http::Uri;
 use libipld::cid::Cid;
+use serde::Serialize;
 use swarm::{BanyanStore, Block, BufferingTreeBuilder, TreeOptions};
 use warp::{
     path::{self, FullPath},
@@ -113,13 +114,10 @@ pub fn route(
     store: BanyanStore,
     node_info: NodeInfo,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    let auth = authorize(node_info);
-    auth.map(|_| ()).untuple_one().and(
-        add(store.clone())
-            .or(get(store.clone()))
-            .or(delete_name_or_cid(store.clone()))
-            .or(update_name(store)),
-    )
+    add(store.clone(), node_info.clone())
+        .or(get(store.clone(), node_info.clone()))
+        .or(delete_name_or_cid(store.clone(), node_info.clone()))
+        .or(update_name(store, node_info))
 }
 
 //fn prefetch(store: BanyanStore, app_id: AppId) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
@@ -177,8 +175,9 @@ fn render_directory_listing(
     Ok(body)
 }
 
-fn get(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+fn get(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::get()
+        .and(authorize(node_info).map(|_| ()).untuple_one())
         .and(warp::header::optional(http::header::ACCEPT.as_str()))
         .and(extract_query_from_path(ActyxNamingService::new(store.clone())))
         .and(warp::path::full())
@@ -191,11 +190,15 @@ fn get(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejec
         )
 }
 
-fn delete_name_or_cid(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+fn delete_name_or_cid(
+    store: BanyanStore,
+    node_info: NodeInfo,
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let ans = ActyxNamingService::new(store);
     warp::delete()
         .and(warp::path::param())
         .and(warp::path::end())
+        .and(authorize(node_info).map(|_| ()).untuple_one())
         .and_then(move |cid_or_name: String| {
             let ans = ans.clone();
             async move {
@@ -215,10 +218,14 @@ fn delete_name_or_cid(store: BanyanStore) -> impl Filter<Extract = (impl Reply,)
         })
 }
 
-fn update_name(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+fn update_name(
+    store: BanyanStore,
+    node_info: NodeInfo,
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let ans = ActyxNamingService::new(store);
     warp::put()
         .and(path::param())
+        .and(authorize(node_info).map(|_| ()).untuple_one())
         .and(warp::body::json())
         .and_then(move |name: String, maybe_cid: String| {
             let ans = ans.clone();
@@ -232,18 +239,44 @@ fn update_name(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error
         })
 }
 
+#[derive(Serialize, Debug)]
+#[serde(tag = "type", rename_all = "camelCase")]
+enum FileApiEvent {
+    FileAdded {
+        name: String,
+        // Must not be serialized as a cid!
+        #[serde(with = "::actyx_util::serde_str")]
+        cid: Cid,
+        size: u64,
+        app_id: AppId,
+    },
+    DirectoryAdded {
+        name: String,
+        // Must not be serialized as a cid!
+        #[serde(with = "::actyx_util::serde_str")]
+        cid: Cid,
+        size: u64,
+        children: BTreeMap<String, StringCid>,
+        app_id: AppId,
+    },
+}
+#[derive(Serialize, Debug, Clone, Copy)]
+struct StringCid(#[serde(with = "::actyx_util::serde_str")] Cid);
+
 // TODO:
-// Add standard outbound retention 2h
-// emit internal events with stream 0; app_id into payload, file size, file name
-// directory listing; api and html (if accept header html)
-// additional endpoint: prefetch to provide an AQL query, which is a subscription. results in a set
-// of cids, named pin per app id. query is active for 14 days (needs persistence), should be
+// - [ ] Add standard outbound retention 2h
+// - [ ] emit internal events with stream 0; app_id into payload, file size, file name
+// - [x] directory listing; api and html (if accept header html)
+// - [ ] additional endpoint: prefetch to provide an AQL query, which is a subscription. results in
+// a set of cids, named pin per app id. query is active for 14 days (needs persistence), should be
 // configurable via node settings; defaults to '[]'
-fn add(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+    let auth = authorize(node_info);
     warp::post()
         .and(warp::path::end())
+        .and(auth)
         .and(warp::multipart::form().max_length(128 << 20))
-        .and_then(move |mut form: warp::multipart::FormData| {
+        .and_then(move |app_id: AppId, mut form: warp::multipart::FormData| {
             let store = store.clone();
             async move {
                 let tmp = store.ipfs().create_temp_pin()?;
@@ -268,26 +301,78 @@ fn add(store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejec
                     added_files.push((name, (cid, bytes_written)));
                 }
 
+                let mut events = vec![];
                 let mut root = None;
                 if added_files.len() > 1 {
                     let mut opts = TreeOptions::default();
                     opts.wrap_with_directory();
 
                     let mut builder = BufferingTreeBuilder::new(opts);
-                    for (name, (cid, bytes_written)) in added_files {
-                        builder.put_link(&*name, cid, bytes_written as u64)?;
+                    for (name, (cid, bytes_written)) in &added_files {
+                        events.push(FileApiEvent::FileAdded {
+                            name: Path::new(name).file_name().unwrap_or_default().to_string_lossy().into(),
+                            cid: *cid,
+                            size: *bytes_written as u64,
+                            app_id: app_id.clone(),
+                        });
+                        builder.put_link(name, *cid, *bytes_written as u64)?;
                     }
                     for node in builder.build() {
                         let node = node.context("Constructing a directory node")?;
+                        // FIXME: revisit the pinning behaviour of the files api
                         store.ipfs().temp_pin(&tmp, &node.cid)?;
                         root = Some(node.cid);
                         let block = Block::new_unchecked(node.cid, node.block.to_vec());
                         store.ipfs().insert(&block)?;
+                        let children = added_files
+                            .iter()
+                            .filter_map(|(name, (cid, _))| {
+                                let p = Path::new(&name);
+                                if p.parent() == Some(Path::new(&node.path)) {
+                                    Some((
+                                        p.file_name().unwrap_or_default().to_string_lossy().to_string(),
+                                        StringCid(*cid),
+                                    ))
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<BTreeMap<_, _>>();
+                        events.push(FileApiEvent::DirectoryAdded {
+                            name: Path::new(&node.path)
+                                .file_name()
+                                .map(|x| x.to_string_lossy().into())
+                                .unwrap_or_else(|| "/".into()),
+                            cid: node.cid,
+                            size: node.total_size,
+                            children,
+                            app_id: app_id.clone(),
+                        });
                     }
-                } else if let Some((_, (cid, _))) = added_files.first() {
-                    // TODO: What about the name?
+                } else if let Some((name, (cid, bytes_written))) = added_files.first() {
+                    events.push(FileApiEvent::FileAdded {
+                        name: name.into(),
+                        cid: *cid,
+                        size: *bytes_written as u64,
+                        app_id,
+                    });
                     root = Some(*cid);
                 };
+                store
+                    .append(
+                        0.into(),
+                        app_id!("com.actyx.files"),
+                        events
+                            .into_iter()
+                            .map(|e| {
+                                (
+                                    tags!("ax:file:created"),
+                                    Payload::compact(&e).expect("serialization works"),
+                                )
+                            })
+                            .collect(),
+                    )
+                    .await?;
                 Ok(root.context("No files provided")?.to_string())
             }
             .map_err(|e| {

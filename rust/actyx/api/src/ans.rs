@@ -1,11 +1,9 @@
 ///! Actyx Naming Service
 use actyx_sdk::{app_id, tag, tags, Payload};
 use futures::{StreamExt, TryFutureExt};
-use libipld::cbor::DagCborCodec;
 use libipld::cid::Cid;
-use libipld::codec::{Codec, Decode, Encode};
-use libipld::DagCbor;
 use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::Arc};
 use trees::{
     query::{LamportQuery, TagExprQuery, TimeQuery},
@@ -14,7 +12,7 @@ use trees::{
 
 use crate::BanyanStore;
 
-#[derive(DagCbor, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum PersistenceLevel {
     /// Bits are only resolved on demand, and not protected from garbage collection
     Ephemeral,
@@ -22,62 +20,14 @@ pub enum PersistenceLevel {
     Prefetch,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NameRecordEvent {
     Add {
         name: String,
+        // This must not be serialized as a ipld cid!
+        #[serde(with = "::actyx_util::serde_str")]
         cid: Cid,
         /// Indicates whether a valid auth token is required to get the files
-        public: bool,
-        level: PersistenceLevel,
-    },
-    Remove {
-        name: String,
-    },
-}
-impl Encode<DagCborCodec> for NameRecordEvent {
-    fn encode<W: std::io::Write>(&self, c: DagCborCodec, w: &mut W) -> anyhow::Result<()> {
-        let io = match (*self).clone() {
-            Self::Add {
-                name,
-                cid,
-                level,
-                public,
-            } => NameRecordEventIo::Add {
-                name,
-                public,
-                cid: cid.to_string(),
-                level,
-            },
-            Self::Remove { name } => NameRecordEventIo::Remove { name },
-        };
-        io.encode(c, w)
-    }
-}
-impl Decode<DagCborCodec> for NameRecordEvent {
-    fn decode<R: std::io::Read + std::io::Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
-        Ok(match NameRecordEventIo::decode(c, r)? {
-            NameRecordEventIo::Add {
-                name,
-                cid,
-                level,
-                public,
-            } => Self::Add {
-                name,
-                cid: cid.parse()?,
-                public,
-                level,
-            },
-            NameRecordEventIo::Remove { name } => Self::Remove { name },
-        })
-    }
-}
-#[derive(DagCbor, Debug)]
-enum NameRecordEventIo {
-    Add {
-        name: String,
-        /// Must not use cid, as the referenced data would be pinned recursively with the root maps
-        cid: String,
         public: bool,
         level: PersistenceLevel,
     },
@@ -122,7 +72,7 @@ impl ActyxNamingService {
                             continue;
                         }
                     };
-                    match DagCborCodec.decode(event.2.as_slice()) {
+                    match serde_cbor::from_slice(event.2.as_slice()) {
                         Ok(NameRecordEvent::Add {
                             name,
                             cid,
@@ -178,13 +128,14 @@ impl ActyxNamingService {
             level,
             public,
         };
-        let mut buffer = vec![];
-        record.encode(DagCborCodec, &mut buffer)?;
         self.store
             .append(
                 0.into(),
                 app_id!("com.actyx"),
-                vec![(tags!("ans"), Payload::from_slice(&buffer))],
+                vec![(
+                    tags!("ans"),
+                    Payload::compact(&record).expect("CBOR Serialization works"),
+                )],
             )
             .await?;
 
@@ -198,13 +149,14 @@ impl ActyxNamingService {
     pub async fn remove(&self, name: &str) -> anyhow::Result<Option<NameRecord>> {
         let name: String = name.into();
         let record = NameRecordEvent::Remove { name: name.clone() };
-        let mut buffer = vec![];
-        record.encode(DagCborCodec, &mut buffer)?;
         self.store
             .append(
                 0.into(),
                 app_id!("com.actyx"),
-                vec![(tags!("ans"), Payload::from_slice(&buffer))],
+                vec![(
+                    tags!("ans"),
+                    Payload::compact(&record).expect("CBOR Serialization works"),
+                )],
             )
             .await?;
 
