@@ -268,6 +268,51 @@ namespace Actyx
                 .SelectMany(MkEmitIf<E>((candidate, current) => candidate.CompareTo(current) < 0));
         }
 
+        public IObservable<ActyxEvent<E>> ObserveBestMatch<E>(
+            IFrom<E> query,
+            Func<ActyxEvent<E>, ActyxEvent<E>, bool> shouldReplace
+        )
+        {
+            var deser = MkAxEvt.DeserTyped<E>(NodeId);
+            ActyxEvent<E> curBestMatch = null;
+
+            ActyxEvent<E>[] empty =  new ActyxEvent<E>[] {};
+
+            bool live = false;
+
+            ActyxEvent<E>[] EmitIfConditionMet(IResponseMessage r) {
+                try {
+                    if (r is OffsetsOnWire)
+                    {
+                        live = true;
+                        if (curBestMatch != null) {
+                            return new[] { curBestMatch };
+                        }
+                    }
+                    else if (r is EventOnWire evt)
+                    {
+                        var nextEvent = deser(evt);
+                        if (curBestMatch is null || shouldReplace(nextEvent, curBestMatch)) {
+                            curBestMatch = nextEvent;
+
+                            if (live) {
+                                return new[] { nextEvent };
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    // Improve me.
+                    Console.WriteLine(e);
+                }
+
+                return empty;
+            }
+
+             return store
+                .Subscribe(null, query)
+                .SelectMany(EmitIfConditionMet);
+        }
+
         public async Task<ActyxEventMetadata> Publish(IEventDraft eventDraft)
         {
             var res = await store.Publish(new[] { eventDraft });
