@@ -1,11 +1,11 @@
+///! Actyx Naming Service
 use actyx_sdk::{app_id, tag, tags, Payload};
 use futures::{StreamExt, TryFutureExt};
 use libipld::cbor::DagCborCodec;
 use libipld::cid::Cid;
-use libipld::codec::{Codec, Encode};
+use libipld::codec::{Codec, Decode, Encode};
 use libipld::DagCbor;
 use parking_lot::Mutex;
-///! Actyx Naming Service
 use std::{collections::BTreeMap, sync::Arc};
 use trees::{
     query::{LamportQuery, TagExprQuery, TimeQuery},
@@ -21,11 +21,49 @@ pub enum PersistenceLevel {
     /// Bits are prefetched and aliased right away
     Prefetch,
 }
-#[derive(DagCbor, Debug)]
+
+#[derive(Debug, Clone)]
 pub enum NameRecordEvent {
     Add {
         name: String,
         cid: Cid,
+        level: PersistenceLevel,
+    },
+    Remove {
+        name: String,
+    },
+}
+impl Encode<DagCborCodec> for NameRecordEvent {
+    fn encode<W: std::io::Write>(&self, c: DagCborCodec, w: &mut W) -> anyhow::Result<()> {
+        let io = match (*self).clone() {
+            Self::Add { name, cid, level } => NameRecordEventIo::Add {
+                name,
+                cid: cid.to_string(),
+                level,
+            },
+            Self::Remove { name } => NameRecordEventIo::Remove { name },
+        };
+        io.encode(c, w)
+    }
+}
+impl Decode<DagCborCodec> for NameRecordEvent {
+    fn decode<R: std::io::Read + std::io::Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
+        Ok(match NameRecordEventIo::decode(c, r)? {
+            NameRecordEventIo::Add { name, cid, level } => Self::Add {
+                name,
+                cid: cid.parse()?,
+                level,
+            },
+            NameRecordEventIo::Remove { name } => Self::Remove { name },
+        })
+    }
+}
+#[derive(DagCbor, Debug)]
+enum NameRecordEventIo {
+    Add {
+        name: String,
+        /// Must not use cid, as the referenced data would be pinned recursively with the root maps
+        cid: String,
         level: PersistenceLevel,
     },
     Remove {
