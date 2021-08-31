@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { Actyx } from '@actyx/sdk'
+import { Actyx, AqlResponse, EventsSortOrder, Tag } from '@actyx/sdk'
 import { runOnEvery } from '../../infrastructure/hosts'
 
 describe('@actyx/sdk', () => {
@@ -83,6 +83,42 @@ describe('@actyx/sdk', () => {
       await expect(wrongConn).rejects.toMatchObject({
         message:
           'Invalid manifest. AppId \'bad.example.bad-app\' is not allowed in app_domains \'[AppDomain("com.actyx.*"), AppDomain("com.example.*")]\'',
+      })
+    })
+  })
+
+  test('AQL predecessor', async () => {
+    await runOnEvery(async (node) => {
+      const actyx = await Actyx.of(
+        {
+          appId: 'com.example.aql-test',
+          displayName: 'My Example App',
+          version: '1.0.0',
+        },
+        {
+          actyxPort: node._private.apiPort,
+        },
+      )
+
+      const evts = await actyx.publish(Tag('foo').apply(4, 5))
+      const laterEvt = evts[1]
+
+      const predecessor = await new Promise((resolve) => {
+        const cancel = actyx.queryAqlChunked(
+          {
+            order: EventsSortOrder.Descending,
+            query: `FROM 'foo' & to(${laterEvt.eventId})`,
+          },
+          1,
+          (chunk: AqlResponse[]) => {
+            resolve(chunk[0])
+            cancel() // stop retrieving after getting the first result
+          },
+        )
+      })
+
+      expect(predecessor).toMatchObject({
+        payload: 4,
       })
     })
   })

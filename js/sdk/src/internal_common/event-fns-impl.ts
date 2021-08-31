@@ -7,6 +7,7 @@
 import { contramap, getTupleOrd, gt, lt, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Observable } from '../../node_modules/rxjs'
 import {
+  AqlQuery,
   AutoCappedQuery,
   EarliestQuery,
   EventFns,
@@ -26,6 +27,7 @@ import {
   EventKey,
   EventsOrTimetravel,
   EventsSortOrder,
+  isString,
   Metadata,
   MsgType,
   NodeId,
@@ -562,26 +564,35 @@ export const EventFnsFromEventStoreV2 = (
     }
   }
 
-  const queryAql = async (query: string): Promise<AqlResponse[]> => {
+  const getQueryAndOrd = (query: AqlQuery): [string, EventsSortOrder] => {
+    if (isString(query)) {
+      return [query, EventsSortOrder.Ascending]
+    } else {
+      return [query.query, query.order || EventsSortOrder.Ascending]
+    }
+  }
+
+  const queryAql = async (query: AqlQuery): Promise<AqlResponse[]> => {
+    const [aql, ord] = getQueryAndOrd(query)
+
     return eventStore
-      .queryUnchecked(query, EventsSortOrder.Ascending)
+      .queryUnchecked(aql, ord)
       .map(wrapAql)
       .toArray()
       .toPromise()
   }
 
   const queryAqlChunked = (
-    query: {
-      query: string
-      chunkSize?: number
-      ord?: EventsSortOrder
-    },
+    query: AqlQuery,
+    chunkSize: number,
     onChunk: (chunk: AqlResponse[]) => Promise<void> | void,
   ): CancelSubscription => {
+    const [aql, ord] = getQueryAndOrd(query)
+
     const buffered = eventStore
-      .queryUnchecked(query.query, query.ord || EventsSortOrder.Ascending)
+      .queryUnchecked(aql, ord)
       .map(wrapAql)
-      .bufferCount(query.chunkSize || 128)
+      .bufferCount(chunkSize)
 
     // The only way to avoid parallel invocations is to use mergeScan with final arg=1
     const rxSub = buffered

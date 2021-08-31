@@ -88,6 +88,12 @@ export type AqlOffsetsMsg = {
     offsets: OffsetMap;
 };
 
+// @public
+export type AqlQuery = string | {
+    query: string;
+    order?: EventsSortOrder;
+};
+
 // @beta
 export type AqlResponse = AqlEventMessage | AqlOffsetsMsg | AqlDiagnosticMessage | AqlFutureCompat;
 
@@ -133,7 +139,9 @@ export interface EventFns {
     queryAllKnown: (query: AutoCappedQuery) => Promise<EventChunk>;
     queryAllKnownChunked: (query: AutoCappedQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
     // @beta
-    queryAql: (query: string) => Promise<AqlResponse[]>;
+    queryAql: (query: AqlQuery) => Promise<AqlResponse[]>;
+    // @beta
+    queryAqlChunked: (query: AqlQuery, chunkSize: number, onChunk: (chunk: AqlResponse[]) => Promise<void> | void) => CancelSubscription;
     queryKnownRange: (query: RangeQuery) => Promise<ActyxEvent[]>;
     queryKnownRangeChunked: (query: RangeQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
     subscribe: (query: EventSubscription, onEvent: (e: ActyxEvent) => Promise<void> | void) => CancelSubscription;

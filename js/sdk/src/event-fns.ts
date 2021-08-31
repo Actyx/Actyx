@@ -127,6 +127,17 @@ export type EarliestQuery<E> = {
 /** Query for observeLatest. @beta  */
 export type LatestQuery<E> = EarliestQuery<E>
 
+/** An aql query is either a plain string, or an object containing the string and the desired order.  @beta */
+export type AqlQuery =
+  | string
+  | {
+      /** Query as AQL string */
+      query: string
+
+      /** Desired order of delivery (relative to events). Defaults to 'Asc' */
+      order?: EventsSortOrder
+    }
+
 /** Functions that operate directly on Events. @public  */
 export interface EventFns {
   /** Get the current local 'present' i.e. offsets up to which we can provide events without any gaps. */
@@ -198,26 +209,21 @@ export interface EventFns {
    *
    * @beta
    */
-  queryAql: (query: string) => Promise<AqlResponse[]>
+  queryAql: (query: AqlQuery) => Promise<AqlResponse[]>
 
   /**
    * Run a custom AQL query and get the response messages in chunks.
    *
-   * @param query       - Query parameters
+   * @param query       - AQL query
+   * @param chunkSize   - Desired chunk size
    *
    * @returns A function that can be called in order to cancel the delivery of further chunks.
    *
    * @beta
    */
   queryAqlChunked: (
-    query: {
-      /** Query as AQL string */
-      query: string
-      /** Desired chunk size. Defaults to 128. */
-      chunkSize?: number
-      /** Desired order of delivery. Defaults to 'Asc' */
-      ord?: EventsSortOrder
-    },
+    query: AqlQuery,
+    chunkSize: number,
     onChunk: (chunk: AqlResponse[]) => Promise<void> | void,
   ) => CancelSubscription
 
