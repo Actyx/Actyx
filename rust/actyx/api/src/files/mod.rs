@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt::Write, path::Path, str::FromStr};
+use std::{fmt::Write, path::Path, str::FromStr, time::Duration};
 
 use actyx_sdk::{app_id, service::PrefetchRequest, tags, AppId, Payload};
 use anyhow::Context;
@@ -272,12 +272,9 @@ enum FileApiEvent {
         #[serde(with = "::actyx_util::serde_str")]
         cid: Cid,
         size: u64,
-        children: BTreeMap<String, StringCid>,
         app_id: AppId,
     },
 }
-#[derive(Serialize, Debug, Clone, Copy)]
-struct StringCid(#[serde(with = "::actyx_util::serde_str")] Cid);
 
 fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let auth = authorize(node_info);
@@ -297,7 +294,6 @@ fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
                         n.strip_prefix('/').unwrap_or(n).to_string()
                     };
 
-                    // TODO: use a named pin and store it somewhere?
                     let data = part
                         .stream()
                         .try_fold(Vec::new(), |mut vec, data| {
@@ -310,81 +306,66 @@ fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
                     added_files.push((name, (cid, bytes_written)));
                 }
 
-                let mut events = vec![];
-                let mut root = None;
+                let mut output = None;
                 if added_files.len() > 1 {
                     let mut opts = TreeOptions::default();
                     opts.wrap_with_directory();
 
                     let mut builder = BufferingTreeBuilder::new(opts);
                     for (name, (cid, bytes_written)) in &added_files {
-                        events.push(FileApiEvent::FileAdded {
-                            mime: mime(name),
-                            name: Path::new(name).file_name().unwrap_or_default().to_string_lossy().into(),
-                            cid: *cid,
-                            size: *bytes_written as u64,
-                            app_id: app_id.clone(),
-                        });
                         builder.put_link(name, *cid, *bytes_written as u64)?;
                     }
                     for node in builder.build() {
                         let node = node.context("Constructing a directory node")?;
                         // FIXME: revisit the pinning behaviour of the files api
                         store.ipfs().temp_pin(&tmp, &node.cid)?;
-                        root = Some(node.cid);
                         let block = Block::new_unchecked(node.cid, node.block.to_vec());
                         store.ipfs().insert(&block)?;
-                        let children = added_files
-                            .iter()
-                            .filter_map(|(name, (cid, _))| {
-                                let p = Path::new(&name);
-                                if p.parent() == Some(Path::new(&node.path)) {
-                                    Some((
-                                        p.file_name().unwrap_or_default().to_string_lossy().to_string(),
-                                        StringCid(*cid),
-                                    ))
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect::<BTreeMap<_, _>>();
-                        events.push(FileApiEvent::DirectoryAdded {
-                            name: Path::new(&node.path)
-                                .file_name()
-                                .map(|x| x.to_string_lossy().into())
-                                .unwrap_or_else(|| "/".into()),
-                            cid: node.cid,
-                            size: node.total_size,
-                            children,
-                            app_id: app_id.clone(),
-                        });
+
+                        output = Some((
+                            node.cid,
+                            FileApiEvent::DirectoryAdded {
+                                name: Path::new(&node.path)
+                                    .file_name()
+                                    .map(|x| x.to_string_lossy().into())
+                                    .unwrap_or_else(|| "/".into()),
+                                cid: node.cid,
+                                size: node.total_size,
+                                app_id: app_id.clone(),
+                            },
+                        ));
                     }
                 } else if let Some((name, (cid, bytes_written))) = added_files.first() {
-                    events.push(FileApiEvent::FileAdded {
-                        mime: mime(name),
-                        name: name.into(),
-                        cid: *cid,
-                        size: *bytes_written as u64,
-                        app_id,
-                    });
-                    root = Some(*cid);
+                    output = Some((
+                        *cid,
+                        FileApiEvent::FileAdded {
+                            mime: mime(name),
+                            name: name.into(),
+                            cid: *cid,
+                            size: *bytes_written as u64,
+                            app_id,
+                        },
+                    ));
                 };
+                let (root, event) = output.context("No files provided")?;
                 store
                     .append(
                         0.into(),
                         app_id!("com.actyx"),
-                        events
-                            .into_iter()
-                            .map(|e| {
-                                (
-                                    tags!("files", "files:created"),
-                                    Payload::compact(&e).expect("serialization works"),
-                                )
-                            })
-                            .collect(),
+                        vec![(
+                            tags!("files", "files:created"),
+                            Payload::compact(&event).expect("serialization works"),
+                        )],
                     )
                     .await?;
-                Ok(root.context("No files provided")?.to_string())
+
+                // Keep the temp pin around for a short time until the [`FilePinner`] picks up the
+                // new root.
+                tokio::spawn(async move {
+                    tokio::time::sleep(Duration::from_secs(30)).await;
+                    drop(tmp);
+                });
+                Ok(root.to_string())
             }
             .map_err(|e| {
                 tracing::error!("Error adding files {:#}", e);
