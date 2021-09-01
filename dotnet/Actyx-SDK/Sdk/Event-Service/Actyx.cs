@@ -217,16 +217,46 @@ namespace Actyx
                 this.AppId, publishedMetadata.Stream, tags, this.NodeId);
         }
 
-        public IObservable<ActyxEvent<E>> ObserveLatest<E>(LatestQuery<E> q) {
-            return store
-                .Subscribe(q.LowerBound, q.Query)
-                .SelectMany(MkEmitIf<E>((candidate, current) => candidate.CompareTo(current) > 0));
+        private IObservable<EventOnWire> ReadOne(
+            IEventSelection query,
+            OffsetMap present,
+            EventsOrder ord
+        )
+        {
+            return store.Query(null, present, query, ord)
+                .OfType<EventOnWire>()
+                .Take(1);
         }
 
-        private Func<IResponseMessage, ActyxEvent<E>[]> MkEmitIf<E>(Func<EventOnWire, EventOnWire, bool> shouldReplaceCur)
+        public IObservable<ActyxEvent<E>> ObserveLatest<E>(LatestQuery<E> q) {
+            if (q.EventComparison == EventComparison.Timestamp) {
+                return store
+                    .Subscribe(q.LowerBound, q.Query)
+                    .SelectMany(
+                        MkEmitIf<E>(
+                            null,
+                            (candidate, current) => candidate.Timestamp.CompareTo(current.Timestamp) > 0
+                    ));
+            }
+
+            var deser = MkAxEvt.DeserTyped<E>(NodeId);
+
+            return Observable.FromAsync(this.Present)
+                .SelectMany(present => {
+                    var x = ReadOne(q.Query, present, EventsOrder.Desc);
+
+                    return x.SelectMany(currentLatest =>
+                                        store
+                                        .Subscribe(present, q.Query)
+                                        .OfType<EventOnWire>()
+                                        .SelectMany(MkEmitIf<E>(currentLatest, (candidate, current) => candidate.CompareTo(current) > 0)));
+                });
+        }
+
+        private Func<IResponseMessage, ActyxEvent<E>[]> MkEmitIf<E>(EventOnWire initialLatest, Func<EventOnWire, EventOnWire, bool> shouldReplaceCur)
         {
             var deser = MkAxEvt.DeserTyped<E>(NodeId);
-            EventOnWire latest = null;
+            EventOnWire latest = initialLatest;
 
             ActyxEvent<E>[] empty =  new ActyxEvent<E>[] {};
 
@@ -266,7 +296,7 @@ namespace Actyx
         public IObservable<ActyxEvent<E>> ObserveEarliest<E>(LatestQuery<E> q) {
             return store
                 .Subscribe(q.LowerBound, q.Query)
-                .SelectMany(MkEmitIf<E>((candidate, current) => candidate.CompareTo(current) < 0));
+                .SelectMany(MkEmitIf<E>(null, (candidate, current) => candidate.CompareTo(current) < 0));
         }
 
         public IObservable<ActyxEvent<E>> ObserveBestMatch<E>(
@@ -308,7 +338,7 @@ namespace Actyx
                     }
                 }
 
-                 return empty;
+                return empty;
             }
 
              return store
@@ -329,7 +359,7 @@ namespace Actyx
                 .SelectMany(present => {
                     IObservable<R> curVal = store
                         .Query(
-                            new OffsetMap(),
+                            null,
                             present,
                             query,
                             EventsOrder.StreamAsc
