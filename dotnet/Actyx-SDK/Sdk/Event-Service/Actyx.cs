@@ -340,7 +340,8 @@ namespace Actyx
                                              .Subscribe(present, query)
                                              .OfType<EventOnWire>()
                                              .Select(deser)
-                                             .Scan(v, reduce));
+                                             .Scan(v, reduce)
+                                             .StartWith(v));
                 });
 
             return valueFeed;

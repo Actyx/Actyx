@@ -36,7 +36,7 @@ namespace Sdk.IntegrationTests
             known.Events.Select(x => x.Payload.ToString()).Should().Contain("Hello world");
         }
 
-        
+
         [Theory]
         [MemberData(nameof(Opts))]
         public async void ObserveLatestTyped(ActyxOpts opts)
@@ -44,11 +44,10 @@ namespace Sdk.IntegrationTests
             var client = await Actyx.Actyx.Create(Constants.TrialManifest, opts);
 
             Tag<string> tag = new Tag<string>(AxRandom.String(16));
-            
+
             await client.Publish(tag.Apply("foo"));
             await client.Publish(tag.Apply("bar"));
 
-            var observed = new List<string>();
             var values = client.ObserveLatest<string>(new () { Query = tag }).ToAsyncEnumerable().GetAsyncEnumerator();
 
             await values.MoveNextAsync();
@@ -57,10 +56,38 @@ namespace Sdk.IntegrationTests
             await client.Publish(tag.Apply("live0"));
             await values.MoveNextAsync();
             values.Current.Should().Equals("live0");
-            
+
             await client.Publish(tag.Apply("live1"));
             await values.MoveNextAsync();
             values.Current.Should().Equals("live1");
+
+            await values.DisposeAsync();
+        }
+
+
+        [Theory]
+        [MemberData(nameof(Opts))]
+        public async void ObserveUnorderedReduce(ActyxOpts opts)
+        {
+            var client = await Actyx.Actyx.Create(Constants.TrialManifest, opts);
+
+            Tag<int> tag = new Tag<int>(AxRandom.String(16));
+
+            await client.Publish(tag.Apply(50));
+            await client.Publish(tag.Apply(60));
+
+            var values = client.ObserveUnorderedReduce<int, int>(tag, (x, y) => x + y.Payload, 1).ToAsyncEnumerable().GetAsyncEnumerator();
+
+            await values.MoveNextAsync();
+            values.Current.Should().Equals(111);
+
+            await client.Publish(tag.Apply(9));
+            await values.MoveNextAsync();
+            values.Current.Should().Equals(120);
+
+            await client.Publish(tag.Apply(80));
+            await values.MoveNextAsync();
+            values.Current.Should().Equals(200);
 
             await values.DisposeAsync();
         }
