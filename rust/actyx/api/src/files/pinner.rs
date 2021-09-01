@@ -149,7 +149,20 @@ AGGREGATE ARRAY(_.cid)"#,
 async fn check_queries(event_svc: &EventService, ipfs: &Ipfs, standing_queries: &mut BTreeMap<AppId, StandingQuery>) {
     debug!("Evaluating standing queries");
     let now = Timestamp::now();
-    standing_queries.retain(|_, q| q.created + q.duration > now);
+    let mut app_ids_to_clear = vec![];
+    standing_queries.retain(|k, q| {
+        if q.created + q.duration > now {
+            true
+        } else {
+            app_ids_to_clear.push(k.clone());
+            false
+        }
+    });
+    for app_id in app_ids_to_clear {
+        if let Err(error) = ipfs.alias(app_id.as_bytes(), None) {
+            error!(%app_id, %error, "Error clearing pin");
+        }
+    }
     for (app_id, query) in standing_queries {
         if let Err(error) = evaluate(event_svc, ipfs, app_id, query).await {
             error!(%error, %app_id, "Error updating standing query");
