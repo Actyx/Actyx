@@ -37,4 +37,3 @@ pub struct PrefetchRequest {
     /// How long the files should be pinned (until = now + duration)
     pub duration: Duration,
 }
-
