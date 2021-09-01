@@ -233,21 +233,27 @@ namespace Actyx
             bool live = false;
 
             ActyxEvent<E>[] EmitIfConditionMet(IResponseMessage r) {
-                if (r is OffsetsOnWire)
-                {
-                    live = true;
-                    if (latest != null) {
-                        return new[] { deser(latest) };
-                    }
-                }
-                else if (r is EventOnWire evt)
-                {
-                    if (latest is null || shouldReplaceCur(evt, latest)) {
-                        latest = evt;
-
-                        if (live) {
+                switch (r) {
+                    case (OffsetsOnWire):
+                    {
+                        live = true;
+                        if (latest != null) {
                             return new[] { deser(latest) };
                         }
+
+                        break;
+                    }
+                    case (EventOnWire evt):
+                    {
+                        if (latest is null || shouldReplaceCur(evt, latest)) {
+                            latest = evt;
+
+                            if (live) {
+                                return new[] { deser(latest) };
+                            }
+                        }
+
+                        break;
                     }
                 }
 
@@ -277,26 +283,32 @@ namespace Actyx
 
             // We can’t use MkEmitIf because we have to deserialize *before* checking the condition here.
             ActyxEvent<E>[] EmitIfBetterMatch(IResponseMessage r) {
-                if (r is OffsetsOnWire)
+                switch (r)
                 {
-                    live = true;
-                    if (curBestMatch != null) {
-                        return new[] { curBestMatch };
-                    }
-                }
-                else if (r is EventOnWire evt)
-                {
-                    var nextEvent = deser(evt);
-                    if (curBestMatch is null || shouldReplace(nextEvent, curBestMatch)) {
-                        curBestMatch = nextEvent;
-
-                        if (live) {
-                            return new[] { nextEvent };
+                    case (OffsetsOnWire):
+                    {
+                        live = true;
+                        if (curBestMatch != null) {
+                            return new[] { curBestMatch };
                         }
+                        break;
+                    }
+
+                    case (EventOnWire evt):
+                    {
+                        var nextEvent = deser(evt);
+                        if (curBestMatch is null || shouldReplace(nextEvent, curBestMatch)) {
+                            curBestMatch = nextEvent;
+
+                            if (live) {
+                                return new[] { nextEvent };
+                            }
+                        }
+                        break;
                     }
                 }
 
-                return empty;
+                 return empty;
             }
 
              return store
