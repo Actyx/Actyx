@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 using Actyx.Sdk.Formats;
 
 namespace Actyx
@@ -74,6 +75,41 @@ namespace Actyx
         }
     }
 
+    /** Query for ObserveLatest. @beta  */
+    public class LatestQuery<E>
+    {
+        /** Statement to select specific events. */
+        public IFrom<E> Query { get; set; }
+
+        /**
+         * Starting point for the query. Everything up-to-and-including `lowerBound` will be omitted from the result.
+         * Defaults to empty map, which means no lower bound at all.
+         * Sources not listed in the `lowerBound` will be delivered in full. */
+        public OffsetMap LowerBound { get; set; }
+
+        /** The order to find max for. Defaults to `Lamport`.  */
+        public EventOrder eventOrder { get; set; }
+    }
+
+    /** Which clock to compare events by. Defaults to `Lamport`. @beta */
+    public enum EventOrder {
+        /**
+         * Comparison according to Lamport clock, which is a logical clock,
+         * meaning it preserves causal order even when wall clocks on devices are off.
+         *
+         * On the flip-side, for any two events where neither is a cause of the other,
+         * lamport-order may be different from timestamp-order, if the devices creating the events
+         * where disconnected from each other at the time.
+         */
+        Lamport,
+
+        /**
+         * Comparison according to wall clock time logged at event creation.
+         * If the system clock on a device is wrong, the event's timestamp will also be wrong. */
+        Timestamp
+    }
+
+
     public interface IEventFns
     {
         public Task<OffsetMap> Present();
@@ -87,7 +123,7 @@ namespace Actyx
          *
          * @returns A Promise that resolves to the complete set of queries events.
          */
-        public Task<IList<ActyxEvent>> QueryKnownRange(RangeQuery query);
+        public Task<IList<ActyxEvent<JToken>>> QueryKnownRange(RangeQuery query);
 
         /**
          * Get all known events between the given offsets, in chunks.
@@ -150,7 +186,21 @@ namespace Actyx
          *
          * @returns A function that can be called in order to cancel the subscription.
          */
-        public IObservable<ActyxEvent> Subscribe(EventSubscription sub);
+        public IObservable<ActyxEvent<JToken>> Subscribe(EventSubscription sub);
+
+
+        /**
+         * Observe always the **latest** event matching the given query.
+         * If there is an existing event fitting the query, the Observable will deliver that event.
+         * Afterwards, the Observable will supply a new value whenever a new event becomes known that is younger than the previously passed one.
+         *
+         * @param query          - Query to select the set of events.
+         *
+         * @returns An Observable with all the new latest events.
+         *
+         * @beta
+         */
+        public IObservable<ActyxEvent<E>> ObserveLatest<E>(LatestQuery<E> query);
 
         /**
          * Emit an event with tags attached.
