@@ -145,12 +145,12 @@ pub(crate) fn extract_query_from_path(
             let decoded = percent_decode_str(path_tail.as_str()).decode_utf8()?;
             let mut path = decoded.split('/').filter(|x| !x.is_empty());
 
-            let maybe_root = path.next().context("Empty root path")?;
+            let root_or_name = path.next().context("Empty root path")?;
             let root: Cid = ans
-                .get(maybe_root)
+                .get(root_or_name)
                 .map(|x| x.cid)
                 .context("No ANS record found")
-                .or_else(|_| maybe_root.parse())
+                .or_else(|_| root_or_name.parse())
                 .context("Provided root is neither a name nor a CID")?;
             Ok(IpfsQuery {
                 root,
