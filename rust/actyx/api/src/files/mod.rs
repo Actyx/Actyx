@@ -263,6 +263,7 @@ enum FileApiEvent {
         #[serde(with = "::actyx_util::serde_str")]
         cid: Cid,
         size: u64,
+        mime: String,
         app_id: AppId,
     },
     DirectoryAdded {
@@ -318,6 +319,7 @@ fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
                     let mut builder = BufferingTreeBuilder::new(opts);
                     for (name, (cid, bytes_written)) in &added_files {
                         events.push(FileApiEvent::FileAdded {
+                            mime: mime(name),
                             name: Path::new(name).file_name().unwrap_or_default().to_string_lossy().into(),
                             cid: *cid,
                             size: *bytes_written as u64,
@@ -359,6 +361,7 @@ fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
                     }
                 } else if let Some((name, (cid, bytes_written))) = added_files.first() {
                     events.push(FileApiEvent::FileAdded {
+                        mime: mime(name),
                         name: name.into(),
                         cid: *cid,
                         size: *bytes_written as u64,
@@ -392,4 +395,12 @@ fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
 
 fn authorize(node_info: NodeInfo) -> impl Filter<Extract = (AppId,), Error = Rejection> + Clone {
     authenticate(node_info, header_or_query_token())
+}
+
+fn mime(name: impl AsRef<Path>) -> String {
+    name.as_ref()
+        .extension()
+        .and_then(|ext| mime_guess::from_ext(&ext.to_string_lossy()).first())
+        .unwrap_or(mime_guess::mime::APPLICATION_OCTET_STREAM)
+        .to_string()
 }

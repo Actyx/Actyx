@@ -41,14 +41,14 @@ impl FromStr for IpfsQuery {
     }
 }
 
-fn content_type_from_ext(name: &str) -> Option<HeaderValue> {
+pub fn content_type_from_ext(name: &str) -> Option<HeaderValue> {
     let ext = Path::new(name).extension()?.to_str()?;
     let mime = mime_guess::from_ext(ext).first_raw()?;
     debug!("detected mime type {} from extension ({})", mime, ext);
     HeaderValue::from_str(mime).ok()
 }
 
-fn content_type_from_content(chunk: &[u8]) -> Option<HeaderValue> {
+pub fn content_type_from_content(chunk: &[u8]) -> Option<HeaderValue> {
     let mime = tree_magic::from_u8(chunk);
     debug!("detected mime type {} from content", mime);
     HeaderValue::from_str(&mime).ok()
