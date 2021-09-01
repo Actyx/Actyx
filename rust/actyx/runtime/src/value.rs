@@ -4,6 +4,7 @@ use actyx_sdk::{
 };
 use anyhow::{anyhow, Result};
 use cbor_data::{Cbor, CborBuilder, CborOwned, CborValue, Encoder, WithOutput};
+use derive_more::Display;
 use std::{
     cell::RefCell,
     cmp::Ordering,
@@ -15,7 +16,7 @@ thread_local! {
     static SCRATCH: RefCell<Vec<u8>> = RefCell::new(vec![]);
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
 pub enum ValueKind {
     Null,
     Bool,

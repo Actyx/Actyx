@@ -263,6 +263,7 @@ fn r_aggr(p: P, ctx: Context) -> Result<SimpleExpr> {
         Rule::aggr_max => SimpleExpr::AggrOp(Arc::new((AggrOp::Max, r_simple_expr(p.single()?, Context::Simple)?))),
         Rule::aggr_first => SimpleExpr::AggrOp(Arc::new((AggrOp::First, r_simple_expr(p.single()?, Context::Simple)?))),
         Rule::aggr_last => SimpleExpr::AggrOp(Arc::new((AggrOp::Last, r_simple_expr(p.single()?, Context::Simple)?))),
+        Rule::aggr_array => SimpleExpr::AggrOp(Arc::new((AggrOp::Array, r_simple_expr(p.single()?, Context::Simple)?))),
         x => bail!("unexpected token: {:?}", x),
     })
 }

@@ -209,6 +209,7 @@ decl_op! {
         Max -> "MAX",
         First -> "FIRST",
         Last -> "LAST",
+        Array -> "ARRAY",
     }
 }
 
