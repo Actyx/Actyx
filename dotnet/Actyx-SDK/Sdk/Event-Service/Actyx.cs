@@ -323,21 +323,27 @@ namespace Actyx
         {
             var deser = MkAxEvt.DeserTyped<E>(NodeId);
 
-            IObservable<R> curVal = Observable.FromAsync(this.Present)
-                .SelectMany(present => store
-                            .Query(
-                                new OffsetMap(),
-                                present,
-                                query,
-                                EventsOrder.StreamAsc
-                                )
-                            .OfType<EventOnWire>()
-                            .Select(deser)
-                    )
-                .Aggregate(initial, reduce);
+            IObservable<R> valueFeed = Observable.FromAsync(this.Present)
+                .SelectMany(present => {
+                    IObservable<R> curVal = store
+                        .Query(
+                            new OffsetMap(),
+                            present,
+                            query,
+                            EventsOrder.StreamAsc
+                            )
+                        .OfType<EventOnWire>()
+                        .Select(deser)
+                        .Aggregate(initial, reduce);
 
+                    return curVal.SelectMany(v => store
+                                             .Subscribe(present, query)
+                                             .OfType<EventOnWire>()
+                                             .Select(deser)
+                                             .Scan(v, reduce));
+                });
 
-            return curVal;
+            return valueFeed;
         }
 
         public async Task<ActyxEventMetadata> Publish(IEventDraft eventDraft)
