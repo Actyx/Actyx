@@ -225,7 +225,8 @@ namespace Actyx
         {
             return store.Query(null, present, query, ord)
                 .OfType<EventOnWire>()
-                .Take(1);
+                .Take(1)
+                .DefaultIfEmpty(null);
         }
 
         public IObservable<ActyxEvent<E>> ObserveLatest<E>(LatestQuery<E> q) {
@@ -239,17 +240,38 @@ namespace Actyx
                     ));
             }
 
-            var deser = MkAxEvt.DeserTyped<E>(NodeId);
+            return Observable.FromAsync(this.Present)
+                .SelectMany(present => {
+                    var firstValue = ReadOne(q.Query, present, EventsOrder.Desc);
+
+                    var values = firstValue.SelectMany(currentLatest => {
+                        return store
+                            .Subscribe(present, q.Query)
+                            .SelectMany(MkEmitIf<E>(currentLatest, (candidate, current) => candidate.CompareTo(current) > 0));
+                    });
+
+                    return values;
+                });
+        }
+
+        public IObservable<ActyxEvent<E>> ObserveEarliest<E>(LatestQuery<E> q) {
+            if (q.EventComparison == EventComparison.Timestamp) {
+                return store
+                    .Subscribe(q.LowerBound, q.Query)
+                    .SelectMany(MkEmitIf<E>(null, (candidate, current) => candidate.CompareTo(current) < 0));
+            }
 
             return Observable.FromAsync(this.Present)
                 .SelectMany(present => {
-                    var x = ReadOne(q.Query, present, EventsOrder.Desc);
+                    var firstValue = ReadOne(q.Query, present, EventsOrder.Asc);
 
-                    return x.SelectMany(currentLatest =>
-                                        store
-                                        .Subscribe(present, q.Query)
-                                        .OfType<EventOnWire>()
-                                        .SelectMany(MkEmitIf<E>(currentLatest, (candidate, current) => candidate.CompareTo(current) > 0)));
+                    var values = firstValue.SelectMany(currentLatest => {
+                        return store
+                            .Subscribe(present, q.Query)
+                            .SelectMany(MkEmitIf<E>(currentLatest, (candidate, current) => candidate.CompareTo(current) < 0));
+                    });
+
+                    return values;
                 });
         }
 
@@ -291,12 +313,6 @@ namespace Actyx
             }
 
             return EmitIfConditionMet;
-        }
-
-        public IObservable<ActyxEvent<E>> ObserveEarliest<E>(LatestQuery<E> q) {
-            return store
-                .Subscribe(q.LowerBound, q.Query)
-                .SelectMany(MkEmitIf<E>(null, (candidate, current) => candidate.CompareTo(current) < 0));
         }
 
         public IObservable<ActyxEvent<E>> ObserveBestMatch<E>(
