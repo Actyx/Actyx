@@ -233,27 +233,22 @@ namespace Actyx
             bool live = false;
 
             ActyxEvent<E>[] EmitIfConditionMet(IResponseMessage r) {
-                try {
-                    if (r is OffsetsOnWire)
-                    {
-                        live = true;
-                        if (latest != null) {
+                if (r is OffsetsOnWire)
+                {
+                    live = true;
+                    if (latest != null) {
+                        return new[] { deser(latest) };
+                    }
+                }
+                else if (r is EventOnWire evt)
+                {
+                    if (latest is null || shouldReplaceCur(evt, latest)) {
+                        latest = evt;
+
+                        if (live) {
                             return new[] { deser(latest) };
                         }
                     }
-                    else if (r is EventOnWire evt)
-                    {
-                        if (latest is null || shouldReplaceCur(evt, latest)) {
-                            latest = evt;
-
-                            if (live) {
-                                return new[] { deser(latest) };
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    // Improve me.
-                    Console.WriteLine(e);
                 }
 
                 return empty;
@@ -282,28 +277,23 @@ namespace Actyx
 
             // We can’t use MkEmitIf because we have to deserialize *before* checking the condition here.
             ActyxEvent<E>[] EmitIfBetterMatch(IResponseMessage r) {
-                try {
-                    if (r is OffsetsOnWire)
-                    {
-                        live = true;
-                        if (curBestMatch != null) {
-                            return new[] { curBestMatch };
-                        }
+                if (r is OffsetsOnWire)
+                {
+                    live = true;
+                    if (curBestMatch != null) {
+                        return new[] { curBestMatch };
                     }
-                    else if (r is EventOnWire evt)
-                    {
-                        var nextEvent = deser(evt);
-                        if (curBestMatch is null || shouldReplace(nextEvent, curBestMatch)) {
-                            curBestMatch = nextEvent;
+                }
+                else if (r is EventOnWire evt)
+                {
+                    var nextEvent = deser(evt);
+                    if (curBestMatch is null || shouldReplace(nextEvent, curBestMatch)) {
+                        curBestMatch = nextEvent;
 
-                            if (live) {
-                                return new[] { nextEvent };
-                            }
+                        if (live) {
+                            return new[] { nextEvent };
                         }
                     }
-                } catch (Exception e) {
-                    // Improve me.
-                    Console.WriteLine(e);
                 }
 
                 return empty;

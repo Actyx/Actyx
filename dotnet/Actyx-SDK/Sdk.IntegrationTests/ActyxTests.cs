@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -63,6 +64,29 @@ namespace Sdk.IntegrationTests
 
             await values.DisposeAsync();
         }
+
+
+        [Theory]
+        [MemberData(nameof(Opts))]
+        public async void ObserveLatestErrorHandling(ActyxOpts opts)
+        {
+            var client = await Actyx.Actyx.Create(Constants.TrialManifest, opts);
+
+            string rid = AxRandom.String(16);
+            // Write conflicting types to the same tag...
+            Tag<string> tagS = new Tag<string>(rid);
+            Tag<int> tagN = new Tag<int>(rid);
+
+            await client.Publish(tagS.Apply("foo"));
+
+            var values = client.ObserveLatest<int>(new () { Query = tagN }).ToAsyncEnumerable().GetAsyncEnumerator();
+
+            Func<Task> act = async () => await values.MoveNextAsync();
+            await act.Should().ThrowAsync<System.FormatException>();
+
+            await values.DisposeAsync();
+        }
+
 
 
         [Theory]
