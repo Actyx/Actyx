@@ -280,7 +280,8 @@ namespace Actyx
 
             bool live = false;
 
-            ActyxEvent<E>[] EmitIfConditionMet(IResponseMessage r) {
+            // We can’t use MkEmitIf because we have to deserialize *before* checking the condition here.
+            ActyxEvent<E>[] EmitIfBetterMatch(IResponseMessage r) {
                 try {
                     if (r is OffsetsOnWire)
                     {
@@ -310,7 +311,33 @@ namespace Actyx
 
              return store
                 .Subscribe(null, query)
-                .SelectMany(EmitIfConditionMet);
+                .SelectMany(EmitIfBetterMatch);
+        }
+
+
+        public IObservable<R> ObserveUnorderedReduce<R, E>(
+            IFrom<E> query,
+            Func<R, ActyxEvent<E>, R> reduce,
+            R initial
+        )
+        {
+            var deser = MkAxEvt.DeserTyped<E>(NodeId);
+
+            IObservable<R> curVal = Observable.FromAsync(this.Present)
+                .SelectMany(present => store
+                            .Query(
+                                new OffsetMap(),
+                                present,
+                                query,
+                                EventsOrder.StreamAsc
+                                )
+                            .OfType<EventOnWire>()
+                            .Select(deser)
+                    )
+                .Aggregate(initial, reduce);
+
+
+            return curVal;
         }
 
         public async Task<ActyxEventMetadata> Publish(IEventDraft eventDraft)
