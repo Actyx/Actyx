@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt::Write, path::Path, str::FromStr};
 
-use actyx_sdk::{app_id, tags, AppId, Payload};
+use actyx_sdk::{app_id, service::PrefetchRequest, tags, AppId, Payload};
 use anyhow::Context;
 use bytes::BufMut;
 use futures::prelude::*;
@@ -20,8 +20,10 @@ use crate::{
     util::filters::{authenticate, header_or_query_token},
     NodeInfo,
 };
+pub(crate) use pinner::FilePinner;
 
 mod ipfs;
+mod pinner;
 
 /// Serve GET requests for the server's root, interpreting the full path as a directory query.
 /// GET http://:id.actyx.localhost:<port>/query/into/the/directory
@@ -113,16 +115,29 @@ async fn serve_unixfs_node(
 pub fn route(
     store: BanyanStore,
     node_info: NodeInfo,
+    pinner: FilePinner,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    add(store.clone(), node_info.clone())
+    warp::path("prefetch")
+        .and(prefetch(pinner, node_info.clone()))
+        .or(add(store.clone(), node_info.clone()))
         .or(get(store.clone(), node_info.clone()))
         .or(delete_name_or_cid(store.clone(), node_info.clone()))
         .or(update_name(store, node_info))
 }
 
-//fn prefetch(store: BanyanStore, app_id: AppId) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-//    warp::post()
-//}
+fn prefetch(
+    pinner: FilePinner,
+    node_info: NodeInfo,
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+    warp::post().and(authorize(node_info)).and(warp::body::json()).and_then(
+        move |app_id: AppId, request: PrefetchRequest| {
+            pinner
+                .update(app_id, request.query)
+                .map(|_| Ok(http::StatusCode::NO_CONTENT))
+                .map_err(crate::util::reject)
+        },
+    )
+}
 
 // TODO: Make this a bit nicer. Also take the path to `node` into account to provide upwards
 // traversal.
@@ -263,13 +278,6 @@ enum FileApiEvent {
 #[derive(Serialize, Debug, Clone, Copy)]
 struct StringCid(#[serde(with = "::actyx_util::serde_str")] Cid);
 
-// TODO:
-// - [ ] Add standard outbound retention 2h
-// - [ ] emit internal events with stream 0; app_id into payload, file size, file name
-// - [x] directory listing; api and html (if accept header html)
-// - [ ] additional endpoint: prefetch to provide an AQL query, which is a subscription. results in
-// a set of cids, named pin per app id. query is active for 14 days (needs persistence), should be
-// configurable via node settings; defaults to '[]'
 fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let auth = authorize(node_info);
     warp::post()
@@ -361,12 +369,12 @@ fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
                 store
                     .append(
                         0.into(),
-                        app_id!("com.actyx.files"),
+                        app_id!("com.actyx"),
                         events
                             .into_iter()
                             .map(|e| {
                                 (
-                                    tags!("ax:file:created"),
+                                    tags!("files", "files:created"),
                                     Payload::compact(&e).expect("serialization works"),
                                 )
                             })

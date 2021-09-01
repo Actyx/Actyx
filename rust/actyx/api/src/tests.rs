@@ -11,7 +11,9 @@ use swarm::{
 };
 use warp::*;
 
-use crate::{auth::create_token, formats::Licensing, rejections, util::NodeInfo, AppMode};
+use crate::{
+    auth::create_token, files::FilePinner, formats::Licensing, rejections, util::NodeInfo, AppMode, EventService,
+};
 use tokio::{runtime::Handle, sync::mpsc};
 
 const UNAUTHORIZED_TOKEN: &str = "AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ==";
@@ -60,7 +62,9 @@ async fn test_routes() -> (
         });
         EventStoreRef::new(move |e| tx.try_send(e).map_err(event_store_ref::Error::from))
     };
-    let route = super::routes(auth_args.clone(), store, event_store).with(warp::trace::named("api_test"));
+    let event_service = EventService::new(event_store, auth_args.node_id);
+    let pinner = FilePinner::new(event_service.clone(), store.ipfs().clone());
+    let route = super::routes(auth_args.clone(), store, event_service, pinner).with(warp::trace::named("api_test"));
 
     let token = create_token(
         auth_args,

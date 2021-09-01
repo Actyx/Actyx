@@ -19,8 +19,8 @@ use swarm::{event_store_ref::EventStoreRef, BanyanStore};
 use warp::*;
 
 pub use crate::events::service::EventService;
-use crate::util::hyper_serve::serve_it;
 pub use crate::util::{AppMode, BearerToken, NodeInfo, Token};
+use crate::{files::FilePinner, util::hyper_serve::serve_it};
 
 pub async fn run(
     node_info: NodeInfo,
@@ -29,7 +29,9 @@ pub async fn run(
     bind_to: impl Iterator<Item = SocketAddr> + Send,
     snd: Sender<anyhow::Result<()>>,
 ) {
-    let api = routes(node_info, store, event_store);
+    let event_service = events::service::EventService::new(event_store, node_info.node_id);
+    let pinner = FilePinner::new(event_service.clone(), store.ipfs().clone());
+    let api = routes(node_info, store, event_service, pinner);
     let tasks = bind_to
         .into_iter()
         .map(|i| {
@@ -67,13 +69,13 @@ pub async fn run(
 fn routes(
     node_info: NodeInfo,
     store: BanyanStore,
-    event_store: EventStoreRef,
+    event_service: EventService,
+    pinner: FilePinner,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    let event_service = events::service::EventService::new(event_store, node_info.node_id);
     let events = events::routes(node_info.clone(), event_service);
     let node = node::route(node_info.clone(), store.clone());
     let auth = auth::route(node_info.clone());
-    let files = files::route(store.clone(), node_info.clone());
+    let files = files::route(store.clone(), node_info.clone(), pinner);
 
     let api_path = path!("api" / "v2" / ..);
     let cors = cors()
