@@ -216,6 +216,7 @@ export interface EventFns {
    *
    * @param query       - AQL query
    * @param chunkSize   - Desired chunk size
+   * @param onChunk     - Callback that will be invoked for each chunk, in sequence. Even if this is an async function (returning `Promise<void>`), there will be no concurrent invocations of it.
    *
    * @returns A function that can be called in order to cancel the delivery of further chunks.
    *

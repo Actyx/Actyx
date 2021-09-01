@@ -599,7 +599,7 @@ export const EventFnsFromEventStoreV2 = (
     const rxSub = buffered
       .mergeScan(
         (_a: void, chunk: AqlResponse[]) => Observable.from(Promise.resolve(onChunk(chunk))),
-        void 0,
+        undefined,
         1,
       )
       .subscribe({ error: onCompleteOrError, complete: onCompleteOrError })
