@@ -6,10 +6,16 @@ use futures::{
     future,
     stream::{iter, BoxStream, Stream, StreamExt},
 };
-use reqwest::{Client, RequestBuilder, Response, StatusCode};
+use libipld::Cid;
+use reqwest::{
+    header::{CONTENT_DISPOSITION, CONTENT_TYPE},
+    multipart::Form,
+    Client, RequestBuilder, Response, StatusCode,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Debug,
+    str::FromStr,
     sync::{Arc, RwLock},
     time::Duration,
 };
@@ -17,8 +23,9 @@ use url::Url;
 
 use crate::{
     service::{
-        AuthenticationResponse, EventService, OffsetsResponse, PublishRequest, PublishResponse, QueryRequest,
-        QueryResponse, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
+        AuthenticationResponse, EventService, FilesGetResponse, OffsetsResponse, PublishRequest, PublishResponse,
+        QueryRequest, QueryResponse, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest,
+        SubscribeResponse,
     },
     AppManifest, NodeId,
 };
@@ -97,6 +104,10 @@ impl HttpClient {
         self.base_url.join(&format!("events/{}", path)).unwrap()
     }
 
+    fn files_url(&self) -> Url {
+        self.base_url.join("files").unwrap()
+    }
+
     async fn re_authenticate(&self) -> anyhow::Result<String> {
         let token = get_token(&self.client, &self.base_url, &self.app_manifest).await?;
         let mut write_guard = self.token.write().unwrap();
@@ -106,12 +117,12 @@ impl HttpClient {
 
     /// Makes request to Actyx apis. On http authorization error tries to
     /// re-authenticate and retries the request ten times with increasing delay.
-    async fn do_request(&self, f: impl Fn(&Client) -> RequestBuilder) -> anyhow::Result<Response> {
+    async fn do_request(&self, f: impl FnOnce(&Client) -> RequestBuilder) -> anyhow::Result<Response> {
         let token = self.token.read().unwrap().clone();
+        let builder = f(&self.client);
+        let builder_clone = builder.try_clone();
 
-        let req = f(&self.client)
-            .header("Authorization", &format!("Bearer {}", token))
-            .build()?;
+        let req = builder.header("Authorization", &format!("Bearer {}", token)).build()?;
         let url = req.url().clone();
         let method = req.method().clone();
         let mut response = self
@@ -119,38 +130,53 @@ impl HttpClient {
             .execute(req)
             .await
             .context(|| format!("sending {} {}", method, url))?;
-        if response.status() == StatusCode::UNAUTHORIZED {
-            let token = self.re_authenticate().await?;
-            response = f(&self.client)
-                .header("Authorization", &format!("Bearer {}", token))
-                .send()
-                .await
-                .context(|| format!("sending {} {}", method, url))?;
-        }
 
-        let mut retries = 10;
-        let mut delay = Duration::from_secs(0);
-        loop {
-            if response.status() == StatusCode::SERVICE_UNAVAILABLE && retries > 0 {
-                retries -= 1;
-                delay = delay * 2 + Duration::from_millis(rand::thread_rng().gen_range(10..200));
-                tracing::debug!(
-                    "Actyx Node is overloaded, retrying {} {} with a delay of {:?}",
-                    method,
-                    url,
-                    delay
-                );
-                #[cfg(feature = "with-tokio")]
-                tokio::time::sleep(delay).await;
-                #[cfg(not(feature = "with-tokio"))]
-                std::thread::sleep(delay);
-                response = f(&self.client)
+        if let Some(builder) = builder_clone.as_ref() {
+            // Request body is not a Stream, so we can retry
+            if response.status() == StatusCode::UNAUTHORIZED {
+                let token = self.re_authenticate().await?;
+                response = builder
+                    .try_clone()
+                    .expect("Already cloned it once")
                     .header("Authorization", &format!("Bearer {}", token))
                     .send()
                     .await
                     .context(|| format!("sending {} {}", method, url))?;
-            } else {
-                break;
+            }
+
+            let mut retries = 10;
+            let mut delay = Duration::from_secs(0);
+            loop {
+                if response.status() == StatusCode::SERVICE_UNAVAILABLE && retries > 0 {
+                    retries -= 1;
+                    delay = delay * 2 + Duration::from_millis(rand::thread_rng().gen_range(10..200));
+                    tracing::debug!(
+                        "Actyx Node is overloaded, retrying {} {} with a delay of {:?}",
+                        method,
+                        url,
+                        delay
+                    );
+                    #[cfg(feature = "with-tokio")]
+                    tokio::time::sleep(delay).await;
+                    #[cfg(not(feature = "with-tokio"))]
+                    std::thread::sleep(delay);
+                    response = builder
+                        .try_clone()
+                        .expect("Already cloned it once")
+                        .header("Authorization", &format!("Bearer {}", token))
+                        .send()
+                        .await
+                        .context(|| format!("sending {} {}", method, url))?;
+                } else {
+                    break;
+                }
+            }
+        } else {
+            tracing::warn!("Request can't be retried, as its body is based on a stream");
+            // Request body is a stream, so impossible to retry
+            if response.status() == StatusCode::UNAUTHORIZED {
+                tracing::info!("Can't retry request, but re-authenticated anyway. SDK user must retry request.");
+                self.re_authenticate().await?;
             }
         }
 
@@ -162,11 +188,61 @@ impl HttpClient {
                 error: response
                     .json()
                     .await
-                    .context(|| format!("getting body for {} reply to {:?}", error_code, f(&self.client)))?,
+                    .context(|| format!("getting body for {} reply to {:?}", error_code, builder_clone))?,
                 error_code,
-                context: format!("sending {:?}", f(&self.client)),
+                context: format!("sending {:?}", builder_clone),
             }
             .into())
+        }
+    }
+
+    pub async fn files_post(&self, files: impl IntoIterator<Item = reqwest::multipart::Part>) -> anyhow::Result<Cid> {
+        let mut form = Form::new();
+        for file in files {
+            form = form.part("file", file);
+        }
+        let response = self
+            .do_request(move |c| c.post(self.files_url()).multipart(form))
+            .await?;
+        let hash = response
+            .text_with_charset("utf-8")
+            .await
+            .context(|| "Parsing response".to_string())?;
+        let cid = Cid::from_str(&*hash).map_err(|e| HttpClientError {
+            error: serde_json::Value::String(e.to_string()),
+            error_code: 102,
+            context: format!("Tried to parse {} into a Cid", hash),
+        })?;
+        Ok(cid)
+    }
+
+    pub async fn files_get(&self, cid_or_name: &str) -> anyhow::Result<FilesGetResponse> {
+        let url = self.files_url().join(cid_or_name)?;
+        let response = self.do_request(move |c| c.get(url)).await?;
+
+        let maybe_name = response.headers().get(CONTENT_DISPOSITION).cloned();
+        let maybe_mime = response.headers().get(CONTENT_TYPE).cloned();
+        let bytes = response.bytes().await?;
+        if let Ok(dir @ FilesGetResponse::Directory { .. }) = serde_json::from_slice(bytes.as_ref()) {
+            Ok(dir)
+        } else {
+            let mime = maybe_mime
+                .and_then(|h| h.to_str().ok().map(|x| x.to_string()))
+                .unwrap_or_else(|| "application/octet-stream".to_string());
+            let name = maybe_name
+                .and_then(|n| {
+                    n.to_str().ok().and_then(|p| {
+                        p.split(';')
+                            .find(|x| x.starts_with("filename="))
+                            .map(|f| f.trim_start_matches("filename=").to_string())
+                    })
+                })
+                .unwrap_or_else(|| "".to_string());
+            Ok(FilesGetResponse::File {
+                name,
+                bytes: bytes.to_vec(),
+                mime,
+            })
         }
     }
 }

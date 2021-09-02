@@ -2,7 +2,7 @@ use std::{fmt::Write, path::Path, str::FromStr, time::Duration};
 
 use actyx_sdk::{app_id, service::PrefetchRequest, tags, AppId, Payload};
 use anyhow::Context;
-use bytes::BufMut;
+use bytes::{BufMut, Bytes};
 use futures::prelude::*;
 use http::Uri;
 use libipld::cid::Cid;
@@ -243,12 +243,12 @@ fn update_name(
     warp::put()
         .and(path::param())
         .and(authorize(node_info).map(|_| ()).untuple_one())
-        .and(warp::body::json())
-        .and_then(move |name: String, maybe_cid: String| {
+        .and(warp::body::bytes())
+        .and_then(move |name: String, maybe_cid: Bytes| {
             let ans = ans.clone();
             async move {
                 tracing::debug!(%name, ?maybe_cid, "ANS POST");
-                let cid: Cid = maybe_cid.parse()?;
+                let cid = Cid::from_str(&*String::from_utf8(maybe_cid.to_vec())?)?;
                 ans.set(name, cid, PersistenceLevel::Prefetch, true).await?;
                 Ok(warp::reply())
             }

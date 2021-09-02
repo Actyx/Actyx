@@ -47,7 +47,7 @@ postgres-types = { version = "0.2.1", optional = true }
 quickcheck = { version = "1.0.3", optional = true }
 rand = { version = "0.8.4", optional = true }
 reduce = "0.1.4"
-reqwest = { version = "0.11.4", features = ["json", "gzip", "stream", "native-tls-vendored"], optional = true }
+reqwest = { version = "0.11.4", features = ["json", "gzip", "stream", "native-tls-vendored", "multipart"], optional = true }
 rusqlite = { version = "0.25.3", optional = true, features = ["bundled"] }
 serde = { version = "1.0.127", features = ["derive", "rc"] }
 serde_cbor = "0.11.1"

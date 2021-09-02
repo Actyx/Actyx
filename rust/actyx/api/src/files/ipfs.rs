@@ -1,5 +1,6 @@
 use actyx_sdk::AppId;
 use anyhow::{Context, Result};
+use http::header::CONTENT_DISPOSITION;
 use libipld::cid::Cid;
 use percent_encoding::percent_decode_str;
 use std::{collections::VecDeque, path::Path, str::FromStr};
@@ -63,18 +64,22 @@ pub(crate) async fn get_file(store: BanyanStore, cid: Cid, name: &str) -> Result
     store.ipfs().sync(&cid, store.ipfs().peers()).await?;
     let mut buf = vec![];
     store.cat(&cid, &mut buf)?;
+
     // extension takes precedence over content
-    if let Some(ct) = content_header_from_ext.or_else(|| {
+    let maybe_content_type = content_header_from_ext.or_else(|| {
         tracing::span!(tracing::Level::DEBUG, "Detecting content-type", %cid, size=buf.len());
         // This is fairly expensive, so only look at the first kb
         content_type_from_content(&buf[0..buf.len().min(1024)])
-    }) {
-        let mut resp = Response::new(Body::from(buf));
+    });
+    let mut resp = Response::new(Body::from(buf));
+    resp.headers_mut().insert(
+        CONTENT_DISPOSITION,
+        HeaderValue::from_str(&*format!(r#"inline;filename="{}""#, name))?,
+    );
+    if let Some(ct) = maybe_content_type {
         resp.headers_mut().insert(CONTENT_TYPE, ct);
-        Ok(resp)
-    } else {
-        Ok(Response::new(Body::from(buf)))
     }
+    Ok(resp)
 }
 
 pub(crate) fn extract_name_or_cid_from_host(

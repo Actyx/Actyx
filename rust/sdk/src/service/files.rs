@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+pub use libipld::Cid;
 use serde::{Deserialize, Serialize};
 
 use crate::language::Query;
@@ -36,4 +37,55 @@ pub struct PrefetchRequest {
     pub query: Query,
     /// How long the files should be pinned (until = now + duration)
     pub duration: Duration,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DirectoryChild {
+    size: u64,
+    name: String,
+    #[serde(with = "serde_str")]
+    cid: Cid,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum FilesGetResponse {
+    File {
+        name: String,
+        bytes: Vec<u8>,
+        mime: String,
+    },
+    Directory {
+        name: String,
+        #[serde(with = "serde_str")]
+        cid: Cid,
+        children: Vec<DirectoryChild>,
+    },
+}
+
+pub mod serde_str {
+    //! Serializes fields annotated with `#[serde(with = "::util::serde_str")]` with their !
+    //! `Display` implementation, deserializes fields using `FromStr`.
+    use std::fmt::Display;
+    use std::str::FromStr;
+
+    use serde::{de, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: Display,
+        S: Serializer,
+    {
+        serializer.collect_str(value)
+    }
+
+    pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+    where
+        T: FromStr,
+        T::Err: Display,
+        D: Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?.parse().map_err(de::Error::custom)
+    }
 }
