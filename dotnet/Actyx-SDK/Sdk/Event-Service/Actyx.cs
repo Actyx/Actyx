@@ -240,6 +240,7 @@ namespace Actyx
                     ));
             }
 
+            // We can optimise Lamport-ordering by letting the store figure out the current latest event
             return Observable.FromAsync(this.Present)
                 .SelectMany(present => {
                     var firstValue = ReadOne(q.Query, present, EventsOrder.Desc);
@@ -261,6 +262,7 @@ namespace Actyx
                     .SelectMany(MkEmitIf<E>(null, (candidate, current) => candidate.CompareTo(current) < 0));
             }
 
+            // We can optimise Lamport-ordering by letting the store figure out the current earliest event
             return Observable.FromAsync(this.Present)
                 .SelectMany(present => {
                     var firstValue = ReadOne(q.Query, present, EventsOrder.Asc);

@@ -37,6 +37,32 @@ namespace Sdk.IntegrationTests
             known.Events.Select(x => x.Payload.ToString()).Should().Contain("Hello world");
         }
 
+        [Theory]
+        [MemberData(nameof(Opts))]
+        public async void ObserveEarliest(ActyxOpts opts)
+        {
+            var client = await Actyx.Actyx.Create(Constants.TrialManifest, opts);
+
+            Tag<string> tag = new Tag<string>(AxRandom.String(16));
+
+            await client.Publish(tag.Apply("foo"));
+            await client.Publish(tag.Apply("bar"));
+
+            var values = client.ObserveLatest<string>(new () { Query = tag }).ToAsyncEnumerable().GetAsyncEnumerator();
+
+            await values.MoveNextAsync();
+            values.Current.Should().Equals("foo");
+
+            await client.Publish(tag.Apply("live0"));
+            await values.MoveNextAsync();
+            values.Current.Should().Equals("foo");
+
+            await client.Publish(tag.Apply("live1"));
+            await values.MoveNextAsync();
+            values.Current.Should().Equals("foo");
+
+            await values.DisposeAsync();
+        }
 
         [Theory]
         [MemberData(nameof(Opts))]
@@ -88,6 +114,36 @@ namespace Sdk.IntegrationTests
         }
 
 
+        [Theory]
+        [MemberData(nameof(Opts))]
+        public async void ObserveBestMatch(ActyxOpts opts)
+        {
+            var client = await Actyx.Actyx.Create(Constants.TrialManifest, opts);
+
+            Tag<int> tag = new Tag<int>(AxRandom.String(16));
+
+            await client.Publish(tag.Apply(50));
+            await client.Publish(tag.Apply(60));
+
+            var values = client.ObserveBestMatch<int>(tag, (x, y) => Math.Abs(100 - x.Payload) < Math.Abs(100 - y.Payload)).ToAsyncEnumerable().GetAsyncEnumerator();
+
+            await values.MoveNextAsync();
+            values.Current.Should().Equals(60);
+
+            await client.Publish(tag.Apply(120));
+            await values.MoveNextAsync();
+            values.Current.Should().Equals(120);
+
+            await client.Publish(tag.Apply(95));
+            await values.MoveNextAsync();
+            values.Current.Should().Equals(95);
+
+            await client.Publish(tag.Apply(110));
+            await Task.Delay(5);
+            values.Current.Should().Equals(95);
+
+            await values.DisposeAsync();
+        }
 
         [Theory]
         [MemberData(nameof(Opts))]
