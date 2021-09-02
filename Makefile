@@ -362,10 +362,13 @@ dist/dotnet/sdk-integration: make-always
 	mkdir -p $@
 	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet publish Sdk.IntegrationTests --output /src/$@/
 
-validate-dotnet: validate-dotnet-sdk
+validate-dotnet: validate-dotnet-sdk format-dotnet-sdk
 
 validate-dotnet-sdk:
 	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet test Sdk.Tests
+
+format-dotnet-sdk:
+	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet format
 
 validate-node-manager-bindings:
 	cd rust/actyx/node-manager-bindings && \
