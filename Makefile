@@ -368,7 +368,7 @@ validate-dotnet-sdk:
 	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet test Sdk.Tests
 
 format-dotnet-sdk:
-	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK mcr.microsoft.com/dotnet/sdk:5.0 dotnet format
+	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK mcr.microsoft.com/dotnet/sdk:6.0.100-preview.7-alpine3.13-amd64 dotnet format
 
 validate-node-manager-bindings:
 	cd rust/actyx/node-manager-bindings && \
