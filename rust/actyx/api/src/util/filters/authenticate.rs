@@ -34,10 +34,28 @@ pub(crate) fn verify(node_info: NodeInfo, token: Token) -> Result<BearerToken, A
     }
 }
 
+/// Tries to extract the value given to the `access_token` query parameter.
 pub fn query_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
+    warp::query::raw().and_then(|query_string: String| async move {
+        let mut split = query_string.split('&');
+        split
+            .find_map(|x| {
+                if x.starts_with("access_token=") {
+                    Some(Token(x.trim_start_matches("access_token=").into()))
+                } else {
+                    None
+                }
+            })
+            .ok_or_else(|| reject::custom(ApiError::MissingTokenParameter))
+    })
+}
+
+/// Interpretes the whole query string as the access token. This method must only be used for the
+/// WS connection!
+pub fn query_token_ws() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
     warp::query::raw()
         .map(Token)
-        .or_else(|_| async { Err(reject::custom(ApiError::MissingTokenParameter)) })
+        .or_else(|_| async move { Err(reject::custom(ApiError::MissingTokenParameter)) })
 }
 
 pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
@@ -78,8 +96,6 @@ pub fn header_or_query_token_opt() -> impl Filter<Extract = (Option<Token>,), Er
         .map(Some)
         .recover(|e: Rejection| async move {
             if let Some(ApiError::MissingAuthorizationHeader) = e.find() {
-                Result::<_, Rejection>::Ok(None)
-            } else if let Some(ApiError::MissingTokenParameter) = e.find() {
                 Result::<_, Rejection>::Ok(None)
             } else {
                 Err(e)
@@ -214,6 +230,14 @@ mod tests {
     async fn should_work_with_query_param() {
         let (auth_args, bearer) = setup(None);
         let filter = authenticate(auth_args, query_token());
+        let req = warp::test::request().path(&format!("/?access_token={}&what=ever", bearer));
+        assert_eq!(req.filter(&filter).await.unwrap(), app_id!("test-app"));
+    }
+
+    #[tokio::test]
+    async fn should_work_with_query_param_legacy() {
+        let (auth_args, bearer) = setup(None);
+        let filter = authenticate(auth_args, query_token_ws());
         let req = warp::test::request().path(&format!("/p?{}", bearer));
         assert_eq!(req.filter(&filter).await.unwrap(), app_id!("test-app"));
     }

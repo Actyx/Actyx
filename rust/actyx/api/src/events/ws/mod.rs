@@ -5,7 +5,10 @@ use warp::*;
 use wsrpc::Service;
 
 use crate::events::service::EventService;
-use crate::util::{filters::query_token, NodeInfo};
+use crate::util::{
+    filters::{query_token, query_token_ws},
+    NodeInfo,
+};
 
 mod offsets;
 mod publish;
@@ -17,7 +20,9 @@ pub(crate) fn routes(
     node_info: NodeInfo,
     event_service: EventService,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-    let auth = crate::util::filters::authenticate(node_info, query_token());
+    // legacy support
+    let token = query_token().or(query_token_ws()).unify();
+    let auth = crate::util::filters::authenticate(node_info, token);
     let services = Arc::new(btreemap! {
       "offsets"             => offsets::service(event_service.clone()).boxed(),
       "query"               => query::service(event_service.clone()).boxed(),
