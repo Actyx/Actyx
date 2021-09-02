@@ -136,10 +136,7 @@ namespace Actyx
             .Select(MkAxEvt.From(NodeId));
 
         public IObservable<EventChunk> SubscribeChunked(EventSubscription sub, ChunkingOptions? chunkConfig = null) =>
-             store
-                .Subscribe(sub.LowerBound ?? new OffsetMap(), sub.Query ?? SelectAllEvents.Instance)
-                .OfType<EventOnWire>()
-                .Select(MkAxEvt.From(NodeId))
+             Subscribe(sub)
                 .Buffer(
                     chunkConfig?.MaxChunkTime ?? TimeSpan.FromMilliseconds(5),
                     chunkConfig?.MaxChunkSize ?? 1000
@@ -148,18 +145,39 @@ namespace Actyx
                 .Select(ActyxEvent<JToken>.OrderByEventKey)
                 .Select(BookKeepingOnChunk(sub.LowerBound));
 
+        public IObservable<ActyxEvent<JToken>> SubscribeMonotonic(EventSubscription sub, string sessionId) =>
+            store
+                .SubscribeMonotonic(sessionId, sub.LowerBound ?? new OffsetMap(), sub.Query ?? SelectAllEvents.Instance)
+                .OfType<SubscribeMonotonicEventResponse>()
+                .Select(response => new EventOnWire()
+                {
+                    AppId = response.AppId,
+                    Tags = response.Tags,
+                    Payload = response.Payload,
+                    Lamport = response.Lamport,
+                    Offset = response.Offset,
+                    Timestamp = response.Timestamp,
+                    Stream = response.Stream,
+                })
+                .Select(MkAxEvt.From(NodeId));
 
-        private async Task<IEnumerable<IResponseMessage>> QueryKnown(RangeQuery query)
-        {
-            var wireEvents = await store.Query(
+        public IObservable<EventChunk> SubscribeMonotonicChunked(EventSubscription sub, string sessionId, ChunkingOptions? chunkConfig = null) =>
+            SubscribeMonotonic(sub, sessionId)
+                .Buffer(
+                    chunkConfig?.MaxChunkTime ?? TimeSpan.FromMilliseconds(5),
+                    chunkConfig?.MaxChunkSize ?? 1000
+                )
+                .Where(x => x.Count > 0)
+                .Select(ActyxEvent<JToken>.OrderByEventKey)
+                .Select(BookKeepingOnChunk(sub.LowerBound));
+
+        private async Task<IEnumerable<IResponseMessage>> QueryKnown(RangeQuery query) =>
+            await store.Query(
                 query.LowerBound,
                 query.UpperBound,
                 query.Query ?? SelectAllEvents.Instance,
                 query.Order
             ).ToList();
-
-            return wireEvents;
-        }
 
         private static Func<IList<ActyxEvent<JToken>>, EventChunk> BookKeepingOnChunk(OffsetMap initialLowerBound)
         {

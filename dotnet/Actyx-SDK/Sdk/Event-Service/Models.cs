@@ -140,9 +140,9 @@ namespace Actyx
         public IObservable<EventChunk> QueryKnownRangeChunked(RangeQuery query, int chunkSize);
 
         /**
-         * Query all known events that occurred after the given `lowerBound`.
+         * Query all known events that occurred after `query.lowerBound`.
          *
-         * @param query  - `OpenEndedQuery` object specifying the desired set of events.
+         * @param query - `OpenEndedQuery` object specifying the desired set of events.
          *
          * @returns An `EventChunk` with the result and its bounds.
          *          The contained `upperBound` can be passed as `lowerBound` to a subsequent call of this function to achieve exactly-once delivery of all events.
@@ -150,49 +150,74 @@ namespace Actyx
         public Task<EventChunk> QueryAllKnown(AutoCappedQuery query);
 
         /**
-         * Query all known events that occurred after the given `lowerBound`, in chunks.
+         * Query all known events that occurred after `query.lowerBound`, in chunks.
          * This is useful if the complete result set is potentially too large to fit into memory at once.
          *
-         * @param query       - `OpenEndedQuery` object specifying the desired set of events.
-         * @param chunkSize   - Maximum size of chunks. Chunks may be smaller than this.
-         * @param onChunk     - Callback that will be invoked for each chunk, in sequence. Second argument is an offset map covering all events passed as first arg.
+         * @param query     - `OpenEndedQuery` object specifying the desired set of events.
+         * @param chunkSize - Maximum size of chunks. Chunks may be smaller than this.
          *
-         * @returns A `Promise` that resolves to updated offset-map after all chunks have been delivered.
+         * @returns An Observable of event chunks.
          */
         public IObservable<EventChunk> QueryAllKnownChunked(AutoCappedQuery query, int chunkSize);
 
         /**
-         * Subscribe to all events fitting the `query` after `lowerBound`.
+         * Subscribe to all events fitting `sub.query` after `sub.lowerBound`.
          * They will be delivered in chunks of configurable size.
          * Each chunk is internally sorted in ascending `eventId` order.
          * The subscription goes on forever, until manually cancelled.
          *
-         * @param query       - `EventSubscription` object specifying the desired set of events.
+         * @param sub         - `EventSubscription` object specifying the desired set of events.
          * @param chunkConfig - How event chunks should be built.
-         * @param onChunk     - Callback that will be invoked for each chunk, in sequence. Second argument is the updated offset map.
          *
-         * @returns A function that can be called in order to cancel the subscription.
+         * @returns An Observable of event chunks.
          */
         public IObservable<EventChunk> SubscribeChunked(EventSubscription sub, ChunkingOptions? chunkConfig = null);
 
         /**
-         * Subscribe to all events fitting the `query` after `lowerBound`.
+         * Subscribe to all events fitting `sub.query` after `sub.lowerBound`.
          *
          * The subscription goes on forever, until manually cancelled.
          *
-         * @param query       - `EventSubscription` object specifying the desired set of events.
-         * @param onEvent     - Callback that will be invoked for each event, in sequence.
+         * @param sub - `EventSubscription` object specifying the desired set of events.
          *
-         * @returns A function that can be called in order to cancel the subscription.
+         * @returns An Observable of events.
          */
         public IObservable<ActyxEvent<JToken>> Subscribe(EventSubscription sub);
+
+        /**
+         * Monotonically subscribe to all events fitting `sub.query` after `sub.lowerBound`.
+         * They will be delivered in chunks of configurable size.
+         * Each chunk is internally sorted in ascending `eventId` order.
+         * The subscription goes on forever, until manually cancelled or the service learns about events that need to be sorted
+         * earlier than an event that has already been delivered.
+         *
+         * @param sub         - `EventSubscription` object specifying the desired set of events.
+         * @param sessionId   - The session identifier is chosen by the client and must be used consistently by the client to resume an earlier session. For fishes this will usually be the fish id.
+         * @param chunkConfig - How event chunks should be built.
+         *
+         * @returns An Observable of event chunks.
+         */
+        public IObservable<EventChunk> SubscribeMonotonicChunked(EventSubscription sub, string sessionId, ChunkingOptions? chunkConfig = null);
+
+        /**
+         * Monotonically subscribe to all events fitting `sub.query` after `sub.lowerBound`.
+         *
+         * The subscription goes on forever, until manually cancelled or the service learns about events that need to be sorted
+         * earlier than an event that has already been delivered.
+         *
+         * @param sub       - `EventSubscription` object specifying the desired set of events.
+         * @param sessionId - The session identifier is chosen by the client and must be used consistently by the client to resume an earlier session. For fishes this will usually be the fish id.
+         *
+         * @returns An Observable of event chunks.
+         */
+        public IObservable<ActyxEvent<JToken>> SubscribeMonotonic(EventSubscription sub, string sessionId);
 
         /**
          * Observe always the **latest** event matching the given query.
          * If there is an existing event fitting the query, the Observable will deliver that event.
          * Afterwards, the Observable will supply a new value whenever a new event becomes known that is younger than the previously passed one.
          *
-         * @param query          - Query to select the set of events.
+         * @param query - Query to select the set of events.
          *
          * @returns An Observable with all the new latest events.
          *

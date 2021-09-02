@@ -51,7 +51,7 @@ namespace Actyx
         public string ToAql()
         {
             IEnumerable<string> parts = UnderlyingSets.Select(tagSet => tagSet.ToTagExpr());
-            return "FROM " + String.Join(" | ", parts);
+            return "FROM " + string.Join(" | ", parts);
         }
     }
 }
