@@ -64,6 +64,35 @@ namespace Sdk.IntegrationTests
             await values.DisposeAsync();
         }
 
+
+        [Theory]
+        [MemberData(nameof(Opts))]
+        public async void ObserveEarliest_Timestamp(ActyxOpts opts)
+        {
+            var client = await Actyx.Actyx.Create(Constants.TrialManifest, opts);
+
+            Tag<string> tag = new Tag<string>(AxRandom.String(16));
+
+            await client.Publish(tag.Apply("foo"));
+            await client.Publish(tag.Apply("bar"));
+
+            var values = client.ObserveLatest<string>(new () { Query = tag, EventComparison = EventComparison.Timestamp }).ToAsyncEnumerable().GetAsyncEnumerator();
+
+            await values.MoveNextAsync();
+            values.Current.Should().Equals("foo");
+
+            await client.Publish(tag.Apply("live0"));
+            await values.MoveNextAsync();
+            values.Current.Should().Equals("foo");
+
+            await client.Publish(tag.Apply("live1"));
+            await values.MoveNextAsync();
+            values.Current.Should().Equals("foo");
+
+            await values.DisposeAsync();
+        }
+
+
         [Theory]
         [MemberData(nameof(Opts))]
         public async void ObserveLatestTyped(ActyxOpts opts)
@@ -91,6 +120,32 @@ namespace Sdk.IntegrationTests
             await values.DisposeAsync();
         }
 
+        [Theory]
+        [MemberData(nameof(Opts))]
+        public async void ObserveLatest_Timestamp(ActyxOpts opts)
+        {
+            var client = await Actyx.Actyx.Create(Constants.TrialManifest, opts);
+
+            Tag<string> tag = new Tag<string>(AxRandom.String(16));
+
+            await client.Publish(tag.Apply("foo"));
+            await client.Publish(tag.Apply("bar"));
+
+            var values = client.ObserveLatest<string>(new () { Query = tag, EventComparison = EventComparison.Timestamp }).ToAsyncEnumerable().GetAsyncEnumerator();
+
+            await values.MoveNextAsync();
+            values.Current.Should().Equals("bar");
+
+            await client.Publish(tag.Apply("live0"));
+            await values.MoveNextAsync();
+            values.Current.Should().Equals("live0");
+
+            await client.Publish(tag.Apply("live1"));
+            await values.MoveNextAsync();
+            values.Current.Should().Equals("live1");
+
+            await values.DisposeAsync();
+        }
 
         [Theory]
         [MemberData(nameof(Opts))]
