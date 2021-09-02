@@ -5,7 +5,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Actyx.Sdk.Formats
 {
-    public class ActyxEvent<E>
+    public class ActyxEvent<E> : IComparable<ActyxEvent<E>>
     {
         public ActyxEventMetadata Meta { internal set; get; }
 
@@ -13,8 +13,16 @@ namespace Actyx.Sdk.Formats
 
         public static IList<ActyxEvent<T>> OrderByEventKey<T>(IList<ActyxEvent<T>> events) =>
             events.OrderBy(x => x.Meta.Lamport).ThenBy(x => x.Meta.Stream).ToList();
-    }
 
+        public int CompareTo(ActyxEvent<E> other)
+        {
+            // If other is not a valid object reference, this instance is greater.
+            if (other == null) return 1;
+
+            return Meta.CompareTo(other.Meta);
+        }
+
+    }
     internal class MkAxEvt
     {
         public static Func<EventOnWire, ActyxEvent<E>> DeserTyped<E>(NodeId nodeId) => ev =>

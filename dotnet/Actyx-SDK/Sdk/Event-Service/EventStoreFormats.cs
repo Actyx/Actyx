@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Actyx.Sdk.Utils;
 using JsonSubTypes;
 using Newtonsoft.Json;
@@ -59,12 +60,21 @@ namespace Actyx
         public object Payload { get; set; }
     }
 
-    public class EventPublishMetadata
+    public class EventPublishMetadata : IComparable<EventPublishMetadata>
     {
         public ulong Lamport { get; set; }
         public ulong Offset { get; set; }
         public ulong Timestamp { get; set; }
         public string Stream { get; set; }
+
+        public int CompareTo(EventPublishMetadata other)
+        {
+            // If other is not a valid object reference, this instance is greater.
+            if (other == null) return 1;
+
+            int c = Lamport.CompareTo(other.Lamport);
+            return c == 0 ? Stream.CompareTo(other.Stream) : c;
+        }
     }
 
     public interface IResponseMessage { }

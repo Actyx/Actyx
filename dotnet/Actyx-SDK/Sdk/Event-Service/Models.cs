@@ -88,11 +88,11 @@ namespace Actyx
         public OffsetMap LowerBound { get; set; }
 
         /** The order to find max for. Defaults to `Lamport`.  */
-        public EventOrder eventOrder { get; set; }
+        public EventComparison EventComparison { get; set; }
     }
 
     /** Which clock to compare events by. Defaults to `Lamport`. @beta */
-    public enum EventOrder {
+    public enum EventComparison {
         /**
          * Comparison according to Lamport clock, which is a logical clock,
          * meaning it preserves causal order even when wall clocks on devices are off.
