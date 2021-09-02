@@ -96,6 +96,8 @@ image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 image-darwin = actyx/osxbuilder:a042cc707998b83704f3cf5d3f0ededc7143d1c3
 
 image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
+# 6.0 preview image from microsoft, it has "dotnet format" baked in
+image-dotnet-format = mcr.microsoft.com/dotnet/sdk:6.0-alpine
 
 # list all os-arch and binary names
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 macos-aarch64
@@ -368,7 +370,7 @@ validate-dotnet-sdk:
 	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet test Sdk.Tests
 
 format-dotnet-sdk:
-	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK mcr.microsoft.com/dotnet/sdk:6.0.100-preview.7-alpine3.13-amd64 dotnet format
+	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet-format) dotnet format
 
 validate-node-manager-bindings:
 	cd rust/actyx/node-manager-bindings && \
