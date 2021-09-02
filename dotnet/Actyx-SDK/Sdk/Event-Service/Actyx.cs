@@ -135,17 +135,14 @@ namespace Actyx
             .OfType<EventOnWire>()
             .Select(MkAxEvt.From(NodeId));
 
-        public IObservable<EventChunk> SubscribeChunked(EventSubscription sub) =>
-            SubscribeChunked(sub, new ChunkingOptions { MaxChunkSize = 1000, MaxChunkTime = TimeSpan.FromMilliseconds(5) });
-
-        public IObservable<EventChunk> SubscribeChunked(EventSubscription sub, ChunkingOptions chunkConfig) =>
+        public IObservable<EventChunk> SubscribeChunked(EventSubscription sub, ChunkingOptions? chunkConfig = null) =>
              store
                 .Subscribe(sub.LowerBound ?? new OffsetMap(), sub.Query ?? SelectAllEvents.Instance)
                 .OfType<EventOnWire>()
                 .Select(MkAxEvt.From(NodeId))
                 .Buffer(
-                    chunkConfig.MaxChunkTime ?? TimeSpan.FromMilliseconds(5),
-                    chunkConfig.MaxChunkSize ?? 1000
+                    chunkConfig?.MaxChunkTime ?? TimeSpan.FromMilliseconds(5),
+                    chunkConfig?.MaxChunkSize ?? 1000
                 )
                 .Where(x => x.Count > 0)
                 .Select(ActyxEvent<JToken>.OrderByEventKey)
@@ -217,35 +214,43 @@ namespace Actyx
                 this.AppId, publishedMetadata.Stream, tags, this.NodeId);
         }
 
-        public IObservable<ActyxEvent<E>> ObserveLatest<E>(LatestQuery<E> q) {
+        public IObservable<ActyxEvent<E>> ObserveLatest<E>(LatestQuery<E> q)
+        {
             var deser = MkAxEvt.DeserTyped<E>(NodeId);
             EventOnWire latest = null;
 
-            ActyxEvent<E>[] empty =  new ActyxEvent<E>[] {};
+            ActyxEvent<E>[] empty = new ActyxEvent<E>[] { };
 
             bool live = false;
 
-            ActyxEvent<E>[] EmitIfLatest(IResponseMessage r) {
-                try {
+            ActyxEvent<E>[] EmitIfLatest(IResponseMessage r)
+            {
+                try
+                {
                     if (r is OffsetsOnWire)
                     {
                         live = true;
-                        if (latest != null) {
+                        if (latest != null)
+                        {
                             return new[] { deser(latest) };
                         }
                     }
                     else if (r is EventOnWire evt)
                     {
                         // FIXME use full key
-                        if (latest is null || evt.Lamport > latest.Lamport) {
+                        if (latest is null || evt.Lamport > latest.Lamport)
+                        {
                             latest = evt;
 
-                            if (live) {
+                            if (live)
+                            {
                                 return new[] { deser(latest) };
                             }
                         }
                     }
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                     // Improve me.
                     Console.WriteLine(e);
                 }

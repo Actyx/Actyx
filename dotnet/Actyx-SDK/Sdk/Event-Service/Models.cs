@@ -92,7 +92,8 @@ namespace Actyx
     }
 
     /** Which clock to compare events by. Defaults to `Lamport`. @beta */
-    public enum EventOrder {
+    public enum EventOrder
+    {
         /**
          * Comparison according to Lamport clock, which is a logical clock,
          * meaning it preserves causal order even when wall clocks on devices are off.
@@ -172,9 +173,7 @@ namespace Actyx
          *
          * @returns A function that can be called in order to cancel the subscription.
          */
-        public IObservable<EventChunk> SubscribeChunked(EventSubscription sub);
-        public IObservable<EventChunk> SubscribeChunked(EventSubscription sub, ChunkingOptions chunkConfig);
-
+        public IObservable<EventChunk> SubscribeChunked(EventSubscription sub, ChunkingOptions? chunkConfig = null);
 
         /**
          * Subscribe to all events fitting the `query` after `lowerBound`.
@@ -187,7 +186,6 @@ namespace Actyx
          * @returns A function that can be called in order to cancel the subscription.
          */
         public IObservable<ActyxEvent<JToken>> Subscribe(EventSubscription sub);
-
 
         /**
          * Observe always the **latest** event matching the given query.
