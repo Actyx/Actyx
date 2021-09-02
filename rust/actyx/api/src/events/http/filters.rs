@@ -19,7 +19,7 @@ fn authorize(node_info: NodeInfo) -> impl Filter<Extract = (AppId,), Error = Rej
 pub fn offsets(
     node_info: NodeInfo,
     event_service: EventService,
-) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     path("offsets")
         .and(path::end())
         .and(get())
@@ -32,7 +32,7 @@ pub fn offsets(
 pub fn publish(
     node_info: NodeInfo,
     event_service: EventService,
-) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     path("publish")
         .and(path::end())
         .and(post())
@@ -46,7 +46,7 @@ pub fn publish(
 pub fn query(
     node_info: NodeInfo,
     event_service: EventService,
-) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     path("query")
         .and(path::end())
         .and(post())
@@ -60,7 +60,7 @@ pub fn query(
 pub fn subscribe(
     node_info: NodeInfo,
     event_service: EventService,
-) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     path("subscribe")
         .and(path::end())
         .and(post())
@@ -74,7 +74,7 @@ pub fn subscribe(
 pub fn subscribe_monotonic(
     node_info: NodeInfo,
     event_service: EventService,
-) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     path("subscribe_monotonic")
         .and(path::end())
         .and(post())

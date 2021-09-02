@@ -20,6 +20,7 @@ use crate::{
     util::filters::{authenticate, header_or_query_token},
     NodeInfo,
 };
+use crate::{boxed_on_debug, or};
 pub(crate) use pinner::FilePinner;
 
 mod ipfs;
@@ -32,7 +33,7 @@ mod pinner;
 pub fn root_serve(
     store: BanyanStore,
     node_info: NodeInfo,
-) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::header::optional(http::header::ACCEPT.as_str())
         .and(extract_query_from_host(
             node_info,
@@ -117,12 +118,13 @@ pub fn route(
     node_info: NodeInfo,
     pinner: FilePinner,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::path("prefetch")
-        .and(prefetch(pinner, node_info.clone()))
-        .or(add(store.clone(), node_info.clone()))
-        .or(get(store.clone(), node_info.clone()))
-        .or(delete_name_or_cid(store.clone(), node_info.clone()))
-        .or(update_name(store, node_info))
+    or!(
+        warp::path("prefetch").and(prefetch(pinner, node_info.clone())),
+        add(store.clone(), node_info.clone()),
+        get(store.clone(), node_info.clone()),
+        delete_name_or_cid(store.clone(), node_info.clone()),
+        update_name(store, node_info)
+    )
 }
 
 fn prefetch(

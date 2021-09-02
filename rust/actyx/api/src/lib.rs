@@ -96,17 +96,18 @@ fn routes(
             "Processed request"
         );
     });
-    files::root_serve(store, node_info)
-        .or(api_path.and(
-            path("events")
-                .and(events)
-                .or(path("node").and(node))
-                .or(path("auth").and(auth))
-                .or(path("files").and(files)),
+    or!(
+        files::root_serve(store, node_info),
+        api_path.and(or!(
+            path("events").and(events),
+            path("node").and(node),
+            path("auth").and(auth),
+            path("files").and(files),
         ))
-        .recover(|r| async { rejections::handle_rejection(r) })
-        .with(cors)
-        .with(log)
+    )
+    .recover(|r| async { rejections::handle_rejection(r) })
+    .with(cors)
+    .with(log)
 }
 
 struct OptFmt<T>(Option<T>);
