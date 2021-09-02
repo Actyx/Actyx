@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Actyx;
 using Actyx.Sdk.Utils;
-using Sdk.IntegrationTests.Helpers;
 using FluentAssertions;
+using Sdk.IntegrationTests.Helpers;
 using Xunit;
 
 namespace Sdk.IntegrationTests
@@ -48,7 +48,7 @@ namespace Sdk.IntegrationTests
             await client.Publish(tag.Apply("foo"));
             await client.Publish(tag.Apply("bar"));
 
-            var values = client.ObserveLatest<string>(new () { Query = tag }).ToAsyncEnumerable().GetAsyncEnumerator();
+            var values = client.ObserveLatest<string>(new() { Query = tag }).ToAsyncEnumerable().GetAsyncEnumerator();
 
             await values.MoveNextAsync();
             values.Current.Should().Equals("foo");
@@ -76,7 +76,7 @@ namespace Sdk.IntegrationTests
             await client.Publish(tag.Apply("foo"));
             await client.Publish(tag.Apply("bar"));
 
-            var values = client.ObserveLatest<string>(new () { Query = tag, EventComparison = EventComparison.Timestamp }).ToAsyncEnumerable().GetAsyncEnumerator();
+            var values = client.ObserveLatest<string>(new() { Query = tag, EventComparison = EventComparison.Timestamp }).ToAsyncEnumerable().GetAsyncEnumerator();
 
             await values.MoveNextAsync();
             values.Current.Should().Equals("foo");
@@ -104,7 +104,7 @@ namespace Sdk.IntegrationTests
             await client.Publish(tag.Apply("foo"));
             await client.Publish(tag.Apply("bar"));
 
-            var values = client.ObserveLatest<string>(new () { Query = tag }).ToAsyncEnumerable().GetAsyncEnumerator();
+            var values = client.ObserveLatest<string>(new() { Query = tag }).ToAsyncEnumerable().GetAsyncEnumerator();
 
             await values.MoveNextAsync();
             values.Current.Should().Equals("bar");
@@ -131,7 +131,7 @@ namespace Sdk.IntegrationTests
             await client.Publish(tag.Apply("foo"));
             await client.Publish(tag.Apply("bar"));
 
-            var values = client.ObserveLatest<string>(new () { Query = tag, EventComparison = EventComparison.Timestamp }).ToAsyncEnumerable().GetAsyncEnumerator();
+            var values = client.ObserveLatest<string>(new() { Query = tag, EventComparison = EventComparison.Timestamp }).ToAsyncEnumerable().GetAsyncEnumerator();
 
             await values.MoveNextAsync();
             values.Current.Should().Equals("bar");
@@ -160,7 +160,7 @@ namespace Sdk.IntegrationTests
 
             await client.Publish(tagS.Apply("foo"));
 
-            var values = client.ObserveLatest<int>(new () { Query = tagN }).ToAsyncEnumerable().GetAsyncEnumerator();
+            var values = client.ObserveLatest<int>(new() { Query = tagN }).ToAsyncEnumerable().GetAsyncEnumerator();
 
             Func<Task> act = async () => await values.MoveNextAsync();
             await act.Should().ThrowAsync<System.FormatException>();

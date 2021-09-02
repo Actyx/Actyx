@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 using Actyx.Sdk.Formats;
 using Actyx.Sdk.Utils;
+using Newtonsoft.Json.Linq;
 
 namespace Actyx
 {
@@ -229,8 +229,10 @@ namespace Actyx
                 .DefaultIfEmpty(null);
         }
 
-        public IObservable<ActyxEvent<E>> ObserveLatest<E>(LatestQuery<E> q) {
-            if (q.EventComparison == EventComparison.Timestamp) {
+        public IObservable<ActyxEvent<E>> ObserveLatest<E>(LatestQuery<E> q)
+        {
+            if (q.EventComparison == EventComparison.Timestamp)
+            {
                 return store
                     .Subscribe(q.LowerBound, q.Query)
                     .SelectMany(
@@ -242,10 +244,12 @@ namespace Actyx
 
             // We can optimise Lamport-ordering by letting the store figure out the current latest event
             return Observable.FromAsync(this.Present)
-                .SelectMany(present => {
+                .SelectMany(present =>
+                {
                     var firstValue = ReadOne(q.Query, present, EventsOrder.Desc);
 
-                    var values = firstValue.SelectMany(currentLatest => {
+                    var values = firstValue.SelectMany(currentLatest =>
+                    {
                         return store
                             .Subscribe(present, q.Query)
                             .SelectMany(MkEmitIf<E>(currentLatest, (candidate, current) => candidate.CompareTo(current) > 0));
@@ -255,8 +259,10 @@ namespace Actyx
                 });
         }
 
-        public IObservable<ActyxEvent<E>> ObserveEarliest<E>(LatestQuery<E> q) {
-            if (q.EventComparison == EventComparison.Timestamp) {
+        public IObservable<ActyxEvent<E>> ObserveEarliest<E>(LatestQuery<E> q)
+        {
+            if (q.EventComparison == EventComparison.Timestamp)
+            {
                 return store
                     .Subscribe(q.LowerBound, q.Query)
                     .SelectMany(MkEmitIf<E>(null, (candidate, current) => candidate.CompareTo(current) < 0));
@@ -264,10 +270,12 @@ namespace Actyx
 
             // We can optimise Lamport-ordering by letting the store figure out the current earliest event
             return Observable.FromAsync(this.Present)
-                .SelectMany(present => {
+                .SelectMany(present =>
+                {
                     var firstValue = ReadOne(q.Query, present, EventsOrder.Asc);
 
-                    var values = firstValue.SelectMany(currentLatest => {
+                    var values = firstValue.SelectMany(currentLatest =>
+                    {
                         return store
                             .Subscribe(present, q.Query)
                             .SelectMany(MkEmitIf<E>(currentLatest, (candidate, current) => candidate.CompareTo(current) < 0));
@@ -282,33 +290,38 @@ namespace Actyx
             var deser = MkAxEvt.DeserTyped<E>(NodeId);
             EventOnWire latest = initialLatest;
 
-            ActyxEvent<E>[] empty =  new ActyxEvent<E>[] {};
+            ActyxEvent<E>[] empty = new ActyxEvent<E>[] { };
 
             bool live = false;
 
-            ActyxEvent<E>[] EmitIfConditionMet(IResponseMessage r) {
-                switch (r) {
+            ActyxEvent<E>[] EmitIfConditionMet(IResponseMessage r)
+            {
+                switch (r)
+                {
                     case (OffsetsOnWire):
-                    {
-                        live = true;
-                        if (latest != null) {
-                            return new[] { deser(latest) };
-                        }
-
-                        break;
-                    }
-                    case (EventOnWire evt):
-                    {
-                        if (latest is null || shouldReplaceCur(evt, latest)) {
-                            latest = evt;
-
-                            if (live) {
+                        {
+                            live = true;
+                            if (latest != null)
+                            {
                                 return new[] { deser(latest) };
                             }
-                        }
 
-                        break;
-                    }
+                            break;
+                        }
+                    case (EventOnWire evt):
+                        {
+                            if (latest is null || shouldReplaceCur(evt, latest))
+                            {
+                                latest = evt;
+
+                                if (live)
+                                {
+                                    return new[] { deser(latest) };
+                                }
+                            }
+
+                            break;
+                        }
                 }
 
                 return empty;
@@ -325,43 +338,47 @@ namespace Actyx
             var deser = MkAxEvt.DeserTyped<E>(NodeId);
             ActyxEvent<E> curBestMatch = null;
 
-            ActyxEvent<E>[] empty =  new ActyxEvent<E>[] {};
+            ActyxEvent<E>[] empty = new ActyxEvent<E>[] { };
 
             bool live = false;
 
             // We can’t use MkEmitIf because we have to deserialize *before* checking the condition here.
-            ActyxEvent<E>[] EmitIfBetterMatch(IResponseMessage r) {
+            ActyxEvent<E>[] EmitIfBetterMatch(IResponseMessage r)
+            {
                 switch (r)
                 {
                     case (OffsetsOnWire):
-                    {
-                        live = true;
-                        if (curBestMatch != null) {
-                            return new[] { curBestMatch };
+                        {
+                            live = true;
+                            if (curBestMatch != null)
+                            {
+                                return new[] { curBestMatch };
+                            }
+                            break;
                         }
-                        break;
-                    }
 
                     case (EventOnWire evt):
-                    {
-                        var nextEvent = deser(evt);
-                        if (curBestMatch is null || shouldReplace(nextEvent, curBestMatch)) {
-                            curBestMatch = nextEvent;
+                        {
+                            var nextEvent = deser(evt);
+                            if (curBestMatch is null || shouldReplace(nextEvent, curBestMatch))
+                            {
+                                curBestMatch = nextEvent;
 
-                            if (live) {
-                                return new[] { nextEvent };
+                                if (live)
+                                {
+                                    return new[] { nextEvent };
+                                }
                             }
+                            break;
                         }
-                        break;
-                    }
                 }
 
                 return empty;
             }
 
-             return store
-                .Subscribe(null, query)
-                .SelectMany(EmitIfBetterMatch);
+            return store
+               .Subscribe(null, query)
+               .SelectMany(EmitIfBetterMatch);
         }
 
 
@@ -374,7 +391,8 @@ namespace Actyx
             var deser = MkAxEvt.DeserTyped<E>(NodeId);
 
             IObservable<R> valueFeed = Observable.FromAsync(this.Present)
-                .SelectMany(present => {
+                .SelectMany(present =>
+                {
                     IObservable<R> curVal = store
                         .Query(
                             null,

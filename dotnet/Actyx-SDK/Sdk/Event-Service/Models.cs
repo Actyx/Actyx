@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 using Actyx.Sdk.Formats;
+using Newtonsoft.Json.Linq;
 
 namespace Actyx
 {
@@ -92,7 +92,8 @@ namespace Actyx
     }
 
     /** Which clock to compare events by. Defaults to `Lamport`. @beta */
-    public enum EventComparison {
+    public enum EventComparison
+    {
         /**
          * Comparison according to Lamport clock, which is a logical clock,
          * meaning it preserves causal order even when wall clocks on devices are off.
