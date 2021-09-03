@@ -141,7 +141,7 @@ export interface EventFns {
     // @beta
     queryAql: (query: AqlQuery) => Promise<AqlResponse[]>;
     // @beta
-    queryAqlChunked: (query: AqlQuery, chunkSize: number, onChunk: (chunk: AqlResponse[]) => Promise<void> | void, onError: (err: unknown) => void) => CancelSubscription;
+    queryAqlChunked: (query: AqlQuery, chunkSize: number, onChunk: (chunk: AqlResponse[]) => Promise<void> | void, onCompleteOrError: (err?: unknown) => void) => CancelSubscription;
     queryKnownRange: (query: RangeQuery) => Promise<ActyxEvent[]>;
     queryKnownRangeChunked: (query: RangeQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
     subscribe: (query: EventSubscription, onEvent: (e: ActyxEvent) => Promise<void> | void) => CancelSubscription;
