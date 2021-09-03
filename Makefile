@@ -303,7 +303,7 @@ validate-js-sdk:
 	cd js/sdk && source ~/.nvm/nvm.sh && nvm install && \
 		npm install && \
 		npm run test && \
-		npm run build
+		npm run build:prod
 
 # validate js pond
 validate-js-pond:
