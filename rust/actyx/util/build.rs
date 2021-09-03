@@ -1,4 +1,5 @@
 use std::env;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 struct Version {
@@ -73,8 +74,22 @@ fn main() {
     println!("cargo:rustc-env=AX_PROFILE={}", profile);
     println!("cargo:rerun-if-env-changed=ACTYX_VERSION");
     println!("cargo:rerun-if-env-changed=ACTYX_VERSION_CLI");
-    println!("cargo:rerun-if-changed=../../../.git/refs/heads");
+    if let Some(git_dir) = get_parent_git_dir() {
+        println!("cargo:rerun-if-changed={}", git_dir.display());
+    }
 
     // Since target_arch armv7 does not exist, we add our own cfg parameter
     println!("cargo:rustc-cfg=AX_ARCH=\"{}\"", arch);
+}
+
+fn get_parent_git_dir() -> Option<PathBuf> {
+    let mut ptr = Path::new(".");
+    while let Some(parent) = ptr.parent() {
+        let candidate = ptr.join(".git");
+        if candidate.is_dir() {
+            return Some(candidate);
+        }
+        ptr = parent;
+    }
+    None
 }
