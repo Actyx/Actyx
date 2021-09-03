@@ -1,6 +1,10 @@
 use std::{fmt::Write, path::Path, str::FromStr, time::Duration};
 
-use actyx_sdk::{app_id, service::PrefetchRequest, tags, AppId, Payload};
+use actyx_sdk::{
+    app_id,
+    service::{DirectoryChild, FilesGetResponse, PrefetchRequest},
+    tags, AppId, Payload,
+};
 use anyhow::Context;
 use bytes::{BufMut, Bytes};
 use futures::prelude::*;
@@ -94,12 +98,19 @@ async fn serve_unixfs_node(
                     warp::reply::html(body).into_response()
                 }
             } else {
-                warp::reply::json(&swarm::FileNode::Directory {
-                    children,
+                let r = FilesGetResponse::Directory {
                     name,
-                    own_cid,
-                })
-                .into_response()
+                    cid: own_cid,
+                    children: children
+                        .into_iter()
+                        .map(|c| DirectoryChild {
+                            cid: c.cid,
+                            name: c.name,
+                            size: c.size,
+                        })
+                        .collect(),
+                };
+                warp::reply::json(&r).into_response()
             }
         }
         swarm::FileNode::File { cid, name } => ipfs::get_file(store, cid, &name).await?,

@@ -105,7 +105,7 @@ impl HttpClient {
     }
 
     fn files_url(&self) -> Url {
-        self.base_url.join("files").unwrap()
+        self.base_url.join("files/").unwrap()
     }
 
     async fn re_authenticate(&self) -> anyhow::Result<String> {

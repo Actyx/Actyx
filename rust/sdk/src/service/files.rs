@@ -1,3 +1,6 @@
+///! Files API
+///!
+///! Check the examples for a complete example for adding, listing, and retrieving files.
 use std::time::Duration;
 
 pub use libipld::Cid;
@@ -42,12 +45,13 @@ pub struct PrefetchRequest {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DirectoryChild {
-    size: u64,
-    name: String,
+    pub size: u64,
+    pub name: String,
     #[serde(with = "serde_str")]
-    cid: Cid,
+    pub cid: Cid,
 }
 
+/// Response to requesting a file.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum FilesGetResponse {
@@ -64,7 +68,7 @@ pub enum FilesGetResponse {
     },
 }
 
-pub mod serde_str {
+mod serde_str {
     //! Serializes fields annotated with `#[serde(with = "::util::serde_str")]` with their !
     //! `Display` implementation, deserializes fields using `FromStr`.
     use std::fmt::Display;

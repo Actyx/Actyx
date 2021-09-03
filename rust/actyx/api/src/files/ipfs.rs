@@ -72,10 +72,12 @@ pub(crate) async fn get_file(store: BanyanStore, cid: Cid, name: &str) -> Result
         content_type_from_content(&buf[0..buf.len().min(1024)])
     });
     let mut resp = Response::new(Body::from(buf));
-    resp.headers_mut().insert(
-        CONTENT_DISPOSITION,
-        HeaderValue::from_str(&*format!(r#"inline;filename="{}""#, name))?,
-    );
+    if name.len() > 0 {
+        resp.headers_mut().insert(
+            CONTENT_DISPOSITION,
+            HeaderValue::from_str(&*format!(r#"inline;filename="{}""#, name))?,
+        );
+    }
     if let Some(ct) = maybe_content_type {
         resp.headers_mut().insert(CONTENT_TYPE, ct);
     }
