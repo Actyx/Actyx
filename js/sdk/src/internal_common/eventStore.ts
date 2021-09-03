@@ -71,7 +71,7 @@ export type TypedMsg = {
 
 export type EventStore = {
   readonly offsets: RequestOffsets
-  readonly queryUnchecked: (aqlQuery: string) => Observable<TypedMsg>
+  readonly queryUnchecked: (aqlQuery: string, sortOrder: EventsSortOrder) => Observable<TypedMsg>
   readonly query: DoQuery
   readonly subscribe: DoSubscribe
   readonly persistEvents: DoPersistEvents

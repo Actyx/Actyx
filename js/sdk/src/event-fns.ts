@@ -127,6 +127,17 @@ export type EarliestQuery<E> = {
 /** Query for observeLatest. @beta  */
 export type LatestQuery<E> = EarliestQuery<E>
 
+/** An aql query is either a plain string, or an object containing the string and the desired order.  @beta */
+export type AqlQuery =
+  | string
+  | {
+      /** Query as AQL string */
+      query: string
+
+      /** Desired order of delivery (relative to events). Defaults to 'Asc' */
+      order?: EventsSortOrder
+    }
+
 /** Functions that operate directly on Events. @public  */
 export interface EventFns {
   /** Get the current local 'present' i.e. offsets up to which we can provide events without any gaps. */
@@ -153,7 +164,7 @@ export interface EventFns {
    * @param chunkSize   - Maximum size of chunks. Chunks may be smaller than this.
    * @param onChunk     - Callback that will be invoked with every chunk, in sequence.
    *
-   * @returns A function that can be called in order to cancel the subscription.
+   * @returns A function that can be called in order to cancel the delivery of further chunks.
    */
   queryKnownRangeChunked: (
     query: RangeQuery,
@@ -198,7 +209,25 @@ export interface EventFns {
    *
    * @beta
    */
-  queryAql: (query: string) => Promise<AqlResponse[]>
+  queryAql: (query: AqlQuery) => Promise<AqlResponse[]>
+
+  /**
+   * Run a custom AQL query and get the response messages in chunks.
+   *
+   * @param query       - AQL query
+   * @param chunkSize   - Desired chunk size
+   * @param onChunk     - Callback that will be invoked for each chunk, in sequence. Even if this is an async function (returning `Promise<void>`), there will be no concurrent invocations of it.
+   *
+   * @returns A function that can be called in order to cancel the delivery of further chunks.
+   *
+   * @beta
+   */
+  queryAqlChunked: (
+    query: AqlQuery,
+    chunkSize: number,
+    onChunk: (chunk: AqlResponse[]) => Promise<void> | void,
+    onCompleteOrError: (err?: unknown) => void,
+  ) => CancelSubscription
 
   /**
    * Subscribe to all events fitting the `query` after `lowerBound`.

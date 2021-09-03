@@ -1,4 +1,5 @@
 use std::env;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 struct Version {
@@ -45,6 +46,7 @@ fn get_version(env_var: &str) -> Version {
 
             let git_hash = format!("{}{}", hash, dirty);
 
+            println!("cargo:warning={} not set. Using \"{}-{}\"", env_var, version, git_hash);
             Version { version, git_hash }
         }
     }
@@ -73,8 +75,19 @@ fn main() {
     println!("cargo:rustc-env=AX_PROFILE={}", profile);
     println!("cargo:rerun-if-env-changed=ACTYX_VERSION");
     println!("cargo:rerun-if-env-changed=ACTYX_VERSION_CLI");
-    println!("cargo:rerun-if-changed=../../../.git/refs/heads");
+    println!("cargo:rerun-if-changed={}", get_common_git_dir().display());
 
     // Since target_arch armv7 does not exist, we add our own cfg parameter
     println!("cargo:rustc-cfg=AX_ARCH=\"{}\"", arch);
+}
+
+fn get_common_git_dir() -> PathBuf {
+    let out = Command::new("git")
+        .arg("rev-parse")
+        .arg("--git-common-dir")
+        .output()
+        .expect("Error running git rev-parse --git-common-dir")
+        .stdout;
+
+    Path::new(String::from_utf8_lossy(&out).trim()).join("refs/heads")
 }
