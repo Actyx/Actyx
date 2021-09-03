@@ -327,7 +327,7 @@ impl ApiBehaviour {
                 }
             }),
             EventsRequest::Query(request) => self.wrap(channel_id.clone(), async move {
-                match events.query(app_id!("com.actyx.cli"), request).await {
+                match events.query(app_id!("com.actyx.cli"), "1.0.0".to_owned(), request).await {
                     Ok(resp) => resp
                         .filter_map(move |x| {
                             tracing::trace!("got query response {:?}", x);
@@ -354,7 +354,7 @@ impl ApiBehaviour {
                 }
             }),
             EventsRequest::Subscribe(request) => self.wrap(channel_id.clone(), async move {
-                match events.subscribe(app_id!("com.actyx.cli"), request).await {
+                match events.subscribe(app_id!("com.actyx.cli"), "1.0.0".to_owned(), request).await {
                     Ok(resp) => resp
                         .filter_map(move |x| match x {
                             SubscribeResponse::Event(ev) => {
@@ -378,7 +378,7 @@ impl ApiBehaviour {
                 }
             }),
             EventsRequest::SubscribeMonotonic(request) => self.wrap(channel_id.clone(), async move {
-                match events.subscribe_monotonic(app_id!("com.actyx.cli"), request).await {
+                match events.subscribe_monotonic(app_id!("com.actyx.cli"), "1.0.0".to_owned(), request).await {
                     Ok(resp) => resp
                         .filter_map(move |x| match x {
                             SubscribeMonotonicResponse::Offsets(o) => ready(Some((
@@ -403,7 +403,7 @@ impl ApiBehaviour {
                 }
             }),
             EventsRequest::Publish(request) => self.wrap(channel_id.clone(), async move {
-                match events.publish(app_id!("com.actyx.cli"), request).await {
+                match events.publish(app_id!("com.actyx.cli"), "1.0.0".to_owned(), request).await {
                     Ok(resp) => stream::once(ready((channel_id, Some(EventsResponse::Publish(resp))))),
                     Err(e) => stream::once(ready((
                         channel_id,

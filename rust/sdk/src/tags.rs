@@ -284,6 +284,27 @@ impl TagSet {
         self.0.iter().cloned()
     }
 
+    pub fn iter_prefix<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item = Tag> + 'a {
+        self.0.iter().filter(move |x| x.as_ref().starts_with(prefix)).cloned()
+    }
+
+    pub fn prefix(&self, prefix: &str) -> TagSet {
+        self.0
+            .iter()
+            .map(|x| Tag::try_from(format!("{}{}", prefix, x).as_str()).unwrap())
+            .collect()
+    }
+
+    pub fn filter_prefix<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item = Tag> + 'a {
+        self.0.iter().filter_map(move |x| {
+            if x.as_ref().starts_with(prefix) {
+                x.as_ref().strip_prefix(prefix).and_then(|x| Tag::try_from(x).ok())
+            } else {
+                None
+            }
+        })
+    }
+
     pub fn len(&self) -> usize {
         self.0.len()
     }

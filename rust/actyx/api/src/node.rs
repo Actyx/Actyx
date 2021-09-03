@@ -1,18 +1,15 @@
 use std::collections::BTreeSet;
 
-use actyx_sdk::{service::NodeInfoResponse, AppId, NodeId};
+use actyx_sdk::{service::NodeInfoResponse, NodeId};
 use actyx_util::version::NodeVersion;
 use chrono::Utc;
 use swarm::BanyanStore;
 use warp::*;
 
-use crate::{
-    util::{
+use crate::{BearerToken, NodeInfo, util::{
         filters::{accept_text, authenticate, header_token},
         reject, Result,
-    },
-    NodeInfo,
-};
+    }};
 
 fn with_node_id(node_id: NodeId) -> impl Filter<Extract = (NodeId,), Error = std::convert::Infallible> + Clone {
     warp::any().map(move || node_id)
@@ -63,7 +60,7 @@ fn filter_info(
         .and_then(handle_info)
 }
 
-async fn handle_info(_app_id: AppId, store: BanyanStore, node_info: NodeInfo) -> Result<impl Reply> {
+async fn handle_info(_token: BearerToken, store: BanyanStore, node_info: NodeInfo) -> Result<impl Reply> {
     let connected_nodes = store
         .ipfs()
         .connections()

@@ -1,0 +1,21 @@
+[package]
+name = "converter-poc"
+version = "0.1.0"
+authors = ["Rüdiger Klaehn <rklaehn@protonmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actyx_sdk = { path = "../sdk", features = ["client"] }
+runtime = { path = "../actyx/runtime" }
+anyhow = "1.0.42"
+futures = "0.3.16"
+serde = "1.0.126"
+serde_derive = "1.0.126"
+serde_json = "1.0.64"
+structopt = "0.3.22"
+tokio = { version = "1.9.0", features = ["full"] }
+tracing = "0.1.26"
+tracing-subscriber = { version = "0.2.19", features = ["fmt"] }
+url = "2.2.2"

@@ -1,12 +1,8 @@
-use actyx_sdk::{
-    app_id,
-    service::{
+use actyx_sdk::{AppId, Event, Metadata, NodeId, OffsetMap, OffsetOrMin, Payload, app_id, service::{
         Diagnostic, EventResponse, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest,
         PublishResponse, PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
-    },
-    AppId, Event, NodeId, OffsetMap, OffsetOrMin, Payload,
-};
+    }};
 use futures::{
     future::ready,
     stream::{BoxStream, StreamExt},
@@ -21,6 +17,8 @@ use std::{convert::TryFrom, num::NonZeroU64};
 use swarm::event_store_ref::EventStoreRef;
 use tokio::sync::mpsc::Receiver;
 use tokio_stream::wrappers::ReceiverStream;
+
+use crate::tag_mapper::TagMapper;
 
 trait ReceiverExt<T> {
     fn stop_on_error(self) -> BoxStream<'static, T>;
@@ -47,6 +45,10 @@ impl EventService {
 }
 
 impl EventService {
+    pub fn mapper(&self) -> &TagMapper {
+        TagMapper::hardcoded()
+    }
+
     pub async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
         let offsets = self.store.offsets().await?;
         let present = offsets.present();
@@ -62,12 +64,21 @@ impl EventService {
         Ok(OffsetsResponse { present, to_replicate })
     }
 
-    pub async fn publish(&self, app_id: AppId, request: PublishRequest) -> anyhow::Result<PublishResponse> {
+    pub async fn publish(
+        &self,
+        app_id: AppId,
+        app_version: String,
+        request: PublishRequest,
+    ) -> anyhow::Result<PublishResponse> {
         let events = request
             .data
             .into_iter()
-            .map(|PublishEvent { tags, payload }| (tags, payload))
-            .collect();
+            .map(|PublishEvent { tags, payload }| {
+                self.mapper()
+                    .tag_set_write_to_global(&app_id, &app_version, &tags)
+                    .map(|tags| (tags, payload))
+            })
+            .collect::<anyhow::Result<_>>()?;
         let meta = self.store.persist(app_id, events).await?;
         let response = PublishResponse {
             data: meta
@@ -85,10 +96,13 @@ impl EventService {
 
     pub async fn query(
         &self,
-        _app_id: AppId,
+        app_id: AppId,
+        app_version: String,
         request: QueryRequest,
     ) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
-        let tag_expr = request.query.from.clone();
+        let tag_expr = self
+            .mapper()
+            .tag_expr_to_global(&app_id, &app_version, &request.query.from)?;
         let upper_bound = match request.upper_bound {
             Some(offsets) => offsets,
             None => self.store.offsets().await?.present(),
@@ -118,15 +132,18 @@ impl EventService {
         }
         .stop_on_error();
 
+        let mapper = self.mapper().clone();
         let gen = Gen::new(move |co: Co<QueryResponse>| async move {
             while let Some(ev) = stream.next().await {
-                let vs = query.feed(Some(to_value(&ev)));
-                for v in vs {
-                    co.yield_(match v {
-                        Ok(v) => QueryResponse::Event(to_event(v, Some(&ev))),
-                        Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e)),
-                    })
-                    .await;
+                if let Some(ev) = event_to_local(ev, &app_id, &app_version, &mapper) {
+                    let vs = query.feed(Some(to_value(&ev)));
+                    for v in vs {
+                        co.yield_(match v {
+                            Ok(v) => QueryResponse::Event(to_event(v, Some(&ev))),
+                            Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e)),
+                        })
+                        .await;
+                    }
                 }
             }
 
@@ -148,14 +165,15 @@ impl EventService {
 
     pub async fn subscribe(
         &self,
-        _app_id: AppId,
+        app_id: AppId,
+        app_version: String,
         request: SubscribeRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
         let present = self.store.offsets().await?.present();
         let lower_bound = request.lower_bound.unwrap_or_default();
 
         let mut query = Query::from(request.query);
-        let tag_expr = query.from.clone();
+        let tag_expr = self.mapper().tag_expr_to_global(&app_id, &app_version, &query.from)?;
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Subscribe)?;
 
@@ -169,15 +187,18 @@ impl EventService {
             .unbounded_forward(tag_expr, present.clone())
             .await?
             .stop_on_error();
+        let mapper = self.mapper().clone();
         let gen = Gen::new(move |co: Co<SubscribeResponse>| async move {
             while let Some(ev) = bounded.next().await {
-                let vs = query.feed(Some(to_value(&ev)));
-                for v in vs {
-                    co.yield_(match v {
-                        Ok(v) => SubscribeResponse::Event(to_event(v, Some(&ev))),
-                        Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
-                    })
-                    .await;
+                if let Some(ev) = event_to_local(ev, &app_id, &app_version, &mapper) {
+                    let vs = query.feed(Some(to_value(&ev)));
+                    for v in vs {
+                        co.yield_(match v {
+                            Ok(v) => SubscribeResponse::Event(to_event(v, Some(&ev))),
+                            Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
+                        })
+                        .await;
+                    }
                 }
             }
 
@@ -185,13 +206,15 @@ impl EventService {
                 .await;
 
             while let Some(ev) = unbounded.next().await {
-                let vs = query.feed(Some(to_value(&ev)));
-                for v in vs {
-                    co.yield_(match v {
-                        Ok(v) => SubscribeResponse::Event(to_event(v, Some(&ev))),
-                        Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
-                    })
-                    .await;
+                if let Some(ev) = event_to_local(ev, &app_id, &app_version, &mapper) {
+                    let vs = query.feed(Some(to_value(&ev)));
+                    for v in vs {
+                        co.yield_(match v {
+                            Ok(v) => SubscribeResponse::Event(to_event(v, Some(&ev))),
+                            Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
+                        })
+                        .await;
+                    }
                 }
             }
         });
@@ -201,7 +224,8 @@ impl EventService {
 
     pub async fn subscribe_monotonic(
         &self,
-        _app_id: AppId,
+        app_id: AppId,
+        app_version: String,
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
         let present = self.store.offsets().await?.present();
@@ -210,7 +234,7 @@ impl EventService {
         };
 
         let mut query = Query::from(request.query);
-        let tag_expr = query.from.clone();
+        let tag_expr = self.mapper().tag_expr_to_global(&app_id, &app_version, &query.from)?;
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::SubscribeMonotonic)?;
 
@@ -235,30 +259,10 @@ impl EventService {
                 .map(|event| event.key),
         };
 
+        let mapper = self.mapper().clone();
         let gen = Gen::new(move |co: Co<SubscribeMonotonicResponse>| async move {
             while let Some(ev) = bounded.next().await {
-                let vs = query.feed(Some(to_value(&ev)));
-                for v in vs {
-                    co.yield_(match v {
-                        Ok(v) => SubscribeMonotonicResponse::Event {
-                            event: to_event(v, Some(&ev)),
-                            caught_up: true,
-                        },
-                        Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
-                    })
-                    .await;
-                }
-            }
-
-            co.yield_(SubscribeMonotonicResponse::Offsets(OffsetMapResponse {
-                offsets: present,
-            }))
-            .await;
-
-            while let Some(ev) = unbounded.next().await {
-                let key = Some(ev.key);
-                if key > latest {
-                    latest = key;
+                if let Some(ev) = event_to_local(ev, &app_id, &app_version, &mapper) {
                     let vs = query.feed(Some(to_value(&ev)));
                     for v in vs {
                         co.yield_(match v {
@@ -270,10 +274,35 @@ impl EventService {
                         })
                         .await;
                     }
-                } else {
-                    co.yield_(SubscribeMonotonicResponse::TimeTravel { new_start: ev.key })
-                        .await;
-                    return;
+                }
+            }
+
+            co.yield_(SubscribeMonotonicResponse::Offsets(OffsetMapResponse {
+                offsets: present,
+            }))
+            .await;
+
+            while let Some(ev) = unbounded.next().await {
+                if let Some(ev) = event_to_local(ev, &app_id, &app_version, &mapper) {
+                    let key = Some(ev.key);
+                    if key > latest {
+                        latest = key;
+                        let vs = query.feed(Some(to_value(&ev)));
+                        for v in vs {
+                            co.yield_(match v {
+                                Ok(v) => SubscribeMonotonicResponse::Event {
+                                    event: to_event(v, Some(&ev)),
+                                    caught_up: true,
+                                },
+                                Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
+                            })
+                            .await;
+                        }
+                    } else {
+                        co.yield_(SubscribeMonotonicResponse::TimeTravel { new_start: ev.key })
+                            .await;
+                        return;
+                    }
                 }
             }
         });
@@ -282,8 +311,35 @@ impl EventService {
     }
 }
 
+fn event_to_local(ev: Event<Payload>, target_app_id: &AppId, target_app_version: &String, mapper: &TagMapper) -> Option<Event<Payload>> {
+    let Event {
+        key,
+        payload,
+        meta:
+            Metadata {
+                timestamp,
+                tags,
+                app_id,
+            },
+    } = ev;
+    let tags = mapper.tag_set_to_local(target_app_id, target_app_version, &tags);
+    if !tags.is_empty() {
+        Some(Event {
+            key,
+            payload,
+            meta: Metadata {
+                timestamp,
+                tags,
+                app_id,
+            },
+        })
+    } else {
+        None
+    }
+}
+
 fn to_value(event: &Event<Payload>) -> Value {
-    Value::from((event.key, event.payload.clone()))
+    Value::from((event.key.clone(), event.payload.clone()))
 }
 fn to_event(value: Value, event: Option<&Event<Payload>>) -> EventResponse<Payload> {
     match event {

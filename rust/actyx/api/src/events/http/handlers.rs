@@ -1,20 +1,18 @@
 use super::ndjson;
 
-use actyx_sdk::{
-    service::{PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
-    AppId,
-};
+use actyx_sdk::service::{PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest};
 use warp::*;
 
 use crate::{
     events::service::EventService,
     rejections::ApiError,
     util::{self, Result},
+    BearerToken,
 };
 use runtime::features::FeatureError;
 use swarm::event_store_ref;
 
-pub async fn offsets(_app_id: AppId, event_service: EventService) -> Result<impl Reply> {
+pub async fn offsets(_bearer_token: BearerToken, event_service: EventService) -> Result<impl Reply> {
     event_service
         .offsets()
         .await
@@ -23,37 +21,61 @@ pub async fn offsets(_app_id: AppId, event_service: EventService) -> Result<impl
         .map_err(reject)
 }
 
-pub async fn publish(app_id: AppId, request: PublishRequest, event_service: EventService) -> Result<impl Reply> {
+pub async fn publish(
+    bearer_token: BearerToken,
+    request: PublishRequest,
+    event_service: EventService,
+) -> Result<impl Reply> {
+    let BearerToken {
+        app_id, app_version, ..
+    } = bearer_token;
     event_service
-        .publish(app_id, request)
+        .publish(app_id, app_version, request)
         .await
         .map(|reply| reply::json(&reply))
         .map_err(reject)
 }
 
-pub async fn query(app_id: AppId, request: QueryRequest, event_service: EventService) -> Result<impl Reply> {
+pub async fn query(
+    bearer_token: BearerToken,
+    request: QueryRequest,
+    event_service: EventService,
+) -> Result<impl Reply> {
+    let BearerToken {
+        app_id, app_version, ..
+    } = bearer_token;
     event_service
-        .query(app_id, request)
+        .query(app_id, app_version, request)
         .await
         .map(|events| ndjson::reply(ndjson::keep_alive().stream(events)))
         .map_err(reject)
 }
 
-pub async fn subscribe(app_id: AppId, request: SubscribeRequest, event_service: EventService) -> Result<impl Reply> {
+pub async fn subscribe(
+    bearer_token: BearerToken,
+    request: SubscribeRequest,
+    event_service: EventService,
+) -> Result<impl Reply> {
+    let BearerToken {
+        app_id, app_version, ..
+    } = bearer_token;
     event_service
-        .subscribe(app_id, request)
+        .subscribe(app_id, app_version, request)
         .await
         .map(|events| ndjson::reply(ndjson::keep_alive().stream(events)))
         .map_err(reject)
 }
 
 pub async fn subscribe_monotonic(
-    app_id: AppId,
+    bearer_token: BearerToken,
     request: SubscribeMonotonicRequest,
     event_service: EventService,
 ) -> Result<impl Reply> {
+    let BearerToken {
+        app_id, app_version, ..
+    } = bearer_token;
     event_service
-        .subscribe_monotonic(app_id, request)
+        .subscribe_monotonic(app_id, app_version, request)
         .await
         .map(|events| ndjson::reply(ndjson::keep_alive().stream(events)))
         .map_err(reject)

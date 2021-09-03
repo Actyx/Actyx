@@ -41,6 +41,7 @@ tree_magic = "0.2.3"
 warp = "0.3.1"
 wsrpc = "0.2.0"
 genawaiter = { version = "0.99.1", features = ["futures03"] }
+lazy_static = "1.4.0"
 
 [dev-dependencies]
 bytes = "1.0.1"

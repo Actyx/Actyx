@@ -1,10 +1,9 @@
-use actyx_sdk::AppId;
 use warp::filters::*;
 use warp::*;
 
 use crate::events::{http::handlers, service::EventService};
 use crate::util::filters::{accept_json, accept_ndjson, authenticate, header_token};
-use crate::NodeInfo;
+use crate::{BearerToken, NodeInfo};
 
 pub fn with_service(
     event_service: EventService,
@@ -12,7 +11,7 @@ pub fn with_service(
     any().map(move || event_service.clone())
 }
 
-fn authorize(node_info: NodeInfo) -> impl Filter<Extract = (AppId,), Error = Rejection> + Clone {
+fn authorize(node_info: NodeInfo) -> impl Filter<Extract = (BearerToken,), Error = Rejection> + Clone {
     authenticate(node_info, header_token())
 }
 

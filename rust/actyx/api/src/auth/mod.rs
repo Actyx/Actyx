@@ -11,6 +11,7 @@ use warp::*;
 use crate::{
     formats::Licensing,
     rejections::ApiError,
+    tag_mapper::TagMapper,
     util::{filters::accept_json, reject, NodeInfo, Token},
     AppMode, BearerToken,
 };
@@ -25,8 +26,8 @@ fn mk_success_log_msg(token: &BearerToken) -> String {
         AppMode::Signed => "<testing|production>",
     };
     format!(
-        "Successfully authenticated and authorized {} for {} usage (auth token expires {})",
-        token.app_id, mode, expiration_time
+        "Successfully authenticated and authorized {} version {} for {} usage (auth token expires {})",
+        token.app_id, token.app_version, mode, expiration_time
     )
 }
 
@@ -46,6 +47,15 @@ pub(crate) fn create_token(
     };
     let bytes = serde_cbor::to_vec(&token)?;
     let signed = node_info.key_store.read().sign(bytes, vec![node_info.node_id.into()])?;
+    let mapping = TagMapper::hardcoded().get_mapping(&token.app_id, &token.app_version);
+    if let Some(mapping) = mapping {
+        info!(
+            "Using mapping for {} {}: {:?}",
+            token.app_id, token.app_version, mapping
+        );
+    } else {
+        error!("No mapping defined for {} {}", token.app_id, token.app_version);
+    }
     info!(target: "AUTH", "{}", mk_success_log_msg(&token));
     Ok(base64::encode(signed).into())
 }

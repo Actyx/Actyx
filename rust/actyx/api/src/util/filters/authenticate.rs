@@ -1,4 +1,4 @@
-use actyx_sdk::{types::Binary, AppId};
+use actyx_sdk::types::Binary;
 use crypto::SignedMessage;
 use std::convert::TryInto;
 use tracing::{debug, info};
@@ -71,12 +71,11 @@ pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Cl
 pub(crate) fn authenticate(
     node_info: NodeInfo,
     token: impl Filter<Extract = (Token,), Error = Rejection> + Clone,
-) -> impl Filter<Extract = (AppId,), Error = Rejection> + Clone {
+) -> impl Filter<Extract = (BearerToken,), Error = Rejection> + Clone {
     token.and_then(move |t: Token| {
         let auth_args = node_info.clone();
         async move {
             let res = verify(auth_args, t)
-                .map(|bearer_token| bearer_token.app_id)
                 // TODO: add necessary checks for the flow from the PRD
                 .map_err(warp::reject::custom);
             if res.is_err() {
@@ -131,7 +130,9 @@ mod tests {
         let (auth_args, bearer) = setup(None);
         let filter = authenticate(auth_args, header_token());
         let req = warp::test::request().header("Authorization", format!("Bearer {}", bearer));
-        assert_eq!(req.filter(&filter).await.unwrap(), app_id!("test-app"));
+        let bearer_token = req.filter(&filter).await.unwrap();
+        assert_eq!(bearer_token.app_id, app_id!("test-app"));
+        assert_eq!(bearer_token.app_version, "1.0.0");
     }
 
     #[tokio::test]
@@ -168,7 +169,9 @@ mod tests {
         let (auth_args, bearer) = setup(None);
         let filter = authenticate(auth_args, query_token());
         let req = warp::test::request().path(&format!("/p?{}", bearer));
-        assert_eq!(req.filter(&filter).await.unwrap(), app_id!("test-app"));
+        let bearer_token = req.filter(&filter).await.unwrap();
+        assert_eq!(bearer_token.app_id, app_id!("test-app"));
+        assert_eq!(bearer_token.app_version, "1.0.0");
     }
 
     #[tokio::test]

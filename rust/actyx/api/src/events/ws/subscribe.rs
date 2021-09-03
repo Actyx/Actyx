@@ -1,14 +1,11 @@
-use actyx_sdk::{
-    service::{SubscribeRequest, SubscribeResponse},
-    AppId,
-};
+use actyx_sdk::service::{SubscribeRequest, SubscribeResponse};
 use futures::{
     stream::{self, BoxStream},
     FutureExt, StreamExt,
 };
 use wsrpc::Service;
 
-use crate::events::service::EventService;
+use crate::{events::service::EventService, BearerToken};
 
 pub struct Subscribe {
     event_service: EventService,
@@ -18,13 +15,16 @@ impl Service for Subscribe {
     type Req = SubscribeRequest;
     type Resp = SubscribeResponse;
     type Error = String;
-    type Ctx = AppId;
+    type Ctx = BearerToken;
 
-    fn serve(&self, app_id: AppId, req: Self::Req) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
+    fn serve(&self, bearer_token: BearerToken, req: Self::Req) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
         let service = self.event_service.clone();
+        let BearerToken {
+            app_id, app_version, ..
+        } = bearer_token;
         async move {
             service
-                .subscribe(app_id, req)
+                .subscribe(app_id, app_version, req)
                 .map(move |x| match x {
                     Ok(stream) => stream.map(Ok).left_stream(),
                     Err(e) => stream::once(futures::future::err(e.to_string())).right_stream(),

@@ -188,6 +188,7 @@ dependencies = [
  "genawaiter",
  "hyper",
  "itertools 0.10.1",
+ "lazy_static",
  "libipld",
  "maplit",
  "mime_guess",

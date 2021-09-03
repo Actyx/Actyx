@@ -4,6 +4,7 @@ pub mod formats;
 mod ipfs_file_gateway;
 mod node;
 mod rejections;
+mod tag_mapper;
 #[cfg(test)]
 mod tests;
 mod util;
