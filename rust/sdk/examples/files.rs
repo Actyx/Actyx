@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 use actyx_sdk::{app_id, service::DirectoryChild, AppManifest, HttpClient};
 use asynchronous_codec::{BytesCodec, Framed};
@@ -52,6 +55,13 @@ enum Command {
         #[structopt(short, long)]
         output: PathBuf,
     },
+    // Display the data
+    Cat {
+        /// Name or a Cid, and an optional path
+        /// Examples: bafybeibogm7ogaite4rjjnw6laiszuxw5hvwkp2cj726rr7zup3yw34tea,
+        /// <cid>/types
+        name_or_cid: String,
+    },
 }
 
 #[tokio::main]
@@ -76,6 +86,14 @@ pub async fn main() -> anyhow::Result<()> {
             get_file_or_dir(service, name_or_cid, output.clone()).await?;
             println!("Please find your output in {}", output.display());
         }
+        Command::Cat { name_or_cid } => match service.files_get(&name_or_cid).await? {
+            actyx_sdk::service::FilesGetResponse::File { bytes, .. } => {
+                std::io::stdout().lock().write_all(&bytes[..])?;
+            }
+            actyx_sdk::service::FilesGetResponse::Directory { .. } => {
+                anyhow::bail!("{} is a directory", name_or_cid);
+            }
+        },
     }
 
     Ok(())
