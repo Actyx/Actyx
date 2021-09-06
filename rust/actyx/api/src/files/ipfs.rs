@@ -70,16 +70,18 @@ pub(crate) async fn get_file_raw(store: BanyanStore, cid: Cid, name: &str) -> an
         r.headers_mut().insert(CONTENT_TYPE, HeaderValue::from_str(&ct)?);
         r
     } else {
-        let mut buf = vec![];
-        pin_mut!(s);
-        while let Some(r) = s.next().await {
-            let mut bytes = r?;
-            buf.append(&mut bytes);
-        }
+        let mut s = Box::pin(s.peekable());
+        let buf = s
+            .as_mut()
+            .peek()
+            .await
+            .context("empty stream")?
+            .as_ref()
+            .map_err(|e| anyhow::anyhow!("{:#}", e))?;
+        tracing::debug!(%cid, %name, size=buf.len(), "Detecting content-type from content");
 
-        tracing::span!(tracing::Level::DEBUG, "Detecting content-type from content", %cid, %name, size=buf.len());
         let ct = content_type_from_content(&buf[..buf.len().min(1024)]);
-        let mut r = Response::new(Body::from(buf));
+        let mut r = Response::new(Body::wrap_stream(s));
         if let Some(ct) = ct {
             r.headers_mut().insert(CONTENT_TYPE, HeaderValue::from_str(&ct)?);
         }
