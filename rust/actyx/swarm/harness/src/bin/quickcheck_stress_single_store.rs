@@ -75,7 +75,7 @@ fn main() {
                 concurrent_subscribes
             );
             let max_offset = Offset::try_from(
-                (concurrent_publishes as u32 * publish_chunk_size as u32 * publish_chunks_per_client as u32) - 1,
+                (concurrent_publishes as u32 * publish_chunk_size as u32 * publish_chunks_per_client as u32) - 1 + 1, // + 1 for files API
             )
             .unwrap();
 

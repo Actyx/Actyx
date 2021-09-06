@@ -78,7 +78,7 @@ async fn migration_dir() -> anyhow::Result<()> {
                         tmp.path(),
                         std::iter::once((
                             StreamId::from_str("Zg/1L3Tm5xWNV94nFsjaIO8s3kW6Sj1y4fzQR5zcVeo-0")?,
-                            4.into(),
+                            5.into(),
                         )),
                         0,
                     )
@@ -89,7 +89,7 @@ async fn migration_dir() -> anyhow::Result<()> {
                         tmp.path(),
                         std::iter::once((
                             StreamId::from_str("pEZIcZtKHtHuV.JbKrldCcUnvIY6Y2f2U4L3oofMVL6-0")?,
-                            10.into(),
+                            11.into(),
                         )),
                         1,
                     )
@@ -101,7 +101,7 @@ async fn migration_dir() -> anyhow::Result<()> {
                         tmp.path(),
                         std::iter::once((
                             StreamId::from_str("pEZIcZtKHtHuV.JbKrldCcUnvIY6Y2f2U4L3oofMVL6-0")?,
-                            9.into(),
+                            10.into(),
                         )),
                     )
                     .await?;
@@ -135,7 +135,7 @@ async fn migration_v1_find_old_working_dir() -> anyhow::Result<()> {
             v2_working_dir,
             std::iter::once((
                 StreamId::from_str("pEZIcZtKHtHuV.JbKrldCcUnvIY6Y2f2U4L3oofMVL6-0")?,
-                10.into(),
+                11.into(),
             )),
             1,
         )
