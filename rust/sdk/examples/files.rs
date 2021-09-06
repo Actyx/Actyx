@@ -84,15 +84,21 @@ pub async fn main() -> anyhow::Result<()> {
 fn list_file_or_dir(client: &HttpClient, name_or_cid: String, level: usize) -> BoxFuture<'_, anyhow::Result<()>> {
     async move {
         let response = client.files_get(&*name_or_cid).await?;
-        if let actyx_sdk::service::FilesGetResponse::Directory { name, cid, children } = response {
-            let indent = level * 4;
-            if indent == 0 {
-                println!("{:<34}{:<10}{:<10}", name, 0, cid);
+        match response {
+            actyx_sdk::service::FilesGetResponse::File { name, bytes, mime } if level == 0 => {
+                println!("{} ({}): {}", name, mime, bytes.len());
             }
-            for DirectoryChild { cid, name, size } in children {
-                println!("{:indent$}├── {:<30}{:<10}{:<10}", "", name, size, cid, indent = indent);
-                list_file_or_dir(client, cid.to_string(), level + 1).await?;
+            actyx_sdk::service::FilesGetResponse::Directory { name, cid, children } => {
+                let indent = level * 4;
+                if indent == 0 {
+                    println!("{:<34}{:<10}{:<10}", name, 0, cid);
+                }
+                for DirectoryChild { cid, name, size } in children {
+                    println!("{:indent$}├── {:<30}{:<10}{:<10}", "", name, size, cid, indent = indent);
+                    list_file_or_dir(client, cid.to_string(), level + 1).await?;
+                }
             }
+            _ => {}
         }
         Ok(())
     }

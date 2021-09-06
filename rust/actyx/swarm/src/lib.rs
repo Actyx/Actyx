@@ -75,7 +75,7 @@ use std::{
     collections::{BTreeMap, VecDeque},
     convert::TryFrom,
     fmt::{Debug, Display},
-    io::{BufRead, BufReader, BufWriter, Read, Write},
+    io::{BufRead, BufReader, Read},
     num::NonZeroU32,
     ops::{Deref, DerefMut, RangeInclusive},
     path::PathBuf,
@@ -88,8 +88,8 @@ use trees::{
     tags::{ScopedTag, ScopedTagSet},
     AxTree, AxTreeHeader,
 };
-use unixfs_v1::dir::MaybeResolved;
 use unixfs_v1::file::{adder::FileAdder, visit::IdleFileVisit};
+use unixfs_v1::{dir::MaybeResolved, file::visit::FileVisit};
 use util::{
     formats::NodeErrorContext,
     reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
@@ -937,20 +937,27 @@ impl BanyanStore {
 
     /// Retrieves the contents of a unixfs-v1 File  from the store. Make sure to sync the `Cid`
     /// first as this doesn't do any networking.
-    pub fn cat(&self, cid: &Cid, writer: impl Write) -> Result<()> {
-        let mut writer = BufWriter::new(writer);
-        let block = self.ipfs().get(cid)?;
-        let (content, _, _metadata, mut step) = IdleFileVisit::default().start(block.data())?;
-        writer.write_all(content)?;
-        while let Some(visit) = step {
-            let (cid, _) = visit.pending_links();
-            let block = self.ipfs().get(cid)?;
-            let (content, next_step) = visit.continue_walk(block.data(), &mut None)?;
-            writer.write_all(content)?;
-            step = next_step;
-        }
-        writer.flush()?;
-        Ok(())
+    pub fn cat(&self, cid: Cid) -> impl Stream<Item = anyhow::Result<Vec<u8>>> {
+        stream::try_unfold(
+            (self.ipfs().clone(), None, true),
+            move |(ipfs, maybe_step, is_first): (Ipfs, Option<FileVisit>, bool)| async move {
+                if is_first {
+                    debug_assert!(maybe_step.is_none());
+
+                    let block = ipfs.get(&cid)?;
+                    let (content, _, _, step) = IdleFileVisit::default().start(block.data())?;
+                    Ok(Some((content.to_vec(), (ipfs, step, false))))
+                } else if let Some(visit) = maybe_step {
+                    let (cid, _) = visit.pending_links();
+                    let block = ipfs.get(cid)?;
+                    let (content, next_step) = visit.continue_walk(block.data(), &mut None)?;
+
+                    Ok(Some((content.to_vec(), (ipfs, next_step, false))))
+                } else {
+                    Ok(None)
+                }
+            },
+        )
     }
 
     /// Adds a binary blob to the store. Requires aliasing and flushing before dropping the

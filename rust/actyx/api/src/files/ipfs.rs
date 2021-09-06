@@ -1,5 +1,6 @@
-use actyx_sdk::AppId;
+use actyx_sdk::{service::FilesGetResponse, AppId};
 use anyhow::{Context, Result};
+use futures::{pin_mut, Stream, StreamExt};
 use http::header::CONTENT_DISPOSITION;
 use libipld::cid::Cid;
 use percent_encoding::percent_decode_str;
@@ -42,46 +43,82 @@ impl FromStr for IpfsQuery {
     }
 }
 
-pub fn content_type_from_ext(name: &str) -> Option<HeaderValue> {
+pub fn content_type_from_ext(name: &str) -> Option<String> {
     let ext = Path::new(name).extension()?.to_str()?;
     let mime = mime_guess::from_ext(ext).first_raw()?;
     debug!("detected mime type {} from extension ({})", mime, ext);
-    HeaderValue::from_str(mime).ok()
+    Some(mime.into())
 }
 
-pub fn content_type_from_content(chunk: &[u8]) -> Option<HeaderValue> {
+pub fn content_type_from_content(chunk: &[u8]) -> Option<String> {
     let mime = tree_magic::from_u8(chunk);
     debug!("detected mime type {} from content", mime);
-    HeaderValue::from_str(&mime).ok()
+    Some(mime)
 }
 
-#[tracing::instrument(level = "debug", skip(store))]
-pub(crate) async fn get_file(store: BanyanStore, cid: Cid, name: &str) -> Result<Response<Body>, anyhow::Error> {
-    let content_header_from_ext = content_type_from_ext(name);
+pub async fn get_file(store: BanyanStore, cid: Cid) -> anyhow::Result<impl Stream<Item = anyhow::Result<Vec<u8>>>> {
     let tmp = store.ipfs().create_temp_pin()?;
     store.ipfs().temp_pin(&tmp, &cid)?;
 
     store.ipfs().sync(&cid, store.ipfs().peers()).await?;
-    let mut buf = vec![];
-    store.cat(&cid, &mut buf)?;
+    Ok(store.cat(cid))
+}
 
-    // extension takes precedence over content
-    let maybe_content_type = content_header_from_ext.or_else(|| {
-        tracing::span!(tracing::Level::DEBUG, "Detecting content-type", %cid, size=buf.len());
-        // This is fairly expensive, so only look at the first kb
-        content_type_from_content(&buf[0..buf.len().min(1024)])
-    });
-    let mut resp = Response::new(Body::from(buf));
-    if name.len() > 0 {
-        resp.headers_mut().insert(
+pub(crate) async fn get_file_raw(store: BanyanStore, cid: Cid, name: &str) -> anyhow::Result<Response<Body>> {
+    let s = get_file(store, cid).await?;
+    let mut response = if let Some(ct) = content_type_from_ext(name) {
+        let mut r = Response::new(Body::wrap_stream(s));
+        r.headers_mut().insert(CONTENT_TYPE, HeaderValue::from_str(&ct)?);
+        r
+    } else {
+        let mut buf = vec![];
+        pin_mut!(s);
+        while let Some(r) = s.next().await {
+            let mut bytes = r?;
+            buf.append(&mut bytes);
+        }
+
+        tracing::span!(tracing::Level::DEBUG, "Detecting content-type from content", %cid, %name, size=buf.len());
+        let ct = content_type_from_content(&buf[..buf.len().min(1024)]);
+        let mut r = Response::new(Body::from(buf));
+        if let Some(ct) = ct {
+            r.headers_mut().insert(CONTENT_TYPE, HeaderValue::from_str(&ct)?);
+        }
+        r
+    };
+
+    if !name.is_empty() {
+        response.headers_mut().insert(
             CONTENT_DISPOSITION,
             HeaderValue::from_str(&*format!(r#"inline;filename="{}""#, name))?,
         );
     }
-    if let Some(ct) = maybe_content_type {
-        resp.headers_mut().insert(CONTENT_TYPE, ct);
+    Ok(response)
+}
+
+pub(crate) async fn get_file_structured(store: BanyanStore, cid: Cid, name: &str) -> anyhow::Result<FilesGetResponse> {
+    let s = get_file(store, cid).await?;
+    let mut bytes = vec![];
+    pin_mut!(s);
+    while let Some(r) = s.next().await {
+        let mut b = r?;
+        bytes.append(&mut b);
     }
-    Ok(resp)
+    let mime = content_type_from_ext_or_buf(name, &bytes[..]).unwrap_or_else(|| "application/octet-stream".into());
+    let r = FilesGetResponse::File {
+        name: name.to_string(),
+        bytes,
+        mime,
+    };
+    Ok(r)
+}
+
+pub(crate) fn content_type_from_ext_or_buf(name: &str, buf: &[u8]) -> Option<String> {
+    content_type_from_ext(name).or_else(|| {
+        tracing::span!(tracing::Level::DEBUG, "Detecting content-type", %name, size=buf.len());
+        // This is fairly expensive, so only look at the first kb
+        content_type_from_content(&buf[0..buf.len().min(1024)])
+    })
 }
 
 pub(crate) fn extract_name_or_cid_from_host(

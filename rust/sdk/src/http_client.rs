@@ -7,11 +7,7 @@ use futures::{
     stream::{iter, BoxStream, Stream, StreamExt},
 };
 use libipld::Cid;
-use reqwest::{
-    header::{CONTENT_DISPOSITION, CONTENT_TYPE},
-    multipart::Form,
-    Client, RequestBuilder, Response, StatusCode,
-};
+use reqwest::{header::ACCEPT, multipart::Form, Client, RequestBuilder, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Debug,
@@ -218,32 +214,12 @@ impl HttpClient {
 
     pub async fn files_get(&self, cid_or_name: &str) -> anyhow::Result<FilesGetResponse> {
         let url = self.files_url().join(cid_or_name)?;
-        let response = self.do_request(move |c| c.get(url)).await?;
+        let response = self
+            .do_request(move |c| c.get(url).header(ACCEPT, "application/json"))
+            .await?;
 
-        let maybe_name = response.headers().get(CONTENT_DISPOSITION).cloned();
-        let maybe_mime = response.headers().get(CONTENT_TYPE).cloned();
         let bytes = response.bytes().await?;
-        if let Ok(dir @ FilesGetResponse::Directory { .. }) = serde_json::from_slice(bytes.as_ref()) {
-            Ok(dir)
-        } else {
-            let mime = maybe_mime
-                .and_then(|h| h.to_str().ok().map(|x| x.to_string()))
-                .unwrap_or_else(|| "application/octet-stream".to_string());
-            let name = maybe_name
-                .and_then(|n| {
-                    n.to_str().ok().and_then(|p| {
-                        p.split(';')
-                            .find(|x| x.starts_with("filename="))
-                            .map(|f| f.trim_start_matches("filename=").to_string())
-                    })
-                })
-                .unwrap_or_else(|| "".to_string());
-            Ok(FilesGetResponse::File {
-                name,
-                bytes: bytes.to_vec(),
-                mime,
-            })
-        }
+        Ok(serde_json::from_slice(bytes.as_ref())?)
     }
 }
 

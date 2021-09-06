@@ -83,7 +83,7 @@ async fn serve_unixfs_node(
                     .then(|| children.iter().find(|x| &*x.name == "index.html"))
                     .flatten()
                 {
-                    ipfs::get_file(store, index_html.cid, &index_html.name).await?
+                    ipfs::get_file_raw(store, index_html.cid, &index_html.name).await?
                 } else if !uri_path.as_str().ends_with('/') {
                     // Add trailing slash so the links in the directory listings
                     // work as intended.
@@ -113,7 +113,17 @@ async fn serve_unixfs_node(
                 warp::reply::json(&r).into_response()
             }
         }
-        swarm::FileNode::File { cid, name } => ipfs::get_file(store, cid, &name).await?,
+        swarm::FileNode::File { cid, name } => {
+            if accept_headers
+                .as_deref()
+                .map(|x| x.to_lowercase().contains("application/json"))
+                .unwrap_or_default()
+            {
+                warp::reply::json(&ipfs::get_file_structured(store, cid, &name).await?).into_response()
+            } else {
+                ipfs::get_file_raw(store, cid, &name).await?
+            }
+        }
     })
 }
 
