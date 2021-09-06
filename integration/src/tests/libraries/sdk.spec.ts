@@ -120,7 +120,7 @@ describe('@actyx/sdk', () => {
 
       const runBadQuery = actyx.queryKnownRange({ query: Tag('x'), upperBound: badOffsets })
 
-      await expect(runBadQuery).resolves.toBeTruthy()
+      await expect(runBadQuery).rejects.toBeTruthy()
 
       await assertNormalOperationsAndDispose(actyx)
     })
