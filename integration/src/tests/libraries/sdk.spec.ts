@@ -151,7 +151,7 @@ describe('@actyx/sdk', () => {
   })
 
   const assertNormalOperationsAndDispose = async (actyx: Actyx) => {
-    const okTag = Tag('ok')
+    const okTag = Tag('ok' + Math.random())
     const g = actyx.publish(okTag.apply('hello'))
     await expect(g).resolves.toBeTruthy()
 
