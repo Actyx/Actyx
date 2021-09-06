@@ -16,6 +16,6 @@ settings:
   # and the spawned hosts alive, so that you can investigate them. ctrl-C will kill them.
   keepNodesRunning: false
   # Set this to a specific hash instead of null to use Docker artifacts from that commit.
-  gitHash: null
+  gitHash: d640b35e9981aef6fe93f42b6b4acbb1d23487bf
   # Rather than writing all logs to individual files, dump everything on stdout
   logToStdout: false
