@@ -109,7 +109,7 @@ describe('@actyx/sdk', () => {
     })
   })
 
-  test('query error still allows more emissions, and queries, afterwards', async () => {
+  test('query (complete) error still allows more emissions, and queries, afterwards', async () => {
     await runOnEvery(async (node) => {
       const actyx = await Actyx.of(trialManifest, {
         actyxPort: node._private.apiPort,
@@ -118,7 +118,31 @@ describe('@actyx/sdk', () => {
       // The only real query error we can produce is bad offsets
       const badOffsets = { foo: 5000 }
 
-      const runBadQuery = actyx.queryKnownRange({ upperBound: badOffsets })
+      const runBadQuery = actyx.queryKnownRange({ query: Tag('x'), upperBound: badOffsets })
+
+      await expect(runBadQuery).resolves.toBeTruthy()
+
+      await assertNormalOperationsAndDispose(actyx)
+    })
+  })
+
+  test('query (chunked) error still allows more emissions, and queries, afterwards', async () => {
+    await runOnEvery(async (node) => {
+      const actyx = await Actyx.of(trialManifest, {
+        actyxPort: node._private.apiPort,
+      })
+
+      // The only real query error we can produce is bad offsets
+      const badOffsets = { foo: 5000 }
+
+      const runBadQuery = new Promise((resolve, reject) =>
+        actyx.queryKnownRangeChunked(
+          { query: Tag('x'), upperBound: badOffsets },
+          20,
+          (result) => resolve(result),
+          () => reject('err ok'),
+        ),
+      )
 
       await expect(runBadQuery).rejects.toBeTruthy()
 
