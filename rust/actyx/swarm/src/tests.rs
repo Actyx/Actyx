@@ -258,7 +258,7 @@ async fn test_add_cat() -> Result<()> {
     let tmp = store.ipfs().create_temp_pin()?;
     let (root, _) = store.add(&tmp, &data[..])?;
     let mut buf = Vec::with_capacity(16_000_000);
-    let stream = store.cat(root);
+    let stream = store.cat(root, true);
     pin_mut!(stream);
     while let Some(res) = stream.next().await {
         let mut bytes = res?;

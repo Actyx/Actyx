@@ -60,8 +60,7 @@ pub async fn get_file(store: BanyanStore, cid: Cid) -> anyhow::Result<impl Strea
     let tmp = store.ipfs().create_temp_pin()?;
     store.ipfs().temp_pin(&tmp, &cid)?;
 
-    store.ipfs().sync(&cid, store.ipfs().peers()).await?;
-    Ok(store.cat(cid))
+    Ok(store.cat(cid, false))
 }
 
 pub(crate) async fn get_file_raw(store: BanyanStore, cid: Cid, name: &str) -> anyhow::Result<Response<Body>> {

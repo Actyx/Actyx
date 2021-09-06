@@ -935,21 +935,24 @@ impl BanyanStore {
         Ok(Some(block.into_inner().0))
     }
 
-    /// Retrieves the contents of a unixfs-v1 File  from the store. Make sure to sync the `Cid`
-    /// first as this doesn't do any networking.
-    pub fn cat(&self, cid: Cid) -> impl Stream<Item = anyhow::Result<Vec<u8>>> {
+    /// Retrieves the contents of a unixfs-v1 File from the store. If the `pre_sync` bool is set,
+    /// the cid will be synced at the beginning. If not, blocks will be fetched on demand.
+    pub fn cat(&self, cid: Cid, pre_sync: bool) -> impl Stream<Item = anyhow::Result<Vec<u8>>> {
         stream::try_unfold(
             (self.ipfs().clone(), None, true),
             move |(ipfs, maybe_step, is_first): (Ipfs, Option<FileVisit>, bool)| async move {
                 if is_first {
                     debug_assert!(maybe_step.is_none());
+                    if pre_sync {
+                        ipfs.sync(&cid, ipfs.peers()).await?;
+                    }
 
-                    let block = ipfs.get(&cid)?;
+                    let block = ipfs.fetch(&cid, ipfs.peers()).await?;
                     let (content, _, _, step) = IdleFileVisit::default().start(block.data())?;
                     Ok(Some((content.to_vec(), (ipfs, step, false))))
                 } else if let Some(visit) = maybe_step {
                     let (cid, _) = visit.pending_links();
-                    let block = ipfs.get(cid)?;
+                    let block = ipfs.fetch(&cid, ipfs.peers()).await?;
                     let (content, next_step) = visit.continue_walk(block.data(), &mut None)?;
 
                     Ok(Some((content.to_vec(), (ipfs, next_step, false))))
