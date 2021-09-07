@@ -89,6 +89,79 @@ describe('@actyx/sdk', () => {
     })
   })
 
+  test('event emission error still allows more emissions, and queries, afterwards', async () => {
+    await runOnEvery(async (node) => {
+      const actyx = await Actyx.of(trialManifest, {
+        actyxPort: node._private.apiPort,
+      })
+
+      // The only real error we can produce is "event too large"
+      const badEvent = []
+      for (let i = 0; i < Math.pow(2, 22); i++) {
+        badEvent.push(i)
+      }
+
+      const persistBadEvent = actyx.publish(Tag('x').apply(badEvent))
+
+      await expect(persistBadEvent).rejects.toBeTruthy()
+
+      await assertNormalOperationsAndDispose(actyx)
+    })
+  })
+
+  test('query (complete) error still allows more emissions, and queries, afterwards', async () => {
+    await runOnEvery(async (node) => {
+      const actyx = await Actyx.of(trialManifest, {
+        actyxPort: node._private.apiPort,
+      })
+
+      // The only real query error we can produce is bad offsets
+      const badOffsets = { foo: 5000 }
+
+      const runBadQuery = actyx.queryKnownRange({ query: Tag('x'), upperBound: badOffsets })
+
+      await expect(runBadQuery).rejects.toBeTruthy()
+
+      await assertNormalOperationsAndDispose(actyx)
+    })
+  })
+
+  test('query (chunked) error still allows more emissions, and queries, afterwards', async () => {
+    await runOnEvery(async (node) => {
+      const actyx = await Actyx.of(trialManifest, {
+        actyxPort: node._private.apiPort,
+      })
+
+      // The only real query error we can produce is bad offsets
+      const badOffsets = { foo: 5000 }
+
+      const runBadQuery = new Promise((resolve, reject) =>
+        actyx.queryKnownRangeChunked(
+          { query: Tag('x'), upperBound: badOffsets },
+          20,
+          (result) => resolve(result),
+          () => reject('err ok'),
+        ),
+      )
+
+      await expect(runBadQuery).rejects.toBeTruthy()
+
+      await assertNormalOperationsAndDispose(actyx)
+    })
+  })
+
+  const assertNormalOperationsAndDispose = async (actyx: Actyx) => {
+    const okTag = Tag('ok' + Math.random())
+    const g = actyx.publish(okTag.apply('hello'))
+    await expect(g).resolves.toBeTruthy()
+
+    const q = actyx.queryAllKnown({ query: okTag }).then((x) => x.events[0])
+    // Just assert that we get something back
+    await expect(q).resolves.toMatchObject({ payload: 'hello' })
+
+    actyx.dispose()
+  }
+
   test('AQL syntax error', async () => {
     await runOnEvery(async (node) => {
       const actyx = await Actyx.of(trialManifest, {

@@ -38,6 +38,7 @@ import {
   toMetadata,
   Where,
 } from '../types'
+import { noop } from '../util'
 import { EventStore } from './eventStore'
 import { eventsMonotonic, EventsOrTimetravel as EventsOrTtInternal } from './subscribe_monotonic'
 import { Event, Events } from './types'
@@ -164,6 +165,8 @@ export const EventFnsFromEventStoreV2 = (
 
     let cancelled = false
 
+    const onCompleteOrErr = onComplete ? onComplete : noop
+
     const s = eventStore
       .query(lb, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
       .bufferCount(chunkSize)
@@ -175,11 +178,7 @@ export const EventFnsFromEventStoreV2 = (
         void 0,
         1,
       )
-      .subscribe()
-
-    if (onComplete instanceof Function) {
-      s.add(onComplete)
-    }
+      .subscribe({ complete: onCompleteOrErr, error: onCompleteOrErr })
 
     return () => {
       cancelled = true
