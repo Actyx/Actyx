@@ -357,7 +357,7 @@ export type ActyxTestOpts = Readonly<{
 export type AppManifest = {
   /**
    * Structured application id.
-   * For testing and development purposes, you can always pass 'com.example.<somestring>'
+   * For testing and development purposes, you can always pass 'com.example.somestring'
    * For production, you will buy a license from Actyx for your specific app id like com.my-company.my-app.
    */
   appId: string
