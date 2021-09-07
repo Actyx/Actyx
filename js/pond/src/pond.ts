@@ -442,7 +442,7 @@ class Pond2Impl implements Pond {
 
   /* POND V2 FUNCTIONS */
   emit = <E>(tags: Tags<E>, payload: E): PendingEmission => {
-    return this.actyx.emit(tags.apply(payload))
+    return this.actyx.emit([tags.apply(payload)])
   }
 
   publish = (events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]> =>
@@ -709,7 +709,12 @@ export type TestPond = Pond & {
 }
 const mkTestPond = (opts?: PondOptions): TestPond => {
   const opts1: PondOptions = opts || {}
-  const actyx = Actyx.test({ nodeId: NodeId.of('TEST') })
+  const actyx = {
+    ...Actyx.test({ nodeId: NodeId.of('TEST') }),
+    waitForSync: async () => {
+      /* noop */
+    },
+  }
   const snapshotStore = SnapshotStore.noop
   return {
     ...pondFromServices({ actyx, snapshotStore }, opts1),

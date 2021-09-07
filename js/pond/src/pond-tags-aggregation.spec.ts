@@ -5,17 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { Observable, Subject } from 'rxjs'
-import {
-  Fish,
-  FishErrorContext,
-  FishErrorReporter,
-  FishId,
-  noEvents,
-  Pond,
-  Tag,
-  Tags,
-  Where,
-} from '.'
+import { Fish, FishErrorContext, FishErrorReporter, FishId, Pond, Tag, Tags, Where } from '.'
 
 const emitTestEvents = async (pond: Pond) => {
   await pond.emit(Tags('t0', 't1', 't2'), 'hello').toPromise()
@@ -77,10 +67,6 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
   it('should aggregate everything', async () =>
     // Empty intersection matches everything
     expectAggregationToYield(Tags(), ['t2 only', 't1 only', 'world', 'hello']))
-
-  it('should aggregate nothing', async () =>
-    // Empty union means not a single subscription
-    expectAggregationToYield(noEvents, []))
 
   describe('error handling', () => {
     const brokenFish: Fish<string, string> = {
