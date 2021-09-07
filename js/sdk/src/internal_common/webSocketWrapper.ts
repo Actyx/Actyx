@@ -6,7 +6,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'events'
-import { Observable, ReplaySubject, Subject } from '../../node_modules/rxjs'
+import { Observable, Subject } from '../../node_modules/rxjs'
 import { isNode } from '../util'
 import { root } from '../util/root'
 import { decorateEConnRefused } from './errors'
@@ -53,14 +53,23 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
 
   private connected = false
 
-  private requests = new ReplaySubject()
-
   sendRequest(req: TRequest): void {
-    this.requests.next(req)
+    const msg = JSON.stringify(req)
+
+    // send message to the existion socket, or wait till a connection is established to send the message out
+    if (!this.socket) {
+      log.ws.error('send message to undefined socket')
+    } else if (this.socket.readyState === 1) {
+      this.socket.send(msg)
+    } else {
+      Observable.fromEvent<WebSocket>(this.socketEvents, 'connected')
+        .first()
+        .subscribe(s => s.send(msg))
+    }
   }
 
   close(): void {
-    this.requests.complete()
+    this.resetState()
   }
 
   constructor(
@@ -104,8 +113,6 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     if (socket && socket.readyState === 1) {
       socket.close()
     }
-
-    this.requests = new ReplaySubject()
   }
 
   /**
@@ -179,36 +186,5 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
       observer.error(e)
       return
     }
-
-    this.requests.subscribe(
-      msg => {
-        // send message to the existion socket, or wait till a connection is established to send the message out
-        if (!this.socket) {
-          log.ws.error('send message to undefined socket')
-        } else if (this.socket.readyState === 1) {
-          this.socket.send(JSON.stringify(msg))
-        } else {
-          Observable.fromEvent<WebSocket>(this.socketEvents, 'connected')
-            .first()
-            .subscribe(s => s.send(JSON.stringify(msg)))
-        }
-      },
-      (err: any) => {
-        if (err && err.code) {
-          this.socket && this.socket.close(err.code, err.reason)
-        } else {
-          observer.error(
-            new TypeError(
-              'WebSocketSubject.error must be called with an object with an error code, ' +
-                'and an optional reason: { code: number, reason: string }',
-            ),
-          )
-        }
-        this.resetState()
-      },
-      () => {
-        this.resetState()
-      },
-    )
   }
 }
