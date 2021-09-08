@@ -952,7 +952,7 @@ impl BanyanStore {
                     Ok(Some((content.to_vec(), (ipfs, step, false))))
                 } else if let Some(visit) = maybe_step {
                     let (cid, _) = visit.pending_links();
-                    let block = ipfs.fetch(&cid, ipfs.peers()).await?;
+                    let block = ipfs.fetch(cid, ipfs.peers()).await?;
                     let (content, next_step) = visit.continue_walk(block.data(), &mut None)?;
 
                     Ok(Some((content.to_vec(), (ipfs, next_step, false))))

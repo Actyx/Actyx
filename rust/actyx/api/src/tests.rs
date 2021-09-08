@@ -24,7 +24,7 @@ pub fn initialize() {
     if TRACE {
         INIT.call_once(|| {
             tracing_subscriber::fmt()
-                .with_env_filter("tracing=info,warp=debug".to_owned())
+                .with_env_filter("debug,tracing=info,warp=debug".to_owned())
                 .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
                 .init();
         });
@@ -710,4 +710,297 @@ async fn ws_aql_feature() -> anyhow::Result<()> {
     assert_eq!(*to_json(ws.recv().await?)?.pointer("/type").unwrap(), json!("next"));
 
     Ok(())
+}
+
+mod files {
+    use std::{collections::BTreeMap, time::Duration};
+
+    use actyx_sdk::service::DirectoryChild;
+    use maplit::btreemap;
+
+    use super::*;
+
+    fn create_mutlipart(files: BTreeMap<&str, Vec<u8>>) -> Vec<u8> {
+        let mut buf = vec![];
+        let boundary = "boundary";
+        for (k, v) in files {
+            buf.extend_from_slice(b"--");
+            buf.extend_from_slice(boundary.as_bytes());
+            buf.extend_from_slice(b"\r\n");
+            buf.extend_from_slice(
+                format!(r#"Content-Disposition: form-data; name="file"; filename="{}""#, k).as_bytes(),
+            );
+            buf.extend_from_slice(b"\r\n");
+            buf.extend_from_slice(b"Content-Type: application/octet-stream\r\n\r\n");
+            buf.extend_from_slice(&v[..]);
+            buf.extend_from_slice(b"\r\n");
+        }
+
+        buf.extend_from_slice(b"--");
+        buf.extend_from_slice(boundary.as_bytes());
+        buf.extend_from_slice(b"--\r\n");
+        buf
+    }
+
+    #[tokio::test]
+    async fn adding_files() -> anyhow::Result<()> {
+        let (route, token, ..) = test_routes().await;
+        let body = create_mutlipart(btreemap! {
+            "folder/my-filename" => b"42\n".to_vec(),
+            "folder/my-filename2" => b"42\n".to_vec(),
+        });
+        let resp = test::request()
+            .path("/api/v2/files")
+            .method("POST")
+            .header("Authorization", format!("Bearer {}", token))
+            .header(
+                "Content-Type",
+                r#"multipart/form-data; charset=utf-8; boundary="boundary""#,
+            )
+            // .body(..) also sets Content-Length
+            .body(body)
+            .reply(&route)
+            .await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+        let cid = String::from_utf8(resp.body().to_vec())?;
+        assert_eq!("bafybeih3rdoefyjmhg2wcu34njtwjc6kz44voehswqpr2dnplqjiv3opzi", &*cid);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn adding_and_retrieving_directories() -> anyhow::Result<()> {
+        let (route, token, ..) = test_routes().await;
+        let body = create_mutlipart(btreemap! {
+            "folder/my-filename" => b"42\n".to_vec(),
+            "folder/my-filename2" => b"42\n".to_vec(),
+        });
+        let resp = test::request()
+            .path("/api/v2/files")
+            .method("POST")
+            .header("Authorization", format!("Bearer {}", token))
+            .header(
+                "Content-Type",
+                r#"multipart/form-data; charset=utf-8; boundary="boundary""#,
+            )
+            // .body(..) also sets Content-Length
+            .body(body)
+            .reply(&route)
+            .await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+        let cid = String::from_utf8(resp.body().to_vec())?;
+
+        // get json directory listing
+        let resp = test::request()
+            .path(&format!("/api/v2/files/{}", cid))
+            .method("GET")
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Accept", "application/json")
+            .reply(&route)
+            .await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+        let listing: actyx_sdk::service::FilesGetResponse = serde_json::from_slice(resp.body())?;
+        let expected = actyx_sdk::service::FilesGetResponse::Directory {
+            name: "/".into(),
+            cid: "bafybeih3rdoefyjmhg2wcu34njtwjc6kz44voehswqpr2dnplqjiv3opzi"
+                .parse()
+                .unwrap(),
+            children: vec![DirectoryChild {
+                size: 121,
+                name: "folder".into(),
+                cid: "bafybeidzcta4duz77hvyyikfd7fjhwls6pebx766hderwkgk73nwktbgaa"
+                    .parse()
+                    .unwrap(),
+            }],
+        };
+        assert_eq!(listing, expected);
+
+        // get redirect for html directory listing
+        let resp = test::request()
+            .path(&format!("/api/v2/files/{}", cid))
+            .method("GET")
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Accept", "text/html")
+            .reply(&route)
+            .await;
+        assert_eq!(resp.status(), http::StatusCode::MOVED_PERMANENTLY);
+        let new_location = resp.headers().get("Location").unwrap();
+
+        // and now get html directory listing
+        let resp = test::request()
+            .path(new_location.to_str()?)
+            .method("GET")
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Accept", "text/html")
+            .reply(&route)
+            .await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+        assert!(String::from_utf8(resp.body().to_vec())?.contains("<body>"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn adding_and_retrieving_files() -> anyhow::Result<()> {
+        let (route, token, ..) = test_routes().await;
+        let body = create_mutlipart(btreemap! {
+            "folder/my-filename" => b"42\n".to_vec(),
+            "folder/my-filename2" => b"42\n".to_vec(),
+        });
+        let resp = test::request()
+            .path("/api/v2/files")
+            .method("POST")
+            .header("Authorization", format!("Bearer {}", token))
+            .header(
+                "Content-Type",
+                r#"multipart/form-data; charset=utf-8; boundary="boundary""#,
+            )
+            // .body(..) also sets Content-Length
+            .body(body)
+            .reply(&route)
+            .await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+        let cid = String::from_utf8(resp.body().to_vec())?;
+
+        // get file as json
+        let resp = test::request()
+            .path(&format!("/api/v2/files/{}/folder/my-filename", cid))
+            .method("GET")
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Accept", "application/json")
+            .reply(&route)
+            .await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+        let file: actyx_sdk::service::FilesGetResponse = serde_json::from_slice(resp.body())?;
+        let expected = actyx_sdk::service::FilesGetResponse::File {
+            name: "my-filename".into(),
+            bytes: b"42\n".to_vec(),
+            mime: "text/plain".into(),
+        };
+        assert_eq!(file, expected);
+
+        // get file raw
+        let resp = test::request()
+            .path(&format!("/api/v2/files/{}/folder/my-filename", cid))
+            .method("GET")
+            .header("Authorization", format!("Bearer {}", token))
+            .reply(&route)
+            .await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+        assert_eq!(
+            resp.headers().get("Content-Disposition").unwrap().to_str()?,
+            r#"inline;filename="my-filename""#
+        );
+        assert_eq!(resp.headers().get("Content-Type").unwrap().to_str()?, "text/plain");
+        assert_eq!(resp.body().to_vec(), b"42\n".to_vec());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn retrieving_files_via_root() -> anyhow::Result<()> {
+        let (route, token, ..) = test_routes().await;
+        let body = create_mutlipart(btreemap! {
+            "my-filename" => b"42\n".to_vec(),
+            "index.html" => b"Hello World!\n".to_vec(),
+        });
+        let resp = test::request()
+            .path("/api/v2/files")
+            .method("POST")
+            .header("Authorization", format!("Bearer {}", token))
+            .header(
+                "Content-Type",
+                r#"multipart/form-data; charset=utf-8; boundary="boundary""#,
+            )
+            // .body(..) also sets Content-Length
+            .body(body)
+            .reply(&route)
+            .await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+        let cid = String::from_utf8(resp.body().to_vec())?;
+
+        // get index.html, either served via the root or indexed
+        for path in ["/", "/index.html"] {
+            let resp = test::request()
+                .path(path)
+                .method("GET")
+                .header("Authorization", format!("Bearer {}", token))
+                .header("Accept", "text/html")
+                .header("Host", &format!("{}.actyx.localhost", cid))
+                .reply(&route)
+                .await;
+            assert_eq!(resp.status(), http::StatusCode::OK);
+            assert_eq!(
+                resp.headers().get("Content-Disposition").unwrap().to_str()?,
+                r#"inline;filename="index.html""#
+            );
+            assert_eq!(resp.headers().get("Content-Type").unwrap().to_str()?, "text/html");
+            assert_eq!(resp.body().to_vec(), b"Hello World!\n".to_vec());
+
+            // check w/o token
+            let resp = test::request()
+                .path(path)
+                .method("GET")
+                .header("Accept", "text/html")
+                .header("Host", &format!("{}.actyx.localhost", cid))
+                .reply(&route)
+                .await;
+            assert_eq!(resp.status(), http::StatusCode::BAD_REQUEST);
+        }
+
+        // set a name
+        let name = "w00pw00p";
+        let resp = test::request()
+            .path(&format!("/api/v2/files/{}", name))
+            .method("PUT")
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Accept", "text/html")
+            .body(&cid)
+            .reply(&route)
+            .await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+        // Some time to let the events round trip
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        // get index.html, either served via the root or indexed
+        // WITHOUT token served via `<name>.actyx.localhost`
+        for path in ["/", "/index.html"] {
+            let resp = test::request()
+                .path(path)
+                .method("GET")
+                .header("Accept", "text/html")
+                .header("Host", &format!("{}.actyx.localhost", name))
+                .reply(&route)
+                .await;
+            assert_eq!(resp.status(), http::StatusCode::OK);
+            assert_eq!(
+                resp.headers().get("Content-Disposition").unwrap().to_str()?,
+                r#"inline;filename="index.html""#
+            );
+            assert_eq!(resp.headers().get("Content-Type").unwrap().to_str()?, "text/html");
+            assert_eq!(resp.body().to_vec(), b"Hello World!\n".to_vec());
+        }
+
+        // delete the name
+        let resp = test::request()
+            .path(&format!("/api/v2/files/{}", name))
+            .method("DELETE")
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Accept", "text/html")
+            .reply(&route)
+            .await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+
+        // Some time to let the events round trip
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        for path in ["/", "/index.html"] {
+            let resp = test::request()
+                .path(path)
+                .method("GET")
+                .header("Accept", "text/html")
+                .header("Host", &format!("{}.actyx.localhost", name))
+                .reply(&route)
+                .await;
+            assert_eq!(resp.status(), http::StatusCode::BAD_REQUEST);
+        }
+        Ok(())
+    }
 }
