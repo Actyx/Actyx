@@ -124,17 +124,20 @@
         "blockCacheCount": {
           "type": "integer",
           "minimum": 0,
-          "default": 131072
+          "default": 131072,
+          "description": "Maximum number of non-pinned blocks to cache"
         },
         "blockCacheSize": {
           "type": "integer",
           "minimum": 0,
-          "default": 1073741824
+          "default": 1073741824,
+          "description": "Maximum number of bytes of non-pinned blocks to cache"
         },
         "blockGcInterval": {
           "type": "integer",
           "minimum": 30,
-          "default": 300
+          "default": 300,
+          "description": "GC interval for the block store, in seconds"
         }
       }
     },
