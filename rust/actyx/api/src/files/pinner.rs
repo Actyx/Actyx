@@ -11,11 +11,12 @@ use actyx_sdk::{
 };
 use anyhow::Context;
 use chrono::Utc;
-use futures::{pin_mut, Future, StreamExt};
+use futures::{pin_mut, stream, Future, StreamExt};
 use libipld::{cbor::DagCborCodec, multihash::Code, Cid, DagCbor};
 use serde::{Deserialize, Serialize};
 use swarm::{Block, Ipfs};
 use tokio::{sync::mpsc, task::JoinHandle, time::MissedTickBehavior};
+use tokio_stream::wrappers::{IntervalStream, ReceiverStream};
 use tracing::*;
 
 use crate::EventService;
@@ -56,14 +57,74 @@ struct StandingQuery {
 
 impl FilePinner {
     pub(crate) fn new(event_svc: EventService, ipfs: Ipfs) -> Self {
-        let (tx, mut rx) = mpsc::channel::<UpdatePrefetch>(64);
-        let tx2 = tx.clone();
-        tokio::spawn(async move {
+        let (tx, rx) = mpsc::channel::<UpdatePrefetch>(64);
+
+        // TODO
+        let retention = Duration::from_secs(60 * 60 * 24 * 7);
+        let handle = tokio::spawn(async move {
+            let event_svc = event_svc;
+            let subscription = event_svc
+                .subscribe(
+                    app_id!("com.actyx"),
+                    SubscribeRequest {
+                        lower_bound: None,
+                        query: "FROM isLocal & appId(com.actyx) & 'files:pinned'"
+                            .parse()
+                            .expect("valid syntax"),
+                    },
+                )
+                .await
+                .expect("Error opening subscription to store")
+                .fuse();
+
+            let mut query_interval = tokio::time::interval(Duration::from_secs(10 * 60));
+            query_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+            let mut standing_queries: BTreeMap<AppId, StandingQuery> = Default::default();
+            enum O {
+                Update(UpdatePrefetch),
+                Subscription(SubscribeResponse),
+                Tick,
+            }
+            let mut s = stream::select_all([
+                ReceiverStream::new(rx).map(O::Update).boxed(),
+                subscription.map(O::Subscription).boxed(),
+                IntervalStream::new(query_interval).map(|_| O::Tick).boxed(),
+            ]);
+            while let Some(output) = s.next().await {
+                match output {
+                    O::Update((app_id, query)) => {
+                        debug!(%app_id, %query, "Received Update");
+                        if let Err(error) = publish_update(&event_svc, app_id.clone(), query, retention).await {
+                            error!(%app_id, %error, "Error updating pin");
+                        }
+                        // Also check the queries
+                        check_queries(&event_svc, &ipfs, &mut standing_queries).await
+                    }
+                    O::Subscription(r) => {
+                        if let Err(error) = update_query(&mut standing_queries, r) {
+                            error!(%error, "Error evaluating query");
+                        }
+                    }
+                    O::Tick => check_queries(&event_svc, &ipfs, &mut standing_queries).await,
+                }
+            }
+        });
+        let slf = Self {
+            tx,
+            handle: Arc::new(handle),
+        };
+        tokio::spawn(slf.pin_internal_loop());
+        slf
+    }
+
+    fn pin_internal_loop(&self) -> impl Future<Output = ()> + 'static {
+        let tx = self.tx.clone();
+        async move {
             // Pin all locally added files within the last 12 hours.
             loop {
                 // TODO: We might want to make this period configurable.
                 let now = Utc::now() - chrono::Duration::hours(12);
-                if let Err(error) = tx2
+                if let Err(error) = tx
                     .send((
                         app_id!("com.actyx"),
                         format!(
@@ -85,55 +146,6 @@ AGGREGATE ARRAY(_.cid)"#,
                 }
                 tokio::time::sleep(Duration::from_secs(60 * 30)).await;
             }
-        });
-
-        // TODO
-        let retention = Duration::from_secs(60 * 60 * 24 * 7);
-        let handle = tokio::spawn(async move {
-            let event_svc = event_svc;
-            let mut subscription = event_svc
-                .subscribe(
-                    app_id!("com.actyx"),
-                    SubscribeRequest {
-                        lower_bound: None,
-                        query: "FROM isLocal & appId(com.actyx) & 'files:pinned'"
-                            .parse()
-                            .expect("valid syntax"),
-                    },
-                )
-                .await
-                .expect("Error opening subscription to store")
-                .fuse();
-
-            let mut query_interval = tokio::time::interval(Duration::from_secs(10 * 60));
-            query_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
-            let mut standing_queries: BTreeMap<AppId, StandingQuery> = Default::default();
-            loop {
-                tokio::select! {
-                    update = rx.recv() => {
-                        if let Some((app_id, query)) = update {
-                            debug!(%app_id, %query, "Received Update");
-                            if let Err(error) = publish_update(&event_svc, app_id.clone(), query, retention).await {
-                                error!(%app_id, %error, "Error updating pin");
-                            }
-                            // Also check the queries
-                            check_queries(&event_svc, &ipfs, &mut standing_queries).await
-                        }
-                    },
-                    update = subscription.select_next_some() => {
-                        if let Err(error) = update_query(&mut standing_queries, update) {
-                            error!(%error, "Error evaluating query");
-                        }
-                    },
-                    _ = query_interval.tick() => {
-                        check_queries(&event_svc, &ipfs, &mut standing_queries).await
-                    }
-                }
-            }
-        });
-        Self {
-            tx,
-            handle: Arc::new(handle),
         }
     }
 
