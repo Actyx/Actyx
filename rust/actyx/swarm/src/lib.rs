@@ -670,9 +670,9 @@ impl BanyanStore {
             },
             storage: StorageConfig {
                 path: cfg.db_path,
-                cache_size_blocks: u64::MAX,
-                cache_size_bytes: 1024 * 1024 * 1024 * 4,
-                gc_interval: Duration::from_secs(10),
+                cache_size_blocks: 1024 * 128,
+                cache_size_bytes: 1024 * 1024 * 1024,
+                gc_interval: Duration::from_secs(300),
                 gc_min_blocks: 1000,
                 gc_target_duration: Duration::from_millis(10),
             },
