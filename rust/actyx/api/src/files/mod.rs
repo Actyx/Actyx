@@ -269,9 +269,14 @@ fn update_name(
             let ans = ans.clone();
             async move {
                 tracing::debug!(%name, ?maybe_cid, "ANS POST");
-                let cid = Cid::from_str(&*String::from_utf8(maybe_cid.to_vec())?)?;
-                ans.set(name, cid, PersistenceLevel::Prefetch, true).await?;
-                Ok(warp::reply())
+                if name.parse::<Cid>().is_ok() {
+                    tracing::error!(%name, ?maybe_cid, "Rejecting because name can be interpreted as a CID");
+                    anyhow::bail!("Name must not be a CID")
+                } else {
+                    let cid = Cid::from_str(&*String::from_utf8(maybe_cid.to_vec())?)?;
+                    ans.set(name, cid, PersistenceLevel::Prefetch, true).await?;
+                    Ok(warp::reply())
+                }
             }
             .map_err(crate::util::reject)
         })

@@ -1003,4 +1003,39 @@ mod files {
         }
         Ok(())
     }
+
+    #[tokio::test]
+    async fn should_reject_cids_as_names() -> anyhow::Result<()> {
+        let (route, token, ..) = test_routes().await;
+        let body = create_mutlipart(btreemap! {
+            "my-filename" => b"42\n".to_vec(),
+            "index.html" => b"Hello World!\n".to_vec(),
+        });
+        let resp = test::request()
+            .path("/api/v2/files")
+            .method("POST")
+            .header("Authorization", format!("Bearer {}", token))
+            .header(
+                "Content-Type",
+                r#"multipart/form-data; charset=utf-8; boundary="boundary""#,
+            )
+            // .body(..) also sets Content-Length
+            .body(body)
+            .reply(&route)
+            .await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+        let cid = String::from_utf8(resp.body().to_vec())?;
+
+        let resp = test::request()
+            .path(&format!("/api/v2/files/{}", cid))
+            .method("PUT")
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Accept", "text/html")
+            .body(&cid)
+            .reply(&route)
+            .await;
+        assert_eq!(resp.status(), http::StatusCode::METHOD_NOT_ALLOWED);
+
+        Ok(())
+    }
 }
