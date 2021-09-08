@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use crossbeam::channel::{Receiver, Sender};
 use crypto::KeyStoreRef;
 use parking_lot::Mutex;
-use std::{convert::TryInto, path::PathBuf, sync::Arc};
+use std::{convert::TryInto, path::PathBuf, sync::Arc, time::Duration};
 use swarm::{
     event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
     BanyanStore, SwarmConfig,
@@ -184,6 +184,9 @@ impl Component<StoreRequest, StoreConfig> for Store {
             enable_fast_path: !read_only,
             enable_slow_path: !read_only,
             enable_root_map: !read_only,
+            block_cache_count: s.swarm.block_cache_count,
+            block_cache_size: s.swarm.block_cache_size,
+            block_gc_interval: Duration::from_secs(s.swarm.block_gc_interval),
             ..SwarmConfig::basic()
         };
         Ok(StoreConfig {

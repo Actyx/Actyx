@@ -120,6 +120,21 @@
           "uniqueItems": true,
           "default": [],
           "description": "Manually configured addresses to announce. These must be multiaddresses without peer id, e.g. /ip4/1.2.3.4/tcp/4001"
+        },
+        "blockCacheCount": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 131072
+        },
+        "blockCacheSize": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 1073741824
+        },
+        "blockGcInterval": {
+          "type": "integer",
+          "minimum": 30,
+          "default": 300
         }
       }
     },
