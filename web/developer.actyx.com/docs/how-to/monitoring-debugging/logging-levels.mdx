@@ -50,3 +50,8 @@ In the Node Manager, navigate to the settings tab, change the `node` logging lev
 </TabItem>
 </Tabs>
 
+:::warning Debug logs on Android
+To enable debug logging on Android, you also need to run `adb shell "setprop log.tag.com.actyx DEBUG"`. 
+This property is reset to `INFO` when restarting the Android device.
+For additional details, see [Access Logs](./access-logs.mdx).
+:::
