@@ -7,7 +7,7 @@ use swarm::BanyanStore;
 use warp::*;
 
 use crate::{
-    boxed_on_debug, or,
+    balanced_or,
     util::{
         filters::{accept_text, authenticate, header_or_query_token},
         reject, Result,
@@ -33,7 +33,7 @@ pub(crate) fn route(
     node_info: NodeInfo,
     store: BanyanStore,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    or!(filter_id(node_info.clone()), filter_info(node_info, store))
+    balanced_or!(filter_id(node_info.clone()), filter_info(node_info, store))
 }
 
 fn filter_id(node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {

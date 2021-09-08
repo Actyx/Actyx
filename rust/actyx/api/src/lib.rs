@@ -96,9 +96,9 @@ fn routes(
             "Processed request"
         );
     });
-    or!(
+    balanced_or!(
         files::root_serve(store, node_info),
-        api_path.and(or!(
+        api_path.and(balanced_or!(
             path("events").and(events),
             path("node").and(node),
             path("auth").and(auth),

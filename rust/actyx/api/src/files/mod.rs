@@ -20,11 +20,11 @@ use warp::{
 use self::ipfs::{extract_query_from_host, extract_query_from_path, IpfsQuery};
 use crate::{
     ans::{ActyxNamingService, PersistenceLevel},
+    balanced_or,
     rejections::ApiError,
     util::filters::{authenticate, header_or_query_token},
     NodeInfo,
 };
-use crate::{boxed_on_debug, or};
 pub(crate) use pinner::FilePinner;
 
 mod ipfs;
@@ -139,7 +139,7 @@ pub fn route(
     node_info: NodeInfo,
     pinner: FilePinner,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    or!(
+    balanced_or!(
         warp::path("prefetch").and(prefetch(pinner, node_info.clone())),
         add(store.clone(), node_info.clone()),
         get(store.clone(), node_info.clone()),

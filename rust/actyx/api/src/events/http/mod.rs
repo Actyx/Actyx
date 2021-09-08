@@ -4,15 +4,15 @@ mod ndjson;
 
 use warp::Filter;
 
+use crate::balanced_or;
 use crate::events::service::EventService;
 use crate::util::NodeInfo;
-use crate::{boxed_on_debug, or};
 
 pub(crate) fn routes(
     node_info: NodeInfo,
     event_service: EventService,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-    or!(
+    balanced_or!(
         filters::offsets(node_info.clone(), event_service.clone()),
         filters::publish(node_info.clone(), event_service.clone()),
         filters::query(node_info.clone(), event_service.clone()),
