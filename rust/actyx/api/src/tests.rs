@@ -1043,4 +1043,15 @@ mod files {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn should_return_404_in_root() -> anyhow::Result<()> {
+        let (route, ..) = test_routes().await;
+        for base in ["/", "/I/dont/exist"] {
+            let resp = test::request().path(base).method("GET").reply(&route).await;
+            assert_eq!(resp.status(), http::StatusCode::NOT_FOUND);
+        }
+
+        Ok(())
+    }
 }

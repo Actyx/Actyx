@@ -156,8 +156,8 @@ pub(crate) fn extract_query_from_host(
         .and(authenticate_optional(node_info, header_or_query_token_opt()))
         .and_then(
             move |full_path: FullPath, authority: Option<Authority>, app_id: Option<AppId>| {
-                let r = if let Some(a) = authority {
-                    percent_decode_str(full_path.as_str())
+                let r = match authority {
+                    Some(a) if a.host().contains(".actyx.localhost") => percent_decode_str(full_path.as_str())
                         .decode_utf8()
                         .map_err(Into::into)
                         .and_then(|decoded| {
@@ -174,9 +174,8 @@ pub(crate) fn extract_query_from_host(
                             warp::reject::custom(ApiError::BadRequest {
                                 cause: format!("{}", e),
                             })
-                        })
-                } else {
-                    Err(warp::reject::not_found())
+                        }),
+                    _ => Err(warp::reject::not_found()),
                 };
                 async move { r }
             },
