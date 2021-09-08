@@ -1,5 +1,6 @@
 ///! Actyx Naming Service
 use actyx_sdk::{app_id, tag, tags, Payload};
+use derive_more::{Deref, Display, From};
 use futures::{StreamExt, TryFutureExt};
 use libipld::cid::Cid;
 use parking_lot::Mutex;
@@ -23,7 +24,7 @@ pub enum PersistenceLevel {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NameRecordEvent {
     Add {
-        name: String,
+        name: ActyxName,
         // This must not be serialized as a ipld cid!
         #[serde(with = "::actyx_util::serde_str")]
         cid: Cid,
@@ -32,7 +33,7 @@ pub enum NameRecordEvent {
         level: PersistenceLevel,
     },
     Remove {
-        name: String,
+        name: ActyxName,
     },
 }
 
@@ -43,10 +44,14 @@ pub struct NameRecord {
     pub public: bool,
 }
 
+#[derive(Deref, Display, Clone, Debug, From, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize)]
+#[from(forward)]
+pub struct ActyxName(String);
+
 #[derive(Clone)]
 pub struct ActyxNamingService {
     ingest_handle: Arc<tokio::task::JoinHandle<()>>,
-    state: Arc<Mutex<BTreeMap<String, NameRecord>>>,
+    state: Arc<Mutex<BTreeMap<ActyxName, NameRecord>>>,
     store: BanyanStore,
 }
 
@@ -99,7 +104,7 @@ impl ActyxNamingService {
                         Ok(NameRecordEvent::Remove { name }) => {
                             tracing::debug!(%name, "Record removal");
                             let _ = store_c.ipfs().alias(&*name, None);
-                            state_c.lock().remove(&*name);
+                            state_c.lock().remove(&name);
                         }
                         Err(e) => {
                             tracing::error!(error=%e, "Error decoding ANS record");
@@ -116,12 +121,12 @@ impl ActyxNamingService {
 
     pub async fn set(
         &self,
-        name: impl Into<String>,
+        name: impl Into<ActyxName>,
         cid: Cid,
         level: PersistenceLevel,
         public: bool,
     ) -> anyhow::Result<Option<NameRecord>> {
-        let name: String = name.into();
+        let name: ActyxName = name.into();
         let record = NameRecordEvent::Add {
             name: name.clone(),
             cid,
@@ -142,12 +147,12 @@ impl ActyxNamingService {
         Ok(self.state.lock().insert(name, NameRecord { cid, level, public }))
     }
 
-    pub fn get(&self, name: &str) -> Option<NameRecord> {
-        self.state.lock().get(name).cloned()
+    pub fn get(&self, name: impl Into<ActyxName>) -> Option<NameRecord> {
+        self.state.lock().get(&name.into()).cloned()
     }
 
-    pub async fn remove(&self, name: &str) -> anyhow::Result<Option<NameRecord>> {
-        let name: String = name.into();
+    pub async fn remove(&self, name: impl Into<ActyxName>) -> anyhow::Result<Option<NameRecord>> {
+        let name: ActyxName = name.into();
         let record = NameRecordEvent::Remove { name: name.clone() };
         self.store
             .append(
@@ -160,6 +165,6 @@ impl ActyxNamingService {
             )
             .await?;
 
-        Ok(self.state.lock().remove(&*name))
+        Ok(self.state.lock().remove(&name))
     }
 }

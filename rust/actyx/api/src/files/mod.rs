@@ -8,7 +8,7 @@ use actyx_sdk::{
 use anyhow::Context;
 use bytes::{BufMut, Bytes};
 use futures::prelude::*;
-use http::Uri;
+use http::{header::CACHE_CONTROL, Uri};
 use libipld::cid::Cid;
 use serde::Serialize;
 use swarm::{BanyanStore, Block, BufferingTreeBuilder, TreeOptions};
@@ -19,7 +19,7 @@ use warp::{
 
 use self::ipfs::{extract_query_from_host, extract_query_from_path, IpfsQuery};
 use crate::{
-    ans::{ActyxNamingService, PersistenceLevel},
+    ans::{ActyxName, ActyxNamingService, PersistenceLevel},
     balanced_or,
     rejections::ApiError,
     util::filters::{authenticate, header_or_query_token},
@@ -46,9 +46,20 @@ pub fn root_serve(
         .and(warp::path::full())
         .and(query_raw_opt())
         .and_then(
-            move |accept_header: Option<String>, query: IpfsQuery, uri_path: FullPath, raw_query: Option<String>| {
-                serve_unixfs_node(store.clone(), query, uri_path, raw_query, accept_header, true)
-                    .map_err(crate::util::reject)
+            move |accept_header: Option<String>,
+                  (query, maybe_name): (IpfsQuery, Option<ActyxName>),
+                  uri_path: FullPath,
+                  raw_query: Option<String>| {
+                serve_unixfs_node(
+                    store.clone(),
+                    query,
+                    uri_path,
+                    raw_query,
+                    accept_header,
+                    true,
+                    maybe_name,
+                )
+                .map_err(crate::util::reject)
             },
         )
 }
@@ -67,8 +78,9 @@ async fn serve_unixfs_node(
     raw_query: Option<String>,
     accept_headers: Option<String>,
     auto_serve_index_html: bool,
+    ans_name: Option<ActyxName>,
 ) -> anyhow::Result<impl Reply> {
-    Ok(match store.unixfs_resolve_path(query.root, query.path).await? {
+    let mut response = match store.unixfs_resolve_path(query.root, query.path).await? {
         swarm::FileNode::Directory {
             children,
             name,
@@ -124,7 +136,13 @@ async fn serve_unixfs_node(
                 ipfs::get_file_raw(store, cid, &name).await?
             }
         }
-    })
+    };
+    if ans_name.is_some() {
+        response
+            .headers_mut()
+            .insert(CACHE_CONTROL, "no-cache, no-store, must-revalidate".parse().unwrap());
+    }
+    Ok(response)
 }
 
 // api/v2/files
@@ -221,9 +239,20 @@ fn get(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
         .and(warp::path::full())
         .and(query_raw_opt())
         .and_then(
-            move |accept_header: Option<String>, query: IpfsQuery, uri_path: FullPath, raw_query: Option<String>| {
-                serve_unixfs_node(store.clone(), query, uri_path, raw_query, accept_header, false)
-                    .map_err(crate::util::reject)
+            move |accept_header: Option<String>,
+                  (query, maybe_name): (IpfsQuery, Option<ActyxName>),
+                  uri_path: FullPath,
+                  raw_query: Option<String>| {
+                serve_unixfs_node(
+                    store.clone(),
+                    query,
+                    uri_path,
+                    raw_query,
+                    accept_header,
+                    false,
+                    maybe_name,
+                )
+                .map_err(crate::util::reject)
             },
         )
 }
@@ -241,7 +270,7 @@ fn delete_name_or_cid(
             let ans = ans.clone();
             async move {
                 if let Some(x) = ans
-                    .remove(&*cid_or_name)
+                    .remove(cid_or_name)
                     .await
                     .map_err(|_| warp::reject::custom(ApiError::Internal))?
                 {

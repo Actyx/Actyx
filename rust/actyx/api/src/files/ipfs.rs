@@ -16,7 +16,7 @@ use warp::{
 };
 
 use crate::{
-    ans::ActyxNamingService,
+    ans::{ActyxName, ActyxNamingService},
     rejections::ApiError,
     util::filters::{authenticate_optional, header_or_query_token_opt},
     NodeInfo,
@@ -126,7 +126,7 @@ pub(crate) fn extract_name_or_cid_from_host(
     ans: &ActyxNamingService,
     input: &str,
     token_valid: bool,
-) -> anyhow::Result<Cid> {
+) -> anyhow::Result<(Cid, Option<ActyxName>)> {
     let (sub, _) = input
         .split_once(".actyx.localhost")
         .context("No subdomain given before .actyx.localhost")?;
@@ -135,20 +135,21 @@ pub(crate) fn extract_name_or_cid_from_host(
         if !record.public && !token_valid {
             Err(ApiError::MissingAuthorizationHeader.into())
         } else {
-            Ok(record.cid)
+            Ok((record.cid, Some(sub.into())))
         }
     } else if !token_valid {
         // Providing cids always needs an auth header
         Err(ApiError::MissingAuthorizationHeader.into())
     } else {
-        sub.parse().context("Not a valid multihash")
+        let cid = sub.parse().context("Not a valid multihash")?;
+        Ok((cid, None))
     }
 }
 
 pub(crate) fn extract_query_from_host(
     node_info: NodeInfo,
     ans: ActyxNamingService,
-) -> impl Filter<Extract = (IpfsQuery,), Error = Rejection> + Clone {
+) -> impl Filter<Extract = ((IpfsQuery, Option<ActyxName>),), Error = Rejection> + Clone {
     warp::get()
         .and(path::full())
         .and(warp::host::optional())
@@ -160,13 +161,13 @@ pub(crate) fn extract_query_from_host(
                         .decode_utf8()
                         .map_err(Into::into)
                         .and_then(|decoded| {
-                            extract_name_or_cid_from_host(&ans, a.host(), app_id.is_some()).map(|root| {
+                            extract_name_or_cid_from_host(&ans, a.host(), app_id.is_some()).map(|(root, maybe_name)| {
                                 let path = decoded
                                     .split('/')
                                     .filter(|x| !x.is_empty())
                                     .map(|x| x.to_owned())
                                     .collect::<VecDeque<_>>();
-                                IpfsQuery { root, path }
+                                (IpfsQuery { root, path }, maybe_name)
                             })
                         })
                         .map_err(|e: anyhow::Error| {
@@ -184,23 +185,28 @@ pub(crate) fn extract_query_from_host(
 
 pub(crate) fn extract_query_from_path(
     ans: ActyxNamingService,
-) -> impl Filter<Extract = (IpfsQuery,), Error = Rejection> + Clone {
+) -> impl Filter<Extract = ((IpfsQuery, Option<ActyxName>),), Error = Rejection> + Clone {
     path::tail().and_then(move |path_tail: Tail| {
         let check = || {
             let decoded = percent_decode_str(path_tail.as_str()).decode_utf8()?;
             let mut path = decoded.split('/').filter(|x| !x.is_empty());
 
             let root_or_name = path.next().context("Empty root path")?;
-            let root: Cid = ans
-                .get(root_or_name)
-                .map(|x| x.cid)
-                .context("No ANS record found")
-                .or_else(|_| root_or_name.parse())
-                .context("Provided root is neither a name nor a CID")?;
-            Ok(IpfsQuery {
-                root,
-                path: path.map(|x| x.to_owned()).collect(),
-            })
+            let (root, maybe_name) = if let Some(r) = ans.get(root_or_name) {
+                (r.cid, Some(root_or_name.into()))
+            } else {
+                let cid: Cid = root_or_name
+                    .parse()
+                    .context("Provided root is neither a name nor a CID")?;
+                (cid, None)
+            };
+            Ok((
+                IpfsQuery {
+                    root,
+                    path: path.map(|x| x.to_owned()).collect(),
+                },
+                maybe_name,
+            ))
         };
 
         let r = check().map_err(|e: anyhow::Error| {

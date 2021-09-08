@@ -975,6 +975,11 @@ mod files {
                 resp.headers().get("Content-Disposition").unwrap().to_str()?,
                 r#"inline;filename="index.html""#
             );
+            // responses for names must not be cached
+            assert_eq!(
+                resp.headers().get("Cache-Control").unwrap().to_str()?,
+                "no-cache, no-store, must-revalidate"
+            );
             assert_eq!(resp.headers().get("Content-Type").unwrap().to_str()?, "text/html");
             assert_eq!(resp.body().to_vec(), b"Hello World!\n".to_vec());
         }
