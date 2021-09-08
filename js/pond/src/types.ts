@@ -306,7 +306,7 @@ export const Fish = {
 
     onEvent: (_state: E | undefined, event: E) => event,
 
-    fishId: FishId.of('actyx.lib.latestEvent', JSON.stringify(where), 1),
+    fishId: FishId.of('actyx.lib.latestEvent', where.toString(), 1),
 
     isReset: () => true,
   }),
@@ -322,7 +322,7 @@ export const Fish = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    fishId: FishId.of('actyx.lib.eventsDescending', JSON.stringify(where), 1),
+    fishId: FishId.of('actyx.lib.eventsDescending', where.toString(), 1),
   }),
 
   // Observe latest `capacity` events matching given selection, in ascending order.
@@ -336,7 +336,7 @@ export const Fish = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    fishId: FishId.of('actyx.lib.eventsAscending', JSON.stringify(where), 1),
+    fishId: FishId.of('actyx.lib.eventsAscending', where.toString(), 1),
   }),
 }
 
