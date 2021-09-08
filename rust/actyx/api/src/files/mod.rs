@@ -150,7 +150,7 @@ async fn serve_unixfs_node(
 // api/v2/files/:id
 // :id can either be a name or a cid
 //   GET (this is also reachable w/o auth from the root
-//   DELETE: delete name or cid
+//   DELETE: delete name
 //   PUT: content is name; update `name` pointing to `id`
 pub fn route(
     store: BanyanStore,
@@ -161,7 +161,7 @@ pub fn route(
         warp::path("prefetch").and(prefetch(pinner, node_info.clone())),
         add(store.clone(), node_info.clone()),
         get(store.clone(), node_info.clone()),
-        delete_name_or_cid(store.clone(), node_info.clone()),
+        delete_name(store.clone(), node_info.clone()),
         update_name(store, node_info)
     )
 }
@@ -257,7 +257,7 @@ fn get(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
         )
 }
 
-fn delete_name_or_cid(
+fn delete_name(
     store: BanyanStore,
     node_info: NodeInfo,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
@@ -276,9 +276,7 @@ fn delete_name_or_cid(
                 {
                     Ok(x.cid.to_string())
                 } else {
-                    // TODO: Remove cid? Removing a named pin will unalias the block, so GC will
-                    // eventually remove it .. So this depends a bit on which semantics we want the
-                    // `delete` call to have on CIDs
+                    // CIDs can not be deleted. They will be eventually GC'd once the pin is gone.
                     Err(warp::reject::not_found())
                 }
             }
