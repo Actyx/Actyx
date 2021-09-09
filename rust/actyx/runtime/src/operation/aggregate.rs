@@ -1,7 +1,7 @@
 use crate::{eval::Context, value::Value};
 use actyx_sdk::language::{AggrOp, Num, SimpleExpr, Traverse};
 use anyhow::{anyhow, bail};
-use cbor_data::{Encoder, Writer};
+use cbor_data::Encoder;
 use std::{cmp::Ordering, collections::BTreeMap, marker::PhantomData, ops::AddAssign};
 
 pub trait Aggregator {
@@ -189,28 +189,6 @@ impl Aggregator for Max {
     }
 }
 
-#[derive(Default)]
-struct Array(Vec<Value>);
-impl Aggregator for Array {
-    fn feed(&mut self, input: Value) -> anyhow::Result<()> {
-        match self.0.first().map(|f| f.kind()) {
-            Some(kind) if kind != input.kind() => anyhow::bail!("Expected \"{}\", found \"{}\"", kind, input.kind()),
-            _ => self.0.push(input),
-        }
-        Ok(())
-    }
-
-    fn flush(&mut self, cx: &Context) -> anyhow::Result<Value> {
-        Ok(cx.value(|b| {
-            b.encode_array(|b| {
-                for item in self.0.drain(..) {
-                    b.write_trusting(item.as_slice());
-                }
-            })
-        }))
-    }
-}
-
 pub type AggrState = BTreeMap<(AggrOp, SimpleExpr), Box<dyn Aggregator + Send>>;
 
 pub struct Aggregate {
@@ -242,7 +220,6 @@ impl Aggregate {
                     AggrOp::Max => Box::new(Max(None)),
                     AggrOp::First => Box::new(First(None)),
                     AggrOp::Last => Box::new(Last(None)),
-                    AggrOp::Array => Box::new(Array::default()),
                 };
                 state.insert((a.0, a.1.clone()), op);
                 Traverse::Stop
@@ -311,13 +288,6 @@ mod tests {
             .collect::<anyhow::Result<_>>()
             .unwrap()
     }
-
-    fn apply_str(a: &mut Aggregate, cx: &mut Context, v: &str) -> anyhow::Result<Vec<Value>> {
-        cx.incr();
-        a.apply(cx, cx.value(|b| b.encode_str(v)))
-            .into_iter()
-            .collect::<anyhow::Result<_>>()
-    }
     fn flush(a: &mut Aggregate, cx: &Context) -> String {
         a.flush(cx).unwrap().cbor().to_string()
     }
@@ -369,19 +339,5 @@ mod tests {
         assert_eq!(flush(&mut s, &cx), "[2, 4, 1, 4]");
         assert_eq!(apply(&mut s, &mut cx, 3), vec![]);
         assert_eq!(flush(&mut s, &cx), "[2, 3, 1, 4]");
-    }
-
-    #[test]
-    fn array() {
-        let mut s = a("ARRAY(_)");
-        let mut cx = ctx();
-
-        for i in 1..=4 {
-            assert_eq!(apply(&mut s, &mut cx, i), vec![]);
-        }
-        assert_eq!(flush(&mut s, &cx), "[1, 2, 3, 4]");
-
-        assert_eq!(apply(&mut s, &mut cx, 1), vec![]);
-        assert!(apply_str(&mut s, &mut cx, "str").is_err());
     }
 }
