@@ -5,7 +5,7 @@ use actyx_sdk::{
         PublishResponse, PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    AppId, Event, NodeId, OffsetMap, OffsetOrMin, Payload,
+    AppId, Event, NodeId, OffsetMap, OffsetOrMin, Payload, StreamNr,
 };
 use futures::{
     future::ready,
@@ -62,13 +62,18 @@ impl EventService {
         Ok(OffsetsResponse { present, to_replicate })
     }
 
-    pub async fn publish(&self, app_id: AppId, request: PublishRequest) -> anyhow::Result<PublishResponse> {
+    pub async fn publish(
+        &self,
+        app_id: AppId,
+        stream_nr: StreamNr,
+        request: PublishRequest,
+    ) -> anyhow::Result<PublishResponse> {
         let events = request
             .data
             .into_iter()
             .map(|PublishEvent { tags, payload }| (tags, payload))
             .collect();
-        let meta = self.store.persist(app_id, events).await?;
+        let meta = self.store.persist(app_id, stream_nr, events).await?;
         let response = PublishResponse {
             data: meta
                 .into_iter()

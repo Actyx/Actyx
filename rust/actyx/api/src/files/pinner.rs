@@ -236,6 +236,7 @@ async fn publish_update(
     event_svc
         .publish(
             app_id!("com.actyx"),
+            3.into(),
             PublishRequest {
                 data: vec![PublishEvent {
                     tags: tags!("files", "files:pinned"),

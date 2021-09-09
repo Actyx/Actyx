@@ -111,6 +111,7 @@ pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
 // TODO fix stream nr
 static DISCOVERY_STREAM_NR: u64 = 1;
 static METRICS_STREAM_NR: u64 = 2;
+static FILES_STREAM_NR: u64 = 3;
 const MAX_TREE_LEVEL: i32 = 512;
 
 fn internal_app_id() -> AppId {
@@ -139,7 +140,8 @@ impl Default for EphemeralEventsConfig {
             interval: Duration::from_secs(30 * 60),
             streams: btreemap! {
                 DISCOVERY_STREAM_NR.into() => RetainConfig::Events(1000),
-                METRICS_STREAM_NR.into() => RetainConfig::Events(1000)
+                METRICS_STREAM_NR.into() => RetainConfig::Events(1000),
+                FILES_STREAM_NR.into() => RetainConfig::Age(Duration::from_secs(60 * 60 * 24 * 14))
             },
         }
     }
