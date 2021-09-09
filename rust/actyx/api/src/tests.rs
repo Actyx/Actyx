@@ -860,24 +860,6 @@ mod files {
         assert_eq!(resp.status(), http::StatusCode::OK);
         let cid = String::from_utf8(resp.body().to_vec())?;
 
-        // get file as json
-        let resp = test::request()
-            .path(&format!("/api/v2/files/{}/folder/my-filename", cid))
-            .method("GET")
-            .header("Authorization", format!("Bearer {}", token))
-            .header("Accept", "application/json")
-            .reply(&route)
-            .await;
-        assert_eq!(resp.status(), http::StatusCode::OK);
-        let file: actyx_sdk::service::FilesGetResponse = serde_json::from_slice(resp.body())?;
-        let expected = actyx_sdk::service::FilesGetResponse::File {
-            name: "my-filename".into(),
-            bytes: b"42\n".to_vec(),
-            mime: "text/plain".into(),
-        };
-        assert_eq!(file, expected);
-
-        // get file raw
         let resp = test::request()
             .path(&format!("/api/v2/files/{}/folder/my-filename", cid))
             .method("GET")

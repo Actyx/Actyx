@@ -1,6 +1,6 @@
-use actyx_sdk::{service::FilesGetResponse, AppId};
+use actyx_sdk::AppId;
 use anyhow::{Context, Result};
-use futures::{pin_mut, Stream, StreamExt};
+use futures::{Stream, StreamExt};
 use http::header::CONTENT_DISPOSITION;
 use libipld::cid::Cid;
 use percent_encoding::percent_decode_str;
@@ -95,31 +95,6 @@ pub(crate) async fn get_file_raw(store: BanyanStore, cid: Cid, name: &str) -> an
         );
     }
     Ok(response)
-}
-
-pub(crate) async fn get_file_structured(store: BanyanStore, cid: Cid, name: &str) -> anyhow::Result<FilesGetResponse> {
-    let s = get_file(store, cid).await?;
-    let mut bytes = vec![];
-    pin_mut!(s);
-    while let Some(r) = s.next().await {
-        let mut b = r?;
-        bytes.append(&mut b);
-    }
-    let mime = content_type_from_ext_or_buf(name, &bytes[..]).unwrap_or_else(|| "application/octet-stream".into());
-    let r = FilesGetResponse::File {
-        name: name.to_string(),
-        bytes,
-        mime,
-    };
-    Ok(r)
-}
-
-pub(crate) fn content_type_from_ext_or_buf(name: &str, buf: &[u8]) -> Option<String> {
-    content_type_from_ext(name).or_else(|| {
-        tracing::span!(tracing::Level::DEBUG, "Detecting content-type", %name, size=buf.len());
-        // This is fairly expensive, so only look at the first kb
-        content_type_from_content(&buf[0..buf.len().min(1024)])
-    })
 }
 
 pub(crate) fn extract_name_or_cid_from_host(

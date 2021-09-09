@@ -125,17 +125,7 @@ async fn serve_unixfs_node(
                 warp::reply::json(&r).into_response()
             }
         }
-        swarm::FileNode::File { cid, name } => {
-            if accept_headers
-                .as_deref()
-                .map(|x| x.to_lowercase().contains("application/json"))
-                .unwrap_or_default()
-            {
-                warp::reply::json(&ipfs::get_file_structured(store, cid, &name).await?).into_response()
-            } else {
-                ipfs::get_file_raw(store, cid, &name).await?
-            }
-        }
+        swarm::FileNode::File { cid, name } => ipfs::get_file_raw(store, cid, &name).await?,
     };
     if ans_name.is_some() {
         response
@@ -277,7 +267,7 @@ fn delete_name(
                     Ok(x.cid.to_string())
                 } else {
                     // CIDs can not be deleted. They will be eventually GC'd once the pin is gone.
-                    Err(warp::reject::not_found())
+                    Err(warp::reject::custom(ApiError::MethodNotAllowed))
                 }
             }
         })
