@@ -1,4 +1,9 @@
-use std::{collections::BTreeMap, convert::TryFrom, sync::Arc, time::Duration};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    convert::TryFrom,
+    sync::Arc,
+    time::Duration,
+};
 
 use actyx_sdk::{
     app_id,
@@ -134,7 +139,7 @@ FROM isLocal &
      appId(com.actyx) &
      'files:created' &
      from({})
-AGGREGATE ARRAY(_.cid)"#,
+SELECT _.cid"#,
                             now.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
                         )
                         .parse()
@@ -201,19 +206,19 @@ async fn evaluate(event_svc: &EventService, ipfs: &Ipfs, app_id: &AppId, query: 
             }
         });
     pin_mut!(s);
+    let mut cids = BTreeSet::default();
+    while let Some(payload) = s.next().await {
+        let cid = payload
+            .extract::<String>()
+            .context("Extracting String from query")
+            .and_then(|s| Cid::try_from(&*s).map_err(Into::into))
+            .with_context(|| format!("Query for {} failed. Expected: Cid", app_id))?;
 
-    if let Some(payload) = s.next().await {
-        let cids: Vec<Cid> = payload
-            .extract()
-            .map_err(Into::into)
-            .and_then(|r: Vec<String>| {
-                r.into_iter()
-                    .map(|s| Cid::try_from(&*s).map_err(Into::into))
-                    .collect::<anyhow::Result<Vec<Cid>>>()
-            })
-            .with_context(|| format!("Query for {} failed. Expected: Vec<Cid>", app_id))?;
+        cids.insert(cid);
+    }
 
-        let root = RootLinkNode(cids);
+    if !cids.is_empty() {
+        let root = RootLinkNode(cids.into_iter().collect());
         let block = Block::encode(DagCborCodec, Code::Blake3_256, &root)?;
         ipfs.insert(&block)?;
         ipfs.alias(app_id.as_bytes(), Some(block.cid()))?;

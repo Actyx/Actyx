@@ -10,8 +10,8 @@ use crate::language::Query;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
-/// Installs a standing [`Query`] for setting the set of pinned files. The result of this query
-/// must evaluate to a single array of hashes. This set of hashes is pinned on the local node for
+/// Installs a standing [`Query`] for setting the set of pinned files. The results of this query
+/// must evaluate to a single hash. This collected set of hashes is pinned on the local node for
 /// the given [`Duration`].
 /// ```
 /// use actyx_sdk::service::PrefetchRequest;
@@ -25,7 +25,7 @@ use crate::language::Query;
 ///      appId(com.actyx) &
 ///      'files:created' &
 ///      from({})
-/// AGGREGATE ARRAY(_.cid)"#,
+/// SELECT _.cid"#,
 ///     now.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 /// )
 /// .parse()
