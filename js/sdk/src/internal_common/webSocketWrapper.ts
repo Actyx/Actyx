@@ -69,14 +69,16 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
   }
 
   close(): void {
-    this.resetState()
+    this.connected = false
+    this.socket && this.socket.close(1000, 'Application shutting down')
   }
 
   constructor(
     private readonly url: string,
     private readonly protocol?: string | string[],
     private readonly onConnectionLost?: () => void,
-    private readonly reconnectTimer: number = 1000,
+    // If unset, disable automatic reconnect
+    private readonly reconnectTimer?: number,
   ) {
     if (!root.WebSocket) {
       log.ws.error('WebSocket not supported on this plattform')
@@ -147,18 +149,25 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     }
     socket.onmessage = onMessage
     socket.onclose = err => {
-      // Can be removed, when the hot reconnect is possible
-      if (this.connected) {
-        if (this.onConnectionLost) {
-          this.onConnectionLost()
-        }
-        this.responses &&
-          this.responses.error(`Connection lost with reason '${err.reason}', code ${err.code}`)
-      } else {
+      if (!this.connected) {
+        // Orderly close desired by the user
+        return
+      }
+
+      if (this.onConnectionLost) {
+        this.onConnectionLost()
+      }
+
+      if (this.reconnectTimer) {
+        this.resetState()
+
         Observable.timer(this.reconnectTimer).subscribe(() =>
           this.createSocket(onMessage, binaryType),
         )
       }
+
+      this.responses &&
+        this.responses.error(`Connection lost with reason '${err.reason}', code ${err.code}`)
     }
 
     socket.onopen = () => {
