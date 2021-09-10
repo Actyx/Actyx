@@ -52,7 +52,7 @@ impl FromStr for QueryExecutor {
 }
 
 impl QueryExecutor {
-    pub fn feed(&self, event: &EventResponse<Payload>, tags: &TagSet) -> Vec<PublishEvent> {
+    pub fn feed(&mut self, event: &EventResponse<Payload>, tags: &TagSet) -> Vec<PublishEvent> {
         let mut result = Vec::new();
         if matches(&event, &self.query.from) {
             let value = runtime::value::Value::from((
@@ -63,7 +63,7 @@ impl QueryExecutor {
                 },
                 event.payload.clone(),
             ));
-            for res in self.query.feed(value) {
+            for res in self.query.feed(Some(value)) {
                 match res {
                     Ok(v) => {
                         result.push(PublishEvent {

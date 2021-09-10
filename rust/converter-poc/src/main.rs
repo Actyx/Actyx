@@ -109,7 +109,7 @@ pub async fn main() -> anyhow::Result<()> {
     let tag_mapping: RadixTree<String> = tag_mapping.parse().context("unable to parse tag mapping")?;
     let tag_mapping = tag_mapping.prefix("", "to/");
     let tag_mapper = TagMapper::new(tag_mapping);
-    let executors = queries
+    let mut executors = queries
         .into_iter()
         .map(|query| load_local(query))
         .map(|query| query.and_then(|q| q.parse::<QueryExecutor>()))
@@ -188,7 +188,7 @@ pub async fn main() -> anyhow::Result<()> {
                         target_tags.insert(converted_from_from.clone());
                         // transform the event
                         event.tags = tags;
-                        for executor in &executors {
+                        for executor in &mut executors {
                             let result = executor.feed(&event, &target_tags);
                             tracing::info!("{} {}", executor, result.len());
                             // the first one that returns events wins!
