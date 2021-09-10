@@ -180,7 +180,7 @@ async fn check_queries(event_svc: &EventService, ipfs: &Ipfs, standing_queries: 
         }
     });
     for app_id in app_ids_to_clear {
-        if let Err(error) = ipfs.alias(app_id.as_bytes(), None) {
+        if let Err(error) = ipfs.alias(AppPinAlias::from(&app_id), None) {
             error!(%app_id, %error, "Error clearing pin");
         }
     }
@@ -188,6 +188,17 @@ async fn check_queries(event_svc: &EventService, ipfs: &Ipfs, standing_queries: 
         if let Err(error) = evaluate(event_svc, ipfs, app_id, query).await {
             error!(%error, %app_id, "Error updating standing query");
         }
+    }
+}
+struct AppPinAlias(Vec<u8>);
+impl From<&AppId> for AppPinAlias {
+    fn from(app_id: &AppId) -> Self {
+        Self(format!("app_pin:{}", app_id).as_bytes().to_vec())
+    }
+}
+impl AsRef<[u8]> for AppPinAlias {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
     }
 }
 async fn evaluate(event_svc: &EventService, ipfs: &Ipfs, app_id: &AppId, query: &StandingQuery) -> anyhow::Result<()> {
@@ -225,7 +236,7 @@ async fn evaluate(event_svc: &EventService, ipfs: &Ipfs, app_id: &AppId, query: 
         let root = RootLinkNode(cids.into_iter().collect());
         let block = Block::encode(DagCborCodec, Code::Blake3_256, &root)?;
         ipfs.insert(&block)?;
-        ipfs.alias(app_id.as_bytes(), Some(block.cid()))?;
+        ipfs.alias(AppPinAlias::from(app_id), Some(block.cid()))?;
         debug!(root = %block.cid(), %app_id, "Updated pinned files");
     }
     Ok(())
