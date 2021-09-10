@@ -54,6 +54,7 @@ enum FilePrefetchEvent {
     FutureCompact,
 }
 
+#[derive(PartialEq)]
 struct StandingQuery {
     created: Timestamp,
     duration: Duration,
@@ -102,12 +103,15 @@ impl FilePinner {
                         if let Err(error) = publish_update(&event_svc, app_id.clone(), query, retention).await {
                             error!(%app_id, %error, "Error updating pin");
                         }
-                        // Also check the queries
-                        check_queries(&event_svc, &ipfs, &mut standing_queries).await
                     }
                     O::Subscription(r) => {
-                        if let Err(error) = update_query(&mut standing_queries, r) {
-                            error!(%error, "Error evaluating query");
+                        match update_query(&mut standing_queries, r) {
+                            Err(error) => error!(%error, "Error evaluating query"),
+                            Ok(true) => {
+                                // Also check the queries if something changed
+                                check_queries(&event_svc, &ipfs, &mut standing_queries).await
+                            }
+                            _ => {}
                         }
                     }
                     O::Tick => check_queries(&event_svc, &ipfs, &mut standing_queries).await,
@@ -252,7 +256,10 @@ async fn publish_update(
     Ok(())
 }
 
-fn update_query(standing_queries: &mut BTreeMap<AppId, StandingQuery>, event: SubscribeResponse) -> anyhow::Result<()> {
+fn update_query(
+    standing_queries: &mut BTreeMap<AppId, StandingQuery>,
+    event: SubscribeResponse,
+) -> anyhow::Result<bool> {
     if let SubscribeResponse::Event(EventResponse {
         timestamp: created,
         payload,
@@ -266,18 +273,18 @@ fn update_query(standing_queries: &mut BTreeMap<AppId, StandingQuery>, event: Su
         } = payload.extract()?
         {
             let now = Timestamp::now();
-            if created + duration > now {
-                debug!(%app_id, ?duration, %query, "Updated standing query");
-                standing_queries.insert(
-                    app_id,
-                    StandingQuery {
-                        created,
-                        duration,
-                        query,
-                    },
-                );
+            let q = StandingQuery {
+                created,
+                duration,
+                query,
+            };
+
+            if created + duration > now && standing_queries.get(&app_id) != Some(&q) {
+                debug!(%app_id, ?duration, query=%q.query, "Updated standing query");
+                standing_queries.insert(app_id, q);
+                return Ok(true);
             }
         }
     }
-    Ok(())
+    Ok(false)
 }
