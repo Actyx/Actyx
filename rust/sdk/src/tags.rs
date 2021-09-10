@@ -100,6 +100,18 @@ impl Tag {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+    /// Constructs an `TagSet` with \<tag> and \<tag>:\<id>
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use actyx_sdk::{TagSet, tags, tag};
+    /// let tags: TagSet = tag!("machine").with_id("Drill-404");
+    /// assert_eq!(tags, tags!("machine", "machine:Drill-404"));
+    /// ```
+    pub fn with_id(self, id: impl Into<String>) -> TagSet {
+        vec![self.clone(), self + format!(":{}", id.into())].into()
+    }
 }
 
 impl TryFrom<&str> for Tag {
@@ -500,5 +512,10 @@ mod tests {
         assert_eq!(t, tags!("c", "b"));
 
         assert_eq!(vec![a, b, c].into_iter().collect::<TagSet>(), tags!("a", "b", "c"));
+    }
+
+    #[test]
+    fn tag_with_id() {
+        assert_eq!(tag!("a").with_id("b"), tags!("a", "a:b"));
     }
 }

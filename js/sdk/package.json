@@ -68,7 +68,7 @@
     "datastore",
     "offline-first"
   ],
-  "license": "Apache-2.0",
+  "license": "GPL-2.0-only",
   "main": "./lib/index.js",
   "name": "@actyx/sdk",
   "repository": {
@@ -96,5 +96,5 @@
     "build:docs": "rm -rf ../../web/developer.actyx.com/static/@actyx/pond/ && typedoc --mode library --options typedoc.json src/index.ts"
   },
   "types": "./lib/index.d.ts",
-  "version": "0.2.0"
+  "version": "0.2.1"
 }

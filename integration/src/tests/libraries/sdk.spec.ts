@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { Actyx } from '@actyx/sdk'
+import { Actyx, AqlResponse, EventsSortOrder, Tag } from '@actyx/sdk'
+import { trialManifest } from '../../http-client'
 import { runOnEvery } from '../../infrastructure/hosts'
+import { randomString } from '../../util'
 
 describe('@actyx/sdk', () => {
   test('node unreachable', async () => {
@@ -84,6 +86,131 @@ describe('@actyx/sdk', () => {
         message:
           'Invalid manifest. AppId \'bad.example.bad-app\' is not allowed in app_domains \'[AppDomain("com.actyx.*"), AppDomain("com.example.*")]\'',
       })
+    })
+  })
+
+  test('event emission error still allows more emissions, and queries, afterwards', async () => {
+    await runOnEvery(async (node) => {
+      const actyx = await Actyx.of(trialManifest, {
+        actyxPort: node._private.apiPort,
+      })
+
+      // The only real error we can produce is "event too large"
+      const badEvent = []
+      for (let i = 0; i < Math.pow(2, 22); i++) {
+        badEvent.push(i)
+      }
+
+      const persistBadEvent = actyx.publish(Tag('x').apply(badEvent))
+
+      await expect(persistBadEvent).rejects.toBeTruthy()
+
+      await assertNormalOperationsAndDispose(actyx)
+    })
+  })
+
+  test('query (complete) error still allows more emissions, and queries, afterwards', async () => {
+    await runOnEvery(async (node) => {
+      const actyx = await Actyx.of(trialManifest, {
+        actyxPort: node._private.apiPort,
+      })
+
+      // The only real query error we can produce is bad offsets
+      const badOffsets = { foo: 5000 }
+
+      const runBadQuery = actyx.queryKnownRange({ query: Tag('x'), upperBound: badOffsets })
+
+      await expect(runBadQuery).rejects.toBeTruthy()
+
+      await assertNormalOperationsAndDispose(actyx)
+    })
+  })
+
+  test('query (chunked) error still allows more emissions, and queries, afterwards', async () => {
+    await runOnEvery(async (node) => {
+      const actyx = await Actyx.of(trialManifest, {
+        actyxPort: node._private.apiPort,
+      })
+
+      // The only real query error we can produce is bad offsets
+      const badOffsets = { foo: 5000 }
+
+      const runBadQuery = new Promise((resolve, reject) =>
+        actyx.queryKnownRangeChunked(
+          { query: Tag('x'), upperBound: badOffsets },
+          20,
+          (result) => resolve(result),
+          () => reject('err ok'),
+        ),
+      )
+
+      await expect(runBadQuery).rejects.toBeTruthy()
+
+      await assertNormalOperationsAndDispose(actyx)
+    })
+  })
+
+  const assertNormalOperationsAndDispose = async (actyx: Actyx) => {
+    const okTag = Tag('ok' + Math.random())
+    const g = actyx.publish(okTag.apply('hello'))
+    await expect(g).resolves.toBeTruthy()
+
+    const q = actyx.queryAllKnown({ query: okTag }).then((x) => x.events[0])
+    // Just assert that we get something back
+    await expect(q).resolves.toMatchObject({ payload: 'hello' })
+
+    actyx.dispose()
+  }
+
+  test('AQL syntax error', async () => {
+    await runOnEvery(async (node) => {
+      const actyx = await Actyx.of(trialManifest, {
+        actyxPort: node._private.apiPort,
+      })
+
+      const badQuery = actyx.queryAql('garbage')
+      await expect(badQuery).rejects.toBeTruthy()
+
+      const badQueryChunked = new Promise((res, rej) =>
+        actyx.queryAqlChunked('garbage', 1, res, rej),
+      )
+      await expect(badQueryChunked).rejects.toBeTruthy()
+
+      actyx.dispose()
+    })
+  })
+
+  test('AQL predecessor', async () => {
+    await runOnEvery(async (node) => {
+      const actyx = await Actyx.of(trialManifest, {
+        actyxPort: node._private.apiPort,
+      })
+
+      const tagString = randomString()
+      const tag = Tag<number>(tagString)
+      const evts = await actyx.publish(tag.apply(4, 5))
+      const laterEvt = evts[1]
+
+      const predecessor = await new Promise((resolve, reject) => {
+        const cancel = actyx.queryAqlChunked(
+          {
+            order: EventsSortOrder.Descending,
+            query: `FEATURES(eventKeyRange) FROM '${tagString}' & to(${laterEvt.eventId})`,
+          },
+          1,
+          (chunk: AqlResponse[]) => {
+            resolve(chunk[0])
+            cancel() // stop retrieving after getting the first result
+          },
+          reject,
+        )
+      })
+
+      expect(predecessor).toMatchObject({
+        payload: 4,
+      })
+
+      actyx.dispose()
     })
   })
 })

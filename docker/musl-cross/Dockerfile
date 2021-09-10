@@ -28,7 +28,7 @@ ENV CARGO_BUILD_TARGET=x86_64-pc-windows-gnu
 FROM --platform=$BUILDPLATFORM build-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} AS crossbuild
 ENV     CARGO_HOME=/usr/local/cargo \
         PATH=/usr/local/cargo/bin:$PATH
-ARG RUSTVER=1.54.0
+ARG RUSTVER=1.55.0
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- \
     --default-toolchain ${RUSTVER} \

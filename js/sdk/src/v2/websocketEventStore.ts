@@ -21,7 +21,7 @@ import {
   OffsetsResponse,
   UnstoredEvents,
 } from '../internal_common/types'
-import { AppId, Where } from '../types'
+import { AppId, EventsSortOrder, Where } from '../types'
 import { EventKeyIO, OffsetMapIO } from '../types/wire'
 import { validateOrThrow } from '../util'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
@@ -67,12 +67,12 @@ export class WebsocketEventStore implements EventStore {
       .first()
       .toPromise()
 
-  queryUnchecked = (aqlQuery: string) =>
+  queryUnchecked = (aqlQuery: string, sortOrder: EventsSortOrder) =>
     this.multiplexer
       .request(RequestTypes.Query, {
         lowerBound: {},
         query: aqlQuery,
-        order: 'asc',
+        order: sortOrder,
       })
       .map(x => x as TypedMsg)
 

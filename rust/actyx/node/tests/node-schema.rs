@@ -13,6 +13,9 @@ fn node_schema_in_sync() {
             announce_addresses: btreeset![],
             swarm_key: "MDAwMDAwMDAxMTExMTExMTIyMjIyMjIyMzMzMzMzMzM=".into(),
             topic: "some topic".into(),
+            block_cache_count: 1024 * 128,
+            block_cache_size: 1024 * 1024 * 1024,
+            block_gc_interval: 300,
         },
         admin: Admin {
             display_name: "some name".into(),

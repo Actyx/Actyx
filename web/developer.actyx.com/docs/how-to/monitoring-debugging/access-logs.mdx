@@ -18,6 +18,7 @@ import TabItem from '@theme/TabItem'
   values={[
     { label: 'Windows', value: 'windows' },
     { label: 'Linux/macOS/Docker', value: 'linux' },
+    { label: 'Android', value: 'android' },
   ]}
 >
 
@@ -60,6 +61,48 @@ May 25 18:03:14.750  INFO API_BOUND: API bound to 127.0.0.1:4454.
 
 :::tip Docker logging functionalities
 If you are running Actyx on Docker, you can also access your logs with the `docker logs` command. By [reconfiguring your Docker logging driver](https://docs.docker.com/config/containers/logging/configure/), you can also log to external systems or files.
+:::
+
+</TabItem>
+<TabItem value="android">
+
+On Android, you can access the logs using the `logcat` tool via USB debugging through `adb`. Both utilities are included in the official Android SDK.
+If you don't need Android Studio, you can download only the command line tools [here](https://developer.android.com/studio/?hl=i#command-tools).
+
+To tail the logs from the device, you need to [enable USB debugging on your device](https://developer.android.com/studio/debug/dev-options)
+and run `adb logcat -s com.actyx`.
+
+For further details, please refer to the [logcat user guide](https://developer.android.com/studio/command-line/logcat).
+
+```text
+$ adb logcat -s com.actyx
+
+09-08 15:13:05.809 10202 10202 I com.actyx: node::node_storage: Using database /storage/emulated/0/Android/data/com.actyx.android/files/node.sqlite
+09-08 15:13:05.844 10202 10234 I com.actyx: node::node: Actyx 2.3.1-dc8c5fc462516bf9877a67fb26b1e4c36c638d59-android-aarch64-release is starting
+09-08 15:13:05.867 10202 10239 I com.actyx: ADMIN_API_BOUND: Admin API bound to /ip6/::1/tcp/4458.
+09-08 15:13:05.868 10202 10239 I com.actyx: ADMIN_API_BOUND: Admin API bound to /ip4/127.0.0.1/tcp/4458.
+09-08 15:13:05.869 10202 10239 I com.actyx: ADMIN_API_BOUND: Admin API bound to /ip6/2a02:810d:1640:174::e2fa/tcp/4458.
+09-08 15:13:05.869 10202 10239 I com.actyx: ADMIN_API_BOUND: Admin API bound to /ip4/192.168.0.221/tcp/4458.
+09-08 15:13:05.869 10202 10239 I com.actyx: ADMIN_API_BOUND: Admin API bound to /ip6/2a02:810d:1640:174:555c:9819:5c9a:618c/tcp/4458.
+09-08 15:13:05.869 10202 10239 I com.actyx: ADMIN_API_BOUND: Admin API bound to /ip6/2a02:810d:1640:174:d638:9cff:feeb:8a7e/tcp/4458.
+09-08 15:13:05.916 10202 10236 I com.actyx: SWARM_SERVICES_BOUND: Swarm Services bound to /ip6/2a02:810d:1640:174:d638:9cff:feeb:8a7e/tcp/4001.
+09-08 15:13:05.916 10202 10240 I com.actyx: SWARM_SERVICES_BOUND: Swarm Services bound to /ip6/::1/tcp/4001.
+09-08 15:13:05.916 10202 10240 I com.actyx: SWARM_SERVICES_BOUND: Swarm Services bound to /ip6/2a02:810d:1640:174:555c:9819:5c9a:618c/tcp/4001.
+09-08 15:13:05.916 10202 10240 I com.actyx: SWARM_SERVICES_BOUND: Swarm Services bound to /ip6/2a02:810d:1640:174::e2fa/tcp/4001.
+09-08 15:13:05.921 10202 10236 I com.actyx: SWARM_SERVICES_BOUND: Swarm Services bound to /ip4/192.168.0.221/tcp/4001.
+09-08 15:13:05.921 10202 10240 I com.actyx: SWARM_SERVICES_BOUND: Swarm Services bound to /ip4/127.0.0.1/tcp/4001.
+09-08 15:13:05.973 10202 10240 I com.actyx: API_BOUND: API bound to 127.0.0.1:4454.
+09-08 15:13:05.973 10202 10234 I com.actyx: NODE_STARTED_BY_HOST: Actyx 2.3.1-dc8c5fc462516bf9877a67fb26b1e4c36c638d59-android-aarch64-release is running....
+```
+
+:::info Enable debug logging
+To enable debug logging, it is not sufficient to [set the log level for the node](./logging-levels.mdx) in Actyx.
+Additionally, you need to enable debug logging on your device by running `adb shell "setprop log.tag.com.actyx DEBUG"`.
+:::
+
+:::tip 
+[Rogcat](https://github.com/flxo/rogcat) is a wrapper application for `logcat` allowing to vizualize and filter logs more conveniently.
+It also supports saving logs into a set of files of a maximum size, which is useful if you need to monitor your device over a longer period of time.
 :::
 
 </TabItem>

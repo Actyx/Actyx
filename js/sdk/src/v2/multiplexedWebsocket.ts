@@ -224,14 +224,14 @@ export class MultiplexedWebsocket {
         }
         return !isComplete
       })
-      .flatMap(res => {
+      .mergeMap(res => {
         switch (res.type) {
           case ResponseMessageType.Next:
             return res.payload
           case ResponseMessageType.Error:
             upstreamCompletedOrError = true
             log.ws.error(JSON.stringify(res.kind))
-            throw new Error(JSON.stringify(res.kind)) // TODO: add context to msg?
+            return Observable.throw(new Error(JSON.stringify(res.kind))) // TODO: add context to msg?
           default:
             return unreachable()
         }

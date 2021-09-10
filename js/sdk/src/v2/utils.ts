@@ -7,11 +7,11 @@
  */
 
 import fetch from 'node-fetch'
+import { OffsetsResponse } from '../internal_common'
 import { decorateEConnRefused } from '../internal_common/errors'
 import { ActyxOpts, AppManifest } from '../types'
 import { isNode } from '../util'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
-import { OffsetsResponse } from '../internal_common'
 
 const defaultApiLocation = (isNode && process.env.AX_STORE_URI) || 'localhost:4454/api/v2'
 
@@ -201,6 +201,7 @@ export const mkMultiplexer = async (
   const wsUrl = 'ws://' + apiLocation + '/events'
   const cAdjusted = {
     ...config,
+    onStoreConnectionClosed: config.onConnectionLost,
     url: wsUrl + '?' + token,
   }
 

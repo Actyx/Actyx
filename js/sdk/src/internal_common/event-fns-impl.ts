@@ -7,6 +7,7 @@
 import { contramap, getTupleOrd, gt, lt, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Observable } from '../../node_modules/rxjs'
 import {
+  AqlQuery,
   AutoCappedQuery,
   EarliestQuery,
   EventFns,
@@ -26,6 +27,7 @@ import {
   EventKey,
   EventsOrTimetravel,
   EventsSortOrder,
+  isString,
   Metadata,
   MsgType,
   NodeId,
@@ -36,6 +38,7 @@ import {
   toMetadata,
   Where,
 } from '../types'
+import { noop } from '../util'
 import { EventStore } from './eventStore'
 import { eventsMonotonic, EventsOrTimetravel as EventsOrTtInternal } from './subscribe_monotonic'
 import { Event, Events } from './types'
@@ -162,6 +165,8 @@ export const EventFnsFromEventStoreV2 = (
 
     let cancelled = false
 
+    const onCompleteOrErr = onComplete ? onComplete : noop
+
     const s = eventStore
       .query(lb, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
       .bufferCount(chunkSize)
@@ -173,11 +178,7 @@ export const EventFnsFromEventStoreV2 = (
         void 0,
         1,
       )
-      .subscribe()
-
-    if (onComplete instanceof Function) {
-      s.add(onComplete)
-    }
+      .subscribe({ complete: onCompleteOrErr, error: onCompleteOrErr })
 
     return () => {
       cancelled = true
@@ -562,12 +563,47 @@ export const EventFnsFromEventStoreV2 = (
     }
   }
 
-  const queryAql = async (query: string): Promise<AqlResponse[]> => {
+  const getQueryAndOrd = (query: AqlQuery): [string, EventsSortOrder] => {
+    if (isString(query)) {
+      return [query, EventsSortOrder.Ascending]
+    } else {
+      return [query.query, query.order || EventsSortOrder.Ascending]
+    }
+  }
+
+  const queryAql = async (query: AqlQuery): Promise<AqlResponse[]> => {
+    const [aql, ord] = getQueryAndOrd(query)
+
     return eventStore
-      .queryUnchecked(query)
+      .queryUnchecked(aql, ord)
       .map(wrapAql)
       .toArray()
       .toPromise()
+  }
+
+  const queryAqlChunked = (
+    query: AqlQuery,
+    chunkSize: number,
+    onChunk: (chunk: AqlResponse[]) => Promise<void> | void,
+    onCompleteOrError: (err?: unknown) => void,
+  ): CancelSubscription => {
+    const [aql, ord] = getQueryAndOrd(query)
+
+    const buffered = eventStore
+      .queryUnchecked(aql, ord)
+      .map(wrapAql)
+      .bufferCount(chunkSize)
+
+    // The only way to avoid parallel invocations is to use mergeScan with final arg=1
+    const rxSub = buffered
+      .mergeScan(
+        (_a: void, chunk: AqlResponse[]) => Observable.from(Promise.resolve(onChunk(chunk))),
+        undefined,
+        1,
+      )
+      .subscribe({ error: onCompleteOrError, complete: onCompleteOrError })
+
+    return () => rxSub.unsubscribe()
   }
 
   return {
@@ -578,6 +614,7 @@ export const EventFnsFromEventStoreV2 = (
     queryAllKnown,
     queryAllKnownChunked,
     queryAql,
+    queryAqlChunked,
     subscribe,
     subscribeChunked,
     subscribeMonotonic,

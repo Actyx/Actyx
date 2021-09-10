@@ -59,13 +59,13 @@ CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
 CARGO_BUILD_ARGS ?= --features migration-v1
 
-export BUILD_RUST_TOOLCHAIN ?= 1.54.0
+export BUILD_RUST_TOOLCHAIN ?= 1.55.0
 
 # The stable image version is the git commit hash inside `Actyx/Actyx`, with
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 0c6ed1ec7665d45d73bdcb974993175e4676542c
+export LATEST_STABLE_IMAGE_VERSION := 0d13a2e82ee0f02426205bcf9237c8858f959da3
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -93,7 +93,7 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/osxbuilder:a042cc707998b83704f3cf5d3f0ededc7143d1c3
+image-darwin = actyx/util:osxbuilder-3c73dcd794149800c37f7f6efa892c6f9bb963fe
 
 image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
 
@@ -197,7 +197,7 @@ prepare-docker:
 	docker pull actyx/util:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/util:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
 	docker pull actyx/util:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
-	docker pull actyx/util:node-manager-win-builder
+	docker pull actyx/util:node-manager-win-builder-$(IMAGE_VERSION)
 
 prepare-docker-crosscompile:
 	./bin/check-docker-requirements.sh check_docker_version
@@ -279,7 +279,8 @@ validate-netsim: diagnostics
 	rust/actyx/target/release/quickcheck_interleaved
 	rust/actyx/target/release/quickcheck_stress_single_store
 	rust/actyx/target/release/quickcheck_ephemeral
-	rust/actyx/target/release/health
+        # https://github.com/Actyx/Actyx/issues/160
+	# rust/actyx/target/release/health
 	rust/actyx/target/release/read_only
 
 .PHONY: validate-os-android
@@ -302,7 +303,7 @@ validate-js-sdk:
 	cd js/sdk && source ~/.nvm/nvm.sh && nvm install && \
 		npm install && \
 		npm run test && \
-		npm run build
+		npm run build:prod
 
 # validate js pond
 validate-js-pond:
@@ -379,7 +380,7 @@ node-manager-win:
 	-w /src/js/node-manager \
 	--rm \
 	actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
-	bash -c "npm install && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
+	bash -c "source /root/.nvm/nvm.sh && nvm install && npm install && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
 
 node-manager-mac-linux:
 	cd js/node-manager && \
