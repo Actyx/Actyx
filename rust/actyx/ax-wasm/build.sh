@@ -1,7 +1,7 @@
 #!/bin/bash -e
 WASMOPT=./wasm-opt
 WASMOPT_VERSION=101
-WASMBINDGEN_VERSION=0.2.76
+WASMBINDGEN_VERSION=0.2.77
 OUT=./pkg
 
 echo "Running cargo build"
@@ -15,8 +15,7 @@ fi
 
 if ! [ -x "$(command -v wasm-bindgen)" ]; then
   echo "Installing wasm-bindgen-cli via cargo"
-  #cargo install wasm-bindgen-cli --version 0.2.76
-  cargo install wasm-bindgen-cli --git https://github.com/rustwasm/wasm-bindgen
+  cargo install wasm-bindgen-cli --version $WASMBINDGEN_VERSION
 fi
 
 echo "Generating wasm-bindings"
