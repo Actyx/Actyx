@@ -41,6 +41,7 @@ export type TestActyx = TestEventFns & {
   /** For `TestActyx` instances, this method does nothing; it’s just there so all normal `Actyx` functions are provided. @public */
   dispose: () => void
 
+  waitForSync: () => Promise<void>
   /** Underlying snapshotstore, only for testing snapshot interactions. FIXME: Define proper public snapshot API on `Actyx`. @alpha */
   // snapshotStore: SnapshotStore
 }
@@ -113,6 +114,9 @@ export const Actyx = {
       directlyPushEvents: store.directlyPushEvents,
       dispose: () => {
         store.close()
+      },
+      waitForSync: async () => {
+        /* noop */
       },
       // snapshotStore: snaps,
     }
