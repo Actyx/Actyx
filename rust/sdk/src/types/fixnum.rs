@@ -501,7 +501,6 @@ mod tests {
         assert_eq!(v.iter().product::<FixNum<U10>>(), FixNum::panicking(6));
         assert_eq!(v.clone().into_iter().product::<FixNum<U10>>(), FixNum::panicking(6));
 
-        
         assert_eq!(v.iter().map(|x| x + 3).sum::<FixNum<U10>>(), FixNum::panicking(15));
     }
 }
