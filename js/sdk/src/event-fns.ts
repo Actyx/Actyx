@@ -279,6 +279,7 @@ export interface EventFns {
     onChunk: (chunk: EventChunk) => Promise<void> | void,
     onError?: (err: unknown) => void,
   ) => CancelSubscription
+
   /**
    * Subscribe to a stream of events until this would go back in time.
    * Instead of going back in time, receive a TimeTravelMsg and terminate the stream.
@@ -288,7 +289,7 @@ export interface EventFns {
   subscribeMonotonic: <E>(
     query: MonotonicSubscription<E>,
     callback: (data: EventsOrTimetravel<E>) => Promise<void> | void,
-    onError?: (err: unknown) => void,
+    onCompleteOrErr?: OnCompleteOrErr,
   ) => CancelSubscription
 
   /**
