@@ -9,11 +9,16 @@ import { Actyx, Tags } from '..'
 
 // Just a manual test that connects to live Actyx store, to test stuff with quick turnaround
 const start = async () => {
-  const actyx = await Actyx.of({
-    appId: 'com.example.dev-pond',
-    displayName: 'Pond dev',
-    version: '1.0.0',
-  }).catch(ex => {
+  const actyx = await Actyx.of(
+    {
+      appId: 'com.example.dev-pond',
+      displayName: 'Pond dev',
+      version: '1.0.0',
+    },
+    {
+      automaticReconnect: true,
+    },
+  ).catch(ex => {
     console.log('cannot start SDK, is Actyx running on this computer?', ex)
     process.exit(1)
   })
