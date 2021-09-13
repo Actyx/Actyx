@@ -87,8 +87,6 @@ export class MultiplexedWebsocket {
 
   private listeners: Record<RequestId, Observer<ResponseMessage>> = {}
 
-  private error: unknown
-
   private clearListeners = (action: (o: Observer<ResponseMessage>) => void): void => {
     Object.values(this.listeners).forEach(action)
     this.listeners = {}
@@ -123,8 +121,6 @@ export class MultiplexedWebsocket {
         log.ws.error('Raw websocket communication error:', err)
 
         this.clearListeners(l => l.error(err))
-
-        this.error = err
       },
     })
   }
@@ -202,11 +198,6 @@ export class MultiplexedWebsocket {
     requestType,
     payload,
   ) => {
-    // WebSocket has been closed by some error, no further requests are possible.
-    if (this.error) {
-      return Observable.throw(this.error)
-    }
-
     /**
      *  If the WS stream _completes_, consumers always onunsubscribe from the underlying WsSubject, thus we can't
      *  use normal rxjs onUnsubscribe semantics. If the stream was cancelled downstream,

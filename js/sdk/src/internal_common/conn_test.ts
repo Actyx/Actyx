@@ -25,13 +25,27 @@ const start = async () => {
 
   const tags3 = Tags('tE')
 
-  const p = new Observable(o => actyx.observeLatest({ query: tags3 }, e => o.next(e)))
+  const p = new Observable(o =>
+    actyx.observeLatest({ query: tags3 }, e => o.next(e), err => o.error(err)),
+  )
 
   actyx.publish(tags3.apply('x'))
 
-  const d = await p.take(1).toPromise()
+  console.log('waiting for err')
 
-  console.log(d)
+  try {
+    await p.toPromise()
+  } catch (ex) {
+    console.log('Caught', ex)
+  }
+
+  await new Promise(resolve => setTimeout(resolve, 20000))
+
+  console.log('trying')
+
+  const l = actyx.publish(tags3.apply('qqqq'))
+
+  console.log(JSON.stringify(l))
 }
 
 start()
