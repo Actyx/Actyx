@@ -28,6 +28,7 @@ export const WebSocketWrapper = <TRequest, TResponse>(
   url: string,
   protocol?: string | string[],
   onConnectionLost?: () => void,
+  /** Automatic reconnect timer. THIS ONLY WORKS ON V1, because on V2 the token expires. For V2, use `v2/reconnectingWs`. */
   reconnectTimer?: number,
 ): WebSocketWrapperImpl<TRequest, TResponse> => {
   return new WebSocketWrapperImpl<TRequest, TResponse>(
@@ -49,7 +50,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
   binaryType?: 'blob' | 'arraybuffer'
   socketEvents = new EventEmitter()
 
-  readonly responses: Promise<Subject<TResponse>>
+  responses: Promise<Subject<TResponse>>
 
   private readonly responsesInner = new Subject<TResponse>()
 
@@ -154,6 +155,8 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
         Observable.timer(this.reconnectTimer).subscribe(() =>
           this.createSocket(onMessage, binaryType),
         )
+      } else {
+        this.responses = Promise.reject('WS connection errored and closed for good')
       }
 
       this.responsesInner.error(`Connection lost with reason '${err.reason}', code ${err.code}`)

@@ -126,7 +126,12 @@ export class MultiplexedWebsocket {
         this.clearListeners(l => l.error(err))
 
         // Set up new subscription, listening to WS that has potentially reconnected
-        this.responseProcessor = this.initReponseSubscription()
+        this.responseProcessor = this.initReponseSubscription().catch(async err => {
+          log.ws.info('No reconnect happening', err)
+          return new Promise<Subscription>(() => {
+            /* never resolve */
+          })
+        })
       },
     })
   }
