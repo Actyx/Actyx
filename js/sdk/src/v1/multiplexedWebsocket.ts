@@ -81,7 +81,7 @@ export type ResponseMessage = t.TypeOf<typeof ResponseMessage>
 
 export class MultiplexedWebsocket {
   private wsSubject: WebSocketWrapper<Request, ResponseMessage>
-  private responseProcessor: Promise<Subscription>
+  private responseProcessor: Subscription
   private requestCounter: RequestId = 0
 
   private listeners: Record<RequestId, Observer<ResponseMessage>> = {}
@@ -92,7 +92,7 @@ export class MultiplexedWebsocket {
   }
 
   close = () => {
-    this.responseProcessor.then(x => x.unsubscribe())
+    this.responseProcessor.unsubscribe()
     this.wsSubject.close()
 
     this.clearListeners(l => l.complete())
@@ -105,15 +105,13 @@ export class MultiplexedWebsocket {
     this.responseProcessor = this.initReponseSubscription()
   }
 
-  private async initReponseSubscription(): Promise<Subscription> {
-    const responses = await this.wsSubject.responses
-
+  private initReponseSubscription(): Subscription {
     /**
      * If there are no subscribers, the actual WS connection will be torn down. Keep it open.
      * MUST OVERRIDE the `error` function, because the default empty Observer will RETHROW errors,
      * which blows up the pipeline instead of bubbling the error up into user code.
      */
-    return responses.subscribe({
+    return this.wsSubject.responses().subscribe({
       next: response => {
         const listener = this.listeners[response.requestId]
         if (listener) {
