@@ -23,6 +23,8 @@ const start = async () => {
     process.exit(1)
   })
 
+  console.log('Hello')
+
   const tags3 = Tags('tE')
 
   const p = new Observable(o =>

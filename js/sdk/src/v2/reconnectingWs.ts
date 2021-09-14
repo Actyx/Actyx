@@ -20,10 +20,10 @@ export const reconnectingWs = <TRequest, TResponse>(
 
 class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, TResponse> {
   responses(): Subject<TResponse> {
-    return this.responsesWithoutErrors
+    return this.responsesInner
   }
 
-  private readonly responsesWithoutErrors = new Subject<TResponse>()
+  private responsesInner = new Subject<TResponse>()
 
   private innerSocket?: WebSocketWrapper<TRequest, TResponse>
 
@@ -63,16 +63,24 @@ class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, 
     this.innerSocket = WebSocketWrapper(wsUrlAuthed, undefined)
 
     this.innerSocket.responses().subscribe({
+      next: x => this.responsesInner.next(x),
       error: err => {
         this.innerSocket && this.innerSocket.close()
         this.innerSocket = undefined
 
         log.ws.error('WS closed due to', err, '-- attempting reconnect!')
 
+        // Switch to a new subject~~
+        const oldSubject = this.responsesInner
+        this.responsesInner = new Subject<TResponse>()
+        oldSubject.error(err)
+
         this.loopReconnect()
       },
       complete: () => {
         log.ws.debug('Assuming ordinary close of WebSocket')
+        this.responsesInner.complete()
+        this.tryConnect = false
       },
     })
 
@@ -82,11 +90,12 @@ class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, 
     this.pendingRequests = []
   }
 
-  private async loopReconnect(): Promise<Subject<TResponse>> {
+  private async loopReconnect(): Promise<void> {
     while (this.tryConnect) {
       try {
         await this.connect()
         log.ws.info('Successfully reconnected WS')
+        return
       } catch (err) {
         log.ws.error('WS reconnect failed', err, 'trying again in a couple seconds')
         await new Promise(resolve => setTimeout(resolve, 2_000))
