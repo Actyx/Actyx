@@ -52,7 +52,7 @@ const NextMessage = t.readonly(
   t.type({
     type: t.literal(ResponseMessageType.Next),
     requestId: RequestId,
-    payload: t.array(t.unknown),
+    payload: t.unknown,
   }),
 )
 
