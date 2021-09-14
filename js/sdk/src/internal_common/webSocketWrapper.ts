@@ -64,6 +64,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
 
   private responsesInner = new Subject<TResponse>()
 
+  private wasOpened = false
   private tryConnect = true
   private error: string | undefined = undefined
 
@@ -145,8 +146,8 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     }
     socket.onmessage = onMessage
     socket.onclose = err => {
-      if (!this.tryConnect) {
-        // Orderly close desired by the user
+      if (!this.tryConnect || !this.wasOpened) {
+        // Orderly close desired by the user, or we did not even manage to connect
         return
       }
 
@@ -169,6 +170,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     }
 
     socket.onopen = () => {
+      this.wasOpened = true
       log.ws.debug('WS open to', url)
       socketEvents.emit('connected', socket)
     }
