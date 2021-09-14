@@ -9,7 +9,6 @@
 import * as t from 'io-ts'
 import { Observable, Observer, Subscription } from '../../node_modules/rxjs'
 import log from '../internal_common/log'
-import { WsStoreConfig } from '../internal_common/types'
 import { WebSocketWrapper } from '../internal_common/webSocketWrapper'
 import { validateOrThrow } from '../util'
 import { unreachable } from '../util/typescript'
@@ -82,7 +81,7 @@ export type ResponseMessage = t.TypeOf<typeof ResponseMessage>
 
 export class MultiplexedWebsocket {
   private wsSubject: WebSocketWrapper<Request, ResponseMessage>
-  private responseProcessor: Subscription
+  private responseProcessor: Promise<Subscription>
   private requestCounter: RequestId = 0
 
   private listeners: Record<RequestId, Observer<ResponseMessage>> = {}
@@ -93,36 +92,45 @@ export class MultiplexedWebsocket {
   }
 
   close = () => {
-    this.responseProcessor.unsubscribe()
+    this.responseProcessor.then(x => x.unsubscribe())
     this.wsSubject.close()
 
     this.clearListeners(l => l.complete())
   }
 
-  constructor({ url, protocol, onStoreConnectionClosed, reconnectTimeout }: WsStoreConfig) {
-    log.ws.info('establishing Pond API WS', url)
-    this.wsSubject = WebSocketWrapper(url, protocol, onStoreConnectionClosed, reconnectTimeout)
+  constructor(w: WebSocketWrapper<Request, ResponseMessage>) {
+    // log.ws.info('establishing Pond API WS', url)
+    this.wsSubject = w
 
+    this.responseProcessor = this.initReponseSubscription()
+  }
+
+  private async initReponseSubscription(): Promise<Subscription> {
     /**
      * If there are no subscribers, the actual WS connection will be torn down. Keep it open.
      * MUST OVERRIDE the `error` function, because the default empty Observer will RETHROW errors,
      * which blows up the pipeline instead of bubbling the error up into user code.
      */
-    this.responseProcessor = this.wsSubject.responses.subscribe({
-      next: response => {
-        const listener = this.listeners[response.requestId]
-        if (listener) {
-          listener.next(response)
-        } else {
-          log.ws.warn('No listener registered for message ' + JSON.stringify(response))
-        }
-      },
-      error: err => {
-        log.ws.error('Raw websocket communication error:', err)
+    return this.wsSubject.responses.then(x =>
+      x.subscribe({
+        next: response => {
+          const listener = this.listeners[response.requestId]
+          if (listener) {
+            listener.next(response)
+          } else {
+            log.ws.warn('No listener registered for message ' + JSON.stringify(response))
+          }
+        },
+        error: err => {
+          log.ws.error('Raw websocket communication error:', err)
 
-        this.clearListeners(l => l.error(err))
-      },
-    })
+          this.clearListeners(l => l.error(err))
+
+          // Set up new subscription, listening to WS that has potentially reconnected
+          this.responseProcessor = this.initReponseSubscription()
+        },
+      }),
+    )
   }
 
   private handlers = (

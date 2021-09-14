@@ -11,17 +11,15 @@ import { WebSocketWrapper } from '../internal_common/webSocketWrapper'
 import { ActyxOpts, AppManifest } from '../types'
 import { getApiLocation, getToken } from './utils'
 
-export const reconnectingWs = async <TRequest, TResponse>(
+export const reconnectingWs = <TRequest, TResponse>(
   opts: ActyxOpts,
   manifest: AppManifest,
-): Promise<WebSocketWrapper<TRequest, TResponse>> => {
-  const ws = new ReconnectingWs<TRequest, TResponse>(opts, manifest)
-  await ws.connect()
-  return ws
+): WebSocketWrapper<TRequest, TResponse> => {
+  return new ReconnectingWs<TRequest, TResponse>(opts, manifest)
 }
 
-export class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, TResponse> {
-  readonly responses: Subject<TResponse> = new Subject()
+class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, TResponse> {
+  responses: Promise<Subject<TResponse>>
 
   private innerSocket?: WebSocketWrapper<TRequest, TResponse>
 
@@ -41,10 +39,10 @@ export class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRe
   }
 
   constructor(private readonly opts: ActyxOpts, private readonly manifest: AppManifest) {
-    this.connect()
+    this.responses = this.connect()
   }
 
-  async connect(): Promise<void> {
+  async connect(): Promise<Subject<TResponse>> {
     const apiLocation = getApiLocation(this.opts.actyxHost, this.opts.actyxPort)
     const token = await getToken(this.opts, this.manifest)
     const wsUrl = 'ws://' + apiLocation + '/events'
@@ -53,31 +51,38 @@ export class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRe
 
     this.innerSocket = WebSocketWrapper(wsUrlAuthed, undefined)
 
-    this.innerSocket.responses.subscribe({
-      next: x => this.responses.next(x),
-      error: async err => {
+    const innerRes = await this.innerSocket.responses
+
+    innerRes.subscribe({
+      error: err => {
+        this.innerSocket && this.innerSocket.close()
         this.innerSocket = undefined
 
         log.ws.error('WS closed due to', err, 'attempting reconnect')
 
-        await this.loopReconnect()
+        this.responses = this.loopReconnect()
       },
       complete: () => {
         log.ws.debug('Assuming ordinary close of WebSocket')
       },
     })
+
+    return innerRes
   }
 
-  private async loopReconnect(): Promise<void> {
+  private async loopReconnect(): Promise<Subject<TResponse>> {
     while (this.tryConnect) {
       try {
-        await this.connect()
+        const r = await this.connect()
+        log.ws.info('Successfully reconnected WS')
+        return r
       } catch (err) {
         log.ws.error('WS reconnect failed', err, 'trying again in a couple seconds')
-        await new Promise(resolve => setTimeout(resolve, 2_000))
+        await new Promise(resolve => setTimeout(resolve, 20_000))
       }
     }
 
     log.ws.debug('Not reconnecting WS, because user requested close')
+    return Promise.reject('Websocket closed due to call to close()')
   }
 }

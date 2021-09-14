@@ -17,7 +17,7 @@ if (isNode) {
 }
 
 export interface WebSocketWrapper<TRequest, TResponse> {
-  readonly responses: Subject<TResponse>
+  responses: Promise<Subject<TResponse>>
 
   sendRequest(req: TRequest): void
 
@@ -28,7 +28,7 @@ export const WebSocketWrapper = <TRequest, TResponse>(
   url: string,
   protocol?: string | string[],
   onConnectionLost?: () => void,
-  reconnectTimer: number = 1000,
+  reconnectTimer?: number,
 ): WebSocketWrapperImpl<TRequest, TResponse> => {
   return new WebSocketWrapperImpl<TRequest, TResponse>(
     url,
@@ -49,7 +49,9 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
   binaryType?: 'blob' | 'arraybuffer'
   socketEvents = new EventEmitter()
 
-  readonly responses: Subject<TResponse>
+  readonly responses: Promise<Subject<TResponse>>
+
+  private readonly responsesInner = new Subject<TResponse>()
 
   private connected = false
 
@@ -75,17 +77,17 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
 
   constructor(
     private readonly url: string,
-    private readonly protocol?: string | string[],
-    private readonly onConnectionLost?: () => void,
+    private readonly protocol: string | string[] | undefined,
+    private readonly onConnectionLost: (() => void) | undefined,
     // If unset, disable automatic reconnect
-    private readonly reconnectTimer?: number,
+    private readonly reconnectTimer: number | undefined,
   ) {
     if (!root.WebSocket) {
       log.ws.error('WebSocket not supported on this plattform')
       throw new Error('no WebSocket constructor can be found')
     }
     this.WebSocketCtor = root.WebSocket
-    this.responses = new Subject<TResponse>()
+    this.responses = Promise.resolve(this.responsesInner)
     this.url = url
 
     this.connect()
@@ -93,20 +95,6 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
 
   resultSelector(e: MessageEvent): TResponse {
     return JSON.parse(e.data) as TResponse
-  }
-
-  static create<TRequest, TResponse>(
-    url: string,
-    protocol?: string | string[],
-    onConnectionLost?: () => void,
-    reconnectTimer: number = 1000,
-  ): WebSocketWrapperImpl<TRequest, TResponse> {
-    return new WebSocketWrapperImpl<TRequest, TResponse>(
-      url,
-      protocol,
-      onConnectionLost,
-      reconnectTimer,
-    )
   }
 
   private resetState(): void {
@@ -140,7 +128,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
 
       try {
         log.ws.error(msg)
-        this.responses && this.responses.error(msg)
+        this.responsesInner.error(msg)
       } catch (err) {
         const errMsg = `Error while passing websocket error message ${msg} up the chain!! -- ${err}`
         console.error(errMsg)
@@ -166,8 +154,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
         )
       }
 
-      this.responses &&
-        this.responses.error(`Connection lost with reason '${err.reason}', code ${err.code}`)
+      this.responsesInner.error(`Connection lost with reason '${err.reason}', code ${err.code}`)
     }
 
     socket.onopen = () => {
@@ -179,7 +166,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
   }
 
   private connect(): void {
-    const observer = this.responses
+    const observer = this.responsesInner
     try {
       const onmessage = (e: MessageEvent) => {
         try {

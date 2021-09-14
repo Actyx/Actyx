@@ -48,7 +48,7 @@ export type TestActyx = TestEventFns & {
 
 const createV2 = async (manifest: AppManifest, opts: ActyxOpts, nodeId: string): Promise<Actyx> => {
   const token = await getToken(opts, manifest)
-  const ws = await makeWsMultiplexerV2(opts, token)
+  const ws = await makeWsMultiplexerV2(opts, token, manifest)
   const eventStore = new WebsocketEventStoreV2(ws, AppId.of(manifest.appId))
   // No snapshotstore impl available for V2 prod
   const fns = EventFnsFromEventStoreV2(nodeId, eventStore, SnapshotStore.noop)

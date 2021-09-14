@@ -11,7 +11,6 @@ import { OffsetsResponse } from '../internal_common'
 import { decorateEConnRefused } from '../internal_common/errors'
 import { ActyxOpts, AppManifest } from '../types'
 import { isNode } from '../util'
-import { MultiplexedWebsocket } from './multiplexedWebsocket'
 
 const defaultApiLocation = (isNode && process.env.AX_STORE_URI) || 'localhost:4454/api/v2'
 
@@ -190,22 +189,4 @@ export const v2WaitForSwarmSync = async (
       }
     }
   }
-}
-
-export const mkMultiplexer = async (
-  config: ActyxOpts,
-  token: string,
-): Promise<MultiplexedWebsocket> => {
-  const apiLocation = getApiLocation(config.actyxHost, config.actyxPort)
-
-  const wsUrl = 'ws://' + apiLocation + '/events'
-  const cAdjusted = {
-    ...config,
-    reconnectTimeout: config.automaticReconnect ? 1_000 : undefined,
-    url: wsUrl + '?' + token,
-  }
-
-  const ws = new MultiplexedWebsocket(cAdjusted)
-
-  return ws
 }
