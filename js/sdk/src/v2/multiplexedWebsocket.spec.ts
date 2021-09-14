@@ -66,22 +66,20 @@ describe('multiplexedWebsocket', () => {
   it('should report connection errors', async () => {
     const s = new MultiplexedWebsocket(WebSocketWrapper('ws://socket'))
 
-    const x = expect(
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const socket = MockWebSocket.lastSocket!
+    socket.trigger('error', { message: 'destination unreachable' })
+
+    await expect(
       s
         .request(RequestTypes.Offsets)
         .map(validateOrThrow(OffsetsResponse))
         .first()
         .toPromise(),
     ).rejects.toMatch('destination unreachable')
-
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const socket = MockWebSocket.lastSocket!
-    socket.trigger('error', { message: 'destination unreachable' })
-
-    await x
   })
 
-  it.only('should just work', async () => {
+  it('should just work', async () => {
     const testArr = msgGen()
     const multiplexer = new MultiplexedWebsocket(WebSocketWrapper('ws://socket'))
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -123,12 +121,10 @@ describe('multiplexedWebsocket', () => {
       const completeIdx = msgs.findIndex(x => x.type === ResponseMessageType.Complete)
       const err = (completeIdx === -1 || completeIdx > errorIdx) && msgs[errorIdx]
       if (err) {
-        console.log(1)
         await expect(res).rejects.toEqual(
           // Please, compiler, pretty please..
           new Error((err.type === ResponseMessageType.Error && JSON.stringify(err.kind)) || ''),
         )
-        console.log(3)
         // Some messages were still received
         expect(nextMsgs).toEqual(nextMsgs)
         // don't cancel upstream, as upstream errored
@@ -138,9 +134,7 @@ describe('multiplexedWebsocket', () => {
           requestId,
         })
       } else {
-        console.log(0)
         await expect(res).resolves.toEqual(nextMsgs)
-        console.log(2)
         // don't cancel upstream, as upstream Completed
         expect(socket.lastMessageSent).toMatchObject({
           type: 'request',
