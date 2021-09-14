@@ -104,7 +104,10 @@ export class MultiplexedWebsocket {
   }
 
   private async initReponseSubscription(): Promise<Subscription> {
+    log.ws.debug('Waiting for Responses Subject to become available')
     const responses = await this.wsSubject.responses
+
+    log.ws.debug('Subscribing to current WS Responses subject')
 
     /**
      * If there are no subscribers, the actual WS connection will be torn down. Keep it open.
@@ -202,6 +205,7 @@ export class MultiplexedWebsocket {
       return Observable.throw(err)
     }
 
+    // Wait for the response subscriber to have been initialised, before running the request
     return res
   }
 
@@ -215,28 +219,29 @@ export class MultiplexedWebsocket {
      *  we need to send a `cancelRequest` to the other side. The `isCompleted` boolean is to distinguish
      *  these cases.
      */
-
     let upstreamCompletedOrError = false
-    return this.multiplex(requestType, payload, () => !upstreamCompletedOrError)
-      .map(validateOrThrow(ResponseMessage))
-      .takeWhile(res => {
-        const isComplete = res.type === ResponseMessageType.Complete
-        if (isComplete) {
-          upstreamCompletedOrError = true
-        }
-        return !isComplete
-      })
-      .mergeMap(res => {
-        switch (res.type) {
-          case ResponseMessageType.Next:
-            return res.payload
-          case ResponseMessageType.Error:
+    return Observable.from(this.responseProcessor).concatMap(() =>
+      this.multiplex(requestType, payload, () => !upstreamCompletedOrError)
+        .map(validateOrThrow(ResponseMessage))
+        .takeWhile(res => {
+          const isComplete = res.type === ResponseMessageType.Complete
+          if (isComplete) {
             upstreamCompletedOrError = true
-            log.ws.error(JSON.stringify(res.kind))
-            return Observable.throw(new Error(JSON.stringify(res.kind))) // TODO: add context to msg?
-          default:
-            return unreachable()
-        }
-      })
+          }
+          return !isComplete
+        })
+        .mergeMap(res => {
+          switch (res.type) {
+            case ResponseMessageType.Next:
+              return res.payload
+            case ResponseMessageType.Error:
+              upstreamCompletedOrError = true
+              log.ws.error(JSON.stringify(res.kind))
+              return Observable.throw(new Error(JSON.stringify(res.kind))) // TODO: add context to msg?
+            default:
+              return unreachable()
+          }
+        }),
+    )
   }
 }

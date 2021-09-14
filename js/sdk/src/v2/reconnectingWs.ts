@@ -19,7 +19,11 @@ export const reconnectingWs = <TRequest, TResponse>(
 }
 
 class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, TResponse> {
-  responses: Promise<Subject<TResponse>>
+  responses(): Subject<TResponse> {
+    return this.responsesWithoutErrors
+  }
+
+  private readonly responsesWithoutErrors = new Subject<TResponse>()
 
   private innerSocket?: WebSocketWrapper<TRequest, TResponse>
 
@@ -46,10 +50,10 @@ class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, 
   }
 
   constructor(private readonly opts: ActyxOpts, private readonly manifest: AppManifest) {
-    this.responses = this.connect()
+    this.connect().catch(ex => console.error('WS unavailable', ex))
   }
 
-  async connect(): Promise<Subject<TResponse>> {
+  async connect(): Promise<void> {
     const apiLocation = getApiLocation(this.opts.actyxHost, this.opts.actyxPort)
     const token = await getToken(this.opts, this.manifest)
     const wsUrl = 'ws://' + apiLocation + '/events'
@@ -58,16 +62,14 @@ class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, 
 
     this.innerSocket = WebSocketWrapper(wsUrlAuthed, undefined)
 
-    const innerRes = await this.innerSocket.responses
-
-    innerRes.subscribe({
+    this.innerSocket.responses().subscribe({
       error: err => {
         this.innerSocket && this.innerSocket.close()
         this.innerSocket = undefined
 
-        log.ws.error('WS closed due to', err, 'attempting reconnect')
+        log.ws.error('WS closed due to', err, '-- attempting reconnect!')
 
-        this.responses = this.loopReconnect()
+        this.loopReconnect()
       },
       complete: () => {
         log.ws.debug('Assuming ordinary close of WebSocket')
@@ -78,16 +80,13 @@ class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, 
       this.innerSocket.sendRequest(req)
     }
     this.pendingRequests = []
-
-    return innerRes
   }
 
   private async loopReconnect(): Promise<Subject<TResponse>> {
     while (this.tryConnect) {
       try {
-        const r = await this.connect()
+        await this.connect()
         log.ws.info('Successfully reconnected WS')
-        return r
       } catch (err) {
         log.ws.error('WS reconnect failed', err, 'trying again in a couple seconds')
         await new Promise(resolve => setTimeout(resolve, 2_000))

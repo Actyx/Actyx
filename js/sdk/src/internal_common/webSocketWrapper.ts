@@ -17,7 +17,7 @@ if (isNode) {
 }
 
 export interface WebSocketWrapper<TRequest, TResponse> {
-  responses: Promise<Subject<TResponse>>
+  responses(): Subject<TResponse>
 
   sendRequest(req: TRequest): void
 
@@ -50,11 +50,22 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
   binaryType?: 'blob' | 'arraybuffer'
   socketEvents = new EventEmitter()
 
-  responses: Promise<Subject<TResponse>>
+  responses(): Subject<TResponse> {
+    if (this.error) {
+      throw new Error(this.error)
+    }
+
+    if (!this.tryConnect) {
+      throw new Error('This WS has been closed by a call to close()')
+    }
+
+    return this.responsesInner
+  }
 
   private responsesInner = new Subject<TResponse>()
 
-  private connected = false
+  private tryConnect = true
+  private error: string | undefined = undefined
 
   sendRequest(req: TRequest): void {
     const msg = JSON.stringify(req)
@@ -65,6 +76,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     } else if (this.socket.readyState === 1) {
       this.socket.send(msg)
     } else {
+      log.ws.debug('Delaying request until socket is open:', msg)
       Observable.fromEvent<WebSocket>(this.socketEvents, 'connected')
         .first()
         .subscribe(s => s.send(msg))
@@ -72,7 +84,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
   }
 
   close(): void {
-    this.connected = false
+    this.tryConnect = false
     this.socket && this.socket.close(1000, 'Application shutting down')
   }
 
@@ -90,7 +102,6 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     log.ws.info('establishing Pond API WS', url)
 
     this.WebSocketCtor = root.WebSocket
-    this.responses = Promise.resolve(this.responsesInner)
     this.url = url
 
     this.connect()
@@ -121,6 +132,8 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
 
       const msg = decorateEConnRefused(originalMsg, url)
 
+      this.error = msg
+
       try {
         log.ws.error(msg)
         this.responsesInner.error(msg)
@@ -132,7 +145,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     }
     socket.onmessage = onMessage
     socket.onclose = err => {
-      if (!this.connected) {
+      if (!this.tryConnect) {
         // Orderly close desired by the user
         return
       }
@@ -141,23 +154,22 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
         this.onConnectionLost()
       }
 
-      this.responsesInner.error(`Connection lost with reason '${err.reason}', code ${err.code}`)
-
       if (this.reconnectTimer) {
         this.socket = undefined
         this.responsesInner = new Subject()
-        this.responses = Promise.resolve(this.responsesInner)
 
         const handle = setInterval(() => {
           this.connect() && clearInterval(handle)
         }, this.reconnectTimer)
       } else {
-        this.responses = Promise.reject('WS connection errored and closed for good')
+        this.error = 'WS connection errored and closed for good'
       }
+
+      this.responsesInner.error(`Connection lost with reason '${err.reason}', code ${err.code}`)
     }
 
     socket.onopen = () => {
-      this.connected = true
+      log.ws.debug('WS open to', url)
       socketEvents.emit('connected', socket)
     }
 
