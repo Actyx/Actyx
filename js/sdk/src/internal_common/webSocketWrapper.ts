@@ -86,6 +86,8 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
       log.ws.error('WebSocket not supported on this plattform')
       throw new Error('no WebSocket constructor can be found')
     }
+    log.ws.info('establishing Pond API WS', url)
+
     this.WebSocketCtor = root.WebSocket
     this.responses = Promise.resolve(this.responsesInner)
     this.url = url

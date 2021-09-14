@@ -99,9 +99,7 @@ export class MultiplexedWebsocket {
   }
 
   constructor(w: WebSocketWrapper<Request, ResponseMessage>) {
-    // log.ws.info('establishing Pond API WS', url)
     this.wsSubject = w
-
     this.responseProcessor = this.initReponseSubscription()
   }
 
