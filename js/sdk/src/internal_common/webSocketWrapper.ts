@@ -148,9 +148,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
         this.responsesInner = new Subject()
         this.responses = Promise.resolve(this.responsesInner)
 
-        Observable.timer(this.reconnectTimer).subscribe(() =>
-          this.createSocket(onMessage, binaryType),
-        )
+        setTimeout(() => this.connect(), this.reconnectTimer)
       } else {
         this.responses = Promise.reject('WS connection errored and closed for good')
       }
