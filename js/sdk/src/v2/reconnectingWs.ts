@@ -25,9 +25,16 @@ class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, 
 
   private tryConnect: boolean = true
 
+  private pendingRequests: TRequest[] = []
+
   sendRequest(req: TRequest): void {
+    if (!this.tryConnect) {
+      throw new Error('WebSocket closed due to call to close()')
+    }
+
     if (!this.innerSocket) {
-      throw new Error('WebSocket currently is closed')
+      this.pendingRequests.push(req)
+      return
     }
 
     this.innerSocket.sendRequest(req)
@@ -67,6 +74,11 @@ class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, 
       },
     })
 
+    for (const req of this.pendingRequests) {
+      this.innerSocket.sendRequest(req)
+    }
+    this.pendingRequests = []
+
     return innerRes
   }
 
@@ -78,7 +90,7 @@ class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, 
         return r
       } catch (err) {
         log.ws.error('WS reconnect failed', err, 'trying again in a couple seconds')
-        await new Promise(resolve => setTimeout(resolve, 20_000))
+        await new Promise(resolve => setTimeout(resolve, 2_000))
       }
     }
 

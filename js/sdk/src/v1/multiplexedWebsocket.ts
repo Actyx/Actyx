@@ -9,7 +9,6 @@
 import * as t from 'io-ts'
 import { Observable, Observer, Subscription } from '../../node_modules/rxjs'
 import log from '../internal_common/log'
-import { WsStoreConfig } from '../internal_common/types'
 import { WebSocketWrapper } from '../internal_common/webSocketWrapper'
 import { validateOrThrow } from '../util'
 import { unreachable } from '../util/typescript'
@@ -53,7 +52,7 @@ const NextMessage = t.readonly(
   t.type({
     type: t.literal(ResponseMessageType.Next),
     requestId: RequestId,
-    payload: t.unknown,
+    payload: t.array(t.unknown),
   }),
 )
 
@@ -82,12 +81,10 @@ export type ResponseMessage = t.TypeOf<typeof ResponseMessage>
 
 export class MultiplexedWebsocket {
   private wsSubject: WebSocketWrapper<Request, ResponseMessage>
-  private responseProcessor: Subscription
+  private responseProcessor: Promise<Subscription>
   private requestCounter: RequestId = 0
 
   private listeners: Record<RequestId, Observer<ResponseMessage>> = {}
-
-  private error: unknown
 
   private clearListeners = (action: (o: Observer<ResponseMessage>) => void): void => {
     Object.values(this.listeners).forEach(action)
@@ -95,22 +92,28 @@ export class MultiplexedWebsocket {
   }
 
   close = () => {
-    this.responseProcessor.unsubscribe()
+    this.responseProcessor.then(x => x.unsubscribe())
     this.wsSubject.close()
 
     this.clearListeners(l => l.complete())
   }
 
-  constructor({ url, protocol, onStoreConnectionClosed, reconnectTimeout }: WsStoreConfig) {
-    log.ws.info('establishing Pond API WS', url)
-    this.wsSubject = WebSocketWrapper(url, protocol, onStoreConnectionClosed, reconnectTimeout)
+  constructor(w: WebSocketWrapper<Request, ResponseMessage>) {
+    // log.ws.info('establishing Pond API WS', url)
+    this.wsSubject = w
+
+    this.responseProcessor = this.initReponseSubscription()
+  }
+
+  private async initReponseSubscription(): Promise<Subscription> {
+    const responses = await this.wsSubject.responses
 
     /**
      * If there are no subscribers, the actual WS connection will be torn down. Keep it open.
      * MUST OVERRIDE the `error` function, because the default empty Observer will RETHROW errors,
      * which blows up the pipeline instead of bubbling the error up into user code.
      */
-    this.responseProcessor = this.wsSubject.responses.subscribe({
+    return responses.subscribe({
       next: response => {
         const listener = this.listeners[response.requestId]
         if (listener) {
@@ -124,7 +127,8 @@ export class MultiplexedWebsocket {
 
         this.clearListeners(l => l.error(err))
 
-        this.error = err
+        // Set up new subscription, listening to WS that has potentially reconnected
+        this.responseProcessor = this.initReponseSubscription()
       },
     })
   }
@@ -202,11 +206,6 @@ export class MultiplexedWebsocket {
     requestType,
     payload,
   ) => {
-    // WebSocket has been closed by some error, no further requests are possible.
-    if (this.error) {
-      return Observable.throw(this.error)
-    }
-
     /**
      *  If the WS stream _completes_, consumers always onunsubscribe from the underlying WsSubject, thus we can't
      *  use normal rxjs onUnsubscribe semantics. If the stream was cancelled downstream,

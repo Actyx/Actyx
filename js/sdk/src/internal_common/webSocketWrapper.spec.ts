@@ -29,7 +29,8 @@ describe('webSocketSubject', () => {
     async () => {
       const rev: string[] = []
       const subject = WebSocketWrapper('ws://socket')
-      subject.responses.subscribe(x => rev.push(`${x}`))
+      const r = await subject.responses
+      r.subscribe(x => rev.push(`${x}`))
       const mockSocket = MockWebSocket.lastSocket!
       subject.sendRequest('"message"')
       // wait some time befor the connection is opened
@@ -51,13 +52,15 @@ describe('webSocketSubject', () => {
     const mockSocket = MockWebSocket.lastSocket!
     // error when socket is not connectiong ( no mockSocket.open() )
 
-    subject.responses.next('"message"')
+    const r = await subject.responses
+    r.next('"message"')
     expect(mockSocket.lastMessageSent).toEqual(undefined)
   })
 
   it('should call Hook on connection lost', async () => {
     let hook = false
-    WebSocketWrapper('ws://socket', 'ws', () => (hook = true)).responses.subscribe({
+    const r = await WebSocketWrapper('ws://socket', 'ws', () => (hook = true)).responses
+    r.subscribe({
       error: _ => ({}),
     })
     const mockSocket = MockWebSocket.lastSocket!
@@ -72,7 +75,8 @@ describe('webSocketSubject', () => {
 
   it('should not call Hook befor connection is established', async () => {
     let hook = false
-    WebSocketWrapper('ws://socket', 'ws', () => (hook = true)).responses.subscribe({
+    const r = await WebSocketWrapper('ws://socket', 'ws', () => (hook = true)).responses
+    r.subscribe({
       error: _ => ({}),
     })
     const mockSocket = MockWebSocket.lastSocket!

@@ -6,6 +6,7 @@
  */
 import { EventStore } from '../internal_common/eventStore'
 import { log } from '../internal_common/log'
+import { WebSocketWrapper } from '../internal_common/webSocketWrapper'
 import { ActyxOpts } from '../types'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { getSourceId, WebsocketEventStore } from './websocketEventStore'
@@ -30,7 +31,8 @@ export const mkV1eventStore = async (axOpts: ActyxOpts): Promise<Ret> => {
 
   log.actyx.debug('Trying V1 connection to', wsConfig.url)
 
-  const ws = new MultiplexedWebsocket(wsConfig)
+  const { url, onStoreConnectionClosed } = wsConfig
+  const ws = new MultiplexedWebsocket(WebSocketWrapper(url, undefined, onStoreConnectionClosed))
   const src = await getSourceId(ws)
 
   console.warn(

@@ -106,31 +106,31 @@ export class MultiplexedWebsocket {
   }
 
   private async initReponseSubscription(): Promise<Subscription> {
+    const responses = await this.wsSubject.responses
+
     /**
      * If there are no subscribers, the actual WS connection will be torn down. Keep it open.
      * MUST OVERRIDE the `error` function, because the default empty Observer will RETHROW errors,
      * which blows up the pipeline instead of bubbling the error up into user code.
      */
-    return this.wsSubject.responses.then(x =>
-      x.subscribe({
-        next: response => {
-          const listener = this.listeners[response.requestId]
-          if (listener) {
-            listener.next(response)
-          } else {
-            log.ws.warn('No listener registered for message ' + JSON.stringify(response))
-          }
-        },
-        error: err => {
-          log.ws.error('Raw websocket communication error:', err)
+    return responses.subscribe({
+      next: response => {
+        const listener = this.listeners[response.requestId]
+        if (listener) {
+          listener.next(response)
+        } else {
+          log.ws.warn('No listener registered for message ' + JSON.stringify(response))
+        }
+      },
+      error: err => {
+        log.ws.error('Raw websocket communication error:', err)
 
-          this.clearListeners(l => l.error(err))
+        this.clearListeners(l => l.error(err))
 
-          // Set up new subscription, listening to WS that has potentially reconnected
-          this.responseProcessor = this.initReponseSubscription()
-        },
-      }),
-    )
+        // Set up new subscription, listening to WS that has potentially reconnected
+        this.responseProcessor = this.initReponseSubscription()
+      },
+    })
   }
 
   private handlers = (
