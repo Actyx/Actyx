@@ -29,9 +29,9 @@ const start = async () => {
     actyx.observeLatest({ query: tags3 }, e => o.next(e), err => o.error(err)),
   )
 
-  actyx.publish(tags3.apply('x'))
+  console.log(await actyx.publish(tags3.apply('x')))
 
-  console.log('waiting for err')
+  console.log('waiting for err (stop the store manually)')
 
   try {
     await p.toPromise()
@@ -39,13 +39,12 @@ const start = async () => {
     console.log('Caught', ex)
   }
 
+  console.log('waiting a while for you to restart the store')
   await new Promise(resolve => setTimeout(resolve, 20000))
 
-  console.log('trying')
+  console.log('trying to send another request')
 
-  const l = actyx.publish(tags3.apply('qqqq'))
-
-  console.log(JSON.stringify(l))
+  console.log(await actyx.publish(tags3.apply('qqqq')))
 }
 
 start()
