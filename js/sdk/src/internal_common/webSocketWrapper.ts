@@ -52,7 +52,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
 
   responses: Promise<Subject<TResponse>>
 
-  private readonly responsesInner = new Subject<TResponse>()
+  private responsesInner = new Subject<TResponse>()
 
   private connected = false
 
@@ -100,14 +100,6 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     return JSON.parse(e.data) as TResponse
   }
 
-  private resetState(): void {
-    const socket = this.socket
-    this.socket = undefined
-    if (socket && socket.readyState === 1) {
-      socket.close()
-    }
-  }
-
   /**
    * Create the WebSocket and listen to the events
    * The onConnectionLost hook is called on close, when the connetion was already connected
@@ -149,8 +141,12 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
         this.onConnectionLost()
       }
 
+      this.responsesInner.error(`Connection lost with reason '${err.reason}', code ${err.code}`)
+
       if (this.reconnectTimer) {
-        this.resetState()
+        this.socket = undefined
+        this.responsesInner = new Subject()
+        this.responses = Promise.resolve(this.responsesInner)
 
         Observable.timer(this.reconnectTimer).subscribe(() =>
           this.createSocket(onMessage, binaryType),
@@ -158,8 +154,6 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
       } else {
         this.responses = Promise.reject('WS connection errored and closed for good')
       }
-
-      this.responsesInner.error(`Connection lost with reason '${err.reason}', code ${err.code}`)
     }
 
     socket.onopen = () => {
