@@ -9,7 +9,7 @@ import { Subject } from '../../node_modules/rxjs'
 import log from '../internal_common/log'
 import { WebSocketWrapper } from '../internal_common/webSocketWrapper'
 import { ActyxOpts, AppManifest } from '../types'
-import { getToken } from './utils'
+import { getApiLocation, getToken } from './utils'
 
 export const reconnectingWs = async <TRequest, TResponse>(
   opts: ActyxOpts,

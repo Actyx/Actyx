@@ -15,7 +15,7 @@ import { MultiplexedWebsocket } from './multiplexedWebsocket'
 
 const defaultApiLocation = (isNode && process.env.AX_STORE_URI) || 'localhost:4454/api/v2'
 
-const getApiLocation = (host?: string, port?: number) => {
+export const getApiLocation = (host?: string, port?: number) => {
   if (host || port) {
     return (host || 'localhost') + ':' + (port || 4454) + '/api/v2'
   }
