@@ -148,7 +148,9 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
         this.responsesInner = new Subject()
         this.responses = Promise.resolve(this.responsesInner)
 
-        setTimeout(() => this.connect(), this.reconnectTimer)
+        const handle = setInterval(() => {
+          this.connect() && clearInterval(handle)
+        }, this.reconnectTimer)
       } else {
         this.responses = Promise.reject('WS connection errored and closed for good')
       }
@@ -162,7 +164,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     return socket
   }
 
-  private connect(): void {
+  private connect(): boolean {
     const observer = this.responsesInner
     try {
       const onmessage = (e: MessageEvent) => {
@@ -174,10 +176,11 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
         }
       }
       this.socket = this.createSocket(onmessage)
+      return true
     } catch (e) {
       log.ws.error('WebSocket not supported on this plattform')
       observer.error(e)
-      return
+      return false
     }
   }
 }
