@@ -19,7 +19,7 @@ export const makeWsMultiplexerV2 = async (
   manifest: AppManifest,
 ): Promise<MultiplexedWebsocket> => {
   if (config.automaticReconnect) {
-    return new MultiplexedWebsocket(await reconnectingWs(config, manifest))
+    return new MultiplexedWebsocket(reconnectingWs(config, manifest))
   }
 
   const apiLocation = getApiLocation(config.actyxHost, config.actyxPort)

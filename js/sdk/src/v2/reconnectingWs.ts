@@ -60,7 +60,7 @@ class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, 
 
     const wsUrlAuthed = wsUrl + '?' + token
 
-    this.innerSocket = WebSocketWrapper(wsUrlAuthed, undefined)
+    this.innerSocket = WebSocketWrapper(wsUrlAuthed, undefined, this.opts.onConnectionLost)
 
     this.innerSocket.responses().subscribe({
       next: x => this.responsesInner.next(x),
