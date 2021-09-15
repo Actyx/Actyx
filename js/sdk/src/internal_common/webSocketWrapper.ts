@@ -6,7 +6,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'events'
-import { Observable, ReplaySubject, Subject } from '../../node_modules/rxjs'
+import { Observable, Subject } from '../../node_modules/rxjs'
 import { isNode } from '../util'
 import { root } from '../util/root'
 import { decorateEConnRefused } from './errors'
@@ -17,7 +17,7 @@ if (isNode) {
 }
 
 export interface WebSocketWrapper<TRequest, TResponse> {
-  readonly responses: Subject<TResponse>
+  responses(): Subject<TResponse>
 
   sendRequest(req: TRequest): void
 
@@ -28,7 +28,8 @@ export const WebSocketWrapper = <TRequest, TResponse>(
   url: string,
   protocol?: string | string[],
   onConnectionLost?: () => void,
-  reconnectTimer: number = 1000,
+  /** Automatic reconnect timer. THIS ONLY WORKS ON V1, because on V2 the token expires. For V2, use `v2/reconnectingWs`. */
+  reconnectTimer?: number,
 ): WebSocketWrapperImpl<TRequest, TResponse> => {
   return new WebSocketWrapperImpl<TRequest, TResponse>(
     url,
@@ -49,32 +50,59 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
   binaryType?: 'blob' | 'arraybuffer'
   socketEvents = new EventEmitter()
 
-  readonly responses: Subject<TResponse>
+  responses(): Subject<TResponse> {
+    if (this.error) {
+      throw new Error(this.error)
+    }
 
-  private connected = false
+    if (!this.tryConnect) {
+      throw new Error('This WS has been closed by a call to close()')
+    }
 
-  private requests = new ReplaySubject()
+    return this.responsesInner
+  }
+
+  private responsesInner = new Subject<TResponse>()
+
+  private wasOpened = false
+  private tryConnect = true
+  private error: string | undefined = undefined
 
   sendRequest(req: TRequest): void {
-    this.requests.next(req)
+    const msg = JSON.stringify(req)
+
+    // send message to the existion socket, or wait till a connection is established to send the message out
+    if (!this.socket) {
+      log.ws.error('send message to undefined socket')
+    } else if (this.socket.readyState === 1) {
+      this.socket.send(msg)
+    } else {
+      log.ws.debug('Delaying request until socket is open:', msg)
+      Observable.fromEvent<WebSocket>(this.socketEvents, 'connected')
+        .first()
+        .subscribe(s => s.send(msg))
+    }
   }
 
   close(): void {
-    this.requests.complete()
+    this.tryConnect = false
+    this.socket && this.socket.close(1000, 'Application shutting down')
   }
 
   constructor(
     private readonly url: string,
-    private readonly protocol?: string | string[],
-    private readonly onConnectionLost?: () => void,
-    private readonly reconnectTimer: number = 1000,
+    private readonly protocol: string | string[] | undefined,
+    private readonly onConnectionLost: (() => void) | undefined,
+    // If unset, disable automatic reconnect
+    private readonly reconnectTimer: number | undefined,
   ) {
     if (!root.WebSocket) {
       log.ws.error('WebSocket not supported on this plattform')
       throw new Error('no WebSocket constructor can be found')
     }
+    log.ws.info('establishing Pond API WS', url)
+
     this.WebSocketCtor = root.WebSocket
-    this.responses = new Subject<TResponse>()
     this.url = url
 
     this.connect()
@@ -82,30 +110,6 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
 
   resultSelector(e: MessageEvent): TResponse {
     return JSON.parse(e.data) as TResponse
-  }
-
-  static create<TRequest, TResponse>(
-    url: string,
-    protocol?: string | string[],
-    onConnectionLost?: () => void,
-    reconnectTimer: number = 1000,
-  ): WebSocketWrapperImpl<TRequest, TResponse> {
-    return new WebSocketWrapperImpl<TRequest, TResponse>(
-      url,
-      protocol,
-      onConnectionLost,
-      reconnectTimer,
-    )
-  }
-
-  private resetState(): void {
-    const socket = this.socket
-    this.socket = undefined
-    if (socket && socket.readyState === 1) {
-      socket.close()
-    }
-
-    this.requests = new ReplaySubject()
   }
 
   /**
@@ -129,9 +133,11 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
 
       const msg = decorateEConnRefused(originalMsg, url)
 
+      this.error = msg
+
       try {
         log.ws.error(msg)
-        this.responses && this.responses.error(msg)
+        this.responsesInner.error(msg)
       } catch (err) {
         const errMsg = `Error while passing websocket error message ${msg} up the chain!! -- ${err}`
         console.error(errMsg)
@@ -140,30 +146,40 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     }
     socket.onmessage = onMessage
     socket.onclose = err => {
-      // Can be removed, when the hot reconnect is possible
-      if (this.connected) {
-        if (this.onConnectionLost) {
-          this.onConnectionLost()
-        }
-        this.responses &&
-          this.responses.error(`Connection lost with reason '${err.reason}', code ${err.code}`)
-      } else {
-        Observable.timer(this.reconnectTimer).subscribe(() =>
-          this.createSocket(onMessage, binaryType),
-        )
+      if (!this.tryConnect || !this.wasOpened) {
+        // Orderly close desired by the user, or we did not even manage to connect
+        return
       }
+
+      if (this.onConnectionLost) {
+        this.onConnectionLost()
+      }
+
+      if (this.reconnectTimer) {
+        this.socket = undefined
+        this.responsesInner = new Subject()
+
+        const handle = setInterval(() => {
+          this.connect() && clearInterval(handle)
+        }, this.reconnectTimer)
+      } else {
+        this.error = 'WS connection errored and closed for good'
+      }
+
+      this.responsesInner.error(`Connection lost with reason '${err.reason}', code ${err.code}`)
     }
 
     socket.onopen = () => {
-      this.connected = true
+      this.wasOpened = true
+      log.ws.debug('WS open to', url)
       socketEvents.emit('connected', socket)
     }
 
     return socket
   }
 
-  private connect(): void {
-    const observer = this.responses
+  private connect(): boolean {
+    const observer = this.responsesInner
     try {
       const onmessage = (e: MessageEvent) => {
         try {
@@ -174,41 +190,11 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
         }
       }
       this.socket = this.createSocket(onmessage)
+      return true
     } catch (e) {
       log.ws.error('WebSocket not supported on this plattform')
       observer.error(e)
-      return
+      return false
     }
-
-    this.requests.subscribe(
-      msg => {
-        // send message to the existion socket, or wait till a connection is established to send the message out
-        if (!this.socket) {
-          log.ws.error('send message to undefined socket')
-        } else if (this.socket.readyState === 1) {
-          this.socket.send(JSON.stringify(msg))
-        } else {
-          Observable.fromEvent<WebSocket>(this.socketEvents, 'connected')
-            .first()
-            .subscribe(s => s.send(JSON.stringify(msg)))
-        }
-      },
-      (err: any) => {
-        if (err && err.code) {
-          this.socket && this.socket.close(err.code, err.reason)
-        } else {
-          observer.error(
-            new TypeError(
-              'WebSocketSubject.error must be called with an object with an error code, ' +
-                'and an optional reason: { code: number, reason: string }',
-            ),
-          )
-        }
-        this.resetState()
-      },
-      () => {
-        this.resetState()
-      },
-    )
   }
 }

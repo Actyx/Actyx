@@ -9,7 +9,6 @@
 import * as t from 'io-ts'
 import { Observable, Observer, Subscription } from '../../node_modules/rxjs'
 import log from '../internal_common/log'
-import { WsStoreConfig } from '../internal_common/types'
 import { WebSocketWrapper } from '../internal_common/webSocketWrapper'
 import { validateOrThrow } from '../util'
 import { unreachable } from '../util/typescript'
@@ -101,16 +100,20 @@ export class MultiplexedWebsocket {
     this.clearListeners(l => l.complete())
   }
 
-  constructor({ url, protocol, onStoreConnectionClosed, reconnectTimeout }: WsStoreConfig) {
-    log.ws.info('establishing Pond API WS', url)
-    this.wsSubject = WebSocketWrapper(url, protocol, onStoreConnectionClosed, reconnectTimeout)
+  constructor(w: WebSocketWrapper<Request, ResponseMessage>) {
+    this.wsSubject = w
+    this.responseProcessor = this.initReponseSubscription()
+  }
+
+  private initReponseSubscription(): Subscription {
+    log.ws.debug('Subscribing to current WS Responses subject')
 
     /**
      * If there are no subscribers, the actual WS connection will be torn down. Keep it open.
      * MUST OVERRIDE the `error` function, because the default empty Observer will RETHROW errors,
      * which blows up the pipeline instead of bubbling the error up into user code.
      */
-    this.responseProcessor = this.wsSubject.responses.subscribe({
+    return this.wsSubject.responses().subscribe({
       next: response => {
         const listener = this.listeners[response.requestId]
         if (listener) {
@@ -124,7 +127,13 @@ export class MultiplexedWebsocket {
 
         this.clearListeners(l => l.error(err))
 
-        this.error = err
+        // Set up new subscription, listening to WS that has potentially reconnected
+        try {
+          this.responseProcessor = this.initReponseSubscription()
+        } catch (ex) {
+          this.error = err
+          log.ws.debug('WS Connection closed for good.', ex)
+        }
       },
     })
   }
@@ -195,6 +204,7 @@ export class MultiplexedWebsocket {
       return Observable.throw(err)
     }
 
+    // Wait for the response subscriber to have been initialised, before running the request
     return res
   }
 
@@ -202,7 +212,6 @@ export class MultiplexedWebsocket {
     requestType,
     payload,
   ) => {
-    // WebSocket has been closed by some error, no further requests are possible.
     if (this.error) {
       return Observable.throw(this.error)
     }
@@ -213,7 +222,6 @@ export class MultiplexedWebsocket {
      *  we need to send a `cancelRequest` to the other side. The `isCompleted` boolean is to distinguish
      *  these cases.
      */
-
     let upstreamCompletedOrError = false
     return this.multiplex(requestType, payload, () => !upstreamCompletedOrError)
       .map(validateOrThrow(ResponseMessage))

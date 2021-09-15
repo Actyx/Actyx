@@ -138,6 +138,14 @@ export type AqlQuery =
       order?: EventsSortOrder
     }
 
+/**
+ * Handler for a streaming operation ending, either normally or with an error.
+ * If the `err` argument is defined, the operation completed due to an error.
+ * Otherwise, it completed normally.
+ * @public
+ **/
+export type OnCompleteOrErr = (err?: unknown) => void
+
 /** Functions that operate directly on Events. @public  */
 export interface EventFns {
   /** Get the current local 'present' i.e. offsets up to which we can provide events without any gaps. */
@@ -170,7 +178,7 @@ export interface EventFns {
     query: RangeQuery,
     chunkSize: number,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
-    onComplete?: () => void,
+    onComplete?: OnCompleteOrErr,
   ) => CancelSubscription
 
   /**
@@ -197,7 +205,7 @@ export interface EventFns {
     query: AutoCappedQuery,
     chunkSize: number,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
-    onComplete?: () => void,
+    onComplete?: OnCompleteOrErr,
   ) => CancelSubscription
 
   /**
@@ -226,7 +234,7 @@ export interface EventFns {
     query: AqlQuery,
     chunkSize: number,
     onChunk: (chunk: AqlResponse[]) => Promise<void> | void,
-    onCompleteOrError: (err?: unknown) => void,
+    onCompleteOrError: OnCompleteOrErr,
   ) => CancelSubscription
 
   /**
@@ -242,6 +250,7 @@ export interface EventFns {
   subscribe: (
     query: EventSubscription,
     onEvent: (e: ActyxEvent) => Promise<void> | void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**
@@ -269,7 +278,9 @@ export interface EventFns {
       maxChunkTimeMs?: number
     },
     onChunk: (chunk: EventChunk) => Promise<void> | void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
+
   /**
    * Subscribe to a stream of events until this would go back in time.
    * Instead of going back in time, receive a TimeTravelMsg and terminate the stream.
@@ -279,6 +290,7 @@ export interface EventFns {
   subscribeMonotonic: <E>(
     query: MonotonicSubscription<E>,
     callback: (data: EventsOrTimetravel<E>) => Promise<void> | void,
+    onCompleteOrErr?: OnCompleteOrErr,
   ) => CancelSubscription
 
   /**
@@ -297,6 +309,7 @@ export interface EventFns {
   observeEarliest: <E>(
     query: EarliestQuery<E>,
     onNewEarliest: (event: E, metadata: Metadata) => void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**
@@ -314,6 +327,7 @@ export interface EventFns {
   observeLatest: <E>(
     query: EarliestQuery<E>,
     onNewLatest: (event: E, metadata: Metadata) => void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**
@@ -333,6 +347,7 @@ export interface EventFns {
     query: Where<E>,
     shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean,
     onReplaced: (event: E, metadata: Metadata) => void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**
@@ -352,6 +367,7 @@ export interface EventFns {
     reduce: (acc: R, event: E, metadata: Metadata) => R,
     initial: R,
     onUpdate: (result: R) => void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**

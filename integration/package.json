@@ -43,7 +43,7 @@
   "scripts": {
     "tsc": "tsc --noEmit",
     "build": "rimraf dist && npm run tsc",
-    "test": "TZ=UTC jest --config=jest.config.js",
+    "test": "TZ=UTC node --trace-warnings node_modules/.bin/jest --config=jest.config.js",
     "test:debug": "TZ=UTC node --inspect-brk node_modules/.bin/jest --runInBand --config=jest.config.js",
     "lint:fix": "eslint './{src,jest}/**/*.{js,ts,tsx}' --fix & prettier './{src,jest}/**/*.{js,ts,tsx}' --write",
     "lint": "eslint './{src,jest}/**/*.{js,ts,tsx}' & prettier './{src,jest}/**/*.{js,ts,tsx}' --check",
