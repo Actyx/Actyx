@@ -178,6 +178,7 @@ export type PendingCommand = {
 // @public
 export type Pond = {
     emit<E>(tags: Tags<E>, event: E): PendingEmission;
+    publish(event: TaggedEvent): Promise<Metadata>;
     publish(events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]>;
     observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void, stoppedByError?: (err: unknown) => void): CancelSubscription;
     currentState<S, E>(fish: Fish<S, E>): Promise<S>;

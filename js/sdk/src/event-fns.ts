@@ -142,6 +142,7 @@ export type AqlQuery =
  * Handler for a streaming operation ending, either normally or with an error.
  * If the `err` argument is defined, the operation completed due to an error.
  * Otherwise, it completed normally.
+ * @public
  **/
 export type OnCompleteOrErr = (err?: unknown) => void
 

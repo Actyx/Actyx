@@ -175,6 +175,7 @@ export type Pond = {
    *
    * @returns        A Promise that resolves to the emitted event’s metadata.
    */
+  publish(event: TaggedEvent): Promise<Metadata>
   publish(events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]>
 
   /* AGGREGATION */
@@ -442,11 +443,10 @@ class Pond2Impl implements Pond {
 
   /* POND V2 FUNCTIONS */
   emit = <E>(tags: Tags<E>, payload: E): PendingEmission => {
-    return this.actyx.emit(tags.apply(payload))
+    return this.actyx.emit([tags.apply(payload)])
   }
 
-  publish = (events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]> =>
-    this.actyx.emit(events).toPromise()
+  publish = this.actyx.publish
 
   private getCachedOrInitialize = <S, E>(
     subscriptionSet: Where<E>,
@@ -709,7 +709,12 @@ export type TestPond = Pond & {
 }
 const mkTestPond = (opts?: PondOptions): TestPond => {
   const opts1: PondOptions = opts || {}
-  const actyx = Actyx.test({ nodeId: NodeId.of('TEST') })
+  const actyx = {
+    ...Actyx.test({ nodeId: NodeId.of('TEST') }),
+    waitForSync: async () => {
+      /* noop */
+    },
+  }
   const snapshotStore = SnapshotStore.noop
   return {
     ...pondFromServices({ actyx, snapshotStore }, opts1),
