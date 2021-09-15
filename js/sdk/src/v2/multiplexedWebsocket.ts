@@ -132,7 +132,7 @@ export class MultiplexedWebsocket {
           this.responseProcessor = this.initReponseSubscription()
         } catch (ex) {
           this.error = err
-          log.ws.info('Closed for good it seems:', ex)
+          log.ws.debug('WS Connection closed for good.', ex)
         }
       },
     })
