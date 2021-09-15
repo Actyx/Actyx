@@ -678,6 +678,7 @@ impl BanyanStore {
                 streams: None,
             },
             storage: StorageConfig {
+                access_db_path: None, // in memory
                 path: cfg.db_path,
                 cache_size_blocks: cfg.block_cache_count,
                 cache_size_bytes: cfg.block_cache_size,
