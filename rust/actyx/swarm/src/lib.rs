@@ -678,12 +678,18 @@ impl BanyanStore {
                 streams: None,
             },
             storage: StorageConfig {
+                access_db_path: None, // in memory
                 path: cfg.db_path,
                 cache_size_blocks: cfg.block_cache_count,
                 cache_size_bytes: cfg.block_cache_size,
                 gc_interval: cfg.block_gc_interval,
-                gc_min_blocks: 1000,
-                gc_target_duration: Duration::from_millis(10),
+                // make sure that we delete a large number of blocks,
+                // so we don't get into a situation where block deletion
+                // can not keep up with block creation.
+                gc_min_blocks: 10000,
+                // give gc some time. There is an overhead for figuring out
+                // what to delete, so if this is too small we won't delete much.
+                gc_target_duration: Duration::from_millis(250),
             },
         })
         .await?;
