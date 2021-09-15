@@ -149,6 +149,9 @@ pub struct SwarmConfig {
     pub psk: Option<[u8; 32]>,
     pub node_name: Option<String>,
     pub db_path: Option<PathBuf>,
+    pub block_cache_size: u64,
+    pub block_cache_count: u64,
+    pub block_gc_interval: Duration,
     pub external_addresses: Vec<Multiaddr>,
     pub listen_addresses: Vec<Multiaddr>,
     pub bootstrap_addresses: Vec<Multiaddr>,
@@ -187,6 +190,9 @@ impl SwarmConfig {
             banyan_config: BanyanConfig::default(),
             cadence_compact: Duration::from_secs(60),
             cadence_root_map: Duration::from_secs(10),
+            block_cache_size: 1024 * 1024 * 1024,
+            block_cache_count: 1024 * 128,
+            block_gc_interval: Duration::from_secs(300),
         }
     }
 }
@@ -243,6 +249,9 @@ impl PartialEq for SwarmConfig {
             && self.enable_metrics == other.enable_metrics
             && self.cadence_compact == other.cadence_compact
             && self.cadence_root_map == other.cadence_root_map
+            && self.block_cache_size == other.block_cache_size
+            && self.block_cache_count == other.block_cache_count
+            && self.block_gc_interval == other.block_gc_interval
     }
 }
 
@@ -669,12 +678,18 @@ impl BanyanStore {
                 streams: None,
             },
             storage: StorageConfig {
+                access_db_path: None, // in memory
                 path: cfg.db_path,
-                cache_size_blocks: u64::MAX,
-                cache_size_bytes: 1024 * 1024 * 1024 * 4,
-                gc_interval: Duration::from_secs(10),
-                gc_min_blocks: 1000,
-                gc_target_duration: Duration::from_millis(10),
+                cache_size_blocks: cfg.block_cache_count,
+                cache_size_bytes: cfg.block_cache_size,
+                gc_interval: cfg.block_gc_interval,
+                // make sure that we delete a large number of blocks,
+                // so we don't get into a situation where block deletion
+                // can not keep up with block creation.
+                gc_min_blocks: 10000,
+                // give gc some time. There is an overhead for figuring out
+                // what to delete, so if this is too small we won't delete much.
+                gc_target_duration: Duration::from_millis(250),
             },
         })
         .await?;

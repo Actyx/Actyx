@@ -410,7 +410,10 @@ mod test {
               "swarmKey": "MDAwMDAwMDAxMTExMTExMTIyMjIyMjIyMzMzMzMzMzM=",
               "initialPeers": [ "/ip4/127.0.0.1/tcp/4001/p2p/QmaAxuktPMR3ESHe9Pru8kzzzSGvsUie7UFJPfCWqTzzzz" ],
               "announceAddresses": [],
-              "topic": "My Topic"
+              "topic": "My Topic",
+              "blockGcInterval": 300,
+              "blockCacheSize": 1073741824,
+              "blockCacheCount": 131072
             },
             "admin": {
               "displayName": "My Node",

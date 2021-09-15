@@ -201,11 +201,10 @@ impl VersionsFile {
             anyhow::bail!("no changes since {} is the very first release of {}.", version, product);
         }
 
-        let all_releases: Vec<(_, _)> = all_releases.into_iter().tuple_windows().collect();
-
         let (this_release, prev_release) = all_releases
             .into_iter()
-            .find(|w| &w.0.release.version == version)
+            .tuple_windows()
+            .find(|w: &(VersionLine, VersionLine)| &w.0.release.version == version)
             .ok_or(anyhow!(format!("did not find version {} for {}", version, product)))?;
 
         let repo = Repository::open_from_env()?;
