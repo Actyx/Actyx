@@ -237,12 +237,16 @@ export class MultiplexedWebsocket {
           case ResponseMessageType.Next:
             return res.payload
           case ResponseMessageType.Error:
-            upstreamCompletedOrError = true
             log.ws.error(JSON.stringify(res.kind))
             return Observable.throw(new Error(JSON.stringify(res.kind))) // TODO: add context to msg?
           default:
             return unreachable()
         }
+      })
+      .do({
+        error: () => {
+          upstreamCompletedOrError = true
+        },
       })
   }
 }
