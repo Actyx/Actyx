@@ -106,6 +106,7 @@ export const observeMonotonic = (
             o.complete()
           }
         },
+        err => o.error(err),
       ),
     )
 
