@@ -2575,7 +2575,7 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.22.4"
-source = "git+https://github.com/wngr/ipfs-embed?branch=sim-open#72ae09bdc9d23136a44190ba99e1818b1f3d2bcd"
+source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#7035d30ef69e31051ac7c25fa9868aabbbda54bd"
 dependencies = [
  "anyhow",
  "async-io",
