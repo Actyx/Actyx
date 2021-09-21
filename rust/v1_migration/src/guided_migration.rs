@@ -311,7 +311,7 @@ fn drain_channel(rx: &mut Receiver<anyhow::Result<Event>>) {
     while rx.poll_recv(&mut context).is_ready() {}
 }
 
-#[allow(clippy::clippy::future_not_send)]
+#[allow(clippy::future_not_send)]
 async fn get_private_key(
     terminal: &mut Terminal<impl Backend>,
     key_rx: &mut Receiver<anyhow::Result<Event>>,
@@ -390,13 +390,20 @@ pub async fn v1_migrate_sources_and_disseminate(
         e
     })?;
 
+    let db_name = topic.replace("/", "_");
     let db_path = migration_working_dir
         .path()
         .join("store")
-        .join(&*format!("{}.sqlite", topic));
+        .join(&*format!("{}.sqlite", db_name));
     let index_store = Some(Arc::new(Mutex::new(rusqlite::Connection::open(
         migration_working_dir.path().join("node.sqlite"),
     )?)));
+    tracing::debug!(
+        "v1_migrate_sources_and_disseminate: Creating temporary store at path {:?}, index_store {:?}, migration_working_dir: {:?}",
+        db_path,
+        index_store,
+        migration_working_dir.path()
+    );
     let store = start_ephemeral_readonly_swarm(swarm_key, initial_peers, topic, db_path, index_store).await?;
 
     Ok(MigratedSwarm { store })
@@ -454,6 +461,7 @@ pub async fn v1_overview(
     );
     let temp = tempfile::tempdir()?;
 
+    tracing::debug!("v1_overview: Creating temporary store at path {:?}", temp.path());
     let store = start_ephemeral_readonly_swarm(swarm_key, initial_peers, topic, temp.path().join("db"), None).await?;
     tracing::debug!("reading info from existing v1 index store at {:?}", &v1_dir.index_db);
     let info = info_from_v1_index_store(&v1_dir.index_db).context("getting v1 db info")?;
@@ -493,6 +501,7 @@ async fn start_ephemeral_readonly_swarm(
         listen_addresses: vec!["/ip4/0.0.0.0/tcp/0".parse().unwrap(), "/ip6/::/tcp/0".parse().unwrap()],
         ..SwarmConfig::basic()
     };
+    tracing::debug!("Creating BanyanStore with config {:?}", cfg);
     BanyanStore::new(cfg).await
 }
 
