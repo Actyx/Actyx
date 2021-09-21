@@ -2,7 +2,7 @@ use crate::{
     event_store::{EventStore, PersistenceMeta},
     BanyanStore, SwarmOffsets,
 };
-use actyx_sdk::{language::TagExpr, AppId, Event, OffsetMap, Payload, TagSet};
+use actyx_sdk::{language::TagExpr, AppId, Event, OffsetMap, Payload, StreamNr, TagSet};
 use futures::{Future, Stream, StreamExt};
 use parking_lot::Mutex;
 use std::{
@@ -74,6 +74,7 @@ pub enum EventStoreRequest {
     #[display(fmt = "Persist({}, {})", app_id, "events.len()")]
     Persist {
         app_id: AppId,
+        stream_nr: StreamNr,
         events: Vec<(TagSet, Payload)>,
         reply: OneShot<Vec<PersistenceMeta>>,
     },
@@ -113,9 +114,19 @@ impl EventStoreRef {
         rx.await.my_err()?
     }
 
-    pub async fn persist(&self, app_id: AppId, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>, Error> {
+    pub async fn persist(
+        &self,
+        app_id: AppId,
+        stream_nr: StreamNr,
+        events: Vec<(TagSet, Payload)>,
+    ) -> Result<Vec<PersistenceMeta>, Error> {
         let (reply, rx) = oneshot::channel();
-        (self.tx)(Persist { app_id, events, reply })?;
+        (self.tx)(Persist {
+            app_id,
+            events,
+            stream_nr,
+            reply,
+        })?;
         rx.await.my_err()?
     }
 
@@ -218,13 +229,18 @@ impl EventStoreHandler {
             Offsets { reply } => {
                 let _ = reply.send(Ok(self.store.current_offsets()));
             }
-            Persist { app_id, events, reply } => {
+            Persist {
+                app_id,
+                stream_nr,
+                events,
+                reply,
+            } => {
                 let store = self.store.clone();
                 self.state.persist.fetch_add(1, Ordering::Relaxed);
                 let state = self.state.clone();
                 runtime.spawn(async move {
                     let n = events.len();
-                    let _ = reply.send(store.persist(app_id, events).await.map_err(move |e| {
+                    let _ = reply.send(store.persist(app_id, stream_nr, events).await.map_err(move |e| {
                         tracing::error!("failed to persist {} events: {:#}", n, e);
                         Error::Aborted
                     }));
@@ -330,11 +346,15 @@ impl EventStoreHandler {
 impl Drop for EventStoreHandler {
     fn drop(&mut self) {
         let mut streams = self.state.stream.lock();
-        tracing::info!(
-            "stopping store with {} ongoing persist calls and {} ongoing queries",
-            self.state.persist.load(Ordering::Relaxed),
-            streams.len()
-        );
+        let ongoing_persist_calls = self.state.persist.load(Ordering::Relaxed);
+        let ongoing_queries = streams.len();
+        if ongoing_persist_calls > 0 || ongoing_queries > 1 {
+            tracing::info!(
+                "stopping store with {} ongoing persist calls and {} ongoing queries",
+                ongoing_persist_calls,
+                ongoing_queries
+            );
+        }
         for (_id, (handle, stream)) in streams.iter() {
             handle.abort();
             if let Some(stream) = stream {

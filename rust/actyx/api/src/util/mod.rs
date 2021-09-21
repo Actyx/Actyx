@@ -1,5 +1,6 @@
 pub mod filters;
 pub mod hyper_serve;
+pub(crate) mod macros;
 
 use std::{str::FromStr, time::Duration};
 

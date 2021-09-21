@@ -6,7 +6,7 @@ use ax_futures_util::{
     stream::{interval, Drainer},
 };
 use banyan::query::AllQuery;
-use futures::{prelude::*, StreamExt};
+use futures::{pin_mut, prelude::*, StreamExt};
 use libipld::Cid;
 use maplit::btreemap;
 use parking_lot::Mutex;
@@ -256,9 +256,14 @@ async fn test_add_cat() -> Result<()> {
     let mut rng = rand::thread_rng();
     rng.fill_bytes(&mut data);
     let tmp = store.ipfs().create_temp_pin()?;
-    let root = store.add(&tmp, &data[..])?;
+    let (root, _) = store.add(&tmp, &data[..])?;
     let mut buf = Vec::with_capacity(16_000_000);
-    store.cat(&root, &mut buf)?;
+    let stream = store.cat(root, true);
+    pin_mut!(stream);
+    while let Some(res) = stream.next().await {
+        let mut bytes = res?;
+        buf.append(&mut bytes);
+    }
     assert_eq!(buf, data);
     Ok(())
 }

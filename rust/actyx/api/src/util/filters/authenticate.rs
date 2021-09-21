@@ -1,5 +1,6 @@
 use actyx_sdk::{types::Binary, AppId};
 use crypto::SignedMessage;
+use futures::FutureExt;
 use std::convert::TryInto;
 use tracing::{debug, info};
 use warp::{reject, Filter, Rejection};
@@ -33,10 +34,28 @@ pub(crate) fn verify(node_info: NodeInfo, token: Token) -> Result<BearerToken, A
     }
 }
 
+/// Tries to extract the value given to the `access_token` query parameter.
 pub fn query_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
+    warp::query::raw().and_then(|query_string: String| async move {
+        let mut split = query_string.split('&');
+        split
+            .find_map(|x| {
+                if x.starts_with("access_token=") {
+                    Some(Token(x.trim_start_matches("access_token=").into()))
+                } else {
+                    None
+                }
+            })
+            .ok_or_else(|| reject::custom(ApiError::MissingTokenParameter))
+    })
+}
+
+/// Interpretes the whole query string as the access token. This method must only be used for the
+/// WS connection!
+pub fn query_token_ws() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
     warp::query::raw()
         .map(Token)
-        .or_else(|_| async { Err(reject::custom(ApiError::MissingTokenParameter)) })
+        .or_else(|_| async move { Err(reject::custom(ApiError::MissingTokenParameter)) })
 }
 
 pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
@@ -64,6 +83,50 @@ pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Cl
             res
         } else {
             Err(ApiError::MissingAuthorizationHeader.into())
+        }
+    })
+}
+
+pub fn header_or_query_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
+    query_token().or(header_token()).unify()
+}
+
+pub fn header_or_query_token_opt() -> impl Filter<Extract = (Option<Token>,), Error = Rejection> + Clone {
+    header_or_query_token()
+        .map(Some)
+        .recover(|e: Rejection| async move {
+            if let Some(ApiError::MissingAuthorizationHeader) = e.find() {
+                Result::<_, Rejection>::Ok(None)
+            } else {
+                Err(e)
+            }
+        })
+        .unify()
+}
+
+pub(crate) fn authenticate_optional(
+    node_info: NodeInfo,
+    token: impl Filter<Extract = (Option<Token>,), Error = Rejection> + Clone,
+) -> impl Filter<Extract = (Option<AppId>,), Error = Rejection> + Clone {
+    token.and_then(move |t: Option<Token>| {
+        if let Some(t) = t {
+            let auth_args = node_info.clone();
+            async move {
+                let res = verify(auth_args, t)
+                    .map(|bearer_token| bearer_token.app_id)
+                    .map(Some)
+                    // TODO: add necessary checks for the flow from the PRD
+                    .map_err(warp::reject::custom);
+                if res.is_err() {
+                    info!("Auth failed: {:?}", res);
+                } else {
+                    debug!("Auth succeeded: {:?}", res);
+                }
+                res
+            }
+            .left_future()
+        } else {
+            async move { Ok(None) }.right_future()
         }
     })
 }
@@ -167,6 +230,14 @@ mod tests {
     async fn should_work_with_query_param() {
         let (auth_args, bearer) = setup(None);
         let filter = authenticate(auth_args, query_token());
+        let req = warp::test::request().path(&format!("/?access_token={}&what=ever", bearer));
+        assert_eq!(req.filter(&filter).await.unwrap(), app_id!("test-app"));
+    }
+
+    #[tokio::test]
+    async fn should_work_with_query_param_legacy() {
+        let (auth_args, bearer) = setup(None);
+        let filter = authenticate(auth_args, query_token_ws());
         let req = warp::test::request().path(&format!("/p?{}", bearer));
         assert_eq!(req.filter(&filter).await.unwrap(), app_id!("test-app"));
     }
