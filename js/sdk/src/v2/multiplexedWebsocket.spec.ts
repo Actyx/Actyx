@@ -11,6 +11,7 @@ import { fromNullable } from 'fp-ts/lib/Option'
 import { range, takeWhile } from 'ramda'
 import { Observable } from '../../node_modules/rxjs'
 import { OffsetsResponse } from '../internal_common/types'
+import { WebSocketWrapper } from '../internal_common/webSocketWrapper'
 import { validateOrThrow } from '../util'
 import {
   MultiplexedWebsocket,
@@ -63,7 +64,7 @@ const msgGen: () => ((requestId: number) => ResponseMessage[])[] = () => {
 
 describe('multiplexedWebsocket', () => {
   it('should report connection errors', async () => {
-    const s = new MultiplexedWebsocket({ url: 'ws://socket' })
+    const s = new MultiplexedWebsocket(WebSocketWrapper('ws://socket'))
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const socket = MockWebSocket.lastSocket!
@@ -80,7 +81,7 @@ describe('multiplexedWebsocket', () => {
 
   it('should just work', async () => {
     const testArr = msgGen()
-    const multiplexer = new MultiplexedWebsocket({ url: 'ws://socket' })
+    const multiplexer = new MultiplexedWebsocket(WebSocketWrapper('ws://socket'))
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const socket = MockWebSocket.lastSocket!
     socket.open()

@@ -497,7 +497,7 @@ dependencies = [
  "futures 0.3.16",
  "hex",
  "hyper",
- "ipfs-sqlite-block-store",
+ "ipfs-sqlite-block-store 0.7.0",
  "lazy_static",
  "libipld",
  "libp2p",
@@ -595,7 +595,7 @@ dependencies = [
  "env_logger 0.8.4",
  "futures 0.3.16",
  "hex",
- "ipfs-sqlite-block-store",
+ "ipfs-sqlite-block-store 0.6.1",
  "jemallocator",
  "libipld",
  "lru",
@@ -2578,14 +2578,15 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.22.4"
-source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#247bc5439047c4aa01719da884c2c9f3f55211e4"
+source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#7035d30ef69e31051ac7c25fa9868aabbbda54bd"
 dependencies = [
  "anyhow",
  "async-io",
  "async-trait",
  "fnv",
  "futures 0.3.16",
- "ipfs-sqlite-block-store",
+ "futures-timer",
+ "ipfs-sqlite-block-store 0.7.0",
  "lazy_static",
  "libipld",
  "libp2p",
@@ -2608,6 +2609,22 @@ name = "ipfs-sqlite-block-store"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e4bfde6259c565dc55fd3c26b75ad29481e29105c0f2035a674b5b80e568fdc"
+dependencies = [
+ "anyhow",
+ "derive_more",
+ "fnv",
+ "futures 0.3.16",
+ "libipld",
+ "parking_lot 0.11.1",
+ "rusqlite",
+ "tracing",
+]
+
+[[package]]
+name = "ipfs-sqlite-block-store"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fd994229c56ee401f1ae971e93e1d4873cb089df79d4ba78fe2c71bf460d9ed"
 dependencies = [
  "anyhow",
  "derive_more",
@@ -3810,7 +3827,7 @@ dependencies = [
  "fslock",
  "futures 0.3.16",
  "hex",
- "ipfs-sqlite-block-store",
+ "ipfs-sqlite-block-store 0.7.0",
  "jemallocator",
  "libipld",
  "libp2p",
@@ -5826,7 +5843,7 @@ dependencies = [
  "futures 0.3.16",
  "hex",
  "ipfs-embed",
- "ipfs-sqlite-block-store",
+ "ipfs-sqlite-block-store 0.7.0",
  "itertools 0.10.1",
  "libipld",
  "libp2p",

@@ -1,6 +1,9 @@
 import { Fish, FishId, Pond, Tag, Tags, Where } from '@actyx/pond'
 import { Observable } from 'rxjs'
-import { runConcurrentlyOnAll, withPond } from '../../infrastructure/hosts'
+import { SettingsInput } from '../../cli/exec'
+import { trialManifest } from '../../http-client'
+import { runConcurrentlyOnAll, runWithNewProcess, withPond } from '../../infrastructure/hosts'
+import { randomString } from '../../util'
 
 const isSortedAsc = (data: string[]): boolean => {
   if (data.length < 2) {
@@ -27,7 +30,7 @@ describe('Pond', () => {
   // Assert that events are always fed to Fish in the correct order on every node, at any time,
   // and also assert that all events reach all Fish eventually.
   test('ordering / time travel', async () => {
-    const randomId = String(Math.random())
+    const randomId = randomString()
 
     const results = await runConcurrentlyOnAll<string[]>((nodes) => {
       const t = (pond: Pond, nodeName: string) =>
@@ -50,7 +53,7 @@ describe('Pond', () => {
   // Assert that Fish only receive exactly those events that they are subscribed to,
   // and always in the proper order.
   test('event filter / subscription', async () => {
-    const randomId = String(Math.random())
+    const randomId = randomString()
     const base = Tag(randomId)
 
     const allResults = await runConcurrentlyOnAll<string[][]>((nodes) => {
@@ -119,7 +122,7 @@ describe('Pond', () => {
   // we have already seen at least as many events as the writer of that event.
   // FIXME currently skipped because we have no causal consistency guarantee.
   test.skip('sequencing / causal consistency', async () => {
-    const randomId = String(Math.random())
+    const randomId = randomString()
 
     const results = await runConcurrentlyOnAll<string[]>((nodes) => {
       const t = sequenceCausalityTest(nodes.length, randomId)
@@ -130,6 +133,77 @@ describe('Pond', () => {
       expect(isSortedAsc(res)).toBeTruthy()
     }
   }, 300_000)
+
+  test('automatically reconnect Fish (no error propagation to user) if automaticReconnect=true', async () =>
+    runWithNewProcess(async (node) => {
+      const pond = await Pond.of(
+        trialManifest,
+        {
+          actyxPort: node._private.apiPort,
+          automaticReconnect: true,
+        },
+        {},
+      )
+
+      const tag = Tag<number>('numbers').withId(randomString())
+
+      type State = {
+        numEvents: number
+        lastEvent: number
+      }
+
+      const eventCounterFish: Fish<State, number> = {
+        where: tag,
+        initialState: {
+          numEvents: 0,
+          lastEvent: -1,
+        },
+        onEvent: (state, event) => ({
+          lastEvent: event,
+          numEvents: state.numEvents + 1,
+        }),
+        fishId: FishId.of('ttt', 't', 1),
+      }
+      try {
+        await pond.publish(tag.apply(1))
+
+        const states = new Observable<State>((o) =>
+          pond.observe(eventCounterFish, (x) => o.next(x)),
+        )
+        const firstState = await states.take(1).toPromise()
+        expect(firstState).toEqual({
+          lastEvent: 1,
+          numEvents: 1,
+        })
+
+        // Topic change causes WS to be closed. We cannot use `powerCycle` because that gives new port numbers...
+        await node.ax.settings.set('/swarm/topic', SettingsInput.FromValue('A different topic'))
+
+        let numErrs = 0
+        for (;;) {
+          try {
+            await pond.publish(tag.apply(5))
+            break
+          } catch (_err) {
+            numErrs += 1
+          }
+        }
+        // We should get 0-1 errors depending on the reconnect timing
+        expect(numErrs).toBeLessThan(2)
+
+        const e = states
+          .filter((x) => x.lastEvent === 5)
+          .take(1)
+          .toPromise()
+        expect(e).resolves.toEqual({
+          // We switched to the other topic and lost the events from the old one...
+          numEvents: 1,
+          lastEvent: 5,
+        })
+      } finally {
+        pond.dispose()
+      }
+    }))
 })
 
 const randomTags = (prefix: string) => (c: number): Tags<never> => {
