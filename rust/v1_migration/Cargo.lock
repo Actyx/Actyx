@@ -173,6 +173,7 @@ dependencies = [
  "async-trait",
  "ax-futures-util",
  "base64 0.13.0",
+ "bytes",
  "certs",
  "chrono",
  "crossbeam",
@@ -180,6 +181,7 @@ dependencies = [
  "derive_more",
  "futures 0.3.17",
  "genawaiter",
+ "http",
  "hyper",
  "itertools 0.10.1",
  "libipld",
@@ -187,6 +189,7 @@ dependencies = [
  "mime_guess",
  "num-traits",
  "parking_lot 0.11.2",
+ "percent-encoding",
  "pin-project 1.0.8",
  "runtime",
  "serde",
@@ -378,7 +381,7 @@ dependencies = [
  "futures 0.3.17",
  "hex",
  "hyper",
- "ipfs-sqlite-block-store 0.6.1",
+ "ipfs-sqlite-block-store 0.7.0",
  "lazy_static",
  "libipld",
  "libp2p",
@@ -3034,7 +3037,7 @@ dependencies = [
  "fslock",
  "futures 0.3.17",
  "hex",
- "ipfs-sqlite-block-store 0.6.1",
+ "ipfs-sqlite-block-store 0.7.0",
  "jemallocator",
  "libipld",
  "libp2p",
@@ -4631,7 +4634,7 @@ dependencies = [
  "futures 0.3.17",
  "hex",
  "ipfs-embed",
- "ipfs-sqlite-block-store 0.6.1",
+ "ipfs-sqlite-block-store 0.7.0",
  "itertools 0.10.1",
  "libipld",
  "libp2p",
@@ -5215,9 +5218,9 @@ dependencies = [
 
 [[package]]
 name = "unixfs-v1"
-version = "0.1.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e95dd03c50ece3c5b057214f8c4ca7d747edcf43f75e96db48549d404555f7f"
+checksum = "382a01bd419bd6c4122bd6e89ed4b9b0865dc843049e9d12cd4490b3d39614b6"
 dependencies = [
  "either",
  "filetime",
