@@ -420,6 +420,10 @@ fn get_settings(repo: &Repository) -> anyhow::Result<Settings> {
         .unwrap()
         .into();
 
+    // Since the store does this replacement we need to do it too
+    // (see https://github.com/Actyx/Actyx/blob/44f212d6761df9c47f808fcd592efd0f43c3a0f7/rust/actyx/node/src/components/store.rs#L161)
+    let topic = topic.replace("/", "_");
+
     let bootstrap = {
         let mut val = repo.get_settings(&"com.actyx.os/general/bootstrapNodes".parse().unwrap(), false)?;
         for v in val.as_array_mut().unwrap() {
