@@ -2,7 +2,7 @@ import execa from 'execa'
 import { runOnEvery } from '../../infrastructure/hosts'
 import { dotnetIntegrationTestsAssembly } from '../../infrastructure/settings'
 
-it('.NET SDK integration tests', () =>
+it.skip('.NET SDK integration tests', () =>
   runOnEvery(async (node) => {
     const { hostname, apiPort } = node._private
     const assembly = await dotnetIntegrationTestsAssembly()
