@@ -497,7 +497,7 @@ dependencies = [
  "futures 0.3.16",
  "hex",
  "hyper",
- "ipfs-sqlite-block-store 0.7.0",
+ "ipfs-sqlite-block-store 0.7.1",
  "lazy_static",
  "libipld",
  "libp2p",
@@ -2586,7 +2586,7 @@ dependencies = [
  "fnv",
  "futures 0.3.16",
  "futures-timer",
- "ipfs-sqlite-block-store 0.7.0",
+ "ipfs-sqlite-block-store 0.7.1",
  "lazy_static",
  "libipld",
  "libp2p",
@@ -2622,9 +2622,9 @@ dependencies = [
 
 [[package]]
 name = "ipfs-sqlite-block-store"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fd994229c56ee401f1ae971e93e1d4873cb089df79d4ba78fe2c71bf460d9ed"
+checksum = "a05e414ba0fd10cd9e188230916214b6d6e39b6b340a892b977db9b42a2b6ac4"
 dependencies = [
  "anyhow",
  "derive_more",
@@ -3827,7 +3827,7 @@ dependencies = [
  "fslock",
  "futures 0.3.16",
  "hex",
- "ipfs-sqlite-block-store 0.7.0",
+ "ipfs-sqlite-block-store 0.7.1",
  "jemallocator",
  "libipld",
  "libp2p",
@@ -5843,7 +5843,7 @@ dependencies = [
  "futures 0.3.16",
  "hex",
  "ipfs-embed",
- "ipfs-sqlite-block-store 0.7.0",
+ "ipfs-sqlite-block-store 0.7.1",
  "itertools 0.10.1",
  "libipld",
  "libp2p",
