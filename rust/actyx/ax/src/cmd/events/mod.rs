@@ -1,6 +1,6 @@
 mod offsets;
-mod query;
 mod publish;
+mod query;
 
 use super::AxCliCommand;
 use futures::Future;
@@ -15,7 +15,8 @@ pub enum EventsOpts {
     #[structopt(no_version)]
     Query(query::QueryOpts),
     #[structopt(no_version)]
-    Publish(publish::PublishOpts),}
+    Publish(publish::PublishOpts),
+}
 
 pub fn run(opts: EventsOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin> {
     match opts {
