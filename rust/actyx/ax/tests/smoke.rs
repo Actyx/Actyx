@@ -369,16 +369,14 @@ fn publish() -> anyhow::Result<()> {
             .args(&[
                 o("events"),
                 o("publish"),
+                o("-ji"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+                o(r#"{ "baz":42 }"#),
                 o("-t"),
                 o("foo"),
                 o("-t"),
                 o("bar"),
-                o("-ji"),
-                identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
-                o(json!({
-                    "baz":42
-                }).to_string()),
             ])
             .output()?;
         eprintln!(
