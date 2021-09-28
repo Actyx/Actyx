@@ -1,4 +1,3 @@
-mod publish;
 mod subscribe;
 mod subscribe_monotonic;
 
@@ -14,13 +13,10 @@ pub enum EventsOpts {
     Subscribe(subscribe::SubscribeOpts),
     #[structopt(no_version)]
     SubscribeMonotonic(subscribe_monotonic::SubscribeMonotonicOpts),
-    #[structopt(no_version)]
-    Publish(publish::PublishOpts),
 }
 
 pub fn run(opts: EventsOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin> {
     match opts {
-        EventsOpts::Publish(opt) => publish::EventsPublish::output(opt, json),
         EventsOpts::Subscribe(opt) => subscribe::EventsSubscribe::output(opt, json),
         EventsOpts::SubscribeMonotonic(opt) => subscribe_monotonic::EventsSubscribeMonotonic::output(opt, json),
     }
