@@ -335,6 +335,9 @@ Overview:"#
                 .into_iter()
                 .filter(|VersionLine { release, .. }| release.product == product);
             eprintln!("Checking releases for {}", product);
+
+            // CI has too many cores
+            rayon::ThreadPoolBuilder::new().num_threads(6).build_global().unwrap();
             for (idx, VersionLine { commit, release }) in versions.enumerate() {
                 if ignores_file.ignore_commit_ids.contains(&commit) {
                     println!("  {} ({}) ignored", release, commit);
@@ -342,8 +345,6 @@ Overview:"#
                     let tmp = tempdir()?;
                     log::debug!("Temp dir for {}: {}", release, tmp.path().display());
 
-                    // CI has too many cores
-                    rayon::ThreadPoolBuilder::new().num_threads(6).build_global().unwrap();
                     let out = OsArch::all()
                         .par_iter()
                         .map(|os_arch| {
