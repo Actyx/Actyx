@@ -60,8 +60,13 @@ export const v2getNodeId = async (config: ActyxOpts): Promise<string | null> => 
       return resp.ok ? resp.text() : null
     })
     .catch(err => {
+      // ECONNREFUSED is probably not a CORS issue, at least...
+      if (err.message && err.message.includes('ECONNREFUSED')) {
+        throw new Error(decorateEConnRefused(err.message, path))
+      }
+
       log.actyx.info(
-        'Attempt to connect to V2 errored. Gonna try go connect to V1 now. Error was:',
+        'Attempt to connect to V2 failed with unclear cause. Gonna try go connect to V1 now. Error was:',
         err,
       )
       // HACK: V1 has broken CORS policy, this blocks our request if it reaches the WS port (4243) instead of the default port (4454).
