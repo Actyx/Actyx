@@ -9,6 +9,7 @@
 import fetch from 'node-fetch'
 import { OffsetsResponse } from '../internal_common'
 import { decorateEConnRefused } from '../internal_common/errors'
+import { log } from '../internal_common/log'
 import { ActyxOpts, AppManifest } from '../types'
 import { isNode } from '../util'
 
@@ -59,20 +60,14 @@ export const v2getNodeId = async (config: ActyxOpts): Promise<string | null> => 
       return resp.ok ? resp.text() : null
     })
     .catch(err => {
+      log.actyx.info(
+        'Attempt to connect to V2 errored. Gonna try go connect to V1 now. Error was:',
+        err,
+      )
       // HACK: V1 has broken CORS policy, this blocks our request if it reaches the WS port (4243) instead of the default port (4454).
       // So if we got an error, but the error is (probably) not due to the port being closed, we assume: Probably V1.
       // (Would be awesome if JS API gave a clear and proper indication of CORS block...)
-      if (err.message && !err.message.includes('ECONNREFUSED')) {
-        return null
-      }
-
-      if (err.message) {
-        throw new Error(decorateEConnRefused(err.message, path))
-      } else {
-        throw new Error(
-          `Unknown error trying to contact Actyx node, please diagnose manually by trying to reach ${path} from where this process is running.`,
-        )
-      }
+      return null
     })
 }
 type Uptime = {
