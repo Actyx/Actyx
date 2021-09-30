@@ -59,6 +59,13 @@ export const v2getNodeId = async (config: ActyxOpts): Promise<string | null> => 
       return resp.ok ? resp.text() : null
     })
     .catch(err => {
+      // HACK: V1 has broken CORS policy, this blocks our request if it reaches the WS port (4243) instead of the default port (4454).
+      // So if we got an error, but the error is (probably) not due to the port being closed, we assume: Probably V1.
+      // (Would be awesome if JS API gave a clear and proper indication of CORS block...)
+      if (err.message && !err.message.includes('ECONNREFUSED')) {
+        return null
+      }
+
       if (err.message) {
         throw new Error(decorateEConnRefused(err.message, path))
       } else {
