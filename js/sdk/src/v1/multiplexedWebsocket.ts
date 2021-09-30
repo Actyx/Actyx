@@ -79,6 +79,12 @@ const ErrorMessage = t.readonly(
 export const ResponseMessage = t.union([NextMessage, CompleteMessage, ErrorMessage])
 export type ResponseMessage = t.TypeOf<typeof ResponseMessage>
 
+/**
+ * THIS CLASS IS A COPY OF v2/multiplexedWebsocket.ts PLEASE KEEP UP TO DATE
+ * the only difference is that NextMessage.payload is just a plain value instead of an array,
+ * and hence we call `map` inside the `request` function, rather than mergeMap.
+ * UNFORTUNATELY WE CANNOT SOLVE THIS WITH GENERICS, BECAUSE WE USE IO-TS FOR THIS TYPE
+ */
 export class MultiplexedWebsocket {
   private wsSubject: WebSocketWrapper<Request, ResponseMessage>
   private responseProcessor: Subscription
