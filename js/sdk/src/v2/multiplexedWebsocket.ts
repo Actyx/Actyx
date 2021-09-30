@@ -79,6 +79,7 @@ const ErrorMessage = t.readonly(
 export const ResponseMessage = t.union([NextMessage, CompleteMessage, ErrorMessage])
 export type ResponseMessage = t.TypeOf<typeof ResponseMessage>
 
+/** KEEP IN SYNC WITH v1/multiplexedWebsocket (SEE COMMENT THERE) */
 export class MultiplexedWebsocket {
   private wsSubject: WebSocketWrapper<Request, ResponseMessage>
   private responseProcessor: Subscription
