@@ -403,7 +403,7 @@ impl ApiBehaviour {
                 }
             }),
             EventsRequest::Publish(request) => self.wrap(channel_id.clone(), async move {
-                match events.publish(app_id!("com.actyx.cli"), request).await {
+                match events.publish(app_id!("com.actyx.cli"), 0.into(), request).await {
                     Ok(resp) => stream::once(ready((channel_id, Some(EventsResponse::Publish(resp))))),
                     Err(e) => stream::once(ready((
                         channel_id,

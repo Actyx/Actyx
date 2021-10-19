@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<!-- https://wicg.github.io/directory-upload/index.html -->
+<html>
+<head>
+<title>Directory Upload Example</title>
+<style type="text/css">
+* {
+	box-sizing: border-box;
+}
+
+body {
+	font-family: Arial;
+	padding: 40px;
+	margin: 0;
+}
+
+h1 {
+	margin-top: 0;
+}
+
+h1, h2 {
+	color: #0576A1;
+}
+
+a {
+	text-decoration: none;
+	color: #0074D9;
+}
+
+a:hover {
+	color: #42A1F5;
+}
+
+#dropDiv {
+	width: 100%;
+	border: 1px solid #CCCCCC;
+	margin-top: 20px;
+	padding: 80px 20px;
+	text-align: center;
+	color: #CCCCCC;
+}
+
+#dropDiv.over {
+	border-color: #DE7E7E;
+	color: #DE7E7E;
+	background-color: #FFEDED;
+}
+
+pre.code {
+	background-color: #F9F9F9;
+	padding: 10px;
+	display: block;
+	display: none;
+	border: 1px solid #EBEBEB;
+}
+
+#console {
+	border: 1px solid #EBEBEB;
+	background-color: #F9F9F9;
+	color: #333333;
+	padding: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Actyx Files Upload Demo</h1>
+<p>After obtaining and pasting an authorization token, you can use
+this page to upload files and folders to the locally attached Actyx
+node.</p>
+
+<h4><a href="#" onclick="return toggleDisplay('code-fileinput');">How to obtain an authorization token</a></h4>
+<pre class="code" id="code-fileinput">
+curl -s localhost:4454/api/v2/auth \                                                                                                                                 <<<
+  -d'{"appId":"com.example.app","displayName": "Example App","version": "1.0"}' \
+  -H "Content-Type: application/json" \
+  | jq -r '.token'
+</pre>
+<label for="token">Authorization token:<label>
+<input type="text" id="token">
+
+<div id="dropDiv">Drag &amp; drop your files here!</div>
+<div>
+
+<h2>Upload</h2>
+<p>Clear the file list by reloading the page.</p>
+<pre id="chosenFiles"></pre>
+<button id="uploadButton" type="button" onclick="return upload();">Upload</button>
+
+<h3>4. Log</h3>
+<pre id="console"></pre>
+
+
+<script type="text/javascript">
+let files = [];
+function toggleDisplay(id) {
+	var el = document.getElementById(id);
+
+	el.style.display = el.style.display === 'block' ? 'none' : 'block';
+
+	return false;
+}
+
+function upload() {
+    uploadButton.disabled = true;
+    const oldLabel = uploadButton.innerHTML;
+    uploadButton.innerHTML = "Processing ..";
+    console.log("Uploading", files);
+    let formData = new FormData();
+
+    for (const { fileName, blob } of files) {
+        formData.append('file', blob, fileName);
+    }
+
+    fetch("http://localhost:4454/api/v2/files", {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+            Authorization: "Bearer " + token.value,
+        },
+        body: formData
+      })
+      .then(async (resp) => {
+          uploadButton.disabled = false;
+          uploadButton.innerHTML = oldLabel;
+          const text = await resp.text();
+          if (resp.status !== 200) {
+              throw new Error(text);
+            } else {
+              printToScreen("Success: " + JSON.stringify(text));
+            }
+        })
+      .catch(err => {
+          uploadButton.disabled = false;
+          uploadButton.innerHTML = oldLabel;
+          printToScreen("Error: " + err.message);
+        })
+}
+
+function printToScreen(str) {
+  var cons = document.getElementById('console');
+
+  cons.innerHTML += '<br>';
+  cons.innerHTML += str;
+}
+
+document.addEventListener('DOMContentLoaded', function(event) {
+	function clearCons() {
+		var cons = document.getElementById('console');
+    cons.innerHTML = ''
+	}
+
+	clearCons();
+
+
+
+function addFiles(item, container) {
+  let elem = document.createElement("li");
+  elem.textContent = item.name;
+  container.appendChild(elem);
+
+   if (item.isDirectory) {
+      let directoryReader = item.createReader();
+      let directoryContainer = document.createElement("ul");
+      container.appendChild(directoryContainer);
+      directoryReader.readEntries(function(entries) {
+          entries.forEach(function(entry) {
+            addFiles(entry, directoryContainer);
+        });
+        }, function(err) {
+            console.error(err);
+            printToScreen(err);
+        });
+     } else {
+         item.file(function(blob) {
+           files.push({ fileName: item.fullPath, blob });
+         });
+     }
+  }
+
+  const hoverClassName = "over";
+
+  // Handle drag* events to handle style
+  // Add the css you want when the class "hover" is present
+  dropDiv.addEventListener("dragenter", function (e) {
+      e.preventDefault();
+      dropDiv.classList.add(hoverClassName);
+  });
+
+  dropDiv.addEventListener("dragover", function (e) {
+      e.preventDefault();
+      dropDiv.classList.add(hoverClassName);
+  });
+
+  dropDiv.addEventListener("dragleave", function (e) {
+      e.preventDefault();
+      dropDiv.classList.remove(hoverClassName);
+  });
+
+  // This is the most important event, the event that gives access to files
+  dropDiv.addEventListener("drop", function (e) {
+      e.preventDefault();
+      dropDiv.classList.remove(hoverClassName);
+
+
+      const items = e.dataTransfer.items;
+      for (let i=0; i<items.length; i++) {
+        let item = items[i].webkitGetAsEntry();
+
+        if (item) {
+          console.log(item)
+          addFiles(item, chosenFiles)
+        }
+      }
+
+  });
+
+});
+</script>
+</body>
+</html>

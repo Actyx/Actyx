@@ -127,6 +127,25 @@ export type EarliestQuery<E> = {
 /** Query for observeLatest. @beta  */
 export type LatestQuery<E> = EarliestQuery<E>
 
+/** An aql query is either a plain string, or an object containing the string and the desired order.  @beta */
+export type AqlQuery =
+  | string
+  | {
+      /** Query as AQL string */
+      query: string
+
+      /** Desired order of delivery (relative to events). Defaults to 'Asc' */
+      order?: EventsSortOrder
+    }
+
+/**
+ * Handler for a streaming operation ending, either normally or with an error.
+ * If the `err` argument is defined, the operation completed due to an error.
+ * Otherwise, it completed normally.
+ * @public
+ **/
+export type OnCompleteOrErr = (err?: unknown) => void
+
 /** Functions that operate directly on Events. @public  */
 export interface EventFns {
   /** Get the current local 'present' i.e. offsets up to which we can provide events without any gaps. */
@@ -153,13 +172,13 @@ export interface EventFns {
    * @param chunkSize   - Maximum size of chunks. Chunks may be smaller than this.
    * @param onChunk     - Callback that will be invoked with every chunk, in sequence.
    *
-   * @returns A function that can be called in order to cancel the subscription.
+   * @returns A function that can be called in order to cancel the delivery of further chunks.
    */
   queryKnownRangeChunked: (
     query: RangeQuery,
     chunkSize: number,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
-    onComplete?: () => void,
+    onComplete?: OnCompleteOrErr,
   ) => CancelSubscription
 
   /**
@@ -186,7 +205,7 @@ export interface EventFns {
     query: AutoCappedQuery,
     chunkSize: number,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
-    onComplete?: () => void,
+    onComplete?: OnCompleteOrErr,
   ) => CancelSubscription
 
   /**
@@ -198,7 +217,25 @@ export interface EventFns {
    *
    * @beta
    */
-  queryAql: (query: string) => Promise<AqlResponse[]>
+  queryAql: (query: AqlQuery) => Promise<AqlResponse[]>
+
+  /**
+   * Run a custom AQL query and get the response messages in chunks.
+   *
+   * @param query       - AQL query
+   * @param chunkSize   - Desired chunk size
+   * @param onChunk     - Callback that will be invoked for each chunk, in sequence. Even if this is an async function (returning `Promise<void>`), there will be no concurrent invocations of it.
+   *
+   * @returns A function that can be called in order to cancel the delivery of further chunks.
+   *
+   * @beta
+   */
+  queryAqlChunked: (
+    query: AqlQuery,
+    chunkSize: number,
+    onChunk: (chunk: AqlResponse[]) => Promise<void> | void,
+    onCompleteOrError: OnCompleteOrErr,
+  ) => CancelSubscription
 
   /**
    * Subscribe to all events fitting the `query` after `lowerBound`.
@@ -213,6 +250,7 @@ export interface EventFns {
   subscribe: (
     query: EventSubscription,
     onEvent: (e: ActyxEvent) => Promise<void> | void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**
@@ -240,7 +278,9 @@ export interface EventFns {
       maxChunkTimeMs?: number
     },
     onChunk: (chunk: EventChunk) => Promise<void> | void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
+
   /**
    * Subscribe to a stream of events until this would go back in time.
    * Instead of going back in time, receive a TimeTravelMsg and terminate the stream.
@@ -250,6 +290,7 @@ export interface EventFns {
   subscribeMonotonic: <E>(
     query: MonotonicSubscription<E>,
     callback: (data: EventsOrTimetravel<E>) => Promise<void> | void,
+    onCompleteOrErr?: OnCompleteOrErr,
   ) => CancelSubscription
 
   /**
@@ -268,6 +309,7 @@ export interface EventFns {
   observeEarliest: <E>(
     query: EarliestQuery<E>,
     onNewEarliest: (event: E, metadata: Metadata) => void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**
@@ -285,6 +327,7 @@ export interface EventFns {
   observeLatest: <E>(
     query: EarliestQuery<E>,
     onNewLatest: (event: E, metadata: Metadata) => void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**
@@ -304,6 +347,7 @@ export interface EventFns {
     query: Where<E>,
     shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean,
     onReplaced: (event: E, metadata: Metadata) => void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**
@@ -323,6 +367,7 @@ export interface EventFns {
     reduce: (acc: R, event: E, metadata: Metadata) => R,
     initial: R,
     onUpdate: (result: R) => void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**

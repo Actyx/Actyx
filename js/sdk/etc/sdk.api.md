@@ -35,6 +35,7 @@ export type ActyxOpts = {
     actyxHost?: string;
     actyxPort?: number;
     onConnectionLost?: () => void;
+    automaticReconnect?: boolean;
 };
 
 // @public
@@ -89,6 +90,12 @@ export type AqlOffsetsMsg = {
 };
 
 // @beta
+export type AqlQuery = string | {
+    query: string;
+    order?: EventsSortOrder;
+};
+
+// @beta
 export type AqlResponse = AqlEventMessage | AqlOffsetsMsg | AqlDiagnosticMessage | AqlFutureCompat;
 
 // @public
@@ -119,30 +126,32 @@ export type EventChunk = {
 export interface EventFns {
     // @deprecated
     emit: (events: ReadonlyArray<TaggedEvent>) => PendingEmission;
-    observeBestMatch: <E>(query: Where<E>, shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean, onReplaced: (event: E, metadata: Metadata) => void) => CancelSubscription;
+    observeBestMatch: <E>(query: Where<E>, shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean, onReplaced: (event: E, metadata: Metadata) => void, onError?: (err: unknown) => void) => CancelSubscription;
     // @beta
-    observeEarliest: <E>(query: EarliestQuery<E>, onNewEarliest: (event: E, metadata: Metadata) => void) => CancelSubscription;
+    observeEarliest: <E>(query: EarliestQuery<E>, onNewEarliest: (event: E, metadata: Metadata) => void, onError?: (err: unknown) => void) => CancelSubscription;
     // @beta
-    observeLatest: <E>(query: EarliestQuery<E>, onNewLatest: (event: E, metadata: Metadata) => void) => CancelSubscription;
-    observeUnorderedReduce: <R, E>(query: Where<E>, reduce: (acc: R, event: E, metadata: Metadata) => R, initial: R, onUpdate: (result: R) => void) => CancelSubscription;
+    observeLatest: <E>(query: EarliestQuery<E>, onNewLatest: (event: E, metadata: Metadata) => void, onError?: (err: unknown) => void) => CancelSubscription;
+    observeUnorderedReduce: <R, E>(query: Where<E>, reduce: (acc: R, event: E, metadata: Metadata) => R, initial: R, onUpdate: (result: R) => void, onError?: (err: unknown) => void) => CancelSubscription;
     offsets: () => Promise<OffsetsResponse>;
     present: () => Promise<OffsetMap>;
     publish(event: TaggedEvent): Promise<Metadata>;
     // (undocumented)
     publish(events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]>;
     queryAllKnown: (query: AutoCappedQuery) => Promise<EventChunk>;
-    queryAllKnownChunked: (query: AutoCappedQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
+    queryAllKnownChunked: (query: AutoCappedQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: OnCompleteOrErr) => CancelSubscription;
     // @beta
-    queryAql: (query: string) => Promise<AqlResponse[]>;
+    queryAql: (query: AqlQuery) => Promise<AqlResponse[]>;
+    // @beta
+    queryAqlChunked: (query: AqlQuery, chunkSize: number, onChunk: (chunk: AqlResponse[]) => Promise<void> | void, onCompleteOrError: OnCompleteOrErr) => CancelSubscription;
     queryKnownRange: (query: RangeQuery) => Promise<ActyxEvent[]>;
-    queryKnownRangeChunked: (query: RangeQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
-    subscribe: (query: EventSubscription, onEvent: (e: ActyxEvent) => Promise<void> | void) => CancelSubscription;
+    queryKnownRangeChunked: (query: RangeQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: OnCompleteOrErr) => CancelSubscription;
+    subscribe: (query: EventSubscription, onEvent: (e: ActyxEvent) => Promise<void> | void, onError?: (err: unknown) => void) => CancelSubscription;
     subscribeChunked: (query: EventSubscription, chunkConfig: {
         maxChunkSize?: number;
         maxChunkTimeMs?: number;
-    }, onChunk: (chunk: EventChunk) => Promise<void> | void) => CancelSubscription;
+    }, onChunk: (chunk: EventChunk) => Promise<void> | void, onError?: (err: unknown) => void) => CancelSubscription;
     // @alpha
-    subscribeMonotonic: <E>(query: MonotonicSubscription<E>, callback: (data: EventsOrTimetravel<E>) => Promise<void> | void) => CancelSubscription;
+    subscribeMonotonic: <E>(query: MonotonicSubscription<E>, callback: (data: EventsOrTimetravel<E>) => Promise<void> | void, onCompleteOrErr?: OnCompleteOrErr) => CancelSubscription;
 }
 
 // @public
@@ -334,6 +343,9 @@ export type OffsetsResponse = {
 };
 
 // @public
+export type OnCompleteOrErr = (err?: unknown) => void;
+
+// @public
 export type PendingEmission = {
     subscribe: (whenEmitted: (meta: Metadata[]) => void) => void;
     toPromise: () => Promise<Metadata[]>;
@@ -401,6 +413,7 @@ export const Tags: <E>(...requiredTags: string[]) => Tags<E>;
 export type TestActyx = TestEventFns & {
     readonly nodeId: NodeId;
     dispose: () => void;
+    waitForSync: () => Promise<void>;
 };
 
 // @public

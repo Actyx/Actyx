@@ -30,6 +30,10 @@ pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
 use actyx_sdk::app_id;
 pub use prune::RetainConfig;
+pub use unixfs_v1::{
+    dir::builder::{BufferingTreeBuilder, TreeOptions},
+    FlatUnixFs, PBLink, UnixFsType,
+};
 
 use crate::gossip::Gossip;
 pub use crate::gossip_protocol::{GossipMessage, RootMap, RootUpdate};
@@ -71,7 +75,7 @@ use std::{
     collections::{BTreeMap, VecDeque},
     convert::TryFrom,
     fmt::{Debug, Display},
-    io::{BufRead, BufReader, BufWriter, Read, Write},
+    io::{BufRead, BufReader, Read},
     num::NonZeroU32,
     ops::{Deref, DerefMut, RangeInclusive},
     path::PathBuf,
@@ -84,8 +88,8 @@ use trees::{
     tags::{ScopedTag, ScopedTagSet},
     AxTree, AxTreeHeader,
 };
-use unixfs_v1::dir::MaybeResolved;
 use unixfs_v1::file::{adder::FileAdder, visit::IdleFileVisit};
+use unixfs_v1::{dir::MaybeResolved, file::visit::FileVisit};
 use util::{
     formats::NodeErrorContext,
     reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
@@ -107,6 +111,7 @@ pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
 // TODO fix stream nr
 static DISCOVERY_STREAM_NR: u64 = 1;
 static METRICS_STREAM_NR: u64 = 2;
+static FILES_STREAM_NR: u64 = 3;
 const MAX_TREE_LEVEL: i32 = 512;
 
 fn internal_app_id() -> AppId {
@@ -135,7 +140,8 @@ impl Default for EphemeralEventsConfig {
             interval: Duration::from_secs(30 * 60),
             streams: btreemap! {
                 DISCOVERY_STREAM_NR.into() => RetainConfig::Events(1000),
-                METRICS_STREAM_NR.into() => RetainConfig::Events(1000)
+                METRICS_STREAM_NR.into() => RetainConfig::Events(1000),
+                FILES_STREAM_NR.into() => RetainConfig::Age(Duration::from_secs(60 * 60 * 24 * 14))
             },
         }
     }
@@ -149,6 +155,9 @@ pub struct SwarmConfig {
     pub psk: Option<[u8; 32]>,
     pub node_name: Option<String>,
     pub db_path: Option<PathBuf>,
+    pub block_cache_size: u64,
+    pub block_cache_count: u64,
+    pub block_gc_interval: Duration,
     pub external_addresses: Vec<Multiaddr>,
     pub listen_addresses: Vec<Multiaddr>,
     pub bootstrap_addresses: Vec<Multiaddr>,
@@ -187,6 +196,9 @@ impl SwarmConfig {
             banyan_config: BanyanConfig::default(),
             cadence_compact: Duration::from_secs(60),
             cadence_root_map: Duration::from_secs(10),
+            block_cache_size: 1024 * 1024 * 1024,
+            block_cache_count: 1024 * 128,
+            block_gc_interval: Duration::from_secs(300),
         }
     }
 }
@@ -243,6 +255,9 @@ impl PartialEq for SwarmConfig {
             && self.enable_metrics == other.enable_metrics
             && self.cadence_compact == other.cadence_compact
             && self.cadence_root_map == other.cadence_root_map
+            && self.block_cache_size == other.block_cache_size
+            && self.block_cache_count == other.block_cache_count
+            && self.block_gc_interval == other.block_gc_interval
     }
 }
 
@@ -669,12 +684,18 @@ impl BanyanStore {
                 streams: None,
             },
             storage: StorageConfig {
+                access_db_path: None, // in memory
                 path: cfg.db_path,
-                cache_size_blocks: u64::MAX,
-                cache_size_bytes: 1024 * 1024 * 1024 * 4,
-                gc_interval: Duration::from_secs(10),
-                gc_min_blocks: 1000,
-                gc_target_duration: Duration::from_millis(10),
+                cache_size_blocks: cfg.block_cache_count,
+                cache_size_bytes: cfg.block_cache_size,
+                gc_interval: cfg.block_gc_interval,
+                // make sure that we delete a large number of blocks,
+                // so we don't get into a situation where block deletion
+                // can not keep up with block creation.
+                gc_min_blocks: 10000,
+                // give gc some time. There is an overhead for figuring out
+                // what to delete, so if this is too small we won't delete much.
+                gc_target_duration: Duration::from_millis(250),
             },
         })
         .await?;
@@ -849,6 +870,62 @@ impl BanyanStore {
         &self.data.ipfs
     }
 
+    /// Resolves a [`Cid`] to a unixfs-v1 [`FileNode`] descriptor. Any needed intermediate blocks
+    /// are fetched automatically. The actual data is not resolved.
+    pub async fn unixfs_resolve(&self, cid: Cid, name: Option<String>) -> anyhow::Result<FileNode> {
+        let peers = self.ipfs().peers();
+        let tmp = self.ipfs().create_temp_pin()?;
+        self.ipfs().temp_pin(&tmp, &cid)?;
+        let block = self.ipfs().fetch(&cid, peers.clone()).await?;
+
+        match FlatUnixFs::try_parse(block.data()).map_err(|e| anyhow::anyhow!("Error parsing block (: {}", e))? {
+            flat if flat.data.Type == UnixFsType::Directory => {
+                let mut children = Vec::with_capacity(flat.links.len());
+                #[allow(non_snake_case)]
+                for PBLink { Hash, Name, Tsize } in flat.links {
+                    let cid = Cid::try_from(Hash.as_deref().unwrap_or_default())?;
+                    let name = Name.unwrap_or_default().to_string();
+                    let size = Tsize.unwrap_or_default();
+                    children.push(Child { cid, name, size });
+                }
+                Ok(FileNode::Directory {
+                    children,
+                    own_cid: cid,
+                    name: name.unwrap_or_else(|| "/".into()),
+                })
+            }
+            file if file.data.Type == UnixFsType::File => Ok(FileNode::File {
+                name: name.unwrap_or_default(),
+                cid,
+            }),
+            // Other file types are not supported
+            other => {
+                anyhow::bail!("Unsupported file type {:?}", other.data.Type);
+            }
+        }
+    }
+
+    /// Resolves a [`Cid`] and a relative path to a unixfs-v1 [`FileNode`] descriptor. Any needed
+    /// intermediate blocks are fetched automatically. The actual data is not resolved.
+    pub async fn unixfs_resolve_path(&self, cid: Cid, mut path: VecDeque<String>) -> anyhow::Result<FileNode> {
+        let mut n = self.unixfs_resolve(cid, None).await?;
+        while let Some(segment) = path.pop_front() {
+            match n {
+                FileNode::Directory { children, own_cid, .. } => {
+                    if let Some(x) = children.iter().find(|x| x.name == segment) {
+                        n = self.unixfs_resolve(x.cid, Some(segment)).await?;
+                    } else {
+                        anyhow::bail!("Path {} not found inside {}", segment, own_cid);
+                    }
+                }
+                FileNode::File { name, .. } => {
+                    anyhow::bail!("Found file {} while looking for directory {}", name, segment)
+                }
+            }
+        }
+        Ok(n)
+    }
+
     /// Traverse a path to a `Cid`. Used for traversing unixfsv1 directories. Make sure you pin
     /// the cid before traversing it.
     pub async fn traverse(&self, cid: &Cid, mut path: VecDeque<String>) -> Result<Option<Cid>> {
@@ -875,31 +952,42 @@ impl BanyanStore {
         Ok(Some(block.into_inner().0))
     }
 
-    /// Retrieves a binary blob from the store. Make sure to sync the `Cid` first as this
-    /// doesn't do any networking.
-    pub fn cat(&self, cid: &Cid, writer: impl Write) -> Result<()> {
-        let mut writer = BufWriter::new(writer);
-        let block = self.ipfs().get(cid)?;
-        let (content, _, _metadata, mut step) = IdleFileVisit::default().start(block.data())?;
-        writer.write_all(content)?;
-        while let Some(visit) = step {
-            let (cid, _) = visit.pending_links();
-            let block = self.ipfs().get(cid)?;
-            let (content, next_step) = visit.continue_walk(block.data(), &mut None)?;
-            writer.write_all(content)?;
-            step = next_step;
-        }
-        writer.flush()?;
-        Ok(())
+    /// Retrieves the contents of a unixfs-v1 File from the store. If the `pre_sync` bool is set,
+    /// the cid will be synced at the beginning. If not, blocks will be fetched on demand.
+    pub fn cat(&self, cid: Cid, pre_sync: bool) -> impl Stream<Item = anyhow::Result<Vec<u8>>> {
+        stream::try_unfold(
+            (self.ipfs().clone(), None, true),
+            move |(ipfs, maybe_step, is_first): (Ipfs, Option<FileVisit>, bool)| async move {
+                if is_first {
+                    debug_assert!(maybe_step.is_none());
+                    if pre_sync {
+                        ipfs.sync(&cid, ipfs.peers()).await?;
+                    }
+
+                    let block = ipfs.fetch(&cid, ipfs.peers()).await?;
+                    let (content, _, _, step) = IdleFileVisit::default().start(block.data())?;
+                    Ok(Some((content.to_vec(), (ipfs, step, false))))
+                } else if let Some(visit) = maybe_step {
+                    let (cid, _) = visit.pending_links();
+                    let block = ipfs.fetch(cid, ipfs.peers()).await?;
+                    let (content, next_step) = visit.continue_walk(block.data(), &mut None)?;
+
+                    Ok(Some((content.to_vec(), (ipfs, next_step, false))))
+                } else {
+                    Ok(None)
+                }
+            },
+        )
     }
 
     /// Adds a binary blob to the store. Requires aliasing and flushing before dropping the
-    /// `TempPin`.
-    /// Blobs are encoded as [unixfs-v1](https://docs.ipfs.io/concepts/file-systems/#unix-file-system-unixfs)
-    /// files.
-    pub fn add(&self, tmp: &TempPin, reader: impl Read) -> Result<Cid> {
+    /// `TempPin`.  Blobs are encoded as [unixfs-v1] files.
+    ///
+    /// [unixfs-v1]: https://docs.ipfs.io/concepts/file-systems/#unix-file-system-unixfs
+    pub fn add(&self, tmp: &TempPin, reader: impl Read) -> Result<(Cid, usize)> {
         let mut adder = FileAdder::default();
         let mut reader = BufReader::with_capacity(adder.size_hint(), reader);
+        let mut bytes_read = 0usize;
         loop {
             match reader.fill_buf()? {
                 x if x.is_empty() => {
@@ -910,7 +998,7 @@ impl BanyanStore {
                         self.ipfs().insert(&block)?;
                         root = Some(cid)
                     }
-                    return Ok(root.expect("must return a root"));
+                    return Ok((root.expect("must return a root"), bytes_read));
                 }
                 x => {
                     let mut total = 0;
@@ -924,6 +1012,7 @@ impl BanyanStore {
                         total += consumed;
                     }
                     reader.consume(total);
+                    bytes_read += total;
                 }
             }
         }
@@ -1362,4 +1451,26 @@ impl AxTreeExt for Tree {
             },
         }
     }
+}
+#[derive(Debug, Serialize)]
+pub struct Child {
+    pub name: String,
+    #[serde(with = "::util::serde_str")]
+    pub cid: Cid,
+    pub size: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub enum FileNode {
+    Directory {
+        children: Vec<Child>,
+        #[serde(with = "::util::serde_str")]
+        own_cid: Cid,
+        name: String,
+    },
+    File {
+        name: String,
+        #[serde(with = "::util::serde_str")]
+        cid: Cid,
+    },
 }

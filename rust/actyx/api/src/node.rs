@@ -7,8 +7,9 @@ use swarm::BanyanStore;
 use warp::*;
 
 use crate::{
+    balanced_or,
     util::{
-        filters::{accept_text, authenticate, header_token},
+        filters::{accept_text, authenticate, header_or_query_token},
         reject, Result,
     },
     NodeInfo,
@@ -32,10 +33,10 @@ pub(crate) fn route(
     node_info: NodeInfo,
     store: BanyanStore,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    filter_id(node_info.clone()).or(filter_info(node_info, store))
+    balanced_or!(filter_id(node_info.clone()), filter_info(node_info, store))
 }
 
-fn filter_id(node_info: NodeInfo) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+fn filter_id(node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let node_id = node_info.node_id;
     path("id")
         .and(path::end())
@@ -53,11 +54,11 @@ async fn handle_id(node_id: NodeId) -> Result<impl Reply> {
 fn filter_info(
     node_info: NodeInfo,
     store: BanyanStore,
-) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     path("info")
         .and(path::end())
         .and(get())
-        .and(authenticate(node_info.clone(), header_token()))
+        .and(authenticate(node_info.clone(), header_or_query_token()))
         .and(with_store(store))
         .and(with_node_info(node_info))
         .and_then(handle_info)

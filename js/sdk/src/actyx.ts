@@ -41,13 +41,14 @@ export type TestActyx = TestEventFns & {
   /** For `TestActyx` instances, this method does nothing; it’s just there so all normal `Actyx` functions are provided. @public */
   dispose: () => void
 
+  waitForSync: () => Promise<void>
   /** Underlying snapshotstore, only for testing snapshot interactions. FIXME: Define proper public snapshot API on `Actyx`. @alpha */
   // snapshotStore: SnapshotStore
 }
 
 const createV2 = async (manifest: AppManifest, opts: ActyxOpts, nodeId: string): Promise<Actyx> => {
   const token = await getToken(opts, manifest)
-  const ws = await makeWsMultiplexerV2(opts, token)
+  const ws = await makeWsMultiplexerV2(opts, token, manifest)
   const eventStore = new WebsocketEventStoreV2(ws, AppId.of(manifest.appId))
   // No snapshotstore impl available for V2 prod
   const fns = EventFnsFromEventStoreV2(nodeId, eventStore, SnapshotStore.noop)
@@ -113,6 +114,9 @@ export const Actyx = {
       directlyPushEvents: store.directlyPushEvents,
       dispose: () => {
         store.close()
+      },
+      waitForSync: async () => {
+        /* noop */
       },
       // snapshotStore: snaps,
     }

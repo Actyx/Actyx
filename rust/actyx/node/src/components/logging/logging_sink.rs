@@ -1,5 +1,5 @@
 use tracing::Subscriber;
-use tracing_subscriber::{layer::Layer, reload, reload::Handle, EnvFilter};
+use tracing_subscriber::{fmt::format::FmtSpan, layer::Layer, reload, reload::Handle, EnvFilter};
 use util::formats::{ActyxOSResult, LogSeverity};
 
 // Wrapper trait to contain the types
@@ -36,6 +36,7 @@ impl LoggingSink {
             (EnvFilter::new(level.to_string()), false)
         };
         let builder = tracing_subscriber::FmtSubscriber::builder()
+            .with_span_events(FmtSpan::ACTIVE | FmtSpan::CLOSE)
             .with_env_filter(filter)
             .with_writer(std::io::stderr)
             .with_filter_reloading();
