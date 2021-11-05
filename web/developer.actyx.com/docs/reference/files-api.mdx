@@ -114,6 +114,13 @@ bafybeieod6ngzponojuau3vwxshptnwqcdoa436obbgv3z2jluxzlc4wqy
 
 To retrieve a file's contents by its `CID`, you `GET` the file from `api/v2/files/<CID>` providing a valid authentication token.
 
+If the entry points to a directory, a directory listing in JSON is returned when requested with the content type `application/json`.
+
+If the content type is `text/html`, a directory listing is returned if the directory does not contain an `index.html` file.
+If it does, `index.html` is returned.
+
+You can navigate a directory by appending a relative path within it to the URL.
+
 <Tabs
   groupId="content"
   defaultValue={"ref"}
@@ -169,6 +176,32 @@ $ cat test.html
 <h1>Hello Files API</h1>
 ```
 
+
+```bash title="Retrieve directory listing"
+$ curl -H "Authorization: Bearer $AUTH_TOKEN" \
+   http://localhost:4454/api/v2/files/bafy...points to directory...wwl2be \
+   | jq
+
+{   
+  "directory": {
+    "name": "src",
+    "cid": "bafybeibpy4u4if24ii7ss5iugs63zls5zysdlbu6n23e775hzr7r4odyym",
+    "children": [
+      {
+        "size": 1817,
+        "name": "index.html",
+        "cid": "bafybeiazvgy45hzjoerwoh26wvh5g4tmx6dypimc3nhxn3tets4ykpcp3m"
+      },
+      {
+        "size": 1752,
+        "name": "root.tsx",
+        "cid": "bafybeidamr7cbvdlo7s57ghw3fdvvejx66acr2m4euj5etc5w4tsq2fpvu"
+      }
+    ]
+  }
+}
+```
+
 </TabItem>
 </Tabs>
 
@@ -176,6 +209,13 @@ $ cat test.html
 ## Retrieve file by `ANS` name
 
 To retrieve a file's contents by its name, you `GET` the file from `api/v2/files/<name>` or from `http://<name>.actyx.localhost:4454`.
+
+If the entry points to a directory, a directory listing in JSON is returned when requested with the content type `application/json`.
+
+If the content type is `text/html`, a directory listing is returned if the directory does not contain an `index.html` file.
+If it does, `index.html` is returned.
+
+You can navigate a directory by appending a relative path within it to the URL.
 
 <Tabs
   groupId="content"
