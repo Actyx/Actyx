@@ -1,5 +1,9 @@
 ---
 title: Files API
+id: files-api
+hide_title: false
+hide_table_of_contents: false
+sidebar_label: Files API
 image: /images/defaults/default.svg
 ---
 
@@ -8,13 +12,13 @@ A typical use-case is making applications (e.g. SPAs or node apps) accessible lo
 
 The Files API is reachable at the following base URI: `http://localhost:4454/api/v2/files`.
 
-Files can be uploaded by `POST`ing the file as `multipart/formdata` against the API endpoint.
+Files can be uploaded by using `POST` with the file contents as `multipart/formdata` against the API endpoint.
 Uploading a file returns a content identifier (`CID`) which is a unique hash computed based on the file's contents.
 
-The Actyx Naming Service (`ANS`) provides for attaching names to `CID`s. To retrieve files, either these names or `CID`s can be used: ``http://localhost:4454/api/v2/files/<cid>` or `http://<name>.actyx.localhost:4454/<optional path>`.
+The Actyx Naming Service (`ANS`) provides for attaching names to `CID`s. To retrieve files, either these names or `CID`s can be used: `http://localhost:4454/api/v2/files/<cid>` or `http://<name>.actyx.localhost:4454/<optional path>`.
 You can also update that name to point to a different CID, allowing you to roll out new versions of a file/app.
 
-The API endpoint requires token authentication using either the `Authorization: Bearer <Actyx Auth Token>` header or the `?token=<Actyx Auth Token>` query parameter.
+The API endpoint requires token authentication using either the `Authorization: Bearer <Actyx Auth Token>` header.
 
 A sample 'Uploader' HTML page to get you started is available on [GitHub](https://github.com/actyx-contrib/files-api-uploader/).
 It also supports uploading multiple files / folders conveniently as required when pushing web apps.
@@ -30,16 +34,16 @@ In the following examples we will use the `$AUTH_TOKEN` environment variable whi
 export AUTH_TOKEN="$(curl -s localhost:4454/api/v2/auth -d'{"appId": "com.example.app","displayName": "Example App","version": "1.0"}' -H "Content-Type: application/json" | jq -r '.token')"
 ```
 
-Attempting to call the `files` API endpoint without valid autorization will result in an error response with `HTTP 401 Unauthorized`.
+Attempting to call the `files` API endpoint without valid authorization will result in an error response with `HTTP 401 Unauthorized`.
 
-```json title="Error message for missing autorization header"
+```json title="Error message for missing authorization header"
 {
   "code": "ERR_MISSING_AUTH_HEADER",
   "message": "\"Authorization\" header is missing."
 }
 ```
 
-```json title="Error message for invalid autorization header"
+```json title="Error message for invalid authorization header"
 {
   "code": "ERR_TOKEN_INVALID",
   "message": "Invalid token: 'my invalid token'. Not a signed token. Please provide a valid bearer token."
@@ -83,8 +87,8 @@ It requires authentication and returns the files `CID` on success.
 - HTTP headers:
   - `Content-Type` is `text/plain`
 - HTTP Status:
-  - `200 OK` on success
-  - `401 Unauthorized` if auth header is missing or invalid
+  - `200` on success
+  - `401` if auth header is missing or invalid
 
 The response body is the `CID` of the uploaded file.
 
@@ -123,15 +127,15 @@ You can navigate a directory by appending a relative path within it to the URL.
 
 <Tabs
   groupId="content"
-  defaultValue={"ref"}
+  defaultValue={"ref1"}
   values={[
-    { label: 'Reference', value: 'ref' },
-    { label: 'Example', value: 'ex' },
+    { label: 'Reference', value: 'ref1' },
+    { label: 'Example', value: 'ex1' },
   ]}
 >
 
 
-<TabItem value="ref">
+<TabItem value="ref1">
 
 
 ### Request
@@ -146,14 +150,14 @@ You can navigate a directory by appending a relative path within it to the URL.
 The contents of the file identified by the given `CID`.
 
 - HTTP Status:
-  - `200 OK` on success
-  - `401 Unauthorized` if auth header is missing or invalid
-  - `405 Method not allowed` if the `CID` is invalid.
+  - `200` on success
+  - `401` if auth header is missing or invalid
+  - `405` if the `CID` is invalid.
 
 </TabItem>
 
 
-<TabItem value="ex">
+<TabItem value="ex1">
 
 
 Retrieve file contents using `cURL`:
@@ -219,15 +223,15 @@ You can navigate a directory by appending a relative path within it to the URL.
 
 <Tabs
   groupId="content"
-  defaultValue={"ref"}
+  defaultValue={"ref2"}
   values={[
-    { label: 'Reference', value: 'ref' },
-    { label: 'Example', value: 'ex' },
+    { label: 'Reference', value: 'ref2' },
+    { label: 'Example', value: 'ex2' },
   ]}
 >
 
 
-<TabItem value="ref">
+<TabItem value="ref2">
 
 
 ### Request
@@ -244,14 +248,14 @@ You can navigate a directory by appending a relative path within it to the URL.
 The contents of the file identified by the given name.
 
 - HTTP Status:
-  - `200 OK` on success
-  - `401 Unauthorized` if auth header is missing or invalid
-  - `405 Method not allowed` if the `CID` is invalid.
+  - `200` on success
+  - `401` if auth header is missing or invalid
+  - `405` if the `CID` is invalid.
 
 </TabItem>
 
 
-<TabItem value="ex">
+<TabItem value="ex2">
 
 
 Retrieve file contents using `cURL`:
@@ -280,15 +284,15 @@ If the name already exists, it is updated to point to the given `CID`.
 
 <Tabs
   groupId="content"
-  defaultValue={"ref"}
+  defaultValue={"ref3"}
   values={[
-    { label: 'Reference', value: 'ref' },
-    { label: 'Example', value: 'ex' },
+    { label: 'Reference', value: 'ref3' },
+    { label: 'Example', value: 'ex3' },
   ]}
 >
 
 
-<TabItem value="ref">
+<TabItem value="ref3">
 
 
 ### Request
@@ -303,14 +307,14 @@ If the name already exists, it is updated to point to the given `CID`.
 ### Response
 
 - HTTP Status:
-  - `200 OK` on success
-  - `401 Unauthorized` if auth header is missing or invalid
-  - `405 Method not allowed` if the `CID` is invalid.
+  - `200` on success
+  - `401` if auth header is missing or invalid
+  - `405` if the `CID` is invalid.
 
 </TabItem>
 
 
-<TabItem value="ex">
+<TabItem value="ex3">
 
 
 
@@ -327,39 +331,39 @@ $ curl -s -X PUT \
 </Tabs>
 
 
-## Un-assign `ANS` name
+## Remove `ANS` name from `CID`
 
 <Tabs
   groupId="content"
-  defaultValue={"ref"}
+  defaultValue={"ref4"}
   values={[
-    { label: 'Reference', value: 'ref' },
-    { label: 'Example', value: 'ex' },
+    { label: 'Reference', value: 'ref4' },
+    { label: 'Example', value: 'ex4' },
   ]}
 >
 
 
 To remove a name previously assigned to a `CID`, use the `DELETE` HTTP verb.
 
-<TabItem value="ref">
+<TabItem value="ref4">
 
 
 - Endpoint: `http://localhost:4454/api/v2/files/<name>`
-- HTTP method: `DELETE`
+- HTTP method: `DELETE `
 - HTTP headers:
-  - `Authorization`: must be `Bearer <valid Actyx Auth Token>`
+  - `Authorization` must be `Bearer <valid Actyx Auth Token>`
 
 ### Response
 
 - HTTP Status:
-  - `200 OK` on success
-  - `401 Unauthorized` if auth header is missing or invalid
-  - `405 Method not allowed` if the name does not exist
+  - `200` on success
+  - `401` if auth header is missing or invalid
+  - `405` if the name does not exist
 
 </TabItem>
 
 
-<TabItem value="ex">
+<TabItem value="ex4">
 
 
 ```bash title="Unassign name"
