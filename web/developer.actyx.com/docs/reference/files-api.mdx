@@ -7,7 +7,8 @@ sidebar_label: Files API
 image: /images/defaults/default.svg
 ---
 
-The Files HTTP API allows for uploading and retrieving files as well naming them for easy access.
+The Files HTTP API allows for storing files in the Actyx swarm and retrieving them as well as naming them for easy access.
+Files are replicated to all other Actyx nodes in the same swarm, thus making files available locally on each node.
 A typical use-case is making applications (e.g. SPAs or node apps) accessible locally on Actyx nodes, i.e. rolling out applications.
 
 The Files API is reachable at the following base URI: `http://localhost:4454/api/v2/files`.
@@ -18,7 +19,7 @@ Uploading a file returns a content identifier (`CID`) which is a unique hash com
 The Actyx Naming Service (`ANS`) provides for attaching names to `CID`s. To retrieve files, either these names or `CID`s can be used: `http://localhost:4454/api/v2/files/<cid>` or `http://<name>.actyx.localhost:4454/<optional path>`.
 You can also update that name to point to a different CID, allowing you to roll out new versions of a file/app.
 
-The API endpoint requires token authentication using either the `Authorization: Bearer <Actyx Auth Token>` header.
+The API endpoint requires token authentication using the `Authorization: Bearer <Actyx Auth Token>` header.
 
 A sample 'Uploader' HTML page to get you started is available on [GitHub](https://github.com/actyx-contrib/files-api-uploader/).
 It also supports uploading multiple files / folders conveniently as required when pushing web apps.
@@ -180,13 +181,12 @@ $ cat test.html
 <h1>Hello Files API</h1>
 ```
 
-
 ```bash title="Retrieve directory listing"
 $ curl -H "Authorization: Bearer $AUTH_TOKEN" \
    http://localhost:4454/api/v2/files/bafy...points to directory...wwl2be \
    | jq
 
-{   
+{
   "directory": {
     "name": "src",
     "cid": "bafybeibpy4u4if24ii7ss5iugs63zls5zysdlbu6n23e775hzr7r4odyym",
@@ -210,9 +210,9 @@ $ curl -H "Authorization: Bearer $AUTH_TOKEN" \
 </Tabs>
 
 
-## Retrieve file by `ANS` name
+## Retrieve file by name (API)
 
-To retrieve a file's contents by its name, you `GET` the file from `api/v2/files/<name>` or from `http://<name>.actyx.localhost:4454`.
+To retrieve a file's contents by its name, you `GET` the file from `api/v2/files/<name>`.
 
 If the entry points to a directory, a directory listing in JSON is returned when requested with the content type `application/json`.
 
@@ -238,7 +238,6 @@ You can navigate a directory by appending a relative path within it to the URL.
 
 - Endpoints:
   - `http://localhost:4454/api/v2/files/<name>` (requires authentication)
-  - `http://<name>.actyx.localhost:4454` (available w/o authentication from the browser)
 - HTTP method: `GET`
 - HTTP headers:
   - `Authorization`: must be `Bearer <valid Actyx Auth Token>` when using `api/v2/files`
@@ -267,6 +266,56 @@ $ curl -H "Authorization: Bearer $AUTH_TOKEN" \
 <h1>Hello Files API</h1>
 ```
 
+</TabItem>
+</Tabs>
+
+
+## Retrieve file by name (`ANS`)
+
+`ANS` provides read-only access to named `CID`s through `http://<name>.actyx.localhost:4454` without authentication.
+This method is especially useful when opening Actyx apps in the browser.
+
+If the entry points to a directory, a directory listing in JSON is returned when requested with the content type `application/json`.
+
+If the content type is `text/html`, a directory listing is returned if the directory does not contain an `index.html` file.
+If it does, `index.html` is returned.
+
+You can navigate a directory by appending a relative path within it to the URL.
+
+<Tabs
+  groupId="content"
+  defaultValue={"ref3"}
+  values={[
+    { label: 'Reference', value: 'ref3' },
+    { label: 'Example', value: 'ex3' },
+  ]}
+>
+
+
+<TabItem value="ref3">
+
+
+### Request
+
+- Endpoints:
+  - `http://<name>.actyx.localhost:4454`
+- HTTP method: `GET`
+
+### Response
+
+The contents of the file identified by the given name.
+
+- HTTP Status:
+  - `200` on success
+  - `401` if auth header is missing or invalid
+  - `405` if the `CID` is invalid.
+
+</TabItem>
+
+
+<TabItem value="ex3">
+
+
 To access a file/app from the browser, use `http://<name>.actyx.localhost:4454`
 
 ![files-api-browser-access](/images/reference/files-api/access-from-browser.png)
@@ -280,19 +329,19 @@ To access a file/app from the browser, use `http://<name>.actyx.localhost:4454`
 To be able to use human-understandable names when retrieving files, you can assign names to `CID`s
 by `PUT`ting the name to `api/v2/files/<name to assign>`.
 
-If the name already exists, it is updated to point to the given `CID`.
+If the name already exists, it is updated to point to the given `CID`. Names that represent valid `CID`s are rejected.
 
 <Tabs
   groupId="content"
-  defaultValue={"ref3"}
+  defaultValue={"ref4"}
   values={[
-    { label: 'Reference', value: 'ref3' },
-    { label: 'Example', value: 'ex3' },
+    { label: 'Reference', value: 'ref4' },
+    { label: 'Example', value: 'ex4' },
   ]}
 >
 
 
-<TabItem value="ref3">
+<TabItem value="ref4">
 
 
 ### Request
@@ -314,8 +363,7 @@ If the name already exists, it is updated to point to the given `CID`.
 </TabItem>
 
 
-<TabItem value="ex3">
-
+<TabItem value="ex4">
 
 
 This example assigns the name `hello` to the `CID` `bafy...4wqy`:
@@ -331,21 +379,21 @@ $ curl -s -X PUT \
 </Tabs>
 
 
-## Remove `ANS` name from `CID`
+## Remove `CID` name
 
 <Tabs
   groupId="content"
-  defaultValue={"ref4"}
+  defaultValue={"ref5"}
   values={[
-    { label: 'Reference', value: 'ref4' },
-    { label: 'Example', value: 'ex4' },
+    { label: 'Reference', value: 'ref5' },
+    { label: 'Example', value: 'ex5' },
   ]}
 >
 
 
 To remove a name previously assigned to a `CID`, use the `DELETE` HTTP verb.
 
-<TabItem value="ref4">
+<TabItem value="ref5">
 
 
 - Endpoint: `http://localhost:4454/api/v2/files/<name>`
@@ -363,7 +411,7 @@ To remove a name previously assigned to a `CID`, use the `DELETE` HTTP verb.
 </TabItem>
 
 
-<TabItem value="ex4">
+<TabItem value="ex5">
 
 
 ```bash title="Unassign name"
