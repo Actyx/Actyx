@@ -71,9 +71,7 @@ module.exports = {
       type: 'category',
       label: 'Structured queries',
       collapsed: true,
-      items: [
-        'how-to/structured-queries/query-events-with-aql',
-      ],
+      items: ['how-to/structured-queries/query-events-with-aql'],
     },
     {
       type: 'category',
@@ -135,10 +133,7 @@ module.exports = {
       type: 'category',
       label: 'Licensing',
       collapsed: true,
-      items: [
-        'how-to/licensing/license-nodes',
-        'how-to/licensing/license-apps',
-      ]
+      items: ['how-to/licensing/license-nodes', 'how-to/licensing/license-apps'],
     },
     {
       type: 'category',
@@ -200,7 +195,12 @@ module.exports = {
       type: 'category',
       label: 'Actyx API',
       collapsed: true,
-      items: ['reference/events-api', 'reference/auth-api', 'reference/node-api'],
+      items: [
+        'reference/events-api',
+        'reference/files-api',
+        'reference/auth-api',
+        'reference/node-api',
+      ],
     },
     {
       type: 'category',
@@ -229,7 +229,7 @@ module.exports = {
       ],
     },
     'reference/aql',
-    'reference/rust-sdk'
+    'reference/rust-sdk',
   ],
   tutorialSidebar: [
     {
