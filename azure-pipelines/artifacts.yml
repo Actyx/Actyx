@@ -155,7 +155,7 @@ stages:
           - checkout: self
             clean: true
           - bash: |
-              set -e
+              set -ex
               azure-pipelines/bin/install-vault.sh
               chmod -R 777 .
               chmod -R 777 /root/.cargo
