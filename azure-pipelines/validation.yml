@@ -175,9 +175,3 @@ stages:
               NETLIFY_ACCESS_TOKEN: $(SECRET_NETLIFY_TOKEN)
               NETLIFY_AUTH_TOKEN: $(SECRET_NETLIFY_TOKEN)
 
-  - stage: notifySuccess
-    dependsOn:
-      - validation
-    displayName: Notify Slack on successful build
-    jobs:
-      - template: jobs-notify-success.yml
