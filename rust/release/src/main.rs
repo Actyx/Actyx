@@ -357,38 +357,25 @@ Overview:"#
                                         let target_exists = p.target_exists()?;
                                         if target_exists {
                                             writeln!(&mut out, "    [OK] {} already exists.", p.target)?;
-                                        } else {
-                                            if source_exists {
-                                                log::debug!(
-                                                    "creating release artifact in dir {}",
-                                                    tmp.path().display()
-                                                );
-                                                p.create_release_artifact(tmp.path()).context(format!(
-                                                    "creating release artifact at {}",
-                                                    tmp.path().display()
-                                                ))?;
-                                                if dry_run {
-                                                    writeln!(
-                                                        &mut out,
-                                                        "    [DRY RUN] Create and publish {}",
-                                                        p.target
-                                                    )?;
-                                                } else {
-                                                    log::debug!("starting publishing");
-                                                    p.publish().context("publishing")?;
-                                                    log::debug!("finished publishing");
-                                                    writeln!(&mut out, "    [NEW] {}", p.target)?;
-                                                }
+                                        } else if source_exists {
+                                            log::debug!("creating release artifact in dir {}", tmp.path().display());
+                                            p.create_release_artifact(tmp.path()).context(format!(
+                                                "creating release artifact at {}",
+                                                tmp.path().display()
+                                            ))?;
+                                            if dry_run {
+                                                writeln!(&mut out, "    [DRY RUN] Create and publish {}", p.target)?;
                                             } else {
-                                                if !ignore_errors && !dry_run {
-                                                    anyhow::bail!("    [ERR] Source \"{}\" does NOT exist.", p.source);
-                                                }
-                                                writeln!(
-                                                    &mut out,
-                                                    "    [ERR] Source \"{}\" does NOT exist.",
-                                                    p.source
-                                                )?;
+                                                log::debug!("starting publishing");
+                                                p.publish().context("publishing")?;
+                                                log::debug!("finished publishing");
+                                                writeln!(&mut out, "    [NEW] {}", p.target)?;
                                             }
+                                        } else {
+                                            if !ignore_errors && !dry_run {
+                                                anyhow::bail!("    [ERR] Source \"{}\" does NOT exist.", p.source);
+                                            }
+                                            writeln!(&mut out, "    [ERR] Source \"{}\" does NOT exist.", p.source)?;
                                         }
                                         Ok(out)
                                     })
