@@ -354,11 +354,11 @@ Overview:"#
                                     .map(|mut p| {
                                         let mut out = String::new();
                                         let source_exists = p.source_exists()?;
-                                        if source_exists {
-                                            let target_exists = p.target_exists()?;
-                                            if target_exists {
-                                                writeln!(&mut out, "    [OK] {} already exists.", p.target)?;
-                                            } else {
+                                        let target_exists = p.target_exists()?;
+                                        if target_exists {
+                                            writeln!(&mut out, "    [OK] {} already exists.", p.target)?;
+                                        } else {
+                                            if source_exists {
                                                 log::debug!(
                                                     "creating release artifact in dir {}",
                                                     tmp.path().display()
@@ -379,12 +379,16 @@ Overview:"#
                                                     log::debug!("finished publishing");
                                                     writeln!(&mut out, "    [NEW] {}", p.target)?;
                                                 }
+                                            } else {
+                                                if !ignore_errors && !dry_run {
+                                                    anyhow::bail!("    [ERR] Source \"{}\" does NOT exist.", p.source);
+                                                }
+                                                writeln!(
+                                                    &mut out,
+                                                    "    [ERR] Source \"{}\" does NOT exist.",
+                                                    p.source
+                                                )?;
                                             }
-                                        } else {
-                                            if !ignore_errors && !dry_run {
-                                                anyhow::bail!("    [ERR] Source \"{}\" does NOT exist.", p.source);
-                                            }
-                                            writeln!(&mut out, "    [ERR] Source \"{}\" does NOT exist.", p.source)?;
                                         }
                                         Ok(out)
                                     })
