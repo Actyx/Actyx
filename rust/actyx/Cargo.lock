@@ -5563,6 +5563,7 @@ dependencies = [
  "structopt",
  "tempfile",
  "thiserror",
+ "tracing",
  "treediff",
  "url",
  "valico",
