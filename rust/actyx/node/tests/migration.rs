@@ -172,11 +172,11 @@ async fn assert_v2_from_v1_files(
     for (actual, expected) in stderr
         .into_iter()
         .filter(|x| {
-            if initial_db_version == 0 {
+            if initial_db_version == 0 && x.contains("ipfs_sqlite_block_store") {
                 // ipfs_sqlite_block_store prints out some migration logs when coming from v0
-                !x.contains("ipfs_sqlite_block_store")
+                false
             } else {
-                true
+                !x.contains("wal_checkpoint")
             }
         })
         .take(4)

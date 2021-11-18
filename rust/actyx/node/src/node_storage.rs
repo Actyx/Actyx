@@ -154,6 +154,16 @@ impl NodeStorage {
                  UPDATE node SET value = value + 1 WHERE name = 'cycle_count'",
         )?;
 
+        conn.query_row("PRAGMA wal_checkpoint(TRUNCATE);", [], |x| {
+            info!(
+                "wal_checkpoint(TRUNCATE) returned busy={:?} log={:?} checkpointed={:?}",
+                x.get::<_, i64>(0),
+                x.get::<_, i64>(1),
+                x.get::<_, i64>(2)
+            );
+            Ok(())
+        })?;
+
         Ok(())
     }
 
