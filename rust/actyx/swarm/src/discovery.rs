@@ -215,12 +215,17 @@ pub fn discovery_publish(
     nr: StreamNr,
     external: FnvHashSet<ipfs_embed::Multiaddr>,
     enable_discovery: bool,
+    to_warn: Vec<ipfs_embed::PeerId>,
 ) -> Result<impl Future<Output = ()>> {
     let mut buffer = vec![];
     let tags = tags!("discovery");
     let peer_id: PeerId = store.ipfs().local_peer_id().into();
     let node_name = store.ipfs().local_node_name();
     let mut dialers = FnvHashMap::<_, Dialer>::default();
+    let mut to_warn = to_warn
+        .into_iter()
+        .map(|id| (id, true))
+        .collect::<FnvHashMap<_, bool>>();
     Ok(async move {
         while let Some(event) = stream.next().await {
             tracing::debug!("discovery_publish {} {:?}", node_name, event);
@@ -241,12 +246,19 @@ pub fn discovery_publish(
                         Event::ExpiredObservedAddr(peer_id, addr.into())
                     }
                 }
-                ipfs_embed::Event::Discovered(peer) | ipfs_embed::Event::Disconnected(peer) => {
-                    // dialing on disconnected ensures the unreachable event fires.
+                ipfs_embed::Event::Discovered(peer) => {
                     store.ipfs().dial(&peer);
                     continue;
                 }
                 ipfs_embed::Event::Unreachable(peer) => {
+                    if let Some(warn) = to_warn.get_mut(&peer) {
+                        if *warn {
+                            tracing::warn!(id = display(&peer), "connection failed to initial peer");
+                        } else {
+                            tracing::debug!(id = display(&peer), "connection failed to initial peer");
+                        }
+                        *warn = false;
+                    }
                     let ipfs = store.ipfs().clone();
                     let backoff = if let Some(dialer) = dialers.remove(&peer) {
                         dialer.backoff.saturating_add(Duration::from_secs(10))
@@ -261,7 +273,20 @@ pub fn discovery_publish(
                     continue;
                 }
                 ipfs_embed::Event::Connected(peer) => {
+                    if let Some(warn) = to_warn.get_mut(&peer) {
+                        tracing::info!(id = display(&peer), "connected to initial peer");
+                        *warn = false;
+                    }
                     dialers.remove(&peer);
+                    continue;
+                }
+                ipfs_embed::Event::Disconnected(peer) => {
+                    if let Some(warn) = to_warn.get_mut(&peer) {
+                        tracing::info!(id = display(&peer), "disconnected from initial peer");
+                        *warn = false;
+                    }
+                    // dialing on disconnected ensures the unreachable event fires.
+                    store.ipfs().dial(&peer);
                     continue;
                 }
                 _ => continue,

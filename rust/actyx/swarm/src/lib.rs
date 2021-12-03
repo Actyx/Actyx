@@ -703,6 +703,7 @@ impl BanyanStore {
         let swarm_events = ipfs.swarm_events();
         let mut bootstrap: FnvHashMap<PeerId, Vec<Multiaddr>> = FnvHashMap::default();
         for mut addr in cfg.bootstrap_addresses {
+            tracing::debug!(addr = display(&addr), "adding initial peer");
             if let Some(Protocol::P2p(peer_id)) = addr.pop() {
                 let peer_id =
                     PeerId::from_multihash(peer_id).map_err(|_| anyhow::anyhow!("invalid bootstrap peer id"))?;
@@ -761,9 +762,22 @@ impl BanyanStore {
         for addr in cfg.external_addresses {
             ipfs.add_external_address(addr);
         }
+
+        let peers = bootstrap.keys().cloned().collect::<Vec<_>>();
         for (peer, addrs) in bootstrap {
-            for addr in addrs {
-                ipfs.add_address(&peer, addr);
+            for mut addr in addrs {
+                ipfs.add_address(&peer, addr.clone());
+                let addr_dbg = tracing::field::debug(addr.clone());
+                if let Some(info) = ipfs.peer_info(&peer) {
+                    addr.push(Protocol::P2p(peer.into()));
+                    if !info.addresses().any(|(a, _source)| *a == addr) {
+                        tracing::warn!(id = display(peer), addr = addr_dbg, "failed to add initial peer");
+                    } else {
+                        tracing::info!(id = display(peer), addr = addr_dbg, "added initial peer");
+                    }
+                } else {
+                    tracing::warn!(id = display(peer), addr = addr_dbg, "failed to add initial peer");
+                }
             }
         }
 
@@ -828,6 +842,7 @@ impl BanyanStore {
                 DISCOVERY_STREAM_NR.into(),
                 external_addrs,
                 cfg.enable_discovery,
+                peers,
             )?,
         );
         if cfg.enable_metrics {
