@@ -11,7 +11,7 @@ mod repository;
 mod scope;
 mod validation;
 
-pub use crate::database::Database;
+pub use crate::database::{Database, DB_FILENAME};
 pub use crate::repository::{Error as RepositoryError, Repository};
 pub use crate::scope::{Error as ScopeError, Scope};
 pub use crate::validation::{Error as ValidationError, ValidationErrorDescr, ValidationState, Validator};

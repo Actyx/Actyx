@@ -1,5 +1,5 @@
 use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
-use futures::{stream, Stream, TryFutureExt};
+use futures::{stream, Stream};
 use serde::Serialize;
 use std::convert::TryInto;
 use structopt::StructOpt;
@@ -10,7 +10,7 @@ impl AxCliCommand for SettingsGet {
     type Opt = GetOpt;
     type Output = serde_json::Value;
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
-        let r = Box::pin(run(opts).map_err(Into::into));
+        let r = Box::pin(run(opts));
         Box::new(stream::once(r))
     }
     fn pretty(result: Self::Output) -> String {

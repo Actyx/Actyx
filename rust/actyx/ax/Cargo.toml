@@ -47,6 +47,7 @@ tracing = { version = "0.1.26", features = ["max_level_trace", "release_max_leve
 tracing-subscriber = "0.2.19"
 trees = { path = "../trees" }
 util = { path = "../util" }
+fslock = "0.1.6"
 
 [dev-dependencies]
 assert_cmd = "2.0.0"

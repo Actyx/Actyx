@@ -1,7 +1,7 @@
 use formats::{ActyxCliResult, Result};
 use futures::{future, Future, Stream, StreamExt};
 use serde::Serialize;
-use std::{convert::TryInto, fmt, path::PathBuf, str::FromStr};
+use std::{convert::TryFrom, fmt, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult};
 
@@ -51,10 +51,10 @@ impl fmt::Display for KeyPathWrapper {
     }
 }
 
-impl TryInto<AxPrivateKey> for Option<KeyPathWrapper> {
+impl TryFrom<Option<KeyPathWrapper>> for AxPrivateKey {
     type Error = ActyxOSError;
-    fn try_into(self) -> Result<AxPrivateKey> {
-        if let Some(path) = self {
+    fn try_from(k: Option<KeyPathWrapper>) -> Result<AxPrivateKey> {
+        if let Some(path) = k {
             AxPrivateKey::from_file(path.0)
         } else {
             let private_key_path = AxPrivateKey::default_user_identity_path()?;

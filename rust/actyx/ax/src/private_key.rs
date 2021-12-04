@@ -84,7 +84,7 @@ impl AxPrivateKey {
         )
     }
 
-    fn to_public(&self) -> PublicKey {
+    pub fn to_public(&self) -> PublicKey {
         self.0.into()
     }
 
