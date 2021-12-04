@@ -168,6 +168,15 @@ pub fn initialize_db(conn: &Connection) -> Result<()> {
     })?;
     // `PRAGMA synchronous = NORMAL;` https://www.sqlite.org/pragma.html#pragma_synchronous
     conn.execute("PRAGMA synchronous = NORMAL;", [])?;
+    conn.query_row("PRAGMA wal_checkpoint(TRUNCATE);", [], |x| {
+        tracing::info!(
+            "wal_checkpoint(TRUNCATE) returned busy={:?} log={:?} checkpointed={:?}",
+            x.get::<_, i64>(0),
+            x.get::<_, i64>(1),
+            x.get::<_, i64>(2)
+        );
+        Ok(())
+    })?;
     conn.execute_batch(
         "BEGIN;\n\
         CREATE TABLE IF NOT EXISTS streams \

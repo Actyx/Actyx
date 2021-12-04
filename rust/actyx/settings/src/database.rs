@@ -56,6 +56,15 @@ impl Database {
         conn.execute_batch("PRAGMA journal_mode = WAL;")?;
         // `PRAGMA synchronous = EXTRA;` https://www.sqlite.org/pragma.html#pragma_synchronous
         conn.execute("PRAGMA synchronous = EXTRA;", [])?;
+        conn.query_row("PRAGMA wal_checkpoint(TRUNCATE);", [], |x| {
+            tracing::info!(
+                "wal_checkpoint(TRUNCATE) returned busy={:?} log={:?} checkpointed={:?}",
+                x.get::<_, i64>(0),
+                x.get::<_, i64>(1),
+                x.get::<_, i64>(2)
+            );
+            Ok(())
+        })?;
         Ok(())
     }
     pub fn exec<R>(&mut self, update: impl FnOnce(&mut Transaction) -> R) -> Result<R> {

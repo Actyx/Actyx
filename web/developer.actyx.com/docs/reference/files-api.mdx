@@ -1,0 +1,424 @@
+---
+title: Files API
+id: files-api
+hide_title: false
+hide_table_of_contents: false
+sidebar_label: Files API
+image: /images/defaults/default.svg
+---
+
+The Files HTTP API allows for storing files in the Actyx swarm and retrieving them as well as naming them for easy access.
+Files are replicated to all other Actyx nodes in the same swarm, thus making files available locally on each node.
+A typical use-case is making applications (e.g. SPAs or node apps) accessible locally on Actyx nodes, i.e. rolling out applications.
+
+The Files API is reachable at the following base URI: `http://localhost:4454/api/v2/files`.
+
+Files can be uploaded by using `POST` with the file contents as `multipart/formdata` against the API endpoint.
+Uploading a file returns a content identifier (`CID`) which is a unique hash computed based on the file's contents.
+
+The Actyx Naming Service (`ANS`) provides for attaching names to `CID`s. To retrieve files, either these names or `CID`s can be used: `http://localhost:4454/api/v2/files/<cid>` or `http://<name>.actyx.localhost:4454/<optional path>`.
+You can also update that name to point to a different CID, allowing you to roll out new versions of a file/app.
+
+The API endpoint requires token authentication using the `Authorization: Bearer <Actyx Auth Token>` header.
+
+A sample 'Uploader' HTML page to get you started is available on [GitHub](https://github.com/actyx-contrib/files-api-uploader/).
+It also supports uploading multiple files / folders conveniently as required when pushing web apps.
+
+## Prerequisites
+
+Communication with the Events API needs to be authenticated.
+Therefore an auth token which is associated with the requesting app needs to be retrieved from the [Auth API](./auth-api).
+This token then needs to be passed in the `Authorization` header with every request to the Events API.
+In the following examples we will use the `$AUTH_TOKEN` environment variable which can be initialized with
+
+```bash
+export AUTH_TOKEN="$(curl -s localhost:4454/api/v2/auth -d'{"appId": "com.example.app","displayName": "Example App","version": "1.0"}' -H "Content-Type: application/json" | jq -r '.token')"
+```
+
+Attempting to call the `files` API endpoint without valid authorization will result in an error response with `HTTP 401 Unauthorized`.
+
+```json title="Error message for missing authorization header"
+{
+  "code": "ERR_MISSING_AUTH_HEADER",
+  "message": "\"Authorization\" header is missing."
+}
+```
+
+```json title="Error message for invalid authorization header"
+{
+  "code": "ERR_TOKEN_INVALID",
+  "message": "Invalid token: 'my invalid token'. Not a signed token. Please provide a valid bearer token."
+}
+```
+
+While the following examples use [cURL](https://curl.se/), other command-line or graphical tools (e.g. [Postman](https://www.postman.com/product/api-client/)) would work as well.
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+## Upload File
+
+Files are uploaded by `POST`ing the file content to `api/v2/files`.
+It requires authentication and returns the files `CID` on success.
+
+<Tabs
+  groupId="content"
+  defaultValue={"ref"}
+  values={[
+    { label: 'Reference', value: 'ref' },
+    { label: 'Example', value: 'ex' },
+  ]}
+>
+
+
+<TabItem value="ref">
+
+
+### Request
+
+- Endpoint: `http://localhost:4454/api/v2/files`
+- HTTP method: `POST`
+- HTTP headers:
+  - `Content-Type`: must be `multipart/formdata`
+  - `Authorization`: must be `Bearer <valid Actyx Auth Token>`
+- Request body: The file contents as `multipart/formdata` using the `file` key, the contents and a file name as the form data's key/value pairs.
+
+### Response
+
+- HTTP headers:
+  - `Content-Type` is `text/plain`
+- HTTP Status:
+  - `200` on success
+  - `401` if auth header is missing or invalid
+
+The response body is the `CID` of the uploaded file.
+
+</TabItem>
+
+
+<TabItem value="ex">
+
+
+Upload test HTML file using `cURL`:
+
+```bash title="File Upload"
+$ echo "<h1>Hello Files API</h1>" > test.html
+$ curl -X POST \
+   -H "Authorization: Bearer $AUTH_TOKEN" \
+   -F file=@test.html \
+   http://localhost:4454/api/v2/files
+
+bafybeieod6ngzponojuau3vwxshptnwqcdoa436obbgv3z2jluxzlc4wqy
+```
+
+</TabItem>
+</Tabs>
+
+
+## Retrieve file by `CID`
+
+To retrieve a file's contents by its `CID`, you `GET` the file from `api/v2/files/<CID>` providing a valid authentication token.
+
+If the entry points to a directory, a directory listing in JSON is returned when requested with the content type `application/json`.
+
+If the content type is `text/html`, a directory listing is returned if the directory does not contain an `index.html` file.
+If it does, `index.html` is returned.
+
+You can navigate a directory by appending a relative path within it to the URL.
+
+<Tabs
+  groupId="content"
+  defaultValue={"ref1"}
+  values={[
+    { label: 'Reference', value: 'ref1' },
+    { label: 'Example', value: 'ex1' },
+  ]}
+>
+
+
+<TabItem value="ref1">
+
+
+### Request
+
+- Endpoint: `http://localhost:4454/api/v2/files/<cid>`
+- HTTP method: `GET`
+- HTTP headers:
+  - `Authorization`: must be `Bearer <valid Actyx Auth Token>`
+
+### Response
+
+The contents of the file identified by the given `CID`.
+
+- HTTP Status:
+  - `200` on success
+  - `401` if auth header is missing or invalid
+  - `405` if the `CID` is invalid.
+
+</TabItem>
+
+
+<TabItem value="ex1">
+
+
+Retrieve file contents using `cURL`:
+
+```bash title="Get file by CID"
+$ curl -H "Authorization: Bearer $AUTH_TOKEN" \
+   http://localhost:4454/api/v2/files/bafybeieod6ngzponojuau3vwxshptnwqcdoa436obbgv3z2jluxzlc4wqy
+
+<h1>Hello Files API</h1>
+```
+
+To save to a file, simply redirect the output. This also works for binary formats.
+
+```bash title="Save contents to file"
+$ curl -H "Authorization: Bearer $AUTH_TOKEN" \
+   http://localhost:4454/api/v2/files/bafybeieod6ngzponojuau3vwxshptnwqcdoa436obbgv3z2jluxzlc4wqy \
+   > test.html
+$ cat test.html
+
+<h1>Hello Files API</h1>
+```
+
+```bash title="Retrieve directory listing"
+$ curl -H "Authorization: Bearer $AUTH_TOKEN" \
+   http://localhost:4454/api/v2/files/bafy...points to directory...wwl2be \
+   | jq
+
+{
+  "directory": {
+    "name": "src",
+    "cid": "bafybeibpy4u4if24ii7ss5iugs63zls5zysdlbu6n23e775hzr7r4odyym",
+    "children": [
+      {
+        "size": 1817,
+        "name": "index.html",
+        "cid": "bafybeiazvgy45hzjoerwoh26wvh5g4tmx6dypimc3nhxn3tets4ykpcp3m"
+      },
+      {
+        "size": 1752,
+        "name": "root.tsx",
+        "cid": "bafybeidamr7cbvdlo7s57ghw3fdvvejx66acr2m4euj5etc5w4tsq2fpvu"
+      }
+    ]
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+
+## Retrieve file by name (API)
+
+To retrieve a file's contents by its name, you `GET` the file from `api/v2/files/<name>`.
+
+If the entry points to a directory, a directory listing in JSON is returned when requested with the content type `application/json`.
+
+If the content type is `text/html`, a directory listing is returned if the directory does not contain an `index.html` file.
+If it does, `index.html` is returned.
+
+You can navigate a directory by appending a relative path within it to the URL.
+
+<Tabs
+  groupId="content"
+  defaultValue={"ref2"}
+  values={[
+    { label: 'Reference', value: 'ref2' },
+    { label: 'Example', value: 'ex2' },
+  ]}
+>
+
+
+<TabItem value="ref2">
+
+
+### Request
+
+- Endpoints:
+  - `http://localhost:4454/api/v2/files/<name>` (requires authentication)
+- HTTP method: `GET`
+- HTTP headers:
+  - `Authorization`: must be `Bearer <valid Actyx Auth Token>` when using `api/v2/files`
+
+### Response
+
+The contents of the file identified by the given name.
+
+- HTTP Status:
+  - `200` on success
+  - `401` if auth header is missing or invalid
+  - `405` if the `CID` is invalid.
+
+</TabItem>
+
+
+<TabItem value="ex2">
+
+
+Retrieve file contents using `cURL`:
+
+```bash title="Get file by name"
+$ curl -H "Authorization: Bearer $AUTH_TOKEN" \
+   http://localhost:4454/api/v2/files/hello
+
+<h1>Hello Files API</h1>
+```
+
+</TabItem>
+</Tabs>
+
+
+## Retrieve file by name (`ANS`)
+
+`ANS` provides read-only access to named `CID`s through `http://<name>.actyx.localhost:4454` without authentication.
+This method is especially useful when opening Actyx apps in the browser.
+
+If the entry points to a directory, a directory listing in JSON is returned when requested with the content type `application/json`.
+
+If the content type is `text/html`, a directory listing is returned if the directory does not contain an `index.html` file.
+If it does, `index.html` is returned.
+
+You can navigate a directory by appending a relative path within it to the URL.
+
+<Tabs
+  groupId="content"
+  defaultValue={"ref3"}
+  values={[
+    { label: 'Reference', value: 'ref3' },
+    { label: 'Example', value: 'ex3' },
+  ]}
+>
+
+
+<TabItem value="ref3">
+
+
+### Request
+
+- Endpoints:
+  - `http://<name>.actyx.localhost:4454`
+- HTTP method: `GET`
+
+### Response
+
+The contents of the file identified by the given name.
+
+- HTTP Status:
+  - `200` on success
+  - `401` if auth header is missing or invalid
+  - `405` if the `CID` is invalid.
+
+</TabItem>
+
+
+<TabItem value="ex3">
+
+
+To access a file/app from the browser, use `http://<name>.actyx.localhost:4454`
+
+![files-api-browser-access](/images/reference/files-api/access-from-browser.png)
+
+</TabItem>
+</Tabs>
+
+
+## Assign name to a `CID`
+
+To be able to use human-understandable names when retrieving files, you can assign names to `CID`s
+by `PUT`ting the name to `api/v2/files/<name to assign>`.
+
+If the name already exists, it is updated to point to the given `CID`. Names that represent valid `CID`s are rejected.
+
+<Tabs
+  groupId="content"
+  defaultValue={"ref4"}
+  values={[
+    { label: 'Reference', value: 'ref4' },
+    { label: 'Example', value: 'ex4' },
+  ]}
+>
+
+
+<TabItem value="ref4">
+
+
+### Request
+
+- Endpoint: `http://localhost:4454/api/v2/files/<name>`
+- HTTP method: `PUT`
+- HTTP headers:
+  - `Authorization`: must be `Bearer <valid Actyx Auth Token>`
+- Body: The `CID` to assign the name to
+
+### Response
+
+- HTTP Status:
+  - `200` on success
+  - `401` if auth header is missing or invalid
+  - `405` if the `CID` is invalid.
+
+</TabItem>
+
+
+<TabItem value="ex4">
+
+
+This example assigns the name `hello` to the `CID` `bafy...4wqy`:
+
+```bash title="Assign name to CID"
+$ curl -s -X PUT \
+  -d "bafybeieod6ngzponojuau3vwxshptnwqcdoa436obbgv3z2jluxzlc4wqy" \
+  -H "Authorization: Bearer $AUTH_TOKEN"  \
+  http://localhost:4454/api/v2/files/hello -v
+```
+
+</TabItem>
+</Tabs>
+
+
+## Remove `CID` name
+
+<Tabs
+  groupId="content"
+  defaultValue={"ref5"}
+  values={[
+    { label: 'Reference', value: 'ref5' },
+    { label: 'Example', value: 'ex5' },
+  ]}
+>
+
+
+To remove a name previously assigned to a `CID`, use the `DELETE` HTTP verb.
+
+<TabItem value="ref5">
+
+
+- Endpoint: `http://localhost:4454/api/v2/files/<name>`
+- HTTP method: `DELETE`
+- HTTP headers:
+  - `Authorization` must be `Bearer <valid Actyx Auth Token>`
+
+### Response
+
+- HTTP Status:
+  - `200` on success
+  - `401` if auth header is missing or invalid
+  - `405` if the name does not exist
+
+</TabItem>
+
+
+<TabItem value="ex5">
+
+
+```bash title="Unassign name"
+curl -X DELETE \
+  -H "Authorization: Bearer $AUTH_TOKEN" \
+  http://localhost:4454/api/v2/files/hello
+```
+
+  </TabItem>
+  </Tabs>
+

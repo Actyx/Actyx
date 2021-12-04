@@ -362,6 +362,40 @@ fn bad_query() -> anyhow::Result<()> {
 }
 
 #[test]
+fn publish() -> anyhow::Result<()> {
+    let log = Log::default();
+    let result = with_api(log.clone(), |api, identity| {
+        let out = run("ax")?
+            .args(&[
+                o("events"),
+                o("publish"),
+                o("-ji"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+                o(r#"{ "baz":42 }"#),
+                o("-t"),
+                o("foo"),
+                o("-t"),
+                o("bar"),
+            ])
+            .output()?;
+        eprintln!(
+            "out:\n{}\nerr:\n{}\n---",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        ensure!(out.status.success());
+        let json = serde_json::from_slice::<Value>(&out.stdout)?;
+        ensure!(get(&json, "/code")? == json!("OK"), "line {} was: {}", line!(), json);
+        Ok(())
+    });
+    if result.is_err() {
+        eprintln!("{}", log);
+    }
+    result
+}
+
+#[test]
 fn diagnostics() -> anyhow::Result<()> {
     let log = Log::default();
     let result = with_api(log.clone(), |api, identity| {

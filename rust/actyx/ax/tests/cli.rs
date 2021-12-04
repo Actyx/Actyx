@@ -7,7 +7,7 @@ use util::version::NodeVersion;
 
 fn get_commands() -> HashMap<&'static str, Vec<&'static str>> {
     let apps = vec!["sign"];
-    let events = vec!["offsets", "query"];
+    let events = vec!["offsets", "query", "publish"];
     let nodes = vec!["ls", "inspect"];
     let settings = vec!["set", "get", "unset", "schema"];
     let swarms = vec!["keygen"];
@@ -140,6 +140,7 @@ fn version() {
         vec!["events"] => Branch,
         vec!["events", "offsets"] => Leaf,
         vec!["events", "query"] => Leaf,
+        vec!["events", "publish"] => Leaf,
         vec!["internal"] => Branch,
         vec!["internal", "convert"] => Leaf,
         vec!["internal", "trees"] => Branch,

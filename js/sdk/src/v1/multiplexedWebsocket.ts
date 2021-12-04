@@ -79,12 +79,20 @@ const ErrorMessage = t.readonly(
 export const ResponseMessage = t.union([NextMessage, CompleteMessage, ErrorMessage])
 export type ResponseMessage = t.TypeOf<typeof ResponseMessage>
 
+/**
+ * THIS CLASS IS A COPY OF v2/multiplexedWebsocket.ts PLEASE KEEP UP TO DATE
+ * the only difference is that NextMessage.payload is just a plain value instead of an array,
+ * and hence we call `map` inside the `request` function, rather than mergeMap.
+ * UNFORTUNATELY WE CANNOT SOLVE THIS WITH GENERICS, BECAUSE WE USE IO-TS FOR THIS TYPE
+ */
 export class MultiplexedWebsocket {
   private wsSubject: WebSocketWrapper<Request, ResponseMessage>
   private responseProcessor: Subscription
   private requestCounter: RequestId = 0
 
   private listeners: Record<RequestId, Observer<ResponseMessage>> = {}
+
+  private error: unknown
 
   private clearListeners = (action: (o: Observer<ResponseMessage>) => void): void => {
     Object.values(this.listeners).forEach(action)
@@ -99,13 +107,13 @@ export class MultiplexedWebsocket {
   }
 
   constructor(w: WebSocketWrapper<Request, ResponseMessage>) {
-    // log.ws.info('establishing Pond API WS', url)
     this.wsSubject = w
-
     this.responseProcessor = this.initReponseSubscription()
   }
 
   private initReponseSubscription(): Subscription {
+    log.ws.debug('Subscribing to current WS Responses subject')
+
     /**
      * If there are no subscribers, the actual WS connection will be torn down. Keep it open.
      * MUST OVERRIDE the `error` function, because the default empty Observer will RETHROW errors,
@@ -126,7 +134,12 @@ export class MultiplexedWebsocket {
         this.clearListeners(l => l.error(err))
 
         // Set up new subscription, listening to WS that has potentially reconnected
-        this.responseProcessor = this.initReponseSubscription()
+        try {
+          this.responseProcessor = this.initReponseSubscription()
+        } catch (ex) {
+          this.error = err
+          log.ws.debug('WS Connection closed for good.', ex)
+        }
       },
     })
   }
@@ -197,6 +210,7 @@ export class MultiplexedWebsocket {
       return Observable.throw(err)
     }
 
+    // Wait for the response subscriber to have been initialised, before running the request
     return res
   }
 
@@ -204,13 +218,16 @@ export class MultiplexedWebsocket {
     requestType,
     payload,
   ) => {
+    if (this.error) {
+      return Observable.throw(this.error)
+    }
+
     /**
      *  If the WS stream _completes_, consumers always onunsubscribe from the underlying WsSubject, thus we can't
      *  use normal rxjs onUnsubscribe semantics. If the stream was cancelled downstream,
      *  we need to send a `cancelRequest` to the other side. The `isCompleted` boolean is to distinguish
      *  these cases.
      */
-
     let upstreamCompletedOrError = false
     return this.multiplex(requestType, payload, () => !upstreamCompletedOrError)
       .map(validateOrThrow(ResponseMessage))
@@ -226,12 +243,16 @@ export class MultiplexedWebsocket {
           case ResponseMessageType.Next:
             return res.payload
           case ResponseMessageType.Error:
-            upstreamCompletedOrError = true
             log.ws.error(JSON.stringify(res.kind))
-            throw new Error(JSON.stringify(res.kind)) // TODO: add context to msg?
+            return Observable.throw(new Error(JSON.stringify(res.kind))) // TODO: add context to msg?
           default:
             return unreachable()
         }
+      })
+      .do({
+        error: () => {
+          upstreamCompletedOrError = true
+        },
       })
   }
 }

@@ -41,6 +41,7 @@ This section contains a list of breaking changes from 1.x:
 ### Actyx internals
 
 - Network protocols and data storage formats have changed. While this does not impact you directly, it is relevant to how the [migration described below works](#migrating-your-production-deployment).
+- Actyx v2 requires the ports `4001`, `4454` and `4458` to be unused and allow incoming and outgoing connections. Ports `4243`, `4457` and `8080` are no longer required. For details please refer to the [networking requirements](../../reference/actyx-reference#networking-requirements)
 
 ### App packaging, logging, and settings
 
