@@ -32,7 +32,7 @@ impl AxCliCommand for UsersAddKey {
     type Output = ();
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let r = Box::pin(async move {
-            let privkey = AxPrivateKey::try_from(opts.identity)?;
+            let privkey = AxPrivateKey::try_from(&opts.identity)?;
             let pubkey = privkey.to_public();
 
             // check that the path makes sense

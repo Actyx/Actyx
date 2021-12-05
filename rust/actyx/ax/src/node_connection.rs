@@ -53,27 +53,6 @@ impl FromStr for NodeConnection {
     }
 }
 
-struct Connected {
-    remote_peer_id: PeerId,
-    swarm: Swarm<RequestBehaviour>,
-    protocols: BTreeSet<String>,
-}
-
-impl From<&Connected> for NodeInfo {
-    fn from(this: &Connected) -> NodeInfo {
-        NodeInfo {
-            id: to_node_id(this.remote_peer_id),
-            peer_id: this.remote_peer_id,
-        }
-    }
-}
-
-impl fmt::Debug for Connected {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Connected to {}", self.remote_peer_id)
-    }
-}
-
 impl NodeConnection {
     pub fn new(original: String, host: SocketAddrHelper, peer_id: Option<PeerId>) -> ActyxOSResult<Self> {
         Ok(Self {
@@ -85,7 +64,7 @@ impl NodeConnection {
 
     /// Tries to establish a connection to the remote ActyxOS node, and returns
     /// a connection handle upon success.
-    async fn establish_connection(&self, key: &AxPrivateKey) -> ActyxOSResult<Connected> {
+    pub async fn connect(&self, key: &AxPrivateKey) -> ActyxOSResult<Connected> {
         let kp = key.to_libp2p_pair();
         let public_key = kp.public();
         let (peer_id, transport) = mk_transport(kp).await?;
@@ -105,6 +84,14 @@ impl NodeConnection {
             .build();
 
         let (remote_peer_id, _connection) = poll_until_connected(&mut swarm, self.host.clone().to_multiaddrs()).await?;
+        if let Some(expected) = self.peer_id {
+            if expected != remote_peer_id {
+                return Err(ActyxOSError::new(
+                    ActyxOSCode::ERR_NODE_AUTH,
+                    "remote PeerId does not match expectation!",
+                ));
+            }
+        }
         let protocols = Self::await_identify(&mut swarm).await.into_iter().collect();
 
         Ok(Connected {
@@ -130,21 +117,42 @@ impl NodeConnection {
             }
         }
     }
+}
 
-    async fn send(conn: &mut Connected, request: Either<AdminRequest, EventsRequest>) {
-        let swarm = &mut conn.swarm;
-        let remote = conn.remote_peer_id;
+pub struct Connected {
+    remote_peer_id: PeerId,
+    swarm: Swarm<RequestBehaviour>,
+    protocols: BTreeSet<String>,
+}
+
+impl From<&Connected> for NodeInfo {
+    fn from(this: &Connected) -> NodeInfo {
+        NodeInfo {
+            id: to_node_id(this.remote_peer_id),
+            peer_id: this.remote_peer_id,
+        }
+    }
+}
+
+impl fmt::Debug for Connected {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Connected to {}", self.remote_peer_id)
+    }
+}
+
+impl Connected {
+    fn send(&mut self, request: Either<AdminRequest, EventsRequest>) {
+        let swarm = &mut self.swarm;
+        let remote = self.remote_peer_id;
         match request {
             Either::Left(request) => swarm.behaviour_mut().admin_api.request(remote, request),
             Either::Right(request) => swarm.behaviour_mut().events_api.request(remote, request),
         };
     }
 
-    pub async fn shutdown(&mut self, key: &AxPrivateKey) -> ActyxOSResult<()> {
-        let mut conn = self.establish_connection(key).await?;
-        Self::send(&mut conn, Either::Left(AdminRequest::NodesShutdown)).await;
-        let info = NodeInfo::from(&conn);
-        match Self::wait_for_next_response(&mut conn.swarm, &info).await {
+    pub async fn shutdown(&mut self) -> ActyxOSResult<()> {
+        self.send(Either::Left(AdminRequest::NodesShutdown));
+        match self.wait_for_next_response().await {
             Err(e) if e.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => Ok(()),
             x => Err(ActyxOSError::new(
                 ActyxOSCode::ERR_INTERNAL_ERROR,
@@ -153,46 +161,31 @@ impl NodeConnection {
         }
     }
 
-    pub async fn request(&mut self, key: &AxPrivateKey, request: AdminRequest) -> ActyxOSResult<AdminResponse> {
-        let mut conn = self.establish_connection(key).await?;
-        Self::send(&mut conn, Either::Left(request)).await;
-
-        let remote_peer_id = conn.remote_peer_id;
-        let node_info = NodeInfo {
-            id: to_node_id(remote_peer_id),
-            peer_id: remote_peer_id,
-        };
+    pub async fn request(&mut self, request: AdminRequest) -> ActyxOSResult<AdminResponse> {
+        self.send(Either::Left(request));
 
         // It can be assumed that there's an established connection to the
         // remote peer, so a conservative timeout is fine to use.
-        match tokio::time::timeout(
-            Duration::from_secs(5),
-            Self::wait_for_next_response(&mut conn.swarm, &node_info),
-        )
-        .await
-        {
+        match tokio::time::timeout(Duration::from_secs(5), self.wait_for_next_response()).await {
             Ok(resp) => resp,
             Err(_) => ax_err(
                 ActyxOSCode::ERR_NODE_UNREACHABLE,
-                format!("Timeout while waiting for answer from {}.", node_info.id),
+                format!("Timeout while waiting for answer from {}.", self.remote_peer_id),
             ),
         }
     }
 
-    async fn wait_for_next_response(
-        swarm: &mut Swarm<RequestBehaviour>,
-        node_info: &NodeInfo,
-    ) -> ActyxOSResult<AdminResponse> {
-        while let Some(message) = swarm.next().await {
+    async fn wait_for_next_response(&mut self) -> ActyxOSResult<AdminResponse> {
+        while let Some(message) = self.swarm.next().await {
             match message {
                 SwarmEvent::Behaviour(OutEvent::Admin(StreamingResponseEvent::ResponseReceived {
                     payload, ..
                 })) => return payload,
 
-                SwarmEvent::ConnectionClosed { peer_id, .. } if peer_id == node_info.peer_id => {
+                SwarmEvent::ConnectionClosed { peer_id, .. } if peer_id == self.remote_peer_id => {
                     return ax_err(
                         ActyxOSCode::ERR_NODE_UNREACHABLE,
-                        format!("Connection to {} unexpectedly closed.", node_info.id),
+                        format!("Connection to {} unexpectedly closed.", self.remote_peer_id),
                     );
                 }
                 SwarmEvent::Behaviour(OutEvent::Ping(PingEvent {
@@ -214,18 +207,16 @@ impl NodeConnection {
 
     pub async fn request_events(
         &mut self,
-        key: &AxPrivateKey,
         request: EventsRequest,
-    ) -> ActyxOSResult<impl Stream<Item = EventsResponse> + Unpin + Send + 'static> {
-        let mut conn = self.establish_connection(key).await?;
-        if !conn.protocols.contains("/actyx/events/v2") {
+    ) -> ActyxOSResult<impl Stream<Item = EventsResponse> + Unpin + Send + '_> {
+        if !self.protocols.contains("/actyx/events/v2") {
             return Err(ActyxOSError::new(
                 ActyxOSCode::ERR_UNSUPPORTED,
                 "Events API tunneling not supported by Actyx node, please update to a newer version of Actyx",
             ));
         }
-        Self::send(&mut conn, Either::Right(request)).await;
-        Ok(stream::unfold(conn.swarm, |mut s| {
+        self.send(Either::Right(request));
+        Ok(stream::unfold(&mut self.swarm, |s| {
             async move {
                 let ev = s.next().await.expect("swarm exited");
                 tracing::debug!("got swarm event {:?}", ev);

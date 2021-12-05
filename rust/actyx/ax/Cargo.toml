@@ -48,6 +48,7 @@ tracing-subscriber = "0.2.19"
 trees = { path = "../trees" }
 util = { path = "../util" }
 fslock = "0.1.6"
+genawaiter = { version = "0.99.1", features = ["futures03"] }
 
 [dev-dependencies]
 assert_cmd = "2.0.0"

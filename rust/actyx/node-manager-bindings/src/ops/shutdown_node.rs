@@ -18,11 +18,9 @@ pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         cx,
         Arc::new(|Args { addr }| {
             println!("shutting down node {:?}", addr);
-            let mut connection =
-                node_connection(&addr).map_err(|e| anyhow!("error connecting to node {}: {}", addr, e))?;
+            let node = node_connection(&addr).map_err(|e| anyhow!("error connecting to node {}: {}", addr, e))?;
             let key = default_private_key().map_err(|e| anyhow!("error getting default key: {}", e))?;
-            run_ft(connection.shutdown(&key))
-                .map_err(|e| anyhow!("error running future: {}", e))?
+            run_ft(async move { node.connect(&key).await?.shutdown().await })
                 .map_err(|e| anyhow!("error shutting down node: {}", e))?;
             Ok(Nothing {})
         }),

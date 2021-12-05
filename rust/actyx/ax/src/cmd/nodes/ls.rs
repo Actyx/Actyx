@@ -1,10 +1,10 @@
 use std::{convert::TryInto, time::Duration};
 
 use crate::{
-    cmd::{consts::TABLE_FORMAT, formats::Result, AxCliCommand, KeyPathWrapper, NodeConnection},
+    cmd::{consts::TABLE_FORMAT, AxCliCommand, KeyPathWrapper, NodeConnection},
     private_key::AxPrivateKey,
 };
-use futures::{future::try_join_all, stream, Stream};
+use futures::{future::join_all, stream, Stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
@@ -20,6 +20,9 @@ pub struct LsOpts {
     #[structopt(short, long)]
     /// File from which the identity (private key) for authentication is read.
     identity: Option<KeyPathWrapper>,
+    #[structopt(short, long, default_value = "5")]
+    /// maximal wait time (in seconds, max. 255) for establishing a connection to the node
+    timeout: u8,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -42,6 +45,7 @@ pub enum Output {
     Reachable(JsonFormat),
     Unreachable { host: String },
     Unauthorized { host: String },
+    Error { host: String, error: ActyxOSError },
 }
 fn format_output(output: Vec<Output>) -> String {
     let mut table = Table::new();
@@ -60,52 +64,55 @@ fn format_output(output: Vec<Output>) -> String {
                 ]);
             }
             Output::Unreachable { host } => {
-                table.add_row(row![format!("Actyx was unreachable on host: {}", host)]);
+                table.add_row(row!["Actyx was unreachable on host", "", host]);
             }
             Output::Unauthorized { host } => {
-                table.add_row(row![format!("Unauthorized: {}", host)]);
+                table.add_row(row!["Unauthorized on host", "", host]);
+            }
+            Output::Error { host, error } => {
+                table.add_row(row![format!("{}", error), "", host]);
             }
         }
     }
     table.to_string()
 }
 
-async fn request(identity: AxPrivateKey, mut connection: NodeConnection) -> Result<Output> {
-    let response = tokio::time::timeout(
-        Duration::from_secs(5),
-        connection.request(&identity, AdminRequest::NodesLs),
-    )
+async fn request(timeout: u8, identity: AxPrivateKey, connection: NodeConnection) -> Output {
+    let host = connection.original.clone();
+    let response = tokio::time::timeout(Duration::from_secs(timeout.into()), async move {
+        connection
+            .connect(&identity)
+            .await?
+            .request(AdminRequest::NodesLs)
+            .await
+    })
     .await;
     match response {
-        Ok(Ok(AdminResponse::NodesLsResponse(resp))) => {
-            Ok(Output::Reachable(JsonFormat::from_resp(connection.original, resp)))
-        }
-        Ok(Err(err)) if err.code() == ActyxOSCode::ERR_UNAUTHORIZED => Ok(Output::Unauthorized {
-            host: connection.original,
-        }),
-        Ok(Err(err)) if err.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => Ok(Output::Unreachable {
-            host: connection.original,
-        }),
-        Ok(Ok(e)) => Err(ActyxOSError::internal(format!(
-            "Unexpected response from node: {:?}",
-            e
-        ))),
-        Ok(Err(e)) => Err(e),
-        Err(_) => Ok(Output::Unreachable {
-            host: connection.original,
-        }),
+        Ok(Ok(AdminResponse::NodesLsResponse(resp))) => Output::Reachable(JsonFormat::from_resp(host, resp)),
+        Ok(Err(err)) if err.code() == ActyxOSCode::ERR_UNAUTHORIZED => Output::Unauthorized { host },
+        Ok(Err(err)) if err.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => Output::Unreachable { host },
+        Ok(Ok(e)) => Output::Error {
+            host,
+            error: ActyxOSError::internal(format!("Unexpected response from node: {:?}", e)),
+        },
+        Ok(Err(e)) => Output::Error { host, error: e },
+        Err(_) => Output::Error {
+            host,
+            error: ActyxOSError::new(ActyxOSCode::ERR_NODE_UNREACHABLE, "timeout"),
+        },
     }
 }
 
 async fn run(opts: LsOpts) -> ActyxOSResult<Vec<Output>> {
-    let identity: AxPrivateKey = opts.identity.try_into()?;
-    try_join_all(
+    let identity: AxPrivateKey = (&opts.identity).try_into()?;
+    let timeout = opts.timeout;
+    Ok(join_all(
         opts.authority
             .into_iter()
-            .map(|a| request(identity.clone(), a))
+            .map(|a| request(timeout, identity.clone(), a))
             .collect::<Vec<_>>(),
     )
-    .await
+    .await)
 }
 
 pub struct NodesLs();

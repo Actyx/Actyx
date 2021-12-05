@@ -1,6 +1,5 @@
 use crate::cmd::{AxCliCommand, ConsoleOpt};
 use futures::{stream, FutureExt, Stream};
-use std::convert::TryInto;
 use structopt::StructOpt;
 use util::formats::ActyxOSResult;
 
@@ -16,12 +15,9 @@ pub struct Shutdown;
 impl AxCliCommand for Shutdown {
     type Opt = ShutdownOpts;
     type Output = String;
-    fn run(mut opts: ShutdownOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
+    fn run(opts: ShutdownOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let fut = async move {
-            opts.console_opt
-                .authority
-                .shutdown(&opts.console_opt.identity.try_into()?)
-                .await?;
+            opts.console_opt.connect().await?.shutdown().await?;
             Ok("shutdown request sent".to_string())
         }
         .boxed();

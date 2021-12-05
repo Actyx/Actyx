@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use std::fmt::Write;
 
 use crate::cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt};
@@ -19,13 +18,10 @@ pub struct NodesInspect();
 impl AxCliCommand for NodesInspect {
     type Opt = InspectOpts;
     type Output = NodesInspectResponse;
-    fn run(mut opts: InspectOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
+    fn run(opts: InspectOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let fut = async move {
-            let response = opts
-                .console_opt
-                .authority
-                .request(&opts.console_opt.identity.try_into()?, AdminRequest::NodesInspect)
-                .await;
+            let mut conn = opts.console_opt.connect().await?;
+            let response = conn.request(AdminRequest::NodesInspect).await;
             match response {
                 Ok(AdminResponse::NodesInspectResponse(resp)) => Ok(resp),
                 Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),

@@ -2,7 +2,7 @@ use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
 use anyhow::anyhow;
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
-use std::{convert::TryInto, fs::File, io::Read};
+use std::{fs::File, io::Read};
 use structopt::StructOpt;
 use tracing::*;
 use util::formats::{ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
@@ -83,7 +83,7 @@ fn load_yml(input: String) -> Result<serde_yaml::Value> {
     i.ax_invalid_input()
 }
 
-pub async fn run(mut opts: SetOpt) -> Result<Output> {
+pub async fn run(opts: SetOpt) -> Result<Output> {
     let settings = load_yml(opts.actual_opts.input)?;
     info!("Parsed {:?}", settings);
     let scope = opts.actual_opts.scope.clone();
@@ -91,17 +91,13 @@ pub async fn run(mut opts: SetOpt) -> Result<Output> {
         util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
         "cannot parse provided value",
     )?;
-    match opts
-        .console_opt
-        .authority
-        .request(
-            &opts.console_opt.identity.try_into()?,
-            AdminRequest::SettingsSet {
-                scope: scope.clone(),
-                json,
-                ignore_errors: false,
-            },
-        )
+    let mut conn = opts.console_opt.connect().await?;
+    match conn
+        .request(AdminRequest::SettingsSet {
+            scope: scope.clone(),
+            json,
+            ignore_errors: false,
+        })
         .await
     {
         Ok(AdminResponse::SettingsSetResponse(settings)) => Ok(Output {

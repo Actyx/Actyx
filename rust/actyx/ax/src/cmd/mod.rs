@@ -1,11 +1,19 @@
 use formats::{ActyxCliResult, Result};
 use futures::{future, Future, Stream, StreamExt};
 use serde::Serialize;
-use std::{convert::TryFrom, fmt, path::PathBuf, str::FromStr};
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt,
+    path::PathBuf,
+    str::FromStr,
+};
 use structopt::StructOpt;
 use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult};
 
-use crate::{node_connection::NodeConnection, private_key::AxPrivateKey};
+use crate::{
+    node_connection::{Connected, NodeConnection},
+    private_key::AxPrivateKey,
+};
 
 pub mod apps;
 pub mod events;
@@ -33,6 +41,12 @@ pub struct ConsoleOpt {
     identity: Option<KeyPathWrapper>,
 }
 
+impl ConsoleOpt {
+    pub async fn connect(&self) -> ActyxOSResult<Connected> {
+        self.authority.connect(&(&self.identity).try_into()?).await
+    }
+}
+
 #[derive(Debug)]
 /// Newtype wrapper around a path to key material, to be used with
 /// structopt/clap.
@@ -51,11 +65,11 @@ impl fmt::Display for KeyPathWrapper {
     }
 }
 
-impl TryFrom<Option<KeyPathWrapper>> for AxPrivateKey {
+impl TryFrom<&Option<KeyPathWrapper>> for AxPrivateKey {
     type Error = ActyxOSError;
-    fn try_from(k: Option<KeyPathWrapper>) -> Result<AxPrivateKey> {
+    fn try_from(k: &Option<KeyPathWrapper>) -> Result<AxPrivateKey> {
         if let Some(path) = k {
-            AxPrivateKey::from_file(path.0)
+            AxPrivateKey::from_file(&path.0)
         } else {
             let private_key_path = AxPrivateKey::default_user_identity_path()?;
             AxPrivateKey::from_file(&private_key_path).map_err(move |e| {

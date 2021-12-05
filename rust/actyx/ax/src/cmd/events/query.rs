@@ -4,13 +4,15 @@ use actyx_sdk::{
     service::{Diagnostic, EventResponse, Order, QueryRequest, Severity},
     Payload,
 };
-use futures::{future::ready, stream, FutureExt, Stream, StreamExt};
+use futures::{future::ready, Stream, StreamExt};
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
 use structopt::StructOpt;
-use util::formats::{
-    events_protocol::{EventsRequest, EventsResponse},
-    ActyxOSCode, ActyxOSError, ActyxOSResult,
+use util::{
+    formats::{
+        events_protocol::{EventsRequest, EventsResponse},
+        ActyxOSCode, ActyxOSError, ActyxOSResult,
+    },
+    gen_stream::GenStream,
 };
 
 #[derive(StructOpt, Debug)]
@@ -35,42 +37,39 @@ impl AxCliCommand for EventsQuery {
     type Opt = QueryOpts;
     type Output = EventDiagnostic;
 
-    fn run(mut opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
-        let ret = async move {
-            opts.console_opt
-                .authority
-                .request_events(
-                    &opts.console_opt.identity.try_into()?,
-                    EventsRequest::Query(QueryRequest {
-                        lower_bound: None,
-                        upper_bound: None,
-                        query: opts.query,
-                        order: Order::Asc,
-                    }),
-                )
-                .await
-        }
-        .boxed()
-        .map(|x| match x {
-            Ok(s) => s.map(Ok).left_stream(),
-            Err(e) => stream::once(ready(Err(e))).right_stream(),
-        })
-        .flatten_stream()
-        .filter_map(|x| {
-            ready(match x {
-                Ok(EventsResponse::Event(ev)) => Some(Ok(EventDiagnostic::Event(ev))),
-                Ok(EventsResponse::Diagnostic(d)) => match d.severity {
-                    Severity::Warning => Some(Ok(EventDiagnostic::Diagnostic(d))),
-                    Severity::Error => Some(Err(ActyxOSError::new(ActyxOSCode::ERR_AQL_ERROR, d.message))),
-                    Severity::FutureCompat => None,
-                },
-                Ok(EventsResponse::Error { message }) => {
-                    Some(Err(ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, message)))
+    fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
+        let ret = GenStream::new(move |co| async move {
+            let mut conn = opts.console_opt.connect().await?;
+            let mut s = conn
+                .request_events(EventsRequest::Query(QueryRequest {
+                    lower_bound: None,
+                    upper_bound: None,
+                    query: opts.query,
+                    order: Order::Asc,
+                }))
+                .await?;
+
+            while let Some(x) = s.next().await {
+                match x {
+                    EventsResponse::Event(ev) => co.yield_(Ok(Some(EventDiagnostic::Event(ev)))).await,
+                    EventsResponse::Diagnostic(d) => match d.severity {
+                        Severity::Warning => co.yield_(Ok(Some(EventDiagnostic::Diagnostic(d)))).await,
+                        Severity::Error => {
+                            co.yield_(Err(ActyxOSError::new(ActyxOSCode::ERR_AQL_ERROR, d.message)))
+                                .await
+                        }
+                        Severity::FutureCompat => {}
+                    },
+                    EventsResponse::Error { message } => {
+                        co.yield_(Err(ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, message)))
+                            .await
+                    }
+                    _ => {}
                 }
-                Err(e) => Some(Err(e)),
-                _ => None,
-            })
-        });
+            }
+            Ok(None)
+        })
+        .filter_map(|x| ready(x.transpose()));
         Box::new(ret)
     }
 

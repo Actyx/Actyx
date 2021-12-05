@@ -4,12 +4,15 @@ use actyx_sdk::{
     Payload, Tag, TagSet,
 };
 use chrono::{DateTime, Utc};
-use futures::{future::ready, stream, FutureExt, Stream, StreamExt};
-use std::convert::TryInto;
+use futures::{future::ready, Stream, StreamExt};
+use genawaiter::sync::Co;
 use structopt::StructOpt;
-use util::formats::{
-    events_protocol::{EventsRequest, EventsResponse},
-    ActyxOSCode, ActyxOSError, ActyxOSResult,
+use util::{
+    formats::{
+        events_protocol::{EventsRequest, EventsResponse},
+        ActyxOSCode, ActyxOSError, ActyxOSResult,
+    },
+    gen_stream::GenStream,
 };
 
 #[derive(StructOpt, Debug)]
@@ -30,38 +33,34 @@ impl AxCliCommand for EventsPublish {
     type Opt = PublishOpts;
     type Output = PublishResponse;
 
-    fn run(mut opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
-        let ret = async move {
-            let tags = opts.tag.unwrap_or_default().into_iter().collect::<TagSet>();
-            let payload = Payload::from_json_value(opts.payload)
-                .map_err(|msg| ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, msg))?;
-            opts.console_opt
-                .authority
-                .request_events(
-                    &opts.console_opt.identity.try_into()?,
-                    EventsRequest::Publish(PublishRequest {
+    fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
+        Box::new(
+            GenStream::new(move |co: Co<_>| async move {
+                let tags = opts.tag.unwrap_or_default().into_iter().collect::<TagSet>();
+                let payload = Payload::from_json_value(opts.payload)
+                    .map_err(|msg| ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, msg))?;
+
+                let mut conn = opts.console_opt.connect().await?;
+                let mut s = conn
+                    .request_events(EventsRequest::Publish(PublishRequest {
                         data: vec![PublishEvent { tags, payload }],
-                    }),
-                )
-                .await
-        }
-        .boxed()
-        .map(|x| match x {
-            Ok(s) => s.map(Ok).left_stream(),
-            Err(e) => stream::once(ready(Err(e))).right_stream(),
-        })
-        .flatten_stream()
-        .filter_map(|x| {
-            ready(match x {
-                Ok(EventsResponse::Publish(res)) => Some(Ok(res)),
-                Ok(EventsResponse::Error { message }) => {
-                    Some(Err(ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, message)))
+                    }))
+                    .await?;
+
+                while let Some(x) = s.next().await {
+                    match x {
+                        EventsResponse::Publish(res) => co.yield_(Ok(Some(res))).await,
+                        EventsResponse::Error { message } => {
+                            co.yield_(Err(ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, message)))
+                                .await
+                        }
+                        _ => {}
+                    }
                 }
-                Err(e) => Some(Err(e)),
-                _ => None,
+                Ok(None)
             })
-        });
-        Box::new(ret)
+            .filter_map(|x| ready(x.transpose())),
+        )
     }
 
     fn pretty(result: Self::Output) -> String {
