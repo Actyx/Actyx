@@ -1,0 +1,244 @@
+use crate::cmd::{AxCliCommand, ConsoleOpt};
+use actyx_sdk::{
+    language::Query,
+    service::{Order, QueryRequest},
+};
+use cbor_data::{value::Precision, CborBuilder, Encoder, Writer};
+use chrono::{DateTime, Local, Utc};
+use console::{user_attended_stderr, Term};
+use futures::{Stream, StreamExt};
+use std::{fs::File, io::Write, path::PathBuf};
+use structopt::StructOpt;
+use util::{
+    formats::{
+        events_protocol::{EventsRequest, EventsResponse},
+        ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse,
+    },
+    gen_stream::GenStream,
+};
+
+#[derive(StructOpt, Debug)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
+/// dump events described by an AQL query into a file
+pub struct DumpOpts {
+    #[structopt(name = "QUERY", required = true)]
+    /// selection of event data to include in the dump
+    query: String,
+    #[structopt(name = "OUTPUT", required = true)]
+    /// file to write the dump to
+    output: PathBuf,
+    #[structopt(flatten)]
+    console_opt: ConsoleOpt,
+    #[structopt(long, short)]
+    quiet: bool,
+}
+
+macro_rules! filter {
+    ($req:path => $res:path) => {
+        |res| match res {
+            $res(r) => Ok(r),
+            r => Err(ActyxOSError::new(
+                util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+                format!("{} returned mismatched response: {:?}", stringify!($req), r),
+            )),
+        }
+    };
+}
+
+struct Diag {
+    term: Option<Term>,
+    status: Option<String>,
+}
+impl Diag {
+    pub fn new(quiet: bool) -> Self {
+        if quiet || !user_attended_stderr() {
+            Self {
+                term: None,
+                status: None,
+            }
+        } else {
+            Self {
+                term: Some(Term::stderr()),
+                status: None,
+            }
+        }
+    }
+
+    pub fn log(&mut self, s: impl AsRef<str>) -> ActyxOSResult<()> {
+        self.do_log(s)
+            .map_err(|e| ActyxOSError::new(ActyxOSCode::ERR_IO, format!("error writing to terminal: {}", e)))
+    }
+
+    fn do_log(&mut self, s: impl AsRef<str>) -> anyhow::Result<()> {
+        if let Some(ref mut term) = self.term {
+            term.clear_line()?;
+            term.write_line(s.as_ref())?;
+            if let Some(ref status) = self.status {
+                term.write_all(status.as_bytes())?;
+                term.flush()?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn status(&mut self, s: String) -> ActyxOSResult<()> {
+        self.do_status(s)
+            .map_err(|e| ActyxOSError::new(ActyxOSCode::ERR_IO, format!("error writing to terminal: {}", e)))
+    }
+
+    fn do_status(&mut self, s: String) -> anyhow::Result<()> {
+        if let Some(ref mut term) = self.term {
+            term.clear_line()?;
+            term.write_all(s.as_bytes())?;
+            term.flush()?;
+            self.status = Some(s);
+        }
+        Ok(())
+    }
+}
+impl Drop for Diag {
+    fn drop(&mut self) {
+        if let Some(ref mut term) = self.term {
+            term.clear_line().ok();
+        }
+    }
+}
+
+trait IO {
+    type Out;
+    fn io(self, ctx: impl AsRef<str>) -> ActyxOSResult<Self::Out>;
+}
+impl<T, E: std::fmt::Display> IO for Result<T, E> {
+    type Out = T;
+    fn io(self, ctx: impl AsRef<str>) -> ActyxOSResult<Self::Out> {
+        self.map_err(|e| ActyxOSError::new(ActyxOSCode::ERR_IO, format!("{}: {}", ctx.as_ref(), e)))
+    }
+}
+
+pub struct EventsDump;
+impl AxCliCommand for EventsDump {
+    type Opt = DumpOpts;
+    type Output = ();
+
+    fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
+        Box::new(GenStream::new(move |_co| async move {
+            let mut diag = Diag::new(opts.quiet);
+
+            let query = opts
+                .query
+                .parse::<Query>()
+                .map_err(|e| ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, format!("query invalid: {}", e)))?;
+
+            let mut conn = opts.console_opt.connect().await?;
+
+            let mut out = zstd::Encoder::<Box<dyn Write>>::new(
+                if opts.output.to_str() == Some("-") {
+                    Box::new(std::io::stdout())
+                } else {
+                    let file = File::create(opts.output.as_path()).io("opening dump")?;
+                    Box::new(file)
+                },
+                21,
+            )
+            .io("initialising zstd")?;
+
+            diag.log(format!(
+                "connected to {} {}",
+                opts.console_opt.authority.original, opts.console_opt.authority.host
+            ))?;
+
+            let now = Local::now();
+            let node_info = conn
+                .request(AdminRequest::NodesLs)
+                .await
+                .and_then(filter!(AdminRequest::NodesLs => AdminResponse::NodesLsResponse))?;
+            let node_details = conn
+                .request(AdminRequest::NodesInspect)
+                .await
+                .and_then(filter!(AdminRequest::NodesInspect => AdminResponse::NodesInspectResponse))?;
+            let settings = conn
+                .request(AdminRequest::SettingsGet {
+                    scope: "com.actyx".parse().unwrap(),
+                    no_defaults: false,
+                })
+                .await
+                .and_then(filter!(AdminRequest::SettingsGet => AdminResponse::SettingsGetResponse))?;
+
+            let cbor = CborBuilder::new().encode_dict(|b| {
+                b.with_key("timestamp", |b| b.encode_timestamp(now.into(), Precision::Nanos));
+                b.with_key("actyxVersion", |b| b.encode_str(node_info.version.to_string()));
+                b.with_key("axVersion", |b| b.encode_str(env!("AX_CLI_VERSION")));
+                b.with_key("settings", |b| b.encode_str(settings.to_string()));
+                b.with_key("connection", |b| {
+                    b.encode_str(opts.console_opt.authority.original.as_str())
+                });
+                b.with_key("adminAddrs", |b| {
+                    b.encode_array(|b| {
+                        for addr in node_details.admin_addrs.iter() {
+                            b.encode_str(addr);
+                        }
+                    })
+                });
+            });
+
+            out.write_all(cbor.as_slice()).io("writing info block")?;
+
+            diag.log("info block written")?;
+
+            let mut events = conn
+                .request_events(EventsRequest::Query(QueryRequest {
+                    lower_bound: None,
+                    upper_bound: None,
+                    query,
+                    order: Order::Asc,
+                }))
+                .await?;
+
+            let mut scratch = Vec::new();
+            let mut count = 0u64;
+            while let Some(ev) = events.next().await {
+                match ev {
+                    EventsResponse::Error { message } => diag.log(format!("AQL error: {}", message))?,
+                    EventsResponse::Event(ev) => {
+                        let cbor = CborBuilder::with_scratch_space(&mut scratch).encode_dict(|b| {
+                            b.with_key("lamport", |b| b.encode_u64(ev.lamport.into()));
+                            b.with_key("stream", |b| {
+                                b.encode_array(|b| {
+                                    b.write_bytes(ev.stream.node_id.as_ref(), []);
+                                    b.encode_u64(ev.stream.stream_nr.into());
+                                })
+                            });
+                            b.with_key("offset", |b| b.encode_u64(ev.offset.into()));
+                            b.with_key("timestamp", |b| b.encode_u64(ev.timestamp.into()));
+                            b.with_key("tags", |b| {
+                                b.encode_array(|b| {
+                                    for tag in ev.tags.iter() {
+                                        b.encode_str(tag.as_ref());
+                                    }
+                                })
+                            });
+                            b.with_key("appId", |b| b.encode_str(&*ev.app_id));
+                            b.with_key("payload", |b| b.write_trusting(ev.payload.as_slice()));
+                        });
+                        out.write_all(cbor.as_slice()).map_err(|e| {
+                            ActyxOSError::new(ActyxOSCode::ERR_IO, format!("error writing dump: {}", e))
+                        })?;
+                        count += 1;
+                        diag.status(format!("event {} ({})", count, DateTime::<Utc>::from(ev.timestamp)))?;
+                    }
+                    EventsResponse::Diagnostic(d) => diag.log(format!("diagnostic {:?}: {}", d.severity, d.message))?,
+                    _ => {}
+                }
+            }
+            diag.log(format!("{} events written", count))?;
+
+            out.finish().io("finishing zstd")?;
+
+            Ok(())
+        }))
+    }
+
+    fn pretty(_result: Self::Output) -> String {
+        String::new()
+    }
+}

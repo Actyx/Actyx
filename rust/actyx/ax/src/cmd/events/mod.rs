@@ -1,3 +1,4 @@
+mod dump;
 mod offsets;
 mod publish;
 mod query;
@@ -16,6 +17,8 @@ pub enum EventsOpts {
     Query(query::QueryOpts),
     #[structopt(no_version)]
     Publish(publish::PublishOpts),
+    #[structopt(no_version)]
+    Dump(dump::DumpOpts),
 }
 
 pub fn run(opts: EventsOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin> {
@@ -23,5 +26,6 @@ pub fn run(opts: EventsOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin>
         EventsOpts::Offsets(opt) => offsets::EventsOffsets::output(opt, json),
         EventsOpts::Query(opt) => query::EventsQuery::output(opt, json),
         EventsOpts::Publish(opt) => publish::EventsPublish::output(opt, json),
+        EventsOpts::Dump(opt) => dump::EventsDump::output(opt, json),
     }
 }

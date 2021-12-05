@@ -488,8 +488,10 @@ dependencies = [
  "banyan-utils",
  "base64 0.13.0",
  "bytes",
+ "cbor-data 0.8.0",
  "certs",
  "chrono",
+ "console",
  "crypto",
  "derive_more",
  "dirs 3.0.2",
@@ -522,6 +524,7 @@ dependencies = [
  "tracing-subscriber",
  "trees",
  "util",
+ "zstd",
 ]
 
 [[package]]
@@ -936,6 +939,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cbor-data"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9bb4ebae1f2d3945ac4c5bf7aa2dfeef457ff0a2f0bc2c83de77817f4d747cc9"
+dependencies = [
+ "base64 0.13.0",
+ "chrono",
+ "half",
+ "smallvec",
+]
+
+[[package]]
 name = "cbor-tag-index"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1097,6 +1112,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30ed07550be01594c6026cff2a1d7fe9c8f683caa798e12b68694ac9e88286a3"
 dependencies = [
  "cache-padded",
+]
+
+[[package]]
+name = "console"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a28b32d32ca44b70c3e4acd7db1babf555fa026e385fb95f18028f88848b3c31"
+dependencies = [
+ "encode_unicode",
+ "libc",
+ "once_cell",
+ "regex",
+ "terminal_size",
+ "unicode-width",
+ "winapi",
 ]
 
 [[package]]
@@ -5228,7 +5258,7 @@ version = "0.1.0"
 dependencies = [
  "actyx_sdk",
  "anyhow",
- "cbor-data",
+ "cbor-data 0.5.0",
  "derive_more",
  "itertools 0.10.1",
  "quickcheck",
@@ -6042,6 +6072,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "terminal_size"
+version = "0.1.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "633c1a546cee861a1a6d0dc69ebeca693bf4296661ba7852b9d21d159e0506df"
+dependencies = [
+ "libc",
+ "winapi",
 ]
 
 [[package]]
