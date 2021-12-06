@@ -11,6 +11,14 @@ use util::formats::NodeCycleCount;
 
 #[derive(Debug, Clone, Copy, Display, Error)]
 #[display(
+    fmt = "Attempting to start Actyx v2.9+ with a data directory from Actyx v2.8 or earlier.\n\
+           See the documentation for when and how migration is supported. Meanwhile, you can start from a\n\
+           fresh data directory (see also the --working-dir command line option)."
+)]
+pub struct WrongVersionV2_8;
+
+#[derive(Debug, Clone, Copy, Display, Error)]
+#[display(
     fmt = "Attempting to start Actyx v2 with a data directory from ActyxOS v1.1, which is currently not supported.\n\
            See the documentation for when and how migration is supported. Meanwhile, you can start from a\n\
            fresh data directory (see also the --working-dir command line option)."
@@ -33,7 +41,7 @@ pub struct WrongVersionV0;
 pub struct WrongVersionFuture(u32);
 impl std::error::Error for WrongVersionFuture {}
 
-pub const CURRENT_VERSION: u32 = 2;
+pub const CURRENT_VERSION: u32 = 3;
 
 #[derive(Clone)]
 pub struct NodeStorage {
@@ -63,11 +71,15 @@ impl NodeStorage {
         })
     }
 
-    pub fn migrate(conn: &mut Connection) -> anyhow::Result<()> {
-        let version = NodeStorage::version(conn)?;
+    pub fn migrate(conn: &mut Connection, version: u32) -> anyhow::Result<()> {
         match version {
             0 | 1 => Self::migrate_v1(version, conn),
-            2 => Ok(()),
+            2 => Ok(conn.execute_batch(
+                "DROP TABLE IF EXISTS meta;
+                    DROP TABLE IF EXISTS streams;
+                    UPDATE node SET value = 3 WHERE name = 'database_version';",
+            )?),
+            CURRENT_VERSION => Ok(()),
             _ => unreachable!(),
         }
     }
@@ -96,7 +108,7 @@ impl NodeStorage {
 
                 conn.execute(
                     "INSERT OR REPLACE INTO node VALUES('database_version', ?)",
-                    [CURRENT_VERSION],
+                    [2],
                 )?;
                 conn.execute("DROP TABLE apps", [])?;
 
@@ -137,7 +149,8 @@ impl NodeStorage {
                     })
                     .optional()?
                 {
-                    Some(2) => { /* all good */ }
+                    Some(CURRENT_VERSION) => { /* all good */ }
+                    Some(2) => return Err(WrongVersionV2_8.into()),
                     Some(1) => return Err(WrongVersionV1.into()),
                     None => return Err(WrongVersionV0.into()),
                     Some(x) => return Err(WrongVersionFuture(x).into()),
@@ -277,7 +290,7 @@ mod test {
 
         // now migrate
         let mut mem = load_test_db("tests/node_v0.sqlite")?;
-        NodeStorage::migrate(&mut mem)?;
+        NodeStorage::migrate(&mut mem, 0)?;
         let storage = NodeStorage::from_conn(mem).unwrap();
         let expected_node_id: NodeId = "Zg/1L3Tm5xWNV94nFsjaIO8s3kW6Sj1y4fzQR5zcVeo".parse().unwrap();
         assert_eq!(NodeStorage::version(&storage.connection.lock()).unwrap(), 2);
@@ -306,7 +319,7 @@ mod test {
 
         // now migrate
         let mut mem = load_test_db("tests/node_v1.sqlite")?;
-        NodeStorage::migrate(&mut mem)?;
+        NodeStorage::migrate(&mut mem, 1)?;
         let storage = NodeStorage::from_conn(mem).unwrap();
         let expected_node_id: NodeId = "lBkGGmqD2X/mmtpxnC2KWobZw4g1IWCJSPCdjdB1gCI".parse().unwrap();
         assert_eq!(NodeStorage::version(&storage.connection.lock()).unwrap(), 2);

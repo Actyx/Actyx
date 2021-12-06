@@ -18,7 +18,6 @@ use ::util::formats::LogSeverity;
 pub use formats::{node_settings, ShutdownReason};
 #[cfg(not(target_os = "android"))]
 pub use host::lock_working_dir;
-pub use node_storage::CURRENT_VERSION as CURRENT_DB_VERSION;
 
 use crate::{
     components::{
@@ -125,7 +124,6 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
 
     let keystore = host.get_keystore();
 
-    let db = host.get_db_handle();
     let node_cycle_count = host.get_cycle_count().context("getting cycle count")?;
     // THE node :-)
     let node = NodeWrapper::new((node_tx, node_rx), components, host).context("creating node core")?;
@@ -158,7 +156,6 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
         bind_to,
         keystore,
         node_id,
-        db,
         node_cycle_count,
     )
     .context("creating event store")?;

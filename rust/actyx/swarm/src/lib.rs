@@ -68,7 +68,6 @@ use libp2p::{
     ping::PingConfig,
 };
 use maplit::btreemap;
-use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use sqlite_index_store::SqliteIndexStore;
 use std::{
@@ -150,7 +149,7 @@ impl Default for EphemeralEventsConfig {
 #[derive(Clone, Debug)]
 pub struct SwarmConfig {
     pub topic: String,
-    pub index_store: Option<Arc<Mutex<rusqlite::Connection>>>,
+    pub index_store: Option<PathBuf>,
     pub keypair: Option<KeyPair>,
     pub psk: Option<[u8; 32]>,
     pub node_name: Option<String>,
@@ -611,13 +610,23 @@ impl<'a> BanyanStoreGuard<'a> {
 
     fn load_known_streams(&mut self) -> Result<()> {
         let known_streams = self.index_store.get_observed_streams()?;
+        let mut max_lamport = None;
         for stream_id in known_streams {
             // just trigger loading of the stream from the alias
-            if self.is_local(stream_id) {
-                let _ = self.get_or_create_own_stream(stream_id.stream_nr());
+            let lamport = if self.is_local(stream_id) {
+                self.get_or_create_own_stream(stream_id.stream_nr())?
+                    .infos()
+                    .map(|x| x.2)
             } else {
-                let _ = self.get_or_create_replicated_stream(stream_id);
-            }
+                self.get_or_create_replicated_stream(stream_id)?.infos().map(|x| x.2)
+            };
+            max_lamport = max_lamport.max(lamport);
+        }
+        if let Some(lamport) = max_lamport {
+            // register our lower bound on lamport just in case the meta table wasn’t there
+            // (e.g. migrating from per-2.9)
+            tracing::info!("propagating Lamport timestamp {} from store", lamport);
+            self.received_lamport(lamport)?;
         }
         self.data.offsets.set(self.compute_swarm_offsets());
         Ok(())
@@ -782,7 +791,26 @@ impl BanyanStore {
         }
 
         let index_store = if let Some(conn) = cfg.index_store {
-            SqliteIndexStore::from_conn(conn)?
+            let mut db = SqliteIndexStore::open(DbPath::File(conn))?;
+            if db.get_observed_streams()?.is_empty() {
+                // either a new store or migrating from pre-2.9
+                let aliases = ipfs.aliases()?;
+                if !aliases.is_empty() {
+                    tracing::info!("starting store migration from pre-2.9");
+                    let aliases = aliases.into_iter().filter_map(|(alias, _cid)| {
+                        let stream_alias = StreamAlias::try_from(alias.as_slice()).ok()?;
+                        StreamId::try_from(stream_alias).ok()
+                    });
+                    let mut count = 0;
+                    for stream in aliases {
+                        tracing::debug!("migrating stream {}", stream);
+                        db.add_stream(stream)?;
+                        count += 1;
+                    }
+                    tracing::info!("migrated {} streams", count);
+                }
+            }
+            db
         } else {
             SqliteIndexStore::open(DbPath::Memory)?
         };

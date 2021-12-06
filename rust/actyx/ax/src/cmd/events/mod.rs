@@ -2,6 +2,7 @@ mod dump;
 mod offsets;
 mod publish;
 mod query;
+mod restore;
 
 use super::AxCliCommand;
 use futures::Future;

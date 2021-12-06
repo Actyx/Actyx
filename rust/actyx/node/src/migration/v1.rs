@@ -20,7 +20,6 @@ use crate::{
     host::apply_system_schema,
     migration::{open_readonly, NODE_DB_FILENAME},
     node_storage::NodeStorage,
-    CURRENT_DB_VERSION,
 };
 
 #[allow(dead_code)]
@@ -351,6 +350,7 @@ pub fn migrate(
     additional_sources: BTreeSet<SourceId>,
     emit_own_source: bool,
     dry_run: bool,
+    version: u32,
 ) -> anyhow::Result<()> {
     if is_v1_running() {
         bail!("ActyxOS v1 seems to be running. Please stop the process and retry.");
@@ -371,7 +371,7 @@ pub fn migrate(
         &v1_dir.node_storage.connection.lock(),
         temp_v2.path().join(NODE_DB_FILENAME),
     )?;
-    NodeStorage::migrate(&mut &mut v2_node_db_conn).context("Migrating settings")?;
+    NodeStorage::migrate(&mut v2_node_db_conn, version).context("Migrating settings")?;
 
     // index db is node db
     // create blocks db
@@ -418,7 +418,7 @@ pub fn migrate(
         opts,
         true,
         NodeStorage::version(&v1_dir.node_storage.connection.lock())?.into(),
-        CURRENT_DB_VERSION.into(),
+        2,
         node_id,
     )
     .context("Converting swarm DBs")?;

@@ -9,8 +9,7 @@ use banyan::query::AllQuery;
 use futures::{pin_mut, prelude::*, StreamExt};
 use libipld::Cid;
 use maplit::btreemap;
-use parking_lot::Mutex;
-use std::{collections::BTreeMap, convert::TryFrom, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, convert::TryFrom, path::PathBuf, str::FromStr, time::Duration};
 use tokio::runtime::Runtime;
 use trees::query::TagExprQuery;
 
@@ -208,9 +207,8 @@ fn config_in_temp_folder() -> anyhow::Result<(SwarmConfig, tempfile::TempDir)> {
     let dir = tempfile::tempdir()?;
     let db = PathBuf::from(dir.path().join("db").to_str().expect("illegal filename"));
     let index = PathBuf::from(dir.path().join("index").to_str().expect("illegal filename"));
-    let index_store = Arc::new(Mutex::new(rusqlite::Connection::open(index)?));
     let config = SwarmConfig {
-        index_store: Some(index_store),
+        index_store: Some(index),
         node_name: Some("must_report_proper_initial_offsets".to_owned()),
         db_path: Some(db),
         ..SwarmConfig::basic()
