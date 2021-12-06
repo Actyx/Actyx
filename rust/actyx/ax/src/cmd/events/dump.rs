@@ -163,14 +163,29 @@ impl AxCliCommand for EventsDump {
                 })
                 .await
                 .and_then(filter!(AdminRequest::SettingsGet => AdminResponse::SettingsGetResponse))?;
+            let offsets = conn
+                .request_events(EventsRequest::Offsets)
+                .await?
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .next()
+                .ok_or_else(|| ActyxOSError::new(ActyxOSCode::ERR_INTERNAL_ERROR, "empty offsets response"))
+                .and_then(filter!(EventsRequest::Offsets => EventsResponse::Offsets))?;
 
             let cbor = CborBuilder::new().encode_dict(|b| {
+                b.with_key("nodeId", |b| b.write_bytes(node_info.node_id.as_ref(), []));
+                b.with_key("displayName", |b| b.encode_str(node_info.display_name.clone()));
+                b.with_key("totalEvents", |b| b.encode_u64(offsets.present.size()));
                 b.with_key("timestamp", |b| b.encode_timestamp(now.into(), Precision::Nanos));
                 b.with_key("actyxVersion", |b| b.encode_str(node_info.version.to_string()));
                 b.with_key("axVersion", |b| b.encode_str(env!("AX_CLI_VERSION")));
                 b.with_key("settings", |b| b.encode_str(settings.to_string()));
                 b.with_key("connection", |b| {
-                    b.encode_str(opts.console_opt.authority.original.as_str())
+                    b.encode_array(|b| {
+                        b.encode_str(opts.console_opt.authority.original.as_str());
+                        b.encode_str(opts.console_opt.authority.host.to_string());
+                    })
                 });
                 b.with_key("adminAddrs", |b| {
                     b.encode_array(|b| {
@@ -196,6 +211,7 @@ impl AxCliCommand for EventsDump {
 
             let mut scratch = Vec::new();
             let mut count = 0u64;
+            let mut max_size = cbor.as_slice().len();
             while let Some(ev) = events.next().await {
                 match ev {
                     EventsResponse::Error { message } => diag.log(format!("AQL error: {}", message))?,
@@ -224,13 +240,14 @@ impl AxCliCommand for EventsDump {
                             ActyxOSError::new(ActyxOSCode::ERR_IO, format!("error writing dump: {}", e))
                         })?;
                         count += 1;
+                        max_size = max_size.max(cbor.as_slice().len());
                         diag.status(format!("event {} ({})", count, DateTime::<Utc>::from(ev.timestamp)))?;
                     }
                     EventsResponse::Diagnostic(d) => diag.log(format!("diagnostic {:?}: {}", d.severity, d.message))?,
                     _ => {}
                 }
             }
-            diag.log(format!("{} events written", count))?;
+            diag.log(format!("{} events written (maximum size was {})", count, max_size))?;
 
             out.finish().io("finishing zstd")?;
 
