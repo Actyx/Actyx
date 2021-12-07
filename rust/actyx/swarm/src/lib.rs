@@ -432,7 +432,7 @@ impl<'a> BanyanStoreGuard<'a> {
                     self.banyan_config.tree.clone(),
                     header.root,
                 )
-                .context("unable to load banyan tree")?;
+                .with_context(|| format!("unable to load banyan tree for stream {}", stream_nr))?;
             let published = PublishedTree::new(root, header, builder.snapshot());
             (builder, Some(published))
         } else {
@@ -464,7 +464,7 @@ impl<'a> BanyanStoreGuard<'a> {
                 .data
                 .forest
                 .load_tree(Secrets::default(), header.root)
-                .context("unable to load banyan tree")?;
+                .with_context(|| format!("unable to load banyan tree for stream {}", stream_id))?;
             Some(PublishedTree::new(root, header, tree))
         } else {
             None
@@ -1067,7 +1067,7 @@ impl BanyanStore {
         self.append0(stream_nr, app_id, timestamp, events).await
     }
 
-    pub(crate) async fn append0(
+    pub async fn append0(
         &self,
         stream_nr: StreamNr,
         app_id: AppId,

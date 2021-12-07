@@ -11,11 +11,12 @@ use crate::{
 use actyx_sdk::{
     app_id,
     service::{QueryResponse, SubscribeMonotonicResponse, SubscribeResponse},
-    NodeId,
+    NodeId, StreamNr,
 };
 use anyhow::{anyhow, bail, Context};
 use api::EventService;
 use ax_futures_util::stream::{variable::Variable, MergeUnordered};
+use cbor_data::Cbor;
 use crossbeam::channel::Sender;
 use crypto::PublicKey;
 use formats::NodesRequest;
@@ -31,6 +32,10 @@ use libp2p::{
     identity,
     multiaddr::Protocol,
     ping::{Ping, PingConfig, PingEvent},
+    request_response::{
+        ProtocolSupport, RequestResponse, RequestResponseConfig, RequestResponseEvent, RequestResponseMessage,
+        ResponseChannel,
+    },
     swarm::{
         IntoProtocolsHandler, NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
         ProtocolsHandler, Swarm, SwarmBuilder, SwarmEvent,
@@ -39,27 +44,46 @@ use libp2p::{
 };
 use libp2p_streaming_response::{ChannelId, StreamingResponse, StreamingResponseConfig, StreamingResponseEvent};
 use parking_lot::Mutex;
+use serde_json::json;
 use std::{
     collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
+    io::Write,
     pin::Pin,
     sync::Arc,
     time::Duration,
 };
-use swarm::event_store_ref::EventStoreRef;
-use tokio::time::{timeout_at, Instant};
-use tracing::*;
+use swarm::{event_store_ref::EventStoreRef, BanyanStore};
+use tokio::{
+    sync::oneshot,
+    time::{timeout_at, Instant},
+};
 use util::formats::{
     admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
+    banyan_protocol::{
+        decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse,
+    },
     events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
     ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
 };
 use util::SocketAddrHelper;
+use zstd::stream::write::Decoder;
 
 pub mod formats;
 
 type PendingRequest = BoxFuture<'static, (ChannelId, ActyxOSResult<AdminResponse>)>;
 type PendingStream = BoxStream<'static, (ChannelId, Option<EventsResponse>)>;
+type PendingBanyan = BoxFuture<'static, (ResponseChannel<BanyanResponse>, String, anyhow::Result<BanyanStore>)>;
+type PendingFinalise = BoxFuture<
+    'static,
+    (
+        ResponseChannel<BanyanResponse>,
+        BanyanResponse,
+        Option<(String, BanyanStoreTuple)>,
+    ),
+>;
+
+type BanyanStoreTuple = (Option<NodeId>, Decoder<'static, Vec<u8>>, BanyanStore);
 
 struct State {
     node_tx: Sender<ExternalEvent>,
@@ -69,8 +93,11 @@ struct State {
     /// Pending inflight requests to Node.
     pending_oneshot: FuturesUnordered<PendingRequest>,
     pending_stream: MergeUnordered<PendingStream, stream::Empty<PendingStream>>,
+    pending_banyan: FuturesUnordered<PendingBanyan>,
+    pending_finalise: FuturesUnordered<PendingFinalise>,
     stream_handles: BTreeMap<ChannelId, AbortHandle>,
     admin_sockets: Variable<BTreeSet<Multiaddr>>,
+    banyan_stores: BTreeMap<String, BanyanStoreTuple>,
 }
 
 #[derive(NetworkBehaviour)]
@@ -78,6 +105,7 @@ struct State {
 pub struct ApiBehaviour {
     admin: StreamingResponse<AdminProtocol>,
     events: StreamingResponse<EventsProtocol>,
+    banyan: RequestResponse<BanyanProtocol>,
     ping: Ping,
     identify: Identify,
     #[behaviour(ignore)]
@@ -92,7 +120,7 @@ macro_rules! request_oneshot {
         $slf.state.node_tx.send($build_request(tx)).unwrap();
         let fut = async move {
             if let Err(e) = maybe_add_key.await {
-                error!("Error adding initial key {}", e);
+                tracing::error!("Error adding initial key {}", e);
             }
 
             let result = rx
@@ -128,12 +156,20 @@ impl ApiBehaviour {
             auth_info,
             pending_oneshot: FuturesUnordered::new(),
             pending_stream: MergeUnordered::without_input(),
+            pending_banyan: FuturesUnordered::new(),
+            pending_finalise: FuturesUnordered::new(),
             stream_handles: BTreeMap::default(),
             admin_sockets: Variable::default(),
+            banyan_stores: BTreeMap::default(),
         };
         Self {
             ping: Ping::new(PingConfig::new().with_keep_alive(true)),
             admin: StreamingResponse::new(StreamingResponseConfig::default()),
+            banyan: RequestResponse::new(
+                BanyanProtocol::default(),
+                [(BanyanProtocolName, ProtocolSupport::Inbound)],
+                RequestResponseConfig::default(),
+            ),
             events: StreamingResponse::new(StreamingResponseConfig::default()),
             identify: Identify::new(IdentifyConfig::new("Actyx".to_owned(), local_public_key)),
             state,
@@ -152,7 +188,7 @@ impl ApiBehaviour {
         if auth_info.authorized_keys.is_empty() {
             match PublicKey::try_from(peer) {
                 Ok(key_id) => {
-                    debug!("Adding {} (peer {}) to authorized users", key_id, peer);
+                    tracing::debug!("Adding {} (peer {}) to authorized users", key_id, peer);
                     // Directly add the peer. This will be overridden as soon as the settings round
                     // tripped.
                     auth_info.authorized_keys.push(peer);
@@ -172,7 +208,7 @@ impl ApiBehaviour {
                             .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error waiting for response")
                             .and_then(|x| {
                                 x.map(|_| {
-                                    info!(
+                                    tracing::info!(
                                         "User with public key {} has been added as the first authorized user.",
                                         key_id
                                     );
@@ -259,7 +295,7 @@ impl ApiBehaviour {
                     .collect();
                 let fut = async move {
                     if let Err(e) = maybe_add_key.await {
-                        error!("Error adding initial key {}", e);
+                        tracing::error!("Error adding initial key {}", e);
                     }
                     let res = rx
                         .await
@@ -427,7 +463,7 @@ impl ApiBehaviour {
         // Handle pending requests
         while let Poll::Ready(Some((chan, resp))) = self.state.pending_oneshot.poll_next_unpin(cx) {
             if self.admin.respond_final(chan, resp).is_err() {
-                debug!("Client dropped request");
+                tracing::debug!("Client dropped request");
             }
             wake_me_up = true;
         }
@@ -446,6 +482,39 @@ impl ApiBehaviour {
             wake_me_up = true;
         }
 
+        while let Poll::Ready(Some((channel, topic, res))) = self.state.pending_banyan.poll_next_unpin(cx) {
+            match res {
+                Ok(banyan) => {
+                    let decoder = match Decoder::new(Vec::new()) {
+                        Ok(d) => d,
+                        Err(e) => {
+                            tracing::warn!("cannot create decoder for dump `{}`: {}", topic, e);
+                            self.banyan
+                                .send_response(channel, BanyanResponse::Error("create decoder".into()))
+                                .ok();
+                            continue;
+                        }
+                    };
+                    self.state.banyan_stores.insert(topic, (None, decoder, banyan));
+                    self.banyan.send_response(channel, BanyanResponse::Ok).ok();
+                }
+                Err(e) => {
+                    tracing::warn!("cannot make fresh BanyanStore: {}", e);
+                    self.banyan
+                        .send_response(channel, BanyanResponse::Error(e.to_string()))
+                        .ok();
+                }
+            }
+        }
+
+        while let Poll::Ready(Some((channel, response, banyan))) = self.state.pending_finalise.poll_next_unpin(cx) {
+            tracing::info!("finalise result: {:?}", response);
+            if let Some((topic, tuple)) = banyan {
+                self.state.banyan_stores.insert(topic, tuple);
+            }
+            self.banyan.send_response(channel, response).ok();
+        }
+
         // This `poll` function is the last in the derived NetworkBehaviour.
         // This means, when interacting with any sub-behaviours here, we have to
         // make sure that they are being polled again. This smells, but it is a
@@ -461,13 +530,13 @@ impl ApiBehaviour {
 
 impl NetworkBehaviourEventProcess<StreamingResponseEvent<AdminProtocol>> for ApiBehaviour {
     fn inject_event(&mut self, event: StreamingResponseEvent<AdminProtocol>) {
-        debug!("Received streaming_response event: {:?}", event);
+        tracing::debug!("Received streaming_response event: {:?}", event);
 
         match event {
             StreamingResponseEvent::<AdminProtocol>::ReceivedRequest { payload, channel_id } => {
                 let peer = channel_id.peer();
                 if !self.is_authorized(&peer) {
-                    warn!("Received unauthorized request from {}. Rejecting.", peer);
+                    tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
                     let _ = self.admin.respond_final(
                         channel_id,
                         Err(ActyxOSCode::ERR_UNAUTHORIZED
@@ -489,13 +558,13 @@ impl NetworkBehaviourEventProcess<StreamingResponseEvent<AdminProtocol>> for Api
 
 impl NetworkBehaviourEventProcess<StreamingResponseEvent<EventsProtocol>> for ApiBehaviour {
     fn inject_event(&mut self, event: StreamingResponseEvent<EventsProtocol>) {
-        debug!("Received streaming_response event: {:?}", event);
+        tracing::debug!("Received streaming_response event: {:?}", event);
 
         match event {
             StreamingResponseEvent::<EventsProtocol>::ReceivedRequest { payload, channel_id } => {
                 let peer = channel_id.peer();
                 if !self.is_authorized(&peer) {
-                    warn!("Received unauthorized request from {}. Rejecting.", peer);
+                    tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
                     let _ = self.admin.respond_final(
                         channel_id,
                         Err(ActyxOSCode::ERR_UNAUTHORIZED
@@ -513,6 +582,243 @@ impl NetworkBehaviourEventProcess<StreamingResponseEvent<EventsProtocol>> for Ap
             }
             StreamingResponseEvent::<EventsProtocol>::ResponseReceived { .. } => {}
             StreamingResponseEvent::<EventsProtocol>::ResponseFinished { .. } => {}
+        }
+    }
+}
+
+macro_rules! t {
+    ($self:ident $channel:ident: $ex:expr, $e:ident => $err:expr) => {
+        match $ex {
+            Ok(x) => x,
+            Err($e) => {
+                tracing::warn!("{}: {:?}", $err, $e);
+                $self
+                    .banyan
+                    .send_response($channel, BanyanResponse::Error($err.into()))
+                    .ok();
+                return;
+            }
+        }
+    };
+}
+
+impl NetworkBehaviourEventProcess<RequestResponseEvent<BanyanRequest, BanyanResponse>> for ApiBehaviour {
+    fn inject_event(&mut self, event: RequestResponseEvent<BanyanRequest, BanyanResponse>) {
+        tracing::debug!("received banyan event");
+
+        match event {
+            RequestResponseEvent::Message { peer, message } => {
+                tracing::debug!(peer = display(peer), "received {:?}", message);
+                match message {
+                    RequestResponseMessage::Request { request, channel, .. } => match request {
+                        BanyanRequest::MakeFreshTopic(topic) => {
+                            let (tx, rx) = oneshot::channel();
+                            t!(self channel: self.state.store.send(ComponentRequest::Individual(StoreRequest::FreshBanyan(topic.clone(), tx))), e => "store closed");
+                            self.state.pending_banyan.push(Box::pin(async move {
+                                (channel, topic, rx.await.map_err(anyhow::Error::from).and_then(|x| x))
+                            }));
+                        }
+                        BanyanRequest::AppendEvents(topic, data) => {
+                            let (mut node_id, mut buf, store) = t!(self channel: self.state.banyan_stores.remove(&topic).ok_or(()), e => "topic not prepared");
+
+                            self.state.pending_finalise.push(Box::pin(async move {
+                                if let Err(e) = buf.write_all(data.as_slice()) {
+                                    return (
+                                        channel,
+                                        BanyanResponse::Error(format!("decompression failure: {}", e)),
+                                        None,
+                                    );
+                                }
+
+                                let mut bytes = buf.get_ref().as_slice();
+                                while let Ok((cbor, rest)) = Cbor::checked_prefix(bytes) {
+                                    if let Some(node_id) = node_id {
+                                        let (orig_node, app_id, timestamp, tags, payload) =
+                                            match decode_dump_frame(cbor) {
+                                                Some(x) => x,
+                                                None => {
+                                                    return (
+                                                        channel,
+                                                        BanyanResponse::Error(format!("malformed: {}", cbor)),
+                                                        None,
+                                                    )
+                                                }
+                                            };
+
+                                        let stream_nr = if orig_node == node_id {
+                                            StreamNr::from(4)
+                                        } else {
+                                            StreamNr::from(5)
+                                        };
+                                        if let Err(e) =
+                                            store.append0(stream_nr, app_id, timestamp, vec![(tags, payload)]).await
+                                        {
+                                            return (
+                                                channel,
+                                                BanyanResponse::Error(format!("append error: {}", e)),
+                                                None,
+                                            );
+                                        }
+                                    } else {
+                                        node_id = match decode_dump_header(cbor) {
+                                            Some((node_id, ..)) => Some(node_id),
+                                            None => {
+                                                return (
+                                                    channel,
+                                                    BanyanResponse::Error(format!("header: {}", cbor)),
+                                                    None,
+                                                )
+                                            }
+                                        };
+                                    }
+                                    bytes = rest;
+                                }
+                                let consumed = unsafe {
+                                    (bytes as *const _ as *const u8)
+                                        .offset_from(buf.get_ref().as_slice() as *const _ as *const u8)
+                                };
+                                if consumed > 0 {
+                                    let consumed = consumed as usize;
+                                    let v = buf.get_mut();
+                                    v.as_mut_slice().copy_within(consumed.., 0);
+                                    v.truncate(v.len() - consumed);
+                                }
+                                if buf.get_ref().len() > 4000000 {
+                                    tracing::warn!("dump `{}`: upload buffer full, aborting", topic);
+                                    (channel, BanyanResponse::Error("upload buffer full".into()), None)
+                                } else {
+                                    (channel, BanyanResponse::Ok, Some((topic, (node_id, buf, store))))
+                                }
+                            }));
+                        }
+                        BanyanRequest::Finalise(topic) => {
+                            let (mut node_id, mut buf, store) = t!(self channel: self.state.banyan_stores.remove(&topic).ok_or(()), e => "topic not prepared");
+
+                            let node_tx = self.state.node_tx.clone();
+                            self.state.pending_finalise.push(Box::pin(async move {
+                                if let Err(e) = buf.flush() {
+                                    return (
+                                        channel,
+                                        BanyanResponse::Error(format!("decompression failure: {}", e)),
+                                        None,
+                                    );
+                                }
+
+                                let bytes = buf.into_inner();
+                                let mut bytes = bytes.as_ref();
+                                while let Ok((cbor, rest)) = Cbor::checked_prefix(bytes) {
+                                    if let Some(ref node_id) = node_id {
+                                        let (orig_node, app_id, timestamp, tags, payload) =
+                                            match decode_dump_frame(cbor) {
+                                                Some(x) => x,
+                                                None => {
+                                                    return (
+                                                        channel,
+                                                        BanyanResponse::Error(format!("malformed: {}", cbor)),
+                                                        None,
+                                                    )
+                                                }
+                                            };
+
+                                        let stream_nr = if orig_node == *node_id {
+                                            StreamNr::from(4)
+                                        } else {
+                                            StreamNr::from(5)
+                                        };
+                                        if let Err(e) =
+                                            store.append0(stream_nr, app_id, timestamp, vec![(tags, payload)]).await
+                                        {
+                                            return (
+                                                channel,
+                                                BanyanResponse::Error(format!("append error: {}", e)),
+                                                None,
+                                            );
+                                        }
+                                    } else {
+                                        node_id = match decode_dump_header(cbor) {
+                                            Some((node_id, ..)) => Some(node_id),
+                                            None => {
+                                                return (
+                                                    channel,
+                                                    BanyanResponse::Error(format!("header: {}", cbor)),
+                                                    None,
+                                                )
+                                            }
+                                        };
+                                    }
+                                    bytes = rest;
+                                }
+                                if !bytes.is_empty() {
+                                    tracing::warn!("trailing garbage!");
+                                }
+
+                                tracing::info!("import completed for topic `{}`", topic);
+
+                                let (tx, rx) = oneshot::channel();
+                                let set_settings = ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
+                                    scope: "com.actyx/api/events/readOnly".parse().unwrap(),
+                                    json: json!(true),
+                                    ignore_errors: false,
+                                    response: tx,
+                                });
+                                if node_tx.send(set_settings).is_err() {
+                                    return (channel, BanyanResponse::Error("store closed".into()), None);
+                                }
+                                match rx.await {
+                                    Ok(Err(e)) => return (channel, BanyanResponse::Error(e.to_string()), None),
+                                    Err(e) => return (channel, BanyanResponse::Error(e.to_string()), None),
+                                    _ => {}
+                                }
+
+                                let (tx, rx) = oneshot::channel();
+                                let set_settings = ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
+                                    scope: "com.actyx/swarm/topic".parse().unwrap(),
+                                    json: json!(topic),
+                                    ignore_errors: false,
+                                    response: tx,
+                                });
+                                if node_tx.send(set_settings).is_err() {
+                                    return (channel, BanyanResponse::Error("store closed".into()), None);
+                                }
+                                match rx.await {
+                                    Ok(Err(e)) => return (channel, BanyanResponse::Error(e.to_string()), None),
+                                    Err(e) => return (channel, BanyanResponse::Error(e.to_string()), None),
+                                    _ => {}
+                                }
+
+                                (channel, BanyanResponse::Ok, None)
+                            }));
+                        }
+                        BanyanRequest::Future => {
+                            self.banyan
+                                .send_response(channel, BanyanResponse::Error("message from the future".into()))
+                                .ok();
+                        }
+                    },
+                    RequestResponseMessage::Response { .. } => {}
+                }
+            }
+            RequestResponseEvent::OutboundFailure {
+                peer,
+                request_id,
+                error,
+            } => tracing::warn!(
+                peer = display(peer),
+                request_id = display(request_id),
+                error = debug(&error),
+                "banyan outbound failure"
+            ),
+            RequestResponseEvent::InboundFailure {
+                peer,
+                request_id,
+                error,
+            } => tracing::warn!(
+                peer = display(peer),
+                request_id = display(request_id),
+                error = debug(&error),
+                "banyan inbound failure"
+            ),
+            RequestResponseEvent::ResponseSent { .. } => {}
         }
     }
 }
@@ -557,7 +863,7 @@ pub(crate) async fn mk_swarm(
     // why we have to to bind to ip4 and ip6 manually.
     // [0] https://github.com/libp2p/rust-libp2p/blob/master/transports/tcp/src/lib.rs#L322
     for addr in bind_to.to_multiaddrs() {
-        debug!("Admin API trying to bind to {}", addr);
+        tracing::debug!("Admin API trying to bind to {}", addr);
         swarm.listen_on(addr.clone()).with_context(|| {
             let port = addr
                 .iter()
@@ -617,7 +923,10 @@ pub(crate) async fn mk_swarm(
 type TConnErr = libp2p::core::either::EitherError<
     libp2p::core::either::EitherError<
         libp2p::core::either::EitherError<
-            libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
+            libp2p::core::either::EitherError<
+                libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
+                libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
+            >,
             libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
         >,
         libp2p::ping::handler::PingFailure,
@@ -654,14 +963,14 @@ impl Future for SwarmFuture {
                         .transform_mut(|set| set.insert(address));
                 }
                 SwarmEvent::ListenerError { error, .. } => {
-                    error!("SwarmEvent::ListenerError {}", error)
+                    tracing::error!("SwarmEvent::ListenerError {}", error)
                 }
                 SwarmEvent::ListenerClosed {
                     reason: Err(error),
                     addresses,
                     ..
                 } => {
-                    error!("SwarmEvent::ListenerClosed {} for {:?}", error, addresses);
+                    tracing::error!("SwarmEvent::ListenerClosed {} for {:?}", error, addresses);
                     for addr in addresses {
                         self.0
                             .behaviour_mut()
@@ -671,7 +980,7 @@ impl Future for SwarmFuture {
                     }
                 }
                 o => {
-                    debug!("Other swarm event {:?}", o);
+                    tracing::debug!("Other swarm event {:?}", o);
                 }
             }
         }

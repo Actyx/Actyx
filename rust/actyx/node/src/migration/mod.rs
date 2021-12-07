@@ -98,6 +98,8 @@ pub fn migrate_if_necessary(
                 CURRENT_VERSION => break,
                 _ => anyhow::bail!("Detected future version {}", db_version),
             }
+        } else {
+            break;
         }
     }
     Ok(())

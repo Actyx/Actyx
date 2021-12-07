@@ -2,6 +2,7 @@ use derive_more::{AsRef, Display, From, Into};
 use serde::{Deserialize, Serialize};
 
 pub mod admin_protocol;
+pub mod banyan_protocol;
 pub mod errors;
 pub mod events_protocol;
 pub mod logs;

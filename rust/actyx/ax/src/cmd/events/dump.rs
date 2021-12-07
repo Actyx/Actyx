@@ -45,7 +45,7 @@ macro_rules! filter {
     };
 }
 
-struct Diag {
+pub(super) struct Diag {
     term: Option<Term>,
     status: Option<String>,
 }

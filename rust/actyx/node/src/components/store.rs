@@ -19,6 +19,7 @@ use util::formats::{Connection, NodeCycleCount, Peer};
 pub(crate) enum StoreRequest {
     NodesInspect(oneshot::Sender<Result<InspectResponse>>),
     EventsV2(EventStoreRequest),
+    FreshBanyan(String, oneshot::Sender<Result<BanyanStore>>),
 }
 
 pub(crate) struct InspectResponse {
@@ -99,6 +100,33 @@ impl Component<StoreRequest, StoreConfig> for Store {
                     events.handle(request, rt.handle());
                 }
             }
+            StoreRequest::FreshBanyan(topic, tx) => {
+                if let Some(InternalStoreState { swarm_config, rt, .. }) = self.state.as_ref() {
+                    std::fs::remove_file(self.working_dir.join(format!("{}.sqlite", topic))).ok();
+                    std::fs::remove_dir_all(self.working_dir.join(format!("{}.sqlite", topic))).ok();
+                    std::fs::remove_file(self.working_dir.join(format!("{}.sqlite-shm", topic))).ok();
+                    std::fs::remove_file(self.working_dir.join(format!("{}.sqlite-wal", topic))).ok();
+                    std::fs::remove_file(self.working_dir.join(format!("{}-index.sqlite", topic))).ok();
+                    std::fs::remove_file(self.working_dir.join(format!("{}-index.sqlite-shm", topic))).ok();
+                    std::fs::remove_file(self.working_dir.join(format!("{}-index.sqlite-wal", topic))).ok();
+                    let mut config = swarm_config.clone();
+                    config.db_path = Some(self.working_dir.join(format!("{}.sqlite", topic)));
+                    config.index_store = Some(self.working_dir.join(format!("{}-index", topic)));
+                    config.topic = topic;
+                    config.listen_addresses = vec![];
+                    config.bootstrap_addresses = vec![];
+                    config.enable_mdns = false;
+                    config.enable_fast_path = false;
+                    config.enable_slow_path = false;
+                    config.enable_root_map = false;
+                    config.enable_discovery = false;
+                    config.enable_metrics = false;
+                    let banyan = rt.block_on(BanyanStore::new(config))?;
+                    let _ = tx.send(Ok(banyan));
+                } else {
+                    let _ = tx.send(Err(anyhow::anyhow!("Store not running")));
+                }
+            }
         }
         Ok(())
     }
@@ -124,8 +152,9 @@ impl Component<StoreRequest, StoreConfig> for Store {
             // client creation is setting up some tokio timers and therefore
             // needs to be called with a tokio runtime
             let event_store = self.event_store.clone();
+            let swarm_config = cfg.swarm_config.clone();
             let store = rt.block_on(async move {
-                let store = BanyanStore::new(cfg.swarm_config).await?;
+                let store = BanyanStore::new(swarm_config).await?;
 
                 store.spawn_task(
                     "api",
@@ -135,7 +164,12 @@ impl Component<StoreRequest, StoreConfig> for Store {
             })?;
 
             let events = EventStoreHandler::new(store.clone());
-            self.state = Some(InternalStoreState { rt, store, events });
+            self.state = Some(InternalStoreState {
+                rt,
+                store,
+                events,
+                swarm_config: cfg.swarm_config,
+            });
             Ok(())
         } else {
             anyhow::bail!("no config")
@@ -200,6 +234,7 @@ struct InternalStoreState {
     rt: tokio::runtime::Runtime,
     store: BanyanStore,
     events: EventStoreHandler,
+    swarm_config: SwarmConfig,
 }
 /// Struct wrapping the store service and handling its lifecycle.
 pub(crate) struct Store {

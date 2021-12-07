@@ -20,6 +20,8 @@ pub enum EventsOpts {
     Publish(publish::PublishOpts),
     #[structopt(no_version)]
     Dump(dump::DumpOpts),
+    #[structopt(no_version)]
+    Restore(restore::RestoreOpts),
 }
 
 pub fn run(opts: EventsOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin> {
@@ -28,5 +30,6 @@ pub fn run(opts: EventsOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin>
         EventsOpts::Query(opt) => query::EventsQuery::output(opt, json),
         EventsOpts::Publish(opt) => publish::EventsPublish::output(opt, json),
         EventsOpts::Dump(opt) => dump::EventsDump::output(opt, json),
+        EventsOpts::Restore(opt) => restore::EventsRestore::output(opt, json),
     }
 }
