@@ -7,8 +7,14 @@ use cbor_data::{value::Precision, CborBuilder, Encoder, Writer};
 use chrono::{DateTime, Local, Utc};
 use console::{user_attended_stderr, Term};
 use futures::{Stream, StreamExt};
-use std::{fs::File, io::Write, path::PathBuf};
+use std::{
+    fs::File,
+    io::{ErrorKind, Write},
+    net::TcpStream,
+    path::PathBuf,
+};
 use structopt::StructOpt;
+use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
 use util::{
     formats::{
         events_protocol::{EventsRequest, EventsResponse},
@@ -24,13 +30,17 @@ pub struct DumpOpts {
     #[structopt(name = "QUERY", required = true)]
     /// selection of event data to include in the dump
     query: String,
-    #[structopt(name = "OUTPUT", required = true)]
+    #[structopt(long, short, value_name = "FILE")]
     /// file to write the dump to
-    output: PathBuf,
+    output: Option<PathBuf>,
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
     #[structopt(long, short)]
+    /// suppress progress information on stderr
     quiet: bool,
+    #[structopt(long, value_name = "TOKEN")]
+    /// send dump via the cloud (start restore first to get the token)
+    cloud: Option<String>,
 }
 
 macro_rules! filter {
@@ -132,11 +142,16 @@ impl AxCliCommand for EventsDump {
             let mut conn = opts.console_opt.connect().await?;
 
             let mut out = zstd::Encoder::<Box<dyn Write>>::new(
-                if opts.output.to_str() == Some("-") {
-                    Box::new(std::io::stdout())
-                } else {
-                    let file = File::create(opts.output.as_path()).io("opening dump")?;
+                if let Some(ref out) = opts.output {
+                    let file = File::create(out.as_path()).io("opening dump")?;
                     Box::new(file)
+                } else if let Some(ref token) = opts.cloud {
+                    let ws = connect(format!("ws://localhost:8087/forward/{}", token))
+                        .io("opening websocket")?
+                        .0;
+                    Box::new(WsWrite::new(ws))
+                } else {
+                    Box::new(std::io::stdout())
                 },
                 21,
             )
@@ -257,5 +272,28 @@ impl AxCliCommand for EventsDump {
 
     fn pretty(_result: Self::Output) -> String {
         String::new()
+    }
+}
+
+struct WsWrite {
+    sock: WebSocket<MaybeTlsStream<TcpStream>>,
+}
+
+impl WsWrite {
+    fn new(sock: WebSocket<MaybeTlsStream<TcpStream>>) -> Self {
+        Self { sock }
+    }
+}
+
+impl Write for WsWrite {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.sock
+            .write_message(Message::Binary(buf.into()))
+            .map(|_| buf.len())
+            .map_err(|e| std::io::Error::new(ErrorKind::Other, e))
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
 }

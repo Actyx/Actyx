@@ -537,6 +537,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "trees",
+ "tungstenite 0.16.0",
  "util",
  "zstd",
 ]
@@ -6423,7 +6424,7 @@ dependencies = [
  "log",
  "pin-project 1.0.8",
  "tokio",
- "tungstenite",
+ "tungstenite 0.12.0",
 ]
 
 [[package]]
@@ -6680,6 +6681,25 @@ dependencies = [
  "log",
  "rand 0.8.4",
  "sha-1 0.9.7",
+ "url",
+ "utf-8",
+]
+
+[[package]]
+name = "tungstenite"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ad3713a14ae247f22a728a0456a545df14acf3867f905adff84be99e23b3ad1"
+dependencies = [
+ "base64 0.13.0",
+ "byteorder",
+ "bytes 1.0.1",
+ "http",
+ "httparse",
+ "log",
+ "rand 0.8.4",
+ "sha-1 0.9.7",
+ "thiserror",
  "url",
  "utf-8",
 ]

@@ -36,7 +36,7 @@ pub struct ConsoleOpt {
     #[structopt(name = "NODE", required = true)]
     /// the IP address or <host>:<admin port> of the node to perform the operation on.
     authority: NodeConnection,
-    #[structopt(short, long)]
+    #[structopt(short, long, value_name = "FILE")]
     /// File from which the identity (private key) for authentication is read.
     identity: Option<KeyPathWrapper>,
 }

@@ -4,10 +4,12 @@ use cbor_data::Cbor;
 use futures::Stream;
 use std::{
     fs::File,
-    io::{Read, Write},
+    io::{ErrorKind, Read, Write},
+    net::TcpStream,
     path::PathBuf,
 };
 use structopt::StructOpt;
+use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
 use util::{
     formats::{
         banyan_protocol::{decode_dump_header, BanyanRequest, BanyanResponse},
@@ -20,13 +22,17 @@ use util::{
 #[structopt(version = env!("AX_CLI_VERSION"))]
 /// dump events described by an AQL query into a file
 pub struct RestoreOpts {
-    #[structopt(name = "INPUT", required = true)]
+    #[structopt(long, short = "I", value_name = "FILE")]
     /// file to read the dump from
-    input: PathBuf,
+    input: Option<PathBuf>,
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
     #[structopt(long, short)]
+    /// suppress progress information on stderr
     quiet: bool,
+    #[structopt(long, value_name = "FILE")]
+    /// load dump via the cloud and store it as the given filename
+    cloud: Option<PathBuf>,
 }
 
 trait IO {
@@ -66,12 +72,36 @@ impl AxCliCommand for EventsRestore {
 
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         Box::new(GenStream::new(move |_co| async move {
+            if opts.cloud.is_some() && opts.input.is_some() {
+                return Err(ActyxOSError::new(
+                    ActyxOSCode::ERR_UNSUPPORTED,
+                    "cannot restore from cloud and file at the same time",
+                ));
+            }
+
             let mut diag = Diag::new(opts.quiet);
 
-            let mut input: Box<dyn Read> = if opts.input.to_str() == Some("-") {
-                Box::new(std::io::stdin())
+            let mut input: Box<dyn Read> = if let Some(ref input) = opts.input {
+                Box::new(File::open(input.as_path()).io("opening input dump")?)
+            } else if let Some(ref cloud) = opts.cloud {
+                let file = File::create(cloud.as_path()).io("opening cloud dump")?;
+                let mut ws = connect("ws://localhost:8087/forward").io("opening websocket")?.0;
+                let msg = ws.read_message().io("read token message")?;
+                if let Message::Text(token) = msg {
+                    eprintln!("connection open, waiting for dump");
+                    eprintln!(
+                        "now is a good time to start `ax events dump --cloud {}` on the source machine",
+                        token
+                    );
+                } else {
+                    return Err(ActyxOSError::new(
+                        ActyxOSCode::ERR_INVALID_INPUT,
+                        "received wrong message from server",
+                    ));
+                }
+                Box::new(WsRead::new(file, ws))
             } else {
-                Box::new(File::open(opts.input).io("opening dump")?)
+                Box::new(std::io::stdin())
             };
 
             let mut buf = Vec::new();
@@ -133,5 +163,53 @@ impl AxCliCommand for EventsRestore {
 
     fn pretty(_result: Self::Output) -> String {
         String::new()
+    }
+}
+
+struct WsRead {
+    file: File,
+    sock: WebSocket<MaybeTlsStream<TcpStream>>,
+    buf: Vec<u8>,
+    pos: usize,
+}
+
+impl WsRead {
+    fn new(file: File, sock: WebSocket<MaybeTlsStream<TcpStream>>) -> Self {
+        Self {
+            file,
+            sock,
+            buf: Vec::new(),
+            pos: 0,
+        }
+    }
+}
+impl Read for WsRead {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        while self.pos >= self.buf.len() {
+            if !self.sock.can_read() {
+                return Ok(0);
+            }
+            let msg = match self.sock.read_message() {
+                Ok(msg) => msg,
+                Err(tungstenite::Error::ConnectionClosed) => return Ok(0),
+                Err(e) => return Err(std::io::Error::new(ErrorKind::Other, e)),
+            };
+            if let Message::Binary(b) = msg {
+                self.buf = b;
+                self.pos = 0;
+                self.file
+                    .write_all(self.buf.as_slice())
+                    .map_err(|e| std::io::Error::new(ErrorKind::Other, e))?;
+            }
+        }
+        let bytes = (self.buf.len() - self.pos).min(buf.len());
+        buf[..bytes].copy_from_slice(&self.buf[self.pos..self.pos + bytes]);
+        self.pos += bytes;
+        Ok(bytes)
+    }
+}
+impl Drop for WsRead {
+    fn drop(&mut self) {
+        self.file.flush().ok();
     }
 }
