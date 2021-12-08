@@ -36,6 +36,15 @@ pub enum BanyanResponse {
     Future,
 }
 
+impl<E: std::fmt::Display> From<std::result::Result<(), E>> for BanyanResponse {
+    fn from(r: std::result::Result<(), E>) -> Self {
+        match r {
+            Ok(_) => BanyanResponse::Ok,
+            Err(e) => BanyanResponse::Error(e.to_string()),
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct BanyanProtocolName;
 impl ProtocolName for BanyanProtocolName {

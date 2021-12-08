@@ -26,9 +26,13 @@ pub mod transport;
 #[cfg(test)]
 mod tests;
 
+pub use crate::sqlite::{StorageServiceStore, StorageServiceStoreWrite};
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
 use actyx_sdk::app_id;
+pub use banyan::{store::BlockWriter, Forest as BanyanForest, StreamBuilder, Transaction as BanyanTransaction};
+pub use ipfs_embed::{Executor as IpfsEmbedExecutor, StorageConfig, StorageService};
+pub use libipld::codec::Codec as IpldCodec;
 pub use prune::RetainConfig;
 pub use unixfs_v1::{
     dir::builder::{BufferingTreeBuilder, TreeOptions},
@@ -49,17 +53,17 @@ use ax_futures_util::{
 };
 use banyan::{
     query::Query,
-    store::{BlockWriter, BranchCache, ReadOnlyStore},
-    FilteredChunk, Secrets, StreamBuilder,
+    store::{BranchCache, ReadOnlyStore},
+    FilteredChunk, Secrets,
 };
 use crypto::KeyPair;
 use fnv::FnvHashMap;
 use futures::{channel::mpsc, prelude::*};
 use ipfs_embed::{
-    BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId,
-    StorageConfig, SyncEvent, TempPin, ToLibp2p,
+    BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId, SyncEvent,
+    TempPin, ToLibp2p,
 };
-use libipld::{cbor::DagCborCodec, codec::Codec, error::BlockNotFound};
+use libipld::{cbor::DagCborCodec, error::BlockNotFound};
 use libp2p::{
     dns::ResolverConfig,
     gossipsub::{GossipsubConfigBuilder, ValidationMode},
@@ -95,14 +99,14 @@ use util::{
 };
 
 #[allow(clippy::upper_case_acronyms)]
-type TT = AxTrees;
-type Key = AxKey;
-type Event = Payload;
-type Forest = banyan::Forest<TT, SqliteStore>;
-type Transaction = banyan::Transaction<TT, SqliteStore, SqliteStoreWrite>;
-type Tree = banyan::Tree<TT, Event>;
-type AxStreamBuilder = banyan::StreamBuilder<TT, Event>;
-type Link = Sha256Digest;
+pub type TT = AxTrees;
+pub type Key = AxKey;
+pub type Event = Payload;
+pub type Forest = banyan::Forest<TT, SqliteStore>;
+pub type Transaction = banyan::Transaction<TT, SqliteStore, SqliteStoreWrite>;
+pub type Tree = banyan::Tree<TT, Event>;
+pub type AxStreamBuilder = banyan::StreamBuilder<TT, Event>;
+pub type Link = Sha256Digest;
 
 pub type Block = libipld::Block<libipld::DefaultParams>;
 pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;

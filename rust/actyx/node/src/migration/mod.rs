@@ -64,42 +64,38 @@ pub fn migrate_if_necessary(
     anyhow::ensure!(working_dir.as_ref().exists());
 
     let mut additional_sources = Some(additional_sources);
-    loop {
-        if let Some((earlier_working_dir, node_db)) = find_earlier_working_dir(&working_dir) {
-            // check the db version
-            let db_version = get_node_version(&node_db)?;
-            match db_version {
-                0 | 1 => {
-                    tracing::info!(target:"MIGRATION",
-                        "Migrating data from an earlier version ({} to 2) ..",
-                        db_version
-                    );
-                    v1::migrate(
-                        &earlier_working_dir,
-                        &working_dir,
-                        additional_sources.take().unwrap_or_default(),
-                        true,
-                        dry_run,
-                        db_version,
-                    )
-                    .map_err(|e| {
-                        tracing::error!(target: "MIGRATION", "Error during migration: {:#}", e);
-                        e
-                    })?;
-                    tracing::info!(target:"MIGRATION", "Migration succeeded.");
-                }
-                2 => {
-                    tracing::info!(target:"MIGRATION", "Migrating data from an earlier version (2 to 3) ..");
-                    tracing::debug!("Opening database {}", node_db.display());
-                    let mut conn = rusqlite::Connection::open(&node_db)?;
-                    NodeStorage::migrate(&mut conn, db_version)?;
-                    tracing::info!(target:"MIGRATION", "Migration succeeded.");
-                }
-                CURRENT_VERSION => break,
-                _ => anyhow::bail!("Detected future version {}", db_version),
+    while let Some((earlier_working_dir, node_db)) = find_earlier_working_dir(&working_dir) {
+        // check the db version
+        let db_version = get_node_version(&node_db)?;
+        match db_version {
+            0 | 1 => {
+                tracing::info!(target:"MIGRATION",
+                    "Migrating data from an earlier version ({} to 2) ..",
+                    db_version
+                );
+                v1::migrate(
+                    &earlier_working_dir,
+                    &working_dir,
+                    additional_sources.take().unwrap_or_default(),
+                    true,
+                    dry_run,
+                    db_version,
+                )
+                .map_err(|e| {
+                    tracing::error!(target: "MIGRATION", "Error during migration: {:#}", e);
+                    e
+                })?;
+                tracing::info!(target:"MIGRATION", "Migration succeeded.");
             }
-        } else {
-            break;
+            2 => {
+                tracing::info!(target:"MIGRATION", "Migrating data from an earlier version (2 to 3) ..");
+                tracing::debug!("Opening database {}", node_db.display());
+                let mut conn = rusqlite::Connection::open(&node_db)?;
+                NodeStorage::migrate(&mut conn, db_version)?;
+                tracing::info!(target:"MIGRATION", "Migration succeeded.");
+            }
+            CURRENT_VERSION => break,
+            _ => anyhow::bail!("Detected future version {}", db_version),
         }
     }
     Ok(())

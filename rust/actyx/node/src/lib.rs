@@ -143,6 +143,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
             node.tx.clone(),
             bind_to.admin.clone(),
             nodeapi_rx,
+            working_dir.join("store"),
             store_tx,
         )
     };

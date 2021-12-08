@@ -125,6 +125,7 @@ impl AxCliCommand for EventsRestore {
                 .await?
                 .br()?;
             diag.log(format!("topic switched to `{}`", topic))?;
+            diag.log("Actyx node switched into read-only network mode")?;
 
             Ok(())
         }))

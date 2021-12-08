@@ -11,7 +11,7 @@ use crate::{
 use actyx_sdk::{
     app_id,
     service::{QueryResponse, SubscribeMonotonicResponse, SubscribeResponse},
-    NodeId, StreamNr,
+    tag, LamportTimestamp, NodeId, Payload,
 };
 use anyhow::{anyhow, bail, Context};
 use api::EventService;
@@ -26,6 +26,7 @@ use futures::{
     task::{self, Poll},
     Future, FutureExt, Stream, StreamExt,
 };
+use libipld::{cbor::DagCborCodec, codec::Codec, Cid};
 use libp2p::{
     core::{muxing::StreamMuxerBox, transport::Boxed},
     identify::{Identify, IdentifyConfig, IdentifyEvent},
@@ -49,14 +50,22 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
     io::Write,
+    path::PathBuf,
     pin::Pin,
     sync::Arc,
     time::Duration,
 };
-use swarm::{event_store_ref::EventStoreRef, BanyanStore};
+use swarm::{
+    event_store_ref::EventStoreRef, BanyanConfig, BlockWriter, StorageConfig, StorageService, StorageServiceStore,
+    StorageServiceStoreWrite, StreamAlias,
+};
 use tokio::{
     sync::oneshot,
     time::{timeout_at, Instant},
+};
+use trees::{
+    tags::{ScopedTag, ScopedTagSet, TagScope},
+    AxKey, AxTreeHeader,
 };
 use util::formats::{
     admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
@@ -73,31 +82,48 @@ pub mod formats;
 
 type PendingRequest = BoxFuture<'static, (ChannelId, ActyxOSResult<AdminResponse>)>;
 type PendingStream = BoxStream<'static, (ChannelId, Option<EventsResponse>)>;
-type PendingBanyan = BoxFuture<'static, (ResponseChannel<BanyanResponse>, String, anyhow::Result<BanyanStore>)>;
-type PendingFinalise = BoxFuture<
-    'static,
-    (
-        ResponseChannel<BanyanResponse>,
-        BanyanResponse,
-        Option<(String, BanyanStoreTuple)>,
-    ),
->;
+type PendingFinalise = BoxFuture<'static, (ResponseChannel<BanyanResponse>, BanyanResponse)>;
 
-type BanyanStoreTuple = (Option<NodeId>, Decoder<'static, Vec<u8>>, BanyanStore);
+struct BanyanWriter {
+    txn: swarm::BanyanTransaction<swarm::TT, StorageServiceStore, StorageServiceStoreWrite>,
+    own: swarm::StreamBuilder<swarm::TT, Payload>,
+    other: swarm::StreamBuilder<swarm::TT, Payload>,
+    buf: Decoder<'static, Vec<u8>>,
+    node_id: Option<NodeId>,
+    lamport: LamportTimestamp,
+}
+
+impl BanyanWriter {
+    fn new(forest: swarm::BanyanForest<swarm::TT, StorageServiceStore>) -> Self {
+        let config = BanyanConfig::default();
+        Self {
+            txn: forest.transaction(|s| {
+                let w = s.write().unwrap();
+                (s, w)
+            }),
+            own: swarm::StreamBuilder::new(config.tree.clone(), config.secret.clone()),
+            other: swarm::StreamBuilder::new(config.tree, config.secret),
+            buf: Decoder::new(Vec::new()).unwrap(),
+            node_id: None,
+            lamport: LamportTimestamp::default(),
+        }
+    }
+}
 
 struct State {
+    store_dir: PathBuf,
     node_tx: Sender<ExternalEvent>,
+    node_id: NodeId,
     auth_info: Arc<Mutex<NodeApiSettings>>,
     store: StoreTx,
     events: EventService,
     /// Pending inflight requests to Node.
     pending_oneshot: FuturesUnordered<PendingRequest>,
     pending_stream: MergeUnordered<PendingStream, stream::Empty<PendingStream>>,
-    pending_banyan: FuturesUnordered<PendingBanyan>,
     pending_finalise: FuturesUnordered<PendingFinalise>,
     stream_handles: BTreeMap<ChannelId, AbortHandle>,
     admin_sockets: Variable<BTreeSet<Multiaddr>>,
-    banyan_stores: BTreeMap<String, BanyanStoreTuple>,
+    banyan_stores: BTreeMap<String, BanyanWriter>,
 }
 
 #[derive(NetworkBehaviour)]
@@ -139,6 +165,7 @@ impl ApiBehaviour {
     fn new(
         node_id: NodeId,
         node_tx: Sender<ExternalEvent>,
+        store_dir: PathBuf,
         store: StoreTx,
         auth_info: Arc<Mutex<NodeApiSettings>>,
         local_public_key: libp2p::core::PublicKey,
@@ -151,12 +178,13 @@ impl ApiBehaviour {
         let events = EventService::new(events, node_id);
         let state = State {
             node_tx,
+            node_id,
             store,
+            store_dir,
             events,
             auth_info,
             pending_oneshot: FuturesUnordered::new(),
             pending_stream: MergeUnordered::without_input(),
-            pending_banyan: FuturesUnordered::new(),
             pending_finalise: FuturesUnordered::new(),
             stream_handles: BTreeMap::default(),
             admin_sockets: Variable::default(),
@@ -482,35 +510,9 @@ impl ApiBehaviour {
             wake_me_up = true;
         }
 
-        while let Poll::Ready(Some((channel, topic, res))) = self.state.pending_banyan.poll_next_unpin(cx) {
-            match res {
-                Ok(banyan) => {
-                    let decoder = match Decoder::new(Vec::new()) {
-                        Ok(d) => d,
-                        Err(e) => {
-                            tracing::warn!("cannot create decoder for dump `{}`: {}", topic, e);
-                            self.banyan
-                                .send_response(channel, BanyanResponse::Error("create decoder".into()))
-                                .ok();
-                            continue;
-                        }
-                    };
-                    self.state.banyan_stores.insert(topic, (None, decoder, banyan));
-                    self.banyan.send_response(channel, BanyanResponse::Ok).ok();
-                }
-                Err(e) => {
-                    tracing::warn!("cannot make fresh BanyanStore: {}", e);
-                    self.banyan
-                        .send_response(channel, BanyanResponse::Error(e.to_string()))
-                        .ok();
-                }
-            }
-        }
-
-        while let Poll::Ready(Some((channel, response, banyan))) = self.state.pending_finalise.poll_next_unpin(cx) {
-            tracing::info!("finalise result: {:?}", response);
-            if let Some((topic, tuple)) = banyan {
-                self.state.banyan_stores.insert(topic, tuple);
+        while let Poll::Ready(Some((channel, response))) = self.state.pending_finalise.poll_next_unpin(cx) {
+            if let BanyanResponse::Error(ref e) = response {
+                tracing::warn!("error in Finalise: {}", e);
             }
             self.banyan.send_response(channel, response).ok();
         }
@@ -586,22 +588,6 @@ impl NetworkBehaviourEventProcess<StreamingResponseEvent<EventsProtocol>> for Ap
     }
 }
 
-macro_rules! t {
-    ($self:ident $channel:ident: $ex:expr, $e:ident => $err:expr) => {
-        match $ex {
-            Ok(x) => x,
-            Err($e) => {
-                tracing::warn!("{}: {:?}", $err, $e);
-                $self
-                    .banyan
-                    .send_response($channel, BanyanResponse::Error($err.into()))
-                    .ok();
-                return;
-            }
-        }
-    };
-}
-
 impl NetworkBehaviourEventProcess<RequestResponseEvent<BanyanRequest, BanyanResponse>> for ApiBehaviour {
     fn inject_event(&mut self, event: RequestResponseEvent<BanyanRequest, BanyanResponse>) {
         tracing::debug!("received banyan event");
@@ -612,182 +598,75 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<BanyanRequest, BanyanResp
                 match message {
                     RequestResponseMessage::Request { request, channel, .. } => match request {
                         BanyanRequest::MakeFreshTopic(topic) => {
-                            let (tx, rx) = oneshot::channel();
-                            t!(self channel: self.state.store.send(ComponentRequest::Individual(StoreRequest::FreshBanyan(topic.clone(), tx))), e => "store closed");
-                            self.state.pending_banyan.push(Box::pin(async move {
-                                (channel, topic, rx.await.map_err(anyhow::Error::from).and_then(|x| x))
-                            }));
+                            let result = (|| -> anyhow::Result<()> {
+                                let storage = StorageServiceStore::new(StorageService::open(
+                                    StorageConfig::new(
+                                        Some(self.state.store_dir.join(format!("{}.sqlite", topic))),
+                                        None,
+                                        10_000,
+                                        Duration::from_secs(7200),
+                                    ),
+                                    swarm::IpfsEmbedExecutor::new(),
+                                )?);
+                                let forest = swarm::BanyanForest::<swarm::TT, _>::new(storage, Default::default());
+                                self.state.banyan_stores.insert(topic, BanyanWriter::new(forest));
+                                Ok(())
+                            })();
+                            if let Err(ref e) = result {
+                                tracing::warn!("error in MakeFreshTopic: {}", e);
+                            }
+                            self.banyan.send_response(channel, result.into()).ok();
                         }
                         BanyanRequest::AppendEvents(topic, data) => {
-                            let (mut node_id, mut buf, store) = t!(self channel: self.state.banyan_stores.remove(&topic).ok_or(()), e => "topic not prepared");
-
-                            self.state.pending_finalise.push(Box::pin(async move {
-                                if let Err(e) = buf.write_all(data.as_slice()) {
-                                    return (
-                                        channel,
-                                        BanyanResponse::Error(format!("decompression failure: {}", e)),
-                                        None,
-                                    );
-                                }
-
-                                let mut bytes = buf.get_ref().as_slice();
-                                while let Ok((cbor, rest)) = Cbor::checked_prefix(bytes) {
-                                    if let Some(node_id) = node_id {
-                                        let (orig_node, app_id, timestamp, tags, payload) =
-                                            match decode_dump_frame(cbor) {
-                                                Some(x) => x,
-                                                None => {
-                                                    return (
-                                                        channel,
-                                                        BanyanResponse::Error(format!("malformed: {}", cbor)),
-                                                        None,
-                                                    )
-                                                }
-                                            };
-
-                                        let stream_nr = if orig_node == node_id {
-                                            StreamNr::from(4)
-                                        } else {
-                                            StreamNr::from(5)
-                                        };
-                                        if let Err(e) =
-                                            store.append0(stream_nr, app_id, timestamp, vec![(tags, payload)]).await
-                                        {
-                                            return (
-                                                channel,
-                                                BanyanResponse::Error(format!("append error: {}", e)),
-                                                None,
-                                            );
-                                        }
-                                    } else {
-                                        node_id = match decode_dump_header(cbor) {
-                                            Some((node_id, ..)) => Some(node_id),
-                                            None => {
-                                                return (
-                                                    channel,
-                                                    BanyanResponse::Error(format!("header: {}", cbor)),
-                                                    None,
-                                                )
-                                            }
-                                        };
-                                    }
-                                    bytes = rest;
-                                }
-                                let consumed = unsafe {
-                                    (bytes as *const _ as *const u8)
-                                        .offset_from(buf.get_ref().as_slice() as *const _ as *const u8)
-                                };
-                                if consumed > 0 {
-                                    let consumed = consumed as usize;
-                                    let v = buf.get_mut();
-                                    v.as_mut_slice().copy_within(consumed.., 0);
-                                    v.truncate(v.len() - consumed);
-                                }
-                                if buf.get_ref().len() > 4000000 {
-                                    tracing::warn!("dump `{}`: upload buffer full, aborting", topic);
-                                    (channel, BanyanResponse::Error("upload buffer full".into()), None)
-                                } else {
-                                    (channel, BanyanResponse::Ok, Some((topic, (node_id, buf, store))))
-                                }
-                            }));
+                            let result = (|| -> anyhow::Result<()> {
+                                let writer = self
+                                    .state
+                                    .banyan_stores
+                                    .get_mut(&topic)
+                                    .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
+                                writer.buf.write_all(data.as_slice())?;
+                                store_events(writer)?;
+                                Ok(())
+                            })();
+                            if let Err(ref e) = result {
+                                tracing::warn!("error in AppendEvents: {}", e);
+                            }
+                            self.banyan.send_response(channel, result.into()).ok();
                         }
                         BanyanRequest::Finalise(topic) => {
-                            let (mut node_id, mut buf, store) = t!(self channel: self.state.banyan_stores.remove(&topic).ok_or(()), e => "topic not prepared");
+                            let result = (|| -> anyhow::Result<()> {
+                                let mut writer = self
+                                    .state
+                                    .banyan_stores
+                                    .remove(&topic)
+                                    .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
 
-                            let node_tx = self.state.node_tx.clone();
-                            self.state.pending_finalise.push(Box::pin(async move {
-                                if let Err(e) = buf.flush() {
-                                    return (
-                                        channel,
-                                        BanyanResponse::Error(format!("decompression failure: {}", e)),
-                                        None,
+                                writer.buf.flush()?;
+                                store_events(&mut writer)?;
+
+                                if !writer.buf.get_ref().is_empty() {
+                                    tracing::warn!(
+                                        bytes = writer.buf.get_ref().len(),
+                                        "trailing garbage in upload for topic `{}`!",
+                                        topic
                                     );
                                 }
 
-                                let bytes = buf.into_inner();
-                                let mut bytes = bytes.as_ref();
-                                while let Ok((cbor, rest)) = Cbor::checked_prefix(bytes) {
-                                    if let Some(ref node_id) = node_id {
-                                        let (orig_node, app_id, timestamp, tags, payload) =
-                                            match decode_dump_frame(cbor) {
-                                                Some(x) => x,
-                                                None => {
-                                                    return (
-                                                        channel,
-                                                        BanyanResponse::Error(format!("malformed: {}", cbor)),
-                                                        None,
-                                                    )
-                                                }
-                                            };
+                                finalise_streams(self.state.node_id, writer)?;
 
-                                        let stream_nr = if orig_node == *node_id {
-                                            StreamNr::from(4)
-                                        } else {
-                                            StreamNr::from(5)
-                                        };
-                                        if let Err(e) =
-                                            store.append0(stream_nr, app_id, timestamp, vec![(tags, payload)]).await
-                                        {
-                                            return (
-                                                channel,
-                                                BanyanResponse::Error(format!("append error: {}", e)),
-                                                None,
-                                            );
-                                        }
-                                    } else {
-                                        node_id = match decode_dump_header(cbor) {
-                                            Some((node_id, ..)) => Some(node_id),
-                                            None => {
-                                                return (
-                                                    channel,
-                                                    BanyanResponse::Error(format!("header: {}", cbor)),
-                                                    None,
-                                                )
-                                            }
-                                        };
-                                    }
-                                    bytes = rest;
-                                }
-                                if !bytes.is_empty() {
-                                    tracing::warn!("trailing garbage!");
-                                }
+                                Ok(())
+                            })();
+                            if let Err(ref e) = result {
+                                tracing::warn!("error in Finalise: {}", e);
+                                self.banyan.send_response(channel, result.into()).ok();
+                                return;
+                            }
+                            tracing::info!("import completed for topic `{}`", topic);
 
-                                tracing::info!("import completed for topic `{}`", topic);
-
-                                let (tx, rx) = oneshot::channel();
-                                let set_settings = ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
-                                    scope: "com.actyx/api/events/readOnly".parse().unwrap(),
-                                    json: json!(true),
-                                    ignore_errors: false,
-                                    response: tx,
-                                });
-                                if node_tx.send(set_settings).is_err() {
-                                    return (channel, BanyanResponse::Error("store closed".into()), None);
-                                }
-                                match rx.await {
-                                    Ok(Err(e)) => return (channel, BanyanResponse::Error(e.to_string()), None),
-                                    Err(e) => return (channel, BanyanResponse::Error(e.to_string()), None),
-                                    _ => {}
-                                }
-
-                                let (tx, rx) = oneshot::channel();
-                                let set_settings = ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
-                                    scope: "com.actyx/swarm/topic".parse().unwrap(),
-                                    json: json!(topic),
-                                    ignore_errors: false,
-                                    response: tx,
-                                });
-                                if node_tx.send(set_settings).is_err() {
-                                    return (channel, BanyanResponse::Error("store closed".into()), None);
-                                }
-                                match rx.await {
-                                    Ok(Err(e)) => return (channel, BanyanResponse::Error(e.to_string()), None),
-                                    Err(e) => return (channel, BanyanResponse::Error(e.to_string()), None),
-                                    _ => {}
-                                }
-
-                                (channel, BanyanResponse::Ok, None)
-                            }));
+                            let node_tx = self.state.node_tx.clone();
+                            self.state
+                                .pending_finalise
+                                .push(Box::pin(switch_to_dump(node_tx, channel, topic)));
                         }
                         BanyanRequest::Future => {
                             self.banyan
@@ -823,6 +702,124 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<BanyanRequest, BanyanResp
     }
 }
 
+fn finalise_streams(node_id: NodeId, mut writer: BanyanWriter) -> Result<(), anyhow::Error> {
+    // pack the streams
+    writer.txn.pack(&mut writer.own)?;
+    writer.txn.pack(&mut writer.other)?;
+
+    // then alias them
+    let header = AxTreeHeader::new(writer.own.snapshot().link().unwrap(), writer.lamport);
+    let root = writer.txn.writer().put(DagCborCodec.encode(&header)?)?;
+    let cid = Cid::from(root);
+    let stream_id = node_id.stream(0.into());
+    writer
+        .txn
+        .store()
+        .alias(StreamAlias::from(stream_id).as_ref(), Some(&cid))?;
+    let header = AxTreeHeader::new(writer.other.snapshot().link().unwrap(), writer.lamport);
+    let root = writer.txn.writer().put(DagCborCodec.encode(&header)?)?;
+    let cid = Cid::from(root);
+    if let Some(node_id) = writer.node_id {
+        let stream_id = node_id.stream(4.into());
+        writer
+            .txn
+            .store()
+            .alias(StreamAlias::from(stream_id).as_ref(), Some(&cid))?;
+    }
+    // the SqliteIndexStore will be autofilled with these streams upon restart
+
+    Ok(())
+}
+
+async fn switch_to_dump(
+    node_tx: Sender<ExternalEvent>,
+    channel: ResponseChannel<BanyanResponse>,
+    topic: String,
+) -> (ResponseChannel<BanyanResponse>, BanyanResponse) {
+    let (tx, rx) = oneshot::channel();
+    let get_settings = ExternalEvent::SettingsRequest(SettingsRequest::GetSettings {
+        scope: "com.actyx".parse().unwrap(),
+        no_defaults: false,
+        response: tx,
+    });
+    if node_tx.send(get_settings).is_err() {
+        return (channel, BanyanResponse::Error("store closed".into()));
+    }
+    let mut settings = match rx.await {
+        Ok(Ok(s)) => s,
+        Ok(Err(e)) => return (channel, BanyanResponse::Error(e.to_string())),
+        Err(e) => return (channel, BanyanResponse::Error(e.to_string())),
+    };
+
+    *settings.pointer_mut("/api/events/readOnly").unwrap() = json!(true);
+    *settings.pointer_mut("/swarm/topic").unwrap() = json!(topic);
+
+    let (tx, rx) = oneshot::channel();
+    let set_settings = ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
+        scope: "com.actyx".parse().unwrap(),
+        json: settings,
+        ignore_errors: false,
+        response: tx,
+    });
+    if node_tx.send(set_settings).is_err() {
+        return (channel, BanyanResponse::Error("store closed".into()));
+    }
+    match rx.await {
+        Ok(Err(e)) => return (channel, BanyanResponse::Error(e.to_string())),
+        Err(e) => return (channel, BanyanResponse::Error(e.to_string())),
+        _ => {}
+    }
+
+    (channel, BanyanResponse::Ok)
+}
+
+fn store_events(writer: &mut BanyanWriter) -> anyhow::Result<()> {
+    let mut bytes = writer.buf.get_ref().as_slice();
+    while let Ok((cbor, rest)) = Cbor::checked_prefix(bytes) {
+        if let Some(node_id) = writer.node_id {
+            let (orig_node, app_id, timestamp, tags, payload) =
+                decode_dump_frame(cbor).ok_or_else(|| anyhow::anyhow!("malformed event: {}", cbor))?;
+            let lamport = writer.lamport.incr();
+            writer.lamport = lamport;
+
+            let mut tagset = ScopedTagSet::from(tags);
+            tagset.insert(ScopedTag::new(TagScope::Internal, tag!("app_id:") + app_id.as_str()));
+            let key = AxKey::new(tagset, lamport, timestamp);
+
+            let stream = if orig_node == node_id {
+                &mut writer.own
+            } else {
+                &mut writer.other
+            };
+
+            writer.txn.extend_unpacked(stream, [(key, payload)])?;
+            if stream.level() > 500 {
+                writer.txn.pack(stream)?;
+            }
+        } else {
+            writer.node_id = Some(
+                decode_dump_header(cbor)
+                    .ok_or_else(|| anyhow::anyhow!("malformed header: {}", cbor))?
+                    .0,
+            );
+        }
+        bytes = rest;
+    }
+    let consumed = unsafe {
+        (bytes as *const _ as *const u8).offset_from(writer.buf.get_ref().as_slice() as *const _ as *const u8)
+    };
+    if consumed > 0 {
+        let consumed = consumed as usize;
+        let v = writer.buf.get_mut();
+        v.as_mut_slice().copy_within(consumed.., 0);
+        v.truncate(v.len() - consumed);
+    }
+    if writer.buf.get_ref().len() > 4000000 {
+        anyhow::bail!("upload buffer full");
+    }
+    Ok(())
+}
+
 impl NetworkBehaviourEventProcess<PingEvent> for ApiBehaviour {
     fn inject_event(&mut self, _event: PingEvent) {
         // ignored
@@ -840,6 +837,7 @@ pub(crate) async fn mk_swarm(
     keypair: libp2p::core::identity::Keypair,
     node_tx: Sender<ExternalEvent>,
     bind_to: SocketAddrHelper,
+    store_dir: PathBuf,
     store: StoreTx,
     auth_info: Arc<Mutex<NodeApiSettings>>,
 ) -> anyhow::Result<PeerId> {
@@ -847,7 +845,7 @@ pub(crate) async fn mk_swarm(
         bail!("cannot start node API without any listen addresses");
     }
 
-    let protocol = ApiBehaviour::new(node_id, node_tx, store, auth_info, keypair.public());
+    let protocol = ApiBehaviour::new(node_id, node_tx, store_dir, store, auth_info, keypair.public());
     let (peer_id, transport) = mk_transport(keypair).await?;
 
     let mut swarm = SwarmBuilder::new(transport, protocol, peer_id)
