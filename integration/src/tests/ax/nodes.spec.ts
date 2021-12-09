@@ -17,8 +17,12 @@ describe('ax nodes', () => {
         code: 'OK',
         result: [
           {
-            connection: 'unreachable',
+            connection: 'error',
             host: expect.any(String),
+            error: {
+              code: 'ERR_NODE_UNREACHABLE',
+              message: 'timeout',
+            },
           },
         ],
       })

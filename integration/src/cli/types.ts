@@ -84,6 +84,11 @@ export const Response_Nodes_Ls = io.union([
             connection: io.literal('unauthorized'),
             host: io.string,
           }),
+          io.type({
+            connection: io.literal('error'),
+            host: io.string,
+            error: ERR_NODE_UNREACHABLE,
+          }),
         ]),
       ),
     }),
