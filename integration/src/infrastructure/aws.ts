@@ -12,7 +12,7 @@ import { Ssh } from './ssh'
 import { AwsKey, SshAble, Target, TargetKind } from './types'
 
 // determines frequency of polling AWS APIs (e.g. waiting for instance start)
-const pollDelay = <T>(f: () => Promise<T>) => new Promise((res) => setTimeout(res, 2000)).then(f)
+const pollDelay = <T>(f: () => Promise<T>) => new Promise((res) => setTimeout(res, 2500)).then(f)
 
 export const myKey = (<MyGlobal>global)?.axNodeSetup?.key
 
@@ -64,6 +64,20 @@ const DEFAULT_PARAMS: EC2.RunInstancesRequest = {
   InstanceInitiatedShutdownBehavior: 'terminate',
 }
 
+const retry = async <T>(f: () => Promise<T>, retries: number): Promise<T> => {
+  try {
+    return await f()
+  } catch (e) {
+    if (e.code === 'RequestLimitExceeded' && retries > 0) {
+      console.log('request limit hit, waiting a bit ...')
+      await new Promise((res) => setTimeout(res, 5000))
+      return await retry(f, retries - 1)
+    } else {
+      throw e
+    }
+  }
+}
+
 export const createInstance = async (
   ec2: EC2,
   params: Partial<EC2.RunInstancesRequest>,
@@ -89,7 +103,7 @@ export const createInstance = async (
 
   // this is the main thing
   console.log('creating instance', withTags)
-  let instance = (await ec2.runInstances(withTags).promise()).Instances?.[0]
+  let instance = (await retry(() => ec2.runInstances(withTags).promise(), 3)).Instances?.[0]
 
   if (instance === undefined) {
     console.error('cannot start instance')
