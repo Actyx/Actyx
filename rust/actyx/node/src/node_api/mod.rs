@@ -1,8 +1,8 @@
 use crate::{
     components::{
         node_api::NodeApiSettings,
-        store::{StoreRequest, StoreTx},
-        ComponentRequest,
+        store::{Store, StoreRequest, StoreTx},
+        Component, ComponentRequest,
     },
     formats::ExternalEvent,
     settings::{SettingsRequest, SYSTEM_SCOPE},
@@ -49,8 +49,8 @@ use serde_json::json;
 use std::{
     collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
-    io::Write,
-    path::PathBuf,
+    io::{ErrorKind, Write},
+    path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
     time::Duration,
@@ -599,21 +599,27 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<BanyanRequest, BanyanResp
                     RequestResponseMessage::Request { request, channel, .. } => match request {
                         BanyanRequest::MakeFreshTopic(topic) => {
                             let result = (|| -> anyhow::Result<()> {
-                                let storage = StorageServiceStore::new(StorageService::open(
-                                    StorageConfig::new(
-                                        Some(self.state.store_dir.join(format!("{}.sqlite", topic))),
-                                        None,
-                                        10_000,
-                                        Duration::from_secs(7200),
-                                    ),
-                                    swarm::IpfsEmbedExecutor::new(),
-                                )?);
+                                remove_old_dbs(self.state.store_dir.as_path(), topic.as_str())
+                                    .context("removing old DBs")?;
+                                let storage = StorageServiceStore::new(
+                                    StorageService::open(
+                                        StorageConfig::new(
+                                            Some(self.state.store_dir.join(format!("{}.sqlite", topic))),
+                                            None,
+                                            10_000,
+                                            Duration::from_secs(7200),
+                                        ),
+                                        swarm::IpfsEmbedExecutor::new(),
+                                    )
+                                    .context("creating new store DB")?,
+                                );
                                 let forest = swarm::BanyanForest::<swarm::TT, _>::new(storage, Default::default());
+                                tracing::info!("prepared new store DB for upload of topic `{}`", topic);
                                 self.state.banyan_stores.insert(topic, BanyanWriter::new(forest));
                                 Ok(())
                             })();
                             if let Err(ref e) = result {
-                                tracing::warn!("error in MakeFreshTopic: {}", e);
+                                tracing::warn!("error in MakeFreshTopic: {:#}", e);
                             }
                             self.banyan.send_response(channel, result.into()).ok();
                         }
@@ -624,12 +630,12 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<BanyanRequest, BanyanResp
                                     .banyan_stores
                                     .get_mut(&topic)
                                     .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
-                                writer.buf.write_all(data.as_slice())?;
-                                store_events(writer)?;
+                                writer.buf.write_all(data.as_slice()).context("feeding decompressor")?;
+                                store_events(writer).context("storing events")?;
                                 Ok(())
                             })();
                             if let Err(ref e) = result {
-                                tracing::warn!("error in AppendEvents: {}", e);
+                                tracing::warn!("error in AppendEvents: {:#}", e);
                             }
                             self.banyan.send_response(channel, result.into()).ok();
                         }
@@ -641,8 +647,8 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<BanyanRequest, BanyanResp
                                     .remove(&topic)
                                     .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
 
-                                writer.buf.flush()?;
-                                store_events(&mut writer)?;
+                                writer.buf.flush().context("flushing decompressor")?;
+                                store_events(&mut writer).context("storing final events")?;
 
                                 if !writer.buf.get_ref().is_empty() {
                                     tracing::warn!(
@@ -652,12 +658,12 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<BanyanRequest, BanyanResp
                                     );
                                 }
 
-                                finalise_streams(self.state.node_id, writer)?;
+                                finalise_streams(self.state.node_id, writer).context("finalising streams")?;
 
                                 Ok(())
                             })();
                             if let Err(ref e) = result {
-                                tracing::warn!("error in Finalise: {}", e);
+                                tracing::warn!("error in Finalise: {:#}", e);
                                 self.banyan.send_response(channel, result.into()).ok();
                                 return;
                             }
@@ -700,6 +706,32 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<BanyanRequest, BanyanResp
             RequestResponseEvent::ResponseSent { .. } => {}
         }
     }
+}
+
+fn remove_old_dbs(dir: &Path, topic: &str) -> anyhow::Result<()> {
+    fn ok(path: PathBuf) -> anyhow::Result<()> {
+        match std::fs::remove_file(&path) {
+            Ok(_) => {
+                tracing::info!("removed {}", path.display());
+                Ok(())
+            }
+            Err(e) => match e.kind() {
+                ErrorKind::NotFound => Ok(()),
+                _ => Err(e.into()),
+            },
+        }
+    }
+    let path = dir.join(format!("{}.sqlite", topic));
+    std::fs::remove_dir_all(&path)
+        .map(|_| tracing::info!("removed {}", path.display()))
+        .ok();
+    ok(dir.join(format!("{}.sqlite", topic)))?;
+    ok(dir.join(format!("{}.sqlite-shm", topic)))?;
+    ok(dir.join(format!("{}.sqlite-wal", topic)))?;
+    ok(dir.join(format!("{}-index.sqlite", topic)))?;
+    ok(dir.join(format!("{}-index.sqlite-shm", topic)))?;
+    ok(dir.join(format!("{}-index.sqlite-wal", topic)))?;
+    Ok(())
 }
 
 fn finalise_streams(node_id: NodeId, mut writer: BanyanWriter) -> Result<(), anyhow::Error> {
@@ -751,23 +783,42 @@ async fn switch_to_dump(
         Err(e) => return (channel, BanyanResponse::Error(e.to_string())),
     };
 
-    *settings.pointer_mut("/api/events/readOnly").unwrap() = json!(true);
-    *settings.pointer_mut("/swarm/topic").unwrap() = json!(topic);
-
-    let (tx, rx) = oneshot::channel();
-    let set_settings = ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
-        scope: "com.actyx".parse().unwrap(),
-        json: settings,
-        ignore_errors: false,
-        response: tx,
-    });
-    if node_tx.send(set_settings).is_err() {
-        return (channel, BanyanResponse::Error("store closed".into()));
+    let mut changed = false;
+    let ro = settings.pointer_mut("/api/events/readOnly").unwrap();
+    if *ro != json!(true) {
+        *ro = json!(true);
+        changed = true;
     }
-    match rx.await {
-        Ok(Err(e)) => return (channel, BanyanResponse::Error(e.to_string())),
-        Err(e) => return (channel, BanyanResponse::Error(e.to_string())),
-        _ => {}
+    let top = settings.pointer_mut("/swarm/topic").unwrap();
+    if *top != json!(topic) {
+        *top = json!(topic);
+        changed = true;
+    }
+
+    if changed {
+        let (tx, rx) = oneshot::channel();
+        let set_settings = ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
+            scope: "com.actyx".parse().unwrap(),
+            json: settings,
+            ignore_errors: false,
+            response: tx,
+        });
+        if node_tx.send(set_settings).is_err() {
+            return (channel, BanyanResponse::Error("store closed".into()));
+        }
+        match rx.await {
+            Ok(Err(e)) => return (channel, BanyanResponse::Error(e.to_string())),
+            Err(e) => return (channel, BanyanResponse::Error(e.to_string())),
+            _ => {}
+        }
+    } else {
+        tracing::info!("settings unchanged, restarting store");
+        if node_tx
+            .send(ExternalEvent::RestartRequest(Store::get_type().into()))
+            .is_err()
+        {
+            return (channel, BanyanResponse::Error("cannot restart store".into()));
+        }
     }
 
     (channel, BanyanResponse::Ok)

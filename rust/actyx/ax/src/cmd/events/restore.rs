@@ -107,26 +107,34 @@ impl AxCliCommand for EventsRestore {
             let mut buf = Vec::new();
             buf.resize(100_000, 0u8);
             let mut pos = 0;
-            loop {
-                let len = input.read(&mut buf.as_mut_slice()[pos..]).io("reading dump")?;
-                pos += len;
-                if len == 0 || pos == buf.len() {
-                    break;
-                }
-            }
-
             let mut decoder = zstd::stream::write::Decoder::new(Vec::new()).io("starting decoder")?;
-            decoder.write_all(&buf.as_slice()[..pos]).io("decoding header")?;
-            decoder.flush().io("flushing header")?;
+            let (node_id, topic, timestamp) = loop {
+                let len = input.read(&mut buf.as_mut_slice()[pos..]).io("reading dump")?;
+                diag.log(format!("received {} bytes", len))?;
 
-            let (cbor, _rest) = Cbor::checked_prefix(decoder.get_ref().as_slice()).map_err(|e| {
-                ActyxOSError::new(
-                    ActyxOSCode::ERR_INVALID_INPUT,
-                    format!("cannot read dump header: {}", e),
-                )
-            })?;
-            let (node_id, topic, timestamp) = decode_dump_header(cbor)
-                .ok_or_else(|| ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, "cannot read dump header"))?;
+                decoder
+                    .write_all(&buf.as_slice()[pos..pos + len])
+                    .io("decoding header")?;
+                decoder.flush().io("flushing header")?;
+                pos += len;
+
+                match Cbor::checked_prefix(&decoder.get_ref().as_slice()[..pos]) {
+                    Ok((cbor, _rest)) => {
+                        break decode_dump_header(cbor).ok_or_else(|| {
+                            ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, "cannot read dump header")
+                        })?
+                    }
+                    Err(e) => {
+                        if len == 0 || pos == buf.len() {
+                            return Err(ActyxOSError::new(
+                                ActyxOSCode::ERR_INVALID_INPUT,
+                                format!("cannot read dump header: {}", e),
+                            ));
+                        }
+                    }
+                }
+            };
+
             // keep the bytes in the buffer because the Actyx node will need to read the header as well
 
             diag.log(format!("sending dump from node {} topic `{}`", node_id, topic))?;

@@ -800,7 +800,7 @@ impl BanyanStore {
                 // either a new store or migrating from pre-2.9
                 let aliases = ipfs.aliases()?;
                 if !aliases.is_empty() {
-                    tracing::info!("starting store migration from pre-2.9");
+                    tracing::info!("starting store migration from pre-2.9 or dump");
                     let aliases = aliases.into_iter().filter_map(|(alias, _cid)| {
                         let stream_alias = StreamAlias::try_from(alias.as_slice()).ok()?;
                         StreamId::try_from(stream_alias).ok()
