@@ -258,6 +258,8 @@ pub fn discovery_publish(
                             tracing::debug!(id = display(&peer), "connection failed to initial peer");
                         }
                         *warn = false;
+                    } else {
+                        tracing::debug!(id = display(&peer), "connection failed");
                     }
                     let ipfs = store.ipfs().clone();
                     let backoff = if let Some(dialer) = dialers.remove(&peer) {
@@ -276,6 +278,8 @@ pub fn discovery_publish(
                     if let Some(warn) = to_warn.get_mut(&peer) {
                         tracing::info!(id = display(&peer), "connected to initial peer");
                         *warn = false;
+                    } else {
+                        tracing::debug!(id = display(&peer), "connected");
                     }
                     dialers.remove(&peer);
                     continue;
@@ -284,6 +288,8 @@ pub fn discovery_publish(
                     if let Some(warn) = to_warn.get_mut(&peer) {
                         tracing::info!(id = display(&peer), "disconnected from initial peer");
                         *warn = false;
+                    } else {
+                        tracing::debug!(id = display(&peer), "disconnected");
                     }
                     // dialing on disconnected ensures the unreachable event fires.
                     store.ipfs().dial(&peer);
