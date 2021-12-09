@@ -291,9 +291,11 @@ mod test {
         // now migrate
         let mut mem = load_test_db("tests/node_v0.sqlite")?;
         NodeStorage::migrate(&mut mem, 0)?;
+        assert_eq!(NodeStorage::version(&mem).unwrap(), 2);
+        NodeStorage::migrate(&mut mem, 2)?;
         let storage = NodeStorage::from_conn(mem).unwrap();
         let expected_node_id: NodeId = "Zg/1L3Tm5xWNV94nFsjaIO8s3kW6Sj1y4fzQR5zcVeo".parse().unwrap();
-        assert_eq!(NodeStorage::version(&storage.connection.lock()).unwrap(), 2);
+        assert_eq!(NodeStorage::version(&storage.connection.lock()).unwrap(), 3);
         assert_eq!(NodeStorage::get_node_key(&storage).unwrap(), Some(expected_node_id));
 
         let ks = storage
@@ -320,9 +322,11 @@ mod test {
         // now migrate
         let mut mem = load_test_db("tests/node_v1.sqlite")?;
         NodeStorage::migrate(&mut mem, 1)?;
+        assert_eq!(NodeStorage::version(&mem).unwrap(), 2);
+        NodeStorage::migrate(&mut mem, 2)?;
         let storage = NodeStorage::from_conn(mem).unwrap();
         let expected_node_id: NodeId = "lBkGGmqD2X/mmtpxnC2KWobZw4g1IWCJSPCdjdB1gCI".parse().unwrap();
-        assert_eq!(NodeStorage::version(&storage.connection.lock()).unwrap(), 2);
+        assert_eq!(NodeStorage::version(&storage.connection.lock()).unwrap(), 3);
         assert_eq!(NodeStorage::get_node_key(&storage).unwrap(), Some(expected_node_id));
 
         let ks = storage

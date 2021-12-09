@@ -4,7 +4,7 @@ use actyx_sdk::{
     service::{Order, QueryRequest},
 };
 use cbor_data::{value::Precision, CborBuilder, Encoder, Writer};
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Duration, Local, Utc};
 use console::{user_attended_stderr, Term};
 use futures::{Stream, StreamExt};
 use std::{
@@ -227,6 +227,7 @@ impl AxCliCommand for EventsDump {
             let mut scratch = Vec::new();
             let mut count = 0u64;
             let mut max_size = cbor.as_slice().len();
+            let mut last_printed = now;
             while let Some(ev) = events.next().await {
                 match ev {
                     EventsResponse::Error { message } => diag.log(format!("AQL error: {}", message))?,
@@ -256,7 +257,12 @@ impl AxCliCommand for EventsDump {
                         })?;
                         count += 1;
                         max_size = max_size.max(cbor.as_slice().len());
-                        diag.status(format!("event {} ({})", count, DateTime::<Utc>::from(ev.timestamp)))?;
+
+                        let now = Local::now();
+                        if now - last_printed > Duration::milliseconds(100) {
+                            last_printed = now;
+                            diag.status(format!("event {} ({})", count, DateTime::<Utc>::from(ev.timestamp)))?;
+                        }
                     }
                     EventsResponse::Diagnostic(d) => diag.log(format!("diagnostic {:?}: {}", d.severity, d.message))?,
                     _ => {}

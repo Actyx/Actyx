@@ -722,6 +722,9 @@ fn remove_old_dbs(dir: &Path, topic: &str) -> anyhow::Result<()> {
         }
     }
     let path = dir.join(format!("{}.sqlite", topic));
+    // NotADirectory and IsADirectory are not yet stable, so try to remove the
+    // directory first, ignore errors, and notice failure when trying to remove
+    // the file (which should be NotFound or success, not a directory).
     std::fs::remove_dir_all(&path)
         .map(|_| tracing::info!("removed {}", path.display()))
         .ok();
