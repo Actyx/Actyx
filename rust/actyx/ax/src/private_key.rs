@@ -10,6 +10,7 @@ use libp2p::identity;
 use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt};
 
 use crate::cmd::get_data_dir;
+use certs::DeveloperCertificate;
 
 const PUB_KEY_FILE_EXTENSION: &str = "pub";
 pub const DEFAULT_PRIVATE_KEY_FILE_NAME: &str = "id";
@@ -117,6 +118,17 @@ impl FromStr for AxPrivateKey {
         let x = PrivateKey::from_str(s)?;
         Ok(Self(x))
     }
+}
+
+pub fn load_dev_cert(path: Option<PathBuf>) -> ActyxOSResult<DeveloperCertificate> {
+    let path = path
+        .ok_or(())
+        .or_else(|_| ActyxOSResult::Ok(get_data_dir()?.join("certs").join("default")))?;
+    let s = fs::read_to_string(path.as_path()).ax_err_ctx(
+        ActyxOSCode::ERR_IO,
+        format!("failed to read developer certificate at {}", path.display()),
+    )?;
+    serde_json::from_str(&s).ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "reading developer certificate")
 }
 
 #[cfg(test)]

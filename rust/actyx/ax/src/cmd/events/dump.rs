@@ -41,6 +41,10 @@ pub struct DumpOpts {
     #[structopt(long, value_name = "TOKEN")]
     /// send dump via the cloud (start restore first to get the token)
     cloud: Option<String>,
+    #[structopt(long, value_name = "URL")]
+    /// base URL where to find the cloudmirror (only for --cloud)
+    /// defaults to wss://cloudmirror.actyx.net/forward
+    url: Option<String>,
 }
 
 macro_rules! filter {
@@ -146,9 +150,8 @@ impl AxCliCommand for EventsDump {
                     let file = File::create(out.as_path()).io("opening dump")?;
                     Box::new(file)
                 } else if let Some(ref token) = opts.cloud {
-                    let ws = connect(format!("ws://localhost:8087/forward/{}", token))
-                        .io("opening websocket")?
-                        .0;
+                    let url = opts.url.clone().unwrap_or_else(|| super::restore::URL.to_owned());
+                    let ws = connect(format!("{}/{}", url, token)).io("opening websocket")?.0;
                     Box::new(WsWrite::new(ws))
                 } else {
                     Box::new(std::io::stdout())
