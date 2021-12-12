@@ -19,7 +19,7 @@ ARGS:
     <PATH>    Path to the `actyx-data` folder you wish to modify
 ```
 
-This command uses local filesystem access to the Actyx data folder to modify the node database and insert the given key into the authorized keys list.
+This command uses local file system access to the Actyx data folder to modify the node database and insert the given key into the authorized keys list.
 For this operation to succeed, the Actyx node must not be running and you must have write access to the database files.
 
 If you try to add your key even though it is already present, you’ll see such an error:

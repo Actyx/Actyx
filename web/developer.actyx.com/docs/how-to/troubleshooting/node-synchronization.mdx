@@ -36,6 +36,18 @@ Nodes not being able to peer with one another can in some cases be caused by bin
 This can happen for example on hosts that run Docker or VPN tunnels.
 In this case it is advisable to explicitly bind to that address which belongs to the interface via which the other Actyx nodes can be reached, e.g. `actyx --bind-swarm=1.2.3.4:4001`.
 
+## Event synchronisation takes up to a minute
+
+Sending events from one Actyx node to the other usually takes less than 20ms, but this only works while the two nodes directly connected to each other.
+If two nodes are not directly connected, their events will still reach the respective other node, but via a much slower path — this is a fallback path that is super-reliable and ensures eventual synchronisation.
+
+The mechanism used on this fallback path is that each node transmits to the rest of the swarm its current knowledge of all event streams.
+Since there can be many streams and this is done by every node, the interval at which this information is sent is kept intentionally large, especially compared to real-time latencies.
+The process by which events traval on this path is also pull-based, so the listening node asks the sender for the events after it has heard the gossip message.
+
+For this reason, it is important that you keep those nodes that shall interact in (soft) real-time always connected to each other.
+Sending events via one intermediary usually takes 10–20 seconds, sending via two intermediaries could take 20–40 seconds — the latency for event dissemination strongly depends on how well your swarm is connected.
+
 ## Did not find what you were looking for?
 
 If you couldn't a solution to your problem, please don't hesitate to contact us in our [community forum](https://community.actyx.com) or on our [Discord server](https://discord.gg/262yJhc). We'll do our best to get back to you with answers as fast as possible.

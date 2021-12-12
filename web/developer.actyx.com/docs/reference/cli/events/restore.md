@@ -54,7 +54,7 @@ If you want to reset the dump topic to its original state after playing with you
 ## Cloud Transfer
 
 It can be inconvenient to move files between production machines and the test or development environment.
-If both sides of this transfer can access HTTPS in the cloud, you can use the Actyx cloudmirror to transfer the dump.
+If both sides of this transfer can access HTTPS in the cloud, you can use the Actyx cloud mirror to transfer the dump.
 
 ```text title="Transfer via the cloud"
 $ ax events restore --cloud dump localhost
