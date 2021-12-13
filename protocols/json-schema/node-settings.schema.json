@@ -34,6 +34,11 @@
         "type": "string",
         "minLength": 1
       },
+      "Topic": {
+	"type": "string",
+	"minLength": 1,
+	"maxLength": 60
+      },
       "MultiAddr": {
           "type": "string",
           "format": "multiaddr-without-peer-id"
@@ -99,7 +104,7 @@
           "default": "MDAwMDAwMDAxMTExMTExMTIyMjIyMjIyMzMzMzMzMzM="
         },
         "topic": {
-          "$ref": "#/definitions/Basic/NonEmptyString",
+          "$ref": "#/definitions/Basic/Topic",
           "default": "default-topic"
         },
         "initialPeers": {
