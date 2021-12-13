@@ -161,7 +161,7 @@ impl AxCliCommand for EventsRestore {
             // keep the bytes in the buffer because the Actyx node will need to read the header as well
 
             diag.log(format!("sending dump from node {} topic `{}`", node_id, topic))?;
-            let topic = format!("dump-{}", timestamp.to_rfc3339());
+            let topic = format!("dump-{}", timestamp.to_rfc3339()).replace(':', "-");
             diag.log(format!("uploading to topic `{}`", topic))?;
 
             let mut conn = opts.console_opt.connect().await?;
