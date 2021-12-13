@@ -24,7 +24,7 @@ use util::{
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
-/// dump events described by an AQL query into a file
+/// restore events from an event dump to a temporary topic
 pub struct RestoreOpts {
     #[structopt(long, short = "I", value_name = "FILE")]
     /// file to read the dump from
