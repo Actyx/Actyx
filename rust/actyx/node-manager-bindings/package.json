@@ -4,7 +4,7 @@
   "description": "Native Node.js bindings for interacting with Actyx nodes",
   "main": "index.node",
   "scripts": {
-    "build-win": "cross-env RUSTUP_TOOLCHAIN=\"${BUILD_RUST_TOOLCHAIN:1.55.0}\" cargo-cp-artifact -nc node-manager-bindings.node -- cargo build --locked --message-format=json-render-diagnostics",
+    "build-win": "cross-env RUSTUP_TOOLCHAIN=\"${BUILD_RUST_TOOLCHAIN:-1.55.0}\" cargo-cp-artifact -nc node-manager-bindings.node -- cargo build --locked --message-format=json-render-diagnostics",
     "build": "cargo-cp-artifact -nc node-manager-bindings.node -- cargo +${BUILD_RUST_TOOLCHAIN:-1.55.0} build --locked --message-format=json-render-diagnostics",
     "test": "cargo test"
   },
