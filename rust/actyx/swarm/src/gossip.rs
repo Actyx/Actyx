@@ -131,7 +131,7 @@ impl Gossip {
         async move {
             loop {
                 tokio::time::sleep(interval).await;
-                let _s = tracing::debug_span!("publish_root_map");
+                let _s = tracing::trace_span!("publish_root_map");
                 let _s = _s.enter();
                 let guard = store.lock();
                 let root_map = guard.root_map();
@@ -177,7 +177,7 @@ impl Gossip {
                     };
                     match DagCborCodec.decode::<GossipMessage>(&message) {
                         Ok(GossipMessage::RootUpdate(root_update)) => {
-                            let _s = tracing::debug_span!("root update", root = %root_update.root);
+                            let _s = tracing::trace_span!("root update", root = %root_update.root);
                             let _s = _s.enter();
                             tracing::debug!(
                                 "from {} with {} blocks, lamport: {}, offset: {:?}",
@@ -213,7 +213,7 @@ impl Gossip {
                             }
                         }
                         Ok(GossipMessage::RootMap(root_map)) => {
-                            let _s = tracing::debug_span!("root map", lamport = %root_map.lamport);
+                            let _s = tracing::trace_span!("root map", lamport = %root_map.lamport);
                             let _s = _s.enter();
                             tracing::debug!("with {} entries, lamport: {}", root_map.entries.len(), root_map.lamport);
                             store

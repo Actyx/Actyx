@@ -581,8 +581,7 @@ dependencies = [
 [[package]]
 name = "banyan"
 version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "288a740c1fe647d4dbe2ea25ae88a60c21a7d71ca31e960ef33b1abc1f69e0cd"
+source = "git+https://github.com/Actyx/banyan?branch=rku/logging#c156673f7932705a68541ee065d52d9989e00f8f"
 dependencies = [
  "anyhow",
  "chacha20",
@@ -2654,7 +2653,7 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.22.4"
-source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#d7a00a66b621530709bddda88b15227a4ff66369"
+source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#d5566c681b4d9074c7cbc30e65905b9776e88c28"
 dependencies = [
  "anyhow",
  "async-io",

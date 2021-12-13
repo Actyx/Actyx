@@ -1149,7 +1149,7 @@ impl BanyanStore {
         range: RangeInclusive<u64>,
         query: Q,
     ) -> impl Stream<Item = Result<FilteredChunk<(u64, AxKey, Payload), ()>>> {
-        tracing::debug!("stream_filtered_chunked {}", stream_id);
+        tracing::trace!("stream_filtered_chunked {}", stream_id);
         let trees = self.tree_stream(stream_id);
         self.data.forest.stream_trees_chunked(query, trees, range, &|_| {})
     }
@@ -1327,7 +1327,7 @@ impl BanyanStore {
                     n += 1;
                 }
                 SyncEvent::Complete(Err(err)) => {
-                    tracing::debug!("{}", err);
+                    tracing::debug!(%stream_id, %err, "sync_one");
                     return Err(err);
                 }
                 SyncEvent::Complete(Ok(())) => {}
