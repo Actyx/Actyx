@@ -18,6 +18,8 @@ pub enum ComponentRequest<A> {
     RegisterSupervisor(channel::Sender<(ComponentType, ComponentState)>),
     /// Global Settings have changed
     SettingsChanged(Box<Settings>),
+    /// Trigger a stop and restart
+    Restart,
     /// Trigger graceful shutdown
     Shutdown(ShutdownReason),
 }
@@ -172,6 +174,18 @@ where
                                         );
                                     }
                                 }
+                            }
+                            ComponentRequest::Restart => {
+                                if has_started {
+                                    state_change!(supervisor, Self::get_type(), ComponentState::Stopped, self.stop());
+                                }
+                                has_started = true;
+                                state_change!(
+                                    supervisor,
+                                    Self::get_type(),
+                                    ComponentState::Starting,
+                                    self.start(err_tx.clone())
+                                );
                             }
                             ComponentRequest::<RequestType>::Shutdown(_) => break,
                         }

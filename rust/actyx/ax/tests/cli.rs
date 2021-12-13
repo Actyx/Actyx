@@ -7,11 +7,11 @@ use util::version::NodeVersion;
 
 fn get_commands() -> HashMap<&'static str, Vec<&'static str>> {
     let apps = vec!["sign"];
-    let events = vec!["offsets", "query", "publish"];
+    let events = vec!["offsets", "query", "publish", "dump", "restore"];
     let nodes = vec!["ls", "inspect"];
     let settings = vec!["set", "get", "unset", "schema"];
     let swarms = vec!["keygen"];
-    let users = vec!["keygen"];
+    let users = vec!["keygen", "add-key"];
     vec![
         ("apps", apps),
         ("events", events),
@@ -141,6 +141,8 @@ fn version() {
         vec!["events", "offsets"] => Leaf,
         vec!["events", "query"] => Leaf,
         vec!["events", "publish"] => Leaf,
+        vec!["events", "dump"] => Leaf,
+        vec!["events", "restore"] => Leaf,
         vec!["internal"] => Branch,
         vec!["internal", "convert"] => Leaf,
         vec!["internal", "trees"] => Branch,
@@ -158,6 +160,7 @@ fn version() {
         vec!["swarms", "keygen"] => Leaf,
         vec!["users"] => Branch,
         vec!["users", "keygen"] => Leaf,
+        vec!["users", "add-key"] => Leaf,
     };
 
     let first_line = |sub| format!("ax-{} {}\n", sub, NodeVersion::get_cli());

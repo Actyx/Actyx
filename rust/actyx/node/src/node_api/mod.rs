@@ -1,8 +1,8 @@
 use crate::{
     components::{
         node_api::NodeApiSettings,
-        store::{StoreRequest, StoreTx},
-        ComponentRequest,
+        store::{Store, StoreRequest, StoreTx},
+        Component, ComponentRequest,
     },
     formats::ExternalEvent,
     settings::{SettingsRequest, SYSTEM_SCOPE},
@@ -11,11 +11,12 @@ use crate::{
 use actyx_sdk::{
     app_id,
     service::{QueryResponse, SubscribeMonotonicResponse, SubscribeResponse},
-    NodeId,
+    tag, LamportTimestamp, NodeId, Payload,
 };
 use anyhow::{anyhow, bail, Context};
 use api::EventService;
 use ax_futures_util::stream::{variable::Variable, MergeUnordered};
+use cbor_data::Cbor;
 use crossbeam::channel::Sender;
 use crypto::PublicKey;
 use formats::NodesRequest;
@@ -25,12 +26,17 @@ use futures::{
     task::{self, Poll},
     Future, FutureExt, Stream, StreamExt,
 };
+use libipld::{cbor::DagCborCodec, codec::Codec, Cid};
 use libp2p::{
     core::{muxing::StreamMuxerBox, transport::Boxed},
     identify::{Identify, IdentifyConfig, IdentifyEvent},
     identity,
     multiaddr::Protocol,
     ping::{Ping, PingConfig, PingEvent},
+    request_response::{
+        ProtocolSupport, RequestResponse, RequestResponseConfig, RequestResponseEvent, RequestResponseMessage,
+        ResponseChannel,
+    },
     swarm::{
         IntoProtocolsHandler, NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
         ProtocolsHandler, Swarm, SwarmBuilder, SwarmEvent,
@@ -39,38 +45,85 @@ use libp2p::{
 };
 use libp2p_streaming_response::{ChannelId, StreamingResponse, StreamingResponseConfig, StreamingResponseEvent};
 use parking_lot::Mutex;
+use serde_json::json;
 use std::{
     collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
+    io::{ErrorKind, Write},
+    path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
     time::Duration,
 };
-use swarm::event_store_ref::EventStoreRef;
-use tokio::time::{timeout_at, Instant};
-use tracing::*;
+use swarm::{
+    event_store_ref::EventStoreRef, BanyanConfig, BlockWriter, StorageConfig, StorageService, StorageServiceStore,
+    StorageServiceStoreWrite, StreamAlias,
+};
+use tokio::{
+    sync::oneshot,
+    time::{timeout_at, Instant},
+};
+use trees::{
+    tags::{ScopedTag, ScopedTagSet, TagScope},
+    AxKey, AxTreeHeader,
+};
 use util::formats::{
     admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
+    banyan_protocol::{
+        decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse,
+    },
     events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
     ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
 };
 use util::SocketAddrHelper;
+use zstd::stream::write::Decoder;
 
 pub mod formats;
 
 type PendingRequest = BoxFuture<'static, (ChannelId, ActyxOSResult<AdminResponse>)>;
 type PendingStream = BoxStream<'static, (ChannelId, Option<EventsResponse>)>;
+type PendingFinalise = BoxFuture<'static, (ResponseChannel<BanyanResponse>, BanyanResponse)>;
+
+struct BanyanWriter {
+    txn: swarm::BanyanTransaction<swarm::TT, StorageServiceStore, StorageServiceStoreWrite>,
+    own: swarm::StreamBuilder<swarm::TT, Payload>,
+    other: swarm::StreamBuilder<swarm::TT, Payload>,
+    buf: Decoder<'static, Vec<u8>>,
+    node_id: Option<NodeId>,
+    lamport: LamportTimestamp,
+}
+
+impl BanyanWriter {
+    fn new(forest: swarm::BanyanForest<swarm::TT, StorageServiceStore>) -> Self {
+        let config = BanyanConfig::default();
+        Self {
+            txn: forest.transaction(|s| {
+                let w = s.write().unwrap();
+                (s, w)
+            }),
+            own: swarm::StreamBuilder::new(config.tree.clone(), config.secret.clone()),
+            other: swarm::StreamBuilder::new(config.tree, config.secret),
+            buf: Decoder::new(Vec::new()).unwrap(),
+            node_id: None,
+            lamport: LamportTimestamp::default(),
+        }
+    }
+}
 
 struct State {
+    store_dir: PathBuf,
     node_tx: Sender<ExternalEvent>,
+    node_id: NodeId,
     auth_info: Arc<Mutex<NodeApiSettings>>,
     store: StoreTx,
     events: EventService,
     /// Pending inflight requests to Node.
     pending_oneshot: FuturesUnordered<PendingRequest>,
     pending_stream: MergeUnordered<PendingStream, stream::Empty<PendingStream>>,
+    pending_finalise: FuturesUnordered<PendingFinalise>,
     stream_handles: BTreeMap<ChannelId, AbortHandle>,
     admin_sockets: Variable<BTreeSet<Multiaddr>>,
+    banyan_stores: BTreeMap<String, BanyanWriter>,
 }
 
 #[derive(NetworkBehaviour)]
@@ -78,6 +131,7 @@ struct State {
 pub struct ApiBehaviour {
     admin: StreamingResponse<AdminProtocol>,
     events: StreamingResponse<EventsProtocol>,
+    banyan: RequestResponse<BanyanProtocol>,
     ping: Ping,
     identify: Identify,
     #[behaviour(ignore)]
@@ -92,7 +146,7 @@ macro_rules! request_oneshot {
         $slf.state.node_tx.send($build_request(tx)).unwrap();
         let fut = async move {
             if let Err(e) = maybe_add_key.await {
-                error!("Error adding initial key {}", e);
+                tracing::error!("Error adding initial key {}", e);
             }
 
             let result = rx
@@ -111,6 +165,7 @@ impl ApiBehaviour {
     fn new(
         node_id: NodeId,
         node_tx: Sender<ExternalEvent>,
+        store_dir: PathBuf,
         store: StoreTx,
         auth_info: Arc<Mutex<NodeApiSettings>>,
         local_public_key: libp2p::core::PublicKey,
@@ -123,17 +178,26 @@ impl ApiBehaviour {
         let events = EventService::new(events, node_id);
         let state = State {
             node_tx,
+            node_id,
             store,
+            store_dir,
             events,
             auth_info,
             pending_oneshot: FuturesUnordered::new(),
             pending_stream: MergeUnordered::without_input(),
+            pending_finalise: FuturesUnordered::new(),
             stream_handles: BTreeMap::default(),
             admin_sockets: Variable::default(),
+            banyan_stores: BTreeMap::default(),
         };
         Self {
             ping: Ping::new(PingConfig::new().with_keep_alive(true)),
             admin: StreamingResponse::new(StreamingResponseConfig::default()),
+            banyan: RequestResponse::new(
+                BanyanProtocol::default(),
+                [(BanyanProtocolName, ProtocolSupport::Inbound)],
+                RequestResponseConfig::default(),
+            ),
             events: StreamingResponse::new(StreamingResponseConfig::default()),
             identify: Identify::new(IdentifyConfig::new("Actyx".to_owned(), local_public_key)),
             state,
@@ -152,7 +216,7 @@ impl ApiBehaviour {
         if auth_info.authorized_keys.is_empty() {
             match PublicKey::try_from(peer) {
                 Ok(key_id) => {
-                    debug!("Adding {} (peer {}) to authorized users", key_id, peer);
+                    tracing::debug!("Adding {} (peer {}) to authorized users", key_id, peer);
                     // Directly add the peer. This will be overridden as soon as the settings round
                     // tripped.
                     auth_info.authorized_keys.push(peer);
@@ -172,7 +236,7 @@ impl ApiBehaviour {
                             .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error waiting for response")
                             .and_then(|x| {
                                 x.map(|_| {
-                                    info!(
+                                    tracing::info!(
                                         "User with public key {} has been added as the first authorized user.",
                                         key_id
                                     );
@@ -259,7 +323,7 @@ impl ApiBehaviour {
                     .collect();
                 let fut = async move {
                     if let Err(e) = maybe_add_key.await {
-                        error!("Error adding initial key {}", e);
+                        tracing::error!("Error adding initial key {}", e);
                     }
                     let res = rx
                         .await
@@ -427,7 +491,7 @@ impl ApiBehaviour {
         // Handle pending requests
         while let Poll::Ready(Some((chan, resp))) = self.state.pending_oneshot.poll_next_unpin(cx) {
             if self.admin.respond_final(chan, resp).is_err() {
-                debug!("Client dropped request");
+                tracing::debug!("Client dropped request");
             }
             wake_me_up = true;
         }
@@ -446,6 +510,13 @@ impl ApiBehaviour {
             wake_me_up = true;
         }
 
+        while let Poll::Ready(Some((channel, response))) = self.state.pending_finalise.poll_next_unpin(cx) {
+            if let BanyanResponse::Error(ref e) = response {
+                tracing::warn!("error in Finalise: {}", e);
+            }
+            self.banyan.send_response(channel, response).ok();
+        }
+
         // This `poll` function is the last in the derived NetworkBehaviour.
         // This means, when interacting with any sub-behaviours here, we have to
         // make sure that they are being polled again. This smells, but it is a
@@ -461,13 +532,13 @@ impl ApiBehaviour {
 
 impl NetworkBehaviourEventProcess<StreamingResponseEvent<AdminProtocol>> for ApiBehaviour {
     fn inject_event(&mut self, event: StreamingResponseEvent<AdminProtocol>) {
-        debug!("Received streaming_response event: {:?}", event);
+        tracing::debug!("Received streaming_response event: {:?}", event);
 
         match event {
             StreamingResponseEvent::<AdminProtocol>::ReceivedRequest { payload, channel_id } => {
                 let peer = channel_id.peer();
                 if !self.is_authorized(&peer) {
-                    warn!("Received unauthorized request from {}. Rejecting.", peer);
+                    tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
                     let _ = self.admin.respond_final(
                         channel_id,
                         Err(ActyxOSCode::ERR_UNAUTHORIZED
@@ -489,13 +560,13 @@ impl NetworkBehaviourEventProcess<StreamingResponseEvent<AdminProtocol>> for Api
 
 impl NetworkBehaviourEventProcess<StreamingResponseEvent<EventsProtocol>> for ApiBehaviour {
     fn inject_event(&mut self, event: StreamingResponseEvent<EventsProtocol>) {
-        debug!("Received streaming_response event: {:?}", event);
+        tracing::debug!("Received streaming_response event: {:?}", event);
 
         match event {
             StreamingResponseEvent::<EventsProtocol>::ReceivedRequest { payload, channel_id } => {
                 let peer = channel_id.peer();
                 if !self.is_authorized(&peer) {
-                    warn!("Received unauthorized request from {}. Rejecting.", peer);
+                    tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
                     let _ = self.admin.respond_final(
                         channel_id,
                         Err(ActyxOSCode::ERR_UNAUTHORIZED
@@ -517,6 +588,292 @@ impl NetworkBehaviourEventProcess<StreamingResponseEvent<EventsProtocol>> for Ap
     }
 }
 
+impl NetworkBehaviourEventProcess<RequestResponseEvent<BanyanRequest, BanyanResponse>> for ApiBehaviour {
+    fn inject_event(&mut self, event: RequestResponseEvent<BanyanRequest, BanyanResponse>) {
+        tracing::debug!("received banyan event");
+
+        match event {
+            RequestResponseEvent::Message { peer, message } => {
+                tracing::debug!(peer = display(peer), "received {:?}", message);
+                match message {
+                    RequestResponseMessage::Request { request, channel, .. } => match request {
+                        BanyanRequest::MakeFreshTopic(topic) => {
+                            let result = (|| -> anyhow::Result<()> {
+                                remove_old_dbs(self.state.store_dir.as_path(), topic.as_str())
+                                    .context("removing old DBs")?;
+                                let storage = StorageServiceStore::new(
+                                    StorageService::open(
+                                        StorageConfig::new(
+                                            Some(self.state.store_dir.join(format!("{}.sqlite", topic))),
+                                            None,
+                                            10_000,
+                                            Duration::from_secs(7200),
+                                        ),
+                                        swarm::IpfsEmbedExecutor::new(),
+                                    )
+                                    .context("creating new store DB")?,
+                                );
+                                let forest = swarm::BanyanForest::<swarm::TT, _>::new(storage, Default::default());
+                                tracing::info!("prepared new store DB for upload of topic `{}`", topic);
+                                self.state.banyan_stores.insert(topic, BanyanWriter::new(forest));
+                                Ok(())
+                            })();
+                            if let Err(ref e) = result {
+                                tracing::warn!("error in MakeFreshTopic: {:#}", e);
+                            }
+                            self.banyan.send_response(channel, result.into()).ok();
+                        }
+                        BanyanRequest::AppendEvents(topic, data) => {
+                            let result = (|| -> anyhow::Result<()> {
+                                let writer = self
+                                    .state
+                                    .banyan_stores
+                                    .get_mut(&topic)
+                                    .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
+                                writer.buf.write_all(data.as_slice()).context("feeding decompressor")?;
+                                store_events(writer).context("storing events")?;
+                                Ok(())
+                            })();
+                            if let Err(ref e) = result {
+                                tracing::warn!("error in AppendEvents: {:#}", e);
+                            }
+                            self.banyan.send_response(channel, result.into()).ok();
+                        }
+                        BanyanRequest::Finalise(topic) => {
+                            let result = (|| -> anyhow::Result<()> {
+                                let mut writer = self
+                                    .state
+                                    .banyan_stores
+                                    .remove(&topic)
+                                    .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
+
+                                writer.buf.flush().context("flushing decompressor")?;
+                                store_events(&mut writer).context("storing final events")?;
+
+                                if !writer.buf.get_ref().is_empty() {
+                                    tracing::warn!(
+                                        bytes = writer.buf.get_ref().len(),
+                                        "trailing garbage in upload for topic `{}`!",
+                                        topic
+                                    );
+                                }
+
+                                finalise_streams(self.state.node_id, writer).context("finalising streams")?;
+
+                                Ok(())
+                            })();
+                            if let Err(ref e) = result {
+                                tracing::warn!("error in Finalise: {:#}", e);
+                                self.banyan.send_response(channel, result.into()).ok();
+                                return;
+                            }
+                            tracing::info!("import completed for topic `{}`", topic);
+
+                            let node_tx = self.state.node_tx.clone();
+                            self.state
+                                .pending_finalise
+                                .push(Box::pin(switch_to_dump(node_tx, channel, topic)));
+                        }
+                        BanyanRequest::Future => {
+                            self.banyan
+                                .send_response(channel, BanyanResponse::Error("message from the future".into()))
+                                .ok();
+                        }
+                    },
+                    RequestResponseMessage::Response { .. } => {}
+                }
+            }
+            RequestResponseEvent::OutboundFailure {
+                peer,
+                request_id,
+                error,
+            } => tracing::warn!(
+                peer = display(peer),
+                request_id = display(request_id),
+                error = debug(&error),
+                "banyan outbound failure"
+            ),
+            RequestResponseEvent::InboundFailure {
+                peer,
+                request_id,
+                error,
+            } => tracing::warn!(
+                peer = display(peer),
+                request_id = display(request_id),
+                error = debug(&error),
+                "banyan inbound failure"
+            ),
+            RequestResponseEvent::ResponseSent { .. } => {}
+        }
+    }
+}
+
+fn remove_old_dbs(dir: &Path, topic: &str) -> anyhow::Result<()> {
+    fn ok(path: PathBuf) -> anyhow::Result<()> {
+        match std::fs::remove_file(&path) {
+            Ok(_) => {
+                tracing::info!("removed {}", path.display());
+                Ok(())
+            }
+            Err(e) => match e.kind() {
+                ErrorKind::NotFound => Ok(()),
+                _ => Err(e.into()),
+            },
+        }
+    }
+    let path = dir.join(format!("{}.sqlite", topic));
+    // NotADirectory and IsADirectory are not yet stable, so try to remove the
+    // directory first, ignore errors, and notice failure when trying to remove
+    // the file (which should be NotFound or success, not a directory).
+    std::fs::remove_dir_all(&path)
+        .map(|_| tracing::info!("removed {}", path.display()))
+        .ok();
+    ok(dir.join(format!("{}.sqlite", topic)))?;
+    ok(dir.join(format!("{}.sqlite-shm", topic)))?;
+    ok(dir.join(format!("{}.sqlite-wal", topic)))?;
+    ok(dir.join(format!("{}-index.sqlite", topic)))?;
+    ok(dir.join(format!("{}-index.sqlite-shm", topic)))?;
+    ok(dir.join(format!("{}-index.sqlite-wal", topic)))?;
+    Ok(())
+}
+
+fn finalise_streams(node_id: NodeId, mut writer: BanyanWriter) -> Result<(), anyhow::Error> {
+    // pack the streams
+    writer.txn.pack(&mut writer.own)?;
+    writer.txn.pack(&mut writer.other)?;
+
+    // then alias them
+    let header = AxTreeHeader::new(writer.own.snapshot().link().unwrap(), writer.lamport);
+    let root = writer.txn.writer().put(DagCborCodec.encode(&header)?)?;
+    let cid = Cid::from(root);
+    let stream_id = node_id.stream(0.into());
+    writer
+        .txn
+        .store()
+        .alias(StreamAlias::from(stream_id).as_ref(), Some(&cid))?;
+    let header = AxTreeHeader::new(writer.other.snapshot().link().unwrap(), writer.lamport);
+    let root = writer.txn.writer().put(DagCborCodec.encode(&header)?)?;
+    let cid = Cid::from(root);
+    if let Some(node_id) = writer.node_id {
+        let stream_id = node_id.stream(4.into());
+        writer
+            .txn
+            .store()
+            .alias(StreamAlias::from(stream_id).as_ref(), Some(&cid))?;
+    }
+    // the SqliteIndexStore will be autofilled with these streams upon restart
+
+    Ok(())
+}
+
+async fn switch_to_dump(
+    node_tx: Sender<ExternalEvent>,
+    channel: ResponseChannel<BanyanResponse>,
+    topic: String,
+) -> (ResponseChannel<BanyanResponse>, BanyanResponse) {
+    let (tx, rx) = oneshot::channel();
+    let get_settings = ExternalEvent::SettingsRequest(SettingsRequest::GetSettings {
+        scope: "com.actyx".parse().unwrap(),
+        no_defaults: false,
+        response: tx,
+    });
+    if node_tx.send(get_settings).is_err() {
+        return (channel, BanyanResponse::Error("store closed".into()));
+    }
+    let mut settings = match rx.await {
+        Ok(Ok(s)) => s,
+        Ok(Err(e)) => return (channel, BanyanResponse::Error(e.to_string())),
+        Err(e) => return (channel, BanyanResponse::Error(e.to_string())),
+    };
+
+    let mut changed = false;
+    let ro = settings.pointer_mut("/api/events/readOnly").unwrap();
+    if *ro != json!(true) {
+        *ro = json!(true);
+        changed = true;
+    }
+    let top = settings.pointer_mut("/swarm/topic").unwrap();
+    if *top != json!(topic) {
+        *top = json!(topic);
+        changed = true;
+    }
+
+    if changed {
+        let (tx, rx) = oneshot::channel();
+        let set_settings = ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
+            scope: "com.actyx".parse().unwrap(),
+            json: settings,
+            ignore_errors: false,
+            response: tx,
+        });
+        if node_tx.send(set_settings).is_err() {
+            return (channel, BanyanResponse::Error("store closed".into()));
+        }
+        match rx.await {
+            Ok(Err(e)) => return (channel, BanyanResponse::Error(e.to_string())),
+            Err(e) => return (channel, BanyanResponse::Error(e.to_string())),
+            _ => {}
+        }
+    } else {
+        tracing::info!("settings unchanged, restarting store");
+        if node_tx
+            .send(ExternalEvent::RestartRequest(Store::get_type().into()))
+            .is_err()
+        {
+            return (channel, BanyanResponse::Error("cannot restart store".into()));
+        }
+    }
+
+    (channel, BanyanResponse::Ok)
+}
+
+fn store_events(writer: &mut BanyanWriter) -> anyhow::Result<()> {
+    let mut bytes = writer.buf.get_ref().as_slice();
+    while let Ok((cbor, rest)) = Cbor::checked_prefix(bytes) {
+        if let Some(node_id) = writer.node_id {
+            let (orig_node, app_id, timestamp, tags, payload) =
+                decode_dump_frame(cbor).ok_or_else(|| anyhow::anyhow!("malformed event: {}", cbor))?;
+            let lamport = writer.lamport.incr();
+            writer.lamport = lamport;
+
+            let mut tagset = ScopedTagSet::from(tags);
+            tagset.insert(ScopedTag::new(TagScope::Internal, tag!("app_id:") + app_id.as_str()));
+            let key = AxKey::new(tagset, lamport, timestamp);
+
+            let stream = if orig_node == node_id {
+                &mut writer.own
+            } else {
+                &mut writer.other
+            };
+
+            writer.txn.extend_unpacked(stream, [(key, payload)])?;
+            if stream.level() > 500 {
+                writer.txn.pack(stream)?;
+            }
+        } else {
+            writer.node_id = Some(
+                decode_dump_header(cbor)
+                    .ok_or_else(|| anyhow::anyhow!("malformed header: {}", cbor))?
+                    .0,
+            );
+        }
+        bytes = rest;
+    }
+    let consumed = unsafe {
+        (bytes as *const _ as *const u8).offset_from(writer.buf.get_ref().as_slice() as *const _ as *const u8)
+    };
+    if consumed > 0 {
+        let consumed = consumed as usize;
+        let v = writer.buf.get_mut();
+        v.as_mut_slice().copy_within(consumed.., 0);
+        v.truncate(v.len() - consumed);
+    }
+    if writer.buf.get_ref().len() > 4000000 {
+        anyhow::bail!("upload buffer full");
+    }
+    Ok(())
+}
+
 impl NetworkBehaviourEventProcess<PingEvent> for ApiBehaviour {
     fn inject_event(&mut self, _event: PingEvent) {
         // ignored
@@ -534,6 +891,7 @@ pub(crate) async fn mk_swarm(
     keypair: libp2p::core::identity::Keypair,
     node_tx: Sender<ExternalEvent>,
     bind_to: SocketAddrHelper,
+    store_dir: PathBuf,
     store: StoreTx,
     auth_info: Arc<Mutex<NodeApiSettings>>,
 ) -> anyhow::Result<PeerId> {
@@ -541,7 +899,7 @@ pub(crate) async fn mk_swarm(
         bail!("cannot start node API without any listen addresses");
     }
 
-    let protocol = ApiBehaviour::new(node_id, node_tx, store, auth_info, keypair.public());
+    let protocol = ApiBehaviour::new(node_id, node_tx, store_dir, store, auth_info, keypair.public());
     let (peer_id, transport) = mk_transport(keypair).await?;
 
     let mut swarm = SwarmBuilder::new(transport, protocol, peer_id)
@@ -557,7 +915,7 @@ pub(crate) async fn mk_swarm(
     // why we have to to bind to ip4 and ip6 manually.
     // [0] https://github.com/libp2p/rust-libp2p/blob/master/transports/tcp/src/lib.rs#L322
     for addr in bind_to.to_multiaddrs() {
-        debug!("Admin API trying to bind to {}", addr);
+        tracing::debug!("Admin API trying to bind to {}", addr);
         swarm.listen_on(addr.clone()).with_context(|| {
             let port = addr
                 .iter()
@@ -617,7 +975,10 @@ pub(crate) async fn mk_swarm(
 type TConnErr = libp2p::core::either::EitherError<
     libp2p::core::either::EitherError<
         libp2p::core::either::EitherError<
-            libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
+            libp2p::core::either::EitherError<
+                libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
+                libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
+            >,
             libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
         >,
         libp2p::ping::handler::PingFailure,
@@ -654,14 +1015,14 @@ impl Future for SwarmFuture {
                         .transform_mut(|set| set.insert(address));
                 }
                 SwarmEvent::ListenerError { error, .. } => {
-                    error!("SwarmEvent::ListenerError {}", error)
+                    tracing::error!("SwarmEvent::ListenerError {}", error)
                 }
                 SwarmEvent::ListenerClosed {
                     reason: Err(error),
                     addresses,
                     ..
                 } => {
-                    error!("SwarmEvent::ListenerClosed {} for {:?}", error, addresses);
+                    tracing::error!("SwarmEvent::ListenerClosed {} for {:?}", error, addresses);
                     for addr in addresses {
                         self.0
                             .behaviour_mut()
@@ -671,7 +1032,7 @@ impl Future for SwarmFuture {
                     }
                 }
                 o => {
-                    debug!("Other swarm event {:?}", o);
+                    tracing::debug!("Other swarm event {:?}", o);
                 }
             }
         }

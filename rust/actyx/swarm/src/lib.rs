@@ -26,9 +26,13 @@ pub mod transport;
 #[cfg(test)]
 mod tests;
 
+pub use crate::sqlite::{StorageServiceStore, StorageServiceStoreWrite};
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
 use actyx_sdk::app_id;
+pub use banyan::{store::BlockWriter, Forest as BanyanForest, StreamBuilder, Transaction as BanyanTransaction};
+pub use ipfs_embed::{Executor as IpfsEmbedExecutor, StorageConfig, StorageService};
+pub use libipld::codec::Codec as IpldCodec;
 pub use prune::RetainConfig;
 pub use unixfs_v1::{
     dir::builder::{BufferingTreeBuilder, TreeOptions},
@@ -49,17 +53,17 @@ use ax_futures_util::{
 };
 use banyan::{
     query::Query,
-    store::{BlockWriter, BranchCache, ReadOnlyStore},
-    FilteredChunk, Secrets, StreamBuilder,
+    store::{BranchCache, ReadOnlyStore},
+    FilteredChunk, Secrets,
 };
 use crypto::KeyPair;
 use fnv::FnvHashMap;
 use futures::{channel::mpsc, prelude::*};
 use ipfs_embed::{
-    BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId,
-    StorageConfig, SyncEvent, TempPin, ToLibp2p,
+    BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId, SyncEvent,
+    TempPin, ToLibp2p,
 };
-use libipld::{cbor::DagCborCodec, codec::Codec, error::BlockNotFound};
+use libipld::{cbor::DagCborCodec, error::BlockNotFound};
 use libp2p::{
     dns::ResolverConfig,
     gossipsub::{GossipsubConfigBuilder, ValidationMode},
@@ -68,7 +72,6 @@ use libp2p::{
     ping::PingConfig,
 };
 use maplit::btreemap;
-use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use sqlite_index_store::SqliteIndexStore;
 use std::{
@@ -96,14 +99,14 @@ use util::{
 };
 
 #[allow(clippy::upper_case_acronyms)]
-type TT = AxTrees;
-type Key = AxKey;
-type Event = Payload;
-type Forest = banyan::Forest<TT, SqliteStore>;
-type Transaction = banyan::Transaction<TT, SqliteStore, SqliteStoreWrite>;
-type Tree = banyan::Tree<TT, Event>;
-type AxStreamBuilder = banyan::StreamBuilder<TT, Event>;
-type Link = Sha256Digest;
+pub type TT = AxTrees;
+pub type Key = AxKey;
+pub type Event = Payload;
+pub type Forest = banyan::Forest<TT, SqliteStore>;
+pub type Transaction = banyan::Transaction<TT, SqliteStore, SqliteStoreWrite>;
+pub type Tree = banyan::Tree<TT, Event>;
+pub type AxStreamBuilder = banyan::StreamBuilder<TT, Event>;
+pub type Link = Sha256Digest;
 
 pub type Block = libipld::Block<libipld::DefaultParams>;
 pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
@@ -150,7 +153,7 @@ impl Default for EphemeralEventsConfig {
 #[derive(Clone, Debug)]
 pub struct SwarmConfig {
     pub topic: String,
-    pub index_store: Option<Arc<Mutex<rusqlite::Connection>>>,
+    pub index_store: Option<PathBuf>,
     pub keypair: Option<KeyPair>,
     pub psk: Option<[u8; 32]>,
     pub node_name: Option<String>,
@@ -433,7 +436,7 @@ impl<'a> BanyanStoreGuard<'a> {
                     self.banyan_config.tree.clone(),
                     header.root,
                 )
-                .context("unable to load banyan tree")?;
+                .with_context(|| format!("unable to load banyan tree for stream {}", stream_nr))?;
             let published = PublishedTree::new(root, header, builder.snapshot());
             (builder, Some(published))
         } else {
@@ -465,7 +468,7 @@ impl<'a> BanyanStoreGuard<'a> {
                 .data
                 .forest
                 .load_tree(Secrets::default(), header.root)
-                .context("unable to load banyan tree")?;
+                .with_context(|| format!("unable to load banyan tree for stream {}", stream_id))?;
             Some(PublishedTree::new(root, header, tree))
         } else {
             None
@@ -611,13 +614,23 @@ impl<'a> BanyanStoreGuard<'a> {
 
     fn load_known_streams(&mut self) -> Result<()> {
         let known_streams = self.index_store.get_observed_streams()?;
+        let mut max_lamport = None;
         for stream_id in known_streams {
             // just trigger loading of the stream from the alias
-            if self.is_local(stream_id) {
-                let _ = self.get_or_create_own_stream(stream_id.stream_nr());
+            let lamport = if self.is_local(stream_id) {
+                self.get_or_create_own_stream(stream_id.stream_nr())?
+                    .infos()
+                    .map(|x| x.2)
             } else {
-                let _ = self.get_or_create_replicated_stream(stream_id);
-            }
+                self.get_or_create_replicated_stream(stream_id)?.infos().map(|x| x.2)
+            };
+            max_lamport = max_lamport.max(lamport);
+        }
+        if let Some(lamport) = max_lamport {
+            // register our lower bound on lamport just in case the meta table wasn’t there
+            // (e.g. migrating from per-2.9)
+            tracing::info!("propagating Lamport timestamp {} from store", lamport);
+            self.received_lamport(lamport)?;
         }
         self.data.offsets.set(self.compute_swarm_offsets());
         Ok(())
@@ -782,7 +795,26 @@ impl BanyanStore {
         }
 
         let index_store = if let Some(conn) = cfg.index_store {
-            SqliteIndexStore::from_conn(conn)?
+            let mut db = SqliteIndexStore::open(DbPath::File(conn))?;
+            if db.get_observed_streams()?.is_empty() {
+                // either a new store or migrating from pre-2.9
+                let aliases = ipfs.aliases()?;
+                if !aliases.is_empty() {
+                    tracing::info!("starting store migration from pre-2.9 or dump");
+                    let aliases = aliases.into_iter().filter_map(|(alias, _cid)| {
+                        let stream_alias = StreamAlias::try_from(alias.as_slice()).ok()?;
+                        StreamId::try_from(stream_alias).ok()
+                    });
+                    let mut count = 0;
+                    for stream in aliases {
+                        tracing::debug!("migrating stream {}", stream);
+                        db.add_stream(stream)?;
+                        count += 1;
+                    }
+                    tracing::info!("migrated {} streams", count);
+                }
+            }
+            db
         } else {
             SqliteIndexStore::open(DbPath::Memory)?
         };
@@ -1039,7 +1071,7 @@ impl BanyanStore {
         self.append0(stream_nr, app_id, timestamp, events).await
     }
 
-    pub(crate) async fn append0(
+    pub async fn append0(
         &self,
         stream_nr: StreamNr,
         app_id: AppId,
@@ -1117,7 +1149,7 @@ impl BanyanStore {
         range: RangeInclusive<u64>,
         query: Q,
     ) -> impl Stream<Item = Result<FilteredChunk<(u64, AxKey, Payload), ()>>> {
-        tracing::debug!("stream_filtered_chunked {}", stream_id);
+        tracing::trace!("stream_filtered_chunked {}", stream_id);
         let trees = self.tree_stream(stream_id);
         self.data.forest.stream_trees_chunked(query, trees, range, &|_| {})
     }
@@ -1295,7 +1327,7 @@ impl BanyanStore {
                     n += 1;
                 }
                 SyncEvent::Complete(Err(err)) => {
-                    tracing::debug!("{}", err);
+                    tracing::debug!(%stream_id, %err, "sync_one");
                     return Err(err);
                 }
                 SyncEvent::Complete(Ok(())) => {}

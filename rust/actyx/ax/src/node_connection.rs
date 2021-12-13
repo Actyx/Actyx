@@ -11,6 +11,9 @@ use libp2p::{
     identify::{Identify, IdentifyConfig, IdentifyEvent},
     identity,
     ping::{Ping, PingConfig, PingEvent, PingSuccess},
+    request_response::{
+        ProtocolSupport, RequestResponse, RequestResponseConfig, RequestResponseEvent, RequestResponseMessage,
+    },
     swarm::{Swarm, SwarmBuilder, SwarmEvent},
     NetworkBehaviour,
 };
@@ -20,6 +23,7 @@ use tracing::*;
 use util::formats::{
     admin_protocol::{AdminRequest, AdminResponse},
     ax_err,
+    banyan_protocol::{BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse},
     events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
     ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol,
 };
@@ -72,6 +76,11 @@ impl NodeConnection {
         let protocol = RequestBehaviour {
             admin_api: StreamingResponse::new(Default::default()),
             events_api: StreamingResponse::new(Default::default()),
+            banyan_api: RequestResponse::new(
+                BanyanProtocol::default(),
+                [(BanyanProtocolName, ProtocolSupport::Outbound)],
+                RequestResponseConfig::default(),
+            ),
             ping: Ping::new(PingConfig::new().with_keep_alive(true)),
             identify: Identify::new(
                 IdentifyConfig::new("Actyx".to_owned(), public_key).with_initial_delay(Duration::from_secs(0)),
@@ -233,6 +242,48 @@ impl Connected {
         })
         .filter_map(|mut v| ready(v.pop())))
     }
+
+    pub async fn request_banyan(&mut self, request: BanyanRequest) -> ActyxOSResult<BanyanResponse> {
+        if !self.protocols.contains("/actyx/banyan/create") {
+            return Err(ActyxOSError::new(
+                ActyxOSCode::ERR_UNSUPPORTED,
+                "Dump upload functionality is only available in Actyx v2.9+",
+            ));
+        }
+        let id = self
+            .swarm
+            .behaviour_mut()
+            .banyan_api
+            .send_request(&self.remote_peer_id, request);
+        while let Some(message) = self.swarm.next().await {
+            match message {
+                SwarmEvent::Behaviour(OutEvent::Banyan(RequestResponseEvent::Message {
+                    peer,
+                    message: RequestResponseMessage::Response { request_id, response },
+                })) if peer == self.remote_peer_id && request_id == id => return Ok(response),
+
+                SwarmEvent::ConnectionClosed { peer_id, .. } if peer_id == self.remote_peer_id => {
+                    return ax_err(
+                        ActyxOSCode::ERR_NODE_UNREACHABLE,
+                        format!("Connection to {} unexpectedly closed.", self.remote_peer_id),
+                    );
+                }
+                SwarmEvent::Behaviour(OutEvent::Ping(PingEvent {
+                    peer,
+                    result: Ok(success),
+                })) => {
+                    if let PingSuccess::Ping { rtt } = success {
+                        info!("RTT to {}: {:?}", peer, rtt);
+                    }
+                }
+                m => {
+                    debug!("Unknown event {:?}", m);
+                }
+            }
+        }
+        error!("Swarm exited unexpectedly");
+        ax_err(ActyxOSCode::ERR_INTERNAL_ERROR, "Swarm exited unexpectedly".into())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -265,6 +316,7 @@ pub fn strip_peer_id(addr: &mut Multiaddr) -> Option<PeerId> {
 pub enum OutEvent {
     Admin(StreamingResponseEvent<AdminProtocol>),
     Events(StreamingResponseEvent<EventsProtocol>),
+    Banyan(RequestResponseEvent<BanyanRequest, BanyanResponse>),
     Ping(PingEvent),
     Identify(IdentifyEvent),
 }
@@ -274,6 +326,7 @@ pub enum OutEvent {
 pub struct RequestBehaviour {
     admin_api: StreamingResponse<AdminProtocol>,
     events_api: StreamingResponse<EventsProtocol>,
+    banyan_api: RequestResponse<BanyanProtocol>,
     ping: Ping,
     identify: Identify,
 }

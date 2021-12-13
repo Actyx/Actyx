@@ -17,8 +17,12 @@ describe('ax nodes', () => {
         code: 'OK',
         result: [
           {
-            connection: 'unreachable',
+            connection: 'error',
             host: expect.any(String),
+            error: {
+              code: 'ERR_NODE_UNREACHABLE',
+              message: 'timeout',
+            },
           },
         ],
       })
@@ -85,7 +89,12 @@ describe('ax nodes', () => {
             host: expect.any(String),
           },
         ]
-        expect(response.result).toMatchObject(responseShape)
+        try {
+          expect(response.result).toMatchObject(responseShape)
+        } catch (e) {
+          e.message += '\n original was ' + JSON.stringify(response)
+          throw e
+        }
       })
     })
   })

@@ -7,8 +7,7 @@ use api::NodeInfo;
 use chrono::{DateTime, Utc};
 use crossbeam::channel::{Receiver, Sender};
 use crypto::KeyStoreRef;
-use parking_lot::Mutex;
-use std::{convert::TryInto, path::PathBuf, sync::Arc, time::Duration};
+use std::{convert::TryInto, path::PathBuf, time::Duration};
 use swarm::{
     event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
     BanyanStore, SwarmConfig,
@@ -125,8 +124,9 @@ impl Component<StoreRequest, StoreConfig> for Store {
             // client creation is setting up some tokio timers and therefore
             // needs to be called with a tokio runtime
             let event_store = self.event_store.clone();
+            let swarm_config = cfg.swarm_config;
             let store = rt.block_on(async move {
-                let store = BanyanStore::new(cfg.swarm_config).await?;
+                let store = BanyanStore::new(swarm_config).await?;
 
                 store.spawn_task(
                     "api",
@@ -160,10 +160,12 @@ impl Component<StoreRequest, StoreConfig> for Store {
             .map_err(|_| anyhow::anyhow!("invalid psk"))?;
         let topic = s.swarm.topic.replace('/', "_");
         let db_path = self.working_dir.join(format!("{}.sqlite", topic));
+        let index_store = Some(self.working_dir.join(format!("{}-index", topic)));
         let read_only = s.api.events.read_only;
+
         let swarm_config = SwarmConfig {
             topic,
-            index_store: Some(self.db.clone()),
+            index_store,
             keypair: Some(keypair),
             psk: Some(psk),
             node_name: Some(s.admin.display_name),
@@ -210,7 +212,6 @@ pub(crate) struct Store {
     bind_to: BindTo,
     keystore: KeyStoreRef,
     node_id: NodeId,
-    db: Arc<Mutex<rusqlite::Connection>>,
     number_of_threads: Option<usize>,
     node_cycle_count: NodeCycleCount,
     started_at: DateTime<Utc>,
@@ -225,7 +226,6 @@ impl Store {
         bind_to: BindTo,
         keystore: KeyStoreRef,
         node_id: NodeId,
-        db: Arc<Mutex<rusqlite::Connection>>,
         node_cycle_count: NodeCycleCount,
     ) -> anyhow::Result<Self> {
         std::fs::create_dir_all(working_dir.clone())?;
@@ -238,7 +238,6 @@ impl Store {
             bind_to,
             keystore,
             node_id,
-            db,
             number_of_threads: None,
             node_cycle_count,
             started_at: Utc::now(),

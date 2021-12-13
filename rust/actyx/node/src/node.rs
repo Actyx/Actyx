@@ -223,9 +223,27 @@ impl Node {
             }
         }
     }
+    fn handle_restart_request(&self, component: ComponentType) {
+        let ret = match self.components.iter().find(|c| c.0 == component) {
+            Some((_, channel)) => match channel {
+                ComponentChannel::Store(s) => s.send(ComponentRequest::Restart).ok(),
+                ComponentChannel::NodeApi(s) => s.send(ComponentRequest::Restart).ok(),
+                ComponentChannel::Logging(s) => s.send(ComponentRequest::Restart).ok(),
+                ComponentChannel::Android(s) => s.send(ComponentRequest::Restart).ok(),
+                #[cfg(test)]
+                ComponentChannel::Test(s) => s.send(ComponentRequest::Restart).ok(),
+            },
+            None => {
+                tracing::error!("trying to restart to non-existant component `{}`", component);
+                return;
+            }
+        };
+        if ret.is_none() {
+            tracing::warn!("failed to send restart to component `{}`", component);
+        }
+    }
     fn update_node_state(&mut self) -> ActyxOSResult<()> {
         let node_settings = self.settings_repo().get_settings(&system_scope(), false)?;
-        eprintln!("node_settings {}", node_settings);
         let settings = serde_json::from_value(node_settings)
             .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error deserializing system settings")?;
         if settings != self.state.settings {
@@ -290,6 +308,7 @@ impl Node {
                     match event {
                         ExternalEvent::NodesRequest(req) => self.handle_nodes_request(req),
                         ExternalEvent::SettingsRequest(req) => self.handle_settings_request(req),
+                        ExternalEvent::RestartRequest(comp) => self.handle_restart_request(comp),
                         ExternalEvent::ShutdownRequested(r) => break r,
                     };
                 },

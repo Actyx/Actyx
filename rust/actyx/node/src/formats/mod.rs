@@ -1,4 +1,4 @@
-use crate::{node::NodeError, node_api::formats::NodesRequest, settings::SettingsRequest};
+use crate::{components::ComponentType, node::NodeError, node_api::formats::NodesRequest, settings::SettingsRequest};
 use actyx_sdk::NodeId;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -33,6 +33,7 @@ pub enum Entity {
 pub enum ExternalEvent {
     NodesRequest(NodesRequest),
     SettingsRequest(SettingsRequest),
+    RestartRequest(ComponentType),
     ShutdownRequested(ShutdownReason),
 }
 
