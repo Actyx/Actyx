@@ -13,15 +13,18 @@ import { isNone } from 'fp-ts/lib/Option'
 
 const isConnectedTo = (from: ReachableNodeT, to: Node) => {
   if (to.type === NodeType.Reachable) {
-    return from.details.swarmState.knownPeers
-      .map(({ peerId }) => peerId)
-      .includes(to.details.swarmState.peerId)
+    if (from.details.swarmState === null || to.details.swarmState === null) {
+      return false
+    } else {
+      return from.details.swarmState.connections
+        .map(({ peerId }) => peerId)
+        .includes(to.details.swarmState.peerId)
+    }
   } else {
-    return (
-      from.details.swarmState.knownPeers
-        .map(({ addrs }) => addrs.includes(to.addr))
-        .filter((x) => x).length > 0
-    )
+    if (from.details.swarmState === null) {
+      return false
+    }
+    return from.details.swarmState.connections.filter(({ addr }) => addr === to.addr).length > 0
   }
 }
 

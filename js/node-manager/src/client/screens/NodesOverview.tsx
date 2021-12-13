@@ -9,10 +9,15 @@ import { SolidStarIcon, UnsolidStarIcon } from '../components/icons'
 import { useStore } from '../store'
 import { StoreState } from '../store/types'
 
-const nodeTypeToText = (type: NodeType) => {
-  switch (type) {
-    case NodeType.Reachable:
-      return 'Connected'
+const nodeToStatusText = (node: Node) => {
+  switch (node.type) {
+    case NodeType.Reachable: {
+      if (node.details.swarmState === null) {
+        return 'Starting'
+      } else {
+        return 'Connected'
+      }
+    }
     case NodeType.Unauthorized:
       return 'Not authorized'
     case NodeType.Unreachable:
@@ -78,11 +83,12 @@ const NodeCard: React.FC<{ node: Node; remove: () => void; view: () => void }> =
           className={clsx('font-medium', {
             'text-red-300':
               node.type === NodeType.Unauthorized || node.type === NodeType.Unreachable,
-            'text-green-300': node.type === NodeType.Reachable,
+            'text-green-300': node.type === NodeType.Reachable && node.details.swarmState !== null,
+            'text-yellow-300': node.type === NodeType.Reachable && node.details.swarmState === null,
             'text-gray-300': node.type === NodeType.Loading,
           })}
         >
-          {nodeTypeToText(node.type)}
+          {nodeToStatusText(node)}
         </span>
         {node.type === NodeType.Reachable && <span>&nbsp;{node.addr}</span>}
       </p>

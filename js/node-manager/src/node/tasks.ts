@@ -56,12 +56,13 @@ const runWithoutResult = (task: native.AsyncTask, payload: object): Promise<void
     })
   })
 
-const getNodeDetails = (addr: string): Promise<Node> =>
-  runAndDecode(native.getNodeDetails, { addr }, Node)
+const getNodeDetails = (addr: string, timeout: number | null): Promise<Node> =>
+  runAndDecode(native.getNodeDetails, { addr, timeout }, Node)
 
 export const getNodesDetails = async (
   reqs: GetNodesDetailsRequest,
-): Promise<GetNodesDetailsResponse> => Promise.all(reqs.addrs.map(getNodeDetails))
+): Promise<GetNodesDetailsResponse> =>
+  Promise.all(reqs.addrs.map((addr) => getNodeDetails(addr, reqs.timeout)))
 
 export const setSettings = (req: SetSettingsRequest): Promise<void> =>
   runWithoutResult(native.setSettings, req)

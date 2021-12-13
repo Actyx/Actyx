@@ -1,4 +1,5 @@
 use neon::prelude::*;
+mod consts;
 mod ops;
 mod types;
 mod util;
