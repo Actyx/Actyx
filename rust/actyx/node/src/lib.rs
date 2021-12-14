@@ -11,9 +11,8 @@ pub mod settings;
 mod util;
 
 pub use crate::node::NodeError;
+pub use crate::util::shutdown::shutdown_ceremony;
 pub use crate::util::spawn_with_name;
-#[cfg(not(windows))]
-pub use crate::util::unix_shutdown::shutdown_ceremony;
 use ::util::formats::LogSeverity;
 pub use formats::{node_settings, ShutdownReason};
 #[cfg(not(target_os = "android"))]

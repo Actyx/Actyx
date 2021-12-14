@@ -81,7 +81,7 @@ Start node:
 ```bash
 # Set proper actyx public key
 export AX_PUBLIC_KEY=075i62XGQJuXjv6nnLQyJzECZhF29acYvYeEOJ3kc5M8=
-cargo run --bin actyx-linux
+cargo run --bin actyx
 ```
 
 ```bash

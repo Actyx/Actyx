@@ -4,7 +4,7 @@ use crossbeam::channel::Sender;
 use crypto::{KeyStore, KeyStoreRef};
 use parking_lot::RwLock;
 use std::{io, sync::Arc};
-use tracing::*;
+use tracing;
 
 pub(crate) fn make_keystore(storage: NodeStorage) -> anyhow::Result<KeyStoreRef> {
     let ks = storage
@@ -75,7 +75,7 @@ pub(crate) fn init_panic_hook(tx: Sender<ExternalEvent>) {
                 }
                 None => format!("thread '{}' panicked at '{}'{:?}", thread, msg, backtrace),
             };
-            error!(target: "panic", "{}", message);
+            tracing::error!(target: "panic", "{}", message);
 
             NodeError::InternalError(Arc::new(anyhow!(message)))
         };
@@ -91,26 +91,44 @@ pub(crate) fn init_panic_hook(tx: Sender<ExternalEvent>) {
     }));
 }
 
-#[cfg(not(windows))]
-pub mod unix_shutdown {
+pub mod shutdown {
     use super::spawn_with_name;
     use crate::ApplicationState;
     use crossbeam::channel::{bounded, select};
-    use signal_hook::{
-        consts::{SIGINT, SIGTERM},
-        iterator::Signals,
-    };
-    const SIGNALS: [i32; 2] = [SIGINT, SIGTERM];
+    use signal_hook::consts::TERM_SIGNALS;
+    use signal_hook::flag;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
     pub fn shutdown_ceremony(mut app_handle: ApplicationState) {
-        let (signal_tx, signal_rx) = bounded(8);
+        let (signal_tx, signal_rx) = bounded::<()>(8);
 
         spawn_with_name("SignalHandling", move || {
-            let mut signals = Signals::new(&SIGNALS).expect("Error installing signal hook");
-
-            for sig in signals.into_iter() {
-                // Better safe than sorry ..
-                if SIGNALS.contains(&sig) {
+            let term_requested = Arc::new(AtomicBool::new(false));
+            let immediate_term_requested = Arc::new(AtomicBool::new(false));
+            for sig in TERM_SIGNALS {
+                flag::register(*sig, Arc::clone(&term_requested))
+                    .expect("registered for termination signals (SIGTERM, SIGINT)");
+            }
+            let mut requested = false;
+            let mut immediate_requested = false;
+            loop {
+                if term_requested.load(Ordering::Relaxed) && !requested {
+                    requested = true;
+                    tracing::trace!("caught termination signal for first time");
+                    for sig in TERM_SIGNALS {
+                        flag::register(*sig, Arc::clone(&immediate_term_requested))
+                            .expect("registered for termination signals (SIGTERM, SIGINT)");
+                    }
                     signal_tx.send(()).unwrap();
+                }
+                if immediate_term_requested.load(Ordering::Relaxed) && !immediate_requested {
+                    immediate_requested = true;
+                    eprintln!("caught second termination signal; force exiting...");
+                    tracing::trace!("caught termination signal for second time");
+                    signal_tx.send(()).unwrap();
+                }
+                if requested && immediate_requested {
+                    return;
                 }
             }
         });
@@ -122,10 +140,10 @@ pub mod unix_shutdown {
         loop {
             select! {
                 recv(signal_rx) -> _ => {
+                    tracing::trace!("received termination signal; count={}", sig_count);
                     match sig_count {
                         0 => {
-                            eprintln!("Caught termination signal. Exiting..");
-                            eprintln!("(Hit ctrl-c again to force shutdown.)");
+                            tracing::debug!("termination signal received once; requesting gracefull node shutdown...");
                             // Offload shutdown to another thread
                             let (app_handle, tx) = app_container.take().unwrap();
                             handle = Some(std::thread::spawn(move || {
@@ -134,6 +152,7 @@ pub mod unix_shutdown {
                             }));
                         },
                         _ => {
+                            tracing::warn!("termination signal received twice; forecfully shutting down node...");
                             std::process::exit(1);
                         }
                     }
@@ -142,6 +161,7 @@ pub mod unix_shutdown {
                 recv(rx) -> _ => {
                     // Graceful shutdown finished
                     handle.unwrap().join().unwrap();
+                    tracing::debug!("graceful shutdown has finished");
                     return;
                 },
                 recv(result_recv) -> res => {

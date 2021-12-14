@@ -1,6 +1,5 @@
 use anyhow::Result;
-#[cfg(not(windows))]
-mod linux {
+mod bin {
     use super::*;
     use anyhow::{anyhow, Context};
     use node::{shutdown_ceremony, ApplicationState, BindTo, BindToOpts, Runtime};
@@ -49,7 +48,13 @@ mod linux {
             // printed by hand since things can fail before logging is set up and we want the user to know this
             eprintln!("using data directory `{}`", working_dir.display());
 
-            let app_handle = ApplicationState::spawn(working_dir, Runtime::Linux, bind_to)?;
+            #[cfg(target_os = "linux")]
+            let runtime: Runtime = Runtime::Linux;
+            #[cfg(target_os = "windows")]
+            let runtime: Runtime = Runtime::Windows;
+            #[cfg(target_os = "android")]
+            let runtime: Runtime = Runtime::Android;
+            let app_handle = ApplicationState::spawn(working_dir, runtime, bind_to)?;
 
             shutdown_ceremony(app_handle);
         }
@@ -57,16 +62,6 @@ mod linux {
         Ok(())
     }
 }
-#[cfg(windows)]
-mod windows {
-    use super::*;
-    pub fn main() -> Result<()> {
-        panic!("This program is not intended to run on Windows. Maybe you were looking for \"actyx\"?");
-    }
-}
 fn main() -> Result<()> {
-    #[cfg(not(windows))]
-    return linux::main();
-    #[cfg(windows)]
-    return windows::main();
+    return bin::main();
 }

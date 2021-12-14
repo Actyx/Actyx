@@ -5,7 +5,7 @@ use util::version::NodeVersion;
 
 #[test]
 fn version() {
-    Command::cargo_bin("actyx-linux")
+    Command::cargo_bin("actyx")
         .unwrap()
         .arg("--version")
         .assert()

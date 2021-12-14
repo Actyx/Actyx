@@ -37,16 +37,16 @@ impl Version {
 }
 
 fn setup() {
-    // make sure actyx-linux binary is built and available
+    // make sure actyx binary is built and available
     // (so you don't have to spend scratching your head about the code that is being run ..)
     static INIT: Once = Once::new();
     INIT.call_once(|| {
         util::setup_logger();
         // build needed binaries for quicker execution
-        eprintln!("building actyx-linux");
+        eprintln!("building actyx");
         for msg in CargoBuild::new()
             .manifest_path("../Cargo.toml")
-            .bin("actyx-linux")
+            .bin("actyx")
             .features(FEATURES)
             .exec()
             .unwrap()
@@ -269,7 +269,7 @@ async fn try_run(
     expected_offsets: impl Iterator<Item = (StreamId, Offset)>,
 ) -> anyhow::Result<Vec<String>> {
     let ports = (0..3).map(|_| util::free_port(0)).collect::<anyhow::Result<Vec<_>>>()?;
-    let mut child = Command::new(target_dir().join("actyx-linux"))
+    let mut child = Command::new(target_dir().join("actyx"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .args(&[
@@ -302,7 +302,7 @@ async fn try_run(
         started = l.contains("NODE_STARTED_BY_HOST");
         stderr.push(l);
     }
-    // The `actyx-linux` process may get blocked because we don't continuie to
+    // The `actyx` process may get blocked because we don't continuie to
     // read its stdout/stderr. This shouldn't be a problem for those short-lived
     // tests, but might be wity extremely verbose logging.
     let client = actyx_sdk::HttpClient::new(
