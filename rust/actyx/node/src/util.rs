@@ -4,7 +4,6 @@ use crossbeam::channel::Sender;
 use crypto::{KeyStore, KeyStoreRef};
 use parking_lot::RwLock;
 use std::{io, sync::Arc};
-use tracing;
 
 pub(crate) fn make_keystore(storage: NodeStorage) -> anyhow::Result<KeyStoreRef> {
     let ks = storage

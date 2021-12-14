@@ -57,7 +57,7 @@ impl Layer {
 }
 
 impl Drop for Layer {
-    fn drop(&mut self) -> () {
+    fn drop(&mut self) {
         unsafe { DeregisterEventSource(self.handle) };
     }
 }

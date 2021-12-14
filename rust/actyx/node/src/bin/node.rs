@@ -63,5 +63,5 @@ mod bin {
     }
 }
 fn main() -> Result<()> {
-    return bin::main();
+    bin::main()
 }
