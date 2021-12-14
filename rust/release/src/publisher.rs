@@ -2,6 +2,7 @@ use crate::{
     os_arch::{Arch, OsArch, OS},
     products::Product,
     releases::Release,
+    util::{get_az_storage_shared_access_signature, AzStorageSharedAccessSignature},
 };
 use anyhow::Context;
 use flate2::{write::GzEncoder, Compression};
@@ -472,7 +473,7 @@ pub enum PreProcessing {
 
 fn blob_exists(container: Container, name: &str) -> anyhow::Result<bool> {
     log::debug!("checking if {} exists in container {}", name, container);
-    let args = [
+    let args = vec![
         "storage",
         "blob",
         "exists",
@@ -483,6 +484,16 @@ fn blob_exists(container: Container, name: &str) -> anyhow::Result<bool> {
         "--name",
         name,
     ];
+    if let Some(AzStorageSharedAccessSignature {
+        connection_string,
+        sas_token,
+    }) = get_az_storage_shared_access_signature()
+    {
+        args.push("--connection-string");
+        args.push(&connection_string);
+        args.push("--sas");
+        args.push(&sas_token);
+    }
     let out = Command::new("az")
         .args(&args)
         .output()
@@ -508,7 +519,7 @@ fn blob_exists(container: Container, name: &str) -> anyhow::Result<bool> {
 fn blob_download(name: &str, in_dir: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
     let file_name = name.split('/').last().unwrap();
     let out_file = in_dir.as_ref().join(file_name);
-    let args = [
+    let args = vec![
         "storage",
         "blob",
         "download",
@@ -521,6 +532,17 @@ fn blob_download(name: &str, in_dir: impl AsRef<Path>) -> anyhow::Result<PathBuf
         "--file",
         &*format!("{}", out_file.display()),
     ];
+    if let Some(AzStorageSharedAccessSignature {
+        connection_string,
+        sas_token,
+    }) = get_az_storage_shared_access_signature()
+    {
+        args.push("--connection-string");
+        args.push(&connection_string);
+        args.push("--sas");
+        args.push(&sas_token);
+    }
+
     let out = Command::new("az")
         .args(&args)
         .output()
@@ -534,7 +556,7 @@ fn blob_download(name: &str, in_dir: impl AsRef<Path>) -> anyhow::Result<PathBuf
 }
 
 fn blob_upload(source_file: impl AsRef<Path>, name: &str) -> anyhow::Result<()> {
-    let args = [
+    let args = vec![
         "storage",
         "blob",
         "upload",
@@ -547,6 +569,16 @@ fn blob_upload(source_file: impl AsRef<Path>, name: &str) -> anyhow::Result<()> 
         "--file",
         &*format!("{}", source_file.as_ref().display()),
     ];
+    if let Some(AzStorageSharedAccessSignature {
+        connection_string,
+        sas_token,
+    }) = get_az_storage_shared_access_signature()
+    {
+        args.push("--connection-string");
+        args.push(&connection_string);
+        args.push("--sas");
+        args.push(&sas_token);
+    }
     let out = Command::new("az")
         .args(&args)
         .output()
@@ -623,7 +655,14 @@ fn docker_manifest_inspect(tag: &str) -> anyhow::Result<DockerInspectResponse> {
         .args(&args)
         .output()
         .context(format!("running docker {:?}", args))?;
-    anyhow::ensure!(cmd.status.success(), "Error inspecting manifest for {}", tag);
+    anyhow::ensure!(
+        cmd.status.success(),
+        "Error running `docker {:?}` to inspect manifest for {}\nstdout: {}\nstderr: {}",
+        args,
+        tag,
+        String::from_utf8(cmd.stdout)?,
+        String::from_utf8(cmd.stderr)?
+    );
     let mut out: DockerInspectResponse = serde_json::from_slice(&cmd.stdout[..])?;
     out.manifests.sort();
     Ok(out)
