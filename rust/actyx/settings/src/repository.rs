@@ -51,7 +51,7 @@ fn validate(
     settings: serde_json::Value,
     global_settings: serde_json::Value,
 ) -> Result<SuccessfulValidation> {
-    info!("Trying to validate {} with schema for {}", scope, schema_scope);
+    debug!("Trying to validate {} with schema for {}", scope, schema_scope);
     let updated_schema_settings_without_defaults = if schema_scope == scope {
         settings
     } else {
