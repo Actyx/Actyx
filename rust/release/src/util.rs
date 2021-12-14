@@ -1,7 +1,7 @@
 use std::env;
 
-static ENV_AZ_STORAGE_SAS_CONNECTION_STRING: &str = "SECRET_AZ_STORAGE_CONNECTION_STRING";
-static ENV_AZ_STORAGE_SAS_TOKEN: &str = "SECRET_AZ_STORAGE_SAS_TOKEN";
+static ENV_AZ_STORAGE_SAS_CONNECTION_STRING: &str = "AZ_STORAGE_CONNECTION_STRING";
+static ENV_AZ_STORAGE_SAS_TOKEN: &str = "AZ_STORAGE_SAS_TOKEN";
 
 pub struct AzStorageSharedAccessSignature {
     pub connection_string: String,
