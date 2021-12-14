@@ -10,10 +10,10 @@ use versions_ignore_file::VersionsIgnoreFile;
 mod changes;
 mod os_arch;
 mod products;
-#[cfg(not(windows))]
 mod publisher;
 mod releases;
 mod repo;
+mod util;
 mod versions;
 mod versions_file;
 mod versions_ignore_file;

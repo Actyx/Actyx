@@ -8,10 +8,11 @@ use anyhow::Context;
 use flate2::{write::GzEncoder, Compression};
 use git2::Oid;
 use serde::Deserialize;
+#[cfg(not(windows))]
+use std::os::unix::prelude::PermissionsExt;
 use std::{
     fmt,
     fs::File,
-    os::unix::prelude::PermissionsExt,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -114,6 +115,7 @@ impl Publisher {
             } => docker_manifest_exists(&*format!("{}/{}:{}", registry, repository, tag), Some(manifest)),
         }
     }
+    #[cfg(not(windows))]
     pub fn create_release_artifact(&mut self, in_dir: impl AsRef<Path>) -> anyhow::Result<()> {
         match &mut self.target {
             TargetArtifact::Blob {
@@ -473,26 +475,28 @@ pub enum PreProcessing {
 
 fn blob_exists(container: Container, name: &str) -> anyhow::Result<bool> {
     log::debug!("checking if {} exists in container {}", name, container);
-    let args = vec![
+    let container_name = container.to_string();
+    let mut args = vec![
         "storage",
         "blob",
         "exists",
         "--account-name",
         "axartifacts",
         "--container",
-        &*container.to_string(),
+        &container_name,
         "--name",
         name,
     ];
+    let mut az_storage_sas = get_az_storage_shared_access_signature();
     if let Some(AzStorageSharedAccessSignature {
         connection_string,
         sas_token,
-    }) = get_az_storage_shared_access_signature()
+    }) = az_storage_sas.as_mut()
     {
         args.push("--connection-string");
-        args.push(&connection_string);
+        args.push(connection_string.as_str());
         args.push("--sas");
-        args.push(&sas_token);
+        args.push(sas_token.as_str());
     }
     let out = Command::new("az")
         .args(&args)
@@ -517,30 +521,33 @@ fn blob_exists(container: Container, name: &str) -> anyhow::Result<bool> {
     }
 }
 fn blob_download(name: &str, in_dir: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
+    let container_name = Container::Artifacts.to_string();
     let file_name = name.split('/').last().unwrap();
-    let out_file = in_dir.as_ref().join(file_name);
-    let args = vec![
+    let out_file_path = in_dir.as_ref().join(file_name);
+    let out_file_str = out_file_path.display().to_string();
+    let mut args = vec![
         "storage",
         "blob",
         "download",
         "--account-name",
         "axartifacts",
         "--container-name",
-        &*Container::Artifacts.to_string(),
+        &container_name,
         "--name",
         name,
         "--file",
-        &*format!("{}", out_file.display()),
+        &out_file_str,
     ];
+    let mut az_storage_sas = get_az_storage_shared_access_signature();
     if let Some(AzStorageSharedAccessSignature {
         connection_string,
         sas_token,
-    }) = get_az_storage_shared_access_signature()
+    }) = az_storage_sas.as_mut()
     {
         args.push("--connection-string");
-        args.push(&connection_string);
+        args.push(connection_string.as_str());
         args.push("--sas");
-        args.push(&sas_token);
+        args.push(sas_token.as_str());
     }
 
     let out = Command::new("az")
@@ -552,32 +559,35 @@ fn blob_download(name: &str, in_dir: impl AsRef<Path>) -> anyhow::Result<PathBuf
     log::trace!("stdout {}", stdout);
     log::trace!("stderr {}", stderr);
     anyhow::ensure!(out.status.success(), "stdout: {}, stderr: {}", stdout, stderr);
-    Ok(out_file)
+    Ok(out_file_path)
 }
 
 fn blob_upload(source_file: impl AsRef<Path>, name: &str) -> anyhow::Result<()> {
-    let args = vec![
+    let container_name = Container::Releases.to_string();
+    let source_file_name = source_file.as_ref().display().to_string();
+    let mut args = vec![
         "storage",
         "blob",
         "upload",
         "--account-name",
         "axartifacts",
         "--container-name",
-        &*Container::Releases.to_string(),
+        &container_name,
         "--name",
         name,
         "--file",
-        &*format!("{}", source_file.as_ref().display()),
+        &source_file_name,
     ];
+    let mut az_storage_sas = get_az_storage_shared_access_signature();
     if let Some(AzStorageSharedAccessSignature {
         connection_string,
         sas_token,
-    }) = get_az_storage_shared_access_signature()
+    }) = az_storage_sas.as_mut()
     {
         args.push("--connection-string");
-        args.push(&connection_string);
+        args.push(connection_string.as_str());
         args.push("--sas");
-        args.push(&sas_token);
+        args.push(sas_token.as_str());
     }
     let out = Command::new("az")
         .args(&args)
