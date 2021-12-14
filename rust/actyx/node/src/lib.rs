@@ -100,6 +100,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     // Component: Logging
     // Set up logging so tracing is set up for migration
     let logging = Logging::new(logs_rx, LogSeverity::default());
+    tracing_log::LogTracer::init()?;
     migration::migrate_if_necessary(&working_dir, BTreeSet::new(), false)?;
 
     // Host interface

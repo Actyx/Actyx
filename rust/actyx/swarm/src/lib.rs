@@ -175,6 +175,7 @@ pub struct SwarmConfig {
     pub banyan_config: BanyanConfig,
     pub cadence_root_map: Duration,
     pub cadence_compact: Duration,
+    pub ping_timeout: Duration,
 }
 impl SwarmConfig {
     pub fn basic() -> Self {
@@ -202,6 +203,7 @@ impl SwarmConfig {
             block_cache_size: 1024 * 1024 * 1024,
             block_cache_count: 1024 * 128,
             block_gc_interval: Duration::from_secs(300),
+            ping_timeout: Duration::from_secs(5),
         }
     }
 }
@@ -261,6 +263,7 @@ impl PartialEq for SwarmConfig {
             && self.block_cache_size == other.block_cache_size
             && self.block_cache_count == other.block_cache_count
             && self.block_gc_interval == other.block_gc_interval
+            && self.ping_timeout == other.ping_timeout
     }
 }
 
@@ -678,9 +681,9 @@ impl BanyanStore {
                 ping: Some(
                     PingConfig::new()
                         .with_interval(Duration::from_secs(20))
-                        .with_timeout(Duration::from_secs(3))
+                        .with_timeout(cfg.ping_timeout)
                         .with_keep_alive(true)
-                        .with_max_failures(NonZeroU32::new(2).unwrap()),
+                        .with_max_failures(NonZeroU32::new(3).unwrap()),
                 ),
                 identify: Some(IdentifyConfig::new("/actyx/2.0.0".to_string(), public)),
                 gossipsub: Some(

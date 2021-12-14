@@ -143,7 +143,13 @@
           "minimum": 30,
           "default": 300,
           "description": "GC interval for the block store, in seconds"
-        }
+        },
+        "pingTimeout": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 5,
+          "description": "Timeout for one swarm-internal ping response"
+	}
       }
     },
     "Admin": {
