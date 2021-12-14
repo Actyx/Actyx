@@ -34,9 +34,11 @@ fslock = "0.1.6"
 futures = { version = "0.3.15", features = ["compat"], package = "futures" }
 hex = "0.4.3"
 ipfs-sqlite-block-store = "0.7.2"
+lazy_static = "1.4.0"
 libipld = "0.12.0"
 libp2p = { version = "0.40.0", default-features = false, features = ["gossipsub", "ping"] }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
+log = { version = "0.4.14", features = ["std"] }
 maplit = "1.0.2"
 multihash = "0.14.0"
 parking_lot = "0.11.1"
@@ -57,7 +59,8 @@ tempfile = "3.2.0"
 thiserror = "1.0.26"
 tokio = { package = "tokio", version = "1.8.2" }
 tracing = { version = "0.1.26", features = ["release_max_level_trace"] }
-tracing-log = "0.1.2"
+tracing-core = "0.1.21"
+tracing-log = { version = "0.1.2", features = ["std"] }
 tracing-subscriber = "0.2.19"
 trees = { path = "../trees" }
 unicode-width = "0.1.8"

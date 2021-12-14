@@ -3,6 +3,7 @@
 mod components;
 mod formats;
 mod host;
+mod log_tracer;
 pub mod migration;
 mod node;
 mod node_api;
@@ -100,7 +101,12 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     // Component: Logging
     // Set up logging so tracing is set up for migration
     let logging = Logging::new(logs_rx, LogSeverity::default());
-    tracing_log::LogTracer::init()?;
+    log::set_boxed_logger(Box::new(log_tracer::LogTracer::new([
+        "yamux",
+        "libp2p_gossipsub",
+        "multistream_select",
+    ])))?;
+    log::set_max_level(log::LevelFilter::max());
     migration::migrate_if_necessary(&working_dir, BTreeSet::new(), false)?;
 
     // Host interface
