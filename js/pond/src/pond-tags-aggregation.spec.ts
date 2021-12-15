@@ -388,8 +388,7 @@ describe('Fish declarations Tag checking', () => {
     const fishWrong: Fish<undefined, A | B> = {
       ...fishArgs,
 
-      // Expect error for too large subscription set
-      // @ts-expect-error
+      // @ts-expect-error for too large subscription set
       where: abcTag,
     }
 
@@ -419,8 +418,7 @@ describe('Fish declarations Tag checking', () => {
     const fishWrong: Fish<undefined, A | B> = {
       ...fishArgs,
 
-      // Without cast, this will fail
-      // @ts-expect-error
+      // @ts-expect-error since without cast, this will fail
       where: Tags('1', '2').or(Tag('foo')),
     }
 
@@ -462,8 +460,7 @@ describe('Fish declarations Tag checking', () => {
     const fishWrong: Fish<undefined, A | B> = {
       ...fishArgs,
 
-      // Without cast, this will fail
-      // @ts-expect-error
+      // @ts-expect-error since without cast, this will fail
       where: Tag('q').withId('n').and(Tag('some-other-tag').withId('foo')),
     }
 

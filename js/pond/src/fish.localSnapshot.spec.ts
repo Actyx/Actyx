@@ -32,7 +32,7 @@ const forBoth = forFishes(
 describe.skip('fish event store + jar local snapshot behavior', () => {
   forBoth(
     `should create local snapshot for after seeing that enough time has passed from live event`,
-    async fishToTest => {
+    async (fishToTest) => {
       const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
       const srcV = emitter('V')
@@ -51,7 +51,7 @@ describe.skip('fish event store + jar local snapshot behavior', () => {
       )
 
       const rqTime = tl.of('R', 'Q')
-      const cutoff = rqTime.findIndex(e => e.payload === 8) + 1
+      const cutoff = rqTime.findIndex((e) => e.payload === 8) + 1
 
       const oldEvents = tl.of('R', 'Q').slice(0, cutoff)
       expect(await applyAndGetState(oldEvents)).toEqual([5, 6, 7, 8])
@@ -69,7 +69,7 @@ describe.skip('fish event store + jar local snapshot behavior', () => {
     },
   )
 
-  forBoth(`should create local snapshot wholly from live events`, async fishToTest => {
+  forBoth(`should create local snapshot wholly from live events`, async (fishToTest) => {
     const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
     const srcR = emitter('R')
@@ -90,7 +90,7 @@ describe.skip('fish event store + jar local snapshot behavior', () => {
     })
   })
 
-  forBoth(`should support custom state deserialisation`, async fishTemplate => {
+  forBoth(`should support custom state deserialisation`, async (fishTemplate) => {
     type ImmutableState = List<number>
 
     const fishToTest: Fish<ImmutableState, NumberFishEvent> = {
@@ -129,7 +129,7 @@ describe.skip('fish event store + jar local snapshot behavior', () => {
     })
   })
 
-  forBoth(`should create local snapshot during hydration`, async fishToTest => {
+  forBoth(`should create local snapshot during hydration`, async (fishToTest) => {
     const srcR = emitter('R')
 
     const timeline = mkTimeline(
@@ -177,14 +177,14 @@ describe.skip('fish event store + jar local snapshot behavior', () => {
       state: [5, 6, 7, 8],
     }
 
-    forBoth(`when ingesting all sources at once`, async fishToTest => {
+    forBoth(`when ingesting all sources at once`, async (fishToTest) => {
       const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
       expect(await applyAndGetState(timeline.all)).toEqual([5, 6, 7, 8, 9, 10])
       expect(await latestSnap()).toMatchObject(expectedSnap)
     })
 
-    forBoth(`when seeing R first`, async fishToTest => {
+    forBoth(`when seeing R first`, async (fishToTest) => {
       const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
       expect(await applyAndGetState(timeline.of('R'))).toEqual([5, 7, 8])
@@ -192,7 +192,7 @@ describe.skip('fish event store + jar local snapshot behavior', () => {
       expect(await latestSnap()).toMatchObject(expectedSnap)
     })
 
-    forBoth(`when seeing Q first`, async fishToTest => {
+    forBoth(`when seeing Q first`, async (fishToTest) => {
       const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
       expect(await applyAndGetState(timeline.of('Q'))).toEqual([6, 9, 10])
@@ -201,7 +201,7 @@ describe.skip('fish event store + jar local snapshot behavior', () => {
     })
   })
 
-  forBoth(`should hydrate from local snapshot`, async fishToTest => {
+  forBoth(`should hydrate from local snapshot`, async (fishToTest) => {
     const { mkEvents } = eventFactory()
     const storedEvents: TestEvent[] = [
       // We intentionally leave out the events that would have formed the snapshot,
@@ -224,7 +224,7 @@ describe.skip('fish event store + jar local snapshot behavior', () => {
 
   forBoth(
     `should report error encountered when hydrating from local snapshot`,
-    async fishToTest => {
+    async (fishToTest) => {
       const storedEvents: TestEvent[] = [
         // We intentionally leave out the events that would have formed the snapshot,
         // in order to assert that the snapshot is really used for hydration
@@ -245,34 +245,37 @@ describe.skip('fish event store + jar local snapshot behavior', () => {
     },
   )
 
-  forBoth(`should shatter local snapshot if it receives earlier live events`, async fishToTest => {
-    const srcA = emitter('A')
-    const srcB = emitter('B')
+  forBoth(
+    `should shatter local snapshot if it receives earlier live events`,
+    async (fishToTest) => {
+      const srcA = emitter('A')
+      const srcB = emitter('B')
 
-    const timeline = mkTimeline(srcA(1), srcB(2), srcA(3), srcA(4), srcB(5))
+      const timeline = mkTimeline(srcA(1), srcB(2), srcA(3), srcA(4), srcB(5))
 
-    const storedEvents = timeline.of('A')
-    const storedSnaps = [mkSnapshot([1, 3, 4], 40000, undefined, offsets(storedEvents))]
+      const storedEvents = timeline.of('A')
+      const storedSnaps = [mkSnapshot([1, 3, 4], 40000, undefined, offsets(storedEvents))]
 
-    const { applyAndGetState, latestSnap } = await snapshotTestSetup(
-      fishToTest,
-      storedEvents,
-      storedSnaps,
-    )
-    // Make sure it did not shatter yet, because the stored events are covered by its psn map.
-    expect(await latestSnap()).toMatchObject({
-      eventKey: { lamport: 40000 },
-      state: [1, 3, 4],
-    })
+      const { applyAndGetState, latestSnap } = await snapshotTestSetup(
+        fishToTest,
+        storedEvents,
+        storedSnaps,
+      )
+      // Make sure it did not shatter yet, because the stored events are covered by its psn map.
+      expect(await latestSnap()).toMatchObject({
+        eventKey: { lamport: 40000 },
+        state: [1, 3, 4],
+      })
 
-    const pastEvents = timeline.of('B')
-    expect(await applyAndGetState(pastEvents)).toEqual([1, 2, 3, 4, 5])
-    expect(await latestSnap()).toEqual(undefined)
-  })
+      const pastEvents = timeline.of('B')
+      expect(await applyAndGetState(pastEvents)).toEqual([1, 2, 3, 4, 5])
+      expect(await latestSnap()).toEqual(undefined)
+    },
+  )
 
   forBoth(
     `fish should shatter local snapshot if it receives earlier stored events`,
-    async fishToTest => {
+    async (fishToTest) => {
       const a = emitter('a')
       const b = emitter('b')
       const c = emitter('c')

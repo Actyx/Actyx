@@ -161,40 +161,11 @@ export const mkSnapshot = (
   }
 }
 
-type SnapShotTestSetup<S> = {
-  latestSnap: () => Promise<
-    | {
-        state: any
-        offsets: OffsetMap
-        eventKey: Readonly<{
-          lamport: number
-          offset: number
-          stream: string
-        }>
-        horizon:
-          | Readonly<{
-              lamport: number
-              offset: number
-              stream: string
-            }>
-          | undefined
-        cycle: number
-      }
-    | undefined
-  >
-  latestErr: () => FishErrorContext | null
-  snapshotStore: SnapshotStore
-  applyAndGetState: (events: ReadonlyArray<TestEvent>) => Promise<S>
-  observe: Observable<S>
-  pubEvents: (events: readonly TestEvent[]) => void
-  wakeup: () => Promise<S>
-}
-
 export const snapshotTestSetup = async <S>(
   fish: Fish<S, NumberFishEvent>,
   storedEvents?: ReadonlyArray<TestEvent>,
   storedSnapshots?: ReadonlyArray<SnapshotData>,
-): Promise<SnapShotTestSetup<S>> => {
+) => {
   const sourceId = NodeId.of('LOCAL-test-source')
   const actyx = Actyx.test({ nodeId: sourceId })
   if (storedEvents) actyx.directlyPushEvents(storedEvents)
