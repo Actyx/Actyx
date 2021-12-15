@@ -31,7 +31,7 @@ export type OffsetsResponse = {
 }
 
 const emptyOffsetMap: OffsetMap = {}
-const offsetMapLookup = (m: OffsetMap, s: string): Offset =>
+export const _offsetMapLookup = (m: OffsetMap, s: string): Offset =>
   fromNullable(m[s]).getOrElse(Offset.min)
 
 /** Anything with offset on a stream. @public */
@@ -75,7 +75,7 @@ export type OffsetMapCompanion = Readonly<{
 export const OffsetMap: OffsetMapCompanion = {
   empty: emptyOffsetMap,
   isEmpty: m => Object.keys(m).length === 0,
-  lookup: offsetMapLookup,
+  lookup: _offsetMapLookup,
   lookupOrUndefined: (m: OffsetMapBuilder, s: string) => m[s],
   update: includeEvent,
 }

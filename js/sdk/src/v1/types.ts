@@ -77,7 +77,7 @@ export const EventIO = t.type({
 
 /** A single Actyx Event */
 export type Event = t.TypeOf<typeof EventIO>
-const compareEvents = (a: Event, b: Event): Ordering => {
+export const _compareEvents = (a: Event, b: Event): Ordering => {
   const lamportOrder = ordNumber.compare(a.lamport, b.lamport)
   if (lamportOrder !== 0) {
     return lamportOrder
@@ -102,7 +102,7 @@ const eventsEqual = (a: Event, b: Event): boolean =>
  */
 const ordEvent: Ord<Event> = {
   equals: eventsEqual,
-  compare: compareEvents,
+  compare: _compareEvents,
 }
 
 /** Event-related constants */

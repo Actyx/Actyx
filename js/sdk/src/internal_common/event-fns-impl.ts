@@ -44,11 +44,11 @@ import { EventStore } from './eventStore'
 import { eventsMonotonic, EventsOrTimetravel as EventsOrTtInternal } from './subscribe_monotonic'
 import { Event, Events } from './types'
 
-const ordByTimestamp = contramap(
+export const _ordByTimestamp = contramap(
   (e: ActyxEvent): [number, string] => [e.meta.timestampMicros, e.meta.eventId],
   getTupleOrd(ordNumber, ordString),
 )
-const ordByKey = contramap((e: ActyxEvent) => e.meta.eventId, ordString)
+export const _ordByKey = contramap((e: ActyxEvent) => e.meta.eventId, ordString)
 
 export const EventFnsFromEventStoreV2 = (
   nodeId: NodeId,
@@ -448,7 +448,7 @@ export const EventFnsFromEventStoreV2 = (
     const { query, eventOrder } = tq
 
     if (eventOrder === EventOrder.Timestamp) {
-      return observeBestMatch(query, lt(ordByTimestamp), onEvent)
+      return observeBestMatch(query, lt(_ordByTimestamp), onEvent)
     }
 
     let cancelled = false
@@ -465,7 +465,7 @@ export const EventFnsFromEventStoreV2 = (
         offsets,
         earliest,
         onEvent,
-        lt(ordByKey),
+        lt(_ordByKey),
         onError,
       )
     })
@@ -484,7 +484,7 @@ export const EventFnsFromEventStoreV2 = (
     const { query, eventOrder } = tq
 
     if (eventOrder === EventOrder.Timestamp) {
-      return observeBestMatch(query, gt(ordByTimestamp), onEvent)
+      return observeBestMatch(query, gt(_ordByTimestamp), onEvent)
     }
 
     let cancelled = false
@@ -501,7 +501,7 @@ export const EventFnsFromEventStoreV2 = (
         offsets,
         latest,
         onEvent,
-        gt(ordByKey),
+        gt(_ordByKey),
         onError,
       )
     })

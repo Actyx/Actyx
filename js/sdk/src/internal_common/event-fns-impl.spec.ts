@@ -17,10 +17,11 @@ import {
   Where,
 } from '..'
 import { SnapshotStore } from '../snapshotStore'
-import { EventFnsFromEventStoreV2 } from './event-fns-impl'
+import { EventFnsFromEventStoreV2, _ordByKey, _ordByTimestamp } from './event-fns-impl'
 import { EventStore } from './eventStore'
 import { emitter, mkTimeline } from './testHelper'
 import { Event, Events } from './types'
+import { gt, lt } from 'fp-ts/lib/Ord'
 
 const assertPayloadsEqual = (actual: ActyxEvent[], expected: Events) =>
   expect(actual.map(x => x.payload)).toEqual(expected.map(x => x.payload))
@@ -146,6 +147,43 @@ const setup = () => {
 
   return { store, fns, tl }
 }
+
+describe('util', () => {
+  it(`should be able to order by timestamp`, () => {
+    const e1: ActyxEvent<unknown> = {
+      meta: {
+        eventId: 'a',
+        timestampMicros: 1,
+      },
+    } as ActyxEvent<unknown>
+    const e2: ActyxEvent<unknown> = {
+      meta: {
+        eventId: 'b',
+        timestampMicros: 2,
+      },
+    } as ActyxEvent<unknown>
+    expect(lt(_ordByTimestamp)(e1, e2)).toBe(true)
+    expect(gt(_ordByTimestamp)(e1, e2)).toBe(false)
+    expect(lt(_ordByTimestamp)(e2, e1)).toBe(false)
+    expect(gt(_ordByTimestamp)(e2, e1)).toBe(true)
+  })
+  it(`should be able to order by key`, () => {
+    const e1: ActyxEvent<unknown> = {
+      meta: {
+        eventId: 'a',
+      },
+    } as ActyxEvent<unknown>
+    const e2: ActyxEvent<unknown> = {
+      meta: {
+        eventId: 'b',
+      },
+    } as ActyxEvent<unknown>
+    expect(lt(_ordByKey)(e1, e2)).toBe(true)
+    expect(gt(_ordByKey)(e1, e2)).toBe(false)
+    expect(lt(_ordByKey)(e2, e1)).toBe(false)
+    expect(gt(_ordByKey)(e2, e1)).toBe(true)
+  })
+})
 
 describe('EventFns', () => {
   it(`should find new events`, async () => {
