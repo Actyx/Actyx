@@ -73,13 +73,15 @@ impl NodeConnection {
         let public_key = kp.public();
         let (peer_id, transport) = mk_transport(kp).await?;
 
+        let mut request_response_config = RequestResponseConfig::default();
+        request_response_config.set_request_timeout(Duration::from_secs(120));
         let protocol = RequestBehaviour {
             admin_api: StreamingResponse::new(Default::default()),
             events_api: StreamingResponse::new(Default::default()),
             banyan_api: RequestResponse::new(
                 BanyanProtocol::default(),
                 [(BanyanProtocolName, ProtocolSupport::Outbound)],
-                RequestResponseConfig::default(),
+                request_response_config,
             ),
             ping: Ping::new(PingConfig::new().with_keep_alive(true)),
             identify: Identify::new(
