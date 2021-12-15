@@ -31,6 +31,9 @@ export type OffsetsResponse = {
 }
 
 const emptyOffsetMap: OffsetMap = {}
+/**
+ * @internal
+ */
 export const _offsetMapLookup = (m: OffsetMap, s: string): Offset =>
   getOrElseO(() => Offset.min)(fromNullable(m[s]))
 

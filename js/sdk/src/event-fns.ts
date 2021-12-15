@@ -146,7 +146,11 @@ export type AqlQuery =
  **/
 export type OnCompleteOrErr = (err?: unknown) => void
 
-export type SubscribeAqlOpts = {
+/**
+ * Properties for an AQL subscription.
+ * @public
+ **/
+export type SubscribeAqlProps = {
   query: AqlQuery
   lowerBound?: OffsetMap
   onResponse: (r: AqlResponse) => Promise<void> | void
@@ -227,7 +231,7 @@ export interface EventFns {
   queryAql: (query: AqlQuery) => Promise<AqlResponse[]>
 
   // NEW
-  subscribeAql: (opts: SubscribeAqlOpts) => CancelSubscription
+  subscribeAql: (opts: SubscribeAqlProps) => CancelSubscription
 
   /**
    * Run a custom AQL query and get the response messages in chunks.
