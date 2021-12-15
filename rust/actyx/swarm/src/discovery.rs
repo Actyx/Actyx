@@ -184,12 +184,12 @@ pub async fn discovery_ingest(store: BanyanStore) {
             tracing::debug!("discovery_ingest {} {:?}", node_name, event);
         }
         match event {
-            Event::NewExternalAddr(peer, addr) | Event::NewObservedAddr(peer, addr) => {
-                store.ipfs().add_address(&peer.into(), addr.into())
-            }
-            Event::ExpiredExternalAddr(peer, addr) | Event::ExpiredObservedAddr(peer, addr) => {
-                store.ipfs().remove_address(&peer.into(), &addr.into())
-            }
+            Event::NewListenAddr(peer, addr)
+            | Event::NewExternalAddr(peer, addr)
+            | Event::NewObservedAddr(peer, addr) => store.ipfs().add_address(&peer.into(), addr.into()),
+            Event::ExpiredListenAddr(peer, addr)
+            | Event::ExpiredExternalAddr(peer, addr)
+            | Event::ExpiredObservedAddr(peer, addr) => store.ipfs().remove_address(&peer.into(), &addr.into()),
             _ => {}
         }
     }
