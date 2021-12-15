@@ -68,9 +68,9 @@ impl BlockWriter<Sha256Digest> for SqliteStoreWrite {
 }
 
 #[derive(Clone)]
-pub struct StorageServiceStore(StorageService<libipld::DefaultParams>);
+pub struct StorageServiceStore(StorageService<crate::StoreParams>);
 impl StorageServiceStore {
-    pub fn new(store: StorageService<libipld::DefaultParams>) -> Self {
+    pub fn new(store: StorageService<crate::StoreParams>) -> Self {
         Self(store)
     }
     pub fn write(&self) -> Result<StorageServiceStoreWrite> {
@@ -80,7 +80,7 @@ impl StorageServiceStore {
     }
 }
 impl Deref for StorageServiceStore {
-    type Target = StorageService<libipld::DefaultParams>;
+    type Target = StorageService<crate::StoreParams>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
