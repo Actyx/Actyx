@@ -4,6 +4,7 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
+import { isRight } from 'fp-ts/lib/Either'
 import { Event, _compareEvents } from '.'
 import { ConnectivityStatus } from './types'
 
@@ -39,7 +40,9 @@ describe('connectivity status codes', () => {
       inCurrentStatusForMs: 100,
     }
 
-    expect(ConnectivityStatus.decode(v).value).toEqual(v)
+    expect(isRight(ConnectivityStatus.decode(v))).toBe(true)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((ConnectivityStatus.decode(v) as any).right).toEqual(v)
   })
 
   it('should decode PartiallyConnected with empty specials', () => {
@@ -52,7 +55,9 @@ describe('connectivity status codes', () => {
       specialsDisconnected: [],
     }
 
-    expect(ConnectivityStatus.decode(v).value).toEqual(v)
+    expect(isRight(ConnectivityStatus.decode(v))).toBe(true)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((ConnectivityStatus.decode(v) as any).right).toEqual(v)
   })
 
   it('should decode PartiallyConnected with filled specials', () => {
@@ -65,7 +70,9 @@ describe('connectivity status codes', () => {
       specialsDisconnected: ['some-source'],
     }
 
-    expect(ConnectivityStatus.decode(v).value).toEqual(v)
+    expect(isRight(ConnectivityStatus.decode(v))).toBe(true)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((ConnectivityStatus.decode(v) as any).right).toEqual(v)
   })
 
   it('should decode NotConnected', () => {
@@ -76,6 +83,8 @@ describe('connectivity status codes', () => {
       eventsToSend: 6,
     }
 
-    expect(ConnectivityStatus.decode(v).value).toEqual(v)
+    expect(isRight(ConnectivityStatus.decode(v))).toBe(true)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((ConnectivityStatus.decode(v) as any).right).toEqual(v)
   })
 })

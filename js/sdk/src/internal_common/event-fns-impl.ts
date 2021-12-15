@@ -4,9 +4,21 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { contramap, getTupleOrd, gt, lt, ordNumber, ordString } from 'fp-ts/lib/Ord'
+import { contramap, gt, lt, tuple } from 'fp-ts/lib/Ord'
+import { Ord as StringOrd } from 'fp-ts/string'
+import { Ord as NumberOrd } from 'fp-ts/number'
 import { SubscribeAqlOpts } from '..'
-import { Observable } from '../../node_modules/rxjs'
+import { lastValueFrom, EMPTY, from, defaultIfEmpty, first } from '../../node_modules/rxjs'
+import {
+  map,
+  filter,
+  toArray,
+  bufferCount,
+  mergeScan,
+  bufferTime,
+  reduce as rxReduce,
+  shareReplay,
+} from '../../node_modules/rxjs/operators'
 import {
   AqlQuery,
   AutoCappedQuery,
@@ -44,11 +56,11 @@ import { EventStore } from './eventStore'
 import { eventsMonotonic, EventsOrTimetravel as EventsOrTtInternal } from './subscribe_monotonic'
 import { Event, Events } from './types'
 
-export const _ordByTimestamp = contramap(
-  (e: ActyxEvent): [number, string] => [e.meta.timestampMicros, e.meta.eventId],
-  getTupleOrd(ordNumber, ordString),
-)
-export const _ordByKey = contramap((e: ActyxEvent) => e.meta.eventId, ordString)
+export const _ordByTimestamp = contramap((e: ActyxEvent): [number, string] => [
+  e.meta.timestampMicros,
+  e.meta.eventId,
+])(tuple(NumberOrd, StringOrd))
+export const _ordByKey = contramap((e: ActyxEvent) => e.meta.eventId)(StringOrd)
 
 export const EventFnsFromEventStoreV2 = (
   nodeId: NodeId,
@@ -135,18 +147,18 @@ export const EventFnsFromEventStoreV2 = (
     return onChunk0
   }
 
-  const present = () => eventStore.offsets().then(x => x.present)
+  const present = () => eventStore.offsets().then((x) => x.present)
 
   const offsets = () => eventStore.offsets()
 
   const queryKnownRange = (rangeQuery: RangeQuery) => {
     const { lowerBound, upperBound, query, order } = rangeQuery
 
-    return eventStore
-      .query(lowerBound || {}, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
-      .map(wrap)
-      .toArray()
-      .toPromise()
+    return lastValueFrom(
+      eventStore
+        .query(lowerBound || {}, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
+        .pipe(map(wrap), toArray()),
+    )
   }
 
   const queryKnownRangeChunked = (
@@ -170,15 +182,17 @@ export const EventFnsFromEventStoreV2 = (
 
     const s = eventStore
       .query(lb, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
-      .bufferCount(chunkSize)
-      // The only way to avoid parallel invocations is to use mergeScan with final arg=1
-      .mergeScan(
-        (_a: void, chunk: Events) => {
-          return cancelled ? Observable.empty<void>() : Observable.from(cb(chunk))
-        },
-        void 0,
-        1,
+      .pipe(
+        bufferCount(chunkSize),
+        mergeScan(
+          (_a: void, chunk: Events) => {
+            return cancelled ? EMPTY : from(cb(chunk))
+          },
+          void 0,
+          1,
+        ),
       )
+      // The only way to avoid parallel invocations is to use mergeScan with final arg=1
       .subscribe({ complete: onCompleteOrErr, error: onCompleteOrErr })
 
     return () => {
@@ -212,7 +226,7 @@ export const EventFnsFromEventStoreV2 = (
       // Function is bound again when the real query starts
     }
 
-    present().then(present => {
+    present().then((present) => {
       if (canceled) {
         return
       }
@@ -241,11 +255,9 @@ export const EventFnsFromEventStoreV2 = (
 
     const rxSub = eventStore
       .subscribe(lb, query || allEvents)
-      .map(wrap)
-      .mergeScan(
-        (_a: void, e: ActyxEvent) => Observable.from(Promise.resolve(onEvent(e))),
-        void 0,
-        1,
+      .pipe(
+        map(wrap),
+        mergeScan((_a: void, e: ActyxEvent) => from(Promise.resolve(onEvent(e))), void 0, 1),
       )
       .subscribe({ error: onError || noop })
 
@@ -269,14 +281,17 @@ export const EventFnsFromEventStoreV2 = (
 
     const buffered = s
       // 2nd arg to bufferTime is not marked as optional, but it IS optional
-      /* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */
-      .bufferTime(bufTime, null!, bufSize)
-      .filter(x => x.length > 0)
-      .map(buf => buf.sort(EventKey.ord.compare))
+      /* eslint-disable @typescript-eslint/no-non-null-assertion */
+      .pipe(
+        bufferTime(bufTime, null!, bufSize),
+        filter((x) => x.length > 0),
+        map((buf) => buf.sort(EventKey.ord.compare)),
+      )
+    /* eslint-enable @typescript-eslint/no-non-null-assertion */
 
     // The only way to avoid parallel invocations is to use mergeScan with final arg=1
     const rxSub = buffered
-      .mergeScan((_a: void, chunk: Events) => Observable.from(cb(chunk)), void 0, 1)
+      .pipe(mergeScan((_a: void, chunk: Events) => from(cb(chunk)), void 0, 1))
       .subscribe({ error: onError || noop })
 
     return () => rxSub.unsubscribe()
@@ -310,13 +325,11 @@ export const EventFnsFromEventStoreV2 = (
     onCompleteOrError?: (err?: unknown) => void,
   ): CancelSubscription => {
     const x = subMono(query.sessionId, query.query, query.attemptStartFrom)
-      .map(x => convertMsg<E>(x))
-      // The only way to avoid parallel invocations is to use mergeScan with final arg=1
-      .mergeScan(
-        (_a: void, m: EventsOrTimetravel<E>) => Observable.from(Promise.resolve(cb(m))),
-        void 0,
-        1,
+      .pipe(
+        map((x) => convertMsg<E>(x)),
+        mergeScan((_a: void, m: EventsOrTimetravel<E>) => from(Promise.resolve(cb(m))), void 0, 1),
       )
+      // The only way to avoid parallel invocations is to use mergeScan with final arg=1
       .subscribe({
         complete: onCompleteOrError || noop,
         error: onCompleteOrError || noop,
@@ -332,11 +345,9 @@ export const EventFnsFromEventStoreV2 = (
   ): Promise<[ActyxEvent<E> | undefined, OffsetMap]> => {
     const cur = await present()
 
-    const firstEvent = await eventStore
-      .query({}, cur, query, order)
-      .defaultIfEmpty(null)
-      .first()
-      .toPromise()
+    const firstEvent = await lastValueFrom(
+      eventStore.query({}, cur, query, order).pipe(defaultIfEmpty(null), first()),
+    )
 
     return [firstEvent ? wrap(firstEvent) : undefined, cur]
   }
@@ -349,17 +360,20 @@ export const EventFnsFromEventStoreV2 = (
   ): Promise<[R, OffsetMap]> => {
     const cur = await present()
 
-    const reducedValue = await eventStore
-      .query(
-        {},
-        cur,
-        query,
-        // Doesn't matter, we have to go through all known events anyways
-        EventsSortOrder.Ascending,
-      )
-      .map(e => wrap<E>(e))
-      .reduce(reduce, initial)
-      .toPromise()
+    const reducedValue = await lastValueFrom(
+      eventStore
+        .query(
+          {},
+          cur,
+          query,
+          // Doesn't matter, we have to go through all known events anyways
+          EventsSortOrder.Ascending,
+        )
+        .pipe(
+          map((e) => wrap<E>(e)),
+          rxReduce(reduce, initial),
+        ),
+    )
 
     return [reducedValue, cur]
   }
@@ -558,17 +572,17 @@ export const EventFnsFromEventStoreV2 = (
       }
     })
 
-    const allPersisted = eventStore
-      .persistEvents(events)
-      .toArray()
-      .map(x => x.flat().map(mkMeta))
-      .shareReplay(1)
+    const allPersisted = eventStore.persistEvents(events).pipe(
+      toArray(),
+      map((x) => x.flat().map(mkMeta)),
+      shareReplay(1),
+    )
 
     return pendingEmission(allPersisted)
   }
 
   // TS doesn’t understand how we are implementing this overload.
-  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const publish: EventFns['publish'] = (taggedEvents: ReadonlyArray<TaggedEvent> | TaggedEvent) => {
     if (Array.isArray(taggedEvents)) {
@@ -576,7 +590,7 @@ export const EventFnsFromEventStoreV2 = (
     } else {
       return emit([taggedEvents as TaggedEvent])
         .toPromise()
-        .then(x => x[0])
+        .then((x) => x[0])
     }
   }
 
@@ -588,7 +602,7 @@ export const EventFnsFromEventStoreV2 = (
       return e as AqlResponse
     }
 
-    const w = wrap((e as unknown) as Event)
+    const w = wrap(e as unknown as Event)
 
     return {
       ...w,
@@ -608,11 +622,7 @@ export const EventFnsFromEventStoreV2 = (
   const queryAql = async (query: AqlQuery): Promise<AqlResponse[]> => {
     const [aql, ord] = getQueryAndOrd(query)
 
-    return eventStore
-      .queryUnchecked(aql, ord)
-      .map(wrapAql)
-      .toArray()
-      .toPromise()
+    return lastValueFrom(eventStore.queryUnchecked(aql, ord).pipe(map(wrapAql), toArray()))
   }
   const subscribeAql = (opts: SubscribeAqlOpts): CancelSubscription => {
     const { lowerBound, query, onResponse, onError } = opts
@@ -621,11 +631,9 @@ export const EventFnsFromEventStoreV2 = (
 
     const rxSub = eventStore
       .subscribeUnchecked(qr, lb)
-      .map(wrapAql)
-      .mergeScan(
-        (_a: void, r: AqlResponse) => Observable.from(Promise.resolve(onResponse(r))),
-        void 0,
-        1,
+      .pipe(
+        map(wrapAql),
+        mergeScan((_a: void, r: AqlResponse) => from(Promise.resolve(onResponse(r))), void 0, 1),
       )
       .subscribe({ error: onError || noop })
 
@@ -640,17 +648,16 @@ export const EventFnsFromEventStoreV2 = (
   ): CancelSubscription => {
     const [aql, ord] = getQueryAndOrd(query)
 
-    const buffered = eventStore
-      .queryUnchecked(aql, ord)
-      .map(wrapAql)
-      .bufferCount(chunkSize)
+    const buffered = eventStore.queryUnchecked(aql, ord).pipe(map(wrapAql), bufferCount(chunkSize))
 
     // The only way to avoid parallel invocations is to use mergeScan with final arg=1
     const rxSub = buffered
-      .mergeScan(
-        (_a: void, chunk: AqlResponse[]) => Observable.from(Promise.resolve(onChunk(chunk))),
-        undefined,
-        1,
+      .pipe(
+        mergeScan(
+          (_a: void, chunk: AqlResponse[]) => from(Promise.resolve(onChunk(chunk))),
+          undefined,
+          1,
+        ),
       )
       .subscribe({ error: onCompleteOrError, complete: onCompleteOrError })
 

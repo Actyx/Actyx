@@ -5,7 +5,8 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { chunksOf } from 'fp-ts/lib/Array'
-import { Subject } from '../../node_modules/rxjs'
+import { Subject, lastValueFrom } from '../../node_modules/rxjs'
+import { take, timeout, toArray } from '../../node_modules/rxjs/operators'
 import {
   ActyxEvent,
   allEvents,
@@ -20,11 +21,11 @@ import { SnapshotStore } from '../snapshotStore'
 import { EventFnsFromEventStoreV2, _ordByKey, _ordByTimestamp } from './event-fns-impl'
 import { EventStore } from './eventStore'
 import { emitter, mkTimeline } from './testHelper'
-import { Event, Events } from './types'
+import { Events } from './types'
 import { gt, lt } from 'fp-ts/lib/Ord'
 
 const assertPayloadsEqual = (actual: ActyxEvent[], expected: Events) =>
-  expect(actual.map(x => x.payload)).toEqual(expected.map(x => x.payload))
+  expect(actual.map((x) => x.payload)).toEqual(expected.map((x) => x.payload))
 
 const toOffsets = (eventsAscending: Events) => {
   const offsets: Record<string, number> = {}
@@ -43,12 +44,12 @@ type PartialChunk = {
 // Simulate chunking according to forward/reverse order, but keep everything in asc order,
 // so that we have an easier time computing the expected offset maps.
 const rawChunksAsc = (eventsAscending: Events, chunkSize: number, reverse?: boolean) => {
-  const clientChunk = chunksOf<Event>(chunkSize)
+  const clientChunk = chunksOf(chunkSize)
   if (reverse) {
     // This is a bit complicated, basically we reverse all events, chunk once, chunk twice, reverse the indicidual chunks, reverse the list of chunks.
     // So we return events ascending, in ascending chunks, but chunked according to reverse logic.
     return clientChunk(eventsAscending.reverse())
-      .map(x => x.reverse())
+      .map((x) => x.reverse())
       .reverse()
   } else {
     return clientChunk(eventsAscending)
@@ -75,7 +76,7 @@ const expectedChunks = (
       ...toOffsets(chunk),
     }
 
-    const contents = chunk.map(x => ({ payload: x.payload }))
+    const contents = chunk.map((x) => ({ payload: x.payload }))
     expected.push({
       events: opts.reverse ? contents.reverse() : contents,
       lowerBound: { ...curLowerBound },
@@ -100,20 +101,14 @@ const buffer = () => {
   }
 
   const expectResultEq = async (op: () => void, ...expected: unknown[]) => {
-    const r = values
-      .take(expected.length)
-      .toArray()
-      .toPromise()
+    const r = lastValueFrom(values.pipe(take(expected.length), toArray()))
     op()
 
     expect(await r).toEqual(expected)
   }
 
   const expectResultMatches = async (op: () => void, ...expected: unknown[]) => {
-    const r = values
-      .take(expected.length)
-      .toArray()
-      .toPromise()
+    const r = lastValueFrom(values.pipe(take(expected.length), toArray()))
 
     op()
 
@@ -121,7 +116,7 @@ const buffer = () => {
   }
 
   const expectNoResult = async (op: () => void) => {
-    const r = values.timeout(20).toPromise()
+    const r = lastValueFrom(values.pipe(timeout(20)))
 
     op()
 
@@ -129,7 +124,7 @@ const buffer = () => {
   }
 
   const assertFinished = async () => {
-    await new Promise(res => setTimeout(res, 1))
+    await new Promise((res) => setTimeout(res, 1))
     expect(finished).toBeTruthy()
   }
 
@@ -224,7 +219,7 @@ describe('EventFns', () => {
 
       const { cb } = buffer()
 
-      const res = new Promise(resolve => fns.queryAllKnownChunked({}, 15000, cb, resolve))
+      const res = new Promise((resolve) => fns.queryAllKnownChunked({}, 15000, cb, resolve))
 
       return expect(res).resolves.toBeUndefined()
     })
@@ -235,7 +230,7 @@ describe('EventFns', () => {
 
       const { cb } = buffer()
 
-      const res = new Promise(resolve => fns.queryAllKnownChunked({}, 15000, cb, resolve)())
+      const res = new Promise((resolve) => fns.queryAllKnownChunked({}, 15000, cb, resolve)())
 
       return expect(res).resolves.toBeUndefined()
     })
@@ -262,24 +257,24 @@ describe('EventFns', () => {
       it(description + ' (DESC)', async () => await testFn(EventsSortOrder.Descending))
     }
 
-    testBoth('should work with chunk size eq to store chunk size', async ord => {
+    testBoth('should work with chunk size eq to store chunk size', async (ord) => {
       // We will get chunk sizes 4 - 2
       await testChunking(4, ord)
     })
 
-    testBoth('should work with divisors of store chunk size', async ord => {
+    testBoth('should work with divisors of store chunk size', async (ord) => {
       // We will get chunk sizes 2 - 2 - 2
       await testChunking(2, ord)
     })
 
-    testBoth('should work with non-divisors of store chunk size', async ord => {
+    testBoth('should work with non-divisors of store chunk size', async (ord) => {
       // We will get chunk sizes 3 - 1 - 2
       await testChunking(3, ord)
     })
 
     testBoth(
       'should work with chunk size larger than store (will not withhold events to fill chunks)',
-      async ord => {
+      async (ord) => {
         // We will get chunk sizes 4 - 2
         await testChunking(5, ord)
       },
@@ -413,22 +408,22 @@ describe('EventFns', () => {
         )
       }
 
-      testBoth('should wait for 1st event to be found', async q => {
+      testBoth('should wait for 1st event to be found', async (q) => {
         const { store, fns, tl } = setup()
 
         let called = false
-        const earliest = new Promise(resolve => fns.observeEarliest(q, resolve)).then(x => {
+        const earliest = new Promise((resolve) => fns.observeEarliest(q, resolve)).then((x) => {
           called = true
           return x
         })
 
-        const latest = new Promise(resolve => fns.observeLatest(q, resolve)).then(x => {
+        const latest = new Promise((resolve) => fns.observeLatest(q, resolve)).then((x) => {
           called = true
           return x
         })
 
         // Wait some time
-        await new Promise(r => setTimeout(r, 5))
+        await new Promise((r) => setTimeout(r, 5))
         expect(called).toBeFalsy() // Not called yet
 
         store.directlyPushEvents(tl.all)
@@ -439,20 +434,20 @@ describe('EventFns', () => {
         store.close()
       })
 
-      testBoth('should directly deliver known result', async q => {
+      testBoth('should directly deliver known result', async (q) => {
         const { store, fns, tl } = setup()
         store.directlyPushEvents(tl.all)
 
-        const earliest = await new Promise(resolve => fns.observeEarliest(q, resolve))
+        const earliest = await new Promise((resolve) => fns.observeEarliest(q, resolve))
         expect(earliest).toEqual(5)
 
-        const latest = await new Promise(resolve => fns.observeLatest(q, resolve))
+        const latest = await new Promise((resolve) => fns.observeLatest(q, resolve))
         expect(latest).toEqual(10)
 
         store.close()
       })
 
-      testBoth('should update earliest when new information becomes known', async q => {
+      testBoth('should update earliest when new information becomes known', async (q) => {
         const { store, fns, tl } = setup()
         store.directlyPushEvents(tl.of('A'))
 
@@ -466,7 +461,7 @@ describe('EventFns', () => {
         store.close()
       })
 
-      testBoth('should not update earliest when it doesnt change', async q => {
+      testBoth('should not update earliest when it doesnt change', async (q) => {
         const { store, fns, tl } = setup()
         store.directlyPushEvents(tl.of('C'))
 
@@ -480,7 +475,7 @@ describe('EventFns', () => {
         store.close()
       })
 
-      testBoth('should update latest when new information becomes known', async q => {
+      testBoth('should update latest when new information becomes known', async (q) => {
         const { store, fns, tl } = setup()
         store.directlyPushEvents(tl.of('A'))
 
@@ -494,7 +489,7 @@ describe('EventFns', () => {
         store.close()
       })
 
-      testBoth('should not update latest when it doesnt change', async q => {
+      testBoth('should not update latest when it doesnt change', async (q) => {
         const { store, fns, tl } = setup()
         store.directlyPushEvents(tl.of('C'))
 
@@ -520,7 +515,7 @@ describe('EventFns', () => {
 
         store.directlyPushEvents(tl.all)
 
-        const latest = await new Promise(resolve => fns.observeLatest(query, resolve))
+        const latest = await new Promise((resolve) => fns.observeLatest(query, resolve))
         expect(latest).toEqual(7)
         store.close()
       })
@@ -533,7 +528,7 @@ describe('EventFns', () => {
 
         store.directlyPushEvents(tl.all)
 
-        const earliest = await new Promise(resolve => fns.observeEarliest(query, resolve))
+        const earliest = await new Promise((resolve) => fns.observeEarliest(query, resolve))
         expect(earliest).toEqual(7)
         store.close()
       })

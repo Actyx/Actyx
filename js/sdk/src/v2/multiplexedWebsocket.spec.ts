@@ -7,9 +7,15 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { fromNullable } from 'fp-ts/lib/Option'
+import {
+  fromNullable,
+  map as mapO,
+  filter as filterO,
+  getOrElse as getOrElseO,
+} from 'fp-ts/lib/Option'
+import { pipe } from 'fp-ts/lib/function'
 import { range, takeWhile } from 'ramda'
-import { Observable } from '../../node_modules/rxjs'
+import { timer } from '../../node_modules/rxjs'
 import { OffsetsResponse } from '../internal_common/types'
 import { WebSocketWrapper } from '../internal_common/webSocketWrapper'
 import { validateOrThrow } from '../util'
@@ -21,6 +27,8 @@ import {
   ResponseMessageType,
 } from './multiplexedWebsocket'
 import { RequestTypes } from './websocketEventStore'
+import { lastValueFrom } from '../../node_modules/rxjs'
+import { map, tap, first, toArray } from '../../node_modules/rxjs/operators'
 
 let __ws: any
 declare const global: any
@@ -57,8 +65,8 @@ const msgGen: () => ((requestId: number) => ResponseMessage[])[] = () => {
       return a
     }
   }
-  return range(0, numberOfTests).map(() => (requestId: number) =>
-    range(0, numberOfMessages).map(() => msgType(requestId)),
+  return range(0, numberOfTests).map(
+    () => (requestId: number) => range(0, numberOfMessages).map(() => msgType(requestId)),
   )
 }
 
@@ -71,11 +79,9 @@ describe('multiplexedWebsocket', () => {
     socket.trigger('error', { message: 'destination unreachable' })
 
     await expect(
-      s
-        .request(RequestTypes.Offsets)
-        .map(validateOrThrow(OffsetsResponse))
-        .first()
-        .toPromise(),
+      lastValueFrom(
+        s.request(RequestTypes.Offsets).pipe(map(validateOrThrow(OffsetsResponse)), first()),
+      ),
     ).rejects.toMatch('destination unreachable')
   })
 
@@ -91,11 +97,12 @@ describe('multiplexedWebsocket', () => {
     for (const msgFn of testArr) {
       const requestType = 'someRequest'
       const receivedVals: string[] = []
-      const res = multiplexer
-        .request(requestType, { from: 1, to: 4 })
-        .do(x => receivedVals.push(x as string))
-        .toArray()
-        .toPromise()
+      const res = lastValueFrom(
+        multiplexer.request(requestType, { from: 1, to: 4 }).pipe(
+          tap((x) => receivedVals.push(x as string)),
+          toArray(),
+        ),
+      )
 
       // For testing with real webSocket, please remove assertions against socket.lastMessageSent
       // as this is a particular of the MockWebSocket implementation.
@@ -111,14 +118,14 @@ describe('multiplexedWebsocket', () => {
       expect(socket.lastMessageSent).toMatchObject(initialRequest)
       const msgs = msgFn(requestId)
       // Sent generated `ResponseMessage`s over the _wire_
-      msgs.forEach(response => socket.triggerMessage(JSON.stringify(response)))
+      msgs.forEach((response) => socket.triggerMessage(JSON.stringify(response)))
       // Trigger complete in any case
       socket.triggerMessage(JSON.stringify({ type: ResponseMessageType.Complete, requestId }))
-      const nextMsgs = takeWhile(x => x.type === ResponseMessageType.Next, msgs).flatMap(
-        x => x.type === ResponseMessageType.Next && x.payload,
+      const nextMsgs = takeWhile((x) => x.type === ResponseMessageType.Next, msgs).flatMap(
+        (x) => x.type === ResponseMessageType.Next && x.payload,
       )
-      const errorIdx = msgs.findIndex(x => x.type === ResponseMessageType.Error)
-      const completeIdx = msgs.findIndex(x => x.type === ResponseMessageType.Complete)
+      const errorIdx = msgs.findIndex((x) => x.type === ResponseMessageType.Error)
+      const completeIdx = msgs.findIndex((x) => x.type === ResponseMessageType.Complete)
       const err = (completeIdx === -1 || completeIdx > errorIdx) && msgs[errorIdx]
       if (err) {
         await expect(res).rejects.toEqual(
@@ -162,9 +169,8 @@ class MessageEvent {
 
 // courtesy of https://github.com/ReactiveX/rxjs/blob/master/spec/observables/dom/webSocket-spec.ts
 
-export type MockWebSocketMsgHandler = (
-  data: Request,
-) => { name: string; res: MessageEvent[] } | undefined
+type MockWebSocketMsgHandlerResult = { name: string; res: MessageEvent[] }
+export type MockWebSocketMsgHandler = (data: Request) => MockWebSocketMsgHandlerResult | undefined
 export type MockWebSocketAutoRespons = {
   socket: MockWebSocket
   messageHandler?: MockWebSocketMsgHandler
@@ -202,7 +208,7 @@ export class MockWebSocket {
     this.socketMessageHandler = MockWebSocket.messageHandler
     this.autoResponse = MockWebSocket.autoResponse
     if (this.autoResponse) {
-      Observable.timer(50).subscribe(_ => this.open())
+      timer(50).subscribe((_) => this.open())
     }
   }
 
@@ -211,10 +217,14 @@ export class MockWebSocket {
     if (!this.autoResponse) {
       return
     }
-    const actions = fromNullable(this.socketMessageHandler)
-      .map(f => f(JSON.parse(data)))
-      .filter(res => res !== undefined)
-      .getOrElseL(() => {
+    const actions = pipe(
+      fromNullable(this.socketMessageHandler),
+      mapO((f) => f(JSON.parse(data))),
+      filterO(
+        (res: MockWebSocketMsgHandlerResult | undefined): res is MockWebSocketMsgHandlerResult =>
+          res !== undefined,
+      ),
+      getOrElseO(() => {
         const request: Request = JSON.parse(data)
 
         if (
@@ -237,9 +247,10 @@ export class MockWebSocket {
           }
         }
         return { name: '', res: [] }
-      })
+      }),
+    )
 
-    actions && actions.res.forEach(ev => this.trigger(actions.name, ev))
+    actions && actions.res.forEach((ev) => this.trigger(actions.name, ev))
   }
 
   get lastMessageSent(): any | undefined {

@@ -50,8 +50,7 @@ describe('typed tag query system', () => {
   const q = tag0.and(tag1).or(tagA)
 
   it('should prevent omission of event types covered by the tags', () => {
-    // Errors because we cannot omit 'A'
-    // @ts-expect-error
+    // @ts-expect-error because we cannot omit 'A'
     const q1: Where<'hello??'> = q
 
     expect(q1.toV1WireFormat()).toMatchObject([{ tags: ['0', '1'] }, { tags: ['A'] }])
@@ -59,7 +58,7 @@ describe('typed tag query system', () => {
   })
 
   it('should insist on types?', () => {
-    // @ts-expect-error
+    // @ts-expect-error because we cannot omit 'A'
     const q2: Where<'A' | 'more-types'> = q
 
     // Must use q2 to avoid TS error...
@@ -69,9 +68,7 @@ describe('typed tag query system', () => {
   it('should preserve the common event type', () => {
     // Overlap is 'A'
     const w = tagA.and(abcTag)
-
-    // Errors because we cannot omit 'A'
-    // @ts-expect-error
+    // @ts-expect-error because we cannot omit 'A'
     const w2: Where<never> = w
 
     expect(w2.toV1WireFormat()).toMatchObject([
@@ -105,13 +102,9 @@ describe('typed tag query system', () => {
 
   it('should union event types (complex)', () => {
     // Surface now is 'A', 'B', and 'C'
-    const u = tagA
-      .local()
-      .or(tagB.withId('some-id'))
-      .or(abcTag)
+    const u = tagA.local().or(tagB.withId('some-id')).or(abcTag)
 
-    // Also covers 'C' now
-    // @ts-expect-error
+    // @ts-expect-error also covers 'C' now
     const u2: Where<'A' | 'B'> = u
 
     expect(u.toV1WireFormat()).toMatchObject([
@@ -168,7 +161,7 @@ describe('tag automatic id extraction', () => {
     fooId: 'second-foo',
   }
 
-  const FooTag = Tag<FooWithId>('foo', foo => foo.fooId)
+  const FooTag = Tag<FooWithId>('foo', (foo) => foo.fooId)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const BarTag = Tag<any>('bar')
 

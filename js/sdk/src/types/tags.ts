@@ -35,14 +35,16 @@ const justTag = (i: TagInternal) => i.tag
 
 // Try automatically extracting the "id" for a given event from a tag
 /** @returns List of tags as strings to be applied to the event (1 or 2 elements). */
-const autoExtract = (event: unknown) => (t: TagInternal): string[] => {
-  const id = t.extractId(event)
-  if (id) {
-    return namedSubSpace(t.tag, id)
-  }
+const autoExtract =
+  (event: unknown) =>
+  (t: TagInternal): string[] => {
+    const id = t.extractId(event)
+    if (id) {
+      return namedSubSpace(t.tag, id)
+    }
 
-  return [t.tag]
-}
+    return [t.tag]
+  }
 
 /**
  * Representation of a union of tag sets. I.e. this is an event selection that combines multiple `Tags` selections.
@@ -205,7 +207,7 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: ReadonlyArray<TagInternal>): 
     local: () => req<E>(true, rawTags),
 
     // TS cannot fathom our awesome "if arg list length is 1, there is not a list of args but just a single arg" logic
-    /* eslint-disable @typescript-eslint/ban-ts-ignore */
+    /* eslint-disable @typescript-eslint/ban-ts-comment */
     // @ts-ignore
     apply: (...events: E[]) => {
       if (events.length === 1) {
@@ -213,7 +215,7 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: ReadonlyArray<TagInternal>): 
         const res: TaggedEvent = { event, tags: rawTags.flatMap(autoExtract(event)) }
         return res
       } else {
-        const res: ReadonlyArray<TaggedEvent> = events.map(event => ({
+        const res: ReadonlyArray<TaggedEvent> = events.map((event) => ({
           event,
           tags: rawTags.flatMap(autoExtract(event)),
         }))
@@ -250,9 +252,9 @@ const union = <E>(sets: Tags<unknown>[]): Where<E> => {
     merge: <T>(moreSets: Tags<unknown>[]) => union<T>(moreSets.concat(sets)),
 
     toV1WireFormat: () =>
-      sets.map(x => ({ local: x.onlyLocalEvents, tags: x.rawTags.map(justTag) })),
+      sets.map((x) => ({ local: x.onlyLocalEvents, tags: x.rawTags.map(justTag) })),
 
-    toString: () => sets.map(s => s.toString()).join(' | '),
+    toString: () => sets.map((s) => s.toString()).join(' | '),
   }
 }
 

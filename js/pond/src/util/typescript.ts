@@ -5,7 +5,6 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { fromNullable } from 'fp-ts/lib/Option'
 
 /**
  * Base type for a tagged union with type as the tag field
@@ -115,14 +114,5 @@ export const tuple = <T extends any[]>(...data: T) => data
 export const PartialRecord = {
   get<K extends RecordKey, V>(m: PartialRecord<K, V>, key: K): PartialRecord<K, V>[K] {
     return m[key]
-  },
-  get2<K1 extends RecordKey, K2 extends RecordKey, V>(
-    m: PartialRecord2<K1, K2, V>,
-    k1: K1,
-    k2: K2,
-  ): PartialRecord<K2, V>[K2] | undefined {
-    return fromNullable<PartialRecord<K2, V>>(m[k1])
-      .mapNullable(m1 => m1[k2])
-      .toUndefined()
   },
 }

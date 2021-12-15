@@ -55,11 +55,11 @@ export const getToken = async (opts: ActyxOpts, manifest: AppManifest): Promise<
 export const v2getNodeId = async (config: ActyxOpts): Promise<string | null> => {
   const path = `http://${getApiLocation(config.actyxHost, config.actyxPort)}/node/id`
   return await fetch(path)
-    .then(resp => {
+    .then((resp) => {
       // null indicates the endpoint was reachable but did not react with OK response -> probably V1.
       return resp.ok ? resp.text() : null
     })
-    .catch(err => {
+    .catch((err) => {
       // ECONNREFUSED is probably not a CORS issue, at least...
       if (err.message && err.message.includes('ECONNREFUSED')) {
         throw new Error(decorateEConnRefused(err.message, path))
@@ -115,16 +115,16 @@ export const v2WaitForSwarmSync = async (
       method: 'get',
       headers: mkHeaders(token),
     })
-      .then(resp => {
+      .then((resp) => {
         if (resp.status === 404) {
           throw new Error(
             'The targeted node seems not to support the `/api/v2/node/info` endpoint. Consider updating to the latest version.',
           )
         } else {
-          return resp.json()
+          return resp.json().then((i) => i as NodeInfo)
         }
       })
-      .catch(err => {
+      .catch((err) => {
         if (err.message) {
           throw new Error(decorateEConnRefused(err.message, uri))
         } else {
@@ -145,7 +145,7 @@ export const v2WaitForSwarmSync = async (
       case SyncStage.WaitingForPeers: {
         if (info.connectedNodes === 0) {
           // Wait a bit and retry.
-          await new Promise(res => setTimeout(res, 500))
+          await new Promise((res) => setTimeout(res, 500))
         } else {
           // First time there are some peers!
           firstNodeSeenAt = Date.now().valueOf()
@@ -162,9 +162,9 @@ export const v2WaitForSwarmSync = async (
         // distribution of the connected nodes', we can approximate how long to
         // avoid (+standard deviation):
         const waitForRootMap = 1e4 / info.connectedNodes + 2890
-        if (Date.now() - firstNodeSeenAt!! - waitForRootMap < 0) {
+        if (Date.now() - firstNodeSeenAt! - waitForRootMap < 0) {
           // Wait a bit and retry.
-          await new Promise(res => setTimeout(res, 250))
+          await new Promise((res) => setTimeout(res, 250))
         } else {
           // We should have seen at least one root map update by now.
           waitingForSyncSince = Date.now()
@@ -181,13 +181,13 @@ export const v2WaitForSwarmSync = async (
           return
         } else if (
           missingTargets < NODE_REPLICATION_TARGET_THRESHOLD &&
-          Date.now() - waitingForSyncSince!! > NODE_REPLICATION_WAIT_MS
+          Date.now() - waitingForSyncSince! > NODE_REPLICATION_WAIT_MS
         ) {
           // Don't let a few bad nodes draw us down
           return
         } else {
           // Wait a bit and retry
-          await new Promise(res => setTimeout(res, 250))
+          await new Promise((res) => setTimeout(res, 250))
           break
         }
       }

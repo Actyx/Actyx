@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2020 Actyx AG
  */
-import { Observable } from 'rxjs'
+import { firstValueFrom, Observable } from 'rxjs'
 import { Actyx, Tags } from '..'
 
 // Just a manual test that connects to live Actyx store, to test stuff with quick turnaround
@@ -18,7 +18,7 @@ const start = async () => {
     {
       automaticReconnect: true,
     },
-  ).catch(ex => {
+  ).catch((ex) => {
     console.log('cannot start SDK, is Actyx running on this computer?', ex)
     process.exit(1)
   })
@@ -27,8 +27,12 @@ const start = async () => {
 
   const tags3 = Tags('tE')
 
-  const p = new Observable(o =>
-    actyx.observeLatest({ query: tags3 }, e => o.next(e), err => o.error(err)),
+  const p = new Observable((o) =>
+    actyx.observeLatest(
+      { query: tags3 },
+      (e) => o.next(e),
+      (err) => o.error(err),
+    ),
   )
 
   console.log(await actyx.publish(tags3.apply('x')))
@@ -36,13 +40,13 @@ const start = async () => {
   console.log('waiting for err (stop the store manually)')
 
   try {
-    await p.toPromise()
+    await firstValueFrom(p)
   } catch (ex) {
     console.log('Caught', ex)
   }
 
   console.log('waiting a while for you to restart the store')
-  await new Promise(resolve => setTimeout(resolve, 20000))
+  await new Promise((resolve) => setTimeout(resolve, 20000))
 
   console.log('trying to send another request')
 

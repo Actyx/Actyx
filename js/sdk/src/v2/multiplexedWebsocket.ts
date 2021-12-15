@@ -7,7 +7,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as t from 'io-ts'
-import { Observable, Observer, Subscription } from '../../node_modules/rxjs'
+import { Observable, Observer, Subscription, throwError } from '../../node_modules/rxjs'
+import { takeWhile, mergeMap, map, tap } from '../../node_modules/rxjs/operators'
 import log from '../internal_common/log'
 import { WebSocketWrapper } from '../internal_common/webSocketWrapper'
 import { validateOrThrow } from '../util'
@@ -98,7 +99,7 @@ export class MultiplexedWebsocket {
     this.responseProcessor.unsubscribe()
     this.wsSubject.close()
 
-    this.clearListeners(l => l.complete())
+    this.clearListeners((l) => l.complete())
   }
 
   constructor(w: WebSocketWrapper<Request, ResponseMessage>) {
@@ -115,7 +116,7 @@ export class MultiplexedWebsocket {
      * which blows up the pipeline instead of bubbling the error up into user code.
      */
     return this.wsSubject.responses().subscribe({
-      next: response => {
+      next: (response) => {
         const listener = this.listeners[response.requestId]
         if (listener) {
           listener.next(response)
@@ -123,10 +124,10 @@ export class MultiplexedWebsocket {
           log.ws.warn('No listener registered for message ' + JSON.stringify(response))
         }
       },
-      error: err => {
+      error: (err) => {
         log.ws.error('Raw websocket communication error:', err)
 
-        this.clearListeners(l => l.error(err))
+        this.clearListeners((l) => l.error(err))
 
         // Set up new subscription, listening to WS that has potentially reconnected
         try {
@@ -202,7 +203,7 @@ export class MultiplexedWebsocket {
       log.ws.debug('About to subscribe %j', subMsg)
       wss.sendRequest(subMsg)
     } catch (err) {
-      return Observable.throw(err)
+      return throwError(() => err)
     }
 
     // Wait for the response subscriber to have been initialised, before running the request
@@ -214,7 +215,7 @@ export class MultiplexedWebsocket {
     payload,
   ) => {
     if (this.error) {
-      return Observable.throw(this.error)
+      return throwError(() => this.error)
     }
 
     /**
@@ -224,30 +225,31 @@ export class MultiplexedWebsocket {
      *  these cases.
      */
     let upstreamCompletedOrError = false
-    return this.multiplex(requestType, payload, () => !upstreamCompletedOrError)
-      .map(validateOrThrow(ResponseMessage))
-      .takeWhile(res => {
+    return this.multiplex(requestType, payload, () => !upstreamCompletedOrError).pipe(
+      map(validateOrThrow(ResponseMessage)),
+      takeWhile((res) => {
         const isComplete = res.type === ResponseMessageType.Complete
         if (isComplete) {
           upstreamCompletedOrError = true
         }
         return !isComplete
-      })
-      .mergeMap(res => {
+      }),
+      mergeMap((res) => {
         switch (res.type) {
           case ResponseMessageType.Next:
             return res.payload
           case ResponseMessageType.Error:
             log.ws.error(JSON.stringify(res.kind))
-            return Observable.throw(new Error(JSON.stringify(res.kind))) // TODO: add context to msg?
+            return throwError(() => new Error(JSON.stringify(res.kind))) // TODO: add context to msg?
           default:
             return unreachable()
         }
-      })
-      .do({
+      }),
+      tap({
         error: () => {
           upstreamCompletedOrError = true
         },
-      })
+      }),
+    )
   }
 }

@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { Observable } from '../../node_modules/rxjs'
+import { Observable, EMPTY } from '../../node_modules/rxjs'
 import { EventsSortOrder, NodeId, OffsetMap, Where } from '../types'
 import { mockEventStore } from './mockEventStore'
 import { testEventStore, TestEventStore } from './testEventStore'
@@ -79,12 +79,12 @@ export type EventStore = {
 }
 
 const noopEventStore: EventStore = {
-  subscribe: () => Observable.empty(),
-  subscribeUnchecked: () => Observable.empty(),
-  query: () => Observable.empty(),
-  queryUnchecked: () => Observable.empty(),
+  subscribe: () => EMPTY,
+  subscribeUnchecked: () => EMPTY,
+  query: () => EMPTY,
+  queryUnchecked: () => EMPTY,
   offsets: () => Promise.resolve({ present: {}, toReplicate: {} }),
-  persistEvents: () => Observable.empty(),
+  persistEvents: () => EMPTY,
 }
 
 export const EventStore: {

@@ -6,7 +6,8 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'events'
-import { Observable, Subject } from '../../node_modules/rxjs'
+import { Subject, fromEvent } from '../../node_modules/rxjs'
+import { first } from '../../node_modules/rxjs/operators'
 import { isNode } from '../util'
 import { root } from '../util/root'
 import { decorateEConnRefused } from './errors'
@@ -78,9 +79,9 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
       this.socket.send(msg)
     } else {
       log.ws.debug('Delaying request until socket is open:', msg)
-      Observable.fromEvent<WebSocket>(this.socketEvents, 'connected')
-        .first()
-        .subscribe(s => s.send(msg))
+      fromEvent<WebSocket>(this.socketEvents, 'connected')
+        .pipe(first())
+        .subscribe((s) => s.send(msg))
     }
   }
 
@@ -128,7 +129,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     if (binaryType) {
       socket.binaryType = binaryType
     }
-    socket.onerror = err => {
+    socket.onerror = (err) => {
       const originalMsg = (err as any).message
 
       const msg = decorateEConnRefused(originalMsg, url)
@@ -145,7 +146,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
       }
     }
     socket.onmessage = onMessage
-    socket.onclose = err => {
+    socket.onclose = (err) => {
       if (!this.tryConnect || !this.wasOpened) {
         // Orderly close desired by the user, or we did not even manage to connect
         return

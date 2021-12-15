@@ -4,11 +4,12 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { Observable, ReplaySubject } from '../../node_modules/rxjs'
+import { ReplaySubject, lastValueFrom, EMPTY, of } from '../../node_modules/rxjs'
+import { take, concatMap, tap, map } from '../../node_modules/rxjs/operators'
 import { AppId, Lamport, NodeId, Offset, OffsetMap, Timestamp, toEventPredicate } from '../types'
 import { DoPersistEvents, DoQuery, DoSubscribe, EventStore } from './eventStore'
 import log from './log'
-import { ConnectivityStatus, Events } from './types'
+import { Events } from './types'
 
 export const mockEventStore: () => EventStore = () => {
   const nodeId = NodeId.of('MOCK')
@@ -24,13 +25,12 @@ export const mockEventStore: () => EventStore = () => {
       throw new Error('direct AQL not yet supported by mockEventStore')
     }
 
-    return (
-      events
-        // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-        // @ts-ignore this needs to complete
-        .take(events._events.length)
-        .concatMap(x => x.filter(toEventPredicate(query)))
-        .do(x => log.ws.debug('persistedEvents', x))
+    return events.pipe(
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore this needs to complete
+      take(events._events.length),
+      concatMap((x) => x.filter(toEventPredicate(query))),
+      tap((x) => log.ws.debug('persistedEvents', x)),
     )
   }
 
@@ -39,17 +39,17 @@ export const mockEventStore: () => EventStore = () => {
       throw new Error('direct AQL not yet supported by mockEventStore')
     }
 
-    return events
-      .asObservable()
-      .concatMap(x => x.filter(toEventPredicate(query)))
-      .do(x => log.ws.debug('allEvents', x))
+    return events.asObservable().pipe(
+      concatMap((x) => x.filter(toEventPredicate(query))),
+      tap((x) => log.ws.debug('allEvents', x)),
+    )
   }
 
   const streamId = NodeId.streamNo(nodeId, 0)
 
-  const persistEvents: DoPersistEvents = x => {
+  const persistEvents: DoPersistEvents = (x) => {
     log.ws.debug('putEvents', x)
-    const newEvents: Events = x.map(payload => ({
+    const newEvents: Events = x.map((payload) => ({
       payload: payload.payload,
       tags: [],
       appId: AppId.of('test'),
@@ -61,16 +61,17 @@ export const mockEventStore: () => EventStore = () => {
 
     events.next(newEvents)
     present.next({ [streamId]: psn })
-    return Observable.of(newEvents)
+    return of(newEvents)
   }
 
   const getPresent = () =>
-    present
-      .asObservable()
-      .do(() => log.ws.debug('present'))
-      .take(1)
-      .map(present => ({ present, toReplicate: {} }))
-      .toPromise()
+    lastValueFrom(
+      present.asObservable().pipe(
+        tap(() => log.ws.debug('present')),
+        take(1),
+        map((present) => ({ present, toReplicate: {} })),
+      ),
+    )
 
   return {
     nodeId,
@@ -84,6 +85,6 @@ export const mockEventStore: () => EventStore = () => {
       throw new Error('not implemented for mock event store')
     },
     persistEvents,
-    connectivityStatus: () => Observable.empty<ConnectivityStatus>(),
+    connectivityStatus: () => EMPTY,
   }
 }

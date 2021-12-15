@@ -4,7 +4,9 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { contramap, Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
+import { contramap, Ord } from 'fp-ts/lib/Ord'
+import { Ord as OrdString } from 'fp-ts/lib/string'
+import { Ord as OrdNumber } from 'fp-ts/lib/number'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import { OffsetMap } from './offsetMap'
 
@@ -182,11 +184,11 @@ const keysEqual = (a: EventKey, b: EventKey): boolean =>
   a.lamport === b.lamport && a.stream === b.stream
 
 const keysCompare = (a: EventKey, b: EventKey): Ordering => {
-  const lamportOrder = ordNumber.compare(a.lamport, b.lamport)
+  const lamportOrder = OrdNumber.compare(a.lamport, b.lamport)
   if (lamportOrder !== 0) {
     return lamportOrder
   }
-  return ordString.compare(a.stream, b.stream)
+  return OrdString.compare(a.stream, b.stream)
 }
 
 /**
@@ -255,17 +257,19 @@ export type HasMetadata = Readonly<{
 }>
 
 /** Make a function that makes metadata from an Event as received over the wire. @internal */
-export const toMetadata = (sourceId: string) => (ev: HasMetadata): Metadata => ({
-  isLocalEvent: ev.stream === sourceId,
-  tags: ev.tags,
-  timestampMicros: ev.timestamp,
-  timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
-  lamport: ev.lamport,
-  appId: ev.appId,
-  eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.stream,
-  stream: ev.stream,
-  offset: ev.offset,
-})
+export const toMetadata =
+  (sourceId: string) =>
+  (ev: HasMetadata): Metadata => ({
+    isLocalEvent: ev.stream === sourceId,
+    tags: ev.tags,
+    timestampMicros: ev.timestamp,
+    timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
+    lamport: ev.lamport,
+    appId: ev.appId,
+    eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.stream,
+    stream: ev.stream,
+    offset: ev.offset,
+  })
 
 /**
  * Cancel an ongoing aggregation (the provided callback will stop being called).
@@ -299,7 +303,7 @@ export type ActyxEvent<E = unknown> = {
 /** Things related to ActyxEvent. @public */
 export const ActyxEvent = {
   // TODO: Maybe improve this by just comparing the lamport -> stream combo
-  ord: contramap((e: ActyxEvent) => e.meta.eventId, ordString),
+  ord: contramap((e: ActyxEvent) => e.meta.eventId)(OrdString),
 }
 
 /**

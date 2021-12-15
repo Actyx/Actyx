@@ -50,7 +50,7 @@ class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, 
   }
 
   constructor(private readonly opts: ActyxOpts, private readonly manifest: AppManifest) {
-    this.connect().catch(ex => console.error('WS unavailable', ex))
+    this.connect().catch((ex) => console.error('WS unavailable', ex))
   }
 
   async connect(): Promise<void> {
@@ -63,8 +63,8 @@ class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, 
     this.innerSocket = WebSocketWrapper(wsUrlAuthed, undefined, this.opts.onConnectionLost)
 
     this.innerSocket.responses().subscribe({
-      next: x => this.responsesInner.next(x),
-      error: err => {
+      next: (x) => this.responsesInner.next(x),
+      error: (err) => {
         this.innerSocket && this.innerSocket.close()
         this.innerSocket = undefined
 
@@ -98,7 +98,7 @@ class ReconnectingWs<TRequest, TResponse> implements WebSocketWrapper<TRequest, 
         return
       } catch (err) {
         log.ws.error('WS reconnect failed', err, 'trying again in a couple seconds')
-        await new Promise(resolve => setTimeout(resolve, 2_000))
+        await new Promise((resolve) => setTimeout(resolve, 2_000))
       }
     }
 

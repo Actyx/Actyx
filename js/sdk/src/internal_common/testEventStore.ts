@@ -4,8 +4,25 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { fromNullable } from 'fp-ts/lib/Option'
-import { Observable, ReplaySubject, Scheduler, Subject } from '../../node_modules/rxjs'
+import {
+  fromNullable,
+  exists as existsO,
+  map as mapO,
+  getOrElse as getOrElseO,
+  fold as foldO,
+} from 'fp-ts/lib/Option'
+import {
+  ReplaySubject,
+  Subject,
+  from as fromRx,
+  queueScheduler,
+  concat,
+  defer,
+  of,
+  lastValueFrom,
+  EMPTY,
+} from '../../node_modules/rxjs'
+import { mergeMap, observeOn, first, map } from '../../node_modules/rxjs/operators'
 import {
   AppId,
   EventKey,
@@ -21,7 +38,7 @@ import {
 } from '../types'
 import { binarySearch, mergeSortedInto } from '../util'
 import { DoPersistEvents, DoQuery, DoSubscribe, EventStore } from './eventStore'
-import { ConnectivityStatus, Event, Events } from './types'
+import { Event, Events } from './types'
 
 /**
  * A raw Actyx event to be emitted by the TestEventStore, as if it really arrived from the outside.
@@ -58,25 +75,26 @@ export type HasPsnAndSource = {
 export const includeEvent = (offsetsBuilder: OffsetMapBuilder, ev: HasPsnAndSource): OffsetMap => {
   const { offset, stream } = ev
   const current = lookup(offsetsBuilder, stream)
-  if (!current.exists(c => c >= offset)) {
+  if (!existsO((c: number) => c >= offset)(current)) {
     offsetsBuilder[stream] = offset
   }
   return offsetsBuilder
 }
 
-const isBetweenPsnLimits = (from: OffsetMap, to: OffsetMap, onboardNewSources: boolean) => (
-  e: Event,
-) => {
-  const source: string = e.stream
+const isBetweenPsnLimits =
+  (from: OffsetMap, to: OffsetMap, onboardNewSources: boolean) => (e: Event) => {
+    const source: string = e.stream
 
-  const lower = lookup(from, source)
-  const upper = lookup(to, source)
+    const lower = lookup(from, source)
+    const upper = lookup(to, source)
 
-  const passLower = lower.map(lw => e.offset > lw).getOrElse(true)
-  const passUpper = upper.map(up => e.offset <= up).getOrElse(onboardNewSources)
+    const passLower = getOrElseO(() => true)(mapO((lw: number) => e.offset > lw)(lower))
+    const passUpper = getOrElseO(() => onboardNewSources)(
+      mapO((up: number) => e.offset <= up)(upper),
+    )
 
-  return passLower && passUpper
-}
+    return passLower && passUpper
+  }
 
 /**
  * HERE BE DRAGONS: This function is just a draft of an optimisation we may do in a Rust-side impl
@@ -101,26 +119,28 @@ export const binSearchOffsets = (a: Events, offsets: OffsetMap): number => {
 }
 
 // For use within `binSearchOffsets` -- very specialized comparison.
-const ordOffsetsEvent = (offsets: OffsetMap, events: Events) => (i: number): number => {
-  const ev = events[i]
-  const source = ev.stream
+const ordOffsetsEvent =
+  (offsets: OffsetMap, events: Events) =>
+  (i: number): number => {
+    const ev = events[i]
+    const source = ev.stream
 
-  const offset = lookup(offsets, source)
+    const offset = lookup(offsets, source)
 
-  return offset.fold(
-    // Unknown source: Too high.
-    1,
-    o => {
-      const d = ev.offset - o
-      if (d !== 0 || i + 1 === events.length) {
-        return d
-      }
+    return foldO(
+      // Unknown source: Too high.
+      () => 1,
+      (o: number) => {
+        const d = ev.offset - o
+        if (d !== 0 || i + 1 === events.length) {
+          return d
+        }
 
-      // If d=0, delegate to the next higher index
-      return ordOffsetsEvent(offsets, events)(i + 1)
-    },
-  )
-}
+        // If d=0, delegate to the next higher index
+        return ordOffsetsEvent(offsets, events)(i + 1)
+      },
+    )(offset)
+  }
 
 const filterSortedEvents = (
   events: Events,
@@ -138,17 +158,14 @@ const filterSortedEvents = (
     .filter(toEventPredicate(subs))
 }
 
-const filterUnsortedEvents = (
-  from: OffsetMap,
-  to: OffsetMap,
-  subs: Where<unknown>,
-  min?: EventKey,
-) => (events: Events): Event[] => {
-  return events
-    .filter(ev => !min || EventKey.ord.compare(ev, min) > 0)
-    .filter(isBetweenPsnLimits(from, to, true))
-    .filter(toEventPredicate(subs))
-}
+const filterUnsortedEvents =
+  (from: OffsetMap, to: OffsetMap, subs: Where<unknown>, min?: EventKey) =>
+  (events: Events): Event[] => {
+    return events
+      .filter((ev) => !min || EventKey.ord.compare(ev, min) > 0)
+      .filter(isBetweenPsnLimits(from, to, true))
+      .filter(toEventPredicate(subs))
+  }
 
 const persistence = () => {
   let persisted: Event[] = []
@@ -226,7 +243,7 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
 
     const ret = sortOrder === EventsSortOrder.Descending ? filtered.reverse() : filtered
 
-    return Observable.from(ret)
+    return fromRx(ret)
   }
 
   const liveStream: DoSubscribe = (from, subs) => {
@@ -234,13 +251,11 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
       throw new Error('direct AQL not yet supported by testEventStore')
     }
 
-    return (
-      live
-        .asObservable()
-        .mergeMap(x => Observable.from(filterUnsortedEvents(from, {}, subs)(x)))
-        // Delivering live events may trigger new events (via onStateChange) and again new events,
-        // until we exhaust the call stack. The prod store shouldn’t have that problem due to obvious reasons.
-        .observeOn(Scheduler.queue)
+    return live.asObservable().pipe(
+      mergeMap((x) => fromRx(filterUnsortedEvents(from, {}, subs)(x))),
+      // Delivering live events may trigger new events (via onStateChange) and again new events,
+      // until we exhaust the call stack. The prod store shouldn’t have that problem due to obvious reasons.
+      observeOn(queueScheduler),
     )
   }
 
@@ -249,13 +264,13 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
 
   const subscribe: DoSubscribe = (fromPsn, subs) => {
     const k = () => {
-      return Observable.concat(
+      return concat(
         query(fromPsn, curOffsets, subs, EventsSortOrder.StreamAscending),
         liveStream(fromPsn, subs),
       )
     }
 
-    return Observable.defer(k)
+    return defer(k)
   }
 
   let psn = 0
@@ -264,8 +279,8 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
 
   const streamId = NodeId.streamNo(nodeId, 0)
 
-  const persistEvents: DoPersistEvents = x => {
-    const newEvents = x.map(unstoredEvent => {
+  const persistEvents: DoPersistEvents = (x) => {
+    const newEvents = x.map((unstoredEvent) => {
       lamport = Lamport.of(lamport + 1)
       return {
         ...unstoredEvent,
@@ -278,7 +293,7 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
     })
 
     directlyPushEvents(newEvents)
-    return Observable.of(newEvents)
+    return of(newEvents)
   }
 
   const directlyPushEvents = (newEvents: ReadonlyArray<TestEvent>) => {
@@ -289,10 +304,10 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
     curOffsets = b
 
     if (newEvents.length > 0) {
-      lamport = Lamport.of(Math.max(lamport, ...newEvents.map(x => x.lamport)) + 1)
+      lamport = Lamport.of(Math.max(lamport, ...newEvents.map((x) => x.lamport)) + 1)
     }
 
-    const newEventsCompat: Events = newEvents.map(ev => ({
+    const newEventsCompat: Events = newEvents.map((ev) => ({
       ...ev,
       semantics: '_t_',
       name: '_t_',
@@ -305,11 +320,12 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
   }
 
   const getPresent = () =>
-    present
-      .asObservable()
-      .first()
-      .map(present => ({ present, toReplicate: {} }))
-      .toPromise()
+    lastValueFrom(
+      present.asObservable().pipe(
+        first(),
+        map((present) => ({ present, toReplicate: {} })),
+      ),
+    )
 
   return {
     nodeId,
@@ -325,7 +341,7 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
     persistEvents,
     directlyPushEvents,
     storedEvents: allPersisted,
-    connectivityStatus: () => Observable.empty<ConnectivityStatus>(),
+    connectivityStatus: () => EMPTY,
     close: () => live.complete(),
   }
 }

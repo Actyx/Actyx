@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Observable } from '../../node_modules/rxjs'
+import { timer, lastValueFrom } from '../../node_modules/rxjs'
 import { MockWebSocket } from '../v2/multiplexedWebsocket.spec'
 import { WebSocketWrapper } from './webSocketWrapper'
 
@@ -24,26 +24,22 @@ afterEach(() => {
 })
 
 describe('webSocketSubject', () => {
-  it(
-    'should be able to transfer messages when connection is established',
-    async () => {
-      const rev: string[] = []
-      const subject = WebSocketWrapper('ws://socket')
-      subject.responses().subscribe(x => rev.push(`${x}`))
-      const mockSocket = MockWebSocket.lastSocket!
-      subject.sendRequest('"message"')
-      // wait some time befor the connection is opened
-      await Observable.timer(7000).toPromise()
-      mockSocket.open()
+  it('should be able to transfer messages when connection is established', async () => {
+    const rev: string[] = []
+    const subject = WebSocketWrapper('ws://socket')
+    subject.responses().subscribe((x) => rev.push(`${x}`))
+    const mockSocket = MockWebSocket.lastSocket!
+    subject.sendRequest('"message"')
+    // wait some time befor the connection is opened
+    await lastValueFrom(timer(7000))
+    mockSocket.open()
 
-      mockSocket.triggerMessage('1')
-      mockSocket.triggerMessage('2')
+    mockSocket.triggerMessage('1')
+    mockSocket.triggerMessage('2')
 
-      expect(rev).toEqual(['1', '2'])
-      expect(mockSocket.lastMessageSent).toEqual('"message"')
-    },
-    8000,
-  )
+    expect(rev).toEqual(['1', '2'])
+    expect(mockSocket.lastMessageSent).toEqual('"message"')
+  }, 8000)
 
   it('work proved by fail', async () => {
     const subject = WebSocketWrapper('ws://socket')
@@ -60,7 +56,7 @@ describe('webSocketSubject', () => {
     WebSocketWrapper('ws://socket', 'ws', () => (hook = true))
       .responses()
       .subscribe({
-        error: _ => ({}),
+        error: (_) => ({}),
       })
     const mockSocket = MockWebSocket.lastSocket!
     mockSocket.open()
@@ -77,7 +73,7 @@ describe('webSocketSubject', () => {
     WebSocketWrapper('ws://socket', 'ws', () => (hook = true))
       .responses()
       .subscribe({
-        error: _ => ({}),
+        error: (_) => ({}),
       })
     const mockSocket = MockWebSocket.lastSocket!
     mockSocket.triggerClose({

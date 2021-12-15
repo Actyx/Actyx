@@ -5,9 +5,13 @@
  * Copyright (C) 2021 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Observable, Operator, Subscriber } from '../../node_modules/rxjs'
-import { MonoTypeOperatorFunction } from 'rxjs/interfaces'
-import { TeardownLogic } from 'rxjs/Subscription'
+import {
+  Observable,
+  Operator,
+  Subscriber,
+  MonoTypeOperatorFunction,
+  TeardownLogic,
+} from '../../node_modules/rxjs'
 import { CancelSubscription } from '../types'
 import { noop } from './typescript'
 
@@ -15,10 +19,10 @@ import { noop } from './typescript'
  * Just like takeWhile but will also emit the element on which the predicate has fired
  * @param predicate the predicate for this operator
  */
-export const takeWhileInclusive = <T>(
-  predicate: (value: T, index: number) => boolean,
-): MonoTypeOperatorFunction<T> => (source: Observable<T>) =>
-  source.lift(new TakeWhileInclusiveOperator(predicate))
+export const takeWhileInclusive =
+  <T>(predicate: (value: T, index: number) => boolean): MonoTypeOperatorFunction<T> =>
+  (source: Observable<T>) =>
+    source.lift(new TakeWhileInclusiveOperator(predicate))
 
 class TakeWhileInclusiveOperator<T> implements Operator<T, T> {
   constructor(private predicate: (value: T, index: number) => boolean) {}
