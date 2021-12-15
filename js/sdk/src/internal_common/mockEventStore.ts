@@ -80,6 +80,9 @@ export const mockEventStore: () => EventStore = () => {
       throw new Error('not implemented for mock event store')
     },
     subscribe,
+    subscribeUnchecked: () => {
+      throw new Error('not implemented for mock event store')
+    },
     persistEvents,
     connectivityStatus: () => Observable.empty<ConnectivityStatus>(),
   }
