@@ -50,7 +50,7 @@ export const mkNodeSshAndroid = async (
   -e ADBKEY="$(cat ~/.android/adbkey)" \
   --device /dev/kvm \
   --publish 5555 \
-  actyx/util:androidemulator-google-x86-no-metrics-latest`
+  us-docker.pkg.dev/android-emulator-268719/images/28-playstore-x64-no-metrics:30.1.2`
 
   const container = await exec(cmd)
   log('Pulling and starting emulator')

@@ -12,6 +12,7 @@ use futures::{
 use netsim_embed::{DelayBuffer, Ipv4Range, Machine, Netsim};
 use std::{
     borrow::Borrow,
+    collections::BTreeSet,
     net::SocketAddr,
     str::FromStr,
     time::{Duration, Instant},
@@ -297,15 +298,26 @@ where
     futures::pin_mut!(deadline);
     let peers = sim.machines().iter().map(|m| m.peer_id()).collect::<Vec<_>>();
     for (idx, machine) in sim.machines_mut().iter_mut().enumerate() {
-        let mut peers = peers.clone();
-        peers.remove(idx);
-        for peer in peers {
-            let f = machine.select(|ev| m!(ev.borrow(), Event::Connected(p) if *p == peer => ()));
+        let mut peers = peers
+            .iter()
+            .filter(|p| **p != peers[idx])
+            .copied()
+            .collect::<BTreeSet<_>>();
+        while !peers.is_empty() {
+            let f = machine.select(|ev| m!(ev.borrow(), Event::Connected(p) => *p));
             // same as for deadline
             futures::pin_mut!(f);
             match select(deadline.as_mut(), f).await {
-                Either::Left(_) => bail!("fully_meshed timed out after {:.1}sec", timeout.as_secs_f64()),
-                Either::Right(_) => {}
+                Either::Left(_) => bail!(
+                    "fully_meshed timed out after {:.1}sec ({}, {:?})",
+                    timeout.as_secs_f64(),
+                    idx,
+                    peers
+                ),
+                Either::Right((None, _)) => bail!("got not peer"),
+                Either::Right((Some(p), _)) => {
+                    peers.remove(&p);
+                }
             }
         }
     }

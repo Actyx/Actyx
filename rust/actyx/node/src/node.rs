@@ -432,7 +432,8 @@ mod test {
               "topic": "My Topic",
               "blockGcInterval": 300,
               "blockCacheSize": 1073741824,
-              "blockCacheCount": 131072
+              "blockCacheCount": 131072,
+              "pingTimeout": 5,
             },
             "admin": {
               "displayName": "My Node",
