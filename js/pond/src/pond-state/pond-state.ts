@@ -1,10 +1,10 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
-import { Observable } from 'rxjs'
+import { Observable } from '../../node_modules/rxjs'
 
 /**
  * How many Fish are active, and of which entityTypes?

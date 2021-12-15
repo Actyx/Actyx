@@ -1,7 +1,7 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import {
@@ -19,7 +19,18 @@ import {
 } from '@actyx/sdk'
 import { SnapshotStore } from '@actyx/sdk/lib/snapshotStore'
 import { last } from 'ramda'
-import { Observable, Scheduler } from 'rxjs'
+import { Observable, from, lastValueFrom, of, asyncScheduler } from '../node_modules/rxjs'
+import {
+  concatWith,
+  concatMap,
+  concatMapTo,
+  map,
+  shareReplay,
+  observeOn,
+  first,
+  debounceTime,
+  take,
+} from '../node_modules/rxjs/operators'
 import { Fish, FishId } from '.'
 import { observeMonotonic } from './monotonic'
 import { minSnapshotAge, SnapshotScheduler } from './monotonic/snapshotScheduler'
@@ -54,7 +65,7 @@ export type EventFactory = {
 export const eventFactory = () => {
   const lastPublishedForSources: Record<string, LastPublished> = {}
 
-  const mkEvent: (raw: RawEvent) => TestEvent = raw => {
+  const mkEvent: (raw: RawEvent) => TestEvent = (raw) => {
     const lastPublished = lastPublishedForSources[raw.source]
     // Choosing random starting psns for sources should never change test outcomes.
     const offset = lastPublished ? lastPublished.psn : Math.round(Math.random() * 1000)
@@ -83,7 +94,7 @@ export const eventFactory = () => {
     return fullEvent
   }
 
-  const mkEvents: (raw: RawEvent[]) => TestEvent[] = raw => raw.map(mkEvent)
+  const mkEvents: (raw: RawEvent[]) => TestEvent[] = (raw) => raw.map(mkEvent)
 
   return {
     mkEvent,
@@ -150,11 +161,40 @@ export const mkSnapshot = (
   }
 }
 
+type SnapShotTestSetup<S> = {
+  latestSnap: () => Promise<
+    | {
+        state: any
+        offsets: OffsetMap
+        eventKey: Readonly<{
+          lamport: number
+          offset: number
+          stream: string
+        }>
+        horizon:
+          | Readonly<{
+              lamport: number
+              offset: number
+              stream: string
+            }>
+          | undefined
+        cycle: number
+      }
+    | undefined
+  >
+  latestErr: () => FishErrorContext | null
+  snapshotStore: SnapshotStore
+  applyAndGetState: (events: ReadonlyArray<TestEvent>) => Promise<S>
+  observe: Observable<S>
+  pubEvents: (events: readonly TestEvent[]) => void
+  wakeup: () => Promise<S>
+}
+
 export const snapshotTestSetup = async <S>(
   fish: Fish<S, NumberFishEvent>,
   storedEvents?: ReadonlyArray<TestEvent>,
   storedSnapshots?: ReadonlyArray<SnapshotData>,
-) => {
+): Promise<SnapShotTestSetup<S>> => {
   const sourceId = NodeId.of('LOCAL-test-source')
   const actyx = Actyx.test({ nodeId: sourceId })
   if (storedEvents) actyx.directlyPushEvents(storedEvents)
@@ -166,23 +206,25 @@ export const snapshotTestSetup = async <S>(
   const latestErr = () => lastErr
 
   const snapshotStore = SnapshotStore.noop // actyx.snapshotStore
-  await Observable.from(storedSnapshots || [])
-    .concatMap(snap => {
-      return snapshotStore.storeSnapshot(
-        snap.semantics,
-        snap.name,
-        snap.key,
-        snap.offsets,
-        snap.horizon,
-        snap.cycle,
-        snap.version,
-        snap.tag,
-        snap.blob,
-      )
-    })
-    .concatMapTo([])
-    .concat(Observable.of(undefined))
-    .toPromise()
+  await lastValueFrom(
+    from(storedSnapshots || []).pipe(
+      concatMap((snap) => {
+        return snapshotStore.storeSnapshot(
+          snap.semantics,
+          snap.name,
+          snap.key,
+          snap.offsets,
+          snap.horizon,
+          snap.cycle,
+          snap.version,
+          snap.tag,
+          snap.blob,
+        )
+      }),
+      concatMapTo([]),
+      concatWith(of(undefined)),
+    ),
+  )
 
   const hydrate = observeMonotonic(
     actyx,
@@ -198,31 +240,28 @@ export const snapshotTestSetup = async <S>(
     fish.fishId,
     fish.isReset,
     fish.deserializeState,
+  ).pipe(
+    map((x) => x.state),
+    shareReplay(1),
   )
-    .map(x => x.state)
-    .shareReplay(1)
 
   const pubEvents = actyx.directlyPushEvents
 
   const applyAndGetState = async (events: ReadonlyArray<TestEvent>) => {
     // adding events may or may not emit a new state, depending on whether the events
     // were relevant (might be before semantic snapshot or duplicates)
-    const pubProm = observe
-      .observeOn(Scheduler.async)
-      .debounceTime(0)
-      .first()
-      .toPromise()
+    const pubProm = lastValueFrom(observe.pipe(observeOn(asyncScheduler), debounceTime(0), first()))
     pubEvents(events)
     return pubProm
   }
 
   const latestSnap = async () =>
-    snapshotStore.retrieveSnapshot('test-semantics', 'test-fishname', 1).then(x => {
+    snapshotStore.retrieveSnapshot('test-semantics', 'test-fishname', 1).then((x) => {
       const c = x as LocalSnapshot<string> | undefined
       return c ? { ...c, state: JSON.parse(c.state) } : undefined
     })
 
-  const wakeup = () => observe.take(1).toPromise()
+  const wakeup = () => lastValueFrom(observe.pipe(take(1)))
 
   return {
     latestSnap,
@@ -235,7 +274,7 @@ export const snapshotTestSetup = async <S>(
   }
 }
 
-export const semanticSnap: ((ev: NumberFishEvent) => boolean) = payload => payload === -1
+export const semanticSnap: (ev: NumberFishEvent) => boolean = (payload) => payload === -1
 
 export const localSnap = (version: number): SnapshotFormat<NumberFishState, NumberFishState> =>
   SnapshotFormat.identity(version)
@@ -244,11 +283,13 @@ export type FishTestFn = (fish: Fish<NumberFishState, NumberFishEvent>) => Promi
 
 export type TestFish = [string, Fish<NumberFishState, NumberFishEvent>]
 
-export const forFishes = (...fishesToTest: TestFish[]) => (what: string, fishTest: FishTestFn) => {
-  for (const testFish of fishesToTest) {
-    it('fish ' + testFish[0] + ' ' + what, async () => fishTest(testFish[1]))
+export const forFishes =
+  (...fishesToTest: TestFish[]) =>
+  (what: string, fishTest: FishTestFn) => {
+    for (const testFish of fishesToTest) {
+      it('fish ' + testFish[0] + ' ' + what, async () => fishTest(testFish[1]))
+    }
   }
-}
 
 type MkNumberEvent = {
   val: number
@@ -344,7 +385,7 @@ export const mkTimeline = (...events: MkEvent[]): Timeline => {
 
   return {
     all: timeline,
-    of: (...sources: string[]) => timeline.filter(ev => sources.includes(ev.stream)),
+    of: (...sources: string[]) => timeline.filter((ev) => sources.includes(ev.stream)),
   }
 }
 

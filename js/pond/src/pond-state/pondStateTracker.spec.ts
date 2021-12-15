@@ -1,7 +1,7 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import { Milliseconds } from '@actyx/sdk'
@@ -9,6 +9,8 @@ import { mkTestLoggers } from '@actyx/sdk/lib/util/logging'
 import { FishName, Semantics } from '../types'
 import { PondState, PondStateTracker } from './pond-state'
 import { mkInitialState, mkPondStateTracker } from './pondStateTracker'
+import { lastValueFrom } from '../../node_modules/rxjs'
+import { take } from '../../node_modules/rxjs/operators'
 
 const fishName = FishName.of('fishy')
 const semantics = Semantics.of('test')
@@ -28,11 +30,7 @@ const mk = () => {
   return { log, tracker }
 }
 
-const s = (x: PondStateTracker): Promise<PondState> =>
-  x
-    .observe()
-    .take(1)
-    .toPromise()
+const s = (x: PondStateTracker): Promise<PondState> => lastValueFrom(x.observe().pipe(take(1)))
 
 const e = (x: PondStateTracker, result: object): Promise<void> =>
   expect(s(x)).resolves.toMatchObject(result)

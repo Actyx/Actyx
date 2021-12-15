@@ -24,7 +24,32 @@ import {
   Where,
 } from '@actyx/sdk'
 import { SnapshotStore } from '@actyx/sdk/lib/snapshotStore'
-import { Observable, ReplaySubject, Scheduler, Subject, Subscription } from 'rxjs'
+import {
+  Observable,
+  ReplaySubject,
+  asyncScheduler,
+  queueScheduler,
+  Subject,
+  Subscription,
+  lastValueFrom,
+  EMPTY,
+  of,
+  combineLatest,
+  from,
+} from '../node_modules/rxjs'
+import {
+  catchError,
+  shareReplay,
+  map,
+  subscribeOn,
+  finalize,
+  take,
+  switchMap,
+  concatMap,
+  observeOn,
+  takeWhile,
+  mergeMap,
+} from '../node_modules/rxjs/operators'
 import { CommandPipeline, FishJar, StartedFishMap } from './fishJar'
 import log from './loggers'
 import { observeMonotonic } from './monotonic'
@@ -66,9 +91,11 @@ const omitObservable = <S>(
   try {
     // Not passing an error callback seems to cause bad behavior with RXjs internally
     const sub = states
-      .map(x => x.state)
-      // Use async scheduler to make direct cancelation work
-      .subscribeOn(Scheduler.async)
+      .pipe(
+        map((x) => x.state),
+        // Use async scheduler to make direct cancelation work
+        subscribeOn(asyncScheduler),
+      )
       .subscribe(callback, typeof stoppedByError === 'function' ? stoppedByError : noop)
     return sub.unsubscribe.bind(sub)
   } catch (err) {
@@ -357,7 +384,7 @@ const getOrInitialize = <T>(
     return existing
   }
 
-  const stateSubject = new ReplaySubject<T>(1, undefined, Scheduler.queue)
+  const stateSubject = new ReplaySubject<T>(1, undefined, queueScheduler)
   const subscription = makeT().subscribe(stateSubject)
 
   const a = {
@@ -418,7 +445,7 @@ class Pond2Impl implements Pond {
   }
 
   waitForSwarmSync = (params: WaitForSwarmSyncParams) => {
-    const splash = streamSplashState(this.actyx, params).finally(params.onSyncComplete)
+    const splash = streamSplashState(this.actyx, params).pipe(finalize(params.onSyncComplete))
 
     if (params.onProgress) {
       splash.subscribe(params.onProgress)
@@ -487,10 +514,7 @@ class Pond2Impl implements Pond {
       return Promise.reject(states.thrownError)
     }
 
-    return states
-      .take(1)
-      .toPromise()
-      .then(x => x.state)
+    return lastValueFrom(states.pipe(take(1))).then((x) => x.state)
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
@@ -500,13 +524,13 @@ class Pond2Impl implements Pond {
     const cached = this.observeTagBased0(agg)
     const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
 
-    return effect => pendingCmd(handleInternal(effect))
+    return (effect) => pendingCmd(handleInternal(effect))
   }
 
   private v2CommandHandler = async (emit: EmissionRequest<unknown>): Promise<Metadata[]> => {
     const r = await Promise.resolve(emit)
 
-    const e = r.flatMap(x => x.tags.apply(x.payload))
+    const e = r.flatMap((x) => x.tags.apply(x.payload))
 
     return this.actyx.emit(e).toPromise()
   }
@@ -529,8 +553,8 @@ class Pond2Impl implements Pond {
       )
     cached.commandPipeline = commandPipeline
 
-    return effect => {
-      const o = new Observable<void>(x =>
+    return (effect) => {
+      const o = new Observable<void>((x) =>
         commandPipeline.subject.next({
           type: 'command',
           command: effect,
@@ -540,14 +564,15 @@ class Pond2Impl implements Pond {
           },
           onError: (err: any) => x.error(err),
         }),
-      )
-        .shareReplay(1)
+      ).pipe(
+        shareReplay(1),
         // Subscribing on Scheduler.queue is not strictly required, but helps with dampening feedback loops
-        .subscribeOn(Scheduler.queue)
+        subscribeOn(queueScheduler),
+      )
 
       // We just subscribe to guarantee effect application;
       // user is responsible for handling errors on the returned object if desired.
-      o.catch(() => Observable.empty()).subscribe()
+      o.pipe(catchError(() => EMPTY)).subscribe()
 
       return o
     }
@@ -579,17 +604,17 @@ class Pond2Impl implements Pond {
         typeof opts.expireAfterSeed === 'number' ? opts.expireAfterSeed : opts.expireAfterFirst,
       )
 
-      return fishStructs$.switchMap(known => {
-        const observations = known
-          .toArray()
-          .map(([_key, fish]) =>
-            this.observeTagBased0<S, any>(fish.fish).states.map(swp => swp.state),
-          )
+      return fishStructs$.pipe(
+        switchMap((known) => {
+          const observations = known
+            .toArray()
+            .map(([_key, fish]) =>
+              this.observeTagBased0<S, any>(fish.fish).states.pipe(map((swp) => swp.state)),
+            )
 
-        return observations.length === 0
-          ? Observable.of([])
-          : Observable.combineLatest(observations)
-      })
+          return observations.length === 0 ? of([]) : combineLatest(observations)
+        }),
+      )
     }
 
     const fishStates$ = Caching.isEnabled(opts.caching)
@@ -609,7 +634,7 @@ class Pond2Impl implements Pond {
   ): CancelSubscription => {
     let cancelInitialSubscription: CancelSubscription | undefined = undefined
 
-    const initial = new Promise<ActyxEvent>(resolve => {
+    const initial = new Promise<ActyxEvent>((resolve) => {
       cancelInitialSubscription = this.actyx.subscribe(
         {
           query: seedEvent,
@@ -618,10 +643,12 @@ class Pond2Impl implements Pond {
       )
     })
 
-    const states = Observable.from(initial).concatMap(f => {
-      cancelInitialSubscription && cancelInitialSubscription()
-      return this.observeTagBased0<S, unknown>(makeFish(f.payload as ESeed)).states
-    })
+    const states = from(initial).pipe(
+      concatMap((f) => {
+        cancelInitialSubscription && cancelInitialSubscription()
+        return this.observeTagBased0<S, unknown>(makeFish(f.payload as ESeed)).states
+      }),
+    )
 
     return omitObservable(stoppedByError, callback, states)
   }
@@ -665,12 +692,14 @@ class Pond2Impl implements Pond {
       : () => !cancelled
 
     states
-      .observeOn(Scheduler.async)
-      .map(swp => swp.state)
-      .takeWhile(tw)
-      // We could also just use `do` instead of `mergeMap` (using the public API),
-      // for no real loss, but no gain either.
-      .mergeMap(() => handleInternal(wrappedEffect))
+      .pipe(
+        observeOn(asyncScheduler),
+        map((swp) => swp.state),
+        takeWhile(tw),
+        // We could also just use `do` instead of `mergeMap` (using the public API),
+        // for no real loss, but no gain either.
+        mergeMap(() => handleInternal(wrappedEffect)),
+      )
       .subscribe()
 
     return () => (cancelled = true)

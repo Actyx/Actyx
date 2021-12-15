@@ -1,11 +1,12 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import { Offset, OffsetMap } from '@actyx/sdk'
-import { Observable } from 'rxjs'
+import { of, from, lastValueFrom } from '../node_modules/rxjs'
+import { take } from '../node_modules/rxjs/operators'
 import { swarmState } from './swarmState'
 
 describe('swarmState', () => {
@@ -20,11 +21,9 @@ describe('swarmState', () => {
       a: Offset.of(20), // we have this, but with a lower PSN
       b: Offset.of(30), // we don't have this at all
     }
-    const own = Observable.of(ownMap)
-    const swarm = Observable.of(swarmMap)
-    const result = await swarmState(own, swarm)
-      .take(2)
-      .toPromise()
+    const own = of(ownMap)
+    const swarm = of(swarmMap)
+    const result = await lastValueFrom(swarmState(own, swarm).pipe(take(2)))
     expect(result).toMatchInlineSnapshot(
       `
 Object {
@@ -65,11 +64,9 @@ Object {
         a: Offset.of(20),
       },
     ]
-    const own = Observable.from(ownMaps)
-    const swarm = Observable.from(swarmMaps)
-    const result = await swarmState(own, swarm)
-      .take(4)
-      .toPromise()
+    const own = from(ownMaps)
+    const swarm = from(swarmMaps)
+    const result = await lastValueFrom(swarmState(own, swarm).pipe(take(4)))
     expect(result).toMatchInlineSnapshot(
       `
 Object {

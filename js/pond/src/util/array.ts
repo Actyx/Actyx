@@ -1,17 +1,17 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
-import { Predicate } from 'fp-ts/lib/function'
+import { Predicate } from 'fp-ts/lib/Predicate'
 
 export function collectFirst<T, U>(
   arr: T[],
   selector: (x: T) => U | null | undefined,
 ): U | undefined {
   let u
-  arr.find(e => {
+  arr.find((e) => {
     const cand = selector(e)
     if (cand !== undefined && cand !== null) {
       u = cand
@@ -28,7 +28,7 @@ export function collect<T, U>(
 ): U[] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const u: any[] = []
-  arr.forEach(e => {
+  arr.forEach((e) => {
     const cand = selector(e)
     if (cand !== undefined && cand !== null) u.push(cand)
   })
@@ -146,7 +146,7 @@ export const interleaveRandom = <T>(arrays: ReadonlyArray<ReadonlyArray<T>>): T[
   const length = arrays.reduce((acc, a) => acc + a.length, 0)
   const result: T[] = new Array(length)
 
-  const nonEmpty = arrays.filter(x => x.length > 0)
+  const nonEmpty = arrays.filter((x) => x.length > 0)
   const offsets = new Array(nonEmpty.length).fill(0)
   for (let i = 0; i < length; i++) {
     const pick = Math.floor(Math.random() * nonEmpty.length)
