@@ -375,7 +375,7 @@ mod tests {
                 .map(|_| {
                     let data = Vec::<u8>::arbitrary(g);
                     let cid = Cid::new_v1(0x00, Code::Sha2_256.digest(&data[..]));
-                    libipld::Block::<libipld::DefaultParams>::new_unchecked(cid, data)
+                    crate::Block::new_unchecked(cid, data)
                 })
                 .collect();
             Self {

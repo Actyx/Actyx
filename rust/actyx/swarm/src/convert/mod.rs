@@ -446,7 +446,7 @@ pub fn convert_from_v1(
 }
 
 #[derive(Clone)]
-struct Importer(Arc<Mutex<BlockStore<DefaultParams>>>);
+struct Importer(Arc<Mutex<BlockStore<crate::StoreParams>>>);
 
 impl ReadOnlyStore<Sha256Digest> for Importer {
     fn get(&self, link: &Sha256Digest) -> Result<Box<[u8]>> {
