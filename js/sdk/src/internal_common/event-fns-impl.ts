@@ -5,6 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { contramap, getTupleOrd, gt, lt, ordNumber, ordString } from 'fp-ts/lib/Ord'
+import { SubscribeAqlOpts } from '..'
 import { Observable } from '../../node_modules/rxjs'
 import {
   AqlQuery,
@@ -613,6 +614,23 @@ export const EventFnsFromEventStoreV2 = (
       .toArray()
       .toPromise()
   }
+  const subscribeAql = (opts: SubscribeAqlOpts): CancelSubscription => {
+    const { lowerBound, query, onResponse, onError } = opts
+    const lb = lowerBound || {}
+    const qr = typeof query === 'string' ? query : query.query
+
+    const rxSub = eventStore
+      .subscribeUnchecked(qr, lb)
+      .map(wrapAql)
+      .mergeScan(
+        (_a: void, r: AqlResponse) => Observable.from(Promise.resolve(onResponse(r))),
+        void 0,
+        1,
+      )
+      .subscribe({ error: onError || noop })
+
+    return () => rxSub.unsubscribe()
+  }
 
   const queryAqlChunked = (
     query: AqlQuery,
@@ -650,6 +668,7 @@ export const EventFnsFromEventStoreV2 = (
     queryAqlChunked,
     subscribe,
     subscribeChunked,
+    subscribeAql,
     subscribeMonotonic,
     observeEarliest,
     observeLatest,

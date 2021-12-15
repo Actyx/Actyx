@@ -152,6 +152,9 @@ export class WebsocketEventStore implements EventStore {
   queryUnchecked = () => {
     throw new Error('not implemented for V1')
   }
+  subscribeUnchecked = () => {
+    throw new Error('not implemented for V1')
+  }
 
   query: DoQuery = (lowerBound, upperBound, query, sortOrder) => {
     if (typeof query === 'string') {

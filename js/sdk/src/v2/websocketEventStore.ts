@@ -5,6 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 import * as t from 'io-ts'
+import { OffsetMap } from '../../dist/sdk'
 import {
   DoPersistEvents,
   DoQuery,
@@ -101,6 +102,14 @@ export class WebsocketEventStore implements EventStore {
       )
       .filter(x => (x as TypedMsg).type === 'event')
       .map(validateOrThrow(EventIO))
+
+  subscribeUnchecked = (aqlQuery: string, lowerBound?: OffsetMap) =>
+    this.multiplexer
+      .request(RequestTypes.Subscribe, {
+        lowerBound: lowerBound === undefined ? {} : lowerBound,
+        query: aqlQuery,
+      })
+      .map(x => x as TypedMsg)
 
   persistEvents: DoPersistEvents = events => {
     const publishEvents = events

@@ -74,11 +74,13 @@ export type EventStore = {
   readonly queryUnchecked: (aqlQuery: string, sortOrder: EventsSortOrder) => Observable<TypedMsg>
   readonly query: DoQuery
   readonly subscribe: DoSubscribe
+  readonly subscribeUnchecked: (aqlQuery: string, lowerBound?: OffsetMap) => Observable<TypedMsg>
   readonly persistEvents: DoPersistEvents
 }
 
 const noopEventStore: EventStore = {
   subscribe: () => Observable.empty(),
+  subscribeUnchecked: () => Observable.empty(),
   query: () => Observable.empty(),
   queryUnchecked: () => Observable.empty(),
   offsets: () => Promise.resolve({ present: {}, toReplicate: {} }),

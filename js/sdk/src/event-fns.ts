@@ -146,6 +146,13 @@ export type AqlQuery =
  **/
 export type OnCompleteOrErr = (err?: unknown) => void
 
+export type SubscribeAqlOpts = {
+  query: AqlQuery
+  lowerBound?: OffsetMap
+  onResponse: (r: AqlResponse) => Promise<void> | void
+  onError?: (err: unknown) => void
+}
+
 /** Functions that operate directly on Events. @public  */
 export interface EventFns {
   /** Get the current local 'present' i.e. offsets up to which we can provide events without any gaps. */
@@ -218,6 +225,9 @@ export interface EventFns {
    * @beta
    */
   queryAql: (query: AqlQuery) => Promise<AqlResponse[]>
+
+  // NEW
+  subscribeAql: (opts: SubscribeAqlOpts) => CancelSubscription
 
   /**
    * Run a custom AQL query and get the response messages in chunks.
