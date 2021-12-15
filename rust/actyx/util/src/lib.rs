@@ -2,6 +2,8 @@
 
 pub mod base64_blob;
 pub mod build;
+pub mod chunk_unless_pending;
+pub mod drainer;
 pub mod formats;
 pub mod gen_stream;
 pub mod immutable_sync;
