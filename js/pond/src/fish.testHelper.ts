@@ -164,6 +164,7 @@ export const mkSnapshot = (
 type SnapShotTestSetup<S> = {
   latestSnap: () => Promise<
     | {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         state: any
         offsets: OffsetMap
         eventKey: Readonly<{
