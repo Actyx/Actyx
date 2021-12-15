@@ -190,13 +190,15 @@ impl ApiBehaviour {
             admin_sockets: Variable::default(),
             banyan_stores: BTreeMap::default(),
         };
+        let mut request_response_config = RequestResponseConfig::default();
+        request_response_config.set_request_timeout(Duration::from_secs(120));
         Self {
             ping: Ping::new(PingConfig::new().with_keep_alive(true)),
             admin: StreamingResponse::new(StreamingResponseConfig::default()),
             banyan: RequestResponse::new(
                 BanyanProtocol::default(),
                 [(BanyanProtocolName, ProtocolSupport::Inbound)],
-                RequestResponseConfig::default(),
+                request_response_config,
             ),
             events: StreamingResponse::new(StreamingResponseConfig::default()),
             identify: Identify::new(IdentifyConfig::new("Actyx".to_owned(), local_public_key)),
@@ -829,7 +831,9 @@ async fn switch_to_dump(
 
 fn store_events(writer: &mut BanyanWriter) -> anyhow::Result<()> {
     let mut bytes = writer.buf.get_ref().as_slice();
+    tracing::debug!("storing event from buffer of {} bytes", bytes.len());
     while let Ok((cbor, rest)) = Cbor::checked_prefix(bytes) {
+        tracing::trace!("found data block of {} bytes", cbor.as_slice().len());
         if let Some(node_id) = writer.node_id {
             let (orig_node, app_id, timestamp, tags, payload) =
                 decode_dump_frame(cbor).ok_or_else(|| anyhow::anyhow!("malformed event: {}", cbor))?;
@@ -862,6 +866,7 @@ fn store_events(writer: &mut BanyanWriter) -> anyhow::Result<()> {
     let consumed = unsafe {
         (bytes as *const _ as *const u8).offset_from(writer.buf.get_ref().as_slice() as *const _ as *const u8)
     };
+    tracing::debug!("consumed {} bytes", consumed);
     if consumed > 0 {
         let consumed = consumed as usize;
         let v = writer.buf.get_mut();
