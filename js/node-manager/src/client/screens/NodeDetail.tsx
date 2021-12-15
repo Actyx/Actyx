@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { NodeType, ReachableNode as ReachableNodeT } from '../../common/types'
 import { Layout } from '../components/Layout'
 import { useAppState, AppActionKey } from '../app-state'
@@ -7,25 +7,128 @@ import { SimpleCanvas } from '../components/SimpleCanvas'
 import { Button, Tabs } from '../components/basics'
 import { SettingsEditor } from '../components/SettingsEditor'
 import clsx from 'clsx'
-import { NodesOverview } from '.'
+import { string } from 'fp-ts'
 
-const Peers: React.FC<{ node: ReachableNodeT }> = ({
-  node: {
-    details: {
-      swarmState: { knownPeers },
-    },
-  },
-}) => (
-  <div className="">
-    <p className="pb-2">Node connected to {knownPeers.length} peers.</p>
-    {knownPeers.map(({ peerId, addrs }) => (
-      <p key={peerId} className="break-all pl-2 text-sm text-gray-500">
-        - Node <code className="text-black">{peerId}</code> at{' '}
-        <code className="text-black">{addrs.join(';')}</code>
+const removePeerIdFromPeerAddr = (addr: string): string => {
+  const parts = addr.split('/')
+  if (parts.length < 2) {
+    return addr
+  }
+
+  return parts.slice(0, -1).join('/')
+}
+
+const Peers_Peer: React.FC<{
+  peerId: string
+  connectedAddr?: string
+  disconnectedAddrs: string[]
+  showAddresses: boolean
+}> = ({ peerId, connectedAddr, disconnectedAddrs, showAddresses }) => {
+  const isConnected = !!connectedAddr
+  const allAddresses = disconnectedAddrs.concat(connectedAddr ? [connectedAddr] : [])
+
+  return (
+    <p
+      className={clsx('text-sm text-gray-500', {
+        'pb-1': showAddresses,
+      })}
+    >
+      {!connectedAddr && <span className="font-medium text-red-300">Disconnected</span>}
+      {connectedAddr && <span className="font-medium text-green-300">Connected</span>} node{' '}
+      <code className="text-black">{peerId}</code> with {allAddresses.length} known address
+      {allAddresses.length > 1 ? 'es' : ''}
+      {showAddresses ? ':' : ''}
+      {showAddresses && (
+        <ul className="list-disc pl-5">
+          {connectedAddr && (
+            <li>
+              <code className="text-black">{removePeerIdFromPeerAddr(connectedAddr)}</code>{' '}
+              <span className="italic">(currently connected via this address)</span>
+            </li>
+          )}
+          {disconnectedAddrs.map((addr, ix) => (
+            <li key={`${peerId}-disconnected-addr-${ix}`}>
+              <code>{removePeerIdFromPeerAddr(addr)}</code>
+            </li>
+          ))}
+        </ul>
+      )}
+    </p>
+  )
+}
+
+const Peers: React.FC<{ node: ReachableNodeT }> = ({ node }) => {
+  const [showConnectedAddresses, setConnectedShowAddresses] = useState(true)
+  const [showDisconnectedAddresses, setDisconnectedShowAddresses] = useState(false)
+  if (node.details.swarmState === null) {
+    return <p className="text-yellow-500">Please wait for complete node startup...</p>
+  }
+  const { knownPeers, connections: connectedPeers } = node.details.swarmState
+  const disconnectedPeers = knownPeers.filter(
+    ({ peerId }) => !connectedPeers.find((p) => p.peerId === peerId),
+  )
+  return (
+    <div className="">
+      <p className="pb-2">
+        Node connected to {connectedPeers.length} peers
+        {connectedPeers.length > 0 && (
+          <>
+            {' '}
+            (
+            <span
+              className="text-sm underline text-blue-500 cursor-pointer pb-2"
+              onClick={() => setConnectedShowAddresses((curr) => !curr)}
+            >
+              {showConnectedAddresses ? 'hide' : 'show'} addresses
+            </span>
+            )
+          </>
+        )}
+        {connectedPeers.length > 0 ? ':' : '.'}
       </p>
-    ))}
-  </div>
-)
+      {connectedPeers.map(({ peerId, addr: connectedAddr }) => {
+        const knownPeer = knownPeers.find((p) => p.peerId === peerId)
+        const disconnectedAddrs = !knownPeer
+          ? []
+          : knownPeer.addrs.filter((a) => a !== connectedAddr)
+        return (
+          <Peers_Peer
+            key={`connected-${peerId}`}
+            peerId={peerId}
+            disconnectedAddrs={disconnectedAddrs}
+            connectedAddr={connectedAddr}
+            showAddresses={showConnectedAddresses}
+          />
+        )
+      })}
+      <p className="pt-4 pb-2">
+        Node not connected to {disconnectedPeers.length} known peers
+        {disconnectedPeers.length > 0 && (
+          <>
+            {' '}
+            (
+            <span
+              className="text-sm underline text-blue-500 cursor-pointer pb-2"
+              onClick={() => setDisconnectedShowAddresses((curr) => !curr)}
+            >
+              {showDisconnectedAddresses ? 'hide' : 'show'} addresses
+            </span>
+            )
+          </>
+        )}
+        {disconnectedPeers.length > 0 ? ':' : '.'}
+      </p>
+      {disconnectedPeers.map(({ peerId, addrs }) => (
+        <Peers_Peer
+          key={`disconnected-${peerId}`}
+          peerId={peerId}
+          disconnectedAddrs={addrs}
+          showAddresses={showDisconnectedAddresses}
+        />
+      ))}
+    </div>
+  )
+}
 
 const Actions: React.FC<{ node: ReachableNodeT }> = ({ node: { addr } }) => {
   const [shuttingDown, setShuttingDown] = useState(false)
@@ -55,14 +158,22 @@ const Actions: React.FC<{ node: ReachableNodeT }> = ({ node: { addr } }) => {
 }
 
 const Info: React.FC<{ node: ReachableNodeT }> = ({ node: { details } }) => {
-  const Row: React.FC<{ field: string; value: string; gray?: boolean }> = ({
+  const Row: React.FC<{ field: string; value: string; gray?: boolean; waiting?: boolean }> = ({
     field,
     value,
+    waiting,
     gray,
   }) => (
     <div className={clsx('py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6', { 'bg-gray-50': gray })}>
       <dt className="text-sm font-medium text-gray-500">{field}</dt>
-      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 selectable truncate overflow-ellipsis">
+      <dd
+        className={clsx(
+          'mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 selectable truncate overflow-ellipsis',
+          {
+            'text-yellow-500': waiting,
+          },
+        )}
+      >
         {value}
       </dd>
     </div>
@@ -72,9 +183,23 @@ const Info: React.FC<{ node: ReachableNodeT }> = ({ node: { details } }) => {
     <div className="">
       <dl>
         <Row field="Display name" value={details.displayName} gray />
-        <Row field="Bind addresses" value={details.addrs} />
+        <Row
+          field="Bind addresses"
+          value={
+            details.addrs === null ? 'Please wait for complete node startup...' : details.addrs
+          }
+          waiting={details.addrs === null}
+        />
         <Row field="Node ID" value={details.nodeId} gray />
-        <Row field="Peer ID" value={details.swarmState.peerId} />
+        <Row
+          field="Peer ID"
+          value={
+            details.swarmState === null
+              ? 'Please wait for complete node startup...'
+              : details.swarmState.peerId
+          }
+          waiting={details.addrs === null}
+        />
         <Row field="Running since" value={details.startedIso} gray />
         <Row field="Version" value={details.version} />
       </dl>
@@ -150,13 +275,17 @@ const Offsets: React.FC<{ node: ReachableNodeT }> = ({
   )
 }
 
-const Addresses: React.FC<{ node: ReachableNodeT }> = ({
-  node: {
+const Addresses: React.FC<{ node: ReachableNodeT }> = ({ node }) => {
+  if (node.details.swarmState === null) {
+    return <p className="text-yellow-500">Please wait for complete node startup...</p>
+  }
+
+  const {
     details: {
       swarmState: { swarmAddrs, announceAddrs, adminAddrs },
     },
-  },
-}) => {
+  } = node
+
   return (
     <>
       <div className="pb-3">
@@ -180,7 +309,7 @@ const Addresses: React.FC<{ node: ReachableNodeT }> = ({
           <p>Node has no external addresses.</p>
         ) : (
           <>
-            <p className="pb-1">Node has {announceAddrs.length} external addresses.</p>
+            <p className="pb-1">Node has {announceAddrs.length} external addresses:</p>
             <ul className="list-disc pl-5 text-sm">
               {announceAddrs.map((addr) => (
                 <li key={'announce' + addr}>
@@ -196,7 +325,7 @@ const Addresses: React.FC<{ node: ReachableNodeT }> = ({
           <p>Node has no admin addresses.</p>
         ) : (
           <>
-            <p className="pb-1">Node has {adminAddrs.length} admin addresses.</p>
+            <p className="pb-1">Node has {adminAddrs.length} admin addresses:</p>
             <ul className="list-disc pl-5 text-sm">
               {adminAddrs.map((addr) => (
                 <li key={'admin' + addr}>

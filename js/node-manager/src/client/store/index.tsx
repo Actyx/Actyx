@@ -29,6 +29,7 @@ export const StoreProvider: React.FC<{}> = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, { key: StoreStateKey.Initial })
 
   const updateAndReload = (data: Data | null) => {
+    dispatch({ key: StoreActionKey.LoadOrSave })
     saveAndReloadDataViaIpc(data, (data) => {
       dispatch({
         key: StoreActionKey.HasLoaded,

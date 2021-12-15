@@ -22,6 +22,7 @@ ax-futures-util = { path = "../ax-futures-util" }
 backtrace = "0.3.60"
 base64 = "0.13.0"
 bytes = "1.0.1"
+cbor-data = { version = "0.8", features = ["rfc3339"] }
 cfg-if = "1.0.0"
 chrono = { features = ["serde"], version = "0.4.19" }
 crossbeam = "0.8.1"
@@ -33,9 +34,11 @@ fslock = "0.1.6"
 futures = { version = "0.3.15", features = ["compat"], package = "futures" }
 hex = "0.4.3"
 ipfs-sqlite-block-store = "0.7.2"
+lazy_static = "1.4.0"
 libipld = "0.12.0"
 libp2p = { version = "0.40.0", default-features = false, features = ["gossipsub", "ping"] }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
+log = { version = "0.4.14", features = ["std"] }
 maplit = "1.0.2"
 multihash = "0.14.0"
 parking_lot = "0.11.1"
@@ -56,6 +59,8 @@ tempfile = "3.2.0"
 thiserror = "1.0.26"
 tokio = { package = "tokio", version = "1.8.2" }
 tracing = { version = "0.1.26", features = ["release_max_level_trace"] }
+tracing-core = "0.1.21"
+tracing-log = { version = "0.1.2", features = ["std"] }
 tracing-subscriber = "0.2.19"
 trees = { path = "../trees" }
 unicode-width = "0.1.8"
@@ -63,6 +68,7 @@ util = { path = "../util" }
 uuid = "0.8.2"
 void = "1.0.2"
 warp = "0.3.1"
+zstd = "0.9.0"
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies]
 jemallocator = "0.3.2"

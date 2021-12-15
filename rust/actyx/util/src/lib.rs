@@ -3,6 +3,7 @@
 pub mod base64_blob;
 pub mod build;
 pub mod formats;
+pub mod gen_stream;
 pub mod immutable_sync;
 pub mod keepalivestream3;
 pub mod pinned_resource;

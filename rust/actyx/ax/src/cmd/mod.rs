@@ -1,11 +1,19 @@
 use formats::{ActyxCliResult, Result};
 use futures::{future, Future, Stream, StreamExt};
 use serde::Serialize;
-use std::{convert::TryInto, fmt, path::PathBuf, str::FromStr};
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt,
+    path::PathBuf,
+    str::FromStr,
+};
 use structopt::StructOpt;
 use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult};
 
-use crate::{node_connection::NodeConnection, private_key::AxPrivateKey};
+use crate::{
+    node_connection::{Connected, NodeConnection},
+    private_key::AxPrivateKey,
+};
 
 pub mod apps;
 pub mod events;
@@ -28,9 +36,15 @@ pub struct ConsoleOpt {
     #[structopt(name = "NODE", required = true)]
     /// the IP address or <host>:<admin port> of the node to perform the operation on.
     authority: NodeConnection,
-    #[structopt(short, long)]
+    #[structopt(short, long, value_name = "FILE")]
     /// File from which the identity (private key) for authentication is read.
     identity: Option<KeyPathWrapper>,
+}
+
+impl ConsoleOpt {
+    pub async fn connect(&self) -> ActyxOSResult<Connected> {
+        self.authority.connect(&(&self.identity).try_into()?).await
+    }
 }
 
 #[derive(Debug)]
@@ -51,11 +65,11 @@ impl fmt::Display for KeyPathWrapper {
     }
 }
 
-impl TryInto<AxPrivateKey> for Option<KeyPathWrapper> {
+impl TryFrom<&Option<KeyPathWrapper>> for AxPrivateKey {
     type Error = ActyxOSError;
-    fn try_into(self) -> Result<AxPrivateKey> {
-        if let Some(path) = self {
-            AxPrivateKey::from_file(path.0)
+    fn try_from(k: &Option<KeyPathWrapper>) -> Result<AxPrivateKey> {
+        if let Some(path) = k {
+            AxPrivateKey::from_file(&path.0)
         } else {
             let private_key_path = AxPrivateKey::default_user_identity_path()?;
             AxPrivateKey::from_file(&private_key_path).map_err(move |e| {

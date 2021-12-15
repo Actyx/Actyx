@@ -1,7 +1,6 @@
 use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
-use futures::{stream, Stream, TryFutureExt};
+use futures::{stream, Stream};
 use serde::Serialize;
-use std::convert::TryInto;
 use structopt::StructOpt;
 use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
 
@@ -10,7 +9,7 @@ impl AxCliCommand for SettingsGet {
     type Opt = GetOpt;
     type Output = serde_json::Value;
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
-        let r = Box::pin(run(opts).map_err(Into::into));
+        let r = Box::pin(run(opts));
         Box::new(stream::once(r))
     }
     fn pretty(result: Self::Output) -> String {
@@ -38,17 +37,13 @@ struct GetSettingsCommand {
     scope: settings::Scope,
 }
 
-pub async fn run(mut opts: GetOpt) -> Result<serde_json::Value> {
-    match opts
-        .console_opt
-        .authority
-        .request(
-            &opts.console_opt.identity.try_into()?,
-            AdminRequest::SettingsGet {
-                no_defaults: opts.actual_opts.no_defaults,
-                scope: opts.actual_opts.scope,
-            },
-        )
+pub async fn run(opts: GetOpt) -> Result<serde_json::Value> {
+    let mut conn = opts.console_opt.connect().await?;
+    match conn
+        .request(AdminRequest::SettingsGet {
+            no_defaults: opts.actual_opts.no_defaults,
+            scope: opts.actual_opts.scope,
+        })
         .await
     {
         Ok(AdminResponse::SettingsGetResponse(resp)) => Ok(resp),

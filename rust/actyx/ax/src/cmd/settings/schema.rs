@@ -1,7 +1,7 @@
 use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
 use futures::{stream, Stream, TryFutureExt};
 use settings::Scope;
-use std::{convert::TryInto, str::FromStr};
+use std::str::FromStr;
 use structopt::StructOpt;
 use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
 
@@ -26,17 +26,13 @@ impl AxCliCommand for SettingsSchema {
     }
 }
 
-pub async fn run(mut opts: SchemaOpt) -> Result<serde_json::Value> {
-    match opts
-        .console_opt
-        .authority
-        .request(
-            &opts.console_opt.identity.try_into()?,
-            AdminRequest::SettingsSchema {
-                scope: Scope::from_str("com.actyx")
-                    .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "cannot parse scope `/`")?,
-            },
-        )
+pub async fn run(opts: SchemaOpt) -> Result<serde_json::Value> {
+    let mut conn = opts.console_opt.connect().await?;
+    match conn
+        .request(AdminRequest::SettingsSchema {
+            scope: Scope::from_str("com.actyx")
+                .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "cannot parse scope `/`")?,
+        })
         .await
     {
         Ok(AdminResponse::SettingsSchemaResponse(resp)) => Ok(resp),

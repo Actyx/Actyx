@@ -46,6 +46,7 @@ pub enum ActyxOSCode {
     ERR_USER_UNAUTHENTICATED,
     ERR_INTERNAL_ERROR,
     ERR_NODE_UNREACHABLE,
+    ERR_NODE_AUTH,
     ERR_PATH_INVALID,
     ERR_SETTINGS_INVALID,
     ERR_SETTINGS_INVALID_SCHEMA,
@@ -143,6 +144,11 @@ impl Display for ActyxOSError {
             ERR_NODE_UNREACHABLE => write!(
                 f,
                 "[ERR_NODE_UNREACHABLE] Error: unable to reach node, additional message: {}",
+                self.message
+            ),
+            ERR_NODE_AUTH => write!(
+                f,
+                "[ERR_NODE_AUTH] Error: node authentication failure: {}",
                 self.message
             ),
             ERR_UNAUTHORIZED => write!(f, "[ERR_UNAUTHORIZED] Error: {}", self.message),

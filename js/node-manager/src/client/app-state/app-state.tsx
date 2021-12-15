@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useContext, useEffect, useReducer, useState } from 'react'
 import {
   signAppManifest,
@@ -25,6 +26,9 @@ import { safeErrorToStr } from '../../common/util'
 import deepEqual from 'fast-deep-equal'
 import { OffsetInfo } from '../offsets'
 import { none, Option, some } from 'fp-ts/lib/Option'
+import { useStore } from '../store'
+import { StoreStateKey } from '../store/types'
+import { DEFAULT_TIMEOUT_SEC } from 'common/consts'
 
 const POLLING_INTERVAL_MS = 1_000
 
@@ -132,6 +136,7 @@ export const AppStateProvider: React.FC<{
   setFatalError: (error: FatalError) => void
 }> = ({ children, setFatalError }) => {
   const analytics = useAnalytics()
+  const store = useStore()
   const [state, dispatch] = useReducer(reducer(analytics), {
     key: AppStateKey.Overview,
   })
@@ -222,12 +227,21 @@ export const AppStateProvider: React.FC<{
 
   useEffect(() => {
     let unmounted = false
+    if (store.key !== StoreStateKey.Loaded) {
+      return
+    }
 
     let timeout: ReturnType<typeof setTimeout> | null = null
+    const getTimeoutSec =
+      (store.key === StoreStateKey.Loaded && store.data.preferences.nodeTimeout) ||
+      DEFAULT_TIMEOUT_SEC
     const getDetailsAndUpdate = async () => {
       console.log('getting node information')
       try {
-        const nodes = await getNodesDetails({ addrs: data.nodes.map((n) => n.addr) })
+        const nodes = await getNodesDetails({
+          addrs: data.nodes.map((n) => n.addr),
+          timeout: getTimeoutSec,
+        })
         const offsetsInfo = OffsetInfo.of(data.nodes)
         if (!unmounted) {
           if (!deepEqual(data.nodes, nodes) || !deepEqual(data.offsets, some(offsetsInfo))) {
@@ -264,7 +278,10 @@ export const AppStateProvider: React.FC<{
         clearTimeout(timeout)
       }
     }
-  }, [data, state.key, setFatalError])
+
+    // The following line generates a warning; this is known; please don't fix without
+    // ensuring that there are no unnecessary re-renders.
+  }, [data, state.key, setFatalError, store.key])
 
   return (
     <AppStateContext.Provider value={{ state, data, actions, dispatch }}>

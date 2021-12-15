@@ -3,6 +3,7 @@
 mod components;
 mod formats;
 mod host;
+mod log_tracer;
 pub mod migration;
 mod node;
 mod node_api;
@@ -18,7 +19,6 @@ use ::util::formats::LogSeverity;
 pub use formats::{node_settings, ShutdownReason};
 #[cfg(not(target_os = "android"))]
 pub use host::lock_working_dir;
-pub use node_storage::CURRENT_VERSION as CURRENT_DB_VERSION;
 
 use crate::{
     components::{
@@ -101,6 +101,12 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     // Component: Logging
     // Set up logging so tracing is set up for migration
     let logging = Logging::new(logs_rx, LogSeverity::default());
+    log::set_boxed_logger(Box::new(log_tracer::LogTracer::new([
+        "yamux",
+        "libp2p_gossipsub",
+        "multistream_select",
+    ])))?;
+    log::set_max_level(log::LevelFilter::max());
     migration::migrate_if_necessary(&working_dir, BTreeSet::new(), false)?;
 
     // Host interface
@@ -125,7 +131,6 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
 
     let keystore = host.get_keystore();
 
-    let db = host.get_db_handle();
     let node_cycle_count = host.get_cycle_count().context("getting cycle count")?;
     // THE node :-)
     let node = NodeWrapper::new((node_tx, node_rx), components, host).context("creating node core")?;
@@ -145,6 +150,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
             node.tx.clone(),
             bind_to.admin.clone(),
             nodeapi_rx,
+            working_dir.join("store"),
             store_tx,
         )
     };
@@ -158,7 +164,6 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
         bind_to,
         keystore,
         node_id,
-        db,
         node_cycle_count,
     )
     .context("creating event store")?;

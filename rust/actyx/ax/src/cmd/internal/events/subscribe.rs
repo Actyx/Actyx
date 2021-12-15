@@ -4,12 +4,14 @@ use actyx_sdk::{
     service::{EventResponse, SubscribeRequest},
     Payload,
 };
-use futures::{future::ready, stream, FutureExt, Stream, StreamExt};
-use std::convert::TryInto;
+use futures::{future::ready, Stream, StreamExt};
 use structopt::StructOpt;
-use util::formats::{
-    events_protocol::{EventsRequest, EventsResponse},
-    ActyxOSCode, ActyxOSError, ActyxOSResult,
+use util::{
+    formats::{
+        events_protocol::{EventsRequest, EventsResponse},
+        ActyxOSCode, ActyxOSError, ActyxOSResult,
+    },
+    gen_stream::GenStream,
 };
 
 #[derive(StructOpt, Debug)]
@@ -27,35 +29,29 @@ impl AxCliCommand for EventsSubscribe {
     type Opt = SubscribeOpts;
     type Output = EventResponse<Payload>;
 
-    fn run(mut opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
-        let ret = async move {
-            opts.console_opt
-                .authority
-                .request_events(
-                    &opts.console_opt.identity.try_into()?,
-                    EventsRequest::Subscribe(SubscribeRequest {
-                        lower_bound: None,
-                        query: opts.query,
-                    }),
-                )
-                .await
-        }
-        .boxed()
-        .map(|x| match x {
-            Ok(s) => s.map(Ok).left_stream(),
-            Err(e) => stream::once(ready(Err(e))).right_stream(),
-        })
-        .flatten_stream()
-        .filter_map(|x| {
-            ready(match x {
-                Ok(EventsResponse::Event(ev)) => Some(Ok(ev)),
-                Ok(EventsResponse::Error { message }) => {
-                    Some(Err(ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, message)))
+    fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
+        let ret = GenStream::new(move |co| async move {
+            let mut conn = opts.console_opt.connect().await?;
+            let mut s = conn
+                .request_events(EventsRequest::Subscribe(SubscribeRequest {
+                    lower_bound: None,
+                    query: opts.query,
+                }))
+                .await?;
+
+            while let Some(x) = s.next().await {
+                match x {
+                    EventsResponse::Event(ev) => co.yield_(Ok(Some(ev))).await,
+                    EventsResponse::Error { message } => {
+                        return Err(ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, message))
+                    }
+                    _ => {}
                 }
-                Err(e) => Some(Err(e)),
-                _ => None,
-            })
-        });
+            }
+
+            Ok(None)
+        })
+        .filter_map(|x| ready(x.transpose()));
         Box::new(ret)
     }
 

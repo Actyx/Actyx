@@ -144,7 +144,7 @@ export const setupIpc = (app: App, browserWindow: BrowserWindow) => {
       } catch (error) {
         triggerFatalError(browserWindow, {
           shortMessage: `error writing to store at ${storePath(app)}`,
-          details: error.toString(),
+          details: safeErrorToStr(error),
         })
       }
     }
@@ -155,7 +155,7 @@ export const setupIpc = (app: App, browserWindow: BrowserWindow) => {
     } catch (error) {
       triggerFatalError(browserWindow, {
         shortMessage: `error reading store from ${storePath(app)}`,
-        details: error.toString(),
+        details: safeErrorToStr(error),
       })
     }
   })

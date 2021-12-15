@@ -5,7 +5,6 @@
  * Copyright (C) 2021 Actyx AG
  */
 import * as t from 'io-ts'
-import { OffsetMap } from '../../dist/sdk'
 import {
   DoPersistEvents,
   DoQuery,
@@ -22,7 +21,7 @@ import {
   OffsetsResponse,
   UnstoredEvents,
 } from '../internal_common/types'
-import { AppId, EventsSortOrder, Where } from '../types'
+import { AppId, EventsSortOrder, Where, OffsetMap } from '../types'
 import { EventKeyIO, OffsetMapIO } from '../types/wire'
 import { validateOrThrow } from '../util'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'

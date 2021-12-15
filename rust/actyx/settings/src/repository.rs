@@ -51,7 +51,7 @@ fn validate(
     settings: serde_json::Value,
     global_settings: serde_json::Value,
 ) -> Result<SuccessfulValidation> {
-    info!("Trying to validate {} with schema for {}", scope, schema_scope);
+    debug!("Trying to validate {} with schema for {}", scope, schema_scope);
     let updated_schema_settings_without_defaults = if schema_scope == scope {
         settings
     } else {
@@ -314,5 +314,34 @@ impl Repository {
             let schemas = tx.get_all_schema_scopes()?;
             Ok(schemas)
         })?
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn array() {
+        let repo = Repository::new_in_memory();
+        repo.set_schema(&"com.actyx".into(), json!({})).unwrap();
+        repo.update_settings(&"com.actyx/a/b".into(), json!([]), false).unwrap();
+        assert_eq!(
+            repo.get_settings(&"com.actyx".into(), true).unwrap(),
+            json!({ "a": { "b": [] } })
+        );
+        repo.update_settings(&"com.actyx/a/b/0".into(), json!("hello"), false)
+            .unwrap();
+        assert_eq!(
+            repo.get_settings(&"com.actyx".into(), true).unwrap(),
+            json!({ "a": { "b": ["hello"] } })
+        );
+        repo.update_settings(&"com.actyx/a/b/0".into(), json!("world"), false)
+            .unwrap();
+        assert_eq!(
+            repo.get_settings(&"com.actyx".into(), true).unwrap(),
+            json!({ "a": { "b": ["world"] } })
+        );
     }
 }

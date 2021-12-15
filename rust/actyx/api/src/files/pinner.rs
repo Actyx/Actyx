@@ -22,7 +22,6 @@ use serde::{Deserialize, Serialize};
 use swarm::{Block, Ipfs};
 use tokio::{sync::mpsc, task::JoinHandle, time::MissedTickBehavior};
 use tokio_stream::wrappers::{IntervalStream, ReceiverStream};
-use tracing::*;
 
 use crate::EventService;
 
@@ -99,14 +98,14 @@ impl FilePinner {
             while let Some(output) = s.next().await {
                 match output {
                     O::Update((app_id, query)) => {
-                        debug!(%app_id, %query, "Received Update");
+                        tracing::debug!(%app_id, %query, "Received Update");
                         if let Err(error) = publish_update(&event_svc, app_id.clone(), query, retention).await {
-                            error!(%app_id, %error, "Error updating pin");
+                            tracing::error!(%app_id, %error, "Error updating pin");
                         }
                     }
                     O::Subscription(r) => {
                         match update_query(&mut standing_queries, r) {
-                            Err(error) => error!(%error, "Error evaluating query"),
+                            Err(error) => tracing::error!(%error, "Error evaluating query"),
                             Ok(true) => {
                                 // Also check the queries if something changed
                                 check_queries(&event_svc, &ipfs, &mut standing_queries).await
@@ -151,7 +150,7 @@ SELECT _.cid"#,
                     ))
                     .await
                 {
-                    error!(%error,"Error updating internal retention query");
+                    tracing::error!(%error,"Error updating internal retention query");
                 }
                 tokio::time::sleep(Duration::from_secs(60 * 30)).await;
             }
@@ -168,7 +167,7 @@ SELECT _.cid"#,
 }
 
 async fn check_queries(event_svc: &EventService, ipfs: &Ipfs, standing_queries: &mut BTreeMap<AppId, StandingQuery>) {
-    debug!("Evaluating standing queries");
+    tracing::trace!("Evaluating standing queries");
     let now = Timestamp::now();
     let mut app_ids_to_clear = vec![];
     standing_queries.retain(|k, q| {
@@ -181,12 +180,12 @@ async fn check_queries(event_svc: &EventService, ipfs: &Ipfs, standing_queries: 
     });
     for app_id in app_ids_to_clear {
         if let Err(error) = ipfs.alias(AppPinAlias::from(&app_id), None) {
-            error!(%app_id, %error, "Error clearing pin");
+            tracing::error!(%app_id, %error, "Error clearing pin");
         }
     }
     for (app_id, query) in standing_queries {
         if let Err(error) = evaluate(event_svc, ipfs, app_id, query).await {
-            error!(%error, %app_id, "Error updating standing query");
+            tracing::error!(%error, %app_id, "Error updating standing query");
         }
     }
 }
@@ -237,7 +236,7 @@ async fn evaluate(event_svc: &EventService, ipfs: &Ipfs, app_id: &AppId, query: 
         let block = Block::encode(DagCborCodec, Code::Blake3_256, &root)?;
         ipfs.insert(&block)?;
         ipfs.alias(AppPinAlias::from(app_id), Some(block.cid()))?;
-        debug!(root = %block.cid(), %app_id, "Updated pinned files");
+        tracing::debug!(root = %block.cid(), %app_id, "Updated pinned files");
     }
     Ok(())
 }
@@ -291,7 +290,7 @@ fn update_query(
             };
 
             if created + duration > now && standing_queries.get(&app_id) != Some(&q) {
-                debug!(%app_id, ?duration, query=%q.query, "Updated standing query");
+                tracing::trace!(%app_id, ?duration, query=%q.query, "Updated standing query");
                 standing_queries.insert(app_id, q);
                 return Ok(true);
             }

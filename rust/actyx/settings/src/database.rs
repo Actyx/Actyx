@@ -19,7 +19,7 @@ pub struct Transaction<'a> {
     tx: RusqlTransaction<'a>,
 }
 
-const DB_FILENAME: &str = "settings.db";
+pub const DB_FILENAME: &str = "settings.db";
 
 impl Database {
     pub fn new(base_dir: impl AsRef<Path>) -> Result<Self> {
