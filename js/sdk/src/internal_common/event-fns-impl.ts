@@ -7,7 +7,6 @@
 import { contramap, gt, lt, tuple } from 'fp-ts/lib/Ord'
 import { Ord as StringOrd } from 'fp-ts/string'
 import { Ord as NumberOrd } from 'fp-ts/number'
-import { SubscribeAqlProps } from '..'
 import { lastValueFrom, EMPTY, from, defaultIfEmpty, first } from '../../node_modules/rxjs'
 import {
   map,
@@ -624,8 +623,12 @@ export const EventFnsFromEventStoreV2 = (
 
     return lastValueFrom(eventStore.queryUnchecked(aql, ord).pipe(map(wrapAql), toArray()))
   }
-  const subscribeAql = (opts: SubscribeAqlProps): CancelSubscription => {
-    const { lowerBound, query, onResponse, onError } = opts
+  const subscribeAql = (
+    query: AqlQuery,
+    onResponse: (r: AqlResponse) => Promise<void> | void,
+    onError?: (err: unknown) => void,
+    lowerBound?: OffsetMap,
+  ): CancelSubscription => {
     const lb = lowerBound || {}
     const qr = typeof query === 'string' ? query : query.query
 

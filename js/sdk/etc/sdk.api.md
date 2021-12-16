@@ -7,17 +7,19 @@
 import { Ord } from 'fp-ts/lib/Ord';
 
 // @public
-export type Actyx = EventFns & {
+type Actyx = EventFns & {
     readonly nodeId: NodeId;
     dispose: () => void;
     waitForSync: () => Promise<void>;
 };
 
 // @public
-export const Actyx: {
+const Actyx: {
     of: (manifest: AppManifest, opts?: ActyxOpts) => Promise<Actyx>;
     test: (opts?: ActyxTestOpts) => TestActyx;
 };
+export { Actyx }
+export { Actyx as SDK }
 
 // @public
 export type ActyxEvent<E = unknown> = {
@@ -146,6 +148,8 @@ export interface EventFns {
     queryKnownRange: (query: RangeQuery) => Promise<ActyxEvent[]>;
     queryKnownRangeChunked: (query: RangeQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: OnCompleteOrErr) => CancelSubscription;
     subscribe: (query: EventSubscription, onEvent: (e: ActyxEvent) => Promise<void> | void, onError?: (err: unknown) => void) => CancelSubscription;
+    // @beta
+    subscribeAql: (query: AqlQuery, onResponse: (r: AqlResponse) => Promise<void> | void, onError?: (err: unknown) => void, lowerBound?: OffsetMap) => CancelSubscription;
     subscribeChunked: (query: EventSubscription, chunkConfig: {
         maxChunkSize?: number;
         maxChunkTimeMs?: number;
@@ -468,7 +472,6 @@ export interface Where<E> {
     or<E1>(tag: Where<E1>): Where<E1 | E>;
     toString(): string;
 }
-
 
 // (No @packageDocumentation comment for this package)
 

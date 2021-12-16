@@ -146,17 +146,6 @@ export type AqlQuery =
  **/
 export type OnCompleteOrErr = (err?: unknown) => void
 
-/**
- * Properties for an AQL subscription.
- * @public
- **/
-export type SubscribeAqlProps = {
-  query: AqlQuery
-  lowerBound?: OffsetMap
-  onResponse: (r: AqlResponse) => Promise<void> | void
-  onError?: (err: unknown) => void
-}
-
 /** Functions that operate directly on Events. @public  */
 export interface EventFns {
   /** Get the current local 'present' i.e. offsets up to which we can provide events without any gaps. */
@@ -210,7 +199,7 @@ export interface EventFns {
    * @param chunkSize   - Maximum size of chunks. Chunks may be smaller than this.
    * @param onChunk     - Callback that will be invoked for each chunk, in sequence. Second argument is an offset map covering all events passed as first arg.
    *
-   * @returns A `Promise` that resolves to updated offset-map after all chunks have been delivered.
+   * @returns A function that can be called in order to cancel the delivery of further chunks.
    */
   queryAllKnownChunked: (
     query: AutoCappedQuery,
@@ -230,8 +219,24 @@ export interface EventFns {
    */
   queryAql: (query: AqlQuery) => Promise<AqlResponse[]>
 
-  // NEW
-  subscribeAql: (opts: SubscribeAqlProps) => CancelSubscription
+  /**
+   * Run a custom AQL subscription and get back the raw responses collected via a callback.
+   *
+   * @param query       - A plain AQL query string.
+   * @param onResponse  - Callback that will be invoked for each raw response, in sequence. Even if this is an async function (returning `Promise<void>`), there will be no concurrent invocations of it.
+   * @param onError     - Callback that will be invoked in case on a error.
+   * @param lowerBound  - Starting point (exclusive) for the query. Everything up-to-and-including `lowerBound` will be omitted from the result. Defaults empty record.
+   *
+   * @returns A `Promise` that resolves to updated offset-map after all chunks have been delivered.
+   *
+   * @beta
+   */
+  subscribeAql: (
+    query: AqlQuery,
+    onResponse: (r: AqlResponse) => Promise<void> | void,
+    onError?: (err: unknown) => void,
+    lowerBound?: OffsetMap,
+  ) => CancelSubscription
 
   /**
    * Run a custom AQL query and get the response messages in chunks.
