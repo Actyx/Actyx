@@ -14,6 +14,12 @@ import { toError } from './util'
 export type InstanceId = string
 type EntityName = string
 
+type PickType<T, V> = {
+  [P in keyof T as T[P] extends V ? P : never]: T[P]
+}
+type PickAqlTypes<T> = PickType<T, AqlFilterTypes>
+type AqlFilterTypes = string | number | boolean
+
 export type Metadata = {
   id: InstanceId
   entity: EntityName
@@ -78,6 +84,8 @@ export type Lww<Data> = (sdk: SDK) => {
   read: (id: UniqueId) => Promise<State<Data> | undefined>
   readAll: () => Promise<State<Data>[]>
   readIds: () => Promise<UniqueId[]>
+  find: (props: Partial<PickAqlTypes<Data>>) => Promise<State<Data>[]>
+  findOne: (props: Partial<PickAqlTypes<Data>>) => Promise<State<Data> | undefined>
   subscribeIds: (
     onId: (id: UniqueId) => void,
     onError: (error: Error) => void,
@@ -91,6 +99,25 @@ export type Lww<Data> = (sdk: SDK) => {
     onStates: (states: State<Data>[]) => void,
     onError: (error: Error) => void,
   ) => CancelSubscription
+
+  // Does this actually work? It uses an AQL filter, but the
+  // problem is that given the pre-set filter, a change which
+  // leads to the entity no longer meeting the filter conditions
+  // won't be noticed in the subscription. I.e. you will never
+  // find our if an entity no longer meets the criteria.
+  //
+  // Commenting out for now
+  //subscribeFind: (
+  //  props: Partial<PickAqlTypes<Data>>,
+  //  onStates: (states: State<Data>[]) => void,
+  //  onError: (error: Error) => void,
+  //
+  //) => CancelSubscription
+
+  // Idea: subscribeFindOne, but that is pretty tricky because
+  // how do you deal with the situation where you have selected
+  // "the one" and that one then, because of another update, no
+  // longer matches the criteria.
 }
 const createEntity = async <Data>(
   sdk: SDK,
@@ -192,14 +219,14 @@ const subscribeIds = (
     cancelled = true
     if (cancelSub) {
       cancelSub()
-      cancelSub = () => {}
+      cancelSub = undefined
     }
   }
 
   _readIds(sdk, entityName).then(({ ids, offsets }) => {
     ids.forEach(onId)
 
-    sdk.subscribeAql({
+    cancelSub = sdk.subscribeAql({
       query: `
 			FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & '${LWW_CREATED_TAG}' & '${entityName}'
       `,
@@ -226,7 +253,7 @@ const subscribeAll = <Data>(
   onError: (error: Error) => void,
 ): CancelSubscription => {
   let cancelled = false
-  let states: State<Data>[] = []
+  const states: Map<InstanceId, State<Data>> = new Map()
   let cancelSubs: CancelSubscription[] = []
   const handleError = (err: Error) => {
     if (!cancelled) {
@@ -236,13 +263,9 @@ const subscribeAll = <Data>(
   }
 
   const handleState = (state: State<Data>) => {
-    if (states.find((s) => s.meta.id === state.meta.id)) {
-      states = states.map((s) => (s.meta.id === state.meta.id ? state : s))
-    } else {
-      states.push(state)
-    }
+    states.set(state.meta.id, state)
     if (!cancelled) {
-      onStates([...states])
+      onStates([...states.values()])
     }
   }
 
@@ -313,7 +336,7 @@ const subscribeById = <Data>(
     cancelled = true
     if (cancelSub) {
       cancelSub()
-      cancelSub = () => {}
+      cancelSub = undefined
     }
   }
 }
@@ -373,6 +396,130 @@ const setArchivedState = async (
   return true
 }
 
+const find = async <Data>(
+  sdk: SDK,
+  entityName: EntityName,
+  props: Partial<PickAqlTypes<Data>>,
+): Promise<State<Data>[]> => _find(sdk, entityName, props).then((r) => r.states)
+const findOne = async <Data>(
+  sdk: SDK,
+  entityName: EntityName,
+  props: Partial<PickAqlTypes<Data>>,
+): Promise<State<Data> | undefined> =>
+  _find(sdk, entityName, props).then((r) => (r.states.length > 0 ? r.states[0] : undefined))
+
+const _mqAqlFilter = (name: string, value: AqlFilterTypes): string => {
+  switch (typeof value) {
+    case 'string': {
+      return `_.data['${name}']='${value}'`
+    }
+    case 'number': {
+      return `_.data['${name}']=${value}`
+    }
+    case 'boolean': {
+      return `${value ? '' : '!'}_.data['${name}']`
+    }
+    default: {
+      throw new Error(
+        `unexpected got value type '${typeof value}' which is not compatible with AQL queries`,
+      )
+    }
+  }
+}
+
+const _find = async <Data>(
+  sdk: SDK,
+  entityName: EntityName,
+  props: Partial<PickAqlTypes<Data>>,
+): Promise<{ states: State<Data>[]; offsets: OffsetMap }> => {
+  let query = `FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & '${entityName}'`
+  if (Object.entries(props).length > 0) {
+    query += ' FILTER '
+    query += Object.entries(props)
+      // Can't get the types to work here atm
+      .map(([k, v]) => _mqAqlFilter(k, v as AqlFilterTypes))
+      .join(' & ')
+  }
+  // Reduce latest
+  const latest: Map<InstanceId, State<Data>> = new Map()
+  const results = await sdk.queryAql(query)
+  results
+    .filter((r: AqlResponse): r is AqlEventMessage => r.type === 'event')
+    .map((e: any) => e.payload as State<Data>)
+    .forEach((s) => latest.set(s.meta.id, s))
+  const offsets = results.find((r: AqlResponse): r is AqlOffsetsMsg => r.type === 'offsets')
+  if (!offsets) {
+    throw new Error(`internal error; queryAql did not return an 'offsets' event`)
+  }
+
+  return { states: [...latest.values()], offsets: offsets.offsets }
+}
+
+// See commend above
+//const subscribeFind = <Data>(
+//  sdk: SDK,
+//  entityName: EntityName,
+//  props: Partial<PickAqlTypes<Data>>,
+//  onStates: (states: State<Data>[]) => void,
+//  onError: (error: Error) => void,
+//): CancelSubscription => {
+//  let cancelled = false
+//  let states: Map<InstanceId, State<Data>> = new Map()
+//  let cancelSub: CancelSubscription | undefined = undefined
+//  const handleError = (err: Error) => {
+//    if (!cancelled) {
+//      onError(err)
+//    }
+//    doCancel()
+//  }
+//
+//  const handleState = (state: State<Data>) => {
+//    console.log(`adding state`, state)
+//    states.set(state.meta.id, state)
+//    if (!cancelled) {
+//      console.log(`calling onStates with`, [...states.values()])
+//      onStates([...states.values()])
+//    }
+//  }
+//
+//  const doCancel: CancelSubscription = () => {
+//    cancelled = true
+//    if (cancelSub) {
+//      cancelSub()
+//    }
+//    cancelSub = undefined
+//  }
+//
+//  _find(sdk, entityName, props).then(({ states, offsets }) => {
+//    states.forEach(handleState)
+//
+//    let query = `FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & '${entityName}'`
+//    if (Object.entries(props).length > 0) {
+//      query += ' FILTER '
+//      query += Object.entries(props)
+//        // Can't get the types to work here atm
+//        .map(([k, v]) => _mqAqlFilter(k, v as AqlFilterTypes))
+//        .join(' & ')
+//    }
+//
+//    console.log(`query: ${query}`)
+//
+//    sdk.subscribeAql({
+//      query,
+//      lowerBound: offsets,
+//      onResponse: (res) => {
+//        console.log(`got res`, res)
+//        if (res.type === 'event' && !cancelled) {
+//          handleState(res.payload as State<Data>)
+//        }
+//      },
+//      onError: (err) => handleError(toError(err)),
+//    })
+//  })
+//
+//  return doCancel
+//}
+
 export const Lww =
   <Data>(entityName: EntityName): Lww<Data> =>
   (sdk) => ({
@@ -383,7 +530,11 @@ export const Lww =
     read: (id) => readById(sdk, entityName, id),
     readIds: () => readIds(sdk, entityName),
     readAll: () => readAll(sdk, entityName),
+    find: (props) => find(sdk, entityName, props),
+    findOne: (props) => findOne(sdk, entityName, props),
     subscribe: (id, onState, onError) => subscribeById(sdk, entityName, id, onState, onError),
     subscribeAll: (onStates, onError) => subscribeAll(sdk, entityName, onStates, onError),
     subscribeIds: (onId, onError) => subscribeIds(sdk, entityName, onId, onError),
+    //subscribeFind: (props, onStates, onError) =>
+    //  subscribeFind(sdk, entityName, props, onStates, onError),
   })

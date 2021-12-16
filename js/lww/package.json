@@ -9,13 +9,18 @@
   },
   "description": "Actyx Last Writer Wins Programming Model",
   "devDependencies": {
+    "@types/jest": "^27.0.3",
     "@types/uuid": "^8.3.3",
+    "@typescript-eslint/eslint-plugin": "^5.7.0",
+    "cross-env": "^7.0.3",
     "eslint": "8.4.1",
     "eslint-config-prettier": "8.3.0",
     "eslint-plugin-prettier": "4.0.0",
+    "jest": "^27.4.5",
     "license-check-and-add": "4.0.3",
     "prettier": "2.5.1",
     "rimraf": "3.0.2",
+    "ts-jest": "^27.1.1",
     "typescript": "4.5.4"
   },
   "homepage": "https://developer.actyx.com/",
@@ -51,11 +56,15 @@
     "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "npm run lint -- --fix",
     "format:configs": "prettier --write .prettierrc.json jest.config.js .vscode/settings.json tsconfig.prod.json tsconfig.json .eslintrc.json",
+    "test": "cross-env TZ=UTC jest",
+    "test:ci": "cross-env TZ=UTC jest --maxWorkers 2",
+    "test:dev": "cross-env TZ=UTC jest --coverage=false",
+    "test:watch": "cross-env TZ=UTC jest --coverage=false --watch",
     "tsc": "tsc --noEmit -p ./tsconfig.json",
     "tsc:watch": "npm run tsc -- --watch --pretty",
     "addLicense": "license-check-and-add add -f add-license-config.json",
     "build:docs": "rm -rf ../../web/developer.actyx.com/static/@actyx/pond/ && typedoc --mode library --options typedoc.json src/index.ts",
-    "example": "npm run build && node lib/example.js"
+    "example:person": "npm run build && node lib/example/person/index.js"
   },
   "types": "./lib/index.d.ts",
   "version": "0.1.0"
