@@ -1,0 +1,4 @@
+Actyx LWW: Library for implementing simple, distributed last writer
+wins data models on Actyx.
+
+Copyright (C) 2021 Actyx AG

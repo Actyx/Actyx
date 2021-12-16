@@ -1,0 +1,9 @@
+*.json
+*.tgz
+.*
+yarn.lock
+coverage
+bin
+*.iml
+jest.config.js
+add-license-*
