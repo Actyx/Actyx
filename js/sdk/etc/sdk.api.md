@@ -7,19 +7,17 @@
 import { Ord } from 'fp-ts/lib/Ord';
 
 // @public
-type Actyx = EventFns & {
+export type Actyx = EventFns & {
     readonly nodeId: NodeId;
     dispose: () => void;
     waitForSync: () => Promise<void>;
 };
 
 // @public
-const Actyx: {
+export const Actyx: {
     of: (manifest: AppManifest, opts?: ActyxOpts) => Promise<Actyx>;
     test: (opts?: ActyxTestOpts) => TestActyx;
 };
-export { Actyx }
-export { Actyx as SDK }
 
 // @public
 export type ActyxEvent<E = unknown> = {
