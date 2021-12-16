@@ -4,7 +4,7 @@
     "url": "https://community.actyx.com/"
   },
   "dependencies": {
-    "@actyx/sdk": "0.3.2",
+    "@actyx/sdk": "^0.4.0-rc1",
     "fp-ts": "2.11.5",
     "immutable": "4.0.0",
     "io-ts": "2.2.16",
