@@ -9,7 +9,7 @@ import {
   Response_Swarms_Keygen,
   Response_Users_Keygen,
 } from './types'
-import execa from 'execa'
+import { execa, Options } from 'execa'
 import * as path from 'path'
 import { rightOrThrow } from '../infrastructure/rightOrThrow'
 import {
@@ -26,14 +26,16 @@ import {
 import { dotnetEventsCliAssembly } from '../infrastructure/settings'
 import { EventClients } from '../infrastructure/types'
 
-const exec = async (binaryPath: string, args: string[], options?: execa.Options) => {
+const exec = async (binaryPath: string, args: string[], options?: Options) => {
   try {
     const binaryPathResolved = path.resolve(binaryPath)
     const response = await execa(binaryPathResolved, [`-j`, ...args], options)
+    if (response.failed) {
+      return JSON.parse(response.stdout)
+    }
     return JSON.parse(response.stdout)
   } catch (error) {
     try {
-      return JSON.parse(error.stdout)
     } catch (errParse) {
       console.error(error)
       throw errParse

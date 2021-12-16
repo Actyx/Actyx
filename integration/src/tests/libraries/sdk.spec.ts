@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Actyx, AqlResponse, EventsSortOrder, Tag } from '@actyx/sdk'
-import { Observable } from 'rxjs'
+import { Observable, lastValueFrom } from 'rxjs'
+import { filter, first } from 'rxjs/operators'
 import { SettingsInput } from '../../cli/exec'
 import { trialManifest } from '../../http-client'
 import { runOnEvery, runWithNewProcess } from '../../infrastructure/hosts'
@@ -244,10 +245,12 @@ describe('@actyx/sdk', () => {
         await actyx.publish(tag.apply('event 0'))
 
         // Wait for the value to arrive
-        await p
-          .filter((x) => x === 'event 0')
-          .first()
-          .toPromise()
+        await lastValueFrom(
+          p.pipe(
+            filter((x) => x === 'event 0'),
+            first(),
+          ),
+        )
 
         const expectErr = expect(p.toPromise()).rejects.toMatch('Connection lost')
         // Topic change causes WS to be closed. We cannot use `powerCycle` because that gives new port numbers...
@@ -292,10 +295,12 @@ describe('@actyx/sdk', () => {
         await actyx.publish(tag.apply('event 0'))
 
         // Wait for the value to arrive
-        await p
-          .filter((x) => x === 'event 0')
-          .first()
-          .toPromise()
+        await lastValueFrom(
+          p.pipe(
+            filter((x) => x === 'event 0'),
+            first(),
+          ),
+        )
 
         const expectErr = expect(p.toPromise()).rejects.toMatch('Connection lost')
 

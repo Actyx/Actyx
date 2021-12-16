@@ -1,4 +1,4 @@
-import execa, { ExecaChildProcess } from 'execa'
+import {execa, ExecaChildProcess } from 'execa'
 import fs from 'fs'
 import { removeSync } from 'fs-extra'
 import path from 'path'
@@ -41,7 +41,7 @@ export class Ssh {
     return new Ssh(['-oConnectTimeout=5', host])
   }
 
-  exec(command: string): execa.ExecaChildProcess<string> {
+  exec(command: string): ExecaChildProcess<string> {
     return execa('ssh', [...this.commonOpts, command])
   }
 
@@ -49,7 +49,7 @@ export class Ssh {
     file: string,
     params: string[],
     env?: { [_: string]: string },
-  ): execa.ExecaChildProcess<string> {
+  ): ExecaChildProcess<string> {
     const e = Object.entries(env || {}).reduce(
       (acc, [k, v]) => acc.concat([`${k}=${v}`]),
       [] as string[],

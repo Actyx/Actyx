@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { EC2 } from 'aws-sdk'
-import execa from 'execa'
+import { execa } from 'execa'
 import { promises as fs, createWriteStream } from 'fs'
 import { remove } from 'fs-extra'
 import path from 'path'
@@ -68,7 +68,7 @@ const retry = async <T>(f: () => Promise<T>, retries: number): Promise<T> => {
   try {
     return await f()
   } catch (e) {
-    if (e.code === 'RequestLimitExceeded' && retries > 0) {
+    if ((e as any).code === 'RequestLimitExceeded' && retries > 0) {
       console.log('request limit hit, waiting a bit ...')
       await new Promise((res) => setTimeout(res, 5000))
       return await retry(f, retries - 1)

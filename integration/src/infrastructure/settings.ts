@@ -1,4 +1,4 @@
-import execa from 'execa'
+import { execaCommand } from 'execa'
 import fs from 'fs'
 import { ensureDirSync } from 'fs-extra'
 import https from 'https'
@@ -9,6 +9,8 @@ import { MyGlobal } from '../../jest/setup'
 import { Arch, currentArch, currentOS, OS, Settings } from '../../jest/types'
 import { archToDockerPlatform, DockerPlatform } from './linux'
 import { randIdentifier } from './util'
+import { map as mapE, getOrElse as getOrElseE } from 'fp-ts/lib/Either'
+import { pipe } from 'fp-ts/lib/function'
 
 const DockerSingleManifest = t.type({
   digest: t.string,
@@ -59,12 +61,14 @@ export const actyxCliWindowsBinary = async (arch: Arch): Promise<string> =>
 export const actyxDockerImage = async (arch: Arch, version: string): Promise<string> => {
   const repo = 'actyx/actyx-ci'
   const dockerTag = `${repo}:actyx-${version}`
-  const inspect = await execa.command(`docker manifest inspect ${dockerTag}`)
+  const inspect = await execaCommand(`docker manifest inspect ${dockerTag}`)
   const json = JSON.parse(inspect.stdout)
 
   return (
-    DockerManifest.decode(json)
-      .map(({ manifests }: DockerManifest) => {
+    pipe(
+
+    DockerManifest.decode(json),
+      mapE(({ manifests }: DockerManifest) => {
         const targetPlatform = archToDockerPlatform(arch)
         const sha = manifests.find(
           ({ platform }: DockerSingleManifest) =>
@@ -77,9 +81,10 @@ export const actyxDockerImage = async (arch: Arch, version: string): Promise<str
         }
 
         return `${repo}@${sha.digest}`
-      })
+      }),
       // Assume that this is not a multi-arch manifest, but a single-arch image
-      .getOrElse(`${repo}:actyx-${version}`)
+      getOrElseE(() => `${repo}:actyx-${version}`)
+    )
   )
 }
 
@@ -98,7 +103,7 @@ const ensureBinaryExists = async (os: OS, p: string): Promise<string> => {
     const cmd = `make ${path.relative('..', p)}`
     const cwd = path.resolve('..')
     console.log(`${p} doesn't exist. Running ${cmd} in ${cwd}. This might take a while.`)
-    await execa.command(cmd, { cwd })
+    await execaCommand(cmd, { cwd })
     console.log(`Successfully built ${p}`)
   }
   return p
@@ -128,7 +133,7 @@ const getOrDownload = async (
       // `localPath` is already being downloaded or created. Waiting ..
       await mutex[localPath]
     } else {
-      const p = new Promise((res, rej) => {
+      const p = new Promise<void>((res, rej) => {
         ;(gitHash != null
           ? download(gitHash, os, arch, binary, localPath)
           : ensureBinaryExists(os, localPath)
@@ -148,7 +153,7 @@ const download = (
   arch: Arch,
   binary: Binary,
   targetFile: string,
-): Promise<string> => {
+): Promise<void> => {
   const bin = binary === 'actyx-x64' ? 'actyx-x64.msi' : os === 'windows' ? `${binary}.exe` : binary
   // actyx.apk sits in the root
   const p = os == 'android' ? '' : `/${os}-${arch}`

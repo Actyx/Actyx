@@ -92,5 +92,5 @@ export const mkAuthHttpClient = (manifest: AppManifest) => (
 ): Promise<AxHttpClient> =>
   getToken(manifest, httpOrigin)
     .then((authResponse) => authResponse.json())
-    .then((x) => x.token)
+    .then((x: any) => x.token)
     .then(fixedTokenClient(httpOrigin))

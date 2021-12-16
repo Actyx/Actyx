@@ -9,7 +9,7 @@ describe('event service', () => {
       runWithClients(async (events, clientId) => {
         const pub1 = await publishRandom(events, clientId)
         const data: SubscribeResponse[] = []
-        await new Promise((resolve, reject) => {
+        await new Promise<void>((resolve, reject) => {
           events
             .subscribe(
               { query: `FROM '${mySuite()}' & '${testName()}' & 'client:${clientId}' & isLocal` },
@@ -34,7 +34,7 @@ describe('event service', () => {
       runWithClients(async (events, clientId) => {
         const pub1 = await publishRandom(events, clientId)
         const data: SubscribeResponse[] = []
-        const done = new Promise((resolve, reject) => {
+        const done = new Promise<void>((resolve, reject) => {
           events
             .subscribe(
               { query: `FROM '${mySuite()}' & '${testName()}' & 'client:${clientId}' & isLocal` },

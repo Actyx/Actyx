@@ -46,7 +46,9 @@ export const withContext = <T>(context: string, f: () => T): T => {
   try {
     return f()
   } catch (err) {
-    err.message += `\n\ncontext:\n${context}`
+    if (err instanceof Error) {
+      err.message += `\n\ncontext:\n${context}`
+    }
     throw err
   }
 }

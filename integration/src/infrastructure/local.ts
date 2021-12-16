@@ -1,4 +1,4 @@
-import execa from 'execa'
+import { execa, execaCommand } from 'execa'
 import { ensureDir, remove } from 'fs-extra'
 import path from 'path'
 import { CLI } from '../cli'
@@ -112,7 +112,7 @@ export const mkNodeLocalDocker = async (
   const command =
     'docker run -d --rm -v /data --expose 4001 --expose 4458 --expose 4454 -P ' + image
 
-  const dockerRun = await execa.command(command)
+  const dockerRun = await execaCommand(command)
   const container = dockerRun.stdout
 
   const shutdown = async () => {

@@ -19,7 +19,13 @@ export const mkLinesSplitter = function (): Transform {
         last = p === undefined ? '' : p
         lines = list.filter((x) => x.length > 0)
       } catch (err) {
-        cb(err)
+        if(err) {
+          if (err === undefined || err == null || err instanceof Error) {
+            cb(err)
+          } else {
+            cb(new Error('unexpectedly caught err of invalid type'))
+          }
+        }
         return
       }
 

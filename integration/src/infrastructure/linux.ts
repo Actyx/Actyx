@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import execa from 'execa'
+import { execa, ExecaChildProcess } from 'execa'
 import * as t from 'io-ts'
 import { Arch } from '../../jest/types'
 import { CLI } from '../cli'
@@ -194,9 +194,11 @@ export async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble,
       connected = true
     } catch (error) {
       if (
-        error.stderr.indexOf('Connection refused') >= 0 ||
-        error.stderr.indexOf('Connection timed out') >= 0 ||
-        error.stderr.indexOf('Operation timed out') >= 0
+        (error as any).stderr && (
+          (error as any).stderr.indexOf('Connection refused') >= 0 ||
+          (error as any).stderr.indexOf('Connection timed out') >= 0 ||
+          (error as any).stderr.indexOf('Operation timed out') >= 0
+        )
       ) {
         console.log(
           'node %s ssh connection (%s) not yet ready (remaining attempts %i)',
@@ -234,7 +236,7 @@ export function startActyx(
   logger: (s: string) => void,
   ssh: Ssh,
   command = 'RUST_BACKTRACE=1 ./actyx',
-): Promise<[execa.ExecaChildProcess<string>]> {
+): Promise<[ExecaChildProcess<string>]> {
   // awaiting a Promise<Promise<T>> yields T (WTF?!?) so we need to put it into an array
   return new Promise((res, rej) => {
     setTimeout(
@@ -274,7 +276,7 @@ export const forwardPortsAndBuildClients = async (
   ssh: Ssh,
   nodeName: string,
   target: Target,
-  actyxProc: execa.ExecaChildProcess<string>[],
+  actyxProc: ExecaChildProcess<string>[],
   workingDir: string,
   theRest: Omit<ActyxNode, 'ax' | '_private' | 'name' | 'target'>,
 ): Promise<ActyxNode> => {

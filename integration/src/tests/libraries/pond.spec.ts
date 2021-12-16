@@ -1,5 +1,6 @@
 import { Fish, FishId, Pond, Tag, Tags, Where } from '@actyx/pond'
-import { Observable } from 'rxjs'
+import { Observable, lastValueFrom, timer } from 'rxjs'
+import { filter, take } from 'rxjs/operators'
 import { SettingsInput } from '../../cli/exec'
 import { trialManifest } from '../../http-client'
 import { runConcurrentlyOnAll, runWithNewProcess, withPond } from '../../infrastructure/hosts'
@@ -170,7 +171,7 @@ describe('Pond', () => {
         const states = new Observable<State>((o) =>
           pond.observe(eventCounterFish, (x) => o.next(x)),
         )
-        const firstState = await states.take(1).toPromise()
+        const firstState = await lastValueFrom(states.pipe(take(1)))
         expect(firstState).toEqual({
           lastEvent: 1,
           numEvents: 1,
@@ -191,10 +192,12 @@ describe('Pond', () => {
         // We should get 0-1 errors depending on the reconnect timing
         expect(numErrs).toBeLessThan(2)
 
-        const e = states
-          .filter((x) => x.lastEvent === 5)
-          .take(1)
-          .toPromise()
+        const e = lastValueFrom(
+          states.pipe(
+            filter((x) => x.lastEvent === 5),
+            take(1),
+          ),
+        )
         expect(e).resolves.toEqual({
           // We switched to the other topic and lost the events from the old one...
           numEvents: 1,
@@ -206,11 +209,13 @@ describe('Pond', () => {
     }))
 })
 
-const randomTags = (prefix: string) => (c: number): Tags<never> => {
-  return Tag(prefix)
-    .withId(String(c))
-    .and(Tag(c + 'ok'))
-}
+const randomTags =
+  (prefix: string) =>
+  (c: number): Tags<never> => {
+    return Tag(prefix)
+      .withId(String(c))
+      .and(Tag(c + 'ok'))
+  }
 
 const padSubWithDummies = <E>(where: Where<E>): Where<E> => {
   const rt = randomTags('in')
@@ -335,72 +340,72 @@ const concurrentOrderingTest = async (
   return state
 }
 
-const sequenceCausalityTest = (numNodes: number, streamName: string) => async (
-  pond: Pond,
-): Promise<string[]> => {
-  type Event = {
-    numLocallyKnown: number
-  }
+const sequenceCausalityTest =
+  (numNodes: number, streamName: string) =>
+  async (pond: Pond): Promise<string[]> => {
+    type Event = {
+      numLocallyKnown: number
+    }
 
-  const tags = Tag(streamName).and(Tag<Event>('seqtest'))
+    const tags = Tag(streamName).and(Tag<Event>('seqtest'))
 
-  const where = padSubWithDummies(tags)
+    const where = padSubWithDummies(tags)
 
-  const { nodeId } = pond.info()
+    const { nodeId } = pond.info()
 
-  const f: Fish<string[], Event> = {
-    where,
-    initialState: [],
-    onEvent: (state, event, metadata) => {
-      if (state.length < event.numLocallyKnown) {
-        throw new Error(
-          'We know less events than event sender! Us:' +
-            state.length +
-            ' vs. sender:' +
-            event.numLocallyKnown,
-        )
-      }
-
-      state.push(metadata.eventId)
-      return state
-    },
-    fishId: FishId.of('seqtest', fishName(nodeId, where), 1),
-  }
-
-  const eventsPerNode = 1000
-
-  const expectedSum = numNodes * eventsPerNode
-
-  const state = new Promise<string[]>((resolve, reject) =>
-    pond.observe(
-      f,
-      (state) => {
-        if (state.length >= expectedSum) {
-          resolve(state)
+    const f: Fish<string[], Event> = {
+      where,
+      initialState: [],
+      onEvent: (state, event, metadata) => {
+        if (state.length < event.numLocallyKnown) {
+          throw new Error(
+            'We know less events than event sender! Us:' +
+              state.length +
+              ' vs. sender:' +
+              event.numLocallyKnown,
+          )
         }
 
-        // All intermediate results should be sorted
-        if (!isSortedAsc(state)) {
-          reject(new Error('incorrect sorting: ' + JSON.stringify(state)))
-        }
+        state.push(metadata.eventId)
+        return state
       },
-      reject,
-    ),
-  )
+      fishId: FishId.of('seqtest', fishName(nodeId, where), 1),
+    }
 
-  const emissionTags = padEmitWithDummies(tags)
-  const cancel = pond.keepRunning(
-    f,
-    async (state, enqueue) => {
-      enqueue(emissionTags, { numLocallyKnown: state.length })
-      await Observable.timer(10 * Math.random()).toPromise()
-    },
-    (state) => state.length >= expectedSum,
-  )
+    const eventsPerNode = 1000
 
-  const res = await state
+    const expectedSum = numNodes * eventsPerNode
 
-  cancel()
+    const state = new Promise<string[]>((resolve, reject) =>
+      pond.observe(
+        f,
+        (state) => {
+          if (state.length >= expectedSum) {
+            resolve(state)
+          }
 
-  return res
-}
+          // All intermediate results should be sorted
+          if (!isSortedAsc(state)) {
+            reject(new Error('incorrect sorting: ' + JSON.stringify(state)))
+          }
+        },
+        reject,
+      ),
+    )
+
+    const emissionTags = padEmitWithDummies(tags)
+    const cancel = pond.keepRunning(
+      f,
+      async (state, enqueue) => {
+        enqueue(emissionTags, { numLocallyKnown: state.length })
+        await timer(10 * Math.random()).toPromise()
+      },
+      (state) => state.length >= expectedSum,
+    )
+
+    const res = await state
+
+    cancel()
+
+    return res
+  }

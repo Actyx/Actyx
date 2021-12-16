@@ -14,7 +14,7 @@ describe('event service', () => {
           lowerBound: {},
         }
         const data: SubscribeMonotonicResponse[] = []
-        await new Promise((resolve, reject) => {
+        await new Promise<void>((resolve, reject) => {
           events
             .subscribeMonotonic(request, (res, cancel) => {
               data.push(res)
@@ -41,7 +41,7 @@ describe('event service', () => {
           lowerBound: {},
         }
         const data: SubscribeMonotonicResponse[] = []
-        const done = new Promise((resolve, reject) => {
+        const done = new Promise<void>((resolve, reject) => {
           events
             .subscribeMonotonic(request, (res, cancel) => {
               data.push(res)

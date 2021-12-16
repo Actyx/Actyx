@@ -5,7 +5,7 @@
  *   - Bootstrap all nodes in the same swarm
  */
 import { EC2 } from 'aws-sdk'
-import execa from 'execa'
+import { execaCommand } from 'execa'
 import { promises as fs } from 'fs'
 import YAML from 'yaml'
 import { CLI } from '../src/cli'
@@ -37,7 +37,7 @@ export type NodeSetup = {
 
 export type MyGlobal = typeof global & { axNodeSetup: NodeSetup }
 
-const currentHead = () => execa.command('git rev-parse HEAD').then((x) => x.stdout)
+const currentHead = () => execaCommand('git rev-parse HEAD').then((x) => x.stdout)
 
 const getGitHash = async (settings: Settings) => {
   const maybeEnv = process.env['AX_GIT_HASH']
