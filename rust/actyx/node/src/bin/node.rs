@@ -48,7 +48,7 @@ mod bin {
             // printed by hand since things can fail before logging is set up and we want the user to know this
             eprintln!("using data directory `{}`", working_dir.display());
 
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "darwin"))]
             let runtime: Runtime = Runtime::Linux;
             #[cfg(target_os = "windows")]
             let runtime: Runtime = Runtime::Windows;
