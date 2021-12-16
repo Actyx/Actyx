@@ -7,3 +7,4 @@
 export * from './actyx'
 export * from './event-fns'
 export * from './types'
+export { Actyx as SDK } from './actyx'

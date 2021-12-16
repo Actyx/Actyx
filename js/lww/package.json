@@ -1,0 +1,62 @@
+{
+  "author": "Actyx AG",
+  "bugs": {
+    "url": "https://community.actyx.com/"
+  },
+  "dependencies": {
+    "@actyx/sdk": "^0.3.2",
+    "uuid": "^8.3.2"
+  },
+  "description": "Actyx Last Writer Wins Programming Model",
+  "devDependencies": {
+    "@types/uuid": "^8.3.3",
+    "eslint": "8.4.1",
+    "eslint-config-prettier": "8.3.0",
+    "eslint-plugin-prettier": "4.0.0",
+    "license-check-and-add": "4.0.3",
+    "prettier": "2.5.1",
+    "rimraf": "3.0.2",
+    "typescript": "4.5.4"
+  },
+  "homepage": "https://developer.actyx.com/",
+  "keywords": [
+    "actyx",
+    "last writer wins",
+    "programming model",
+    "distributed-systems",
+    "distributed apps",
+    "distributed",
+    "industry 4.0",
+    "smart-factory",
+    "serverless",
+    "p2p",
+    "peer-to-peer",
+    "synchronization",
+    "decentralized",
+    "datastore",
+    "offline-first"
+  ],
+  "license": "GPL-2.0-only",
+  "main": "./lib/index.js",
+  "name": "@actyx/lww",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Actyx/Actyx.git"
+  },
+  "scripts": {
+    "clean": "rimraf ./lib",
+    "build": "tsc -p ./tsconfig.prod.json",
+    "build:watch": "npm run build -- --watch --pretty",
+    "build:prod": "npm run clean && npm run lint && npm run build",
+    "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "npm run lint -- --fix",
+    "format:configs": "prettier --write .prettierrc.json jest.config.js .vscode/settings.json tsconfig.prod.json tsconfig.json .eslintrc.json",
+    "tsc": "tsc --noEmit -p ./tsconfig.json",
+    "tsc:watch": "npm run tsc -- --watch --pretty",
+    "addLicense": "license-check-and-add add -f add-license-config.json",
+    "build:docs": "rm -rf ../../web/developer.actyx.com/static/@actyx/pond/ && typedoc --mode library --options typedoc.json src/index.ts",
+    "example": "npm run build && node lib/example.js"
+  },
+  "types": "./lib/index.d.ts",
+  "version": "0.1.0"
+}
