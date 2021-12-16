@@ -190,7 +190,6 @@ pub async fn discovery_ingest(store: BanyanStore) {
             Event::ExpiredListenAddr(peer, addr)
             | Event::ExpiredExternalAddr(peer, addr)
             | Event::ExpiredObservedAddr(peer, addr) => store.ipfs().remove_address(&peer.into(), &addr.into()),
-            _ => {}
         }
     }
 }
