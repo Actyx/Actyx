@@ -226,21 +226,21 @@ const subscribeIds = (
   _readIds(sdk, entityName).then(({ ids, offsets }) => {
     ids.forEach(onId)
 
-    cancelSub = sdk.subscribeAql({
-      query: `
+    cancelSub = sdk.subscribeAql(
+      `
 			FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & '${LWW_CREATED_TAG}' & '${entityName}'
       `,
-      onResponse: (res: any) => {
+      (res) => {
         if (res.type === 'event' && !cancelled) {
           onId((res.payload as State<unknown>).meta.id)
         }
       },
-      lowerBound: offsets,
-      onError: (err: any) => {
+      (err) => {
         doCancel()
         onError(toError(err))
       },
-    })
+      offsets,
+    )
   })
 
   return doCancel
@@ -309,22 +309,22 @@ const subscribeById = <Data>(
       if (!cancelled) {
         onState(res.state)
       }
-      cancelSub = sdk.subscribeAql({
-        query: `
+      cancelSub = sdk.subscribeAql(
+        `
 			FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & ('${LWW_CREATED_TAG}' | '${LWW_UPDATED_TAG}') & '${entityName}' & '${entityName}:${id}'
 		  `,
-        onResponse: (res: any) => {
+        (res) => {
           if (res.type === 'event' && !cancelled) {
             onState(res.payload as State<Data>)
           }
         },
-        lowerBound: res.offsets,
-        onError: (err: any) => {
+        (err) => {
           if (!cancelled) {
             onError(toError(err))
           }
         },
-      })
+        res.offsets,
+      )
     })
     .catch((err) => {
       if (!cancelled) {

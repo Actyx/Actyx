@@ -22,6 +22,15 @@ beforeAll(async () => {
   sdk = await SDK.of(TEST_MANIFEST)
 })
 
+afterAll(() => {
+  // If we don't dispose, the SDK's connection to Actyx will remain open and Jest will
+  // warn that 'A worker process has failed to exit gracefully and has been force exited.
+  // This is likely caused by tests leaking due to improper teardown. Try running with
+  // --detectOpenHandles to find leaks. Active timers can also cause this, ensure that
+  // .unref() was called on them.'
+  sdk.dispose()
+})
+
 describe(`running with Acytx`, () => {
   it(`can connect to Actyx`, async () => {
     expect(await sdk.nodeId).toBeTruthy()
