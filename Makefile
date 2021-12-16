@@ -302,14 +302,12 @@ validate-js: diagnostics validate-js-sdk validate-js-pond validate-js-integratio
 validate-js-sdk:
 	cd js/sdk && source ~/.nvm/nvm.sh && nvm install && \
 		npm install && \
-		npm run test && \
 		npm run build:prod
 
 # validate js pond
 validate-js-pond:
 	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
 		npm install && \
-		npm run test && \
 		npm run build:prod
 
 # validate js integration suite (does it compile?)
