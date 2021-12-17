@@ -1,4 +1,4 @@
-import { SDK, AppManifest } from '@actyx/sdk'
+import { Actyx as SDK, AppManifest } from '@actyx/sdk'
 import { Lww, State } from '..'
 
 const TEST_MANIFEST: AppManifest = {
@@ -16,7 +16,7 @@ type TestType = {
 const mkModel = (name: string) => Lww<TestType>(`${name}-${Date.now().toString()}`)
 const defaultModel = mkModel('lww-test')
 // set in beforeAll
-let sdk: SDK = {} as SDK
+let sdk: SDK = undefined as any as SDK
 
 beforeAll(async () => {
   sdk = await SDK.of(TEST_MANIFEST)
@@ -28,7 +28,9 @@ afterAll(() => {
   // This is likely caused by tests leaking due to improper teardown. Try running with
   // --detectOpenHandles to find leaks. Active timers can also cause this, ensure that
   // .unref() was called on them.'
-  sdk.dispose()
+  if (sdk) {
+    sdk.dispose()
+  }
 })
 
 describe(`running with Acytx`, () => {
@@ -45,9 +47,9 @@ describe(`running with Acytx`, () => {
   })
 
   it(`can find instances`, async () => {
-    expect(async () => await defaultModel(sdk).create({ s: 'aaa', b: true, n: 3 })).not.toThrow()
-    expect(async () => await defaultModel(sdk).create({ s: 'bbb', b: true, n: 6 })).not.toThrow()
-    expect(async () => await defaultModel(sdk).create({ s: 'bbb', b: false, n: 12 })).not.toThrow()
+    await defaultModel(sdk).create({ s: 'aaa', b: true, n: 3 })
+    await defaultModel(sdk).create({ s: 'bbb', b: true, n: 6 })
+    await defaultModel(sdk).create({ s: 'bbb', b: false, n: 13 })
     expect(await defaultModel(sdk).findOne({ s: 'aaa' })).toBeTruthy()
     expect(await defaultModel(sdk).findOne({ n: 3 })).toBeTruthy()
     expect(await defaultModel(sdk).findOne({ s: 'bbb' })).toBeTruthy()

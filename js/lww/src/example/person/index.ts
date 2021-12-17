@@ -1,11 +1,11 @@
 import { Lww } from '../..'
 import { Person } from './types'
-import { SDK } from '@actyx/sdk'
+import { Actyx } from '@actyx/sdk'
 
 const Model = Lww<Person>('person.9')
 
 const run = async () => {
-  const sdk = await SDK.of({
+  const sdk = await Actyx.of({
     appId: 'com.example.lww',
     displayName: 'LWW example',
     version: '0.1.0',
