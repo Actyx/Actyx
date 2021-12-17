@@ -8,11 +8,14 @@
 import { EventEmitter } from 'events'
 import { Subject, fromEvent } from '../../node_modules/rxjs'
 import { first } from '../../node_modules/rxjs/operators'
-import { isNode } from '../util'
-import { root } from '../util/root'
 import { decorateEConnRefused } from './errors'
 import log from './log'
-import { WebSocket, MessageEvent } from 'isomorphic-ws'
+import { MessageEvent } from 'isomorphic-ws'
+import * as WebSocket from 'isomorphic-ws'
+import { isNode, root } from '../util'
+
+declare const global: any
+global.WebSocket = WebSocket
 
 if (isNode) {
   root.WebSocket = WebSocket
@@ -98,13 +101,13 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     // If unset, disable automatic reconnect
     private readonly reconnectTimer: number | undefined,
   ) {
-    if (!root.WebSocket) {
+    if (!global.WebSocket) {
       log.ws.error('WebSocket not supported on this plattform')
       throw new Error('no WebSocket constructor can be found')
     }
     log.ws.info('establishing Pond API WS', url)
 
-    this.WebSocketCtor = root.WebSocket
+    this.WebSocketCtor = global.WebSocket
     this.url = url
 
     this.connect()
