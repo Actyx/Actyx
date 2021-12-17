@@ -23,8 +23,7 @@ mod bin {
         bind_options: BindToOpts,
 
         #[structopt(long = "background")]
-        /// This option does not do anything. It is kept for backward-
-        /// compatibility reasons.
+        /// This does not do anything; kept for backward-compatibility
         background: bool,
 
         #[structopt(long)]
