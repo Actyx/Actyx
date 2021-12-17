@@ -22,6 +22,11 @@ mod bin {
         #[structopt(flatten)]
         bind_options: BindToOpts,
 
+        #[structopt(long = "background")]
+        /// This option does not do anything. It is kept for backward-
+        /// compatibility reasons.
+        background: bool,
+
         #[structopt(long)]
         version: bool,
     }
@@ -31,7 +36,12 @@ mod bin {
             working_dir,
             bind_options,
             version,
+            background,
         } = Opts::from_args();
+
+        if background {
+            eprintln!("Warning: the `--background` flag is no longer used and will just be ignored. You can ignore this message.")
+        }
 
         if version {
             println!("Actyx {}", NodeVersion::get());
