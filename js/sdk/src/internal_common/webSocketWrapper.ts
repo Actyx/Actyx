@@ -12,9 +12,10 @@ import { isNode } from '../util'
 import { root } from '../util/root'
 import { decorateEConnRefused } from './errors'
 import log from './log'
+import { WebSocket, MessageEvent } from 'isomorphic-ws'
 
 if (isNode) {
-  root.WebSocket = require('ws')
+  root.WebSocket = WebSocket
 }
 
 export interface WebSocketWrapper<TRequest, TResponse> {
@@ -110,7 +111,8 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
   }
 
   resultSelector(e: MessageEvent): TResponse {
-    return JSON.parse(e.data) as TResponse
+    const asStr = typeof e.data === 'string' ? e.data : e.data.toString()
+    return JSON.parse(asStr) as TResponse
   }
 
   /**
@@ -118,8 +120,8 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
    * The onConnectionLost hook is called on close, when the connetion was already connected
    */
   private createSocket(
-    onMessage: (this: WebSocket, ev: MessageEvent) => any,
-    binaryType?: 'blob' | 'arraybuffer',
+    onMessage: (ev: MessageEvent) => any,
+    binaryType?: 'arraybuffer' | 'nodebuffer' | 'fragments',
   ): WebSocket {
     const { WebSocketCtor, protocol, url, socketEvents } = this
 
