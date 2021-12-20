@@ -13,6 +13,7 @@ pub mod pinned_resource_sync;
 pub mod reentrant_safe_mutex;
 pub mod serde_support;
 pub mod serde_util;
+pub mod trace_poll;
 pub mod tracing_set_log_level;
 pub mod value_or_limit;
 pub mod version;

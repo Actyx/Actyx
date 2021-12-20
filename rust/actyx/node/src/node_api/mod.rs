@@ -67,15 +67,18 @@ use trees::{
     tags::{ScopedTag, ScopedTagSet, TagScope},
     AxKey, AxTreeHeader,
 };
-use util::formats::{
-    admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
-    banyan_protocol::{
-        decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse,
-    },
-    events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
-};
 use util::SocketAddrHelper;
+use util::{
+    formats::{
+        admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
+        banyan_protocol::{
+            decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse,
+        },
+        events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
+        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
+    },
+    trace_poll::TracePoll,
+};
 use zstd::stream::write::Decoder;
 
 pub mod formats;
@@ -394,11 +397,13 @@ impl ApiBehaviour {
             }),
             EventsRequest::Query(request) => self.wrap(channel_id.clone(), async move {
                 match events.query(app_id!("com.actyx.cli"), request).await {
-                    Ok(resp) => resp
-                        .filter_map(move |x| {
+                    Ok(resp) => TracePoll::new(
+                        resp.filter_map(move |x| {
                             tracing::trace!("got query response {:?}", x);
                             match x {
                                 QueryResponse::Event(ev) => {
+                                    let span = tracing::trace_span!("ready event");
+                                    let _enter = span.enter();
                                     ready(Some((channel_id.clone(), Some(EventsResponse::Event(ev)))))
                                 }
                                 QueryResponse::Offsets(o) => ready(Some((
@@ -410,8 +415,10 @@ impl ApiBehaviour {
                                 }
                                 QueryResponse::FutureCompat => ready(None),
                             }
-                        })
-                        .left_stream(),
+                        }),
+                        "node_api events query",
+                    )
+                    .left_stream(),
                     Err(e) => stream::once(ready((
                         channel_id,
                         Some(EventsResponse::Error { message: e.to_string() }),
@@ -489,6 +496,8 @@ impl ApiBehaviour {
     NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as
     ProtocolsHandler>::InEvent, ()>>{
         let mut wake_me_up = false;
+        let span = tracing::trace_span!("poll");
+        let _enter = span.enter();
 
         // Handle pending requests
         while let Poll::Ready(Some((chan, resp))) = self.state.pending_oneshot.poll_next_unpin(cx) {
@@ -498,7 +507,11 @@ impl ApiBehaviour {
             wake_me_up = true;
         }
 
+        let span = tracing::trace_span!("poll streams");
+        let enter = span.enter();
+        let mut count = 0;
         while let Poll::Ready(Some((chan, resp))) = self.state.pending_stream.poll_next_unpin(cx) {
+            count += 1;
             if let Some(msg) = resp {
                 if self.events.respond(chan.clone(), msg).is_err() {
                     if let Some(h) = self.state.stream_handles.remove(&chan) {
@@ -511,12 +524,15 @@ impl ApiBehaviour {
             }
             wake_me_up = true;
         }
+        tracing::trace!("handled {} stream events", count);
+        drop(enter);
 
         while let Poll::Ready(Some((channel, response))) = self.state.pending_finalise.poll_next_unpin(cx) {
             if let BanyanResponse::Error(ref e) = response {
                 tracing::warn!("error in Finalise: {}", e);
             }
             self.banyan.send_response(channel, response).ok();
+            wake_me_up = true;
         }
 
         // This `poll` function is the last in the derived NetworkBehaviour.
