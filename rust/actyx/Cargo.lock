@@ -2698,6 +2698,7 @@ dependencies = [
 [[package]]
 name = "ipfs-sqlite-block-store"
 version = "0.7.4"
+source = "git+https://github.com/Actyx/ipfs-sqlite-block-store?branch=rku/slowness#8647c12db092e4667ed235c4b6012f63cb73a366"
 dependencies = [
  "anyhow",
  "derive_more",
