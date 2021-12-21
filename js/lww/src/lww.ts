@@ -10,6 +10,10 @@ import {
 import { LWW_TAG, LWW_CREATED_TAG, LWW_UPDATED_TAG, LWW_VERSION } from './consts'
 import { mkUniqueId } from './uuid'
 import { toError } from './util'
+import debug from 'debug'
+
+const dbg = debug(`actyx:lww:debug`)
+const trc = debug(`actyx:lww:trace`)
 
 export type InstanceId = string
 type EntityName = string
@@ -152,21 +156,21 @@ const _readById = async <Data>(
   entityName: EntityName,
   id: InstanceId,
 ): Promise<undefined | { state: State<Data>; offsets: OffsetMap }> => {
-  const query = `
-			FEATURES(zøg aggregate)
-			FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & ('${LWW_CREATED_TAG}' | '${LWW_UPDATED_TAG}') & '${entityName}' & '${entityName}:${id}'
-			AGGREGATE
-			LAST(_)
-		`
+  dbg(`_readById(entityName: '${entityName}', id: ${id})`)
+  const query = `FEATURES(zøg aggregate) FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & ('${LWW_CREATED_TAG}' | '${LWW_UPDATED_TAG}') & '${entityName}' & '${entityName}:${id}' AGGREGATE LAST(_)`
+  dbg(`query: ${query.trim()}`)
 
+  dbg(`running query "${query}"`)
   const results = await sdk.queryAql(query)
+  dbg(`query "${query}" returned ${results.length} results`)
+  trc(results)
   const event = results.find((r: AqlResponse): r is AqlEventMessage => r.type === 'event')
   if (!event) {
     return undefined
   }
   const offsets = results.find((r: AqlResponse): r is AqlOffsetsMsg => r.type === 'offsets')
   if (!offsets) {
-    throw new Error(`internal error; queryAql did not return an 'offsets' event`)
+    throw new Error(`internal error in _readById; queryAql did not return an 'offsets' event`)
   }
   const state = event.payload as State<Data>
   return { offsets: offsets.offsets, state }
@@ -176,22 +180,26 @@ const _readIds = async (
   sdk: SDK,
   entityName: EntityName,
 ): Promise<{ ids: UniqueId[]; offsets: OffsetMap }> => {
-  const query = `
-			FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & '${LWW_CREATED_TAG}' & '${entityName}'
-		`
+  dbg(`_readIds(entityName: '${entityName}')`)
+  const query = `FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & '${LWW_CREATED_TAG}' & '${entityName}'`
+
+  dbg(`running query "${query}"`)
   const results = await sdk.queryAql(query)
+  dbg(`query "${query}" returned ${results.length} results`)
+  trc(results)
   const ids = results
     .filter((r: AqlResponse): r is AqlEventMessage => r.type === 'event')
     .map((e: any) => (e.payload as State<unknown>).meta.id)
   const offsets = results.find((r: AqlResponse): r is AqlOffsetsMsg => r.type === 'offsets')
   if (!offsets) {
-    throw new Error(`internal error; queryAql did not return an 'offsets' event`)
+    throw new Error(`internal error _readIds; queryAql did not return an 'offsets' event`)
   }
 
   return { ids, offsets: offsets.offsets }
 }
 
 const readIds = async (sdk: SDK, entityName: EntityName): Promise<UniqueId[]> => {
+  dbg(`readIds(entityName: '${entityName}')`)
   const res = await _readIds(sdk, entityName)
   if (!res) {
     return res
@@ -201,7 +209,9 @@ const readIds = async (sdk: SDK, entityName: EntityName): Promise<UniqueId[]> =>
 
 // Read latest and return state and offset map for all
 const readAll = async <Data>(sdk: SDK, entityName: EntityName): Promise<State<Data>[]> => {
+  dbg(`readAll(entityName: '${entityName}')`)
   const ids = await readIds(sdk, entityName)
+  dbg(`got ${ids.length} ids`)
   return (await Promise.all(ids.map((id) => readById<Data>(sdk, entityName, id)))).filter(
     (state: State<Data> | undefined): state is State<Data> => state !== undefined,
   )
@@ -212,6 +222,7 @@ const subscribeIds = (
   onId: (id: UniqueId) => void,
   onError: (error: Error) => void,
 ): CancelSubscription => {
+  dbg(`subscribeIds(entityName: '${entityName}')`)
   let cancelled = false
   let cancelSub: CancelSubscription | undefined = undefined
 
@@ -224,15 +235,23 @@ const subscribeIds = (
   }
 
   _readIds(sdk, entityName).then(({ ids, offsets }) => {
+    dbg(`got ${ids.length} initial ids`)
     ids.forEach(onId)
 
+    const query = `FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & '${LWW_CREATED_TAG}' & '${entityName}'`
+    dbg(`subscribing with query: ${query.trim()}`)
     cancelSub = sdk.subscribeAql(
-      `
-			FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & '${LWW_CREATED_TAG}' & '${entityName}'
-      `,
+      query,
       (res) => {
-        if (res.type === 'event' && !cancelled) {
-          onId((res.payload as State<unknown>).meta.id)
+        if (res.type === 'event') {
+          if (!cancelled) {
+            trc(`subscription "${query}" got new result`, res)
+            onId((res.payload as State<unknown>).meta.id)
+          } else {
+            trc(`subscription "${query}" got new result but isn't calling callback since cancelled`)
+          }
+        } else {
+          trc(`subscription "${query}" got non-event result`, res)
         }
       },
       (err) => {
@@ -252,10 +271,14 @@ const subscribeAll = <Data>(
   onStates: (states: State<Data>[]) => void,
   onError: (error: Error) => void,
 ): CancelSubscription => {
+  dbg(`subscribeAll(entityName: '${entityName}')`)
   let cancelled = false
   const states: Map<InstanceId, State<Data>> = new Map()
   let cancelSubs: CancelSubscription[] = []
+  const receivedInitialStates: Map<UniqueId, boolean> = new Map()
+
   const handleError = (err: Error) => {
+    dbg(`subscribeAll(entityName: '${entityName}') got error`, err)
     if (!cancelled) {
       onError(err)
     }
@@ -263,13 +286,24 @@ const subscribeAll = <Data>(
   }
 
   const handleState = (state: State<Data>) => {
+    trc(`handling new state`, state, receivedInitialStates)
     states.set(state.meta.id, state)
-    if (!cancelled) {
+    // This ensure we don't call onStates for every initial state
+    if (
+      !cancelled &&
+      Array.from(receivedInitialStates.values()).findIndex((v) => v === false) === -1
+    ) {
       onStates([...states.values()])
+    } else {
+      trc(
+        `not calling onStates yet since we haven't received all initial states`,
+        receivedInitialStates,
+      )
     }
   }
 
   const doCancel: CancelSubscription = () => {
+    trc(`subscribeAll(entityName: '${entityName}') is cancelling`)
     cancelled = true
     cancelSubs.forEach((cancel) => cancel())
     cancelSubs = []
@@ -280,7 +314,26 @@ const subscribeAll = <Data>(
       sdk,
       entityName,
       (id) => {
-        cancelSubs.push(subscribeById(sdk, entityName, id, handleState, handleError))
+        let isFirst = true
+        trc(`adding id ${id} to receivedInitialStates`)
+        receivedInitialStates.set(id, false)
+        cancelSubs.push(
+          subscribeById<Data>(
+            sdk,
+            entityName,
+            id,
+            (state) => {
+              trc(`subscription to ${id} got new state`, state)
+              if (isFirst) {
+                trc(`is first result, so adding setting receivedInitialStates accordingly`)
+                receivedInitialStates.set(id, true)
+              }
+              isFirst = false
+              handleState(state)
+            },
+            handleError,
+          ),
+        )
       },
       handleError,
     ),
@@ -296,10 +349,12 @@ const subscribeById = <Data>(
   onState: (state: State<Data>) => void,
   onError: (error: Error) => void,
 ): CancelSubscription => {
+  dbg(`subscribeById(entityName: '${entityName}', id: '${id}')`)
   let cancelled = false
   let cancelSub: undefined | CancelSubscription = undefined
   _readById<Data>(sdk, entityName, id)
     .then((res) => {
+      trc(`subscribeById(entityName: '${entityName}', id: '${id}') got first read result`, res)
       if (!res) {
         if (!cancelled) {
           onError(new Error(`no ${entityName} entity with id ${id} found; cannot subscribe`))
@@ -308,12 +363,17 @@ const subscribeById = <Data>(
       }
       if (!cancelled) {
         onState(res.state)
+      } else {
+        trc(
+          `subscribeById(entityName: '${entityName}', id: '${id}') has been cancelled, so not calling onState`,
+        )
       }
+      const query = `FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & ('${LWW_CREATED_TAG}' | '${LWW_UPDATED_TAG}') & '${entityName}' & '${entityName}:${id}'`
+      dbg(`subscribing with query "${query}"`)
       cancelSub = sdk.subscribeAql(
-        `
-			FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & ('${LWW_CREATED_TAG}' | '${LWW_UPDATED_TAG}') & '${entityName}' & '${entityName}:${id}'
-		  `,
+        query,
         (res) => {
+          trc(`subscription with query "${query}" got result`, res)
           if (res.type === 'event' && !cancelled) {
             onState(res.payload as State<Data>)
           }
@@ -449,7 +509,7 @@ const _find = async <Data>(
     .forEach((s) => latest.set(s.meta.id, s))
   const offsets = results.find((r: AqlResponse): r is AqlOffsetsMsg => r.type === 'offsets')
   if (!offsets) {
-    throw new Error(`internal error; queryAql did not return an 'offsets' event`)
+    throw new Error(`internal error in _find; queryAql did not return an 'offsets' event`)
   }
 
   return { states: [...latest.values()], offsets: offsets.offsets }

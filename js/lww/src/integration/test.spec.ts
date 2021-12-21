@@ -106,28 +106,24 @@ describe(`running with Acytx`, () => {
     expect(states[3].data).toStrictEqual({ ...INITIAL_STATE, n: 3 })
   })
 
+  // This test makes some assumptions about ordering that probably don't hold
   it(`can subscribe to all`, async () => {
-    const model = mkModel('sub')
+    const model = mkModel('sub1')
     const BASE_STATE: TestType = { s: '', b: true, n: 0 }
-    const subscribe = new Promise<State<TestType>[][]>((res, rej) => {
-      const history: State<TestType>[][] = []
-      const cancel = model(sdk).subscribeAll((states) => {
-        history.push(states)
-        if (history.length > 3) {
-          cancel()
-          res(history)
-        }
-      }, rej)
-    })
+    const history: State<TestType>[][] = []
+    const cancel = model(sdk).subscribeAll((states) => {
+      history.push(states)
+    }, console.error)
 
-    const tasks = async () => {
-      const id1 = await model(sdk).create({ ...BASE_STATE, s: 'in1' })
-      await model(sdk).update(id1, { ...BASE_STATE, s: 'in1', n: 88 })
-      const id2 = await model(sdk).create({ ...BASE_STATE, s: 'in2' })
-      await model(sdk).update(id2, { ...BASE_STATE, s: 'in2', n: 66 })
-    }
-
-    const [history] = await Promise.all([subscribe, tasks()])
+    const id1 = await model(sdk).create({ ...BASE_STATE, s: 'in1' })
+    await new Promise((res) => setTimeout(res, 500))
+    await model(sdk).update(id1, { ...BASE_STATE, s: 'in1', n: 88 })
+    await new Promise((res) => setTimeout(res, 500))
+    const id2 = await model(sdk).create({ ...BASE_STATE, s: 'in2' })
+    await new Promise((res) => setTimeout(res, 500))
+    await model(sdk).update(id2, { ...BASE_STATE, s: 'in2', n: 66 })
+    await new Promise((res) => setTimeout(res, 500))
+    cancel()
     const states = history.map((states) => states.map((s) => s.data))
 
     expect(states).toHaveLength(4)
@@ -167,5 +163,60 @@ describe(`running with Acytx`, () => {
         n: 66,
       },
     ])
+  })
+
+  // If you set the timeouts here to ~200, the test fails because the initial
+  // query to get the current IDs (`_readIds`) returns 0 events. WTF
+  it(`doesnt return intermittent results in subscribeAll`, async () => {
+    const model = mkModel('sub2')(sdk)
+
+    const entity1id = await model.create({ b: true, n: 1, s: 'a' })
+    const entity2id = await model.create({ b: true, n: 1, s: 'a' })
+    expect(entity1id).toBeTruthy()
+    expect(entity2id).toBeTruthy()
+
+    const subscribeResults: State<TestType>[][] = []
+    const cancel = model.subscribeAll((states) => subscribeResults.push(states), console.error)
+
+    await new Promise((res) => setTimeout(res, 500))
+
+    expect(subscribeResults).toHaveLength(1)
+    expect(subscribeResults[0][0].meta.id).toBe(entity1id)
+    expect(subscribeResults[0][1].meta.id).toBe(entity2id)
+
+    const entity3id = await model.create({ b: true, n: 1, s: 'a' })
+    expect(entity3id).toBeTruthy()
+    await new Promise((res) => setTimeout(res, 500))
+    expect(subscribeResults).toHaveLength(2)
+    expect(subscribeResults[1].map((r) => r.meta.id)).toContain(entity1id)
+    expect(subscribeResults[1].map((r) => r.meta.id)).toContain(entity2id)
+    expect(subscribeResults[1].map((r) => r.meta.id)).toContain(entity3id)
+
+    cancel()
+
+    expect(1).toBeTruthy()
+  })
+
+  it(`doesn't fail if query can't find anything`, async () => {
+    const model = mkModel('test33029384hf83hf983hf34fm9mf03hasdlj')(sdk)
+    const results = await model.readAll()
+    expect(results).toHaveLength(0)
+  })
+
+  it(`doesn't fail if query can't find anything`, async () => {
+    const model = mkModel('test330129321329384hf83hf983hf34fm9mf03hasdlj')(sdk)
+    const results = await model.readIds()
+    expect(results).toHaveLength(0)
+  })
+
+  it(`doesn't fail if subscribe can't find anything`, async () => {
+    const model = mkModel('test33029384h12419123f83hf983hf34fm9mf03hasdlj')(sdk)
+    let wasCalled = false
+    const cancel = model.subscribeAll(() => {
+      wasCalled = true
+    }, console.error)
+    await new Promise((res) => setTimeout(res, 3000))
+    cancel()
+    expect(wasCalled).toBe(false)
   })
 })
