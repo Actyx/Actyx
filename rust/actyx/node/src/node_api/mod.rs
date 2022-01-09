@@ -38,8 +38,8 @@ use libp2p::{
         ResponseChannel,
     },
     swarm::{
-        IntoProtocolsHandler, NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
-        ProtocolsHandler, Swarm, SwarmBuilder, SwarmEvent,
+        NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters, Swarm, SwarmBuilder,
+        SwarmEvent,
     },
     Multiaddr, NetworkBehaviour, PeerId,
 };
@@ -129,8 +129,15 @@ struct State {
     banyan_stores: BTreeMap<String, BanyanWriter>,
 }
 
+pub struct NoEvent;
+impl<T: std::fmt::Debug> From<T> for NoEvent {
+    fn from(_: T) -> Self {
+        NoEvent
+    }
+}
+
 #[derive(NetworkBehaviour)]
-#[behaviour(poll_method = "poll", out_event = "()")]
+#[behaviour(poll_method = "poll", out_event = "NoEvent")]
 pub struct ApiBehaviour {
     admin: StreamingResponse<AdminProtocol>,
     events: StreamingResponse<EventsProtocol>,
@@ -491,10 +498,11 @@ impl ApiBehaviour {
 
     /// The main purpose of this function is to shovel responses from any
     /// pending requests to libp2p.
-    fn poll(&mut self, cx: &mut task::Context, _: &mut impl PollParameters) ->
-    Poll<NetworkBehaviourAction<<<<Self as
-    NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as
-    ProtocolsHandler>::InEvent, ()>>{
+    fn poll(
+        &mut self,
+        cx: &mut task::Context,
+        _: &mut impl PollParameters,
+    ) -> Poll<NetworkBehaviourAction<NoEvent, <Self as NetworkBehaviour>::ProtocolsHandler>> {
         let mut wake_me_up = false;
         let span = tracing::trace_span!("poll");
         let _enter = span.enter();
@@ -776,7 +784,7 @@ fn finalise_streams(node_id: NodeId, mut writer: BanyanWriter) -> Result<(), any
 
     // then alias them
     let header = AxTreeHeader::new(writer.own.snapshot().link().unwrap(), writer.lamport);
-    let root = writer.txn.writer().put(DagCborCodec.encode(&header)?)?;
+    let root = writer.txn.writer_mut().put(DagCborCodec.encode(&header)?)?;
     let cid = Cid::from(root);
     let stream_id = node_id.stream(0.into());
     writer
@@ -784,7 +792,7 @@ fn finalise_streams(node_id: NodeId, mut writer: BanyanWriter) -> Result<(), any
         .store()
         .alias(StreamAlias::from(stream_id).as_ref(), Some(&cid))?;
     let header = AxTreeHeader::new(writer.other.snapshot().link().unwrap(), writer.lamport);
-    let root = writer.txn.writer().put(DagCborCodec.encode(&header)?)?;
+    let root = writer.txn.writer_mut().put(DagCborCodec.encode(&header)?)?;
     let cid = Cid::from(root);
     if let Some(node_id) = writer.node_id {
         let stream_id = node_id.stream(4.into());
@@ -1016,7 +1024,7 @@ type TConnErr = libp2p::core::either::EitherError<
             >,
             libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
         >,
-        libp2p::ping::handler::PingFailure,
+        libp2p::ping::PingFailure,
     >,
     std::io::Error,
 >;
@@ -1029,7 +1037,10 @@ impl SwarmFuture {
     }
 
     /// Poll the swarm once
-    pub(crate) fn poll_swarm(&mut self, cx: &mut task::Context) -> std::task::Poll<Option<SwarmEvent<(), TConnErr>>> {
+    pub(crate) fn poll_swarm(
+        &mut self,
+        cx: &mut task::Context,
+    ) -> std::task::Poll<Option<SwarmEvent<NoEvent, TConnErr>>> {
         self.swarm().poll_next_unpin(cx)
     }
 }
@@ -1052,23 +1063,30 @@ impl Future for SwarmFuture {
                 SwarmEvent::ListenerError { error, .. } => {
                     tracing::error!("SwarmEvent::ListenerError {}", error)
                 }
-                SwarmEvent::ListenerClosed {
-                    reason: Err(error),
-                    addresses,
-                    ..
+                SwarmEvent::ListenerClosed { reason, addresses, .. } => {
+                    tracing::error!(reason = ?&reason, addrs = ?&addresses, "listener closed");
+                }
+                SwarmEvent::Behaviour(_) => {}
+                SwarmEvent::ConnectionEstablished { endpoint, .. } => {
+                    tracing::debug!(endpoint = ?&endpoint, "connection established");
+                }
+                SwarmEvent::ConnectionClosed { endpoint, .. } => {
+                    tracing::debug!(endpoint = ?&endpoint, "connection closed");
+                }
+                SwarmEvent::IncomingConnection { .. } => {}
+                SwarmEvent::IncomingConnectionError {
+                    local_addr,
+                    send_back_addr,
+                    error,
                 } => {
-                    tracing::error!("SwarmEvent::ListenerClosed {} for {:?}", error, addresses);
-                    for addr in addresses {
-                        self.0
-                            .behaviour_mut()
-                            .state
-                            .admin_sockets
-                            .transform_mut(|set| set.remove(&addr));
-                    }
+                    tracing::warn!(local = %&local_addr, remote = %&send_back_addr, error = %&error, "incoming connection failure");
                 }
-                o => {
-                    tracing::debug!("Other swarm event {:?}", o);
+                SwarmEvent::OutgoingConnectionError { .. } => {}
+                SwarmEvent::BannedPeer { .. } => {}
+                SwarmEvent::ExpiredListenAddr { address, .. } => {
+                    tracing::info!("unbound from listen address {}", address);
                 }
+                SwarmEvent::Dialing(_) => {}
             }
         }
 

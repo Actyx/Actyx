@@ -56,12 +56,12 @@ impl SqliteStoreWrite {
 }
 
 impl BlockWriter<Sha256Digest> for SqliteStoreWrite {
-    fn put(&self, data: Vec<u8>) -> Result<Sha256Digest> {
+    fn put(&mut self, data: Vec<u8>) -> Result<Sha256Digest> {
         let digest = Sha256Digest::new(&data);
         let cid = digest.into();
         let block = Block::new_unchecked(cid, data);
-        self.store.0.temp_pin(&self.pin, &cid)?;
-        let _ = self.store.0.insert(&block)?;
+        self.store.0.temp_pin(&mut self.pin, &cid)?;
+        self.store.0.insert(&block)?;
         self.written.lock().insert(digest);
         Ok(digest)
     }
@@ -104,11 +104,11 @@ pub struct StorageServiceStoreWrite {
     pin: TempPin,
 }
 impl BlockWriter<Sha256Digest> for StorageServiceStoreWrite {
-    fn put(&self, data: Vec<u8>) -> Result<Sha256Digest> {
+    fn put(&mut self, data: Vec<u8>) -> Result<Sha256Digest> {
         let digest = Sha256Digest::new(&data);
         let cid = Cid::from(digest);
         let block = Block::new_unchecked(cid, data);
-        self.store.0.temp_pin(&self.pin, std::iter::once(cid))?;
+        self.store.0.temp_pin(&mut self.pin, std::iter::once(cid))?;
         self.store.0.insert(&block)?;
         Ok(digest)
     }

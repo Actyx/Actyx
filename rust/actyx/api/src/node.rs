@@ -69,7 +69,7 @@ async fn handle_info(_app_id: AppId, store: BanyanStore, node_info: NodeInfo) ->
         .ipfs()
         .connections()
         .into_iter()
-        .map(|(p, _)| p)
+        .map(|(p, ..)| p)
         .collect::<BTreeSet<_>>()
         .len();
 

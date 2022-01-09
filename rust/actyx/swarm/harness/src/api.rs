@@ -6,6 +6,7 @@ use netsim_embed::{Machine, Namespace};
 use netsim_embed::{MachineId, Netsim};
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
+use std::fmt::Display;
 use std::future::Future;
 use std::str::FromStr;
 use swarm_cli::{Command, Event};
@@ -18,7 +19,7 @@ pub struct Api {
 impl Api {
     pub fn new<E>(sim: &mut Netsim<Command, E>, app_manifest: AppManifest) -> Result<Self>
     where
-        E: Borrow<Event> + FromStr<Err = anyhow::Error> + Send + 'static,
+        E: Borrow<Event> + FromStr<Err = anyhow::Error> + Display + Send + 'static,
     {
         let machines = sim
             .machines_mut()

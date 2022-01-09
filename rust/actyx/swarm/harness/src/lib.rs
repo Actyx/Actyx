@@ -13,6 +13,7 @@ use netsim_embed::{DelayBuffer, Ipv4Range, Machine, Netsim};
 use std::{
     borrow::Borrow,
     collections::BTreeSet,
+    fmt::Display,
     net::SocketAddr,
     str::FromStr,
     time::{Duration, Instant},
@@ -107,7 +108,7 @@ pub fn run_netsim<F, F2, E>(opts: HarnessOpts, f: F) -> Result<()>
 where
     F: FnOnce(Netsim<Command, E>) -> F2,
     F2: Future<Output = Result<()>> + Send,
-    E: FromStr<Err = anyhow::Error> + Send + 'static,
+    E: FromStr<Err = anyhow::Error> + Display + Send + 'static,
 {
     let temp_dir = TempDir::new("swarm-harness")?;
     async_global_executor::block_on(async move {
@@ -292,7 +293,7 @@ pub async fn fully_mesh(sim: &mut Netsim<Command, Event>, timeout: Duration) -> 
 
 pub async fn fully_meshed<E>(sim: &mut Netsim<Command, E>, timeout: Duration) -> Result<()>
 where
-    E: Borrow<Event> + FromStr<Err = anyhow::Error> + Send + 'static,
+    E: Borrow<Event> + FromStr<Err = anyhow::Error> + Display + Send + 'static,
 {
     let deadline = task::sleep(timeout);
     futures::pin_mut!(deadline);

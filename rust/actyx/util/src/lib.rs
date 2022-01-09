@@ -153,7 +153,7 @@ impl TryFrom<Multiaddr> for SocketAddrHelper {
                     bail!("Unexpected multiaddr protocol \"{:?}\"", e)
                 }
                 None => {
-                    bail!("Invalid multiaddr, only {ip4,dns4,ip6,dns6} supported")
+                    bail!("Invalid multiaddr, only {{ip4,dns4,ip6,dns6}} supported")
                 }
             };
 

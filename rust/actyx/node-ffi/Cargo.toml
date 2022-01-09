@@ -11,15 +11,16 @@ migration-v1 = ["node/migration-v1"]
 settings = { path = "../settings" }
 node = { path = "../node" }
 
-anyhow = "1.0.42"
+anyhow = "1.0.52"
 crossbeam = "0.8.1"
-ffi-support = "0.4.3"
-futures = { version = "0.3.15", package = "futures" }
+ffi-support = "0.4.4"
+futures = { version = "0.3.19", package = "futures" }
 lazy_static = "1.4.0"
-parking_lot = "0.11.1"
-serde_json = "1.0.64"
-tokio = { version = "1.8.2", features = ["full"], package = "tokio" }
-tracing = "0.1.26"
+parking_lot = "0.11.2"
+serde_json = "1.0.74"
+tokio = { version = "1.15.0", features = ["full"], package = "tokio" }
+tracing = "0.1.29"
+zeroize = "1.2.0"
 
 [lib]
 crate-type = ["cdylib"]

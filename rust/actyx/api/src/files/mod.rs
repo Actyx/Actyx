@@ -330,7 +330,7 @@ fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
         .and_then(move |app_id: AppId, mut form: warp::multipart::FormData| {
             let store = store.clone();
             async move {
-                let tmp = store.ipfs().create_temp_pin()?;
+                let mut tmp = store.ipfs().create_temp_pin()?;
                 let mut added_files = vec![];
                 while let Some(part) = form.try_next().await? {
                     tracing::debug!("part {:?}", part);
@@ -346,7 +346,7 @@ fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
                             async move { Ok(vec) }
                         })
                         .await?;
-                    let (cid, bytes_written) = store.add(&tmp, data.reader())?;
+                    let (cid, bytes_written) = store.add(&mut tmp, data.reader())?;
                     tracing::debug!(%cid, %bytes_written, %name, "Added");
                     added_files.push((name, (cid, bytes_written)));
                 }
@@ -363,7 +363,7 @@ fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
                     for node in builder.build() {
                         let node = node.context("Constructing a directory node")?;
                         // FIXME: revisit the pinning behaviour of the files api
-                        store.ipfs().temp_pin(&tmp, &node.cid)?;
+                        store.ipfs().temp_pin(&mut tmp, &node.cid)?;
                         let block = Block::new_unchecked(node.cid, node.block.to_vec());
                         store.ipfs().insert(&block)?;
 

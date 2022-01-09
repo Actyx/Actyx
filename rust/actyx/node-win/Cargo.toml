@@ -15,12 +15,12 @@ migration-v1 = ["node/migration-v1"]
 util = { path = "../util" }
 
 [target."cfg(target_os = \"windows\")".dependencies]
-anyhow = "1.0.42"
-clap = "2.33.3"
+anyhow = "1.0.52"
+clap = "=3.0.0-beta.2"
 crossbeam = "0.8.1"
-structopt = "0.3.22"
+structopt = "0.3.25"
 systray2 = "0.5.0"
-tracing = "0.1.26"
+tracing = "0.1.29"
 winapi = "0.3.9"
 wintrap = "0.3.1"
 

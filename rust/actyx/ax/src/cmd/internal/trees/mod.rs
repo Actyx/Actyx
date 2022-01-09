@@ -56,7 +56,7 @@ impl ReadOnlyStore<Sha256Digest> for SqliteStore {
 }
 
 impl BlockWriter<Sha256Digest> for SqliteStore {
-    fn put(&self, data: Vec<u8>) -> anyhow::Result<Sha256Digest> {
+    fn put(&mut self, data: Vec<u8>) -> anyhow::Result<Sha256Digest> {
         let digest = Sha256Digest::new(&data);
         let cid = digest.into();
         let block = Block::new_unchecked(cid, data);
