@@ -2,7 +2,7 @@ use std::{hash::Hash, sync::Arc};
 
 #[cfg(feature = "dataflow")]
 use abomonation::Abomonation;
-use intern_arc::*;
+use intern_arc::{global::hash_interner, InternedHash};
 use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -37,11 +37,6 @@ macro_rules! arcval_scalar {
             #[repr(transparent)]
             #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
             $vis struct $id($crate::types::ArcVal<str>);
-            impl $id {
-                pub fn as_arc(&self) -> ::std::sync::Arc<str> {
-                    self.0.as_arc().clone()
-                }
-            }
             impl ::std::ops::Deref for $id {
                 type Target = str;
                 fn deref(&self) -> &str {
@@ -115,43 +110,38 @@ macro_rules! arcval_scalar {
 /// It is obviously a very bad idea to intern objects that offer internal mutability, so don’t do that.
 #[derive(Eq, PartialOrd, PartialEq, Ord, Hash)]
 #[repr(transparent)]
-pub struct ArcVal<T: ?Sized>(Arc<T>);
+pub struct ArcVal<T: Eq + Hash + ?Sized>(InternedHash<T>);
 
-impl<T: Eq + Hash + Ord + Send + Sync + 'static> ArcVal<T> {
+impl<T: Eq + Hash + Send + Sync + 'static> ArcVal<T> {
     pub fn from_sized(val: T) -> Self {
-        Self(intern(val))
+        Self(hash_interner().intern_sized(val))
     }
 }
 
 impl<T> ArcVal<T>
 where
-    T: ?Sized + Eq + Hash + Ord + Send + Sync + 'static,
+    T: ?Sized + Eq + Hash + Send + Sync + 'static + ToOwned,
+    T::Owned: Into<Box<T>>,
     Arc<T>: for<'a> From<&'a T>,
 {
     pub fn clone_from_unsized(val: &T) -> Self {
-        Self(intern_unsized(val))
+        Self(hash_interner().intern_ref(val))
     }
 }
 
-impl<T: ?Sized + Eq + Hash + Ord + Send + Sync + 'static> ArcVal<T> {
+impl<T: ?Sized + Eq + Hash + Send + Sync + 'static> ArcVal<T> {
     pub fn from_boxed(val: Box<T>) -> Self {
-        Self(intern_boxed(val))
+        Self(hash_interner().intern_box(val))
     }
 }
 
-impl<T: ?Sized> ArcVal<T> {
-    pub fn as_arc(&self) -> &Arc<T> {
-        &self.0
-    }
-}
-
-impl<T: Default + Eq + Hash + Ord + Send + Sync + 'static> Default for ArcVal<T> {
+impl<T: Default + Eq + Hash + Send + Sync + 'static> Default for ArcVal<T> {
     fn default() -> Self {
         Self::from_sized(T::default())
     }
 }
 
-impl<T: ?Sized> Deref for ArcVal<T> {
+impl<T: Eq + Hash + ?Sized> Deref for ArcVal<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -159,7 +149,7 @@ impl<T: ?Sized> Deref for ArcVal<T> {
     }
 }
 
-impl<T: ?Sized> Clone for ArcVal<T> {
+impl<T: Eq + Hash + ?Sized> Clone for ArcVal<T> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
@@ -167,16 +157,17 @@ impl<T: ?Sized> Clone for ArcVal<T> {
 
 impl<T> From<Arc<T>> for ArcVal<T>
 where
-    T: ?Sized + Eq + Hash + Ord + Send + Sync + 'static,
+    T: ?Sized + Eq + Hash + Send + Sync + 'static + ToOwned,
+    T::Owned: Into<Box<T>>,
 {
     fn from(x: Arc<T>) -> Self {
-        Self(intern_arc(x))
+        Self(hash_interner().intern_ref(&*x))
     }
 }
 
 impl Default for ArcVal<str> {
     fn default() -> Self {
-        Self(intern_unsized(""))
+        Self(hash_interner().intern_ref(""))
     }
 }
 
@@ -196,7 +187,7 @@ impl quickcheck::Arbitrary for ArcVal<str> {
 /// can be moved around in memory (Unpin) and do no hold on to other things than the
 /// underlying bytes ('static).
 #[cfg(feature = "dataflow")]
-impl<T: Abomonation + 'static + Sized + Unpin> Abomonation for ArcVal<T> {
+impl<T: Eq + Hash + Abomonation + 'static + Sized + Unpin + Send + Sync> Abomonation for ArcVal<T> {
     unsafe fn entomb<W: std::io::Write>(&self, write: &mut W) -> std::io::Result<()> {
         /* Since the value T has not yet been seen by abomonate (it is behind a pointer)
          * we need to fully encode it.
@@ -212,7 +203,7 @@ impl<T: Abomonation + 'static + Sized + Unpin> Abomonation for ArcVal<T> {
          */
         let (value, bytes) = abomonation::decode::<T>(bytes)?;
         // value is just a reference to the first part of old bytes, so move it into a new Arc
-        let arc = Arc::new(ptr::read(value));
+        let arc = hash_interner().intern_sized(ptr::read(value));
         // now swap the fresh arc into its place ...
         let garbage = mem::replace(&mut self.0, arc);
         // ... and forget about the old one
@@ -240,7 +231,7 @@ impl Abomonation for ArcVal<str> {
             return None;
         }
         let (mine, bytes) = bytes.split_at_mut(*len);
-        let arc: Arc<str> = str::from_utf8_unchecked(slice::from_raw_parts(mine.as_ptr(), *len)).into();
+        let arc = hash_interner().intern_ref(str::from_utf8_unchecked(slice::from_raw_parts(mine.as_ptr(), *len)));
         let garbage = mem::replace(&mut self.0, arc);
         mem::forget(garbage);
         Some(bytes)
@@ -264,7 +255,7 @@ impl Abomonation for ArcVal<[u8]> {
             return None;
         }
         let (mine, bytes) = bytes.split_at_mut(*len);
-        let arc: Arc<[u8]> = slice::from_raw_parts(mine.as_ptr(), *len).into();
+        let arc = hash_interner().intern_ref(slice::from_raw_parts(mine.as_ptr(), *len));
         let garbage = mem::replace(&mut self.0, arc);
         mem::forget(garbage);
         Some(bytes)
@@ -274,19 +265,19 @@ impl Abomonation for ArcVal<[u8]> {
     }
 }
 
-impl<T: fmt::Display + ?Sized> fmt::Display for ArcVal<T> {
+impl<T: fmt::Display + Eq + Hash + ?Sized> fmt::Display for ArcVal<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.deref().fmt(f)
     }
 }
 
-impl<T: fmt::Debug + ?Sized> fmt::Debug for ArcVal<T> {
+impl<T: fmt::Debug + Eq + Hash + ?Sized> fmt::Debug for ArcVal<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.deref().fmt(f)
     }
 }
 
-impl<T: Serialize + Sized> Serialize for ArcVal<T> {
+impl<T: Serialize + Eq + Hash + Sized> Serialize for ArcVal<T> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.deref().serialize(serializer)
     }
@@ -294,7 +285,7 @@ impl<T: Serialize + Sized> Serialize for ArcVal<T> {
 
 impl<'de, T> Deserialize<'de> for ArcVal<T>
 where
-    T: Deserialize<'de> + Sized + Eq + Hash + Ord + Send + Sync + 'static,
+    T: Deserialize<'de> + Sized + Eq + Hash + Send + Sync + 'static,
 {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<ArcVal<T>, D::Error> {
         T::deserialize(deserializer).map(Self::from_sized)
