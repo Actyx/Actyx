@@ -2581,7 +2581,7 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.23.0"
-source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#36c71c9270b2d0860698021b513788931bbc366c"
+source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#a35e3d04689b84fc20d9d9c2ccf6dac2d6a2de2c"
 dependencies = [
  "anyhow",
  "async-executor",
@@ -2610,7 +2610,9 @@ dependencies = [
 
 [[package]]
 name = "ipfs-sqlite-block-store"
-version = "0.10.3"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e4addfabfa882d621faf005aba5f0f25b9884a77c10ce723374084e795b2b15"
 dependencies = [
  "anyhow",
  "derive_more",

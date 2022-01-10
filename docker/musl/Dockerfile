@@ -3,7 +3,7 @@
 ARG TARGET=armv7-unknown-linux-musleabihf
 FROM rustembedded/cross:${TARGET}-0.2.1 as crossbuild-amd64
 ARG TARGET
-ARG BUILD_RUST_TOOLCHAIN=1.55.0
+ARG BUILD_RUST_TOOLCHAIN=1.56.1
 
 RUN groupadd -g 1000 builder \
     && useradd -m -u 1000 -g 1000 builder \

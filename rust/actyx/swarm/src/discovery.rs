@@ -290,9 +290,9 @@ pub fn discovery_publish(
                     }
                     let ipfs = store.ipfs().clone();
                     let backoff = if let Some(dialer) = dialers.remove(&peer) {
-                        dialer.backoff.saturating_add(Duration::from_secs(10))
+                        dialer.backoff.saturating_mul(2).min(Duration::from_secs(60))
                     } else {
-                        Duration::from_secs(10)
+                        Duration::from_secs(1)
                     };
                     let task = tokio::spawn(async move {
                         tokio::time::sleep(backoff).await;
@@ -308,6 +308,7 @@ pub fn discovery_publish(
                     } else {
                         tracing::debug!(id = display(&peer), "connected");
                     }
+                    // dropping the Dialer will kill the task
                     dialers.remove(&peer);
                     continue;
                 }
@@ -335,7 +336,12 @@ pub fn discovery_publish(
                                     .filter(|x| x.0 == peer)
                                     .map(|x| x.1)
                                     .collect::<Vec<_>>();
-                                tracing::warn!(peer = display(peer), addr = debug(&addrs), "slow ping time");
+                                tracing::warn!(
+                                    peer = display(peer),
+                                    addr = debug(&addrs),
+                                    info = debug(rtt),
+                                    "slow ping time"
+                                );
                             }
                         }
                     }
