@@ -137,7 +137,7 @@ impl<T: std::fmt::Debug> From<T> for NoEvent {
 }
 
 #[derive(NetworkBehaviour)]
-#[behaviour(poll_method = "poll", out_event = "NoEvent")]
+#[behaviour(poll_method = "poll", out_event = "NoEvent", event_process = true)]
 pub struct ApiBehaviour {
     admin: StreamingResponse<AdminProtocol>,
     events: StreamingResponse<EventsProtocol>,

@@ -857,7 +857,7 @@ mod files {
             .body(body)
             .reply(&route)
             .await;
-        assert_eq!(resp.status(), http::StatusCode::OK);
+        assert_eq!(resp.status(), http::StatusCode::OK, "{:?}", resp);
         let cid = String::from_utf8(resp.body().to_vec())?;
 
         let resp = test::request()
