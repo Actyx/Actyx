@@ -2581,7 +2581,7 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.23.0"
-source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#a35e3d04689b84fc20d9d9c2ccf6dac2d6a2de2c"
+source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#1b771427bfce64af1d1dbea5f0d6db55b1a878ba"
 dependencies = [
  "anyhow",
  "async-executor",
@@ -2610,9 +2610,9 @@ dependencies = [
 
 [[package]]
 name = "ipfs-sqlite-block-store"
-version = "0.10.4"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e4addfabfa882d621faf005aba5f0f25b9884a77c10ce723374084e795b2b15"
+checksum = "2483360e1cef118638b5f1ca3d1bd45983424dfebdb90ab84cefcb3f64a93889"
 dependencies = [
  "anyhow",
  "derive_more",
@@ -3889,9 +3889,9 @@ dependencies = [
 
 [[package]]
 name = "netsim-embed-machine"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c8ee620b7756d8e1790cc756b37e9c9bd11b1f4509d6c4df20dd949c3deabdf"
+checksum = "b0f1112c44fffc1f82dfc64b790f3fd0eca33094d8aec86de7fea872a441f39b"
 dependencies = [
  "async-global-executor",
  "async-io",
@@ -5979,6 +5979,8 @@ dependencies = [
  "async-std",
  "async-trait",
  "crypto",
+ "escargot",
+ "flate2",
  "futures 0.3.19",
  "libipld",
  "libp2p",
@@ -5986,8 +5988,10 @@ dependencies = [
  "netsim-embed",
  "petgraph 0.6.0",
  "quickcheck",
+ "reqwest",
  "structopt",
  "swarm-cli",
+ "tar",
  "tempdir",
  "tokio",
  "tracing",

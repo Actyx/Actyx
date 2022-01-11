@@ -38,7 +38,7 @@ pub fn setup_logger() {
     tracing_log::LogTracer::init().ok();
     let env = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_| "info".to_owned());
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_span_events(FmtSpan::ACTIVE | FmtSpan::CLOSE)
+        .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
         .with_env_filter(EnvFilter::new(env))
         .with_writer(std::io::stderr)
         .finish();

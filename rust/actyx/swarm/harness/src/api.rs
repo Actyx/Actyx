@@ -26,7 +26,23 @@ impl Api {
             .iter_mut()
             .map(move |machine| {
                 let id = machine.id();
-                let client = ApiClient::from_machine(machine, app_manifest.clone())?;
+                let client = ApiClient::from_machine(machine, app_manifest.clone(), None)?;
+                Ok((id, client))
+            })
+            .collect::<Result<_>>()?;
+        Ok(Self { machines })
+    }
+
+    pub fn with_port<E>(sim: &mut Netsim<Command, E>, app_manifest: AppManifest, port: u16) -> Result<Self>
+    where
+        E: Borrow<Event> + FromStr<Err = anyhow::Error> + Display + Send + 'static,
+    {
+        let machines = sim
+            .machines_mut()
+            .iter_mut()
+            .map(move |machine| {
+                let id = machine.id();
+                let client = ApiClient::from_machine(machine, app_manifest.clone(), Some(port))?;
                 Ok((id, client))
             })
             .collect::<Result<_>>()?;
@@ -51,6 +67,12 @@ impl ApiClient {
                 tracing::error!("cannot enter namespace {}: {}", namespace, e);
                 panic!();
             }
+            tracing::info!(
+                "api {} in namespace {} ({})",
+                origin,
+                Namespace::current().unwrap(),
+                namespace
+            );
             block_on(HttpClient::new(origin, app_manifest)).expect("cannot create")
         }))
     }
@@ -60,11 +82,17 @@ impl ApiClient {
     pub fn from_machine<E: Borrow<Event> + FromStr<Err = anyhow::Error> + Send + 'static>(
         machine: &mut Machine<Command, E>,
         app_manifest: AppManifest,
+        port: Option<u16>,
     ) -> Result<Self> {
-        machine.send(Command::ApiPort);
-        let api_port = block_on(machine.select(|ev| m!(ev.borrow(), Event::ApiPort(port) => *port)))
-            .ok_or_else(|| anyhow!("machine died"))?
-            .ok_or_else(|| anyhow!("api endpoint not configured"))?;
+        let api_port = match port {
+            Some(p) => p,
+            None => {
+                machine.send(Command::ApiPort);
+                block_on(machine.select(|ev| m!(ev.borrow(), Event::ApiPort(port) => *port)))
+                    .ok_or_else(|| anyhow!("machine died"))?
+                    .ok_or_else(|| anyhow!("api endpoint not configured"))?
+            }
+        };
 
         let origin = Url::parse(&*format!("http://{}:{}", machine.addr(), api_port))?;
         let namespace = machine.namespace();
