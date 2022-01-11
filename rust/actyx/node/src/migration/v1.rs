@@ -381,7 +381,7 @@ pub fn migrate(
         .join("store")
         // ipfs-embed block store is named `<topic>.sqlite`
         .join(v1_dir.index_db.with_extension("sqlite").file_name().unwrap());
-    let _ = BlockStore::<libipld::DefaultParams>::open(&v2_blocks_db, Default::default())?;
+    BlockStore::<libipld::DefaultParams>::open(&v2_blocks_db, Default::default())?;
     // migrate swarm dbs
     let v1_source_id: SourceId = {
         let conn = open_readonly(&v1_dir.index_db).context("Opening v1 index db")?;
