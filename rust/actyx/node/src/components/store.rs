@@ -16,7 +16,7 @@ use swarm::{
 };
 use tokio::sync::oneshot;
 use tracing::*;
-use util::formats::{Connection, Failure, NodeCycleCount, Peer, PingStats};
+use util::formats::{Connection, Failure, NodeCycleCount, Peer, PeerInfo, PingStats};
 
 pub(crate) enum StoreRequest {
     NodesInspect(oneshot::Sender<Result<InspectResponse>>),
@@ -102,8 +102,15 @@ fn known_peers(ipfs: &Ipfs) -> Vec<Peer> {
                     details: f.debug().to_owned(),
                 })
                 .collect();
+            let peer_info = PeerInfo {
+                protocol_version: info.protocol_version().map(ToOwned::to_owned),
+                agent_version: info.agent_version().map(ToOwned::to_owned),
+                protocols: info.protocols().map(|s| s.to_owned()).collect(),
+                listeners: info.listen_addresses().map(|a| a.to_string()).collect(),
+            };
             Some(Peer {
                 peer_id: peer.to_string(),
+                info: peer_info,
                 addrs,
                 addr_source,
                 addr_since,

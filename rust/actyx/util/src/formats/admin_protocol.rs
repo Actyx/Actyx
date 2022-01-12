@@ -107,6 +107,8 @@ pub struct Connection {
 #[serde(rename_all = "camelCase")]
 pub struct Peer {
     pub peer_id: String,
+    #[serde(default)]
+    pub info: PeerInfo,
     pub addrs: Vec<String>,
     #[serde(default)]
     pub addr_source: Vec<String>,
@@ -115,6 +117,15 @@ pub struct Peer {
     #[serde(default)]
     pub failures: Vec<Failure>,
     pub ping_stats: Option<PingStats>,
+}
+
+#[derive(Default, Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PeerInfo {
+    pub protocol_version: Option<String>,
+    pub agent_version: Option<String>,
+    pub protocols: Vec<String>,
+    pub listeners: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
