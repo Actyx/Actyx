@@ -59,9 +59,10 @@ use banyan::{
 use crypto::KeyPair;
 use fnv::FnvHashMap;
 use futures::{channel::mpsc, prelude::*};
+use ipfs_embed::identity::PublicKey::Ed25519;
 use ipfs_embed::{
-    BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId, SyncEvent,
-    TempPin, ToLibp2p,
+    config::BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId,
+    SyncEvent, TempPin,
 };
 use libipld::{cbor::DagCborCodec, error::BlockNotFound};
 use libp2p::{
@@ -184,6 +185,7 @@ pub struct SwarmConfig {
     pub cadence_root_map: Duration,
     pub cadence_compact: Duration,
     pub ping_timeout: Duration,
+    pub bitswap_timeout: Duration,
 }
 impl SwarmConfig {
     pub fn basic() -> Self {
@@ -212,6 +214,7 @@ impl SwarmConfig {
             block_cache_count: 1024 * 128,
             block_gc_interval: Duration::from_secs(300),
             ping_timeout: Duration::from_secs(5),
+            bitswap_timeout: Duration::from_secs(15),
         }
     }
 }
@@ -272,6 +275,7 @@ impl PartialEq for SwarmConfig {
             && self.block_cache_count == other.block_cache_count
             && self.block_gc_interval == other.block_gc_interval
             && self.ping_timeout == other.ping_timeout
+            && self.bitswap_timeout == other.bitswap_timeout
     }
 }
 
@@ -656,8 +660,8 @@ impl BanyanStore {
 
         let keypair = cfg.keypair.unwrap_or_else(KeyPair::generate);
         let node_id = keypair.into();
-        let node_key: ipfs_embed::Keypair = keypair.into();
-        let public = node_key.to_public();
+        let node_key: ipfs_embed::identity::ed25519::Keypair = keypair.into();
+        let public = node_key.public();
         let node_name = cfg
             .node_name
             .unwrap_or_else(|| names::Generator::with_naming(names::Name::Numbered).next().unwrap());
@@ -665,11 +669,10 @@ impl BanyanStore {
         let ipfs = Ipfs::new(IpfsConfig {
             network: NetworkConfig {
                 enable_loopback: cfg.enable_loopback,
-                prune_addresses: false,
+                port_reuse: false,
                 node_key,
-                node_name,
+                node_name: node_name.clone(),
                 psk: cfg.psk,
-                quic: Default::default(),
                 mdns: if cfg.enable_mdns {
                     Some(Default::default())
                 } else {
@@ -693,7 +696,9 @@ impl BanyanStore {
                         .with_keep_alive(true)
                         .with_max_failures(NonZeroU32::new(3).unwrap()),
                 ),
-                identify: Some(IdentifyConfig::new("/actyx/2.0.0".to_string(), public)),
+                identify: Some(
+                    IdentifyConfig::new("/actyx/2.0.0".to_string(), Ed25519(public)).with_agent_version(node_name),
+                ),
                 gossipsub: Some(
                     GossipsubConfigBuilder::default()
                         .validation_mode(ValidationMode::Permissive)
@@ -702,10 +707,9 @@ impl BanyanStore {
                 ),
                 broadcast: Some(Default::default()),
                 bitswap: Some(BitswapConfig {
-                    request_timeout: Duration::from_secs(10),
-                    connection_keep_alive: Duration::from_secs(10),
+                    request_timeout: cfg.bitswap_timeout,
+                    connection_keep_alive: cfg.bitswap_timeout,
                 }),
-                streams: None,
             },
             storage: StorageConfig {
                 access_db_path: None, // in memory
@@ -713,13 +717,12 @@ impl BanyanStore {
                 cache_size_blocks: cfg.block_cache_count,
                 cache_size_bytes: cfg.block_cache_size,
                 gc_interval: cfg.block_gc_interval,
-                // make sure that we delete a large number of blocks,
-                // so we don't get into a situation where block deletion
-                // can not keep up with block creation.
-                gc_min_blocks: 10000,
-                // give gc some time. There is an overhead for figuring out
-                // what to delete, so if this is too small we won't delete much.
-                gc_target_duration: Duration::from_millis(250),
+                // with the duration below gc will keep running continuously
+                // if need be, so no need for an effective minimum here
+                gc_min_blocks: 1,
+                // gc is concurrent to normal operations, so could run forever,
+                // but we want to get stats now and then
+                gc_target_duration: cfg.block_gc_interval,
             },
         })
         .await?;
@@ -794,7 +797,7 @@ impl BanyanStore {
                 let addr_dbg = tracing::field::debug(addr.clone());
                 if let Some(info) = ipfs.peer_info(&peer) {
                     addr.push(Protocol::P2p(peer.into()));
-                    if !info.addresses().any(|(a, _source)| *a == addr) {
+                    if !info.addresses().any(|(a, ..)| *a == addr) {
                         tracing::warn!(id = display(peer), addr = addr_dbg, "failed to add initial peer");
                     } else {
                         tracing::info!(id = display(peer), addr = addr_dbg, "added initial peer");
@@ -932,8 +935,8 @@ impl BanyanStore {
     /// are fetched automatically. The actual data is not resolved.
     pub async fn unixfs_resolve(&self, cid: Cid, name: Option<String>) -> anyhow::Result<FileNode> {
         let peers = self.ipfs().peers();
-        let tmp = self.ipfs().create_temp_pin()?;
-        self.ipfs().temp_pin(&tmp, &cid)?;
+        let mut tmp = self.ipfs().create_temp_pin()?;
+        self.ipfs().temp_pin(&mut tmp, &cid)?;
         let block = self.ipfs().fetch(&cid, peers.clone()).await?;
 
         match FlatUnixFs::try_parse(block.data()).map_err(|e| anyhow::anyhow!("Error parsing block (: {}", e))? {
@@ -1042,7 +1045,7 @@ impl BanyanStore {
     /// `TempPin`.  Blobs are encoded as [unixfs-v1] files.
     ///
     /// [unixfs-v1]: https://docs.ipfs.io/concepts/file-systems/#unix-file-system-unixfs
-    pub fn add(&self, tmp: &TempPin, reader: impl Read) -> Result<(Cid, usize)> {
+    pub fn add(&self, tmp: &mut TempPin, reader: impl Read) -> Result<(Cid, usize)> {
         let mut adder = FileAdder::default();
         let mut reader = BufReader::with_capacity(adder.size_hint(), reader);
         let mut bytes_read = 0usize;
@@ -1141,7 +1144,7 @@ impl BanyanStore {
         r
     }
 
-    /// Returns a [`Stream`] of events in causal order filtered with a [`Query`].
+    /// Returns a [`Stream`] of events filtered with a [`Query`].
     pub fn stream_filtered_stream_ordered<Q: Query<TT> + Clone + 'static>(
         &self,
         query: Q,
@@ -1188,17 +1191,17 @@ impl BanyanStore {
     fn transform_stream<T>(
         &self,
         stream: &mut OwnStreamGuard,
-        f: impl FnOnce(&Transaction, &mut AxStreamBuilder) -> Result<T> + Send,
+        f: impl FnOnce(&mut Transaction, &mut AxStreamBuilder) -> Result<T> + Send,
     ) -> Result<T> {
         let writer = self.data.forest.store().write()?;
         let stream_nr = stream.stream_nr();
         let stream_id = self.node_id().stream(stream_nr);
         let prev = stream.snapshot();
         tracing::debug!("starting write transaction on stream {}", stream_nr);
-        let txn = Transaction::new(self.data.forest.clone(), writer);
+        let mut txn = Transaction::new(self.data.forest.clone(), writer);
         // take a snapshot of the initial state
         let mut guard = stream.transaction();
-        let res = f(&txn, &mut guard);
+        let res = f(&mut txn, &mut guard);
         if res.is_err() {
             // stream builder state will be reverted, except for the cipher offset
             return res;
@@ -1214,7 +1217,7 @@ impl BanyanStore {
         // grab the latest lamport
         let lamport = self.data.lamport.get();
         let header = AxTreeHeader::new(curr.link().unwrap(), lamport);
-        let root = txn.writer().put(DagCborCodec.encode(&header)?)?;
+        let root = txn.writer_mut().put(DagCborCodec.encode(&header)?)?;
         let cid = Cid::from(root);
         // update the permanent alias. If this fails, we will revert the builder.
         self.ipfs().alias(StreamAlias::from(stream_id), Some(&cid))?;
@@ -1316,8 +1319,8 @@ impl BanyanStore {
         let (validated_header_lamport, validated_header_count) = stream.validated_tree_counters();
         // temporarily pin the new root
         tracing::trace!("assigning temp pin to {}", root);
-        let temp_pin = ipfs.create_temp_pin()?;
-        ipfs.temp_pin(&temp_pin, &cid)?;
+        let mut temp_pin = ipfs.create_temp_pin()?;
+        ipfs.temp_pin(&mut temp_pin, &cid)?;
         let peers = ipfs.peers();
         // attempt to sync. This may take a while and is likely to be interrupted
         tracing::trace!("starting to sync from {} peers", peers.len());

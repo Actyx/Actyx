@@ -114,7 +114,7 @@ fn envelope_to_v2(event: IpfsEnvelope, app_id: &str) -> (AxKey, Payload) {
 /// stuff from gc.
 #[allow(clippy::too_many_arguments)]
 fn build_banyan_tree<'a, RW: BlockWriter<Sha256Digest> + ReadOnlyStore<Sha256Digest>>(
-    txn: &'a AxTxn<RW>,
+    txn: &'a mut AxTxn<RW>,
     source: &'a SourceId,
     stream_id: StreamId,
     iter: impl Iterator<Item = anyhow::Result<Vec<IpfsEnvelope>>> + Send + 'a,
@@ -207,7 +207,7 @@ pub struct V1MigrationEvent {
 }
 
 fn wrap_in_header<RW: BlockWriter<Sha256Digest> + ReadOnlyStore<Sha256Digest>>(
-    txn: &AxTxn<RW>,
+    txn: &mut AxTxn<RW>,
     root: Sha256Digest,
     lamport: LamportTimestamp,
 ) -> anyhow::Result<Sha256Digest> {
@@ -216,7 +216,7 @@ fn wrap_in_header<RW: BlockWriter<Sha256Digest> + ReadOnlyStore<Sha256Digest>>(
     // serialize it
     let header = DagCborCodec.encode(&header)?;
     // write it
-    let root = txn.writer().put(header)?;
+    let root = txn.writer_mut().put(header)?;
     Ok(root)
 }
 
@@ -390,10 +390,10 @@ pub fn convert_from_v1(
                 // If there's no mapping, just convert
                 .unwrap_or_else(|| source.into());
             tracing::debug!("converting tree {} ({})", source, stream_id);
-            let txn = AxTxn::new(forest.clone(), forest.store().clone());
+            let mut txn = AxTxn::new(forest.clone(), forest.store().clone());
             let iter = iter_events_v1_chunked(&db1, Link::new(*cid));
             let tree = build_banyan_tree(
-                &txn,
+                &mut txn,
                 source,
                 stream_id,
                 iter,
@@ -410,7 +410,7 @@ pub fn convert_from_v1(
                 Ok((tree, _errs)) => {
                     let root = tree
                         .link()
-                        .map(|root| wrap_in_header(&txn, root, *lamport.lock()))
+                        .map(|root| wrap_in_header(&mut txn, root, *lamport.lock()))
                         .transpose()?;
                     tracing::debug!("Setting alias {} {:?}", source, tree);
                     db2.lock()
@@ -460,7 +460,7 @@ impl ReadOnlyStore<Sha256Digest> for Importer {
 }
 
 impl BlockWriter<Sha256Digest> for Importer {
-    fn put(&self, data: Vec<u8>) -> Result<Sha256Digest> {
+    fn put(&mut self, data: Vec<u8>) -> Result<Sha256Digest> {
         let digest = Sha256Digest::new(&data);
         let cid = digest.into();
         let block = crate::Block::new_unchecked(cid, data);
@@ -520,13 +520,13 @@ mod test {
 
         let store = MemStore::new(usize::max_value(), Sha256Digest::new);
         let branch_cache = BranchCache::new(1000);
-        let txn = AxTxn::new(Forest::new(store.clone(), branch_cache), store);
+        let mut txn = AxTxn::new(Forest::new(store.clone(), branch_cache), store);
         let source = source_id!("v1_source_id");
         let stream_id = StreamId::from(source);
         let app_id = app_id!("com.actyx.from-v1");
 
         let (tree, errs) = build_banyan_tree(
-            &txn,
+            &mut txn,
             &source,
             stream_id,
             v1_chunks.into_iter(),

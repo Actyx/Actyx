@@ -17,6 +17,7 @@ fn node_schema_in_sync() {
             block_cache_size: 1024 * 1024 * 1024,
             block_gc_interval: 300,
             ping_timeout: 5,
+            bitswap_timeout: 15,
         },
         admin: Admin {
             display_name: "some name".into(),

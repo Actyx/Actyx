@@ -38,8 +38,8 @@ use libp2p::{
         ResponseChannel,
     },
     swarm::{
-        IntoProtocolsHandler, NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
-        ProtocolsHandler, Swarm, SwarmBuilder, SwarmEvent,
+        NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters, Swarm, SwarmBuilder,
+        SwarmEvent,
     },
     Multiaddr, NetworkBehaviour, PeerId,
 };
@@ -67,15 +67,18 @@ use trees::{
     tags::{ScopedTag, ScopedTagSet, TagScope},
     AxKey, AxTreeHeader,
 };
-use util::formats::{
-    admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
-    banyan_protocol::{
-        decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse,
-    },
-    events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
-};
 use util::SocketAddrHelper;
+use util::{
+    formats::{
+        admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
+        banyan_protocol::{
+            decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse,
+        },
+        events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
+        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
+    },
+    trace_poll::TracePoll,
+};
 use zstd::stream::write::Decoder;
 
 pub mod formats;
@@ -126,8 +129,15 @@ struct State {
     banyan_stores: BTreeMap<String, BanyanWriter>,
 }
 
+pub struct NoEvent;
+impl<T: std::fmt::Debug> From<T> for NoEvent {
+    fn from(_: T) -> Self {
+        NoEvent
+    }
+}
+
 #[derive(NetworkBehaviour)]
-#[behaviour(poll_method = "poll", out_event = "()")]
+#[behaviour(poll_method = "poll", out_event = "NoEvent", event_process = true)]
 pub struct ApiBehaviour {
     admin: StreamingResponse<AdminProtocol>,
     events: StreamingResponse<EventsProtocol>,
@@ -394,11 +404,13 @@ impl ApiBehaviour {
             }),
             EventsRequest::Query(request) => self.wrap(channel_id.clone(), async move {
                 match events.query(app_id!("com.actyx.cli"), request).await {
-                    Ok(resp) => resp
-                        .filter_map(move |x| {
+                    Ok(resp) => TracePoll::new(
+                        resp.filter_map(move |x| {
                             tracing::trace!("got query response {:?}", x);
                             match x {
                                 QueryResponse::Event(ev) => {
+                                    let span = tracing::trace_span!("ready event");
+                                    let _enter = span.enter();
                                     ready(Some((channel_id.clone(), Some(EventsResponse::Event(ev)))))
                                 }
                                 QueryResponse::Offsets(o) => ready(Some((
@@ -410,8 +422,10 @@ impl ApiBehaviour {
                                 }
                                 QueryResponse::FutureCompat => ready(None),
                             }
-                        })
-                        .left_stream(),
+                        }),
+                        "node_api events query",
+                    )
+                    .left_stream(),
                     Err(e) => stream::once(ready((
                         channel_id,
                         Some(EventsResponse::Error { message: e.to_string() }),
@@ -484,11 +498,14 @@ impl ApiBehaviour {
 
     /// The main purpose of this function is to shovel responses from any
     /// pending requests to libp2p.
-    fn poll(&mut self, cx: &mut task::Context, _: &mut impl PollParameters) ->
-    Poll<NetworkBehaviourAction<<<<Self as
-    NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as
-    ProtocolsHandler>::InEvent, ()>>{
+    fn poll(
+        &mut self,
+        cx: &mut task::Context,
+        _: &mut impl PollParameters,
+    ) -> Poll<NetworkBehaviourAction<NoEvent, <Self as NetworkBehaviour>::ProtocolsHandler>> {
         let mut wake_me_up = false;
+        let span = tracing::trace_span!("poll");
+        let _enter = span.enter();
 
         // Handle pending requests
         while let Poll::Ready(Some((chan, resp))) = self.state.pending_oneshot.poll_next_unpin(cx) {
@@ -498,7 +515,11 @@ impl ApiBehaviour {
             wake_me_up = true;
         }
 
+        let span = tracing::trace_span!("poll streams");
+        let enter = span.enter();
+        let mut count = 0;
         while let Poll::Ready(Some((chan, resp))) = self.state.pending_stream.poll_next_unpin(cx) {
+            count += 1;
             if let Some(msg) = resp {
                 if self.events.respond(chan.clone(), msg).is_err() {
                     if let Some(h) = self.state.stream_handles.remove(&chan) {
@@ -511,12 +532,15 @@ impl ApiBehaviour {
             }
             wake_me_up = true;
         }
+        tracing::trace!("handled {} stream events", count);
+        drop(enter);
 
         while let Poll::Ready(Some((channel, response))) = self.state.pending_finalise.poll_next_unpin(cx) {
             if let BanyanResponse::Error(ref e) = response {
                 tracing::warn!("error in Finalise: {}", e);
             }
             self.banyan.send_response(channel, response).ok();
+            wake_me_up = true;
         }
 
         // This `poll` function is the last in the derived NetworkBehaviour.
@@ -760,7 +784,7 @@ fn finalise_streams(node_id: NodeId, mut writer: BanyanWriter) -> Result<(), any
 
     // then alias them
     let header = AxTreeHeader::new(writer.own.snapshot().link().unwrap(), writer.lamport);
-    let root = writer.txn.writer().put(DagCborCodec.encode(&header)?)?;
+    let root = writer.txn.writer_mut().put(DagCborCodec.encode(&header)?)?;
     let cid = Cid::from(root);
     let stream_id = node_id.stream(0.into());
     writer
@@ -768,7 +792,7 @@ fn finalise_streams(node_id: NodeId, mut writer: BanyanWriter) -> Result<(), any
         .store()
         .alias(StreamAlias::from(stream_id).as_ref(), Some(&cid))?;
     let header = AxTreeHeader::new(writer.other.snapshot().link().unwrap(), writer.lamport);
-    let root = writer.txn.writer().put(DagCborCodec.encode(&header)?)?;
+    let root = writer.txn.writer_mut().put(DagCborCodec.encode(&header)?)?;
     let cid = Cid::from(root);
     if let Some(node_id) = writer.node_id {
         let stream_id = node_id.stream(4.into());
@@ -1000,7 +1024,7 @@ type TConnErr = libp2p::core::either::EitherError<
             >,
             libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
         >,
-        libp2p::ping::handler::PingFailure,
+        libp2p::ping::PingFailure,
     >,
     std::io::Error,
 >;
@@ -1013,7 +1037,10 @@ impl SwarmFuture {
     }
 
     /// Poll the swarm once
-    pub(crate) fn poll_swarm(&mut self, cx: &mut task::Context) -> std::task::Poll<Option<SwarmEvent<(), TConnErr>>> {
+    pub(crate) fn poll_swarm(
+        &mut self,
+        cx: &mut task::Context,
+    ) -> std::task::Poll<Option<SwarmEvent<NoEvent, TConnErr>>> {
         self.swarm().poll_next_unpin(cx)
     }
 }
@@ -1036,23 +1063,30 @@ impl Future for SwarmFuture {
                 SwarmEvent::ListenerError { error, .. } => {
                     tracing::error!("SwarmEvent::ListenerError {}", error)
                 }
-                SwarmEvent::ListenerClosed {
-                    reason: Err(error),
-                    addresses,
-                    ..
+                SwarmEvent::ListenerClosed { reason, addresses, .. } => {
+                    tracing::error!(reason = ?&reason, addrs = ?&addresses, "listener closed");
+                }
+                SwarmEvent::Behaviour(_) => {}
+                SwarmEvent::ConnectionEstablished { endpoint, .. } => {
+                    tracing::debug!(endpoint = ?&endpoint, "connection established");
+                }
+                SwarmEvent::ConnectionClosed { endpoint, .. } => {
+                    tracing::debug!(endpoint = ?&endpoint, "connection closed");
+                }
+                SwarmEvent::IncomingConnection { .. } => {}
+                SwarmEvent::IncomingConnectionError {
+                    local_addr,
+                    send_back_addr,
+                    error,
                 } => {
-                    tracing::error!("SwarmEvent::ListenerClosed {} for {:?}", error, addresses);
-                    for addr in addresses {
-                        self.0
-                            .behaviour_mut()
-                            .state
-                            .admin_sockets
-                            .transform_mut(|set| set.remove(&addr));
-                    }
+                    tracing::warn!(local = %&local_addr, remote = %&send_back_addr, error = %&error, "incoming connection failure");
                 }
-                o => {
-                    tracing::debug!("Other swarm event {:?}", o);
+                SwarmEvent::OutgoingConnectionError { .. } => {}
+                SwarmEvent::BannedPeer { .. } => {}
+                SwarmEvent::ExpiredListenAddr { address, .. } => {
+                    tracing::info!("unbound from listen address {}", address);
                 }
+                SwarmEvent::Dialing(_) => {}
             }
         }
 

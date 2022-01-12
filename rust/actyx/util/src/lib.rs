@@ -2,6 +2,8 @@
 
 pub mod base64_blob;
 pub mod build;
+pub mod chunk_unless_pending;
+pub mod drainer;
 pub mod formats;
 pub mod gen_stream;
 pub mod immutable_sync;
@@ -11,6 +13,7 @@ pub mod pinned_resource_sync;
 pub mod reentrant_safe_mutex;
 pub mod serde_support;
 pub mod serde_util;
+pub mod trace_poll;
 pub mod tracing_set_log_level;
 pub mod value_or_limit;
 pub mod version;
@@ -35,7 +38,7 @@ pub fn setup_logger() {
     tracing_log::LogTracer::init().ok();
     let env = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_| "info".to_owned());
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_span_events(FmtSpan::ACTIVE | FmtSpan::CLOSE)
+        .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
         .with_env_filter(EnvFilter::new(env))
         .with_writer(std::io::stderr)
         .finish();
@@ -150,7 +153,7 @@ impl TryFrom<Multiaddr> for SocketAddrHelper {
                     bail!("Unexpected multiaddr protocol \"{:?}\"", e)
                 }
                 None => {
-                    bail!("Invalid multiaddr, only {ip4,dns4,ip6,dns6} supported")
+                    bail!("Invalid multiaddr, only {{ip4,dns4,ip6,dns6}} supported")
                 }
             };
 

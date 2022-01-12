@@ -59,13 +59,13 @@ CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
 CARGO_BUILD_ARGS ?= --features migration-v1
 
-export BUILD_RUST_TOOLCHAIN ?= 1.55.0
+export BUILD_RUST_TOOLCHAIN ?= 1.56.1
 
 # The stable image version is the git commit hash inside `Actyx/Actyx`, with
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 0d13a2e82ee0f02426205bcf9237c8858f959da3
+export LATEST_STABLE_IMAGE_VERSION := 24fc473cb8766c28a59cc368d05769aa7ca4b160
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -93,7 +93,7 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/util:osxbuilder-3c73dcd794149800c37f7f6efa892c6f9bb963fe
+image-darwin = actyx/util:osxbuilder-5df6c3baf0143be10458e412241dfb90069008ba
 
 image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
 
@@ -115,6 +115,12 @@ export ACTYX_VERSION ?= 0.0.0_dev-$(GIT_COMMIT)
 export ACTYX_VERSION_CLI ?= 0.0.0_dev-$(GIT_COMMIT)
 export ACTYX_VERSION_NODEMANAGER ?= 0.0.0-dev-$(GIT_COMMIT)
 
+ifeq ($(origin AX_PUBLIC_KEY), undefined)
+  AX_PUBLIC_KEY :=
+else
+  AX_PUBLIC_KEY := -e AX_PUBLIC_KEY=${AX_PUBLIC_KEY}
+endif
+
 all-WINDOWS := $(foreach t,$(windows-bins),windows-x86_64/$t)
 all-ANDROID := $(android-bins)
 all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t macos-aarch64/$t)
@@ -127,7 +133,7 @@ export CARGO_HOME ?= $(HOME)/.cargo
 export DOCKER_CLI_EXPERIMENTAL := enabled
 
 # Use docker run -ti only if the input device is a TTY (so that Ctrl+C works)
-export DOCKER_FLAGS ?= -e "ACTYX_VERSION=${ACTYX_VERSION}" -e "ACTYX_VERSION_CLI=${ACTYX_VERSION_CLI}" $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
+export DOCKER_FLAGS ?= ${AX_PUBLIC_KEY} -e "ACTYX_VERSION=${ACTYX_VERSION}" -e "ACTYX_VERSION_CLI=${ACTYX_VERSION_CLI}" $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
 
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))

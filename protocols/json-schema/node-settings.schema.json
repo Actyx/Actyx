@@ -149,7 +149,13 @@
           "minimum": 0,
           "default": 5,
           "description": "Timeout for one swarm-internal ping response"
-	}
+	      },
+        "bitswapTimeout": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 15,
+          "description": "Timeout for one swarm-internal data block response"
+        }
       }
     },
     "Admin": {

@@ -33,7 +33,7 @@ pub fn to_publish(events: Vec<(TagSet, Payload)>) -> PublishRequest {
 
 pub fn format_offsets<E>(sim: &mut Netsim<Command, E>, offsets: OffsetsResponse) -> String
 where
-    E: FromStr + Send + 'static,
+    E: FromStr + Display + Send + 'static,
     E::Err: Debug + Display + Send + Sync + 'static,
 {
     let mut to_replicate = offsets.to_replicate;

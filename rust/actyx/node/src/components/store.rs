@@ -66,7 +66,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
                         .ipfs()
                         .connections()
                         .into_iter()
-                        .map(|(peer, addr)| Connection {
+                        .map(|(peer, addr, _dt, _dir)| Connection {
                             peer_id: peer.to_string(),
                             addr: addr.to_string(),
                         })
@@ -79,7 +79,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
                             let info = store.ipfs().peer_info(&peer)?;
                             Some(Peer {
                                 peer_id: peer.to_string(),
-                                addrs: info.addresses().map(|(addr, _)| addr.to_string()).collect(),
+                                addrs: info.addresses().map(|(addr, _s, _dt)| addr.to_string()).collect(),
                             })
                         })
                         .collect();
@@ -190,6 +190,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             block_cache_size: s.swarm.block_cache_size,
             block_gc_interval: Duration::from_secs(s.swarm.block_gc_interval),
             ping_timeout: Duration::from_secs(s.swarm.ping_timeout),
+            bitswap_timeout: Duration::from_secs(s.swarm.bitswap_timeout),
             ..SwarmConfig::basic()
         };
         Ok(StoreConfig {

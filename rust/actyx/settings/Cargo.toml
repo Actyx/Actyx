@@ -5,21 +5,21 @@ authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
-anyhow = "1.0.42"
+anyhow = "1.0.52"
 log = "0.4.14"
 multiaddr = "0.13.0"
-parking_lot = "0.11.1"
-rusqlite = { version = "0.25.3", features = ["bundled", "backup"] }
-serde = { version = "1.0.126", features = ["derive"] }
-serde_json = "1.0.64"
-structopt = "0.3.22"
-thiserror = "1.0.26"
-tracing = "0.1.26"
-treediff = { version = "4.0.0", features = ["with-serde-json"] }
+parking_lot = "0.11.2"
+rusqlite = { version = "0.26.3", features = ["bundled", "backup"] }
+serde = { version = "1.0.133", features = ["derive"] }
+serde_json = "1.0.74"
+structopt = "0.3.25"
+thiserror = "1.0.30"
+tracing = "0.1.29"
+treediff = { version = "4.0.2", features = ["with-serde-json"] }
 url = "2.2.2"
 valico = "3.6.0"
 
 [dev-dependencies]
 maplit = "1.0.2"
 rand = "0.8.4"
-tempfile = "3.2.0"
+tempfile = "3.3.0"

@@ -15,7 +15,10 @@ use std::{
 };
 use tokio::{
     runtime::Handle,
-    sync::{mpsc, oneshot},
+    sync::{
+        mpsc::{self, error::TrySendError},
+        oneshot,
+    },
     task::JoinHandle,
 };
 
@@ -321,12 +324,25 @@ impl EventStoreHandler {
                     if doit && reply.send(Ok(rx)).is_ok() {
                         while let Some(event) = s.next().await {
                             tracing::trace!("stream {} got {}/{}", id, event.key.lamport, event.key.stream);
-                            if tx.send(Ok(event)).await.is_err() {
-                                // stream recipient has lost interest
-                                tracing::trace!("stream {} aborted", id);
-                                break;
+                            match tx.try_reserve() {
+                                Ok(sender) => {
+                                    sender.send(Ok(event));
+                                    tracing::trace!("stream {} sent", id);
+                                }
+                                Err(TrySendError::Closed(_)) => {
+                                    // stream recipient has lost interest
+                                    tracing::trace!("stream {} aborted", id);
+                                    break;
+                                }
+                                Err(TrySendError::Full(_)) => {
+                                    tracing::trace!("stream {} hibernating", id);
+                                    if tx.send(Ok(event)).await.is_err() {
+                                        tracing::trace!("stream {} aborted", id);
+                                        break;
+                                    };
+                                    tracing::trace!("stream {} sent", id);
+                                }
                             }
-                            tracing::trace!("stream {} sent", id);
                         }
                         tracing::trace!("stream {} ended", id);
                     }
