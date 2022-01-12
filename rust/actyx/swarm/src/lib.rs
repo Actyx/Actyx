@@ -717,13 +717,12 @@ impl BanyanStore {
                 cache_size_blocks: cfg.block_cache_count,
                 cache_size_bytes: cfg.block_cache_size,
                 gc_interval: cfg.block_gc_interval,
-                // make sure that we delete a large number of blocks,
-                // so we don't get into a situation where block deletion
-                // can not keep up with block creation.
-                gc_min_blocks: 10000,
-                // give gc some time. There is an overhead for figuring out
-                // what to delete, so if this is too small we won't delete much.
-                gc_target_duration: Duration::from_millis(250),
+                // with the duration below gc will keep running continuously
+                // if need be, so no need for an effective minimum here
+                gc_min_blocks: 1,
+                // gc is concurrent to normal operations, so could run forever,
+                // but we want to get stats now and then
+                gc_target_duration: cfg.block_gc_interval,
             },
         })
         .await?;
@@ -1145,7 +1144,7 @@ impl BanyanStore {
         r
     }
 
-    /// Returns a [`Stream`] of events in causal order filtered with a [`Query`].
+    /// Returns a [`Stream`] of events filtered with a [`Query`].
     pub fn stream_filtered_stream_ordered<Q: Query<TT> + Clone + 'static>(
         &self,
         query: Q,
