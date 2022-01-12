@@ -434,6 +434,7 @@ mod test {
               "blockCacheSize": 1073741824,
               "blockCacheCount": 131072,
               "pingTimeout": 5,
+              "bitswapTimeout": 15,
             },
             "admin": {
               "displayName": "My Node",

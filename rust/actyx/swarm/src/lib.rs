@@ -185,6 +185,7 @@ pub struct SwarmConfig {
     pub cadence_root_map: Duration,
     pub cadence_compact: Duration,
     pub ping_timeout: Duration,
+    pub bitswap_timeout: Duration,
 }
 impl SwarmConfig {
     pub fn basic() -> Self {
@@ -213,6 +214,7 @@ impl SwarmConfig {
             block_cache_count: 1024 * 128,
             block_gc_interval: Duration::from_secs(300),
             ping_timeout: Duration::from_secs(5),
+            bitswap_timeout: Duration::from_secs(15),
         }
     }
 }
@@ -273,6 +275,7 @@ impl PartialEq for SwarmConfig {
             && self.block_cache_count == other.block_cache_count
             && self.block_gc_interval == other.block_gc_interval
             && self.ping_timeout == other.ping_timeout
+            && self.bitswap_timeout == other.bitswap_timeout
     }
 }
 
@@ -704,8 +707,8 @@ impl BanyanStore {
                 ),
                 broadcast: Some(Default::default()),
                 bitswap: Some(BitswapConfig {
-                    request_timeout: Duration::from_secs(10),
-                    connection_keep_alive: Duration::from_secs(10),
+                    request_timeout: cfg.bitswap_timeout,
+                    connection_keep_alive: cfg.bitswap_timeout,
                 }),
             },
             storage: StorageConfig {
