@@ -2581,10 +2581,11 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.23.0"
-source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#e3f29eb4ebc5e3fc4cbc907977d27b5a14f1880d"
+source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#388b849092715e57599c49b5c825d12d06f2f66b"
 dependencies = [
  "anyhow",
  "async-executor",
+ "async-global-executor",
  "async-io",
  "async-trait",
  "chrono",
@@ -3953,6 +3954,7 @@ dependencies = [
  "fslock",
  "futures 0.3.19",
  "hex",
+ "ipfs-embed",
  "ipfs-sqlite-block-store",
  "jemallocator",
  "lazy_static",
