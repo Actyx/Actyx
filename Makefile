@@ -115,10 +115,11 @@ export ACTYX_VERSION ?= 0.0.0_dev-$(GIT_COMMIT)
 export ACTYX_VERSION_CLI ?= 0.0.0_dev-$(GIT_COMMIT)
 export ACTYX_VERSION_NODEMANAGER ?= 0.0.0-dev-$(GIT_COMMIT)
 
-ifeq ($(origin AX_PUBLIC_KEY), undefined)
+$(shell env | sort >&2)
+ifeq ($(origin ACTYX_PUBLIC_KEY), undefined)
   AXP :=
 else
-  AXP := -e AX_PUBLIC_KEY=$(AX_PUBLIC_KEY)
+  AXP := -e AX_PUBLIC_KEY=$(ACTYX_PUBLIC_KEY)
 endif
 
 all-WINDOWS := $(foreach t,$(windows-bins),windows-x86_64/$t)

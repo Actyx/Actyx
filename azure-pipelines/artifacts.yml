@@ -54,8 +54,8 @@ stages:
         value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_rust-sdk'] ]
       - name: ACTYX_VERSION_CSHARPSDK
         value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_csharp-sdk'] ]
-      - name: AX_PUBLIC_KEY
-        value: $(AX_PUBLIC_KEY)
+      - name: ACTYX_PUBLIC_KEY
+        value: $(ACTYX_PUBLIC_KEY)
     pool:
       name: Native
     jobs:
