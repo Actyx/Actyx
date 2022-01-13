@@ -116,9 +116,9 @@ export ACTYX_VERSION_CLI ?= 0.0.0_dev-$(GIT_COMMIT)
 export ACTYX_VERSION_NODEMANAGER ?= 0.0.0-dev-$(GIT_COMMIT)
 
 ifeq ($(origin AX_PUBLIC_KEY), undefined)
-  AX_PUBLIC_KEY :=
+  AXP :=
 else
-  AX_PUBLIC_KEY := -e AX_PUBLIC_KEY=${AX_PUBLIC_KEY}
+  AXP := -e AX_PUBLIC_KEY=$(AX_PUBLIC_KEY)
 endif
 
 all-WINDOWS := $(foreach t,$(windows-bins),windows-x86_64/$t)
@@ -133,7 +133,7 @@ export CARGO_HOME ?= $(HOME)/.cargo
 export DOCKER_CLI_EXPERIMENTAL := enabled
 
 # Use docker run -ti only if the input device is a TTY (so that Ctrl+C works)
-export DOCKER_FLAGS ?= ${AX_PUBLIC_KEY} -e "ACTYX_VERSION=${ACTYX_VERSION}" -e "ACTYX_VERSION_CLI=${ACTYX_VERSION_CLI}" $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
+export DOCKER_FLAGS ?= ${AXP} -e "ACTYX_VERSION=${ACTYX_VERSION}" -e "ACTYX_VERSION_CLI=${ACTYX_VERSION_CLI}" $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
 
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
