@@ -97,7 +97,8 @@ describe('node lifecycle', () => {
         process.stderr?.on('end', () => res(buffer))
         setTimeout(() => process.kill('SIGTERM'), 500)
       })
-      expect(logs).toContainEqual(
+      // eslint-disable-next-line no-control-regex
+      expect(logs.join('').replace(/\u001b\[[^a-z]*[a-z]/g, '')).toEqual(
         expect.stringContaining(
           'NODE_STOPPED_BY_HOST: Actyx is stopped. The shutdown was either initiated automatically by the host or intentionally by the user.',
         ),
@@ -137,7 +138,10 @@ describe('node lifecycle', () => {
         }
         const logs = proc.stderr
 
-        expect(logs).toMatch('NODE_STOPPED_BY_NODE: ERR_PORT_COLLISION')
+        // eslint-disable-next-line no-control-regex
+        expect(logs.replace(/\u001b\[[^a-z]*[a-z]/g, '')).toMatch(
+          'NODE_STOPPED_BY_NODE: ERR_PORT_COLLISION',
+        )
         expect(logs).toMatch(
           `Actyx shut down because it could not bind to port ${port.toString()}. Please specify a different ${x} port.`,
         )

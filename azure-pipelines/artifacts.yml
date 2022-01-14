@@ -291,6 +291,7 @@ stages:
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
               AUTH_TEST_SIGNATURE: $(AUTH_TEST_SIGNATURE)
+              AUTH_TEST_LICENSE: $(AUTH_TEST_LICENSE)
             displayName: npm test
           - publish: $(System.DefaultWorkingDirectory)/integration/logs
             condition: failed()

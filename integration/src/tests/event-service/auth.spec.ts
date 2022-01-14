@@ -100,9 +100,7 @@ describe('auth http', () => {
       await getErr('Could not validate license')
 
       // use proper app manifest
-      await setAppLicense(
-        'v25saWNlbnNlVmVyc2lvbgBrbGljZW5zZVR5cGWhaGV4cGlyaW5nomVhcHBJZHNjb20uYWN0eXguYXV0aC10ZXN0aWV4cGlyZXNBdHQxOTcxLTAxLTAxVDAwOjAxOjAxWmljcmVhdGVkQXR0MTk3MC0wMS0wMVQwMDowMTowMVppc2lnbmF0dXJleFhBQWRSd1U4UTZlb3JLY0N3SjE1T0t4OWVPQ0kxNjN3MFhwTFpHWkNPUWlDWUZlYkR1cFlBbWlNOVhsb3dDYWw5dUtuSWhRelkzSUo2RkdUbEtJMStEUT09aXJlcXVlc3RlcqFlZW1haWx0Y3VzdG9tZXJAZXhhbXBsZS5jb23/',
-      )
+      await setAppLicense(process.env['AUTH_TEST_LICENSE'] || '')
 
       const { token: token2 } = await get({ token: expect.any(String) })
       expect(await offsets(token2)).toEqual({

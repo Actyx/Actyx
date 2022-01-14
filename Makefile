@@ -120,6 +120,7 @@ ifeq ($(origin ACTYX_PUBLIC_KEY), undefined)
   AXP :=
 else
   AXP := -e AX_PUBLIC_KEY=$(ACTYX_PUBLIC_KEY)
+  export AX_PUBLIC_KEY = $(ACTYX_PUBLIC_KEY)
 endif
 
 all-WINDOWS := $(foreach t,$(windows-bins),windows-x86_64/$t)
