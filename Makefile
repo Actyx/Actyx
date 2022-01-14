@@ -118,8 +118,10 @@ export ACTYX_VERSION_NODEMANAGER ?= 0.0.0-dev-$(GIT_COMMIT)
 $(shell env | sort >&2)
 ifeq ($(origin ACTYX_PUBLIC_KEY), undefined)
   AXP :=
+  AXP_DOCKER :=
 else
   AXP := -e AX_PUBLIC_KEY=$(ACTYX_PUBLIC_KEY)
+  AXP_DOCKER := --build-arg AX_PUBLIC_KEY=$(ACTYX_PUBLIC_KEY)
   export AX_PUBLIC_KEY = $(ACTYX_PUBLIC_KEY)
 endif
 
@@ -128,7 +130,7 @@ all-ANDROID := $(android-bins)
 all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t macos-aarch64/$t)
 
 docker-platforms = $(foreach arch,$(architectures),$(docker-platform-$(arch)))
-docker-build-args = --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg CARGO_BUILD_ARGS="$(CARGO_BUILD_ARGS)"
+docker-build-args = ${AXP_DOCKER} --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg CARGO_BUILD_ARGS="$(CARGO_BUILD_ARGS)"
 docker-multiarch-build-args = $(docker-build-args) --platform $(shell echo $(docker-platforms) | sed 's/ /,/g')
 
 export CARGO_HOME ?= $(HOME)/.cargo
