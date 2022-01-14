@@ -2581,7 +2581,7 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.23.0"
-source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#071cd3f7266560c193547f51030313f2c233b12f"
+source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#d01c0a9b93eb558198c08f694a9127658c61ce52"
 dependencies = [
  "anyhow",
  "async-executor",
@@ -2592,7 +2592,7 @@ dependencies = [
  "fnv",
  "futures 0.3.19",
  "futures-timer",
- "ipfs-sqlite-block-store 0.10.7",
+ "ipfs-sqlite-block-store 0.11.0",
  "lazy_static",
  "libipld",
  "libp2p",
