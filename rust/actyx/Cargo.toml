@@ -37,3 +37,4 @@ ipfs-embed = { git = "https://github.com/Actyx/ipfs-embed", branch = "sim-open" 
 banyan = { git = "https://github.com/Actyx/banyan", branch = "rku/logging" }
 # waiting for version 0.26.1
 libp2p-swarm-derive = { git = "https://github.com/libp2p/rust-libp2p", rev = "17d6b4ba67c3343e1ff5004a3f4975faaf9bc034" }
+

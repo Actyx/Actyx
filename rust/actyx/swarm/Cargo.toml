@@ -16,7 +16,7 @@ fnv = "1.0.7"
 futures = { version = "0.3.19", package = "futures" }
 hex = "0.4.3"
 ipfs-embed = { version = "0.23.0", default-features = false, features = ["tokio"] }
-ipfs-sqlite-block-store = "0.10.3"
+ipfs-sqlite-block-store = "0.11.0"
 itertools = "0.10.3"
 libipld = { version = "0.12.0", default-features = false }
 libp2p = { version = "0.41.0", default-features = false, features = ["tcp-tokio", "plaintext"] }

@@ -184,6 +184,7 @@ pub struct SwarmConfig {
     pub banyan_config: BanyanConfig,
     pub cadence_root_map: Duration,
     pub cadence_compact: Duration,
+    pub metrics_interval: Duration,
     pub ping_timeout: Duration,
     pub bitswap_timeout: Duration,
 }
@@ -213,6 +214,7 @@ impl SwarmConfig {
             block_cache_size: 1024 * 1024 * 1024,
             block_cache_count: 1024 * 128,
             block_gc_interval: Duration::from_secs(300),
+            metrics_interval: Duration::from_secs(60 * 30),
             ping_timeout: Duration::from_secs(5),
             bitswap_timeout: Duration::from_secs(15),
         }
@@ -254,11 +256,13 @@ impl SwarmConfig {
 impl PartialEq for SwarmConfig {
     fn eq(&self, other: &Self) -> bool {
         self.topic == other.topic
-            && self.enable_mdns == other.enable_mdns
             && self.keypair == other.keypair
             && self.psk == other.psk
             && self.node_name == other.node_name
             && self.db_path == other.db_path
+            && self.block_cache_size == other.block_cache_size
+            && self.block_cache_count == other.block_cache_count
+            && self.block_gc_interval == other.block_gc_interval
             && self.external_addresses == other.external_addresses
             && self.listen_addresses == other.listen_addresses
             && self.bootstrap_addresses == other.bootstrap_addresses
@@ -266,14 +270,13 @@ impl PartialEq for SwarmConfig {
             && self.enable_loopback == other.enable_loopback
             && self.enable_fast_path == other.enable_fast_path
             && self.enable_slow_path == other.enable_slow_path
+            && self.enable_mdns == other.enable_mdns
             && self.enable_root_map == other.enable_root_map
             && self.enable_discovery == other.enable_discovery
             && self.enable_metrics == other.enable_metrics
-            && self.cadence_compact == other.cadence_compact
             && self.cadence_root_map == other.cadence_root_map
-            && self.block_cache_size == other.block_cache_size
-            && self.block_cache_count == other.block_cache_count
-            && self.block_gc_interval == other.block_gc_interval
+            && self.cadence_compact == other.cadence_compact
+            && self.metrics_interval == other.metrics_interval
             && self.ping_timeout == other.ping_timeout
             && self.bitswap_timeout == other.bitswap_timeout
     }
@@ -894,7 +897,7 @@ impl BanyanStore {
         if cfg.enable_metrics {
             banyan.spawn_task(
                 "metrics",
-                crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), Duration::from_secs(60 * 30))?,
+                crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), cfg.metrics_interval)?,
             );
         }
         banyan.spawn_task(

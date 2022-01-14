@@ -70,7 +70,7 @@ type OneShot<T> = oneshot::Sender<Result<T, Error>>;
 type StreamOf<T> = mpsc::Receiver<Result<T, Error>>;
 type StreamTo<T> = mpsc::Sender<Result<T, Error>>;
 
-#[derive(derive_more::Display)]
+#[derive(Debug, derive_more::Display)]
 pub enum EventStoreRequest {
     #[display(fmt = "Offsets")]
     Offsets { reply: OneShot<SwarmOffsets> },

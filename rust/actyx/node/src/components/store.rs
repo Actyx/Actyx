@@ -18,11 +18,13 @@ use tokio::sync::oneshot;
 use tracing::*;
 use util::formats::{Connection, Failure, NodeCycleCount, Peer, PeerInfo, PingStats};
 
+#[derive(Debug)]
 pub(crate) enum StoreRequest {
     NodesInspect(oneshot::Sender<Result<InspectResponse>>),
     EventsV2(EventStoreRequest),
 }
 
+#[derive(Debug)]
 pub(crate) struct InspectResponse {
     pub peer_id: String,
     pub swarm_addrs: Vec<String>,
@@ -240,6 +242,8 @@ impl Component<StoreRequest, StoreConfig> for Store {
             block_cache_count: s.swarm.block_cache_count,
             block_cache_size: s.swarm.block_cache_size,
             block_gc_interval: Duration::from_secs(s.swarm.block_gc_interval),
+            enable_metrics: s.swarm.metrics_interval > 0,
+            metrics_interval: Duration::from_secs(s.swarm.metrics_interval),
             ping_timeout: Duration::from_secs(s.swarm.ping_timeout),
             bitswap_timeout: Duration::from_secs(s.swarm.bitswap_timeout),
             ..SwarmConfig::basic()
