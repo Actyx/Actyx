@@ -115,7 +115,7 @@ version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
 dependencies = [
- "getrandom 0.2.3",
+ "getrandom 0.2.4",
  "once_cell",
  "version_check 0.9.4",
 ]
@@ -218,9 +218,9 @@ checksum = "e22d1f4b888c298a027c99dc9048015fac177587de20fc30232a057dfbe24a21"
 
 [[package]]
 name = "assert_cmd"
-version = "2.0.2"
+version = "2.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e996dc7940838b7ef1096b882e29ec30a3149a3a443cdc8dba19ed382eca1fe2"
+checksum = "93ae1ddd39efd67689deb1979d80bad3bf7f2b09c6e6117c8d1f2443b5e2f83e"
 dependencies = [
  "bstr",
  "doc-comment",
@@ -492,7 +492,7 @@ dependencies = [
  "genawaiter",
  "hex",
  "hyper",
- "ipfs-sqlite-block-store",
+ "ipfs-sqlite-block-store 0.11.2",
  "lazy_static",
  "libipld",
  "libp2p",
@@ -591,10 +591,10 @@ dependencies = [
  "env_logger 0.9.0",
  "futures 0.3.19",
  "hex",
- "ipfs-sqlite-block-store",
+ "ipfs-sqlite-block-store 0.10.7",
  "jemallocator",
  "libipld",
- "lru 0.7.2",
+ "lru",
  "maplit",
  "multihash",
  "parking_lot 0.11.2",
@@ -1082,9 +1082,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "3.0.5"
+version = "3.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41a0645a430ec9136d2d701e54a95d557de12649a9dd7109ced3187e648ac824"
+checksum = "517358c28fcef6607bf6f76108e02afad7e82297d132a6b846dcc1fc3efcd153"
 dependencies = [
  "heck 0.4.0",
  "proc-macro-error 1.0.4",
@@ -2074,9 +2074,9 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fcd999463524c52659517fe2cea98493cfe485d10565e7b0fb07dbba7ad2753"
+checksum = "418d37c8b1d42553c93648be529cb70f920d3baf8ef469b74b9638df426e0b4c"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
@@ -2581,7 +2581,7 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.23.0"
-source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#388b849092715e57599c49b5c825d12d06f2f66b"
+source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#d01c0a9b93eb558198c08f694a9127658c61ce52"
 dependencies = [
  "anyhow",
  "async-executor",
@@ -2592,7 +2592,7 @@ dependencies = [
  "fnv",
  "futures 0.3.19",
  "futures-timer",
- "ipfs-sqlite-block-store",
+ "ipfs-sqlite-block-store 0.11.2",
  "lazy_static",
  "libipld",
  "libp2p",
@@ -2611,9 +2611,25 @@ dependencies = [
 
 [[package]]
 name = "ipfs-sqlite-block-store"
-version = "0.10.5"
+version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2483360e1cef118638b5f1ca3d1bd45983424dfebdb90ab84cefcb3f64a93889"
+checksum = "034c50bb7735bd8a205454b54aa397bedf3e9bb13665a1a1c87610fe450d6897"
+dependencies = [
+ "anyhow",
+ "derive_more",
+ "fnv",
+ "futures 0.3.19",
+ "libipld",
+ "parking_lot 0.11.2",
+ "rusqlite",
+ "tracing",
+]
+
+[[package]]
+name = "ipfs-sqlite-block-store"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af655e557492ca76aecb0989ed74bd862e6a9d2795d67224bd7648bee25155d9"
 dependencies = [
  "anyhow",
  "derive_more",
@@ -2889,15 +2905,15 @@ dependencies = [
 
 [[package]]
 name = "libp2p"
-version = "0.41.0"
+version = "0.41.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "782229f90bf7d5b12ee3ee08f7e160ba99f0d75eee7d118d9c1a688b13f6e64a"
+checksum = "2ec5b70fc23ed1b1b1169ce0d1116260a343f67cf7088b498b8d99255cd68c32"
 dependencies = [
  "atomic",
  "bytes",
  "futures 0.3.19",
  "futures-timer",
- "getrandom 0.2.3",
+ "getrandom 0.2.4",
  "instant",
  "lazy_static",
  "libp2p-core",
@@ -3068,16 +3084,16 @@ dependencies = [
 
 [[package]]
 name = "libp2p-identify"
-version = "0.32.0"
+version = "0.32.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec6d59e3f88435a83797fc3734f18385f6f54e0fe081e12543573364687c7db5"
+checksum = "32329181638a103321c05ef697f406abbccc695780b7c7d3dc34206758e9eb09"
 dependencies = [
  "futures 0.3.19",
  "futures-timer",
  "libp2p-core",
  "libp2p-swarm",
  "log",
- "lru 0.6.6",
+ "lru",
  "prost 0.9.0",
  "prost-build 0.9.0",
  "smallvec",
@@ -3281,9 +3297,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-request-response"
-version = "0.14.0"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdf24b2013a3e4543477786cccc0fee7a73052cf6d6005b3eb60b73d8b091657"
+checksum = "ddfda221e6fea477db4fbe6f566cfd3e0850abb97d6249b8fcb731cb94cc946b"
 dependencies = [
  "async-trait",
  "bytes",
@@ -3292,7 +3308,7 @@ dependencies = [
  "libp2p-core",
  "libp2p-swarm",
  "log",
- "lru 0.7.2",
+ "lru",
  "rand 0.7.3",
  "smallvec",
  "unsigned-varint",
@@ -3562,15 +3578,6 @@ dependencies = [
  "cfg-if 1.0.0",
  "generator",
  "scoped-tls",
-]
-
-[[package]]
-name = "lru"
-version = "0.6.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ea2d928b485416e8908cff2d97d621db22b27f7b3b6729e438bcf42c671ba91"
-dependencies = [
- "hashbrown 0.11.2",
 ]
 
 [[package]]
@@ -3955,7 +3962,7 @@ dependencies = [
  "futures 0.3.19",
  "hex",
  "ipfs-embed",
- "ipfs-sqlite-block-store",
+ "ipfs-sqlite-block-store 0.11.2",
  "jemallocator",
  "lazy_static",
  "libipld",
@@ -4255,9 +4262,9 @@ dependencies = [
 
 [[package]]
 name = "openssl-probe"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28988d872ab76095a6e6ac88d99b54fd267702734fd7ffe610ca27f533ddb95a"
+checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
 name = "openssl-src"
@@ -4643,9 +4650,9 @@ checksum = "eb9f9e6e233e5c4a35559a617bf40a4ec447db2e84c20b55a6f83167b7e57872"
 
 [[package]]
 name = "predicates"
-version = "2.1.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95e5a7689e456ab905c22c2b48225bb921aba7c8dfa58440d68ba13f6222a715"
+checksum = "a5aab5be6e4732b473071984b3164dbbfb7a3674d30ea5ff44410b6bcd960c3c"
 dependencies = [
  "difflib",
  "float-cmp",
@@ -4657,15 +4664,15 @@ dependencies = [
 
 [[package]]
 name = "predicates-core"
-version = "1.0.2"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57e35a3326b75e49aa85f5dc6ec15b41108cf5aee58eabb1f274dd18b73c2451"
+checksum = "da1c2388b1513e1b605fcec39a95e0a9e8ef088f71443ef37099fa9ae6673fcb"
 
 [[package]]
 name = "predicates-tree"
-version = "1.0.4"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "338c7be2905b732ae3984a2f40032b5e94fd8f52505b186c7d4d68d193445df7"
+checksum = "4d86de6de25020a36c6d3643a86d9a6a9f552107c0559c60ea03551b5e16c032"
 dependencies = [
  "predicates-core",
  "termtree",
@@ -5072,7 +5079,7 @@ version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
 dependencies = [
- "getrandom 0.2.3",
+ "getrandom 0.2.4",
 ]
 
 [[package]]
@@ -5178,7 +5185,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "528532f3d801c87aec9def2add9ca802fe569e44a544afe633765267840abe64"
 dependencies = [
- "getrandom 0.2.3",
+ "getrandom 0.2.4",
  "redox_syscall 0.2.10",
 ]
 
@@ -5225,9 +5232,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.11.8"
+version = "0.11.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c4e0a76dc12a116108933f6301b95e83634e0c47b0afbed6abbaa0601e99258"
+checksum = "87f242f1488a539a79bac6dbe7c8609ae43b7914b7736210f239a37cccb32525"
 dependencies = [
  "async-compression",
  "base64",
@@ -5235,6 +5242,7 @@ dependencies = [
  "encoding_rs",
  "futures-core",
  "futures-util",
+ "h2",
  "http",
  "http-body",
  "hyper",
@@ -5739,9 +5747,9 @@ checksum = "9def91fd1e018fe007022791f865d0ccc9b3a0d5001e01aabb8b40e46000afb5"
 
 [[package]]
 name = "smallvec"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
+checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
 
 [[package]]
 name = "smol_str"
@@ -5916,7 +5924,7 @@ dependencies = [
  "futures 0.3.19",
  "hex",
  "ipfs-embed",
- "ipfs-sqlite-block-store",
+ "ipfs-sqlite-block-store 0.11.2",
  "itertools 0.10.3",
  "libipld",
  "libp2p",
@@ -6726,7 +6734,7 @@ version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 dependencies = [
- "getrandom 0.2.3",
+ "getrandom 0.2.4",
 ]
 
 [[package]]
