@@ -226,9 +226,13 @@ pub struct BanyanConfig {
 }
 impl Default for BanyanConfig {
     fn default() -> Self {
+        let tree = banyan::Config {
+            max_key_branches: 8,
+            target_leaf_size: 100_000,
+            ..banyan::Config::debug_fast()
+        };
         Self {
-            // TODO: replace this with better defaults for our application
-            tree: banyan::Config::debug_fast(),
+            tree,
             secret: banyan::Secrets::default(),
         }
     }
