@@ -94,7 +94,7 @@ export const mkNodeSshAndroid = async (
       ssh,
       `docker logs -n 1 --follow ${container}`,
       ['NODE_STARTED_BY_HOST'],
-      10000,
+      60000,
     ).then((x) => {
       x.forEach((p) => p.kill('SIGTERM'))
     })
