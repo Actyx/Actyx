@@ -228,9 +228,13 @@ pub struct BanyanConfig {
 }
 impl Default for BanyanConfig {
     fn default() -> Self {
+        // reasoning: up to 16384 events per leaf, makes up to 65536 event keys per level 1 block
+        // this permits up to 30 bytes (avg) of compressed per-event key data (2MiB max block size)
+        // target leaf size only guards against huge events
         let tree = banyan::Config {
-            max_key_branches: 8,
-            target_leaf_size: 100_000,
+            max_key_branches: 4,
+            max_leaf_count: 16384,
+            target_leaf_size: 1_000_000,
             ..banyan::Config::debug_fast()
         };
         Self {

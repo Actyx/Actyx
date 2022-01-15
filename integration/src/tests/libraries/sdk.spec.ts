@@ -10,12 +10,12 @@ describe('@actyx/sdk', () => {
   test('node unreachable', async () => {
     await runOnEvery(async (_node) => {
       const wrongConn = Actyx.of(null!, {
-        actyxPort: 1,
+        actyxPort: 4453,
       })
 
       await expect(wrongConn).rejects.toMatchObject({
         message:
-          'Error: unable to connect to Actyx at http://localhost:1/api/v2/node/id. Is the service running? -- Error: request to http://localhost:1/api/v2/node/id failed, reason: connect ECONNREFUSED 127.0.0.1:1',
+          'Error: unable to connect to Actyx at http://localhost:4453/api/v2/node/id. Is the service running? -- Error: request to http://localhost:4453/api/v2/node/id failed, reason: connect ECONNREFUSED 127.0.0.1:4453',
       })
     })
   })
