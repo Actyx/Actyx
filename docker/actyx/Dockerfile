@@ -18,6 +18,7 @@ ARG RUSTVER=1.56.1
 ARG ACTYX_VERSION=2.0.0_dev-unknown
 ENV ACTYX_VERSION=${ACTYX_VERSION}
 ARG CARGO_BUILD_ARGS
+ARG AX_PUBLIC_KEY
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- \
     --default-toolchain ${RUSTVER} \
