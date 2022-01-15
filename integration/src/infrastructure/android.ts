@@ -71,8 +71,8 @@ export const mkNodeSshAndroid = async (
   await execAdb('wait-for-device')
 
   // wait a bit, Android seems to do lots of things at this point
-  log('device ready, waiting 30sec')
-  await new Promise((res) => setTimeout(res, 30_000))
+  log('device ready, waiting 60sec')
+  await new Promise((res) => setTimeout(res, 60_000))
 
   const [remotePort4001, remotePort4454, remotePort4458] = await Promise.all(
     [4001, 4454, 4458].map((x) => execAdb(`forward tcp:0 tcp:${x}`).then(Number)),
