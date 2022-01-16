@@ -8,13 +8,17 @@
 import { EventEmitter } from 'events'
 import { Subject, fromEvent } from '../../node_modules/rxjs'
 import { first } from '../../node_modules/rxjs/operators'
-import { isNode } from '../util'
-import { root } from '../util/root'
 import { decorateEConnRefused } from './errors'
 import log from './log'
+import { MessageEvent } from 'isomorphic-ws'
+import * as WebSocket from 'isomorphic-ws'
+import { isNode, root } from '../util'
+
+declare const global: any
+global.WebSocket = WebSocket
 
 if (isNode) {
-  root.WebSocket = require('ws')
+  root.WebSocket = WebSocket
 }
 
 export interface WebSocketWrapper<TRequest, TResponse> {
@@ -97,20 +101,21 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     // If unset, disable automatic reconnect
     private readonly reconnectTimer: number | undefined,
   ) {
-    if (!root.WebSocket) {
+    if (!global.WebSocket) {
       log.ws.error('WebSocket not supported on this plattform')
       throw new Error('no WebSocket constructor can be found')
     }
     log.ws.info('establishing Pond API WS', url)
 
-    this.WebSocketCtor = root.WebSocket
+    this.WebSocketCtor = global.WebSocket
     this.url = url
 
     this.connect()
   }
 
   resultSelector(e: MessageEvent): TResponse {
-    return JSON.parse(e.data) as TResponse
+    const asStr = typeof e.data === 'string' ? e.data : e.data.toString()
+    return JSON.parse(asStr) as TResponse
   }
 
   /**
@@ -118,8 +123,8 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
    * The onConnectionLost hook is called on close, when the connetion was already connected
    */
   private createSocket(
-    onMessage: (this: WebSocket, ev: MessageEvent) => any,
-    binaryType?: 'blob' | 'arraybuffer',
+    onMessage: (ev: MessageEvent) => any,
+    binaryType?: 'arraybuffer' | 'nodebuffer' | 'fragments',
   ): WebSocket {
     const { WebSocketCtor, protocol, url, socketEvents } = this
 

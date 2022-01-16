@@ -169,7 +169,7 @@ print-%:
 .PHONY: assert-clean
 assert-clean:
 	@if [ -n "$(shell git status --porcelain)" ]; then \
-		git status --porcelain; echo "Git directory not clean, exiting"; exit 3; \
+		git status --porcelain; echo "Git directory not clean, exiting"; git diff; exit 3; \
 	else echo "Git directory is clean";  fi
 
 # delete almost all generated artifacts
