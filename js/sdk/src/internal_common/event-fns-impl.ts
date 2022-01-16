@@ -618,10 +618,12 @@ export const EventFnsFromEventStoreV2 = (
     }
   }
 
-  const queryAql = async (query: AqlQuery): Promise<AqlResponse[]> => {
+  const queryAql = async (query: AqlQuery, lowerBound?: OffsetMap): Promise<AqlResponse[]> => {
     const [aql, ord] = getQueryAndOrd(query)
 
-    return lastValueFrom(eventStore.queryUnchecked(aql, ord).pipe(map(wrapAql), toArray()))
+    return lastValueFrom(
+      eventStore.queryUnchecked(aql, ord, lowerBound).pipe(map(wrapAql), toArray()),
+    )
   }
   const subscribeAql = (
     query: AqlQuery,

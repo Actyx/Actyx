@@ -4,6 +4,7 @@
     "url": "https://community.actyx.com/"
   },
   "dependencies": {
+    "cross-fetch": "^3.1.4",
     "debug": "4.3.3",
     "fp-ts": "2.11.5",
     "io-ts": "2.2.16",
@@ -88,5 +89,5 @@
     "build:docs": "rm -rf ../../web/developer.actyx.com/static/@actyx/pond/ && typedoc --mode library --options typedoc.json src/index.ts"
   },
   "types": "./lib/index.d.ts",
-  "version": "0.4.0"
+  "version": "0.4.0-rc7"
 }

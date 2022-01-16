@@ -6,7 +6,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 
-import fetch from 'node-fetch'
+import fetch from 'cross-fetch'
 import { OffsetsResponse } from '../internal_common'
 import { decorateEConnRefused } from '../internal_common/errors'
 import { log } from '../internal_common/log'

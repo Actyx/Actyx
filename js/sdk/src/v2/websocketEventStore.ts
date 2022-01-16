@@ -69,10 +69,10 @@ export class WebsocketEventStore implements EventStore {
         .pipe(map(validateOrThrow(OffsetsResponse)), first()),
     )
 
-  queryUnchecked = (aqlQuery: string, sortOrder: EventsSortOrder) =>
+  queryUnchecked = (aqlQuery: string, sortOrder: EventsSortOrder, lowerBound?: OffsetMap) =>
     this.multiplexer
       .request(RequestTypes.Query, {
-        lowerBound: {},
+        lowerBound: lowerBound || {},
         query: aqlQuery,
         order: sortOrder,
       })
