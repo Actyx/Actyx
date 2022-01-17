@@ -17,7 +17,7 @@ import { pipe } from 'fp-ts/lib/function'
 import { range, takeWhile } from 'ramda'
 import { timer } from '../../node_modules/rxjs'
 import { OffsetsResponse } from '../internal_common/types'
-import { WebSocketWrapper } from '../internal_common/webSocketWrapper'
+import { WebSocketConstructor, WebSocketWrapper } from '../internal_common/webSocketWrapper'
 import { validateOrThrow } from '../util'
 import {
   MultiplexedWebsocket,
@@ -29,15 +29,10 @@ import {
 import { RequestTypes } from './websocketEventStore'
 import { lastValueFrom } from '../../node_modules/rxjs'
 import { map, tap, first, toArray } from '../../node_modules/rxjs/operators'
+import * as WebSocket from 'isomorphic-ws'
 
-let __ws: any
-declare const global: any
-beforeEach(() => {
-  __ws = global.WebSocket
-  global.WebSocket = MockWebSocket
-})
+beforeEach(() => {})
 afterEach(() => {
-  global.WebSocket = __ws
   MockWebSocket.clearSockets()
 })
 // poor man's generator
@@ -72,7 +67,9 @@ const msgGen: () => ((requestId: number) => ResponseMessage[])[] = () => {
 
 describe('multiplexedWebsocket', () => {
   it('should report connection errors', async () => {
-    const s = new MultiplexedWebsocket(WebSocketWrapper('ws://socket'))
+    const s = new MultiplexedWebsocket(
+      WebSocketWrapper('ws://socket', undefined, undefined, undefined, MockWebSocketConstructor),
+    )
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const socket = MockWebSocket.lastSocket!
@@ -87,7 +84,9 @@ describe('multiplexedWebsocket', () => {
 
   it('should just work', async () => {
     const testArr = msgGen()
-    const multiplexer = new MultiplexedWebsocket(WebSocketWrapper('ws://socket'))
+    const multiplexer = new MultiplexedWebsocket(
+      WebSocketWrapper('ws://socket', undefined, undefined, undefined, MockWebSocketConstructor),
+    )
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const socket = MockWebSocket.lastSocket!
     socket.open()
@@ -167,6 +166,9 @@ class MessageEvent {
   }
 }
 
+export const MockWebSocketConstructor: WebSocketConstructor = {
+  create: (url, protocol) => new MockWebSocket(url, protocol) as unknown as WebSocket,
+}
 // courtesy of https://github.com/ReactiveX/rxjs/blob/master/spec/observables/dom/webSocket-spec.ts
 
 type MockWebSocketMsgHandlerResult = { name: string; res: MessageEvent[] }

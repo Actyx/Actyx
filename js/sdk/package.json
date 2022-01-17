@@ -10,7 +10,6 @@
     "fp-ts": "2.11.5",
     "io-ts": "2.2.16",
     "isomorphic-ws": "^4.0.1",
-    "node-fetch": "^2.6.6",
     "ramda": "0.27.1",
     "rxjs": "7.4.0",
     "ws": "8.3.0"
@@ -24,7 +23,6 @@
     "@types/debug": "4.1.7",
     "@types/jest": "27.0.3",
     "@types/node": "16.11.13",
-    "@types/node-fetch": "^2.5.12",
     "@types/ramda": "0.27.60",
     "@types/ws": "8.2.2",
     "@typescript-eslint/eslint-plugin": "5.7.0",

@@ -12,14 +12,6 @@ import { decorateEConnRefused } from './errors'
 import log from './log'
 import { MessageEvent } from 'isomorphic-ws'
 import * as WebSocket from 'isomorphic-ws'
-import { isNode, root } from '../util'
-
-declare const global: any
-global.WebSocket = WebSocket
-
-if (isNode) {
-  root.WebSocket = WebSocket
-}
 
 export interface WebSocketWrapper<TRequest, TResponse> {
   responses(): Subject<TResponse>
@@ -29,14 +21,24 @@ export interface WebSocketWrapper<TRequest, TResponse> {
   close(): void
 }
 
+export type WebSocketConstructor = {
+  create: (url: string, protocol?: string | string[] | undefined) => WebSocket
+}
+
+const DefaultWebsocketConstructor: WebSocketConstructor = {
+  create: (url, protocol) => new WebSocket(url, protocol),
+}
+
 export const WebSocketWrapper = <TRequest, TResponse>(
   url: string,
   protocol?: string | string[],
   onConnectionLost?: () => void,
   /** Automatic reconnect timer. THIS ONLY WORKS ON V1, because on V2 the token expires. For V2, use `v2/reconnectingWs`. */
   reconnectTimer?: number,
+  wsConstructor?: WebSocketConstructor,
 ): WebSocketWrapperImpl<TRequest, TResponse> => {
   return new WebSocketWrapperImpl<TRequest, TResponse>(
+    wsConstructor || DefaultWebsocketConstructor,
     url,
     protocol,
     onConnectionLost,
@@ -51,7 +53,6 @@ export const WebSocketWrapper = <TRequest, TResponse>(
  */
 class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TRequest, TResponse> {
   socket?: WebSocket
-  WebSocketCtor: { new (url: string, protocol?: string | string[]): WebSocket }
   binaryType?: 'blob' | 'arraybuffer'
   socketEvents = new EventEmitter()
 
@@ -95,19 +96,15 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
   }
 
   constructor(
+    private readonly wsConstrucor: WebSocketConstructor,
     private readonly url: string,
     private readonly protocol: string | string[] | undefined,
     private readonly onConnectionLost: (() => void) | undefined,
     // If unset, disable automatic reconnect
     private readonly reconnectTimer: number | undefined,
   ) {
-    if (!global.WebSocket) {
-      log.ws.error('WebSocket not supported on this plattform')
-      throw new Error('no WebSocket constructor can be found')
-    }
     log.ws.info('establishing Pond API WS', url)
 
-    this.WebSocketCtor = global.WebSocket
     this.url = url
 
     this.connect()
@@ -126,11 +123,11 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     onMessage: (ev: MessageEvent) => any,
     binaryType?: 'arraybuffer' | 'nodebuffer' | 'fragments',
   ): WebSocket {
-    const { WebSocketCtor, protocol, url, socketEvents } = this
+    const { protocol, url, socketEvents } = this
 
     const socket = (this.socket = protocol
-      ? new WebSocketCtor(url, protocol)
-      : new WebSocketCtor(url))
+      ? this.wsConstrucor.create(url, protocol)
+      : this.wsConstrucor.create(url))
     if (binaryType) {
       socket.binaryType = binaryType
     }
