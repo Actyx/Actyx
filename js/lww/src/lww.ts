@@ -11,6 +11,7 @@ import { LWW_TAG, LWW_CREATED_TAG, LWW_UPDATED_TAG, LWW_VERSION } from './consts
 import { mkUniqueId } from './uuid'
 import { toError } from './util'
 import debug from 'debug'
+import * as R from 'ramda'
 
 const dbg = debug(`actyx:lww:debug`)
 const trc = debug(`actyx:lww:trace`)
@@ -88,8 +89,8 @@ export type Lww<Data> = (sdk: SDK) => {
   read: (id: UniqueId) => Promise<State<Data> | undefined>
   readAll: () => Promise<State<Data>[]>
   readIds: () => Promise<UniqueId[]>
-  find: (props: Partial<PickAqlTypes<Data>>) => Promise<State<Data>[]>
-  findOne: (props: Partial<PickAqlTypes<Data>>) => Promise<State<Data> | undefined>
+  find: (props: Partial<Data>) => Promise<State<Data>[]>
+  findOne: (props: Partial<Data>) => Promise<State<Data> | undefined>
   subscribeIds: (
     onId: (id: UniqueId) => void,
     onError: (error: Error) => void,
@@ -201,10 +202,23 @@ const _readIds = async (
 const readIds = async (sdk: SDK, entityName: EntityName): Promise<UniqueId[]> => {
   dbg(`readIds(entityName: '${entityName}')`)
   const res = await _readIds(sdk, entityName)
-  if (!res) {
-    return res
-  }
   return res.ids
+}
+
+// Read latest and return state and offset map for all
+const _readAll = async <Data>(
+  sdk: SDK,
+  entityName: EntityName,
+): Promise<{ states: State<Data>[]; offsets: OffsetMap }> => {
+  dbg(`readAll(entityName: '${entityName}')`)
+  const all = await _readIds(sdk, entityName)
+  dbg(`got ${all.ids.length} ids`)
+  return {
+    offsets: all.offsets,
+    states: (await Promise.all(all.ids.map((id) => readById<Data>(sdk, entityName, id)))).filter(
+      (state: State<Data> | undefined): state is State<Data> => state !== undefined,
+    ),
+  }
 }
 
 // Read latest and return state and offset map for all
@@ -459,60 +473,73 @@ const setArchivedState = async (
 const find = async <Data>(
   sdk: SDK,
   entityName: EntityName,
-  props: Partial<PickAqlTypes<Data>>,
+  props: Partial<Data>,
 ): Promise<State<Data>[]> => _find(sdk, entityName, props).then((r) => r.states)
 const findOne = async <Data>(
   sdk: SDK,
   entityName: EntityName,
-  props: Partial<PickAqlTypes<Data>>,
+  props: Partial<Data>,
 ): Promise<State<Data> | undefined> =>
   _find(sdk, entityName, props).then((r) => (r.states.length > 0 ? r.states[0] : undefined))
 
-const _mqAqlFilter = (name: string, value: AqlFilterTypes): string => {
-  switch (typeof value) {
-    case 'string': {
-      return `_.data['${name}']='${value}'`
-    }
-    case 'number': {
-      return `_.data['${name}']=${value}`
-    }
-    case 'boolean': {
-      return `${value ? '' : '!'}_.data['${name}']`
-    }
-    default: {
-      throw new Error(
-        `unexpected got value type '${typeof value}' which is not compatible with AQL queries`,
-      )
-    }
-  }
-}
+//const _mqAqlFilter = (name: string, value: AqlFilterTypes): string => {
+//  switch (typeof value) {
+//    case 'string': {
+//      return `_.data['${name}']='${value}'`
+//    }
+//    case 'number': {
+//      return `_.data['${name}']=${value}`
+//    }
+//    case 'boolean': {
+//      return `${value ? '' : '!'}_.data['${name}']`
+//    }
+//    default: {
+//      throw new Error(
+//        `unexpected got value type '${typeof value}' which is not compatible with AQL queries`,
+//      )
+//    }
+//  }
+//}
 
 const _find = async <Data>(
   sdk: SDK,
   entityName: EntityName,
-  props: Partial<PickAqlTypes<Data>>,
+  props: Partial<Data>,
 ): Promise<{ states: State<Data>[]; offsets: OffsetMap }> => {
-  let query = `FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & '${entityName}'`
-  if (Object.entries(props).length > 0) {
-    query += ' FILTER '
-    query += Object.entries(props)
-      // Can't get the types to work here atm
-      .map(([k, v]) => _mqAqlFilter(k, v as AqlFilterTypes))
-      .join(' & ')
-  }
-  // Reduce latest
-  const latest: Map<InstanceId, State<Data>> = new Map()
-  const results = await sdk.queryAql(query)
-  results
-    .filter((r: AqlResponse): r is AqlEventMessage => r.type === 'event')
-    .map((e: any) => e.payload as State<Data>)
-    .forEach((s) => latest.set(s.meta.id, s))
-  const offsets = results.find((r: AqlResponse): r is AqlOffsetsMsg => r.type === 'offsets')
-  if (!offsets) {
-    throw new Error(`internal error in _find; queryAql did not return an 'offsets' event`)
-  }
+  const all = await _readAll<Data>(sdk, entityName)
+  const matches = all.states.filter((s) => {
+    const sProps = R.pick(R.keys(props), s.data)
+    // @ts-ignore
+    return R.equals(sProps, props) // TODO: fix types
+  })
+  return { states: matches, offsets: all.offsets }
 
-  return { states: [...latest.values()], offsets: offsets.offsets }
+  // You can't do this because it will return outdated instances that match the filters. E.g. you have
+  // an instance with a name. The name is currently 'a'. You change it to 'b'. This way will now find
+  // the outdated instance.
+  //let query = `FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & '${entityName}'`
+  //if (Object.entries(props).length > 0) {
+  //  query += ' FILTER '
+  //  query += Object.entries(props)
+  //    // Can't get the types to work here atm
+  //    .map(([k, v]) => _mqAqlFilter(k, v as AqlFilterTypes))
+  //    .join(' & ')
+  //}
+  //dbg(`finding with query "${query}"`)
+  //// Reduce latest
+  //const latest: Map<InstanceId, State<Data>> = new Map()
+  //const results = await sdk.queryAql(query)
+  //const events = results.filter((r: AqlResponse): r is AqlEventMessage => r.type === 'event')
+  //trc(
+  //  `find with query "${query}" got events with payloads`,
+  //  events.map((e) => e.payload),
+  //)
+  //events.map((e: any) => e.payload as State<Data>).forEach((s) => latest.set(s.meta.id, s))
+  //const offsets = results.find((r: AqlResponse): r is AqlOffsetsMsg => r.type === 'offsets')
+  //if (!offsets) {
+  //  throw new Error(`internal error in _find; queryAql did not return an 'offsets' event`)
+  //}
+  //return { states: [...latest.values()], offsets: offsets.offsets }
 }
 
 // See commend above
