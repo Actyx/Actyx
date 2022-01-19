@@ -190,13 +190,15 @@ impl ApiBehaviour {
             admin_sockets: Variable::default(),
             banyan_stores: BTreeMap::default(),
         };
+        let mut request_response_config = RequestResponseConfig::default();
+        request_response_config.set_request_timeout(Duration::from_secs(120));
         Self {
             ping: Ping::new(PingConfig::new().with_keep_alive(true)),
             admin: StreamingResponse::new(StreamingResponseConfig::default()),
             banyan: RequestResponse::new(
                 BanyanProtocol::default(),
                 [(BanyanProtocolName, ProtocolSupport::Inbound)],
-                RequestResponseConfig::default(),
+                request_response_config,
             ),
             events: StreamingResponse::new(StreamingResponseConfig::default()),
             identify: Identify::new(IdentifyConfig::new("Actyx".to_owned(), local_public_key)),
@@ -596,90 +598,104 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<BanyanRequest, BanyanResp
             RequestResponseEvent::Message { peer, message } => {
                 tracing::debug!(peer = display(peer), "received {:?}", message);
                 match message {
-                    RequestResponseMessage::Request { request, channel, .. } => match request {
-                        BanyanRequest::MakeFreshTopic(topic) => {
-                            let result = (|| -> anyhow::Result<()> {
-                                remove_old_dbs(self.state.store_dir.as_path(), topic.as_str())
-                                    .context("removing old DBs")?;
-                                let storage = StorageServiceStore::new(
-                                    StorageService::open(
-                                        StorageConfig::new(
-                                            Some(self.state.store_dir.join(format!("{}.sqlite", topic))),
-                                            None,
-                                            10_000,
-                                            Duration::from_secs(7200),
-                                        ),
-                                        swarm::IpfsEmbedExecutor::new(),
-                                    )
-                                    .context("creating new store DB")?,
-                                );
-                                let forest = swarm::BanyanForest::<swarm::TT, _>::new(storage, Default::default());
-                                tracing::info!("prepared new store DB for upload of topic `{}`", topic);
-                                self.state.banyan_stores.insert(topic, BanyanWriter::new(forest));
-                                Ok(())
-                            })();
-                            if let Err(ref e) = result {
-                                tracing::warn!("error in MakeFreshTopic: {:#}", e);
-                            }
-                            self.banyan.send_response(channel, result.into()).ok();
-                        }
-                        BanyanRequest::AppendEvents(topic, data) => {
-                            let result = (|| -> anyhow::Result<()> {
-                                let writer = self
-                                    .state
-                                    .banyan_stores
-                                    .get_mut(&topic)
-                                    .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
-                                writer.buf.write_all(data.as_slice()).context("feeding decompressor")?;
-                                store_events(writer).context("storing events")?;
-                                Ok(())
-                            })();
-                            if let Err(ref e) = result {
-                                tracing::warn!("error in AppendEvents: {:#}", e);
-                            }
-                            self.banyan.send_response(channel, result.into()).ok();
-                        }
-                        BanyanRequest::Finalise(topic) => {
-                            let result = (|| -> anyhow::Result<()> {
-                                let mut writer = self
-                                    .state
-                                    .banyan_stores
-                                    .remove(&topic)
-                                    .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
-
-                                writer.buf.flush().context("flushing decompressor")?;
-                                store_events(&mut writer).context("storing final events")?;
-
-                                if !writer.buf.get_ref().is_empty() {
-                                    tracing::warn!(
-                                        bytes = writer.buf.get_ref().len(),
-                                        "trailing garbage in upload for topic `{}`!",
-                                        topic
-                                    );
-                                }
-
-                                finalise_streams(self.state.node_id, writer).context("finalising streams")?;
-
-                                Ok(())
-                            })();
-                            if let Err(ref e) = result {
-                                tracing::warn!("error in Finalise: {:#}", e);
-                                self.banyan.send_response(channel, result.into()).ok();
-                                return;
-                            }
-                            tracing::info!("import completed for topic `{}`", topic);
-
-                            let node_tx = self.state.node_tx.clone();
-                            self.state
-                                .pending_finalise
-                                .push(Box::pin(switch_to_dump(node_tx, channel, topic)));
-                        }
-                        BanyanRequest::Future => {
+                    RequestResponseMessage::Request { request, channel, .. } => {
+                        if !self.is_authorized(&peer) {
+                            tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
                             self.banyan
-                                .send_response(channel, BanyanResponse::Error("message from the future".into()))
+                                .send_response(
+                                    channel,
+                                    Err(ActyxOSCode::ERR_UNAUTHORIZED
+                                        .with_message("Provided key is not authorized to access the API."))
+                                    .into(),
+                                )
                                 .ok();
+                            return;
                         }
-                    },
+                        match request {
+                            BanyanRequest::MakeFreshTopic(topic) => {
+                                let result = (|| -> anyhow::Result<()> {
+                                    remove_old_dbs(self.state.store_dir.as_path(), topic.as_str())
+                                        .context("removing old DBs")?;
+                                    let storage = StorageServiceStore::new(
+                                        StorageService::open(
+                                            StorageConfig::new(
+                                                Some(self.state.store_dir.join(format!("{}.sqlite", topic))),
+                                                None,
+                                                10_000,
+                                                Duration::from_secs(7200),
+                                            ),
+                                            swarm::IpfsEmbedExecutor::new(),
+                                        )
+                                        .context("creating new store DB")?,
+                                    );
+                                    let forest = swarm::BanyanForest::<swarm::TT, _>::new(storage, Default::default());
+                                    tracing::info!("prepared new store DB for upload of topic `{}`", topic);
+                                    self.state.banyan_stores.insert(topic, BanyanWriter::new(forest));
+                                    Ok(())
+                                })();
+                                if let Err(ref e) = result {
+                                    tracing::warn!("error in MakeFreshTopic: {:#}", e);
+                                }
+                                self.banyan.send_response(channel, result.into()).ok();
+                            }
+                            BanyanRequest::AppendEvents(topic, data) => {
+                                let result = (|| -> anyhow::Result<()> {
+                                    let writer = self
+                                        .state
+                                        .banyan_stores
+                                        .get_mut(&topic)
+                                        .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
+                                    writer.buf.write_all(data.as_slice()).context("feeding decompressor")?;
+                                    store_events(writer).context("storing events")?;
+                                    Ok(())
+                                })();
+                                if let Err(ref e) = result {
+                                    tracing::warn!("error in AppendEvents: {:#}", e);
+                                }
+                                self.banyan.send_response(channel, result.into()).ok();
+                            }
+                            BanyanRequest::Finalise(topic) => {
+                                let result = (|| -> anyhow::Result<()> {
+                                    let mut writer = self
+                                        .state
+                                        .banyan_stores
+                                        .remove(&topic)
+                                        .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
+
+                                    writer.buf.flush().context("flushing decompressor")?;
+                                    store_events(&mut writer).context("storing final events")?;
+
+                                    if !writer.buf.get_ref().is_empty() {
+                                        tracing::warn!(
+                                            bytes = writer.buf.get_ref().len(),
+                                            "trailing garbage in upload for topic `{}`!",
+                                            topic
+                                        );
+                                    }
+
+                                    finalise_streams(self.state.node_id, writer).context("finalising streams")?;
+
+                                    Ok(())
+                                })();
+                                if let Err(ref e) = result {
+                                    tracing::warn!("error in Finalise: {:#}", e);
+                                    self.banyan.send_response(channel, result.into()).ok();
+                                    return;
+                                }
+                                tracing::info!("import completed for topic `{}`", topic);
+
+                                let node_tx = self.state.node_tx.clone();
+                                self.state
+                                    .pending_finalise
+                                    .push(Box::pin(switch_to_dump(node_tx, channel, topic)));
+                            }
+                            BanyanRequest::Future => {
+                                self.banyan
+                                    .send_response(channel, BanyanResponse::Error("message from the future".into()))
+                                    .ok();
+                            }
+                        }
+                    }
                     RequestResponseMessage::Response { .. } => {}
                 }
             }
@@ -829,7 +845,9 @@ async fn switch_to_dump(
 
 fn store_events(writer: &mut BanyanWriter) -> anyhow::Result<()> {
     let mut bytes = writer.buf.get_ref().as_slice();
+    tracing::debug!("storing event from buffer of {} bytes", bytes.len());
     while let Ok((cbor, rest)) = Cbor::checked_prefix(bytes) {
+        tracing::trace!("found data block of {} bytes", cbor.as_slice().len());
         if let Some(node_id) = writer.node_id {
             let (orig_node, app_id, timestamp, tags, payload) =
                 decode_dump_frame(cbor).ok_or_else(|| anyhow::anyhow!("malformed event: {}", cbor))?;
@@ -862,6 +880,7 @@ fn store_events(writer: &mut BanyanWriter) -> anyhow::Result<()> {
     let consumed = unsafe {
         (bytes as *const _ as *const u8).offset_from(writer.buf.get_ref().as_slice() as *const _ as *const u8)
     };
+    tracing::debug!("consumed {} bytes", consumed);
     if consumed > 0 {
         let consumed = consumed as usize;
         let v = writer.buf.get_mut();
