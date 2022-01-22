@@ -25,7 +25,7 @@ pub struct LoggingSink {
 }
 
 impl LoggingSink {
-    pub fn new(level: LogSeverity) -> Self {
+    pub fn new(level: LogSeverity, disable_color: Option<bool>) -> Self {
         // If the `RUST_LOG` env var is set, the filter is statically set to
         // said value. This supports the common RUST_LOG syntax, see
         // https://docs.rs/tracing-subscriber/0.2.17/tracing_subscriber/fmt/index.html#filtering-events-with-environment-variables
@@ -38,6 +38,22 @@ impl LoggingSink {
         let builder = tracing_subscriber::FmtSubscriber::builder()
             .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
             .with_env_filter(filter)
+            .with_ansi(match disable_color {
+                Some(v) => v,
+                None => match std::env::var("ACTYX_COLOR").map(|s| s.to_lowercase()).as_deref() {
+                    Err(_) => true,
+                    Ok("auto") => true,
+                    Ok("on") => true,
+                    Ok("true") => true,
+                    Ok("1") => true,
+                    Ok("always") => true,
+                    Ok("off") => false,
+                    Ok("false") => false,
+                    Ok("0") => false,
+                    Ok("never") => false,
+                    Ok(_) => true,
+                },
+            })
             .with_writer(std::io::stderr)
             .with_filter_reloading();
         // Store a handle to the generated filter (layer), so it can be swapped later
