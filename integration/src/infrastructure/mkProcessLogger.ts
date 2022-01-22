@@ -16,7 +16,9 @@ export const mkProcessLogger = (
     const l = (lines[where] + netString(s)).split('\n')
     lines[where] = l.pop() || ''
     const matchedLines = []
-    for (const line of l) {
+    for (const lin of l) {
+      // eslint-disable-next-line no-control-regex
+      const line = lin.replace(/\u001b\[[^a-z]*[a-z]/g, '')
       logger(`node ${nodeName} Actyx ${where}: ${line}`)
       if (triggers.some((s) => line.indexOf(s) >= 0)) {
         matchedLines.push(line)

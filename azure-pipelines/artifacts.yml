@@ -70,6 +70,7 @@ stages:
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
+              ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
           - publish: $(System.DefaultWorkingDirectory)/dist/js
             artifact: js-packages
             condition: succeeded()
@@ -91,6 +92,7 @@ stages:
               BASH_ENV: "~/.bashrc"
               WIN_CODESIGN_CERTIFICATE: $(WIN_CODESIGN_CERTIFICATE)
               WIN_CODESIGN_PASSWORD: $(WIN_CODESIGN_PASSWORD)
+              ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: windows-binaries
             condition: succeeded()
@@ -109,6 +111,7 @@ stages:
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
+              ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: linux-binaries
             condition: succeeded()
@@ -127,6 +130,7 @@ stages:
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
+              ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: macos-binaries
             condition: succeeded()
@@ -149,6 +153,7 @@ stages:
               make assert-clean
             env:
               BASH_ENV: "~/.bashrc"
+              ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
       - job: makeAllAndroid
         displayName: all-android
         steps:
@@ -166,6 +171,7 @@ stages:
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
+              ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: android-binaries
             condition: succeeded()
@@ -284,6 +290,8 @@ stages:
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
+              AUTH_TEST_SIGNATURE: $(AUTH_TEST_SIGNATURE)
+              AUTH_TEST_LICENSE: $(AUTH_TEST_LICENSE)
             displayName: npm test
           - publish: $(System.DefaultWorkingDirectory)/integration/logs
             condition: failed()

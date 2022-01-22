@@ -210,7 +210,7 @@ fn matches(key: &AxKey, dnf: &[ScopedTagSet]) -> bool {
 /// Roundtrip test from events to banyan tree and back, for the given events
 fn events_banyan_tree_roundtrip_with(events: Vec<(AxKey, Payload)>) -> anyhow::Result<()> {
     // create a transaction so we can write banyan trees
-    let txn = test_txn();
+    let mut txn = test_txn();
     // create a tree
     let mut builder = StreamBuilder::debug();
     txn.extend(&mut builder, events.clone())?;
@@ -239,7 +239,7 @@ async fn events_banyan_tree_simple_queries_with(events: Vec<(AxKey, Payload)>) -
     // add the offsets
     let events_with_offset = || add_offsets(events.clone());
     // create a transaction so we can write banyan trees
-    let txn = test_txn();
+    let mut txn = test_txn();
     // create a tree
     // this is pretty expensive, since the tree is configured to have a complex structure.
     let mut builder = StreamBuilder::debug();

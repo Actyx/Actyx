@@ -433,7 +433,9 @@ mod test {
               "blockGcInterval": 300,
               "blockCacheSize": 1073741824,
               "blockCacheCount": 131072,
+              "metricsInterval": 1800,
               "pingTimeout": 5,
+              "bitswapTimeout": 15,
             },
             "admin": {
               "displayName": "My Node",

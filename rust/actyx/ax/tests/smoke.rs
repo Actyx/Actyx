@@ -94,6 +94,7 @@ fn with_api(
         .current_dir(workdir.path())
         .stderr(Stdio::piped())
         .args(&["--bind-api=0", "--bind-admin=0", "--bind-swarm=0"])
+        .env("RUST_LOG", "debug")
         .spawn()?;
     let stderr = process.stderr.take().unwrap();
 
@@ -185,6 +186,7 @@ fn offsets() -> anyhow::Result<()> {
                 identity.as_os_str(),
                 o(&format!("localhost:{}", api)),
             ])
+            .env("RUST_LOG", "debug")
             .output()?;
         eprintln!(
             "out:\n{}\nerr:\n{}\n---",

@@ -205,8 +205,8 @@ async fn assert_v2_from_v1_files(
     for (actual, expected) in stderr
         .into_iter()
         .filter(|x| {
-            if initial_db_version == 0 && x.contains("ipfs_sqlite_block_store") {
-                // ipfs_sqlite_block_store prints out some migration logs when coming from v0
+            if initial_db_version < 2 && x.contains("ipfs_sqlite_block_store") {
+                // ipfs_sqlite_block_store prints out some migration logs when coming from v0 / v1
                 false
             } else {
                 !x.contains("wal_checkpoint")

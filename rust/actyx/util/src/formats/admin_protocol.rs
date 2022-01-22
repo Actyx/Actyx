@@ -97,11 +97,52 @@ pub struct NodesInspectResponse {
 pub struct Connection {
     pub peer_id: String,
     pub addr: String,
+    #[serde(default)]
+    pub since: String,
+    #[serde(default)]
+    pub outbound: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Peer {
     pub peer_id: String,
+    #[serde(default)]
+    pub info: PeerInfo,
     pub addrs: Vec<String>,
+    #[serde(default)]
+    pub addr_source: Vec<String>,
+    #[serde(default)]
+    pub addr_since: Vec<String>,
+    #[serde(default)]
+    pub failures: Vec<Failure>,
+    pub ping_stats: Option<PingStats>,
+}
+
+#[derive(Default, Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PeerInfo {
+    pub protocol_version: Option<String>,
+    pub agent_version: Option<String>,
+    pub protocols: Vec<String>,
+    pub listeners: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Failure {
+    pub addr: String,
+    pub time: String,
+    pub display: String,
+    pub details: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PingStats {
+    pub current: u32,
+    pub decay_3: u32,
+    pub decay_10: u32,
+    pub failures: u32,
+    pub failure_rate: u32,
 }
