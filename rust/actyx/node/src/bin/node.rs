@@ -22,7 +22,7 @@ mod bin {
         #[structopt(flatten)]
         bind_options: BindToOpts,
 
-        #[structopt(long = "background")]
+        #[structopt(long)]
         /// This does not do anything; kept for backward-compatibility
         background: bool,
 
