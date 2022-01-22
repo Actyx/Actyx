@@ -1,25 +1,15 @@
+use crate::Codec;
 use derive_more::{Add, Deref, Display, Sub};
 use futures::{
     future::BoxFuture,
     io::{AsyncRead, AsyncWrite, AsyncWriteExt},
 };
 use libp2p::core::{upgrade, InboundUpgrade, OutboundUpgrade, UpgradeInfo};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::{
     io::{self, Error, ErrorKind, Result},
     marker::PhantomData,
 };
-
-/// A [`Codec`] defines the request and response types for a [`StreamingResponse`]
-/// protocol. Request and responses are encoded / decoded using `serde_cbor`, so
-/// `Serialize` and `Deserialize` impls have to be provided. Implement this trait
-/// to specialize the [`StreamingResponse`].
-pub trait Codec {
-    type Request: Send + Serialize + DeserializeOwned + std::fmt::Debug;
-    type Response: Send + Serialize + DeserializeOwned + std::fmt::Debug;
-
-    fn protocol_info() -> &'static [u8];
-}
 
 /// Local requestId
 #[derive(Debug, Default, Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd)]
