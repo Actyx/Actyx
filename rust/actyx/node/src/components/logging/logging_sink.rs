@@ -46,9 +46,11 @@ impl LoggingSink {
                     Ok("on") => true,
                     Ok("true") => true,
                     Ok("1") => true,
+                    Ok("always") => true,
                     Ok("off") => false,
                     Ok("false") => false,
                     Ok("0") => false,
+                    Ok("never") => true,
                     Ok(_) => true,
                 },
             })
