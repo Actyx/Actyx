@@ -78,9 +78,6 @@ jemallocator = "0.3.2"
 [target.'cfg(target_os = "android")'.dependencies]
 tracing-android = "0.2.0"
 
-[target.'cfg(target_os = "windows")'.dependencies]
-tracing_win_event_log = { path = "../tracing_win_event_log" }
-
 [lib]
 crate-type = ["lib"]
 name = "node"

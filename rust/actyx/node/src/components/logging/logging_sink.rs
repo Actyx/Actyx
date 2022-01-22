@@ -43,13 +43,6 @@ impl LoggingSink {
         // Store a handle to the generated filter (layer), so it can be swapped later
         let filter_handle = Box::new(builder.reload_handle()) as Box<dyn ReloadHandle + Send>;
         let subscriber = builder.finish();
-        #[cfg(windows)]
-        // Add additional layer on Windows, so the logs also end up in the
-        // Windows event log
-        let subscriber = {
-            use tracing_subscriber::layer::SubscriberExt;
-            subscriber.with(tracing_win_event_log::layer("Actyx").unwrap())
-        };
         #[cfg(target_os = "android")]
         // Add additional layer on Android, so the logs also end up in logcat
         let subscriber = {
