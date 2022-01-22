@@ -39,7 +39,7 @@ mod bin {
         } = Opts::from_args();
 
         if background {
-            eprintln!("Warning: the `--background` flag is no longer used and will just be ignored. You can ignore this message.")
+            eprintln!("Notice: the `--background` flag is no longer used and will just be ignored.")
         }
 
         if version {
