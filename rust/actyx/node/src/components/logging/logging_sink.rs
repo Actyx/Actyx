@@ -38,7 +38,19 @@ impl LoggingSink {
         let builder = tracing_subscriber::FmtSubscriber::builder()
             .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
             .with_env_filter(filter)
-            .with_ansi(std::env::var("NO_COLOR").is_err())
+            .with_ansi(
+                match std::env::var("ACTYX_COLOR").map(|s| s.to_lowercase()).as_deref() {
+                    Err(_) => true,
+                    Ok("auto") => true,
+                    Ok("on") => true,
+                    Ok("true") => true,
+                    Ok("1") => true,
+                    Ok("off") => false,
+                    Ok("false") => false,
+                    Ok("0") => false,
+                    Ok(_) => true,
+                },
+            )
             .with_writer(std::io::stderr)
             .with_filter_reloading();
         // Store a handle to the generated filter (layer), so it can be swapped later
