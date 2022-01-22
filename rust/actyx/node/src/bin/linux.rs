@@ -25,6 +25,9 @@ mod linux {
 
         #[structopt(long)]
         version: bool,
+
+        #[structopt(long)]
+        no_color: bool,
     }
 
     pub fn main() -> Result<()> {
@@ -32,6 +35,7 @@ mod linux {
             working_dir,
             bind_options,
             version,
+            no_color,
         } = Opts::from_args();
 
         if version {
@@ -48,8 +52,14 @@ mod linux {
                 .with_context(|| format!("creating working directory `{}`", working_dir.display()))?;
             // printed by hand since things can fail before logging is set up and we want the user to know this
             eprintln!("using data directory `{}`", working_dir.display());
+            eprintln!("no-color: {}", no_color);
 
-            let app_handle = ApplicationState::spawn(working_dir, Runtime::Linux, bind_to)?;
+            let app_handle = ApplicationState::spawn(
+                working_dir,
+                Runtime::Linux,
+                bind_to,
+                if no_color { Some(false) } else { None },
+            )?;
 
             shutdown_ceremony(app_handle);
         }
