@@ -52,7 +52,6 @@ mod linux {
                 .with_context(|| format!("creating working directory `{}`", working_dir.display()))?;
             // printed by hand since things can fail before logging is set up and we want the user to know this
             eprintln!("using data directory `{}`", working_dir.display());
-            eprintln!("no-color: {}", no_color);
 
             let app_handle = ApplicationState::spawn(
                 working_dir,
