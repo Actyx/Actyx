@@ -164,16 +164,23 @@ impl<T: Codec + Send + 'static> ProtocolsHandler for Handler<T> {
 
     fn inject_fully_negotiated_outbound(
         &mut self,
-        stream: <Self::OutboundProtocol as OutboundUpgradeSend>::Output,
+        mut stream: <Self::OutboundProtocol as OutboundUpgradeSend>::Output,
         id: Self::OutboundOpenInfo,
     ) {
-        self.stream_in.insert(id, stream);
         let (mut tx, rx) = mpsc::channel(128);
         let task = (self.spawner)(
             async move {
-                loop {
+                'outer: loop {
                     let mut size_bytes = [0u8; 4];
-                    stream.read_exact(&mut size_bytes).await?;
+                    let mut to_read = &mut size_bytes[..];
+                    while to_read.len() > 0 {
+                        let read = stream.read(to_read).await?;
+                        if read == 0 {
+                            // stream closed
+                            break 'outer;
+                        }
+                        to_read = to_read.split_at_mut(read).1;
+                    }
                     let size = u32::from_be_bytes(size_bytes) as usize;
                     let mut msg_bytes = vec![0u8; size];
                     stream.read_exact(msg_bytes.as_mut_slice()).await?;
@@ -185,6 +192,7 @@ impl<T: Codec + Send + 'static> ProtocolsHandler for Handler<T> {
             .map(|res| (0, res))
             .boxed(),
         );
+        self.streams.push(task);
         self.events
             .push_back(ProtocolsHandlerEvent::Custom(Event::RequestSent(id)));
     }
