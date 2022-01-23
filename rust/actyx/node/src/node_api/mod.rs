@@ -43,7 +43,7 @@ use libp2p::{
     },
     Multiaddr, NetworkBehaviour, PeerId,
 };
-use libp2p_streaming_response::{ChannelId, StreamingResponse, StreamingResponseConfig, StreamingResponseEvent};
+use libp2p_streaming_response::v2::{StreamingResponse, StreamingResponseConfig};
 use parking_lot::Mutex;
 use serde_json::json;
 use std::{

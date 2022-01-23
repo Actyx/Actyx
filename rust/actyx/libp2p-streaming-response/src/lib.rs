@@ -1,3 +1,6 @@
+#![allow(clippy::new_without_default)]
+#![allow(clippy::return_self_not_must_use)]
+
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 

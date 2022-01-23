@@ -2,4 +2,5 @@ mod behaviour;
 mod handler;
 mod protocol;
 
-use protocol::{ProtocolError, Requester, Responder};
+pub use behaviour::{StreamingResponse, StreamingResponseConfig};
+pub use protocol::ProtocolError;

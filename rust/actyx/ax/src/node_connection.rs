@@ -17,7 +17,7 @@ use libp2p::{
     swarm::{dial_opts::DialOpts, Swarm, SwarmBuilder, SwarmEvent},
     NetworkBehaviour,
 };
-use libp2p_streaming_response::{StreamingResponse, StreamingResponseEvent};
+use libp2p_streaming_response::v2::StreamingResponse;
 use std::{collections::BTreeSet, convert::TryFrom, fmt, num::NonZeroU16, str::FromStr, time::Duration};
 use tracing::*;
 use util::formats::{

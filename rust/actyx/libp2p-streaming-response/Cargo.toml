@@ -8,6 +8,7 @@ edition = "2018"
 derive_more = "0.99.17"
 futures = { version = "0.3.19", package = "futures" }
 libp2p = { version = "0.41.0", default-features = false }
+log = "0.4.14"
 serde = { version = "1.0.133", features = ["derive"] }
 serde_cbor = "0.11.2"
 thiserror = "1.0.30"
