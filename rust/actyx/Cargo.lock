@@ -4003,7 +4003,6 @@ dependencies = [
  "util",
  "uuid",
  "void",
- "warp",
  "zeroize",
  "zstd",
 ]

@@ -11,7 +11,8 @@
 #[macro_export]
 macro_rules! balanced_or {
     // Case 0: Single expression
-    ($x:expr $(,)?) => { crate::boxed_on_debug!($x) };
+    // RKU: switched to always boxing, halves --release compile time for node & swarm-cli
+    ($x:expr $(,)?) => { ::warp::Filter::boxed($x) };
     // Case 1: Multiple expressions, recurse with three lists: left (starts empty), right, and a
     // counter (for which the initial list of expressions is abused).
     ($($x:expr),+ $(,)?) => {

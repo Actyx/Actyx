@@ -16,7 +16,7 @@ use crate::{
 };
 
 fn with_node_id(node_id: NodeId) -> impl Filter<Extract = (NodeId,), Error = std::convert::Infallible> + Clone {
-    warp::any().map(move || node_id)
+    any().map(move || node_id)
 }
 
 pub fn with_store(
