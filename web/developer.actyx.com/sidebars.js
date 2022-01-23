@@ -119,6 +119,7 @@ module.exports = {
       items: [
         'how-to/operations/device-management',
         'how-to/operations/discovery-helper-node',
+        'how-to/operations/log-as-json',
         'how-to/operations/disable-colored-logs',
       ],
     },

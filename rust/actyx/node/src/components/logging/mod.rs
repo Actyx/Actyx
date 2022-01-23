@@ -41,8 +41,13 @@ impl Component<(), LogSeverity> for Logging {
     }
 }
 impl Logging {
-    pub fn new(rx: Receiver<ComponentRequest<()>>, level: LogSeverity, disable_color: Option<bool>) -> Self {
-        let logging_sink = Arc::new(Mutex::new(LoggingSink::new(level, disable_color)));
+    pub fn new(
+        rx: Receiver<ComponentRequest<()>>,
+        level: LogSeverity,
+        log_no_color: Option<bool>,
+        log_as_json: Option<bool>,
+    ) -> Self {
+        let logging_sink = Arc::new(Mutex::new(LoggingSink::new(level, log_no_color, log_as_json)));
         Self { rx, logging_sink }
     }
     pub fn set_log_level(&self, level: LogSeverity) -> anyhow::Result<()> {

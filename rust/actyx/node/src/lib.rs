@@ -79,7 +79,8 @@ fn spawn(
     working_dir: PathBuf,
     runtime: Runtime,
     bind_to: BindTo,
-    disable_color: Option<bool>,
+    log_no_color: Option<bool>,
+    log_as_json: Option<bool>,
 ) -> anyhow::Result<ApplicationState> {
     #[cfg(not(target_os = "android"))]
     let _lock = crate::host::lock_working_dir(&working_dir)?;
@@ -104,7 +105,7 @@ fn spawn(
 
     // Component: Logging
     // Set up logging so tracing is set up for migration
-    let logging = Logging::new(logs_rx, LogSeverity::default(), disable_color);
+    let logging = Logging::new(logs_rx, LogSeverity::default(), log_no_color, log_as_json);
     log::set_boxed_logger(Box::new(log_tracer::LogTracer::new([
         "yamux",
         "libp2p_gossipsub",
@@ -304,9 +305,10 @@ impl ApplicationState {
         base_dir: PathBuf,
         runtime: Runtime,
         bind_to: BindTo,
-        disable_color: Option<bool>,
+        log_no_color: Option<bool>,
+        log_as_json: Option<bool>,
     ) -> anyhow::Result<Self> {
-        spawn(base_dir, runtime, bind_to, disable_color).context("spawning core infrastructure")
+        spawn(base_dir, runtime, bind_to, log_no_color, log_as_json).context("spawning core infrastructure")
     }
 
     pub fn handle_settings_request(&self, message: SettingsRequest) {

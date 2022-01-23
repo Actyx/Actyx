@@ -26,6 +26,14 @@ struct Opts {
 
     #[structopt(long)]
     version: bool,
+
+    /// Disable colored logging output
+    #[structopt(long)]
+    log_no_color: bool,
+
+    /// Output logs as JSON objects (one per line)
+    #[structopt(long)]
+    log_json: bool,
 }
 
 pub fn main() -> Result<()> {
@@ -34,7 +42,12 @@ pub fn main() -> Result<()> {
         bind_options,
         version,
         background,
+        log_no_color,
+        log_json,
     } = Opts::from_args();
+
+    eprintln!("log_no_color: {}", log_no_color);
+    eprintln!("log_json: {}", log_json);
 
     if background {
         eprintln!("Notice: the `--background` flag is no longer used and will just be ignored.")
@@ -61,7 +74,13 @@ pub fn main() -> Result<()> {
         let runtime: Runtime = Runtime::Windows;
         #[cfg(target_os = "android")]
         let runtime: Runtime = Runtime::Android;
-        let app_handle = ApplicationState::spawn(working_dir, runtime, bind_to)?;
+        let app_handle = ApplicationState::spawn(
+            working_dir,
+            runtime,
+            bind_to,
+            if log_no_color { Some(false) } else { None },
+            if log_json { Some(true) } else { None },
+        )?;
 
         shutdown_ceremony(app_handle);
     }

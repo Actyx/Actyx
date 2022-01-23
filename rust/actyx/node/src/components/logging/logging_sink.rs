@@ -1,5 +1,7 @@
+use crate::util::env_var_is_truish;
 use tracing::Subscriber;
 use tracing_subscriber::{fmt::format::FmtSpan, layer::Layer, reload, reload::Handle, EnvFilter};
+
 use util::formats::{ActyxOSResult, LogSeverity};
 
 // Wrapper trait to contain the types
@@ -25,7 +27,7 @@ pub struct LoggingSink {
 }
 
 impl LoggingSink {
-    pub fn new(level: LogSeverity, disable_color: Option<bool>) -> Self {
+    pub fn new(level: LogSeverity, log_no_color: Option<bool>, log_as_json: Option<bool>) -> Self {
         // If the `RUST_LOG` env var is set, the filter is statically set to
         // said value. This supports the common RUST_LOG syntax, see
         // https://docs.rs/tracing-subscriber/0.2.17/tracing_subscriber/fmt/index.html#filtering-events-with-environment-variables
@@ -35,44 +37,70 @@ impl LoggingSink {
         } else {
             (EnvFilter::new(level.to_string()), false)
         };
-        let builder = tracing_subscriber::FmtSubscriber::builder()
-            .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
-            .with_env_filter(filter)
-            .with_ansi(match disable_color {
-                Some(v) => v,
-                None => match std::env::var("ACTYX_COLOR").map(|s| s.to_lowercase()).as_deref() {
-                    Err(_) => true,
-                    Ok("auto") => true,
-                    Ok("on") => true,
-                    Ok("true") => true,
-                    Ok("1") => true,
-                    Ok("always") => true,
-                    Ok("off") => false,
-                    Ok("false") => false,
-                    Ok("0") => false,
-                    Ok("never") => false,
-                    Ok(_) => true,
-                },
-            })
-            .with_writer(std::io::stderr)
-            .with_filter_reloading();
-        // Store a handle to the generated filter (layer), so it can be swapped later
-        let filter_handle = Box::new(builder.reload_handle()) as Box<dyn ReloadHandle + Send>;
-        let subscriber = builder.finish();
-        #[cfg(target_os = "android")]
-        // Add additional layer on Android, so the logs also end up in logcat
-        let subscriber = {
-            use tracing_subscriber::layer::SubscriberExt;
-            subscriber.with(tracing_android::layer("com.actyx").unwrap())
+        let log_json = match log_as_json {
+            Some(v) => v,
+            None => env_var_is_truish("ACTYX_LOG_JSON").unwrap_or(false),
         };
-        if tracing::subscriber::set_global_default(subscriber).is_err() {
-            eprintln!("`tracing::subscriber::set_global_default` has been called more than once!");
-            tracing::error!("`tracing::subscriber::set_global_default` has been called more than once!");
-        }
-        Self {
-            configured_level: level,
-            level_from_env,
-            filter_handle,
+        let log_color = match log_no_color {
+            Some(v) => v,
+            None => env_var_is_truish("ACTYX_LOG_COLOR").unwrap_or(true),
+        };
+
+        // This can be done more nicely using https://github.com/tokio-rs/tracing/pull/910, but I can't figure it our right now.
+        if log_json {
+            let builder = tracing_subscriber::FmtSubscriber::builder();
+            let builder = builder
+                .json()
+                .flatten_event(true)
+                .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
+                .with_env_filter(filter)
+                .with_ansi(log_color)
+                .with_writer(std::io::stderr)
+                .with_filter_reloading();
+            // Store a handle to the generated filter (layer), so it can be swapped later
+            let filter_handle = Box::new(builder.reload_handle()) as Box<dyn ReloadHandle + Send>;
+            let subscriber = builder.finish();
+            #[cfg(target_os = "android")]
+            // Add additional layer on Android, so the logs also end up in logcat
+            let subscriber = {
+                use tracing_subscriber::layer::SubscriberExt;
+                subscriber.with(tracing_android::layer("com.actyx").unwrap())
+            };
+            if tracing::subscriber::set_global_default(subscriber).is_err() {
+                eprintln!("`tracing::subscriber::set_global_default` has been called more than once!");
+                tracing::error!("`tracing::subscriber::set_global_default` has been called more than once!");
+            }
+            Self {
+                configured_level: level,
+                level_from_env,
+                filter_handle,
+            }
+        } else {
+            let builder = tracing_subscriber::FmtSubscriber::builder();
+            let builder = builder
+                .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
+                .with_env_filter(filter)
+                .with_ansi(log_color)
+                .with_writer(std::io::stderr)
+                .with_filter_reloading();
+            // Store a handle to the generated filter (layer), so it can be swapped later
+            let filter_handle = Box::new(builder.reload_handle()) as Box<dyn ReloadHandle + Send>;
+            let subscriber = builder.finish();
+            #[cfg(target_os = "android")]
+            // Add additional layer on Android, so the logs also end up in logcat
+            let subscriber = {
+                use tracing_subscriber::layer::SubscriberExt;
+                subscriber.with(tracing_android::layer("com.actyx").unwrap())
+            };
+            if tracing::subscriber::set_global_default(subscriber).is_err() {
+                eprintln!("`tracing::subscriber::set_global_default` has been called more than once!");
+                tracing::error!("`tracing::subscriber::set_global_default` has been called more than once!");
+            }
+            Self {
+                configured_level: level,
+                level_from_env,
+                filter_handle,
+            }
         }
     }
     pub fn set_level(&mut self, level: LogSeverity) -> ActyxOSResult<()> {

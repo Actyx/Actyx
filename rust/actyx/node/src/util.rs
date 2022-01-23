@@ -90,6 +90,22 @@ pub(crate) fn init_panic_hook(tx: Sender<ExternalEvent>) {
     }));
 }
 
+pub(crate) fn env_var_is_truish(var: &str) -> Option<bool> {
+    match std::env::var(var).map(|s| s.to_lowercase()).as_deref() {
+        Err(_) => None,
+        Ok("auto") => Some(true),
+        Ok("on") => Some(true),
+        Ok("true") => Some(true),
+        Ok("1") => Some(true),
+        Ok("always") => Some(true),
+        Ok("off") => Some(false),
+        Ok("false") => Some(false),
+        Ok("0") => Some(false),
+        Ok("never") => Some(false),
+        Ok(_) => None,
+    }
+}
+
 pub mod shutdown {
     use super::spawn_with_name;
     use crate::ApplicationState;
