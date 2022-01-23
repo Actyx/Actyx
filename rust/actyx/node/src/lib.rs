@@ -79,7 +79,7 @@ fn spawn(
     working_dir: PathBuf,
     runtime: Runtime,
     bind_to: BindTo,
-    log_no_color: Option<bool>,
+    log_no_color: bool,
     log_as_json: Option<bool>,
 ) -> anyhow::Result<ApplicationState> {
     #[cfg(not(target_os = "android"))]
@@ -305,7 +305,7 @@ impl ApplicationState {
         base_dir: PathBuf,
         runtime: Runtime,
         bind_to: BindTo,
-        log_no_color: Option<bool>,
+        log_no_color: bool,
         log_as_json: Option<bool>,
     ) -> anyhow::Result<Self> {
         spawn(base_dir, runtime, bind_to, log_no_color, log_as_json).context("spawning core infrastructure")

@@ -1,9 +1,35 @@
 use anyhow::Result;
 use anyhow::{anyhow, Context};
+use derive_more::{Display, Error};
 use node::{shutdown_ceremony, ApplicationState, BindTo, BindToOpts, Runtime};
+use std::str::FromStr;
 use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
 use util::version::NodeVersion;
+
+#[derive(Debug)]
+enum Color {
+    Off,
+    Auto,
+    On,
+}
+
+impl FromStr for Color {
+    type Err = NoColor;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "1" | "on" | "true" => Ok(Self::On),
+            "0" | "off" | "false" => Ok(Self::Off),
+            "auto" => Ok(Self::Auto),
+            _ => Err(NoColor),
+        }
+    }
+}
+
+#[derive(Debug, Display, Error)]
+#[display(fmt = "allowed values are 1, on, true, 0, off, false, auto (case insensitive)")]
+struct NoColor;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
@@ -27,12 +53,14 @@ struct Opts {
     #[structopt(long)]
     version: bool,
 
-    /// Disable colored logging output
-    #[structopt(long)]
-    log_no_color: bool,
+    /// Control whether to use ANSI color sequences in log output.
+    /// Valid values (case insensitive) are 1, true, on, 0, false, off, auto
+    /// (default is on, auto only uses colour when stderr is a terminal).
+    #[structopt(long, env = "ACTYX_COLOR")]
+    log_color: Option<Color>,
 
     /// Output logs as JSON objects (one per line)
-    #[structopt(long)]
+    #[structopt(long, env = "ACTYX_LOG_JSON")]
     log_json: bool,
 }
 
@@ -42,12 +70,19 @@ pub fn main() -> Result<()> {
         bind_options,
         version,
         background,
-        log_no_color,
+        log_color,
         log_json,
     } = Opts::from_args();
 
-    eprintln!("log_no_color: {}", log_no_color);
+    eprintln!("log_color: {:?}", log_color);
     eprintln!("log_json: {}", log_json);
+
+    let log_no_color = match log_color {
+        Some(Color::On) => false,
+        Some(Color::Off) => true,
+        Some(Color::Auto) => atty::isnt(atty::Stream::Stderr),
+        None => false,
+    };
 
     if background {
         eprintln!("Notice: the `--background` flag is no longer used and will just be ignored.")
@@ -78,7 +113,7 @@ pub fn main() -> Result<()> {
             working_dir,
             runtime,
             bind_to,
-            if log_no_color { Some(false) } else { None },
+            log_no_color,
             if log_json { Some(true) } else { None },
         )?;
 

@@ -3561,6 +3561,7 @@ dependencies = [
  "anyhow",
  "api",
  "assert_cmd",
+ "atty",
  "ax-futures-util",
  "backtrace",
  "base64",
