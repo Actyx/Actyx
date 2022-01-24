@@ -11,11 +11,11 @@ mod node_storage;
 pub mod settings;
 mod util;
 
+pub use crate::node::NodeError;
 pub use crate::util::{init_shutdown_ceremony, shutdown_ceremony, spawn_with_name};
 pub use formats::{node_settings, ShutdownReason};
 #[cfg(not(target_os = "android"))]
 pub use host::lock_working_dir;
-pub use node::NodeError;
 
 use ::util::formats::LogSeverity;
 
