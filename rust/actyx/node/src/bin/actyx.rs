@@ -59,7 +59,8 @@ struct Opts {
     #[structopt(long, env = "ACTYX_COLOR")]
     log_color: Option<Color>,
 
-    /// Output logs as JSON objects (one per line)
+    /// Output logs as JSON objects (one per line) if the value is 1, true, on or
+    /// if stderr is not a terminal and the value is auto (all case insensitive).
     #[structopt(long, env = "ACTYX_LOG_JSON")]
     log_json: Option<Color>,
 }

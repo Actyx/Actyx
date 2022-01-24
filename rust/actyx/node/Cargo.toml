@@ -4,10 +4,6 @@ edition = "2018"
 name = "node"
 version = "0.1.0"
 
-[[bin]]
-name = "actyx"
-path = "src/bin/node.rs"
-
 [features]
 migration-v1 = ["crypto/legacy"]
 
