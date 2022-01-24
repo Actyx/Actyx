@@ -26,7 +26,7 @@ fn main() -> anyhow::Result<()> {
             Ok(CargoBuild::new()
                 .manifest_path(concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.toml"))
                 .current_release()
-                .bin("actyx-linux")
+                .bin("actyx")
                 .run()?
                 .path()
                 .to_owned())
