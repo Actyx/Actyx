@@ -1,7 +1,7 @@
 use anyhow::Result;
 use anyhow::{anyhow, Context};
 use derive_more::{Display, Error};
-use node::{shutdown_ceremony, ApplicationState, BindTo, BindToOpts, Runtime};
+use node::{init_shutdown_ceremony, shutdown_ceremony, ApplicationState, BindTo, BindToOpts, Runtime};
 use std::str::FromStr;
 use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
@@ -61,7 +61,7 @@ struct Opts {
 
     /// Output logs as JSON objects (one per line)
     #[structopt(long, env = "ACTYX_LOG_JSON")]
-    log_json: bool,
+    log_json: Option<Color>,
 }
 
 pub fn main() -> Result<()> {
@@ -74,13 +74,17 @@ pub fn main() -> Result<()> {
         log_json,
     } = Opts::from_args();
 
-    eprintln!("log_color: {:?}", log_color);
-    eprintln!("log_json: {}", log_json);
-
+    let is_no_tty = atty::isnt(atty::Stream::Stderr);
     let log_no_color = match log_color {
         Some(Color::On) => false,
         Some(Color::Off) => true,
-        Some(Color::Auto) => atty::isnt(atty::Stream::Stderr),
+        Some(Color::Auto) => is_no_tty,
+        None => false,
+    };
+    let log_as_json = match log_json {
+        Some(Color::On) => true,
+        Some(Color::Off) => false,
+        Some(Color::Auto) => is_no_tty,
         None => false,
     };
 
@@ -103,19 +107,16 @@ pub fn main() -> Result<()> {
         // printed by hand since things can fail before logging is set up and we want the user to know this
         eprintln!("using data directory `{}`", working_dir.display());
 
+        // must be done before starting the application
+        init_shutdown_ceremony();
+
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         let runtime: Runtime = Runtime::Linux;
         #[cfg(target_os = "windows")]
         let runtime: Runtime = Runtime::Windows;
         #[cfg(target_os = "android")]
         let runtime: Runtime = Runtime::Android;
-        let app_handle = ApplicationState::spawn(
-            working_dir,
-            runtime,
-            bind_to,
-            log_no_color,
-            if log_json { Some(true) } else { None },
-        )?;
+        let app_handle = ApplicationState::spawn(working_dir, runtime, bind_to, log_no_color, log_as_json)?;
 
         shutdown_ceremony(app_handle);
     }

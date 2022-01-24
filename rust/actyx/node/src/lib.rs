@@ -11,13 +11,13 @@ mod node_storage;
 pub mod settings;
 mod util;
 
-pub use crate::node::NodeError;
-pub use crate::util::shutdown::shutdown_ceremony;
-pub use crate::util::spawn_with_name;
-use ::util::formats::LogSeverity;
+pub use crate::util::{init_shutdown_ceremony, shutdown_ceremony, spawn_with_name};
 pub use formats::{node_settings, ShutdownReason};
 #[cfg(not(target_os = "android"))]
 pub use host::lock_working_dir;
+pub use node::NodeError;
+
+use ::util::formats::LogSeverity;
 
 use crate::{
     components::{
@@ -80,7 +80,7 @@ fn spawn(
     runtime: Runtime,
     bind_to: BindTo,
     log_no_color: bool,
-    log_as_json: Option<bool>,
+    log_as_json: bool,
 ) -> anyhow::Result<ApplicationState> {
     #[cfg(not(target_os = "android"))]
     let _lock = crate::host::lock_working_dir(&working_dir)?;
@@ -306,7 +306,7 @@ impl ApplicationState {
         runtime: Runtime,
         bind_to: BindTo,
         log_no_color: bool,
-        log_as_json: Option<bool>,
+        log_as_json: bool,
     ) -> anyhow::Result<Self> {
         spawn(base_dir, runtime, bind_to, log_no_color, log_as_json).context("spawning core infrastructure")
     }
@@ -330,6 +330,6 @@ impl ApplicationState {
 
 impl Drop for ApplicationState {
     fn drop(&mut self) {
-        self.shutdown(ShutdownReason::TriggeredByHost)
+        self.shutdown(ShutdownReason::TriggeredByHost);
     }
 }

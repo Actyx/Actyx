@@ -10,6 +10,7 @@ use crate::{
     node_api::formats::NodesRequest,
     settings::{is_system_scope, system_scope, SettingsRequest},
     spawn_with_name,
+    util::trigger_shutdown,
 };
 use chrono::SecondsFormat;
 use crossbeam::{
@@ -375,8 +376,6 @@ pub(crate) enum ComponentChannel {
 pub struct NodeWrapper {
     /// Cloneable sender to interact with the `Node`
     pub tx: Sender<ExternalEvent>,
-    /// One shot receiver; message indicating an exit of `Node`
-    pub rx_process: Option<Receiver<NodeProcessResult<()>>>,
 }
 
 impl NodeWrapper {
@@ -386,18 +385,14 @@ impl NodeWrapper {
         runtime_storage: Host,
     ) -> anyhow::Result<Self> {
         let node = Node::new(rx, components, runtime_storage)?;
-        let (tx_process, rx_process) = bounded(1);
         let _ = spawn_with_name("NodeLifecycle", move || {
             let r = node.run();
             if let Err(e) = &r {
-                eprintln!("Node exited with error {}", e);
+                eprintln!("Node exited with error {:?}", e);
             }
-            tx_process.send(r).expect("Error sending result from NodeLifecycle");
+            trigger_shutdown();
         });
-        Ok(Self {
-            tx,
-            rx_process: Some(rx_process),
-        })
+        Ok(Self { tx })
     }
 }
 
@@ -599,17 +594,14 @@ mod test {
         let (node_tx, node_rx) = crossbeam::channel::bounded(512);
         let (component_tx, component_rx) = crossbeam::channel::bounded(512);
         let host = Host::new(std::env::current_dir()?)?;
-        let node = NodeWrapper::new(
+        let _node = NodeWrapper::new(
             (node_tx.clone(), node_rx),
             vec![("test".into(), ComponentChannel::Test(component_tx))],
             host,
         )?;
 
-        // should provide rx_process and not exit immediately
-        assert!(node.rx_process.as_ref().unwrap().try_recv().is_err());
-
         // should register with Component
-        let _component_state_tx = match component_rx.recv()? {
+        let component_state_tx = match component_rx.recv()? {
             ComponentRequest::RegisterSupervisor(snd) => snd,
             _ => panic!(),
         };
@@ -621,9 +613,26 @@ mod test {
         node_tx.send(ExternalEvent::ShutdownRequested(ShutdownReason::TriggeredByHost))?;
         // forward shutdown request to component
         assert!(matches!(component_rx.recv()?, ComponentRequest::Shutdown(_)));
-        // yield on `rx_process`
-        node.rx_process.unwrap().recv()??;
+        component_state_tx
+            .send_timeout(("test".into(), ComponentState::Stopped), Duration::from_secs(1))
+            .unwrap();
+
+        assert_node_shutdown(node_tx);
+
         Ok(())
+    }
+
+    #[track_caller]
+    fn assert_node_shutdown(node_tx: Sender<ExternalEvent>) {
+        let deadline = Instant::now() + Duration::from_secs(3);
+        loop {
+            if node_tx.try_send(ExternalEvent::RestartRequest("test".into())).is_err() {
+                break;
+            }
+            if Instant::now() > deadline {
+                panic!("node didn’t shut down");
+            }
+        }
     }
 
     #[test]
@@ -632,8 +641,8 @@ mod test {
         let (node_tx, node_rx) = crossbeam::channel::bounded(512);
         let (component_tx, component_rx) = crossbeam::channel::bounded(512);
         let host = Host::new(std::env::current_dir()?)?;
-        let node = NodeWrapper::new(
-            (node_tx, node_rx),
+        let _node = NodeWrapper::new(
+            (node_tx.clone(), node_rx),
             vec![("test".into(), ComponentChannel::Test(component_tx))],
             host,
         )?;
@@ -654,8 +663,8 @@ mod test {
 
         // send shutdown request to component
         assert!(matches!(component_rx.recv()?, ComponentRequest::Shutdown(_)));
-        // yield on `rx_process` and forward component's error
-        matches!(node.rx_process.unwrap().recv()?, Err(NodeError::ServicesStartup { .. }));
+        assert_node_shutdown(node_tx);
+
         Ok(())
     }
 
@@ -666,7 +675,7 @@ mod test {
         let (component_tx, component_rx) = crossbeam::channel::bounded(512);
         let host = Host::new(std::env::current_dir()?)?;
         let node = NodeWrapper::new(
-            (node_tx, node_rx),
+            (node_tx.clone(), node_rx),
             vec![("test".into(), ComponentChannel::Test(component_tx))],
             host,
         )?;
@@ -707,8 +716,8 @@ mod test {
             .send(ExternalEvent::ShutdownRequested(ShutdownReason::TriggeredByHost))?;
         // forward shutdown request to component
         assert!(matches!(component_rx.recv()?, ComponentRequest::Shutdown(_)));
-        // yield on `rx_process`
-        node.rx_process.unwrap().recv()??;
+        assert_node_shutdown(node_tx);
+
         Ok(())
     }
 }

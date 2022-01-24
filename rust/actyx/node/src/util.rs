@@ -1,9 +1,17 @@
-use crate::{formats::ExternalEvent, node::NodeError, node_storage::NodeStorage};
+use crate::{formats::ExternalEvent, node::NodeError, node_storage::NodeStorage, ApplicationState};
 use anyhow::{anyhow, Context};
 use crossbeam::channel::Sender;
 use crypto::{KeyStore, KeyStoreRef};
 use parking_lot::RwLock;
-use std::{io, sync::Arc};
+use signal_hook::{consts::TERM_SIGNALS, low_level};
+use std::{
+    io,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread::Thread,
+};
 
 pub(crate) fn make_keystore(storage: NodeStorage) -> anyhow::Result<KeyStoreRef> {
     let ks = storage
@@ -90,105 +98,41 @@ pub(crate) fn init_panic_hook(tx: Sender<ExternalEvent>) {
     }));
 }
 
-pub(crate) fn env_var_is_truish(var: &str) -> Option<bool> {
-    match std::env::var(var).map(|s| s.to_lowercase()).as_deref() {
-        Err(_) => None,
-        Ok("auto") => Some(true),
-        Ok("on") => Some(true),
-        Ok("true") => Some(true),
-        Ok("1") => Some(true),
-        Ok("always") => Some(true),
-        Ok("off") => Some(false),
-        Ok("false") => Some(false),
-        Ok("0") => Some(false),
-        Ok("never") => Some(false),
-        Ok(_) => None,
-    }
+lazy_static::lazy_static! {
+    static ref SHUTDOWN_FLAG: AtomicBool = AtomicBool::new(false);
+    static ref SHUTDOWN_THREAD: Thread = std::thread::current();
 }
 
-pub mod shutdown {
-    use super::spawn_with_name;
-    use crate::ApplicationState;
-    use crossbeam::channel::{bounded, select};
-    use signal_hook::consts::TERM_SIGNALS;
-    use signal_hook::flag;
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::Arc;
-    pub fn shutdown_ceremony(mut app_handle: ApplicationState) {
-        let (signal_tx, signal_rx) = bounded::<()>(8);
+pub fn init_shutdown_ceremony() {
+    SHUTDOWN_THREAD.name();
+}
 
-        spawn_with_name("SignalHandling", move || {
-            let term_requested = Arc::new(AtomicBool::new(false));
-            let immediate_term_requested = Arc::new(AtomicBool::new(false));
-            for sig in TERM_SIGNALS {
-                flag::register(*sig, Arc::clone(&term_requested))
-                    .expect("registered for termination signals (SIGTERM, SIGINT)");
-            }
-            let mut requested = false;
-            let mut immediate_requested = false;
-            loop {
-                if term_requested.load(Ordering::Relaxed) && !requested {
-                    requested = true;
-                    tracing::trace!("caught termination signal for first time");
-                    for sig in TERM_SIGNALS {
-                        flag::register(*sig, Arc::clone(&immediate_term_requested))
-                            .expect("registered for termination signals (SIGTERM, SIGINT)");
-                    }
-                    signal_tx.send(()).unwrap();
+pub fn trigger_shutdown() {
+    SHUTDOWN_FLAG.store(true, Ordering::Release);
+    SHUTDOWN_THREAD.unpark();
+}
+
+pub fn shutdown_ceremony(app_handle: ApplicationState) {
+    for sig in TERM_SIGNALS {
+        // if term_requested is already true, then this is the second signal, so exit
+        unsafe {
+            low_level::register(*sig, || {
+                if SHUTDOWN_FLAG.load(Ordering::Acquire) {
+                    low_level::exit(1);
                 }
-                if immediate_term_requested.load(Ordering::Relaxed) && !immediate_requested {
-                    immediate_requested = true;
-                    eprintln!("caught second termination signal; force exiting...");
-                    tracing::trace!("caught termination signal for second time");
-                    signal_tx.send(()).unwrap();
-                }
-                if requested && immediate_requested {
-                    return;
-                }
-            }
-        });
-        let mut sig_count = 0;
-        let mut handle = None;
-        let (tx, rx) = bounded(1);
-        let result_recv = app_handle.manager.rx_process.take().unwrap();
-        let mut app_container = Some((app_handle, tx));
-        loop {
-            select! {
-                recv(signal_rx) -> _ => {
-                    tracing::trace!("received termination signal; count={}", sig_count);
-                    match sig_count {
-                        0 => {
-                            tracing::debug!("termination signal received once; requesting gracefull node shutdown...");
-                            // Offload shutdown to another thread
-                            let (app_handle, tx) = app_container.take().unwrap();
-                            handle = Some(std::thread::spawn(move || {
-                                drop(app_handle);
-                                tx.send(()).unwrap();
-                            }));
-                        },
-                        _ => {
-                            tracing::warn!("termination signal received twice; forecfully shutting down node...");
-                            std::process::exit(1);
-                        }
-                    }
-                    sig_count += 1;
-                },
-                recv(rx) -> _ => {
-                    // Graceful shutdown finished
-                    handle.unwrap().join().unwrap();
-                    tracing::debug!("graceful shutdown has finished");
-                    return;
-                },
-                recv(result_recv) -> res => {
-                    // If the process is being terminated because of a signal, ignore
-                    if sig_count == 0 {
-                        if let Err(e) = res {
-                            eprintln!("Node exited: {}", e);
-                        }
-                        return;
-                    }
-                }
-            }
+            })
         }
+        .unwrap_or_else(|e| panic!("cannot register handler for signal {}: {}", sig, e));
+        unsafe { low_level::register(*sig, trigger_shutdown) }
+            .unwrap_or_else(|e| panic!("cannot register handler for signal {}: {}", sig, e));
     }
+
+    // now the function of this thread is solely to keep the app_handle from dropping
+    // until we actually want to trigger a graceful shutdown
+    while !SHUTDOWN_FLAG.load(Ordering::Relaxed) {
+        std::thread::park();
+        tracing::trace!("wake-up of guardian thread");
+    }
+    tracing::debug!("graceful shutdown triggered");
+    drop(app_handle);
 }
