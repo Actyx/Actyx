@@ -42,6 +42,7 @@ import { noop } from '../util'
 import { EventStore } from './eventStore'
 import { eventsMonotonic, EventsOrTimetravel as EventsOrTtInternal } from './subscribe_monotonic'
 import { Event, Events } from './types'
+import { bufferOp } from '../util/bufferOp'
 
 const ordByTimestamp = contramap(
   (e: ActyxEvent): [number, string] => [e.meta.timestampMicros, e.meta.eventId],
@@ -267,9 +268,7 @@ export const EventFnsFromEventStoreV2 = (
     const s = eventStore.subscribe(lb, query || allEvents)
 
     const buffered = s
-      // 2nd arg to bufferTime is not marked as optional, but it IS optional
-      /* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */
-      .bufferTime(bufTime, null!, bufSize)
+      .pipe(bufferOp(bufTime, bufSize))
       .filter(x => x.length > 0)
       .map(buf => buf.sort(EventKey.ord.compare))
 
