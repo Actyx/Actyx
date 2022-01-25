@@ -42,7 +42,7 @@ use std::{
     collections::BTreeSet,
     net::{IpAddr, Ipv4Addr},
 };
-use std::{convert::TryInto, path::PathBuf, str::FromStr, thread};
+use std::{convert::TryInto, path::PathBuf, thread};
 use structopt::StructOpt;
 use swarm::event_store_ref::{self, EventStoreRef};
 
@@ -276,11 +276,28 @@ enum PortOrHostPort<const DEFAULT: u16> {
     HostPort(SocketAddrHelper),
 }
 
-fn parse_port_maybe_host<const N: u16>(src: &str) -> anyhow::Result<PortOrHostPort<N>> {
-    src.parse::<u16>()
-        .map(PortOrHostPort::Port)
-        .or_else(|_| SocketAddrHelper::from_str(src).map(PortOrHostPort::HostPort))
-        .or_else(|_| Ok(PortOrHostPort::HostPort((src, N).to_socket_addrs()?.collect())))
+fn parse_port_maybe_host<const N: u16>(src: &str) -> Result<PortOrHostPort<N>, String> {
+    let port = match src.parse::<u16>() {
+        Ok(p) => return Ok(PortOrHostPort::Port(p)),
+        Err(e) => e,
+    };
+    let host_string = match SocketAddrHelper::from_host_string(src) {
+        Ok(p) => return Ok(PortOrHostPort::HostPort(p)),
+        Err(e) => e,
+    };
+    let multiaddr = match SocketAddrHelper::parse_multiaddr(src) {
+        Ok(m) => return Ok(PortOrHostPort::HostPort(m)),
+        Err(e) => e,
+    };
+    let sock_addr = match (src, N).to_socket_addrs() {
+        Ok(i) => return Ok(PortOrHostPort::HostPort(i.collect())),
+        Err(e) => e,
+    };
+    Err(format!(
+        "cannot interpret `{}`:\n  as port number: {:#}\n  as <host:port>: {:#}\
+        \n  as multiaddr:   {:#}\n  as IP or name:  {:#}",
+        src, port, host_string, multiaddr, sock_addr
+    ))
 }
 
 fn fold<const N: u16>(

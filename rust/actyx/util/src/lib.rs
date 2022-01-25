@@ -59,12 +59,12 @@ impl SocketAddrHelper {
 
     // Parses common multiaddrs and resolves dns4 to ip4 hosts.
     // Limitations: No nested protocols, only tcp.
-    fn parse_multiaddr(multiaddr_str: &str) -> anyhow::Result<Self> {
+    pub fn parse_multiaddr(multiaddr_str: &str) -> anyhow::Result<Self> {
         let multiaddr: Multiaddr = multiaddr_str.parse()?;
         SocketAddrHelper::try_from(multiaddr)
     }
 
-    fn from_host_string(host_string: &str) -> anyhow::Result<Self> {
+    pub fn from_host_string(host_string: &str) -> anyhow::Result<Self> {
         let inner = host_string.to_socket_addrs()?.collect();
         Ok(Self { inner })
     }
