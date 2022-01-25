@@ -33,18 +33,31 @@ struct NoColor;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
-        name = "actyx",
-        about = concat!("\n", include_str!("../../../../../NOTICE")),
-        rename_all = "kebab-case"
-    )]
+    name = "actyx",
+    about = concat!("\n", include_str!("../../../../../NOTICE")),
+    help_message = "Print help information (use --help for more details)",
+    after_help = "For one-off log verbosity override, you may start with the environment variable \
+        RUST_LOG set to “debug” or “node=debug,info” (the former logs all debug messages while \
+        the latter logs at debug level for the “node” code module and info level for everything \
+        else).
+        ",
+    rename_all = "kebab-case"
+)]
 struct Opts {
-    #[structopt(long, env = "ACTYX_PATH")]
-    /// Path where to store all the data of the Actyx node
-    /// defaults to creating <current working dir>/actyx-data
+    #[structopt(
+        long,
+        env = "ACTYX_PATH",
+        long_help = "Path where to store all the data of the Actyx node. \
+            Defaults to creating <current working dir>/actyx-data"
+    )]
+    /// Path where to store all the data of the Actyx node.
     working_dir: Option<PathBuf>,
 
     #[structopt(flatten)]
     bind_options: BindToOpts,
+
+    #[structopt(short, long, hidden = true)]
+    random: bool,
 
     #[structopt(long)]
     /// This does not do anything; kept for backward-compatibility
@@ -53,15 +66,25 @@ struct Opts {
     #[structopt(long)]
     version: bool,
 
+    #[structopt(
+        long,
+        env = "ACTYX_COLOR",
+        long_help = "Control whether to use ANSI color sequences in log output. \
+            Valid values (case insensitive) are 1, true, on, 0, false, off, auto \
+            (default is on, auto only uses colour when stderr is a terminal). \
+            Defaults to 1."
+    )]
     /// Control whether to use ANSI color sequences in log output.
-    /// Valid values (case insensitive) are 1, true, on, 0, false, off, auto
-    /// (default is on, auto only uses colour when stderr is a terminal).
-    #[structopt(long, env = "ACTYX_COLOR")]
     log_color: Option<Color>,
 
-    /// Output logs as JSON objects (one per line) if the value is 1, true, on or
-    /// if stderr is not a terminal and the value is auto (all case insensitive).
-    #[structopt(long, env = "ACTYX_LOG_JSON")]
+    #[structopt(
+        long,
+        env = "ACTYX_LOG_JSON",
+        long_help = "Output logs as JSON objects (one per line) if the value is \
+            1, true, on or if stderr is not a terminal and the value is auto \
+            (all case insensitive). Defaults to 0."
+    )]
+    /// Output logs as JSON objects (one per line)
     log_json: Option<Color>,
 }
 
@@ -69,6 +92,7 @@ pub fn main() -> Result<()> {
     let Opts {
         working_dir,
         bind_options,
+        random,
         version,
         background,
         log_color,
@@ -96,7 +120,11 @@ pub fn main() -> Result<()> {
     if version {
         println!("Actyx {}", NodeVersion::get());
     } else {
-        let bind_to: BindTo = bind_options.try_into()?;
+        let bind_to = if random {
+            BindTo::random()?
+        } else {
+            bind_options.try_into()?
+        };
         let working_dir = working_dir.ok_or_else(|| anyhow!("empty")).or_else(|_| -> Result<_> {
             Ok(std::env::current_dir()
                 .context("getting current working directory")?

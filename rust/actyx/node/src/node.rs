@@ -17,6 +17,7 @@ use crossbeam::{
     channel::{bounded, Receiver, Sender},
     select,
 };
+use ipfs_embed::Multiaddr;
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::*;
@@ -35,15 +36,15 @@ pub enum NodeError {
     ServicesStartup { component: String, err: Arc<anyhow::Error> },
     #[error("NODE_STOPPED_BY_NODE\nError: internal error. Please contact Actyx support. ({0:#})")]
     InternalError(Arc<anyhow::Error>),
-    #[error("ERR_PORT_COLLISION\nActyx shut down because it could not bind to port {port}. Please specify a different {component} port. Please refer to https://developer.actyx.com/docs/how-to/troubleshooting/installation-and-startup/#err_port_collision for more information.")]
-    PortCollision { component: String, port: u16 },
+    #[error("ERR_PORT_COLLISION\nActyx shut down because it could not bind to port {addr}. Please specify a different {component} port. Please refer to https://developer.actyx.com/docs/how-to/troubleshooting/installation-and-startup/#err_port_collision for more information.")]
+    PortCollision { component: String, addr: Multiaddr },
 }
 impl From<Arc<anyhow::Error>> for NodeError {
     fn from(err: Arc<anyhow::Error>) -> Self {
         if let Some(ctx) = err.downcast_ref::<NodeErrorContext>() {
             match ctx {
-                NodeErrorContext::BindFailed { port, component } => Self::PortCollision {
-                    port: *port,
+                NodeErrorContext::BindFailed { addr, component } => Self::PortCollision {
+                    addr: addr.clone(),
                     component: component.into(),
                 },
             }

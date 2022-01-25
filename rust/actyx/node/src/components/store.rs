@@ -9,14 +9,18 @@ use crossbeam::channel::{Receiver, Sender};
 use crypto::KeyStoreRef;
 use ipfs_embed::Direction;
 use libp2p::{multiaddr::Protocol, Multiaddr};
-use std::{convert::TryInto, path::PathBuf, time::Duration};
+use parking_lot::Mutex;
+use std::{convert::TryInto, path::PathBuf, sync::Arc, time::Duration};
 use swarm::{
     event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
     BanyanStore, Ipfs, SwarmConfig,
 };
 use tokio::sync::oneshot;
 use tracing::*;
-use util::formats::{Connection, Failure, NodeCycleCount, Peer, PeerInfo, PingStats};
+use util::{
+    formats::{Connection, Failure, NodeCycleCount, Peer, PeerInfo, PingStats},
+    SocketAddrHelper,
+};
 
 #[derive(Debug)]
 pub(crate) enum StoreRequest {
@@ -166,7 +170,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 .worker_threads(self.number_of_threads.unwrap_or(2))
                 .enable_all()
                 .build()?;
-            let bind_to = self.bind_to.clone();
+            let bind_api = self.bind_api.clone();
             let node_info = NodeInfo::new(
                 self.node_id,
                 self.keystore.clone(),
@@ -180,11 +184,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             let swarm_config = cfg.swarm_config;
             let store = rt.block_on(async move {
                 let store = BanyanStore::new(swarm_config).await?;
-
-                store.spawn_task(
-                    "api",
-                    api::run(node_info, store.clone(), event_store, bind_to.api.into_iter(), snd),
-                );
+                store.spawn_task("api", api::run(node_info, store.clone(), event_store, bind_api, snd));
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;
 
@@ -229,7 +229,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 .iter()
                 .map(|s| s.parse())
                 .collect::<Result<_, libp2p::multiaddr::Error>>()?,
-            listen_addresses: self.bind_to.swarm.clone().to_multiaddrs().collect(),
+            listen_addresses: self.bind_swarm.clone(),
             bootstrap_addresses: s
                 .swarm
                 .initial_peers
@@ -266,7 +266,8 @@ pub(crate) struct Store {
     state: Option<InternalStoreState>,
     store_config: Option<StoreConfig>,
     working_dir: PathBuf,
-    bind_to: BindTo,
+    bind_swarm: Arc<Mutex<SocketAddrHelper>>,
+    bind_api: Arc<Mutex<SocketAddrHelper>>,
     keystore: KeyStoreRef,
     node_id: NodeId,
     number_of_threads: Option<usize>,
@@ -292,7 +293,8 @@ impl Store {
             state: None,
             store_config: None,
             working_dir,
-            bind_to,
+            bind_swarm: Arc::new(Mutex::new(bind_to.swarm)),
+            bind_api: Arc::new(Mutex::new(bind_to.api)),
             keystore,
             node_id,
             number_of_threads: None,

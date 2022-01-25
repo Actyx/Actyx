@@ -52,11 +52,11 @@ describe('node lifecycle', () => {
       ])
       const { admin, api, swarm, log } = await startNodeAndCheckBinds(node, [
         '--bind-admin',
-        adminPort.toString(),
+        `0.0.0.0:${adminPort}`,
         '--bind-api',
-        apiPort.toString(),
+        `0.0.0.0:${apiPort}`,
         '--bind-swarm',
-        swarmPort.toString(),
+        `0.0.0.0:${swarmPort}`,
       ])
       withContext(log, () => {
         expect(admin).toHaveLength(admin.length || 1)
@@ -123,9 +123,9 @@ describe('node lifecycle', () => {
 
         const notX = services
           .filter((y) => y !== x)
-          .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0'])
+          .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0.0.0.0:0'])
         const proc = await runUntil(
-          runActyx(node, undefined, [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX)),
+          runActyx(node, undefined, [`--bind-${x.toLowerCase()}`, `0.0.0.0:${port}`].concat(notX)),
           node.name,
           [],
           10_000,
@@ -160,9 +160,9 @@ describe('node lifecycle', () => {
 
       const notX = services
         .filter((y) => y !== x)
-        .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0'])
+        .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0.0.0.0:0'])
       const proc = await runUntil(
-        runActyx(node, undefined, [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX)),
+        runActyx(node, undefined, [`--bind-${x.toLowerCase()}`, `0.0.0.0:${port}`].concat(notX)),
         node.name,
         ['Please specify a different'],
         10_000,

@@ -73,6 +73,7 @@ use libp2p::{
     ping::PingConfig,
 };
 use maplit::btreemap;
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use sqlite_index_store::SqliteIndexStore;
 use std::{
@@ -98,6 +99,7 @@ use util::{
     formats::NodeErrorContext,
     reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
 };
+use util::{to_multiaddr, to_socket_addr, SocketAddrHelper};
 
 #[allow(clippy::upper_case_acronyms)]
 pub type TT = AxTrees;
@@ -171,7 +173,7 @@ pub struct SwarmConfig {
     pub block_cache_count: u64,
     pub block_gc_interval: Duration,
     pub external_addresses: Vec<Multiaddr>,
-    pub listen_addresses: Vec<Multiaddr>,
+    pub listen_addresses: Arc<Mutex<SocketAddrHelper>>,
     pub bootstrap_addresses: Vec<Multiaddr>,
     pub ephemeral_event_config: EphemeralEventsConfig,
     pub enable_loopback: bool,
@@ -199,7 +201,7 @@ impl SwarmConfig {
             node_name: None,
             db_path: None,
             external_addresses: vec![],
-            listen_addresses: vec![],
+            listen_addresses: Arc::new(Mutex::new(SocketAddrHelper::empty())),
             bootstrap_addresses: vec![],
             ephemeral_event_config: EphemeralEventsConfig::default(),
             enable_fast_path: true,
@@ -251,7 +253,7 @@ impl SwarmConfig {
             topic: "topic".into(),
             enable_mdns: false,
             node_name: Some(node_name.into()),
-            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse().unwrap()],
+            listen_addresses: Arc::new(Mutex::new("127.0.0.1:0".parse().unwrap())),
             banyan_config: BanyanConfig {
                 tree: banyan::Config::debug(),
                 ..Default::default()
@@ -263,6 +265,10 @@ impl SwarmConfig {
 
 impl PartialEq for SwarmConfig {
     fn eq(&self, other: &Self) -> bool {
+        // can’t hold both locks because that would deadlock with another
+        // comparison on another thread
+        let me_listen = self.listen_addresses.lock().clone();
+        let they_listen = other.listen_addresses.lock().clone();
         self.topic == other.topic
             && self.keypair == other.keypair
             && self.psk == other.psk
@@ -272,7 +278,7 @@ impl PartialEq for SwarmConfig {
             && self.block_cache_count == other.block_cache_count
             && self.block_gc_interval == other.block_gc_interval
             && self.external_addresses == other.external_addresses
-            && self.listen_addresses == other.listen_addresses
+            && me_listen == they_listen
             && self.bootstrap_addresses == other.bootstrap_addresses
             && self.ephemeral_event_config == other.ephemeral_event_config
             && self.enable_loopback == other.enable_loopback
@@ -750,32 +756,28 @@ impl BanyanStore {
                 return Err(anyhow::anyhow!("invalid bootstrap address"));
             }
         }
-        for addr in cfg.listen_addresses {
-            let port = addr
-                .iter()
-                .find_map(|x| match x {
-                    Protocol::Tcp(p) => Some(p),
-                    Protocol::Udp(p) => Some(p),
-                    _ => None,
-                })
-                .unwrap_or_default();
-
+        let listen_addrs = cfg.listen_addresses.lock().iter().collect::<Vec<_>>();
+        for addr in listen_addrs {
+            let maddr = to_multiaddr(addr);
             let mut listener = ipfs
-                .listen_on(addr.clone())
+                .listen_on(maddr.clone())
                 .with_context(|| NodeErrorContext::BindFailed {
-                    port,
+                    addr: maddr.clone(),
                     component: "Swarm".into(),
                 })?;
 
             match listener.next().await {
                 Some(ListenerEvent::NewListenAddr(bound_addr)) => {
                     // we print only the first of the discovered addresses, but the others will also be found
-                    tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr)
+                    tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr);
+                    if let Some(bound_addr) = to_socket_addr(bound_addr) {
+                        cfg.listen_addresses.lock().inject_bound_addr(addr, bound_addr);
+                    }
                 }
                 e => {
                     return Err(anyhow::anyhow!("got unexpected event {:?}", e)).with_context(|| {
                         NodeErrorContext::BindFailed {
-                            port,
+                            addr: maddr,
                             component: "Swarm".into(),
                         }
                     })

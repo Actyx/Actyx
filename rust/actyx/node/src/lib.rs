@@ -37,6 +37,7 @@ use crate::{
 use ::util::SocketAddrHelper;
 use anyhow::Context;
 use crossbeam::channel::{bounded, Receiver, Sender};
+use std::net::ToSocketAddrs;
 use std::{
     collections::BTreeSet,
     net::{IpAddr, Ipv4Addr},
@@ -215,17 +216,38 @@ impl BindTo {
 
 #[derive(StructOpt, Debug)]
 pub struct BindToOpts {
-    /// Port to bind to for the management API.
-    #[structopt(long, parse(try_from_str = parse_port_maybe_host), default_value = "4458")]
-    bind_admin: Vec<PortOrHostPort>,
+    #[structopt(
+        long,
+        parse(try_from_str = parse_port_maybe_host),
+        default_value = "4458",
+        long_help = "Port to bind to for management connections. Specifying a single number is \
+            equivalent to “0.0.0.0:<port> [::]:<port>”, thus specifying 0 usually selects \
+            different ports for IPv4 and IPv6. Specify 0.0.0.0:<port> to only use IPv4, or \
+            [::]:<port> for only IPv6; you may also specify other names or addresses or leave off \
+            the port number."
+    )]
+    /// Port to bind to for management connections.
+    bind_admin: Vec<PortOrHostPort<4458>>,
 
+    #[structopt(
+        long,
+        parse(try_from_str = parse_port_maybe_host),
+        default_value = "4001",
+        long_help = "Port to bind to for intra swarm connections. \
+            The same rules apply as for the admin port."
+    )]
     /// Port to bind to for intra swarm connections.
-    #[structopt(long, parse(try_from_str = parse_port_maybe_host), default_value = "4001")]
-    bind_swarm: Vec<PortOrHostPort>,
+    bind_swarm: Vec<PortOrHostPort<4001>>,
 
-    /// Port bind to for the API.
-    #[structopt(long, parse(try_from_str = parse_port_maybe_host), default_value = "4454")]
-    bind_api: Vec<PortOrHostPort>,
+    #[structopt(
+        long,
+        parse(try_from_str = parse_port_maybe_host),
+        default_value = "4454",
+        long_help = "Port bind to for the API used by apps. \
+            The same rules apply as for the admin port."
+    )]
+    /// Port to bind to for the API used by apps.
+    bind_api: Vec<PortOrHostPort<4454>>,
 }
 
 impl TryInto<BindTo> for BindToOpts {
@@ -249,22 +271,21 @@ impl TryInto<BindTo> for BindToOpts {
 // containerization though. Changing the default ports however might be
 // necessary more frequently, and this is why that is offered here primarily.
 #[derive(Debug)]
-enum PortOrHostPort {
+enum PortOrHostPort<const DEFAULT: u16> {
     Port(u16),
     HostPort(SocketAddrHelper),
 }
 
-fn parse_port_maybe_host(src: &str) -> anyhow::Result<PortOrHostPort> {
-    if let Ok(port) = src.parse::<u16>() {
-        Ok(PortOrHostPort::Port(port))
-    } else {
-        SocketAddrHelper::from_str(src).map(PortOrHostPort::HostPort)
-    }
+fn parse_port_maybe_host<const N: u16>(src: &str) -> anyhow::Result<PortOrHostPort<N>> {
+    src.parse::<u16>()
+        .map(PortOrHostPort::Port)
+        .or_else(|_| SocketAddrHelper::from_str(src).map(PortOrHostPort::HostPort))
+        .or_else(|_| Ok(PortOrHostPort::HostPort((src, N).to_socket_addrs()?.collect())))
 }
 
-fn fold(
+fn fold<const N: u16>(
     port: impl FnOnce(u16) -> anyhow::Result<SocketAddrHelper>,
-    input: Vec<PortOrHostPort>,
+    input: Vec<PortOrHostPort<N>>,
 ) -> anyhow::Result<SocketAddrHelper> {
     if input.is_empty() {
         anyhow::bail!("no value provided");

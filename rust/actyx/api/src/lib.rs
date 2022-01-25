@@ -14,37 +14,40 @@ use anyhow::Result;
 use crossbeam::channel::Sender;
 use futures::future::try_join_all;
 use std::fmt;
-use std::net::SocketAddr;
 use swarm::{event_store_ref::EventStoreRef, BanyanStore};
 use warp::*;
 
 pub use crate::events::service::EventService;
 pub use crate::util::{AppMode, BearerToken, NodeInfo, Token};
 use crate::{files::FilePinner, util::hyper_serve::serve_it};
+use actyx_util::{to_multiaddr, SocketAddrHelper};
+use parking_lot::Mutex;
+use std::sync::Arc;
 
 pub async fn run(
     node_info: NodeInfo,
     store: BanyanStore,
     event_store: EventStoreRef,
-    bind_to: impl Iterator<Item = SocketAddr> + Send,
+    bind_to: Arc<Mutex<SocketAddrHelper>>,
     snd: Sender<anyhow::Result<()>>,
 ) {
     let event_service = events::service::EventService::new(event_store, node_info.node_id);
     let pinner = FilePinner::new(event_service.clone(), store.ipfs().clone());
     let api = routes(node_info, store, event_service, pinner);
-    let tasks = bind_to
+    #[allow(clippy::needless_collect)]
+    // following clippy here would lead to deadlock, d’oh
+    let addrs = bind_to.lock().iter().collect::<Vec<_>>();
+    let tasks = addrs
         .into_iter()
         .map(|i| {
-            serve_it(i, api.clone().boxed()).map_err(move |e| {
+            let (addr, task) = serve_it(i, api.clone().boxed()).map_err(move |e| {
                 e.context(NodeErrorContext::BindFailed {
-                    port: i.port(),
+                    addr: to_multiaddr(i),
                     component: "API".into(),
                 })
-            })
-        })
-        .map(|i| {
-            let (addr, task) = i?;
+            })?;
             tracing::info!(target: "API_BOUND", "API bound to {}.", addr);
+            bind_to.lock().inject_bound_addr(i, addr);
             Ok(task)
         })
         .collect::<Result<Vec<_>>>();

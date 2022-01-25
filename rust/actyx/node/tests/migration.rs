@@ -1,6 +1,7 @@
 use actyx_sdk::service::EventService;
 use actyx_sdk::{app_id, AppManifest, Offset, StreamId};
 use escargot::{format::Message, CargoBuild};
+use std::net::{IpAddr, Ipv4Addr, TcpListener};
 use std::path::{self, Path};
 use std::process::Stdio;
 use std::str::FromStr;
@@ -268,7 +269,13 @@ async fn try_run(
     working_dir: impl AsRef<Path>,
     expected_offsets: impl Iterator<Item = (StreamId, Offset)>,
 ) -> anyhow::Result<Vec<String>> {
-    let ports = (0..3).map(|_| util::free_port(0)).collect::<anyhow::Result<Vec<_>>>()?;
+    let ports = (0..3)
+        .map(|_| TcpListener::bind((IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0)).map_err(Into::into))
+        .collect::<anyhow::Result<Vec<_>>>()?
+        // keeping the listeners alive avoids getting the same port number twice
+        .into_iter()
+        .map(|l| Ok(l.local_addr()?.port()))
+        .collect::<anyhow::Result<Vec<_>>>()?;
     let mut child = Command::new(target_dir().join("actyx"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

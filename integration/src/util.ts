@@ -76,7 +76,7 @@ export const binaryUrlAndNameForVersion = (
   }
 }
 
-export const randomBinds = ['--bind-admin', '0', '--bind-api', '0', '--bind-swarm', '0']
+export const randomBinds = ['--bind-admin', '0.0.0.0:0', '--bind-api', '0.0.0.0:0', '--bind-swarm', '0.0.0.0:0']
 const randomBindsWin = randomBinds.map((x) => `'${x}'`).join(',')
 
 export const runActyxVersion = async (

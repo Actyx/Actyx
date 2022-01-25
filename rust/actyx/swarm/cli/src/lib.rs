@@ -4,11 +4,13 @@ use chrono::{DateTime, Utc};
 use crypto::{KeyPair, PrivateKey};
 use libipld::{cbor::DagCborCodec, codec::Codec};
 pub use libp2p::{multiaddr, Multiaddr, PeerId};
-use std::{borrow::Borrow, net::SocketAddr, path::PathBuf, str::FromStr};
+use parking_lot::Mutex;
+use std::{borrow::Borrow, convert::TryFrom, net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc};
 use structopt::StructOpt;
 use swarm::{BanyanConfig, SwarmConfig};
 pub use swarm::{EphemeralEventsConfig, GossipMessage, RetainConfig, RootMap, RootUpdate};
 use trees::axtrees::AxKey;
+use util::SocketAddrHelper;
 
 #[derive(Clone, Debug, StructOpt)]
 pub struct Config {
@@ -115,13 +117,23 @@ impl From<Config> for SwarmConfig {
         if let Some(x) = config.max_leaf_count {
             banyan_config.tree.max_leaf_count = x;
         }
+        let listen_addresses = Arc::new(Mutex::new(
+            config
+                .listen_on
+                .into_iter()
+                .map(|m| SocketAddrHelper::try_from(m).unwrap())
+                .fold(SocketAddrHelper::empty(), |mut acc, item| {
+                    acc.append(item);
+                    acc
+                }),
+        ));
         Self {
             db_path: config.path,
             node_name: config.node_name,
             keypair: Some(keypair(config.keypair)),
             enable_mdns: config.enable_mdns,
             topic: "swarm-cli".into(),
-            listen_addresses: config.listen_on,
+            listen_addresses,
             bootstrap_addresses: config.bootstrap,
             external_addresses: config.external,
             enable_fast_path: config.enable_fast_path,

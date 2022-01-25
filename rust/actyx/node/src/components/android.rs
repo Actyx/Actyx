@@ -48,11 +48,11 @@ impl From<ShutdownReason> for FfiMessage {
                 crate::NodeError::ServicesStartup { err, .. } | crate::NodeError::InternalError(err) => {
                     (ffi_codes::NODE_STOPPED_BY_NODE, format!("{:#}", err))
                 }
-                crate::NodeError::PortCollision { component, port } => (
+                crate::NodeError::PortCollision { component, addr } => (
                     ffi_codes::ERR_PORT_COLLISION,
                     format!(
                         "Could not bind to port {}. Please specify a different {} port",
-                        port, component
+                        addr, component
                     ),
                 ),
             },

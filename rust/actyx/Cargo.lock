@@ -5487,6 +5487,7 @@ dependencies = [
  "ipfs-embed",
  "libipld",
  "libp2p",
+ "parking_lot 0.11.2",
  "serde_json",
  "structopt",
  "swarm",
