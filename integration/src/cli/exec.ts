@@ -35,11 +35,7 @@ const exec = async (binaryPath: string, args: string[], options?: Options) => {
     }
     return JSON.parse(response.stdout)
   } catch (error) {
-    try {
-    } catch (errParse) {
-      console.error(error)
-      throw errParse
-    }
+    console.error(`executing ${binaryPath} ${args.join(' ')}:`, error)
   }
 }
 
