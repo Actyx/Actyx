@@ -19,6 +19,7 @@ RUN apt-get update && \
   add-apt-repository --yes https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/
 
 RUN apt-get update
+RUN apt-get install -y binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi binutils-arm-linux-gnueabihf binutils-i686-linux-gnu binutils-x86-64-linux-gnu
 RUN apt-get install --no-install-recommends -yq unzip wget cmake \
   # Install jre (adoptopenjdk-8-hotspot-jre) only, if you only need to cross compile for Android
   # We add the JDK here in order to be able to also build the Android app

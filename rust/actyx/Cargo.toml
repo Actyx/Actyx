@@ -28,7 +28,8 @@ resolver = "2"
 # down the application after the stack has been wound down.
 [profile.release]
 panic = "unwind"
-debug = 1
+debug = 0
+lto = "thin"
 
 [profile.dev]
 panic = "abort"
