@@ -204,12 +204,17 @@ export const snapshotTestSetup = async <S>(
 
   const pubEvents = actyx.directlyPushEvents
 
+  const wakeup = () => observe.take(1).toPromise()
+
   const applyAndGetState = async (events: ReadonlyArray<TestEvent>) => {
+    const state = await wakeup()
     // adding events may or may not emit a new state, depending on whether the events
-    // were relevant (might be before semantic snapshot or duplicates)
+    // were relevant (might be before semantic snapshot or duplicates); we still
+    // assert that the _next_ state is the final one if emitted (and within 100ms)
     const pubProm = observe
       .observeOn(Scheduler.async)
-      .debounceTime(50)
+      .skip(1)
+      .merge(Observable.timer(100).mapTo(state))
       .first()
       .toPromise()
     pubEvents(events)
@@ -221,8 +226,6 @@ export const snapshotTestSetup = async <S>(
       const c = x as LocalSnapshot<string> | undefined
       return c ? { ...c, state: JSON.parse(c.state) } : undefined
     })
-
-  const wakeup = () => observe.take(1).toPromise()
 
   return {
     latestSnap,
