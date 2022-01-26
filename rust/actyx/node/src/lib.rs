@@ -12,13 +12,12 @@ pub mod settings;
 mod util;
 
 pub use crate::node::NodeError;
-pub use crate::util::spawn_with_name;
-#[cfg(not(windows))]
-pub use crate::util::unix_shutdown::shutdown_ceremony;
-use ::util::formats::LogSeverity;
+pub use crate::util::{init_shutdown_ceremony, shutdown_ceremony, spawn_with_name};
 pub use formats::{node_settings, ShutdownReason};
 #[cfg(not(target_os = "android"))]
 pub use host::lock_working_dir;
+
+use ::util::formats::LogSeverity;
 
 use crate::{
     components::{
@@ -38,11 +37,12 @@ use crate::{
 use ::util::SocketAddrHelper;
 use anyhow::Context;
 use crossbeam::channel::{bounded, Receiver, Sender};
+use std::net::ToSocketAddrs;
 use std::{
     collections::BTreeSet,
     net::{IpAddr, Ipv4Addr},
 };
-use std::{convert::TryInto, path::PathBuf, str::FromStr, thread};
+use std::{convert::TryInto, path::PathBuf, thread};
 use structopt::StructOpt;
 use swarm::event_store_ref::{self, EventStoreRef};
 
@@ -76,7 +76,13 @@ fn bounded_channel<T>() -> (Sender<T>, Receiver<T>) {
     bounded(256)
 }
 
-fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Result<ApplicationState> {
+fn spawn(
+    working_dir: PathBuf,
+    runtime: Runtime,
+    bind_to: BindTo,
+    log_no_color: bool,
+    log_as_json: bool,
+) -> anyhow::Result<ApplicationState> {
     #[cfg(not(target_os = "android"))]
     let _lock = crate::host::lock_working_dir(&working_dir)?;
     let mut join_handles = vec![];
@@ -100,7 +106,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
 
     // Component: Logging
     // Set up logging so tracing is set up for migration
-    let logging = Logging::new(logs_rx, LogSeverity::default());
+    let logging = Logging::new(logs_rx, LogSeverity::default(), log_no_color, log_as_json);
     log::set_boxed_logger(Box::new(log_tracer::LogTracer::new([
         "yamux",
         "libp2p_gossipsub",
@@ -210,17 +216,38 @@ impl BindTo {
 
 #[derive(StructOpt, Debug)]
 pub struct BindToOpts {
-    /// Port to bind to for the management API.
-    #[structopt(long, parse(try_from_str = parse_port_maybe_host), default_value = "4458")]
-    bind_admin: Vec<PortOrHostPort>,
+    #[structopt(
+        long,
+        parse(try_from_str = parse_port_maybe_host),
+        default_value = "4458",
+        long_help = "Port to bind to for management connections. Specifying a single number is \
+            equivalent to “0.0.0.0:<port> [::]:<port>”, thus specifying 0 usually selects \
+            different ports for IPv4 and IPv6. Specify 0.0.0.0:<port> to only use IPv4, or \
+            [::]:<port> for only IPv6; you may also specify other names or addresses or leave off \
+            the port number."
+    )]
+    /// Port to bind to for management connections.
+    bind_admin: Vec<PortOrHostPort<4458>>,
 
+    #[structopt(
+        long,
+        parse(try_from_str = parse_port_maybe_host),
+        default_value = "4001",
+        long_help = "Port to bind to for intra swarm connections. \
+            The same rules apply as for the admin port."
+    )]
     /// Port to bind to for intra swarm connections.
-    #[structopt(long, parse(try_from_str = parse_port_maybe_host), default_value = "4001")]
-    bind_swarm: Vec<PortOrHostPort>,
+    bind_swarm: Vec<PortOrHostPort<4001>>,
 
-    /// Port bind to for the API.
-    #[structopt(long, parse(try_from_str = parse_port_maybe_host), default_value = "4454")]
-    bind_api: Vec<PortOrHostPort>,
+    #[structopt(
+        long,
+        parse(try_from_str = parse_port_maybe_host),
+        default_value = "4454",
+        long_help = "Port bind to for the API used by apps. \
+            The same rules apply as for the admin port."
+    )]
+    /// Port to bind to for the API used by apps.
+    bind_api: Vec<PortOrHostPort<4454>>,
 }
 
 impl TryInto<BindTo> for BindToOpts {
@@ -244,22 +271,38 @@ impl TryInto<BindTo> for BindToOpts {
 // containerization though. Changing the default ports however might be
 // necessary more frequently, and this is why that is offered here primarily.
 #[derive(Debug)]
-enum PortOrHostPort {
+enum PortOrHostPort<const DEFAULT: u16> {
     Port(u16),
     HostPort(SocketAddrHelper),
 }
 
-fn parse_port_maybe_host(src: &str) -> anyhow::Result<PortOrHostPort> {
-    if let Ok(port) = src.parse::<u16>() {
-        Ok(PortOrHostPort::Port(port))
-    } else {
-        SocketAddrHelper::from_str(src).map(PortOrHostPort::HostPort)
-    }
+fn parse_port_maybe_host<const N: u16>(src: &str) -> Result<PortOrHostPort<N>, String> {
+    let port = match src.parse::<u16>() {
+        Ok(p) => return Ok(PortOrHostPort::Port(p)),
+        Err(e) => e,
+    };
+    let host_string = match SocketAddrHelper::from_host_string(src) {
+        Ok(p) => return Ok(PortOrHostPort::HostPort(p)),
+        Err(e) => e,
+    };
+    let multiaddr = match SocketAddrHelper::parse_multiaddr(src) {
+        Ok(m) => return Ok(PortOrHostPort::HostPort(m)),
+        Err(e) => e,
+    };
+    let sock_addr = match (src, N).to_socket_addrs() {
+        Ok(i) => return Ok(PortOrHostPort::HostPort(i.collect())),
+        Err(e) => e,
+    };
+    Err(format!(
+        "cannot interpret `{}`:\n  as port number: {:#}\n  as <host:port>: {:#}\
+        \n  as multiaddr:   {:#}\n  as IP or name:  {:#}",
+        src, port, host_string, multiaddr, sock_addr
+    ))
 }
 
-fn fold(
+fn fold<const N: u16>(
     port: impl FnOnce(u16) -> anyhow::Result<SocketAddrHelper>,
-    input: Vec<PortOrHostPort>,
+    input: Vec<PortOrHostPort<N>>,
 ) -> anyhow::Result<SocketAddrHelper> {
     if input.is_empty() {
         anyhow::bail!("no value provided");
@@ -296,8 +339,14 @@ fn fold(
 
 impl ApplicationState {
     /// Bootstraps the application, and returns a handle structure.
-    pub fn spawn(base_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Result<Self> {
-        spawn(base_dir, runtime, bind_to).context("spawning core infrastructure")
+    pub fn spawn(
+        base_dir: PathBuf,
+        runtime: Runtime,
+        bind_to: BindTo,
+        log_no_color: bool,
+        log_as_json: bool,
+    ) -> anyhow::Result<Self> {
+        spawn(base_dir, runtime, bind_to, log_no_color, log_as_json).context("spawning core infrastructure")
     }
 
     pub fn handle_settings_request(&self, message: SettingsRequest) {
@@ -319,6 +368,6 @@ impl ApplicationState {
 
 impl Drop for ApplicationState {
     fn drop(&mut self) {
-        self.shutdown(ShutdownReason::TriggeredByHost)
+        self.shutdown(ShutdownReason::TriggeredByHost);
     }
 }

@@ -12,12 +12,10 @@ members = [
   "node",
   "node-ffi",
   "node-manager-bindings",
-  "node-win",
   "runtime",
   "swarm",
   "swarm/cli",
   "swarm/harness",
-  "tracing_win_event_log",
   "trees",
   "util",
 ]

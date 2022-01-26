@@ -51,7 +51,7 @@ endif
 ##### Configuration variables
 #############################
 architectures = aarch64 x86_64 armv7 arm
-unix-bins = actyx-linux ax
+unix-bins = actyx ax
 windows-bins = actyx.exe ax.exe actyx-x64.msi
 android-bins = actyx.apk actyx.aab
 
@@ -99,7 +99,7 @@ image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
 
 # list all os-arch and binary names
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 macos-aarch64
-binaries = ax ax.exe actyx-linux actyx.exe
+binaries = ax ax.exe actyx actyx.exe
 
 # targets for which we need a .so file for android
 android_so_targets = x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
@@ -160,7 +160,7 @@ endef
 
 $(foreach arch,$(architectures),$(eval $(call mkLinuxRule,$(arch))))
 
-current: dist/bin/current/ax dist/bin/current/actyx-linux
+current: dist/bin/current/ax dist/bin/current/actyx
 
 all-js: dist/js/pond dist/js/sdk
 

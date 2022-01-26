@@ -6,6 +6,8 @@ use crypto::{KeyPair, KeyStore};
 use futures::{stream::StreamExt, TryStreamExt};
 use ipfs_embed::GossipEvent;
 use libipld::{cbor::DagCborCodec, codec::Codec};
+use parking_lot::Mutex;
+use std::sync::Arc;
 use structopt::StructOpt;
 use swarm::{
     event_store_ref::{self, EventStoreHandler, EventStoreRef, EventStoreRequest},
@@ -77,7 +79,13 @@ async fn run() -> Result<()> {
         };
         swarm.spawn_task(
             "api",
-            api::run(node_info, swarm.clone(), event_store, std::iter::once(addr), tx),
+            api::run(
+                node_info,
+                swarm.clone(),
+                event_store,
+                Arc::new(Mutex::new(addr.into())),
+                tx,
+            ),
         );
         swarm
     } else {

@@ -6,7 +6,7 @@ use crate::{
     },
     formats::ExternalEvent,
     settings::{SettingsRequest, SYSTEM_SCOPE},
-    ShutdownReason,
+    util::trigger_shutdown,
 };
 use actyx_sdk::{
     app_id,
@@ -359,10 +359,7 @@ impl ApiBehaviour {
                 self.state.pending_oneshot.push(fut);
             }
             AdminRequest::NodesShutdown => {
-                self.state
-                    .node_tx
-                    .send(ExternalEvent::ShutdownRequested(ShutdownReason::TriggeredByUser))
-                    .unwrap();
+                trigger_shutdown();
             }
         }
     }
@@ -959,20 +956,12 @@ pub(crate) async fn mk_swarm(
     // [0] https://github.com/libp2p/rust-libp2p/blob/master/transports/tcp/src/lib.rs#L322
     for addr in bind_to.to_multiaddrs() {
         tracing::debug!("Admin API trying to bind to {}", addr);
-        swarm.listen_on(addr.clone()).with_context(|| {
-            let port = addr
-                .iter()
-                .find_map(|x| match x {
-                    Protocol::Tcp(p) => Some(p),
-                    Protocol::Udp(p) => Some(p),
-                    _ => None,
-                })
-                .unwrap_or_default();
-            NodeErrorContext::BindFailed {
-                port,
+        swarm
+            .listen_on(addr.clone())
+            .with_context(|| NodeErrorContext::BindFailed {
+                addr,
                 component: "Admin".into(),
-            }
-        })?;
+            })?;
     }
 
     tokio::spawn(SwarmFuture(swarm));

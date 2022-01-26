@@ -34,6 +34,8 @@ fn round_trip(c: &mut Criterion) {
             api: SocketAddrHelper::unspecified(4454).unwrap(),
             ..Default::default()
         },
+        false,
+        false,
     )
     .unwrap();
 

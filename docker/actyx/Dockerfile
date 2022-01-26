@@ -39,14 +39,14 @@ RUN cargo install \
     --path rust/actyx/node \
     --locked \
     ${CARGO_BUILD_ARGS} \
-    --bin actyx-linux
+    --bin actyx
 
 # final prod image
 FROM --platform=$TARGETPLATFORM alpine:3.13
 RUN addgroup -g 1000 -S actyx && \
     adduser -u 1000 -S actyx -G actyx
 
-COPY --from=build --chown=1000:1000 /usr/local/cargo/bin/actyx-linux /usr/bin/actyx
+COPY --from=build --chown=1000:1000 /usr/local/cargo/bin/actyx /usr/bin/actyx
 
 CMD ["actyx", "--working-dir", "/data/actyx-data", "--bind-admin", "0.0.0.0:4458", "--bind-api", "0.0.0.0:4454", "--bind-swarm", "0.0.0.0:4001"]
 

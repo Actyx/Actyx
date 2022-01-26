@@ -315,7 +315,7 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
                 _ => unreachable!(),
             };
             out.push((
-                format!("{}-binaries/{}/actyx-linux", os_arch.os, os_arch),
+                format!("{}-binaries/{}/actyx", os_arch.os, os_arch),
                 TargetArtifact::Blob {
                     pre_processing: PreProcessing::TarGz {
                         binary_name: Some("actyx".into()),
@@ -332,7 +332,7 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
                 _ => unreachable!(),
             };
             out.push((
-                format!("{}-binaries/{}/actyx-linux", os_arch.os, os_arch),
+                format!("{}-binaries/{}/actyx", os_arch.os, os_arch),
                 TargetArtifact::Blob {
                     pre_processing: PreProcessing::Zip {
                         binary_name: Some("actyx".into()),
