@@ -25,3 +25,4 @@ zeroize = "1.2.0"
 [lib]
 crate-type = ["cdylib"]
 name = "axosnodeffi"
+

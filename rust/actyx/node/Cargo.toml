@@ -65,7 +65,6 @@ unicode-width = "0.1.9"
 util = { path = "../util" }
 uuid = "0.8.2"
 void = "1.0.2"
-warp = "0.3.2"
 zeroize = "1.2.0"
 zstd = "0.9.2"
 

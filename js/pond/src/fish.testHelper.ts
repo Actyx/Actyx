@@ -209,7 +209,7 @@ export const snapshotTestSetup = async <S>(
     // were relevant (might be before semantic snapshot or duplicates)
     const pubProm = observe
       .observeOn(Scheduler.async)
-      .debounceTime(0)
+      .debounceTime(50)
       .first()
       .toPromise()
     pubEvents(events)

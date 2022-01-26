@@ -22,6 +22,7 @@ import { getInsertionIndex, runStats, takeWhileInclusive } from '../util'
 import { EventStore } from './eventStore'
 import log from './log'
 import { Event, Events } from './types'
+import { bufferOp } from '../util/bufferOp'
 
 // New API:
 // Stream events as they become available, until time-travel would occour.
@@ -95,7 +96,7 @@ export const eventsMonotonic = (
     const liveBuffered = rtAfterHorizon
       // Buffer live events for a small amount of time, so we don’t update state too often.
       // Should be handled by the `caughtUp` flag in the store-side impl.
-      .bufferTime(1)
+      .pipe(bufferOp(1))
       .filter(x => x.length > 0)
       .mergeMap<Events, EventsOrTimetravel>(nextUnsorted => {
         // Don't spam the logs. And avoid esoteric race conditions due to triggering multiple snapshot invalidations.
