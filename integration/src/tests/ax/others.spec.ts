@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 import { runOnEach } from '../../infrastructure/hosts'
 
 describe('ax', () => {

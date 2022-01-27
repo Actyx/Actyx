@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 import fetch from 'node-fetch'
 import { run } from '../../util'
 

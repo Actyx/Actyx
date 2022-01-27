@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 import { assertOK } from '../assertOK'
 import { mkNodeIdService as mkNodeService, mkTrialHttpClient } from '../http-client'
 import { runOnEvery } from '../infrastructure/hosts'

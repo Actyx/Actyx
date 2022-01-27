@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Actyx, AqlResponse, EventsSortOrder, Tag } from '@actyx/sdk'
 import { Observable, lastValueFrom } from 'rxjs'
@@ -255,11 +258,13 @@ describe('@actyx/sdk', () => {
           ),
         )
 
-        const expectErr = expect(p.toPromise()).rejects.toMatch('Connection lost')
+        const expectErr = expect(lastValueFrom(p)).rejects.toMatch('Connection lost')
         // Topic change causes WS to be closed. We cannot use `powerCycle` because that gives new port numbers...
         await node.ax.settings.set('/swarm/topic', SettingsInput.FromValue('A different topic'))
 
+        process.stdout.write(node.name + ' waiting for connection closed\n')
         await expectErr
+        process.stdout.write(node.name + ' connection closed')
 
         await new Promise((resolve) => setTimeout(resolve, 3_000))
         expect(hookCalled).toBeTruthy()

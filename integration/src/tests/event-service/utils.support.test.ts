@@ -3,22 +3,21 @@ import { randomString } from '../../util'
 
 type Response<T> = Omit<EventResponse, 'payload'> & { payload: T }
 
-export const publish = <T>(
-  es: AxEventService,
-  clientId: string,
-): ((...payloads: T[]) => Promise<Response<T>[]>) => (...payloads) => {
-  const tags = [mySuite(), `client:${clientId}`, testName(), 'test']
-  const data = payloads.map((payload) => ({ tags, payload }))
-  return es.publish({ data }).then((response) =>
-    response.data.map<Response<T>>((metadata, i) => ({
-      type: 'event',
-      ...metadata,
-      tags,
-      appId: trialManifest.appId as string,
-      payload: payloads[i],
-    })),
-  )
-}
+export const publish =
+  <T>(es: AxEventService, clientId: string): ((...payloads: T[]) => Promise<Response<T>[]>) =>
+  (...payloads) => {
+    const tags = [mySuite(), `client:${clientId}`, testName(), 'test']
+    const data = payloads.map((payload) => ({ tags, payload }))
+    return es.publish({ data }).then((response) =>
+      response.data.map<Response<T>>((metadata, i) => ({
+        type: 'event',
+        ...metadata,
+        tags,
+        appId: trialManifest.appId as string,
+        payload: payloads[i],
+      })),
+    )
+  }
 
 export const publishRandom = (
   es: AxEventService,
@@ -29,9 +28,11 @@ export const publishRandom = (
     clientId,
   )({ value: randomString() }).then((response) => response[0])
 
-export const throwOnCb = (msg: string) => (...rest: unknown[]): void => {
-  throw new Error(`Unexpected callback invocation. ${msg}\n ${JSON.stringify(rest)}`)
-}
+export const throwOnCb =
+  (msg: string) =>
+  (...rest: unknown[]): void => {
+    throw new Error(`Unexpected callback invocation. ${msg}\n ${JSON.stringify(rest)}`)
+  }
 
 /**
  * Get the current test suite (file)name, which should generally be used to tag events from this suite.

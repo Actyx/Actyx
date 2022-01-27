@@ -19,7 +19,7 @@ export const mkLinesSplitter = function (): Transform {
         last = p === undefined ? '' : p
         lines = list.filter((x) => x.length > 0)
       } catch (err) {
-        if(err) {
+        if (err) {
           if (err === undefined || err == null || err instanceof Error) {
             cb(err)
           } else {

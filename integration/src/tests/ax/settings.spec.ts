@@ -1,5 +1,8 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 /* eslint-disable @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-var-requires */
-const nodeSettingSchema = require('../../../../protocols/json-schema/node-settings.schema.json')
+import nodeSettingSchema from '../../../../protocols/json-schema/node-settings.schema.json'
 
 import { assertOK } from '../../assertOK'
 import { CLI } from '../../cli'

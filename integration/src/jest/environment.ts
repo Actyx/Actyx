@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { EC2 } from 'aws-sdk'
+import { EC2Client as EC2 } from '@aws-sdk/client-ec2'
 import NodeEnvironment from 'jest-environment-node'
-import { CLI } from '../src/cli'
-import { mkExecute } from '../src/infrastructure'
+import { CLI } from '../cli'
+import { mkExecute } from '../infrastructure'
 import { MyGlobal } from './setup'
 
 class MyEnvironment extends NodeEnvironment {
@@ -15,7 +15,6 @@ class MyEnvironment extends NodeEnvironment {
     await super.setup()
 
     const axNodeSetup = (<MyGlobal>(<unknown>this.global)).axNodeSetup
-    ;(<MyGlobal>global).axNodeSetup = axNodeSetup
     axNodeSetup.ec2 = new EC2({ region: 'eu-central-1' })
     axNodeSetup.thisTestEnvNodes = []
 
@@ -44,6 +43,8 @@ class MyEnvironment extends NodeEnvironment {
       // @ts-ignore
       node.ax = ax
     }
+
+    ;(<MyGlobal>(<unknown>this.global)).isSuite = true
   }
 
   async teardown(): Promise<void> {

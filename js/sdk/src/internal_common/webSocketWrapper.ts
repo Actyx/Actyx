@@ -10,7 +10,6 @@ import { Subject, fromEvent } from '../../node_modules/rxjs'
 import { first } from '../../node_modules/rxjs/operators'
 import { decorateEConnRefused } from './errors'
 import log from './log'
-import { MessageEvent } from 'isomorphic-ws'
 import * as WebSocket from 'isomorphic-ws'
 
 export interface WebSocketWrapper<TRequest, TResponse> {
@@ -46,6 +45,27 @@ export const WebSocketWrapper = <TRequest, TResponse>(
   )
 }
 
+class ConnectEmitter extends EventEmitter {
+  addListener(method: 'connected', cb: (socket: WebSocket) => void) {
+    return super.addListener(method, cb)
+  }
+  removeListener(method: 'connected', cb: (socket: WebSocket) => void) {
+    return super.removeListener(method, cb)
+  }
+  addEventListener(method: 'connected', cb: (socket: WebSocket) => void) {
+    return super.addListener(method, cb)
+  }
+  removeEventListener(method: 'connected', cb: (socket: WebSocket) => void) {
+    return super.removeListener(method, cb)
+  }
+  on(method: 'connected', cb: (socket: WebSocket) => void) {
+    return super.on(method, cb)
+  }
+  off(method: 'connected', cb: (socket: WebSocket) => void) {
+    return super.off(method, cb)
+  }
+}
+
 /**
  * Copied from `rxjs/observable/dom/WebSocketSubject.ts`
  * But the WebSocket and the Subscription is not connected any more.
@@ -54,7 +74,7 @@ export const WebSocketWrapper = <TRequest, TResponse>(
 class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TRequest, TResponse> {
   socket?: WebSocket
   binaryType?: 'blob' | 'arraybuffer'
-  socketEvents = new EventEmitter()
+  socketEvents = new ConnectEmitter()
 
   responses(): Subject<TResponse> {
     if (this.error) {
@@ -84,7 +104,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
       this.socket.send(msg)
     } else {
       log.ws.debug('Delaying request until socket is open:', msg)
-      fromEvent<WebSocket>(this.socketEvents, 'connected')
+      fromEvent(this.socketEvents, 'connected')
         .pipe(first())
         .subscribe((s) => s.send(msg))
     }
@@ -96,7 +116,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
   }
 
   constructor(
-    private readonly wsConstrucor: WebSocketConstructor,
+    private readonly wsConstructor: WebSocketConstructor,
     private readonly url: string,
     private readonly protocol: string | string[] | undefined,
     private readonly onConnectionLost: (() => void) | undefined,
@@ -110,7 +130,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     this.connect()
   }
 
-  resultSelector(e: MessageEvent): TResponse {
+  resultSelector(e: WebSocket.MessageEvent): TResponse {
     const asStr = typeof e.data === 'string' ? e.data : e.data.toString()
     return JSON.parse(asStr) as TResponse
   }
@@ -120,18 +140,18 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
    * The onConnectionLost hook is called on close, when the connetion was already connected
    */
   private createSocket(
-    onMessage: (ev: MessageEvent) => any,
+    onMessage: (ev: WebSocket.MessageEvent) => any,
     binaryType?: 'arraybuffer' | 'nodebuffer' | 'fragments',
   ): WebSocket {
     const { protocol, url, socketEvents } = this
 
     const socket = (this.socket = protocol
-      ? this.wsConstrucor.create(url, protocol)
-      : this.wsConstrucor.create(url))
+      ? this.wsConstructor.create(url, protocol)
+      : this.wsConstructor.create(url))
     if (binaryType) {
       socket.binaryType = binaryType
     }
-    socket.onerror = (err) => {
+    socket.on('error', (err) => {
       const originalMsg = (err as any).message
 
       const msg = decorateEConnRefused(originalMsg, url)
@@ -146,9 +166,10 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
         console.error(errMsg)
         log.ws.error(errMsg)
       }
-    }
-    socket.onmessage = onMessage
-    socket.onclose = (err) => {
+    })
+    socket.on('message', onMessage)
+    socket.on('close', (code, reason) => {
+      log.ws.info('WS closed to', url)
       if (!this.tryConnect || !this.wasOpened) {
         // Orderly close desired by the user, or we did not even manage to connect
         return
@@ -169,14 +190,14 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
         this.error = 'WS connection errored and closed for good'
       }
 
-      this.responsesInner.error(`Connection lost with reason '${err.reason}', code ${err.code}`)
-    }
+      this.responsesInner.error(`Connection lost with reason '${reason}', code ${code}`)
+    })
 
-    socket.onopen = () => {
+    socket.on('open', () => {
       this.wasOpened = true
-      log.ws.debug('WS open to', url)
+      log.ws.info('WS open to', url)
       socketEvents.emit('connected', socket)
-    }
+    })
 
     return socket
   }
@@ -184,7 +205,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
   private connect(): boolean {
     const observer = this.responsesInner
     try {
-      const onmessage = (e: MessageEvent) => {
+      const onmessage = (e: WebSocket.MessageEvent) => {
         try {
           const result = this.resultSelector(e)
           observer.next(result)

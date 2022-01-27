@@ -40,13 +40,13 @@ const createEC2 = t.type({
   ami: t.string,
   instance: t.string,
   user: t.string,
-  armv7: fromNullable(t.boolean,false),
+  armv7: fromNullable(t.boolean, false),
 })
 export type CreateEC2 = t.TypeOf<typeof createEC2>
 
 const useLocal = t.type({
   type: t.literal('local'),
-  reuseWorkingDirIfExists: fromNullable(t.boolean,false),
+  reuseWorkingDirIfExists: fromNullable(t.boolean, false),
 })
 
 const useSsh = t.type({
@@ -69,7 +69,7 @@ const install = t.union([
   // just use a running Actyx node
   t.type({
     type: t.literal('just-use-a-running-actyx-node'),
-    host: fromNullable(t.string,'localhost'),
+    host: fromNullable(t.string, 'localhost'),
     console: t.number,
     services: t.number,
     pond: t.number,

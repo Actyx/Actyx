@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 /* eslint-disable no-empty */
 import { execa, execaCommand } from 'execa'
 import { settings } from '../../infrastructure/settings'

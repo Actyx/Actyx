@@ -1,10 +1,13 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 import { assertOK } from '../../assertOK'
 import { CLI } from '../../cli'
 import { runOnEvery } from '../../infrastructure/hosts'
 import { currentAxBinary } from '../../infrastructure/settings'
 import { mkAxWithUnreachableNode } from '../../stubs'
-import { MyGlobal } from '../../../jest/setup'
-import {execaCommand } from 'execa'
+import { MyGlobal } from '../../jest/setup'
+import { execaCommand } from 'execa'
 import { runActyx } from '../../util'
 
 describe('ax nodes', () => {

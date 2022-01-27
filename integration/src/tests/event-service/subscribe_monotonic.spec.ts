@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 import { SubscribeMonotonicRequest, SubscribeMonotonicResponse } from '../../http-client'
 import { waitFor } from '../../retry'
 import { runWithClients } from '../../util'

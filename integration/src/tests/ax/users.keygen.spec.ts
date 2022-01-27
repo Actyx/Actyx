@@ -1,4 +1,7 @@
-import { readFileSync } from 'fs-extra'
+/**
+ * @jest-environment ./dist/jest/environment
+ */
+import fse from 'fs-extra'
 import { assertOK } from '../../assertOK'
 import { CLI } from '../../cli'
 import { SettingsInput } from '../../cli/exec'
@@ -42,7 +45,8 @@ describe('authorizing users', () => {
       const err = assertOK(await secondCli.nodes.ls())
       expect(err.result[0].connection).toBe('unauthorized')
 
-      const key = readFileSync(secondCli.identityPath + '.pub')
+      const key = fse
+        .readFileSync(secondCli.identityPath + '.pub')
         .toString('utf8')
         .trim()
       const scope = '/admin/authorizedUsers'

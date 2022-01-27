@@ -1,6 +1,16 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 import { selectNodes } from '../../infrastructure/nodeselection'
 import { ActyxNode } from '../../infrastructure/types'
+import { MyGlobal } from '../../jest/setup'
 import { mkNodeStub } from '../../stubs'
+
+console.log(
+  global.process.pid,
+  (<MyGlobal>global).axNodeSetup.nodes[0].target,
+  (<MyGlobal>global).isSuite,
+)
 
 let n1: ActyxNode
 let n2: ActyxNode

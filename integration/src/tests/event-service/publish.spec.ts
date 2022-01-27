@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 import { runWithClients } from '../../util'
 import { mySuite, publishRandom, testName } from './utils.support.test'
 

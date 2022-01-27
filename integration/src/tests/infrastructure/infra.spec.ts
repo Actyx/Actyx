@@ -1,6 +1,9 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 import { Pond } from '@actyx/pond'
 import { execaCommand } from 'execa'
-import { MyGlobal } from '../../../jest/setup'
+import { MyGlobal } from '../../jest/setup'
 import { assertOK } from '../../assertOK'
 import { runOnAll, runOnEach } from '../../infrastructure/hosts'
 

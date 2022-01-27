@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { deleteKey } from '../src/infrastructure/aws'
-import { printTarget } from '../src/infrastructure/types'
+import { deleteKey } from '../infrastructure/aws'
+import { printTarget } from '../infrastructure/types'
 import { MyGlobal } from './setup'
 
 const teardown = async (_config: Record<string, unknown>): Promise<void> => {

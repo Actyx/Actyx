@@ -87,10 +87,10 @@ const fixedTokenClient = (httpOrigin: string) => (token: string) => ({
 })
 
 // TODO: if reused in js sdk on expired token retry once
-export const mkAuthHttpClient = (manifest: AppManifest) => (
-  httpOrigin: string,
-): Promise<AxHttpClient> =>
-  getToken(manifest, httpOrigin)
-    .then((authResponse) => authResponse.json())
-    .then((x: any) => x.token)
-    .then(fixedTokenClient(httpOrigin))
+export const mkAuthHttpClient =
+  (manifest: AppManifest) =>
+  (httpOrigin: string): Promise<AxHttpClient> =>
+    getToken(manifest, httpOrigin)
+      .then((authResponse) => authResponse.json())
+      .then((x: any) => x.token)
+      .then(fixedTokenClient(httpOrigin))

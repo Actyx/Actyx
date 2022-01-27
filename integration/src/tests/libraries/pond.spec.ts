@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 import { Fish, FishId, Pond, Tag, Tags, Where } from '@actyx/pond'
 import { Observable, lastValueFrom, timer } from 'rxjs'
 import { filter, take } from 'rxjs/operators'

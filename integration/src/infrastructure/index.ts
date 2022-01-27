@@ -1,5 +1,5 @@
 import { execaCommand, ExecaChildProcess } from 'execa'
-import { OS } from '../../jest/types'
+import { OS } from '../jest/types'
 import { Ssh } from './ssh'
 import { TargetKind } from './types'
 

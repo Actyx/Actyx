@@ -1,5 +1,8 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 import { promises as fs } from 'fs'
-import { pathExists } from 'fs-extra'
+import fse from 'fs-extra'
 import { assertOK } from '../../assertOK'
 import path from 'path'
 import { settings } from '../../infrastructure/settings'
@@ -38,7 +41,7 @@ describe('ax swarms', () => {
     })
 
     test('create a file with a valid swarmKey', async () => {
-      const fileExists = await pathExists(FILE_PATH)
+      const fileExists = await fse.pathExists(FILE_PATH)
       if (fileExists) {
         await fs.unlink(FILE_PATH)
       }
@@ -52,8 +55,8 @@ describe('ax swarms', () => {
     test('create files with a unique valid swarmKey', async () => {
       const file1 = `${FILE_PATH}0`
       const file2 = `${FILE_PATH}1`
-      const file1Exists = await pathExists(file1)
-      const file2Exists = await pathExists(file2)
+      const file1Exists = await fse.pathExists(file1)
+      const file2Exists = await fse.pathExists(file2)
       if (file1Exists) {
         await fs.unlink(file1)
       }
@@ -73,7 +76,7 @@ describe('ax swarms', () => {
     })
 
     test('return ERR_INVALID_INPUT when cannot write a swarm key on existing file', async () => {
-      const fileExists = await pathExists(FILE_PATH)
+      const fileExists = await fse.pathExists(FILE_PATH)
       if (fileExists) {
         await fs.unlink(FILE_PATH)
       }

@@ -4,11 +4,11 @@ hosts:
       type: local
     install:
       type: linux
-  - name: local-linux-2
-    prepare:
-      type: local
-    install:
-      type: linux
+  # - name: local-linux-2
+  #   prepare:
+  #     type: local
+  #   install:
+  #     type: linux
 settings:
   # Where folders and files will be created during a test run.
   tempDir: temp

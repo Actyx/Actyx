@@ -84,21 +84,27 @@ export const mkEventService = (httpClient: AxHttpClient): AxEventService => ({
   query: async (request, onData) => {
     const res = await httpClient.post(mkEventsPath(QUERY_SEG), request, true)
     if (!res.body) {
-      throw new Error(`http-client:event-service:query internal error: res.body was unexpectedly null`)
+      throw new Error(
+        `http-client:event-service:query internal error: res.body was unexpectedly null`,
+      )
     }
     await handleStreamResponse(QueryResponse, onData, res.body)
   },
   subscribe: async (request, onData) => {
     const res = await httpClient.post(mkEventsPath(SUBSCRIBE_SEG), request, true)
     if (!res.body) {
-      throw new Error(`http-client:event-service:query internal error: res.body was unexpectedly null`)
+      throw new Error(
+        `http-client:event-service:query internal error: res.body was unexpectedly null`,
+      )
     }
     await handleStreamResponse(SubscribeResponse, onData, res.body)
   },
   subscribeMonotonic: async (request, onData) => {
     const res = await httpClient.post(mkEventsPath(SUBSCRIBE_MONOTONIC_SEG), request, true)
     if (!res.body) {
-      throw new Error(`http-client:event-service:query internal error: res.body was unexpectedly null`)
+      throw new Error(
+        `http-client:event-service:query internal error: res.body was unexpectedly null`,
+      )
     }
     await handleStreamResponse(SubscribeMonotonicResponse, onData, res.body)
   },

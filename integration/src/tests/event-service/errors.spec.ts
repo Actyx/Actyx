@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/jest/environment
+ */
 import { RequestInit } from 'node-fetch'
 import {
   ErrorCode,
