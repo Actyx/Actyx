@@ -30,6 +30,8 @@ pub extern "C" fn axnode_init(working_dir: FfiStr, callback: Callback, error: &m
                 working_dir.as_str().into(),
                 Runtime::Android { ffi_sink },
                 BindTo::default(),
+                true,
+                false,
             ) {
                 Ok(handle) => {
                     *state = Some(handle);

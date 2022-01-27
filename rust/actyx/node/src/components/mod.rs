@@ -10,6 +10,7 @@ pub mod logging;
 pub mod node_api;
 pub mod store;
 
+#[derive(Debug)]
 pub enum ComponentRequest<A> {
     /// Component specific request
     Individual(A),
@@ -88,6 +89,7 @@ pub trait Component<RequestType, ComponentSettings>
 where
     Self: Sized + Send + 'static,
     ComponentSettings: Clone + PartialEq,
+    RequestType: std::fmt::Debug,
 {
     /// Returns the type of the `Component`
     fn get_type() -> &'static str;
@@ -143,6 +145,7 @@ where
                 },
                 recv(self.get_rx()) -> node_msg => {
                     if let Ok(m) = node_msg {
+                        tracing::debug!("Component \"{}\": {:?}", Self::get_type(), m);
                         match m {
                             ComponentRequest::<RequestType>::Individual(m) => {
                                 continue_on_error!(Self::get_type(), self.handle_request(m))
@@ -235,6 +238,7 @@ mod test {
         notifier: Arc<Mutex<Option<channel::Sender<Result<()>>>>>,
     }
 
+    #[derive(Debug)]
     enum SimpleRequest {
         ToggleRandomConfigCreation,
         Ping(Sender<()>),

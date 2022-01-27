@@ -1,10 +1,17 @@
-use crate::{formats::ExternalEvent, node::NodeError, node_storage::NodeStorage};
+use crate::{formats::ExternalEvent, node::NodeError, node_storage::NodeStorage, ApplicationState};
 use anyhow::{anyhow, Context};
 use crossbeam::channel::Sender;
 use crypto::{KeyStore, KeyStoreRef};
 use parking_lot::RwLock;
-use std::{io, sync::Arc};
-use tracing::*;
+use signal_hook::{consts::TERM_SIGNALS, low_level};
+use std::{
+    io,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread::Thread,
+};
 
 pub(crate) fn make_keystore(storage: NodeStorage) -> anyhow::Result<KeyStoreRef> {
     let ks = storage
@@ -75,7 +82,7 @@ pub(crate) fn init_panic_hook(tx: Sender<ExternalEvent>) {
                 }
                 None => format!("thread '{}' panicked at '{}'{:?}", thread, msg, backtrace),
             };
-            error!(target: "panic", "{}", message);
+            tracing::error!(target: "panic", "{}", message);
 
             NodeError::InternalError(Arc::new(anyhow!(message)))
         };
@@ -91,69 +98,41 @@ pub(crate) fn init_panic_hook(tx: Sender<ExternalEvent>) {
     }));
 }
 
-#[cfg(not(windows))]
-pub mod unix_shutdown {
-    use super::spawn_with_name;
-    use crate::ApplicationState;
-    use crossbeam::channel::{bounded, select};
-    use signal_hook::{
-        consts::{SIGINT, SIGTERM},
-        iterator::Signals,
-    };
-    const SIGNALS: [i32; 2] = [SIGINT, SIGTERM];
-    pub fn shutdown_ceremony(mut app_handle: ApplicationState) {
-        let (signal_tx, signal_rx) = bounded(8);
+lazy_static::lazy_static! {
+    static ref SHUTDOWN_FLAG: AtomicBool = AtomicBool::new(false);
+    static ref SHUTDOWN_THREAD: Thread = std::thread::current();
+}
 
-        spawn_with_name("SignalHandling", move || {
-            let mut signals = Signals::new(&SIGNALS).expect("Error installing signal hook");
+pub fn init_shutdown_ceremony() {
+    SHUTDOWN_THREAD.name();
+}
 
-            for sig in signals.into_iter() {
-                // Better safe than sorry ..
-                if SIGNALS.contains(&sig) {
-                    signal_tx.send(()).unwrap();
+pub fn trigger_shutdown() {
+    SHUTDOWN_FLAG.store(true, Ordering::Release);
+    SHUTDOWN_THREAD.unpark();
+}
+
+pub fn shutdown_ceremony(app_handle: ApplicationState) {
+    for sig in TERM_SIGNALS {
+        // if term_requested is already true, then this is the second signal, so exit
+        unsafe {
+            low_level::register(*sig, || {
+                if SHUTDOWN_FLAG.load(Ordering::Acquire) {
+                    low_level::exit(1);
                 }
-            }
-        });
-        let mut sig_count = 0;
-        let mut handle = None;
-        let (tx, rx) = bounded(1);
-        let result_recv = app_handle.manager.rx_process.take().unwrap();
-        let mut app_container = Some((app_handle, tx));
-        loop {
-            select! {
-                recv(signal_rx) -> _ => {
-                    match sig_count {
-                        0 => {
-                            eprintln!("Caught termination signal. Exiting..");
-                            eprintln!("(Hit ctrl-c again to force shutdown.)");
-                            // Offload shutdown to another thread
-                            let (app_handle, tx) = app_container.take().unwrap();
-                            handle = Some(std::thread::spawn(move || {
-                                drop(app_handle);
-                                tx.send(()).unwrap();
-                            }));
-                        },
-                        _ => {
-                            std::process::exit(1);
-                        }
-                    }
-                    sig_count += 1;
-                },
-                recv(rx) -> _ => {
-                    // Graceful shutdown finished
-                    handle.unwrap().join().unwrap();
-                    return;
-                },
-                recv(result_recv) -> res => {
-                    // If the process is being terminated because of a signal, ignore
-                    if sig_count == 0 {
-                        if let Err(e) = res {
-                            eprintln!("Node exited: {}", e);
-                        }
-                        return;
-                    }
-                }
-            }
+            })
         }
+        .unwrap_or_else(|e| panic!("cannot register handler for signal {}: {}", sig, e));
+        unsafe { low_level::register(*sig, trigger_shutdown) }
+            .unwrap_or_else(|e| panic!("cannot register handler for signal {}: {}", sig, e));
     }
+
+    // now the function of this thread is solely to keep the app_handle from dropping
+    // until we actually want to trigger a graceful shutdown
+    while !SHUTDOWN_FLAG.load(Ordering::Relaxed) {
+        std::thread::park();
+        tracing::trace!("wake-up of guardian thread");
+    }
+    tracing::debug!("graceful shutdown triggered");
+    drop(app_handle);
 }

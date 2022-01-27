@@ -12,12 +12,12 @@ if [ -z "$2" ]; then
     exit 1
 fi
 
-if [ -z "$WIN_CODESIGN_CERTIFICATE"]; then
+if [ -z "$WIN_CODESIGN_CERTIFICATE" ]; then
     echo "WIN_CODESIGN_CERTIFICATE not set; please set"
     exit 1
 fi
 
-if [ -z "$WIN_CODESIGN_PASSWORD"]; then
+if [ -z "$WIN_CODESIGN_PASSWORD" ]; then
     echo "WIN_CODESIGN_PASSWORD not set; please set"
     exit 1
 fi

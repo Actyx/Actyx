@@ -10,11 +10,13 @@ import { randomString } from '../../util'
 describe('@actyx/sdk', () => {
   test('node unreachable', async () => {
     await runOnEvery(async (_node) => {
-      const wrongConn = Actyx.of(null!)
+      const wrongConn = Actyx.of(null!, {
+        actyxPort: 4453,
+      })
 
       await expect(wrongConn).rejects.toMatchObject({
         message:
-          'Error: unable to connect to Actyx at http://localhost:4454/api/v2/node/id. Is the service running? -- Error: request to http://localhost:4454/api/v2/node/id failed, reason: connect ECONNREFUSED 127.0.0.1:4454',
+          'Error: unable to connect to Actyx at http://localhost:4453/api/v2/node/id. Is the service running? -- Error: request to http://localhost:4453/api/v2/node/id failed, reason: connect ECONNREFUSED 127.0.0.1:4453',
       })
     })
   })
@@ -78,7 +80,8 @@ describe('@actyx/sdk', () => {
           displayName: 'My Example App',
           version: '1.0.0',
           signature:
-            'v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYZ0JGTTgyZVpMWTdJQzhRbmFuVzFYZ0xrZFRQaDN5aCtGeDJlZlVqYm9qWGtUTWhUdFZNRU9BZFJaMVdTSGZyUjZUOHl1NEFKdFN5azhMbkRvTVhlQnc9PWlkZXZQdWJrZXl4LTBuejFZZEh1L0pEbVM2Q0ltY1pnT2o5WTk2MHNKT1ByYlpIQUpPMTA3cVcwPWphcHBEb21haW5zgmtjb20uYWN0eXguKm1jb20uZXhhbXBsZS4qa2F4U2lnbmF0dXJleFg4QmwzekNObm81R2JwS1VvYXRpN0NpRmdyMEtHd05IQjFrVHdCVkt6TzlwelcwN2hGa2tRK0dYdnljOVFhV2hIVDVhWHp6TyttVnJ4M2VpQzdUUkVBUT09/w==',
+            // This signature has been doctored by building a special `ax` with `dev_cert.validate_app_id` disabled in signed_app_manifest.rs
+            'v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYS3FlRGlvTjZYdnY2SWNXT2JKQmVkY2JWQkcvaVlEZTI0MnovREJYek5UTEFpNzlDdTlBUlYvVkdJV3JER2NRSEZteFVoYytRdk5mRmRtYVIwYkVIQWc9PWlkZXZQdWJrZXl4LTBQMHcwZkJCaktodGZVQ05rQ3YzTy9QamtheGlpb0p6V1B0aWtUVUhYSU5rPWphcHBEb21haW5zgmtjb20uYWN0eXguKm1jb20uZXhhbXBsZS4qa2F4U2lnbmF0dXJleFg4K1dReWRNMW1sR0MzZkRWS1N0ZDJueXhWLzVKeWEzT01tNC9sV3IrdTF2dkV3eWdUdWl0Qm8waWtlb1JvQVk4TytBclplV1lVdEdzNFNHcWNNWlZCZz09/w==',
         },
         {
           actyxPort: node._private.apiPort,

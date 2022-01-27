@@ -1,5 +1,5 @@
 #!/bin/bash
-build_rust_toolchain=1.55.0
+build_rust_toolchain=1.56.1
 
 # The stable image version is the git commit hash inside `Actyx/Cosmos`, with
 # which the respective images was built. Whenever the build images (inside

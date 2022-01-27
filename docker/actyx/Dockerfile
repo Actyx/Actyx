@@ -14,10 +14,11 @@ ENV CARGO_BUILD_TARGET=armv7-unknown-linux-musleabihf
 FROM --platform=$BUILDPLATFORM build-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} AS crossbuild
 ENV CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
-ARG RUSTVER=1.55.0
+ARG RUSTVER=1.56.1
 ARG ACTYX_VERSION=2.0.0_dev-unknown
 ENV ACTYX_VERSION=${ACTYX_VERSION}
 ARG CARGO_BUILD_ARGS
+ARG AX_PUBLIC_KEY
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- \
     --default-toolchain ${RUSTVER} \
@@ -38,14 +39,14 @@ RUN cargo install \
     --path rust/actyx/node \
     --locked \
     ${CARGO_BUILD_ARGS} \
-    --bin actyx-linux
+    --bin actyx
 
 # final prod image
 FROM --platform=$TARGETPLATFORM alpine:3.13
 RUN addgroup -g 1000 -S actyx && \
     adduser -u 1000 -S actyx -G actyx
 
-COPY --from=build --chown=1000:1000 /usr/local/cargo/bin/actyx-linux /usr/bin/actyx
+COPY --from=build --chown=1000:1000 /usr/local/cargo/bin/actyx /usr/bin/actyx
 
 CMD ["actyx", "--working-dir", "/data/actyx-data", "--bind-admin", "0.0.0.0:4458", "--bind-api", "0.0.0.0:4454", "--bind-swarm", "0.0.0.0:4001"]
 

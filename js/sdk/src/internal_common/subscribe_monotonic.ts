@@ -10,7 +10,6 @@ import { gt } from 'fp-ts/lib/Ord'
 import { Observable, EMPTY, from, of, combineLatest, concat, defer } from '../../node_modules/rxjs'
 import {
   filter,
-  bufferTime,
   mergeMap,
   concatMap,
   map,
@@ -33,6 +32,7 @@ import { getInsertionIndex, runStats, takeWhileInclusive } from '../util'
 import { EventStore } from './eventStore'
 import log from './log'
 import { Event, Events } from './types'
+import { bufferOp } from '../util/bufferOp'
 
 // New API:
 // Stream events as they become available, until time-travel would occour.
@@ -104,7 +104,7 @@ export const eventsMonotonic = (
     let tt = false
 
     const liveBuffered = rtAfterHorizon.pipe(
-      bufferTime(1),
+      bufferOp(1),
       filter((x) => x.length > 0),
       mergeMap<Events, Observable<EventsOrTimetravel>>((nextUnsorted) => {
         // Don't spam the logs. And avoid esoteric race conditions due to triggering multiple snapshot invalidations.

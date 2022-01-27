@@ -144,12 +144,24 @@
           "default": 300,
           "description": "GC interval for the block store, in seconds"
         },
+        "metricsInterval": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 1800,
+          "description": "Metrics event emission interval, in seconds"
+        },
         "pingTimeout": {
           "type": "integer",
           "minimum": 0,
           "default": 5,
           "description": "Timeout for one swarm-internal ping response"
-	}
+	      },
+        "bitswapTimeout": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 15,
+          "description": "Timeout for one swarm-internal data block response"
+        }
       }
     },
     "Admin": {

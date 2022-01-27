@@ -52,11 +52,11 @@ describe('node lifecycle', () => {
       ])
       const { admin, api, swarm, log } = await startNodeAndCheckBinds(node, [
         '--bind-admin',
-        adminPort.toString(),
+        `0.0.0.0:${adminPort}`,
         '--bind-api',
-        apiPort.toString(),
+        `0.0.0.0:${apiPort}`,
         '--bind-swarm',
-        swarmPort.toString(),
+        `0.0.0.0:${swarmPort}`,
       ])
       withContext(log, () => {
         expect(admin).toHaveLength(admin.length || 1)
@@ -97,7 +97,8 @@ describe('node lifecycle', () => {
         process.stderr?.on('end', () => res(buffer))
         setTimeout(() => process.kill('SIGTERM'), 500)
       })
-      expect(logs).toContainEqual(
+      // eslint-disable-next-line no-control-regex
+      expect(logs.join('').replace(/\u001b\[[^a-z]*[a-z]/g, '')).toEqual(
         expect.stringContaining(
           'NODE_STOPPED_BY_HOST: Actyx is stopped. The shutdown was either initiated automatically by the host or intentionally by the user.',
         ),
@@ -122,9 +123,9 @@ describe('node lifecycle', () => {
 
         const notX = services
           .filter((y) => y !== x)
-          .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0'])
+          .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0.0.0.0:0'])
         const proc = await runUntil(
-          runActyx(node, undefined, [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX)),
+          runActyx(node, undefined, [`--bind-${x.toLowerCase()}`, `0.0.0.0:${port}`].concat(notX)),
           node.name,
           [],
           10_000,
@@ -137,7 +138,10 @@ describe('node lifecycle', () => {
         }
         const logs = proc.stderr
 
-        expect(logs).toMatch('NODE_STOPPED_BY_NODE: ERR_PORT_COLLISION')
+        // eslint-disable-next-line no-control-regex
+        expect(logs.replace(/\u001b\[[^a-z]*[a-z]/g, '')).toMatch(
+          'NODE_STOPPED_BY_NODE: ERR_PORT_COLLISION',
+        )
         expect(logs).toMatch(
           `Actyx shut down because it could not bind to port ${port.toString()}. Please specify a different ${x} port.`,
         )
@@ -156,9 +160,9 @@ describe('node lifecycle', () => {
 
       const notX = services
         .filter((y) => y !== x)
-        .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0'])
+        .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0.0.0.0:0'])
       const proc = await runUntil(
-        runActyx(node, undefined, [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX)),
+        runActyx(node, undefined, [`--bind-${x.toLowerCase()}`, `0.0.0.0:${port}`].concat(notX)),
         node.name,
         ['Please specify a different'],
         10_000,

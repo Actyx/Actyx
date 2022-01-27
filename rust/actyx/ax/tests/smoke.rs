@@ -29,7 +29,7 @@ fn setup() {
     static INIT: Once = Once::new();
     INIT.call_once(|| {
         // build needed binaries for quicker execution
-        for bin in &["actyx-linux", "ax"] {
+        for bin in &["actyx", "ax"] {
             eprintln!("building {}", bin);
             for msg in CargoBuild::new()
                 .manifest_path("../Cargo.toml")
@@ -90,10 +90,11 @@ fn with_api(
     let workdir = tempdir()?;
 
     let _ = writeln!(log, "running Actyx in {}", std::env::current_dir()?.display());
-    let mut process = run("actyx-linux")?
+    let mut process = run("actyx")?
         .current_dir(workdir.path())
         .stderr(Stdio::piped())
         .args(&["--bind-api=0", "--bind-admin=0", "--bind-swarm=0"])
+        .env("RUST_LOG", "debug")
         .spawn()?;
     let stderr = process.stderr.take().unwrap();
 
@@ -185,6 +186,7 @@ fn offsets() -> anyhow::Result<()> {
                 identity.as_os_str(),
                 o(&format!("localhost:{}", api)),
             ])
+            .env("RUST_LOG", "debug")
             .output()?;
         eprintln!(
             "out:\n{}\nerr:\n{}\n---",

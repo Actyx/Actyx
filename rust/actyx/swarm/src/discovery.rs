@@ -49,8 +49,10 @@ use libipld::DagCbor;
 use std::future::Future;
 use std::io::{Read, Seek, Write};
 use std::time::Duration;
+use tokio::time::timeout;
 use trees::query::{LamportQuery, TagExprQuery, TimeQuery};
 use trees::tags::{ScopedTag, ScopedTagSet, TagScope};
+use trees::AxKey;
 
 #[derive(DagCbor, Debug)]
 #[allow(clippy::enum_variant_names)]
@@ -83,7 +85,7 @@ impl Event {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 #[repr(transparent)]
 struct PeerId(ipfs_embed::PeerId);
 
@@ -117,7 +119,7 @@ where
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 struct Multiaddr(ipfs_embed::Multiaddr);
 
@@ -151,6 +153,28 @@ where
     }
 }
 
+fn decode_event(e: Result<(u64, AxKey, Payload)>, my_peer_id: ipfs_embed::PeerId) -> Option<Event> {
+    let (_off, _key, event) = match e {
+        Ok(event) => event,
+        Err(err) => {
+            tracing::warn!("store error: {}", err);
+            return None;
+        }
+    };
+    let event: Event = match DagCborCodec.decode(event.as_slice()) {
+        Ok(event) => event,
+        Err(err) => {
+            tracing::debug!("decoding error: {}", err);
+            return None;
+        }
+    };
+    if *event.peer_id() == my_peer_id {
+        None
+    } else {
+        Some(event)
+    }
+}
+
 pub async fn discovery_ingest(store: BanyanStore) {
     let mut tags: ScopedTagSet = tags!("discovery").into();
     tags.insert(ScopedTag::new(TagScope::Internal, tag!("app_id:com.actyx")));
@@ -161,28 +185,42 @@ pub async fn discovery_ingest(store: BanyanStore) {
     );
     let mut stream = store.stream_filtered_stream_ordered(query);
     let peer_id = store.ipfs().local_peer_id();
-    let node_name = store.ipfs().local_node_name();
+
+    // first catch up and build a list, we won’t want to spam the address book
+    let mut addresses = FnvHashMap::<PeerId, FnvHashSet<Multiaddr>>::default();
+    while let Ok(Some(event)) = timeout(Duration::from_secs(3), stream.next()).await {
+        let event = match decode_event(event, peer_id) {
+            Some(e) => e,
+            None => continue,
+        };
+        tracing::debug!("discovery_ingest (catch-up) {:?}", event);
+        match event {
+            Event::NewListenAddr(peer, addr)
+            | Event::NewExternalAddr(peer, addr)
+            | Event::NewObservedAddr(peer, addr) => {
+                addresses.entry(peer).or_default().insert(addr);
+            }
+            Event::ExpiredListenAddr(peer, addr)
+            | Event::ExpiredExternalAddr(peer, addr)
+            | Event::ExpiredObservedAddr(peer, addr) => {
+                addresses.entry(peer).or_default().remove(&addr);
+            }
+        }
+    }
+    for (peer, addrs) in addresses {
+        for addr in addrs {
+            store.ipfs().add_address(&peer.into(), addr.into());
+        }
+    }
+
+    // then switch to live mode
+    tracing::debug!("discovery_ingest switching to live mode");
     while let Some(event) = stream.next().await {
-        let (_off, key, event) = match event {
-            Ok(event) => event,
-            Err(err) => {
-                tracing::warn!("{}", err);
-                continue;
-            }
+        let event = match decode_event(event, peer_id) {
+            Some(e) => e,
+            None => continue,
         };
-        let event: Event = match DagCborCodec.decode(event.as_slice()) {
-            Ok(event) => event,
-            Err(err) => {
-                tracing::warn!("{}", err);
-                continue;
-            }
-        };
-        if *event.peer_id() == peer_id {
-            continue;
-        }
-        if key.time() > Timestamp::now() - 1_000_000 {
-            tracing::debug!("discovery_ingest {} {:?}", node_name, event);
-        }
+        tracing::debug!("discovery_ingest {:?}", event);
         match event {
             Event::NewListenAddr(peer, addr)
             | Event::NewExternalAddr(peer, addr)
@@ -190,7 +228,6 @@ pub async fn discovery_ingest(store: BanyanStore) {
             Event::ExpiredListenAddr(peer, addr)
             | Event::ExpiredExternalAddr(peer, addr)
             | Event::ExpiredObservedAddr(peer, addr) => store.ipfs().remove_address(&peer.into(), &addr.into()),
-            _ => {}
         }
     }
 }
@@ -236,7 +273,6 @@ pub fn discovery_publish(
     let mut buffer = vec![];
     let tags = tags!("discovery");
     let peer_id: PeerId = store.ipfs().local_peer_id().into();
-    let node_name = store.ipfs().local_node_name();
     let mut dialers = FnvHashMap::<_, Dialer>::default();
     let mut to_warn = to_warn
         .into_iter()
@@ -244,7 +280,7 @@ pub fn discovery_publish(
         .collect::<FnvHashMap<_, bool>>();
     Ok(async move {
         while let Some(event) = stream.next().await {
-            tracing::trace!("discovery_publish {} {:?}", node_name, event);
+            tracing::trace!("discovery_publish {:?}", event);
             let event = match event {
                 ipfs_embed::Event::NewListenAddr(_, addr) => {
                     if !is_loopback(&addr) {
@@ -291,9 +327,9 @@ pub fn discovery_publish(
                     }
                     let ipfs = store.ipfs().clone();
                     let backoff = if let Some(dialer) = dialers.remove(&peer) {
-                        dialer.backoff.saturating_add(Duration::from_secs(10))
+                        dialer.backoff.saturating_mul(2).min(Duration::from_secs(60))
                     } else {
-                        Duration::from_secs(10)
+                        Duration::from_secs(1)
                     };
                     let task = tokio::spawn(async move {
                         tokio::time::sleep(backoff).await;
@@ -309,6 +345,7 @@ pub fn discovery_publish(
                     } else {
                         tracing::debug!(id = display(&peer), "connected");
                     }
+                    // dropping the Dialer will kill the task
                     dialers.remove(&peer);
                     continue;
                 }
@@ -336,7 +373,12 @@ pub fn discovery_publish(
                                     .filter(|x| x.0 == peer)
                                     .map(|x| x.1)
                                     .collect::<Vec<_>>();
-                                tracing::warn!(peer = display(peer), addr = debug(&addrs), "slow ping time");
+                                tracing::warn!(
+                                    peer = display(peer),
+                                    addr = debug(&addrs),
+                                    info = debug(rtt),
+                                    "slow ping time"
+                                );
                             }
                         }
                     }

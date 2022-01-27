@@ -253,8 +253,8 @@ async fn test_add_cat() -> Result<()> {
     data.resize(data.capacity(), 0);
     let mut rng = rand::thread_rng();
     rng.fill_bytes(&mut data);
-    let tmp = store.ipfs().create_temp_pin()?;
-    let (root, _) = store.add(&tmp, &data[..])?;
+    let mut tmp = store.ipfs().create_temp_pin()?;
+    let (root, _) = store.add(&mut tmp, &data[..])?;
     let mut buf = Vec::with_capacity(16_000_000);
     let stream = store.cat(root, true);
     pin_mut!(stream);
@@ -273,10 +273,10 @@ fn test_add_zero_bytes() -> Result<()> {
         util::setup_logger();
         let store = BanyanStore::test("local").await?;
         tracing::info!("store created");
-        let tmp = store.ipfs().create_temp_pin()?;
+        let mut tmp = store.ipfs().create_temp_pin()?;
         tracing::info!("temp pin created");
         let data: &[u8] = &[];
-        store.add(&tmp, data)?;
+        store.add(&mut tmp, data)?;
         tracing::info!("data added");
         drop(tmp);
         tracing::info!("temp pin dropped");

@@ -20,7 +20,7 @@ use crate::language::Query;
 /// let now = chrono::Utc::now();
 /// let query = format!(
 ///        r#"
-/// FEATURES(zøg aggregate timeRange)
+/// FEATURES(zoeg aggregate timeRange)
 /// FROM isLocal &
 ///      appId(com.actyx) &
 ///      'files:created' &

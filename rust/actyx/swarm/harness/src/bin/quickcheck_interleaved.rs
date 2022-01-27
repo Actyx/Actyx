@@ -238,7 +238,7 @@ fn main() {
                 .map(|(cmd_id, cmd)| match cmd {
                     TestCommand::Publish { tags, node } => {
                         let id = machines[node % n_nodes];
-                        let client = ApiClient::from_machine(sim.machine(id), app_manifest()).unwrap();
+                        let client = ApiClient::from_machine(sim.machine(id), app_manifest(), None).unwrap();
                         let events = to_events(tags);
                         tracing::debug!("Cmd {} / Node {}: Publishing {} events", cmd_id, node, events.len());
                         async move {
@@ -257,7 +257,7 @@ fn main() {
                         );
 
                         let id = machines[node % n_nodes];
-                        let client = ApiClient::from_machine(sim.machine(id), app_manifest()).unwrap();
+                        let client = ApiClient::from_machine(sim.machine(id), app_manifest(), None).unwrap();
                         let query = to_query(tags);
                         let request = SubscribeRequest {
                             lower_bound: None,

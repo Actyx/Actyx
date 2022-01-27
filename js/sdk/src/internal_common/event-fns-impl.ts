@@ -14,7 +14,6 @@ import {
   toArray,
   bufferCount,
   mergeScan,
-  bufferTime,
   reduce as rxReduce,
   shareReplay,
 } from '../../node_modules/rxjs/operators'
@@ -54,6 +53,7 @@ import { noop } from '../util'
 import { EventStore } from './eventStore'
 import { eventsMonotonic, EventsOrTimetravel as EventsOrTtInternal } from './subscribe_monotonic'
 import { Event, Events } from './types'
+import { bufferOp } from '../util/bufferOp'
 
 export const _ordByTimestamp = contramap((e: ActyxEvent): [number, string] => [
   e.meta.timestampMicros,
@@ -278,15 +278,11 @@ export const EventFnsFromEventStoreV2 = (
     const bufSize = cfg.maxChunkSize || 1000
     const s = eventStore.subscribe(lb, query || allEvents)
 
-    const buffered = s
-      // 2nd arg to bufferTime is not marked as optional, but it IS optional
-      /* eslint-disable @typescript-eslint/no-non-null-assertion */
-      .pipe(
-        bufferTime(bufTime, null!, bufSize),
-        filter((x) => x.length > 0),
-        map((buf) => buf.sort(EventKey.ord.compare)),
-      )
-    /* eslint-enable @typescript-eslint/no-non-null-assertion */
+    const buffered = s.pipe(
+      bufferOp(bufTime, bufSize),
+      filter((x) => x.length > 0),
+      map((buf) => buf.sort(EventKey.ord.compare)),
+    )
 
     // The only way to avoid parallel invocations is to use mergeScan with final arg=1
     const rxSub = buffered

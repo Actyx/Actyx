@@ -31,7 +31,6 @@ import { lastValueFrom } from '../../node_modules/rxjs'
 import { map, tap, first, toArray } from '../../node_modules/rxjs/operators'
 import * as WebSocket from 'isomorphic-ws'
 
-beforeEach(() => {})
 afterEach(() => {
   MockWebSocket.clearSockets()
 })

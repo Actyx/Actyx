@@ -11,7 +11,6 @@ import { timer, lastValueFrom } from '../../node_modules/rxjs'
 import { MockWebSocket, MockWebSocketConstructor } from '../v2/multiplexedWebsocket.spec'
 import { WebSocketWrapper } from './webSocketWrapper'
 
-beforeEach(() => {})
 afterEach(() => {
   MockWebSocket.clearSockets()
 })

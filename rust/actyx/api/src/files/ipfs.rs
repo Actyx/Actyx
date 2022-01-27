@@ -57,8 +57,8 @@ pub fn content_type_from_content(chunk: &[u8]) -> Option<String> {
 }
 
 pub async fn get_file(store: BanyanStore, cid: Cid) -> anyhow::Result<impl Stream<Item = anyhow::Result<Vec<u8>>>> {
-    let tmp = store.ipfs().create_temp_pin()?;
-    store.ipfs().temp_pin(&tmp, &cid)?;
+    let mut tmp = store.ipfs().create_temp_pin()?;
+    store.ipfs().temp_pin(&mut tmp, &cid)?;
 
     Ok(store.cat(cid, false))
 }

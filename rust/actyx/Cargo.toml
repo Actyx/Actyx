@@ -12,12 +12,10 @@ members = [
   "node",
   "node-ffi",
   "node-manager-bindings",
-  "node-win",
   "runtime",
   "swarm",
   "swarm/cli",
   "swarm/harness",
-  "tracing_win_event_log",
   "trees",
   "util",
 ]
@@ -28,15 +26,19 @@ resolver = "2"
 # down the application after the stack has been wound down.
 [profile.release]
 panic = "unwind"
+debug = 0
+lto = "thin"
+
 [profile.dev]
 panic = "abort"
+debug = 2
+opt-level = 0
+lto = "off"
 
 [patch.crates-io]
 # wait for ipfs-embed 0.23
 ipfs-embed = { git = "https://github.com/Actyx/ipfs-embed", branch = "sim-open" }
 banyan = { git = "https://github.com/Actyx/banyan", branch = "rku/logging" }
-libp2p = { git = "https://github.com/Actyx/rust-libp2p", branch = "sim-open" }
-libp2p-bitswap = { git = "https://github.com/Actyx/libp2p-bitswap", branch = "sim-open" }
-libp2p-broadcast = { git = "https://github.com/Actyx/libp2p-broadcast", branch = "sim-open-2" }
-libp2p-quic = { git = "https://github.com/Actyx/libp2p-quic", branch = "sim-open-2" }
-libp2p-blake-streams = { git = "https://github.com/Actyx/blake-streams", branch = "sim-open" }
+# waiting for version 0.26.1
+libp2p-swarm-derive = { git = "https://github.com/libp2p/rust-libp2p", rev = "17d6b4ba67c3343e1ff5004a3f4975faaf9bc034" }
+# ipfs-sqlite-block-store = { path = "../../../ipfs-sqlite-block-store" }

@@ -14,7 +14,7 @@ use libp2p::{
     request_response::{
         ProtocolSupport, RequestResponse, RequestResponseConfig, RequestResponseEvent, RequestResponseMessage,
     },
-    swarm::{Swarm, SwarmBuilder, SwarmEvent},
+    swarm::{dial_opts::DialOpts, Swarm, SwarmBuilder, SwarmEvent},
     NetworkBehaviour,
 };
 use libp2p_streaming_response::{StreamingResponse, StreamingResponseEvent};
@@ -73,13 +73,15 @@ impl NodeConnection {
         let public_key = kp.public();
         let (peer_id, transport) = mk_transport(kp).await?;
 
+        let mut request_response_config = RequestResponseConfig::default();
+        request_response_config.set_request_timeout(Duration::from_secs(120));
         let protocol = RequestBehaviour {
             admin_api: StreamingResponse::new(Default::default()),
             events_api: StreamingResponse::new(Default::default()),
             banyan_api: RequestResponse::new(
                 BanyanProtocol::default(),
                 [(BanyanProtocolName, ProtocolSupport::Outbound)],
-                RequestResponseConfig::default(),
+                request_response_config,
             ),
             ping: Ping::new(PingConfig::new().with_keep_alive(true)),
             identify: Identify::new(
@@ -348,7 +350,7 @@ async fn poll_until_connected(
     let mut to_try = 0usize;
     for addr in potential_addresses {
         info!("Trying to connect to {}", addr);
-        Swarm::dial_addr(&mut swarm, addr).expect("Connection limit exceeded");
+        Swarm::dial(&mut swarm, DialOpts::unknown_peer_id().address(addr).build()).expect("Connection limit exceeded");
         to_try += 1;
     }
     while let Some(event) = swarm.next().await {
@@ -365,15 +367,12 @@ async fn poll_until_connected(
             SwarmEvent::NewListenAddr { address, .. } => {
                 debug!("Listening on {}", address);
             }
-            SwarmEvent::UnknownPeerUnreachableAddr { address, .. } | SwarmEvent::UnreachableAddr { address, .. } => {
+            SwarmEvent::OutgoingConnectionError { peer_id: _, error } => {
                 to_try -= 1;
                 if to_try == 0 {
-                    return ax_err(ActyxOSCode::ERR_NODE_UNREACHABLE, format!("{} is unreachable", address));
+                    return ax_err(ActyxOSCode::ERR_NODE_UNREACHABLE, error.to_string());
                 } else {
-                    info!(
-                        "{} is unreachable, still got {} other connections to try",
-                        address, to_try
-                    );
+                    info!("{}, still got {} other connections to try", error, to_try);
                 }
             }
             m => {

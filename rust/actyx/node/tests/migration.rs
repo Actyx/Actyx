@@ -1,6 +1,7 @@
 use actyx_sdk::service::EventService;
 use actyx_sdk::{app_id, AppManifest, Offset, StreamId};
 use escargot::{format::Message, CargoBuild};
+use std::net::{IpAddr, Ipv4Addr, TcpListener};
 use std::path::{self, Path};
 use std::process::Stdio;
 use std::str::FromStr;
@@ -37,16 +38,16 @@ impl Version {
 }
 
 fn setup() {
-    // make sure actyx-linux binary is built and available
+    // make sure actyx binary is built and available
     // (so you don't have to spend scratching your head about the code that is being run ..)
     static INIT: Once = Once::new();
     INIT.call_once(|| {
         util::setup_logger();
         // build needed binaries for quicker execution
-        eprintln!("building actyx-linux");
+        eprintln!("building actyx");
         for msg in CargoBuild::new()
             .manifest_path("../Cargo.toml")
-            .bin("actyx-linux")
+            .bin("actyx")
             .features(FEATURES)
             .exec()
             .unwrap()
@@ -205,8 +206,8 @@ async fn assert_v2_from_v1_files(
     for (actual, expected) in stderr
         .into_iter()
         .filter(|x| {
-            if initial_db_version == 0 && x.contains("ipfs_sqlite_block_store") {
-                // ipfs_sqlite_block_store prints out some migration logs when coming from v0
+            if initial_db_version < 2 && x.contains("ipfs_sqlite_block_store") {
+                // ipfs_sqlite_block_store prints out some migration logs when coming from v0 / v1
                 false
             } else {
                 !x.contains("wal_checkpoint")
@@ -268,8 +269,14 @@ async fn try_run(
     working_dir: impl AsRef<Path>,
     expected_offsets: impl Iterator<Item = (StreamId, Offset)>,
 ) -> anyhow::Result<Vec<String>> {
-    let ports = (0..3).map(|_| util::free_port(0)).collect::<anyhow::Result<Vec<_>>>()?;
-    let mut child = Command::new(target_dir().join("actyx-linux"))
+    let ports = (0..3)
+        .map(|_| TcpListener::bind((IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0)).map_err(Into::into))
+        .collect::<anyhow::Result<Vec<_>>>()?
+        // keeping the listeners alive avoids getting the same port number twice
+        .into_iter()
+        .map(|l| Ok(l.local_addr()?.port()))
+        .collect::<anyhow::Result<Vec<_>>>()?;
+    let mut child = Command::new(target_dir().join("actyx"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .args(&[
@@ -302,7 +309,7 @@ async fn try_run(
         started = l.contains("NODE_STARTED_BY_HOST");
         stderr.push(l);
     }
-    // The `actyx-linux` process may get blocked because we don't continuie to
+    // The `actyx` process may get blocked because we don't continuie to
     // read its stdout/stderr. This shouldn't be a problem for those short-lived
     // tests, but might be wity extremely verbose logging.
     let client = actyx_sdk::HttpClient::new(

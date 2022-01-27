@@ -19,18 +19,25 @@ import {
 } from '@actyx/sdk'
 import { SnapshotStore } from '@actyx/sdk/lib/snapshotStore'
 import { last } from 'ramda'
-import { Observable, from, lastValueFrom, of, asyncScheduler } from '../node_modules/rxjs'
 import {
-  concatWith,
+  asyncScheduler,
   concatMap,
   concatMapTo,
-  map,
-  shareReplay,
-  observeOn,
+  concatWith,
   first,
-  debounceTime,
+  from,
+  lastValueFrom,
+  map,
+  mapTo,
+  mergeWith,
+  Observable,
+  observeOn,
+  of,
+  shareReplay,
+  skip,
   take,
-} from '../node_modules/rxjs/operators'
+  timer,
+} from '../node_modules/rxjs'
 import { Fish, FishId } from '.'
 import { observeMonotonic } from './monotonic'
 import { minSnapshotAge, SnapshotScheduler } from './monotonic/snapshotScheduler'
@@ -248,10 +255,20 @@ export const snapshotTestSetup = async <S>(
 
   const pubEvents = actyx.directlyPushEvents
 
+  const wakeup = () => lastValueFrom(observe.pipe(take(1)))
+
   const applyAndGetState = async (events: ReadonlyArray<TestEvent>) => {
+    const state = await wakeup()
     // adding events may or may not emit a new state, depending on whether the events
     // were relevant (might be before semantic snapshot or duplicates)
-    const pubProm = lastValueFrom(observe.pipe(observeOn(asyncScheduler), debounceTime(0), first()))
+    const pubProm = lastValueFrom(
+      observe.pipe(
+        observeOn(asyncScheduler),
+        skip(1),
+        mergeWith(timer(100).pipe(mapTo(state))),
+        first(),
+      ),
+    )
     pubEvents(events)
     return pubProm
   }
@@ -261,8 +278,6 @@ export const snapshotTestSetup = async <S>(
       const c = x as LocalSnapshot<string> | undefined
       return c ? { ...c, state: JSON.parse(c.state) } : undefined
     })
-
-  const wakeup = () => lastValueFrom(observe.pipe(take(1)))
 
   return {
     latestSnap,

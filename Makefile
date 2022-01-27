@@ -51,7 +51,7 @@ endif
 ##### Configuration variables
 #############################
 architectures = aarch64 x86_64 armv7 arm
-unix-bins = actyx-linux ax
+unix-bins = actyx ax
 windows-bins = actyx.exe ax.exe actyx-x64.msi
 android-bins = actyx.apk actyx.aab
 
@@ -59,13 +59,13 @@ CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
 CARGO_BUILD_ARGS ?= --features migration-v1
 
-export BUILD_RUST_TOOLCHAIN ?= 1.55.0
+export BUILD_RUST_TOOLCHAIN ?= 1.56.1
 
 # The stable image version is the git commit hash inside `Actyx/Actyx`, with
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 0d13a2e82ee0f02426205bcf9237c8858f959da3
+export LATEST_STABLE_IMAGE_VERSION := 24fc473cb8766c28a59cc368d05769aa7ca4b160
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -93,13 +93,13 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/util:osxbuilder-3c73dcd794149800c37f7f6efa892c6f9bb963fe
+image-darwin = actyx/util:osxbuilder-5df6c3baf0143be10458e412241dfb90069008ba
 
 image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
 
 # list all os-arch and binary names
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 macos-aarch64
-binaries = ax ax.exe actyx-linux actyx.exe
+binaries = ax ax.exe actyx actyx.exe
 
 # targets for which we need a .so file for android
 android_so_targets = x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
@@ -115,19 +115,29 @@ export ACTYX_VERSION ?= 0.0.0_dev-$(GIT_COMMIT)
 export ACTYX_VERSION_CLI ?= 0.0.0_dev-$(GIT_COMMIT)
 export ACTYX_VERSION_NODEMANAGER ?= 0.0.0-dev-$(GIT_COMMIT)
 
+$(shell env | sort >&2)
+ifeq ($(origin ACTYX_PUBLIC_KEY), undefined)
+  AXP :=
+  AXP_DOCKER :=
+else
+  AXP := -e AX_PUBLIC_KEY=$(ACTYX_PUBLIC_KEY)
+  AXP_DOCKER := --build-arg AX_PUBLIC_KEY=$(ACTYX_PUBLIC_KEY)
+  export AX_PUBLIC_KEY = $(ACTYX_PUBLIC_KEY)
+endif
+
 all-WINDOWS := $(foreach t,$(windows-bins),windows-x86_64/$t)
 all-ANDROID := $(android-bins)
 all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t macos-aarch64/$t)
 
 docker-platforms = $(foreach arch,$(architectures),$(docker-platform-$(arch)))
-docker-build-args = --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg CARGO_BUILD_ARGS="$(CARGO_BUILD_ARGS)"
+docker-build-args = ${AXP_DOCKER} --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg CARGO_BUILD_ARGS="$(CARGO_BUILD_ARGS)"
 docker-multiarch-build-args = $(docker-build-args) --platform $(shell echo $(docker-platforms) | sed 's/ /,/g')
 
 export CARGO_HOME ?= $(HOME)/.cargo
 export DOCKER_CLI_EXPERIMENTAL := enabled
 
 # Use docker run -ti only if the input device is a TTY (so that Ctrl+C works)
-export DOCKER_FLAGS ?= -e "ACTYX_VERSION=${ACTYX_VERSION}" -e "ACTYX_VERSION_CLI=${ACTYX_VERSION_CLI}" $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
+export DOCKER_FLAGS ?= ${AXP} -e "ACTYX_VERSION=${ACTYX_VERSION}" -e "ACTYX_VERSION_CLI=${ACTYX_VERSION_CLI}" $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
 
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
@@ -150,7 +160,7 @@ endef
 
 $(foreach arch,$(architectures),$(eval $(call mkLinuxRule,$(arch))))
 
-current: dist/bin/current/ax dist/bin/current/actyx-linux
+current: dist/bin/current/ax dist/bin/current/actyx
 
 all-js: dist/js/pond dist/js/sdk
 
@@ -279,6 +289,7 @@ validate-netsim: diagnostics
 	rust/actyx/target/release/quickcheck_interleaved
 	rust/actyx/target/release/quickcheck_stress_single_store
 	rust/actyx/target/release/quickcheck_ephemeral
+	rust/actyx/target/release/versions
         # https://github.com/Actyx/Actyx/issues/160
 	# rust/actyx/target/release/health
 	rust/actyx/target/release/read_only
