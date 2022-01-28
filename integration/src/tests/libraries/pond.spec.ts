@@ -144,7 +144,6 @@ describe('Pond', () => {
         trialManifest,
         {
           actyxPort: node._private.apiPort,
-          automaticReconnect: true,
         },
         {},
       )

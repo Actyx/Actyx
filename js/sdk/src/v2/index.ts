@@ -7,28 +7,54 @@
 export { v2getNodeId } from './utils'
 export { WebsocketEventStore as WebsocketEventStoreV2 } from './websocketEventStore'
 
-import { WebSocketWrapper } from '../internal_common/webSocketWrapper'
+import { Subject, takeUntil } from '../../node_modules/rxjs'
+import log from '../internal_common/log'
 import { ActyxOpts, AppManifest } from '../types'
-import { MultiplexedWebsocket } from './multiplexedWebsocket'
-import { reconnectingWs } from './reconnectingWs'
-import { getApiLocation } from './utils'
+import { mkConfig, MultiplexedWebsocket } from './multiplexedWebsocket'
+import { checkToken, getToken, getApiLocation } from './utils'
 
 export const makeWsMultiplexerV2 = async (
   config: ActyxOpts,
   token: string,
   manifest: AppManifest,
 ): Promise<MultiplexedWebsocket> => {
-  if (config.automaticReconnect) {
-    return new MultiplexedWebsocket(reconnectingWs(config, manifest))
-  }
-
   const apiLocation = getApiLocation(config.actyxHost, config.actyxPort)
+  const wsUrl = (tok: string) => `ws://${apiLocation}/events?${tok}`
+  const wsConfig = mkConfig(wsUrl(token))
 
-  const wsUrl = 'ws://' + apiLocation + '/events'
+  const closeSubject = new Subject()
+  wsConfig.closeObserver = closeSubject
+  const openSubject = new Subject()
+  wsConfig.openObserver = openSubject
+  const ws = new MultiplexedWebsocket(wsConfig)
 
-  const ws = new MultiplexedWebsocket(
-    WebSocketWrapper(wsUrl + '?' + token, undefined, config.onConnectionLost),
-  )
+  closeSubject.subscribe({
+    next: () => {
+      log.ws.warn('connection to Actyx lost')
+      config.onConnectionLost && config.onConnectionLost()
+      let renewing = false
+      const renewToken = async () => {
+        if (renewing) return
+        renewing = true
+        if (!(await checkToken(config, token))) {
+          // token invalid but API working => reauthenticate
+          token = await getToken(config, manifest)
+          wsConfig.url = wsUrl(token)
+          ws.close() // this disposes of the internal WebSocketSubject
+          ws.request('wake up')
+        }
+      }
+      ws.errors()
+        .pipe(takeUntil(openSubject))
+        .forEach(() => renewToken().catch(() => (renewing = false)))
+    },
+  })
+  openSubject.subscribe({
+    next: () => {
+      log.ws.info('connection to Actyx established')
+      config.onConnectionEstablished && config.onConnectionEstablished()
+    },
+  })
 
   return ws
 }

@@ -32,11 +32,11 @@ const settings = {
   // This option allows the use of a custom global setup module which exports an
   // async function that is triggered once before all test suites. This function
   // gets Jest's globalConfig object as a parameter.
-  globalSetup: './dist/jest/setup.js',
+  globalSetup: './dist/integration/src/jest/setup.js',
   //  This option allows the use of a custom global teardown module which exports
   //  an async function that is triggered once after all test suites. This function
   //  gets Jest's globalConfig object as a parameter.
-  globalTeardown: './dist/jest/teardown.js',
+  globalTeardown: './dist/integration/src/jest/teardown.js',
   // NOTICE:
   // Every test must have a jsdoc comment block at the top that selects our
   // custom test environment! Previously this was possible here, but works no longer.

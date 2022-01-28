@@ -5,7 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Observable, OperatorFunction } from '../../node_modules/rxjs'
+import { Observable, OperatorFunction, Subscription } from '../../node_modules/rxjs'
 import { CancelSubscription } from '../types'
 import { noop } from './typescript'
 
@@ -18,14 +18,24 @@ export const takeWhileInclusive =
   (source: Observable<T>) =>
     new Observable((subscriber) => {
       let index = 0
-      return source.subscribe({
+      let sub: Subscription | boolean = true
+      const s = source.subscribe({
         next: (value) => {
           const result = predicate(value, index)
           index += 1
           subscriber.next(value)
-          if (!result) subscriber.complete()
+          if (!result) {
+            subscriber.complete()
+            typeof sub === 'boolean' ? (sub = false) : sub.unsubscribe()
+          }
         },
+        error: (err) => subscriber.error(err),
       })
+      if (!sub) {
+        s.unsubscribe()
+      }
+      sub = s
+      return sub
     })
 
 export const omitObservable = <T>(

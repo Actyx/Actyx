@@ -351,11 +351,9 @@ export type ActyxOpts = {
   onConnectionLost?: () => void
 
   /**
-   * Whether to try and automatically restore the websocket connection to Actyx, when it is lost
-   * Defaults to `false`
-   * Note that installing `onConnectionLost(reloadApplication)` is usually more robust than setting `automaticReconnect=true`.
+   * Hook, when the connection to the store has been established.
    */
-  automaticReconnect?: boolean
+  onConnectionEstablished?: () => void
 }
 
 /** Options used when creating a new TEST `Actyx` instance. @public */

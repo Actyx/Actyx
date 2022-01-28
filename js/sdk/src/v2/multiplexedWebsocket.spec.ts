@@ -6,6 +6,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 import {
   fromNullable,
@@ -15,21 +16,16 @@ import {
 } from 'fp-ts/lib/Option'
 import { pipe } from 'fp-ts/lib/function'
 import { range, takeWhile } from 'ramda'
-import { timer } from '../../node_modules/rxjs'
-import { OffsetsResponse } from '../internal_common/types'
-import { WebSocketConstructor, WebSocketWrapper } from '../internal_common/webSocketWrapper'
-import { validateOrThrow } from '../util'
-import {
-  MultiplexedWebsocket,
-  Request,
-  RequestMessageType,
-  ResponseMessage,
-  ResponseMessageType,
-} from './multiplexedWebsocket'
+import { timer, Subject } from '../../node_modules/rxjs'
+import { MultiplexedWebsocket, ResponseMessage } from './multiplexedWebsocket'
 import { RequestTypes } from './websocketEventStore'
 import { lastValueFrom } from '../../node_modules/rxjs'
-import { map, tap, first, toArray } from '../../node_modules/rxjs/operators'
-import * as WebSocket from 'isomorphic-ws'
+import { tap, first, toArray } from '../../node_modules/rxjs/operators'
+import {
+  RequestMessage,
+  RequestMessageType,
+  ResponseMessageType,
+} from '../internal_common/multiplexedWebSocket'
 
 afterEach(() => {
   MockWebSocket.clearSockets()
@@ -66,26 +62,62 @@ const msgGen: () => ((requestId: number) => ResponseMessage[])[] = () => {
 
 describe('multiplexedWebsocket', () => {
   it('should report connection errors', async () => {
+    const openObserver = new Subject()
+    let opened = 0
+    openObserver.subscribe({ next: () => (opened += 1) })
+
+    const closeObserver = new Subject()
+    let closed = 0
+    closeObserver.subscribe({ next: () => (closed += 1) })
+
     const s = new MultiplexedWebsocket(
-      WebSocketWrapper('ws://socket', undefined, undefined, undefined, MockWebSocketConstructor),
+      {
+        url: 'ws://socket',
+        openObserver,
+        closeObserver,
+        WebSocketCtor: MockWebSocketConstructor,
+      },
+      100,
     )
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const socket = MockWebSocket.lastSocket!
-    socket.trigger('error', { message: 'destination unreachable' })
+    const subject = s.errors()
 
-    await expect(
-      lastValueFrom(
-        s.request(RequestTypes.Offsets).pipe(map(validateOrThrow(OffsetsResponse)), first()),
-      ),
-    ).rejects.toMatch('destination unreachable')
+    const pErr1 = lastValueFrom(subject.pipe(first()))
+    MockWebSocket.lastSocket!.trigger('error', { message: 'destination unreachable' })
+    expect(await pErr1).toEqual({ message: 'destination unreachable' })
+
+    // await redial
+    await new Promise((res) => setTimeout(res, 500))
+    expect(MockWebSocket.sockets).toHaveLength(2)
+
+    expect([opened, closed]).toEqual([0, 0])
+    const ws1 = MockWebSocket.lastSocket!
+    ws1.open()
+    expect([opened, closed]).toEqual([1, 0])
+
+    const pErr2 = lastValueFrom(subject.pipe(first()))
+    const pReq1 = lastValueFrom(s.request(RequestTypes.Offsets).pipe(first())).catch((err) =>
+      expect(err).toEqual(new Error('{"message":"broken"}')),
+    )
+
+    expect(ws1.lastMessageSent).toEqual({
+      type: 'request',
+      serviceId: 'offsets',
+      requestId: 0,
+      payload: null,
+    })
+    ws1.trigger('error', { message: 'broken' })
+
+    expect(await pErr2).toEqual({ message: 'broken' })
+    expect(await pReq1).toBeUndefined()
   })
 
   it('should just work', async () => {
     const testArr = msgGen()
-    const multiplexer = new MultiplexedWebsocket(
-      WebSocketWrapper('ws://socket', undefined, undefined, undefined, MockWebSocketConstructor),
-    )
+    const multiplexer = new MultiplexedWebsocket({
+      url: 'ws://socket',
+      WebSocketCtor: MockWebSocketConstructor,
+    })
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const socket = MockWebSocket.lastSocket!
     socket.open()
@@ -107,7 +139,7 @@ describe('multiplexedWebsocket', () => {
       // You probably want only to check the contents of the res or receivedVals...
       const { requestId } = socket.lastMessageSent
       // Assert initial request message has been sent
-      const initialRequest: Request = {
+      const initialRequest: RequestMessage = {
         type: RequestMessageType.Request,
         requestId,
         serviceId: requestType,
@@ -131,19 +163,16 @@ describe('multiplexedWebsocket', () => {
           new Error((err.type === ResponseMessageType.Error && JSON.stringify(err.kind)) || ''),
         )
         // Some messages were still received
-        expect(nextMsgs).toEqual(nextMsgs)
-        // don't cancel upstream, as upstream errored
+        expect(receivedVals).toEqual(nextMsgs)
+        // we always cancel upstream
         expect(socket.lastMessageSent).toMatchObject({
-          type: 'request',
-          serviceId: requestType,
+          type: 'cancel',
           requestId,
         })
       } else {
         await expect(res).resolves.toEqual(nextMsgs)
-        // don't cancel upstream, as upstream Completed
         expect(socket.lastMessageSent).toMatchObject({
-          type: 'request',
-          serviceId: requestType,
+          type: 'cancel',
           requestId,
         })
         expect(true).toBeTruthy() // Keep number of assertions symmetrical for all paths
@@ -165,13 +194,12 @@ class MessageEvent {
   }
 }
 
-export const MockWebSocketConstructor: WebSocketConstructor = {
-  create: (url, protocol) => new MockWebSocket(url, protocol) as unknown as WebSocket,
-}
 // courtesy of https://github.com/ReactiveX/rxjs/blob/master/spec/observables/dom/webSocket-spec.ts
 
 type MockWebSocketMsgHandlerResult = { name: string; res: MessageEvent[] }
-export type MockWebSocketMsgHandler = (data: Request) => MockWebSocketMsgHandlerResult | undefined
+export type MockWebSocketMsgHandler = (
+  data: RequestMessage,
+) => MockWebSocketMsgHandlerResult | undefined
 export type MockWebSocketAutoRespons = {
   socket: MockWebSocket
   messageHandler?: MockWebSocketMsgHandler
@@ -197,7 +225,6 @@ export class MockWebSocket {
 
   autoResponse: boolean = false
   sent: any[] = []
-  handlers: any = {}
   readyState: number = 0
   closeCode: any
   closeReason: any
@@ -205,7 +232,7 @@ export class MockWebSocket {
   socketMessageHandler?: MockWebSocketMsgHandler
 
   constructor(public url: string, public protocol?: string | string[] | undefined) {
-    MockWebSocket.sockets.push({ socket: this, messageHandler: MockWebSocket.messageHandler })
+    MockWebSocket.sockets.unshift({ socket: this, messageHandler: MockWebSocket.messageHandler })
     this.socketMessageHandler = MockWebSocket.messageHandler
     this.autoResponse = MockWebSocket.autoResponse
     if (this.autoResponse) {
@@ -226,7 +253,7 @@ export class MockWebSocket {
           res !== undefined,
       ),
       getOrElseO(() => {
-        const request: Request = JSON.parse(data)
+        const request: RequestMessage = JSON.parse(data)
 
         if (
           request.type === RequestMessageType.Request &&
@@ -296,12 +323,10 @@ export class MockWebSocket {
     if (typeof call === 'function') {
       call(e)
     }
-
-    const lookup = this.handlers[name]
-    if (lookup) {
-      for (let i = 0; i < lookup.length; i++) {
-        lookup[i](e)
-      }
-    }
   }
 }
+
+export const MockWebSocketConstructor: new (
+  url: string,
+  protocols?: string | string[] | undefined,
+) => globalThis.WebSocket = <any>MockWebSocket

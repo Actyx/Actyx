@@ -6,6 +6,7 @@
  */
 import {
   queueScheduler,
+  asapScheduler,
   from,
   lastValueFrom,
   concat,
@@ -48,7 +49,8 @@ describe('takeWhileInclusive', () => {
     let count2 = 0
     const result2 = await lastValueFrom(
       from([1, 2, 3, 4, 5, 6, 7, 8, 9]).pipe(
-        observeOn(queueScheduler),
+        // with rxjs 7 access to internals is impossible so we cannot fend off synchronously incoming values
+        observeOn(asapScheduler),
         tap((_) => ++count2),
         takeWhileInclusive((e) => e < 5),
         toArray(),

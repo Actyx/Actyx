@@ -1,5 +1,5 @@
 /**
- * @jest-environment ./dist/jest/environment
+ * @jest-environment ./dist/integration/src/jest/environment
  */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Actyx, AqlResponse, EventsSortOrder, Tag } from '@actyx/sdk'
@@ -229,7 +229,6 @@ describe('@actyx/sdk', () => {
 
       const actyx = await Actyx.of(trialManifest, {
         actyxPort: node._private.apiPort,
-        automaticReconnect: true,
         onConnectionLost: () => {
           hookCalled = true
         },

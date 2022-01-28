@@ -52,6 +52,29 @@ export const getToken = async (opts: ActyxOpts, manifest: AppManifest): Promise<
   return (jsonContent as { token: string }).token
 }
 
+export const checkToken = async (opts: ActyxOpts, token: string): Promise<boolean> => {
+  const apiLocation = getApiLocation(opts.actyxHost, opts.actyxPort)
+  const url = 'http://' + apiLocation + '/events/offsets'
+
+  const res = await fetch(url, {
+    method: 'get',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (res.ok) {
+    await res.json()
+    return true
+  }
+  if (res.status === 401) {
+    const body = await res.json()
+    if (body.code === 'ERR_TOKEN_EXPIRED') return false
+  }
+  throw new Error(`token check inconclusive, status was ${res.status}`)
+}
+
 export const v2getNodeId = async (config: ActyxOpts): Promise<string | null> => {
   const path = `http://${getApiLocation(config.actyxHost, config.actyxPort)}/node/id`
   return await fetch(path)
