@@ -107,6 +107,7 @@ impl NodeConnection {
 
         Ok(Connected {
             remote_peer_id,
+            remote_pubkey: "",
             swarm,
             protocols,
         })
@@ -132,6 +133,7 @@ impl NodeConnection {
 
 pub struct Connected {
     remote_peer_id: PeerId,
+    remote_pubkey: PublicKey,
     swarm: Swarm<RequestBehaviour>,
     protocols: BTreeSet<String>,
 }
@@ -139,7 +141,7 @@ pub struct Connected {
 impl From<&Connected> for NodeInfo {
     fn from(this: &Connected) -> NodeInfo {
         NodeInfo {
-            id: to_node_id(this.remote_peer_id),
+            id: this.remote_pubkey.into(),
             peer_id: this.remote_peer_id,
         }
     }
@@ -294,12 +296,6 @@ pub struct NodeInfo {
     pub peer_id: PeerId,
 }
 
-/// Converts a libp2p PeerId to a NodeId.
-/// Panics if the PeerId didn't originate from an Actyx node.
-pub fn to_node_id(peer_id: PeerId) -> NodeId {
-    let pk = PublicKey::try_from(peer_id).expect("Not an ActyxOS Node on the other side");
-    pk.into()
-}
 /// for a multiaddr that ends with a peer id, this strips this suffix.
 /// Rust-libp2p only supports dialing to an address without providing the peer id.
 pub fn strip_peer_id(addr: &mut Multiaddr) -> Option<PeerId> {

@@ -1,5 +1,5 @@
 use actyx_sdk::NodeId;
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     convert::TryFrom,
@@ -85,46 +85,10 @@ pub fn node_id_to_peer_id(node_id: NodeId) -> libp2p::core::PeerId {
     public.into()
 }
 
-pub fn peer_id_to_node_id(peer_id: libp2p::core::PeerId) -> anyhow::Result<NodeId> {
-    let public = PublicKey::try_from(peer_id)?;
-    Ok(public.into())
-}
-
 impl From<PublicKey> for libp2p::core::PeerId {
     fn from(pb: PublicKey) -> libp2p::core::PeerId {
         let public = pb.into();
         libp2p::core::PeerId::from_public_key(&public)
-    }
-}
-
-impl TryFrom<libp2p::core::PeerId> for PublicKey {
-    type Error = anyhow::Error;
-    // This only works if the multi_hash with this peer_id is encoded is the identity hash,
-    // and the underlying public key is ed25519
-    fn try_from(peer_id: libp2p::core::PeerId) -> Result<Self, Self::Error> {
-        match multihash::Multihash::from_bytes(&peer_id.to_bytes()) {
-            Ok(multihash) => {
-                if multihash.code() == u64::from(multihash::Code::Identity) {
-                    let bytes = multihash.digest();
-                    let libp2p_pubkey = libp2p::core::identity::PublicKey::from_protobuf_encoding(bytes)?;
-                    match libp2p_pubkey {
-                        libp2p::core::identity::PublicKey::Ed25519(ed25519_pub) => {
-                            let bytes = ed25519_pub.encode();
-
-                            let pub_key = ed25519_dalek::PublicKey::from_bytes(&bytes[..])
-                                .map_err(|e| anyhow!(e))
-                                .context("Not a valid ed25519_dalek::PublicKey")?;
-                            Ok(pub_key.into())
-                        }
-                        _ => bail!("Expected ed25519_dalek::PublicKey!"),
-                    }
-                } else {
-                    bail!("Only PeerIds encoded with identity hash can be decoded")
-                }
-            }
-
-            Err(err) => bail!(err),
-        }
     }
 }
 

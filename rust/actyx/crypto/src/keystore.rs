@@ -308,7 +308,7 @@ impl KeyStore {
 mod tests {
     use super::*;
     use chacha20poly1305::aead;
-    use std::{convert::TryInto, io::Cursor};
+    use std::io::Cursor;
 
     #[test]
     fn must_sign_and_verify() {
@@ -405,15 +405,6 @@ mod tests {
 
         let public_1: PublicKey = serde_cbor::from_slice(&serde_cbor::to_vec(&public).unwrap()[..]).unwrap();
         assert_eq!(public, public_1);
-    }
-
-    #[test]
-    fn peer_id_pub_key_roundtrip() {
-        let mut store = KeyStore::default();
-        let public = store.generate_key_pair().unwrap();
-        let peer_id: libp2p::PeerId = public.into();
-        let public_from_peer_id: PublicKey = peer_id.try_into().unwrap();
-        assert_eq!(public, public_from_peer_id);
     }
 
     #[test]

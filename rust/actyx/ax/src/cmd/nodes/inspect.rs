@@ -1,6 +1,10 @@
 use std::fmt::Write;
 
-use crate::cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt},
+    node_connection::NodeInfo,
+};
+use actyx_sdk::NodeId;
 use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
 use structopt::StructOpt;
@@ -17,13 +21,13 @@ pub struct InspectOpts {
 pub struct NodesInspect();
 impl AxCliCommand for NodesInspect {
     type Opt = InspectOpts;
-    type Output = NodesInspectResponse;
+    type Output = (NodeId, NodesInspectResponse);
     fn run(opts: InspectOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let fut = async move {
             let mut conn = opts.console_opt.connect().await?;
             let response = conn.request(AdminRequest::NodesInspect).await;
             match response {
-                Ok(AdminResponse::NodesInspectResponse(resp)) => Ok(resp),
+                Ok(AdminResponse::NodesInspectResponse(resp)) => Ok((NodeInfo::from(&conn).id, resp)),
                 Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
                 Err(err) => Err(err),
             }
@@ -32,15 +36,10 @@ impl AxCliCommand for NodesInspect {
         Box::new(stream::once(fut))
     }
 
-    fn pretty(result: Self::Output) -> String {
+    fn pretty((node_id, result): Self::Output) -> String {
         let mut s = String::new();
         writeln!(&mut s, "PeerId: {}", result.peer_id).unwrap();
-        writeln!(
-            &mut s,
-            "NodeId: {}",
-            crypto::peer_id_to_node_id(result.peer_id.parse().unwrap()).unwrap()
-        )
-        .unwrap();
+        writeln!(&mut s, "NodeId: {}", node_id).unwrap();
 
         writeln!(&mut s, "SwarmAddrs:").unwrap();
         for addr in &result.swarm_addrs {
