@@ -1,3 +1,4 @@
+use super::handler::Response;
 use crate::Codec;
 use derive_more::{Display, Error, From};
 use futures::{channel::mpsc, future::BoxFuture, AsyncReadExt, AsyncWriteExt, FutureExt};
@@ -6,7 +7,10 @@ use libp2p::{
     swarm::NegotiatedSubstream,
     InboundUpgrade, OutboundUpgrade,
 };
+use serde::de::DeserializeOwned;
 use std::{
+    fmt::{Display, Write},
+    io::ErrorKind,
     iter::{once, Once},
     marker::PhantomData,
 };
@@ -29,6 +33,141 @@ pub enum ProtocolError {
     Serde(serde_cbor::Error),
     #[display(fmt = "internal channel error:")]
     Channel(mpsc::SendError),
+    /// This variant is useful for implementing the function to pass to
+    /// [`with_spawner`](crate::v2::StreamingResponseConfig)
+    #[display(fmt = "spawned task failed (cancelled={})", _0)]
+    JoinError(#[error(ignore)] bool),
+}
+
+impl PartialEq for ProtocolError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::MessageTooLargeRecv(l0), Self::MessageTooLargeRecv(r0)) => l0 == r0,
+            (Self::MessageTooLargeSent(l0), Self::MessageTooLargeSent(r0)) => l0 == r0,
+            (Self::Negotiation(l0), Self::Negotiation(r0)) => l0.to_string() == r0.to_string(),
+            (Self::Io(l0), Self::Io(r0)) => l0.to_string() == r0.to_string(),
+            (Self::Serde(l0), Self::Serde(r0)) => l0.to_string() == r0.to_string(),
+            (Self::Channel(l0), Self::Channel(r0)) => l0 == r0,
+            (Self::JoinError(l0), Self::JoinError(r0)) => l0 == r0,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+
+impl ProtocolError {
+    pub fn as_code(&self) -> u8 {
+        match self {
+            ProtocolError::Timeout => 1,
+            ProtocolError::MessageTooLargeRecv(_) => 2,
+            ProtocolError::MessageTooLargeSent(_) => 3,
+            ProtocolError::Negotiation(_) => 4,
+            ProtocolError::Io(_) => 5,
+            ProtocolError::Serde(_) => 6,
+            ProtocolError::Channel(_) => 7,
+            ProtocolError::JoinError(_) => 8,
+        }
+    }
+    pub fn from_code(code: u8) -> Self {
+        match code {
+            1 => ProtocolError::Timeout,
+            2 => ProtocolError::MessageTooLargeRecv(0),
+            3 => ProtocolError::MessageTooLargeSent(0),
+            4 => ProtocolError::Negotiation(NegotiationError::Failed),
+            5 => ProtocolError::Io(std::io::Error::new(ErrorKind::Other, "some error on peer")),
+            6 => ProtocolError::Serde(std::io::Error::new(ErrorKind::Other, "serde error on peer").into()),
+            7 => {
+                let (mut tx, _) = mpsc::channel(1);
+                let err = tx.try_send(0).unwrap_err().into_send_error();
+                ProtocolError::Channel(err)
+            }
+            8 => ProtocolError::JoinError(false),
+            n => ProtocolError::Io(std::io::Error::new(
+                ErrorKind::Other,
+                format!("unknown error code {}", n),
+            )),
+        }
+    }
+}
+
+pub async fn write_msg(
+    io: &mut NegotiatedSubstream,
+    msg: impl serde::Serialize,
+    max_size: u32,
+) -> Result<(), ProtocolError> {
+    let res = serde_cbor::to_vec(&msg);
+    let msg_bytes = match res {
+        Ok(b) => b,
+        Err(e) => {
+            let err = ProtocolError::Serde(e);
+            write_err(io, &err).await?;
+            return Err(err);
+        }
+    };
+    let size = msg_bytes.len();
+    if size > (max_size as usize) {
+        log::debug!("message size {} too large (max = {})", size, max_size);
+        let err = ProtocolError::MessageTooLargeSent(size);
+        write_err(io, &err).await?;
+        return Err(err);
+    }
+    log::trace!("sending request of size {}", size);
+    let size_bytes = (size as u32).to_be_bytes();
+    io.write_all(&size_bytes).await?;
+    io.write_all(msg_bytes.as_slice()).await?;
+    Ok(())
+}
+
+pub async fn write_err(io: &mut NegotiatedSubstream, err: &ProtocolError) -> Result<(), std::io::Error> {
+    let buf = [255, err.as_code()];
+    io.write_all(&buf).await?;
+    io.flush().await?;
+    io.close().await?;
+    Ok(())
+}
+
+pub async fn write_finish(io: &mut NegotiatedSubstream) -> Result<(), std::io::Error> {
+    let buf = [255, 0];
+    io.write_all(&buf).await?;
+    io.flush().await?;
+    io.close().await?;
+    Ok(())
+}
+
+pub async fn read_msg<T: DeserializeOwned>(
+    io: &mut NegotiatedSubstream,
+    max_size: u32,
+) -> Result<Response<T>, ProtocolError> {
+    let mut size_bytes = [0u8; 4];
+    let mut to_read = &mut size_bytes[..];
+    while !to_read.is_empty() {
+        let read = io.read(to_read).await?;
+        log::trace!("read {} header bytes", read);
+        if read == 0 {
+            let len = to_read.len();
+            let read = &size_bytes[..4 - len];
+            if read.len() != 2 || read[0] != 255 {
+                return Err(ProtocolError::Io(ErrorKind::UnexpectedEof.into()));
+            } else {
+                return match read[1] {
+                    0 => Ok(Response::Finished),
+                    n => Err(ProtocolError::from_code(n)),
+                };
+            }
+        }
+        to_read = to_read.split_at_mut(read).1;
+    }
+    let size = u32::from_be_bytes(size_bytes);
+
+    if size > max_size {
+        log::debug!("message size {} too large (max = {})", size, max_size);
+        return Err(ProtocolError::MessageTooLargeRecv(size as usize));
+    }
+    log::trace!("received header: msg is {} bytes", size);
+
+    let mut msg_bytes = vec![0u8; size as usize];
+    io.read_exact(msg_bytes.as_mut_slice()).await?;
+    log::trace!("all bytes read");
+    Ok(Response::Msg(serde_cbor::from_slice(msg_bytes.as_slice())?))
 }
 
 #[derive(Debug)]
@@ -47,15 +186,26 @@ impl<T> Responder<T> {
 }
 
 impl<T: Codec> UpgradeInfo for Responder<T> {
-    type Info = Vec<u8>;
-    type InfoIter = Once<Vec<u8>>;
+    type Info = &'static [u8];
+    type InfoIter = Once<&'static [u8]>;
 
     fn protocol_info(&self) -> Self::InfoIter {
-        let p = T::protocol_info();
-        let mut v = Vec::with_capacity(p.len() + 4);
-        v.extend(p);
-        v.extend(b"/rs2");
-        once(v)
+        once(T::protocol_info())
+    }
+}
+
+struct ProtoNameDisplay(&'static [u8]);
+
+impl Display for ProtoNameDisplay {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for byte in self.0 {
+            if *byte > 31 && *byte < 128 {
+                f.write_char((*byte).into())?;
+            } else {
+                f.write_char('\u{fffd}')?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -64,20 +214,12 @@ impl<T: Codec> InboundUpgrade<NegotiatedSubstream> for Responder<T> {
     type Error = ProtocolError;
     type Future = BoxFuture<'static, Result<Self::Output, Self::Error>>;
 
-    fn upgrade_inbound(self, mut socket: NegotiatedSubstream, _info: Self::Info) -> Self::Future {
+    fn upgrade_inbound(self, mut socket: NegotiatedSubstream, info: Self::Info) -> Self::Future {
         let max_message_size = self.max_message_size;
         async move {
-            let mut size_bytes = [0u8; 4];
-            socket.read_exact(&mut size_bytes).await?;
-            let size = u32::from_be_bytes(size_bytes);
-
-            if size > max_message_size {
-                return Err(ProtocolError::MessageTooLargeRecv(size as usize));
-            }
-
-            let mut msg_bytes = vec![0u8; size as usize];
-            socket.read_exact(msg_bytes.as_mut_slice()).await?;
-            let msg = serde_cbor::from_slice(msg_bytes.as_slice())?;
+            log::trace!("starting inbound upgrade `{}`", ProtoNameDisplay(info));
+            let msg = read_msg(&mut socket, max_message_size).await?.into_msg()?;
+            log::trace!("request received: {:?}", msg);
             Ok((msg, socket))
         }
         .boxed()
@@ -100,15 +242,11 @@ impl<T: Codec> Requester<T> {
 }
 
 impl<T: Codec> UpgradeInfo for Requester<T> {
-    type Info = Vec<u8>;
-    type InfoIter = Once<Vec<u8>>;
+    type Info = &'static [u8];
+    type InfoIter = Once<&'static [u8]>;
 
     fn protocol_info(&self) -> Self::InfoIter {
-        let p = T::protocol_info();
-        let mut v = Vec::with_capacity(p.len() + 4);
-        v.extend(p);
-        v.extend(b"/rs2");
-        once(v)
+        once(T::protocol_info())
     }
 }
 
@@ -117,20 +255,16 @@ impl<T: Codec> OutboundUpgrade<NegotiatedSubstream> for Requester<T> {
     type Error = ProtocolError;
     type Future = BoxFuture<'static, Result<Self::Output, Self::Error>>;
 
-    fn upgrade_outbound(self, mut socket: NegotiatedSubstream, _info: Self::Info) -> Self::Future {
+    fn upgrade_outbound(self, mut socket: NegotiatedSubstream, info: Self::Info) -> Self::Future {
         let Self {
             max_message_size,
             request,
         } = self;
         async move {
-            let msg_bytes = serde_cbor::to_vec(&request)?;
-            let size = msg_bytes.len();
-            if size > (max_message_size as usize) {
-                return Err(ProtocolError::MessageTooLargeSent(size));
-            }
-            let size_bytes = (size as u32).to_be_bytes();
-            socket.write_all(&size_bytes).await?;
-            socket.write_all(msg_bytes.as_slice()).await?;
+            log::trace!("starting output upgrade `{}`", ProtoNameDisplay(info));
+            write_msg(&mut socket, request, max_message_size).await?;
+            socket.flush().await?;
+            log::trace!("all bytes sent");
             Ok(socket)
         }
         .boxed()

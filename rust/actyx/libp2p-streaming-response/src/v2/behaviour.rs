@@ -1,4 +1,7 @@
-use super::handler::{IntoHandler, Request, RequestReceived, Response};
+use super::{
+    handler::{IntoHandler, Request, RequestReceived, Response},
+    Event, StreamingResponseConfig,
+};
 use crate::Codec;
 use futures::channel::mpsc;
 use libp2p::{
@@ -10,42 +13,7 @@ use std::{
     collections::VecDeque,
     marker::PhantomData,
     task::{Context, Poll},
-    time::Duration,
 };
-
-pub enum Event<T: Codec> {
-    RequestReceived {
-        peer_id: PeerId,
-        connection: ConnectionId,
-        request: T::Request,
-        channel: mpsc::Sender<T::Response>,
-    },
-}
-
-pub struct StreamingResponseConfig {
-    request_timeout: Duration,
-    max_message_size: u32,
-    response_send_buffer_size: usize,
-}
-
-impl StreamingResponseConfig {
-    pub fn with_request_timeout(self, request_timeout: Duration) -> Self {
-        Self {
-            request_timeout,
-            ..self
-        }
-    }
-}
-
-impl Default for StreamingResponseConfig {
-    fn default() -> Self {
-        Self {
-            request_timeout: Duration::from_secs(10),
-            max_message_size: 1_000_000,
-            response_send_buffer_size: 128,
-        }
-    }
-}
 
 pub struct StreamingResponse<T: Codec + Send + 'static> {
     config: StreamingResponseConfig,
@@ -79,9 +47,11 @@ impl<T: Codec + Send + 'static> NetworkBehaviour for StreamingResponse<T> {
 
     fn new_handler(&mut self) -> Self::ProtocolsHandler {
         IntoHandler::new(
+            self.config.spawner.clone(),
             self.config.max_message_size,
             self.config.request_timeout,
             self.config.response_send_buffer_size,
+            self.config.keep_alive,
         )
     }
 
@@ -92,6 +62,7 @@ impl<T: Codec + Send + 'static> NetworkBehaviour for StreamingResponse<T> {
         event: <<Self::ProtocolsHandler as libp2p::swarm::IntoProtocolsHandler>::Handler as libp2p::swarm::ProtocolsHandler>::OutEvent,
     ) {
         let RequestReceived { request, channel } = event;
+        log::trace!("request received by behaviour: {:?}", request);
         self.events.push_back(Event::RequestReceived {
             peer_id,
             connection,
@@ -105,6 +76,10 @@ impl<T: Codec + Send + 'static> NetworkBehaviour for StreamingResponse<T> {
         _cx: &mut Context<'_>,
         _params: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<Self::OutEvent, Self::ProtocolsHandler>> {
+        if let Some(action) = self.requests.pop_front() {
+            log::trace!("triggering request action");
+            return Poll::Ready(action);
+        }
         match self.events.pop_front() {
             Some(e) => Poll::Ready(NetworkBehaviourAction::GenerateEvent(e)),
             None => Poll::Pending,
