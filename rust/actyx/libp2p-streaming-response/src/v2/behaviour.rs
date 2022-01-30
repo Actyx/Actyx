@@ -1,6 +1,6 @@
 use super::{
-    handler::{IntoHandler, Request, RequestReceived, Response},
-    Event, StreamingResponseConfig,
+    handler::{self, IntoHandler, Request, Response},
+    RequestReceived, StreamingResponseConfig,
 };
 use crate::Codec;
 use futures::channel::mpsc;
@@ -17,8 +17,8 @@ use std::{
 
 pub struct StreamingResponse<T: Codec + Send + 'static> {
     config: StreamingResponseConfig,
-    events: VecDeque<Event<T>>,
-    requests: VecDeque<NetworkBehaviourAction<Event<T>, IntoHandler<T>>>,
+    events: VecDeque<RequestReceived<T>>,
+    requests: VecDeque<NetworkBehaviourAction<RequestReceived<T>, IntoHandler<T>>>,
     _ph: PhantomData<T>,
 }
 
@@ -43,7 +43,7 @@ impl<T: Codec + Send + 'static> StreamingResponse<T> {
 
 impl<T: Codec + Send + 'static> NetworkBehaviour for StreamingResponse<T> {
     type ProtocolsHandler = IntoHandler<T>;
-    type OutEvent = Event<T>;
+    type OutEvent = RequestReceived<T>;
 
     fn new_handler(&mut self) -> Self::ProtocolsHandler {
         IntoHandler::new(
@@ -61,9 +61,9 @@ impl<T: Codec + Send + 'static> NetworkBehaviour for StreamingResponse<T> {
         connection: ConnectionId,
         event: <<Self::ProtocolsHandler as libp2p::swarm::IntoProtocolsHandler>::Handler as libp2p::swarm::ProtocolsHandler>::OutEvent,
     ) {
-        let RequestReceived { request, channel } = event;
+        let handler::RequestReceived { request, channel } = event;
         log::trace!("request received by behaviour: {:?}", request);
-        self.events.push_back(Event::RequestReceived {
+        self.events.push_back(RequestReceived {
             peer_id,
             connection,
             request,

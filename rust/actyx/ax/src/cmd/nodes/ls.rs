@@ -1,7 +1,8 @@
 use std::{convert::TryInto, time::Duration};
 
 use crate::{
-    cmd::{consts::TABLE_FORMAT, AxCliCommand, KeyPathWrapper, NodeConnection},
+    cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand, KeyPathWrapper},
+    node_connection::{connect, request_single, Task},
     private_key::AxPrivateKey,
 };
 use futures::{future::join_all, stream, Stream};
@@ -16,7 +17,7 @@ use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, Admi
 pub struct LsOpts {
     #[structopt(name = "NODE", required = true)]
     /// the IP address or <host>:<admin port> of the nodes to list.
-    authority: Vec<NodeConnection>,
+    authority: Vec<Authority>,
     #[structopt(short, long)]
     /// File from which the identity (private key) for authentication is read.
     identity: Option<KeyPathWrapper>,
@@ -77,14 +78,12 @@ fn format_output(output: Vec<Output>) -> String {
     table.to_string()
 }
 
-async fn request(timeout: u8, identity: AxPrivateKey, connection: NodeConnection) -> Output {
-    let host = connection.original.clone();
+async fn request(timeout: u8, identity: AxPrivateKey, authority: Authority) -> Output {
+    let host = authority.original.clone();
     let response = tokio::time::timeout(Duration::from_secs(timeout.into()), async move {
-        connection
-            .connect(&identity)
-            .await?
-            .request(AdminRequest::NodesLs)
-            .await
+        let (task, mut channel) = connect(identity, authority);
+        tokio::spawn(task);
+        request_single(&mut channel, |tx| Task::Admin(AdminRequest::NodesLs, tx), |t| t).await
     })
     .await;
     match response {

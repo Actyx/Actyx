@@ -1,6 +1,6 @@
 use super::{ProtocolError, StreamingResponse, StreamingResponseConfig};
 use crate::{
-    v2::{handler::Response, Event},
+    v2::{handler::Response, RequestReceived},
     Codec,
 };
 use futures::{
@@ -129,7 +129,7 @@ fn smoke() {
 
         responder.dial(addr).unwrap();
         task!(responder,
-            SwarmEvent::Behaviour(Event::RequestReceived { request, peer_id, mut channel, .. }) => {
+            SwarmEvent::Behaviour(RequestReceived { request, peer_id, mut channel, .. }) => {
                 tokio::spawn(async move {
                     channel.feed(request).await.unwrap();
                     channel.feed(peer_id.to_string()).await.unwrap();
@@ -177,7 +177,7 @@ fn smoke_executor() {
 
         responder.dial(addr).unwrap();
         task!(responder,
-            SwarmEvent::Behaviour(Event::RequestReceived { request, peer_id, mut channel, .. }) => {
+            SwarmEvent::Behaviour(RequestReceived { request, peer_id, mut channel, .. }) => {
                 tokio::spawn(async move {
                     channel.feed(request).await.unwrap();
                     channel.feed(peer_id.to_string()).await.unwrap();
@@ -225,7 +225,7 @@ where
             .listen_on(Multiaddr::empty().with(Protocol::Memory(0)))
             .unwrap();
         let addr = wait4!(responder, SwarmEvent::NewListenAddr{ address, .. } => address);
-        task!(responder, SwarmEvent::Behaviour(Event::RequestReceived { request, peer_id, channel, .. }) => logic(request, peer_id, channel));
+        task!(responder, SwarmEvent::Behaviour(RequestReceived { request, peer_id, channel, .. }) => logic(request, peer_id, channel));
         asker.dial(addr).unwrap();
         let peer_id = wait4!(asker, SwarmEvent::ConnectionEstablished { peer_id, .. } => peer_id);
         let (tx, rx) = mpsc::channel(10);

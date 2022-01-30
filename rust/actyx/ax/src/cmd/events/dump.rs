@@ -1,4 +1,7 @@
-use crate::cmd::{AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{AxCliCommand, ConsoleOpt},
+    node_connection::{request_single, Task},
+};
 use actyx_sdk::{
     language::Query,
     service::{Order, QueryRequest},
@@ -6,7 +9,9 @@ use actyx_sdk::{
 use cbor_data::{value::Precision, CborBuilder, Encoder, Writer};
 use chrono::{DateTime, Duration, Local, Utc};
 use console::{user_attended_stderr, Term};
-use futures::{Stream, StreamExt};
+use futures::{channel::mpsc::channel, SinkExt, Stream, StreamExt};
+use itertools::Itertools;
+use libp2p_streaming_response::v2::Response;
 use std::{
     fs::File,
     io::{ErrorKind, Write},
@@ -45,18 +50,6 @@ pub struct DumpOpts {
     /// base URL where to find the cloudmirror (only for --cloud)
     /// defaults to wss://cloudmirror.actyx.net/forward
     url: Option<String>,
-}
-
-macro_rules! filter {
-    ($req:path => $res:path) => {
-        |res| match res {
-            $res(r) => Ok(r),
-            r => Err(ActyxOSError::new(
-                util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
-                format!("{} returned mismatched response: {:?}", stringify!($req), r),
-            )),
-        }
-    };
 }
 
 pub(super) struct Diag {
@@ -161,35 +154,59 @@ impl AxCliCommand for EventsDump {
             .io("initialising zstd")?;
 
             diag.log(format!(
-                "connected to {} {}",
-                opts.console_opt.authority.original, opts.console_opt.authority.host
+                "connected to {} ({:?})",
+                opts.console_opt.authority.original, opts.console_opt.authority.addrs
             ))?;
 
             let now = Local::now();
-            let node_info = conn
-                .request(AdminRequest::NodesLs)
-                .await
-                .and_then(filter!(AdminRequest::NodesLs => AdminResponse::NodesLsResponse))?;
-            let node_details = conn
-                .request(AdminRequest::NodesInspect)
-                .await
-                .and_then(filter!(AdminRequest::NodesInspect => AdminResponse::NodesInspectResponse))?;
-            let settings = conn
-                .request(AdminRequest::SettingsGet {
-                    scope: "com.actyx".parse().unwrap(),
-                    no_defaults: false,
-                })
-                .await
-                .and_then(filter!(AdminRequest::SettingsGet => AdminResponse::SettingsGetResponse))?;
-            let offsets = conn
-                .request_events(EventsRequest::Offsets)
-                .await?
-                .collect::<Vec<_>>()
-                .await
-                .into_iter()
-                .next()
-                .ok_or_else(|| ActyxOSError::new(ActyxOSCode::ERR_INTERNAL_ERROR, "empty offsets response"))
-                .and_then(filter!(EventsRequest::Offsets => EventsResponse::Offsets))?;
+
+            let node_info = request_single(
+                &mut conn,
+                |tx| Task::Admin(AdminRequest::NodesLs, tx),
+                |resp| match resp {
+                    Ok(AdminResponse::NodesLsResponse(ls)) => Ok(ls),
+                    Ok(m) => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("got invalid response {:?}", m))),
+                    Err(e) => Err(e),
+                },
+            )
+            .await?;
+            let node_details = request_single(
+                &mut conn,
+                |tx| Task::Admin(AdminRequest::NodesInspect, tx),
+                |resp| match resp {
+                    Ok(AdminResponse::NodesInspectResponse(ls)) => Ok(ls),
+                    Ok(m) => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("got invalid response {:?}", m))),
+                    Err(e) => Err(e),
+                },
+            )
+            .await?;
+            let settings = request_single(
+                &mut conn,
+                |tx| {
+                    Task::Admin(
+                        AdminRequest::SettingsGet {
+                            scope: "com.actyx".parse().unwrap(),
+                            no_defaults: false,
+                        },
+                        tx,
+                    )
+                },
+                |resp| match resp {
+                    Ok(AdminResponse::SettingsGetResponse(ls)) => Ok(ls),
+                    Ok(m) => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("got invalid response {:?}", m))),
+                    Err(e) => Err(e),
+                },
+            )
+            .await?;
+            let offsets = request_single(
+                &mut conn,
+                |tx| Task::Events(EventsRequest::Offsets, tx),
+                |m| match m {
+                    EventsResponse::Offsets(o) => Ok(o),
+                    x => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("got invalid response {:?}", x))),
+                },
+            )
+            .await?;
 
             let cbor = CborBuilder::new().encode_dict(|b| {
                 b.with_key("nodeId", |b| b.write_bytes(node_info.node_id.as_ref(), []));
@@ -202,7 +219,7 @@ impl AxCliCommand for EventsDump {
                 b.with_key("connection", |b| {
                     b.encode_array(|b| {
                         b.encode_str(opts.console_opt.authority.original.as_str());
-                        b.encode_str(opts.console_opt.authority.host.to_string());
+                        b.encode_str(opts.console_opt.authority.addrs.iter().map(|m| m.to_string()).join(","));
                     })
                 });
                 b.with_key("adminAddrs", |b| {
@@ -218,20 +235,28 @@ impl AxCliCommand for EventsDump {
 
             diag.log("info block written")?;
 
-            let mut events = conn
-                .request_events(EventsRequest::Query(QueryRequest {
+            let (tx, mut events) = channel(20);
+            conn.feed(Task::Events(
+                EventsRequest::Query(QueryRequest {
                     lower_bound: None,
                     upper_bound: None,
                     query,
                     order: Order::Asc,
-                }))
-                .await?;
+                }),
+                tx,
+            ))
+            .await?;
 
             let mut scratch = Vec::new();
             let mut count = 0u64;
             let mut max_size = cbor.as_slice().len();
             let mut last_printed = now;
             while let Some(ev) = events.next().await {
+                let ev = match ev {
+                    Response::Msg(ev) => ev,
+                    Response::Error(e) => return Err(ActyxOSCode::ERR_IO.with_message(e.to_string())),
+                    Response::Finished => break,
+                };
                 match ev {
                     EventsResponse::Error { message } => diag.log(format!("AQL error: {}", message))?,
                     EventsResponse::Event(ev) => {

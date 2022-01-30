@@ -1,6 +1,7 @@
 use super::dump::Diag;
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
+    node_connection::request_banyan,
     private_key::load_dev_cert,
 };
 use cbor_data::{Cbor, CborBuilder, Encoder};
@@ -16,7 +17,7 @@ use structopt::StructOpt;
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
 use util::{
     formats::{
-        banyan_protocol::{decode_dump_header, BanyanRequest, BanyanResponse},
+        banyan_protocol::{decode_dump_header, BanyanRequest},
         ActyxOSCode, ActyxOSError, ActyxOSResult,
     },
     gen_stream::GenStream,
@@ -55,25 +56,6 @@ impl<T, E: std::fmt::Display> IO for Result<T, E> {
     type Out = T;
     fn io(self, ctx: impl AsRef<str>) -> ActyxOSResult<Self::Out> {
         self.map_err(|e| ActyxOSError::new(ActyxOSCode::ERR_IO, format!("{}: {}", ctx.as_ref(), e)))
-    }
-}
-
-trait BR {
-    fn br(self) -> ActyxOSResult<()>;
-}
-impl BR for BanyanResponse {
-    fn br(self) -> ActyxOSResult<()> {
-        match self {
-            BanyanResponse::Ok => Ok(()),
-            BanyanResponse::Error(e) => Err(ActyxOSError::new(
-                ActyxOSCode::ERR_IO,
-                format!("error from Actyx node: {}", e),
-            )),
-            BanyanResponse::Future => Err(ActyxOSError::new(
-                ActyxOSCode::ERR_IO,
-                "message from Actyx node from the future",
-            )),
-        }
     }
 }
 
@@ -166,14 +148,10 @@ impl AxCliCommand for EventsRestore {
 
             let mut conn = opts.console_opt.connect().await?;
 
-            conn.request_banyan(BanyanRequest::MakeFreshTopic(topic.clone()))
-                .await?
-                .br()?;
+            request_banyan(&mut conn, BanyanRequest::MakeFreshTopic(topic.clone())).await?;
             let mut count = 0;
             loop {
-                conn.request_banyan(BanyanRequest::AppendEvents(topic.clone(), buf[..pos].into()))
-                    .await?
-                    .br()?;
+                request_banyan(&mut conn, BanyanRequest::AppendEvents(topic.clone(), buf[..pos].into())).await?;
                 count += pos;
                 diag.status(format!("{} bytes uploaded", count))?;
                 pos = input.read(buf.as_mut_slice()).io("reading dump")?;
@@ -182,9 +160,7 @@ impl AxCliCommand for EventsRestore {
                 }
             }
             diag.log(format!("in total {} bytes uploaded", count))?;
-            conn.request_banyan(BanyanRequest::Finalise(topic.clone()))
-                .await?
-                .br()?;
+            request_banyan(&mut conn, BanyanRequest::Finalise(topic.clone())).await?;
             diag.log(format!("topic switched to `{}`", topic))?;
             diag.log("Actyx node switched into read-only network mode")?;
 

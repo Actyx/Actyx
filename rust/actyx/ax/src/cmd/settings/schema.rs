@@ -1,4 +1,7 @@
-use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{formats::Result, AxCliCommand, ConsoleOpt},
+    node_connection::{request_single, Task},
+};
 use futures::{stream, Stream, TryFutureExt};
 use settings::Scope;
 use std::str::FromStr;
@@ -28,15 +31,15 @@ impl AxCliCommand for SettingsSchema {
 
 pub async fn run(opts: SchemaOpt) -> Result<serde_json::Value> {
     let mut conn = opts.console_opt.connect().await?;
-    match conn
-        .request(AdminRequest::SettingsSchema {
-            scope: Scope::from_str("com.actyx")
-                .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "cannot parse scope `/`")?,
-        })
-        .await
-    {
-        Ok(AdminResponse::SettingsSchemaResponse(resp)) => Ok(resp),
-        Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
-        Err(err) => Err(err),
-    }
+    let scope = Scope::from_str("com.actyx").ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "cannot parse scope `/`")?;
+    request_single(
+        &mut conn,
+        |tx| Task::Admin(AdminRequest::SettingsSchema { scope }, tx),
+        |m| match m {
+            Ok(AdminResponse::SettingsSchemaResponse(resp)) => Ok(resp),
+            Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
+            Err(err) => Err(err),
+        },
+    )
+    .await
 }

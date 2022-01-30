@@ -1,10 +1,13 @@
 use std::fmt::Write;
 
-use crate::cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt},
+    node_connection::{request_single, Task},
+};
 use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
 use structopt::StructOpt;
-use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse};
+use util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
@@ -21,12 +24,16 @@ impl AxCliCommand for NodesInspect {
     fn run(opts: InspectOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let fut = async move {
             let mut conn = opts.console_opt.connect().await?;
-            let response = conn.request(AdminRequest::NodesInspect).await;
-            match response {
-                Ok(AdminResponse::NodesInspectResponse(resp)) => Ok(resp),
-                Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
-                Err(err) => Err(err),
-            }
+            request_single(
+                &mut conn,
+                |tx| Task::Admin(AdminRequest::NodesInspect, tx),
+                |m| match m {
+                    Ok(AdminResponse::NodesInspectResponse(r)) => Ok(r),
+                    Ok(x) => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("invalid response: {:?}", x))),
+                    Err(e) => Err(e),
+                },
+            )
+            .await
         }
         .boxed();
         Box::new(stream::once(fut))

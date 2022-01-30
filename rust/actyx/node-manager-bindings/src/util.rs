@@ -1,5 +1,5 @@
 use anyhow::Result;
-use axlib::{node_connection::NodeConnection, private_key::AxPrivateKey};
+use axlib::{node_connection::connect, private_key::AxPrivateKey};
 use neon::context::Context;
 use neon::context::FunctionContext;
 use neon::object::Object;

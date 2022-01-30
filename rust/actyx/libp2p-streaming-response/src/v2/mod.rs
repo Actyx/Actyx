@@ -5,6 +5,7 @@ mod protocol;
 mod tests;
 
 pub use behaviour::StreamingResponse;
+pub use handler::Response;
 pub use protocol::ProtocolError;
 
 use self::handler::{ResponseFuture, Spawner};
@@ -13,30 +14,20 @@ use futures::channel::mpsc;
 use libp2p::{core::connection::ConnectionId, PeerId};
 use std::{fmt::Debug, sync::Arc, time::Duration};
 
-pub enum Event<T: Codec> {
-    RequestReceived {
-        peer_id: PeerId,
-        connection: ConnectionId,
-        request: T::Request,
-        channel: mpsc::Sender<T::Response>,
-    },
+pub struct RequestReceived<T: Codec> {
+    pub peer_id: PeerId,
+    pub connection: ConnectionId,
+    pub request: T::Request,
+    pub channel: mpsc::Sender<T::Response>,
 }
 
-impl<T: Codec> Debug for Event<T> {
+impl<T: Codec> Debug for RequestReceived<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::RequestReceived {
-                peer_id,
-                connection,
-                request,
-                ..
-            } => f
-                .debug_struct("RequestReceived")
-                .field("peer_id", peer_id)
-                .field("connection", connection)
-                .field("request", request)
-                .finish(),
-        }
+        f.debug_struct("RequestReceived")
+            .field("peer_id", &self.peer_id)
+            .field("connection", &self.connection)
+            .field("request", &self.request)
+            .finish()
     }
 }
 

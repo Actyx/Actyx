@@ -15,16 +15,17 @@ use actyx_sdk::{
 };
 use anyhow::{anyhow, bail, Context};
 use api::EventService;
-use ax_futures_util::stream::{variable::Variable, MergeUnordered};
+use ax_futures_util::stream::variable::Variable;
 use cbor_data::Cbor;
 use crossbeam::channel::Sender;
 use crypto::PublicKey;
 use formats::NodesRequest;
 use futures::{
-    future::{ready, AbortHandle, Abortable, BoxFuture},
-    stream::{self, BoxStream, FuturesUnordered},
+    channel::mpsc,
+    future::{ready, BoxFuture},
+    stream::FuturesUnordered,
     task::{self, Poll},
-    Future, FutureExt, Stream, StreamExt,
+    Future, FutureExt, SinkExt, StreamExt,
 };
 use libipld::{cbor::DagCborCodec, codec::Codec, Cid};
 use libp2p::{
@@ -43,7 +44,7 @@ use libp2p::{
     },
     Multiaddr, NetworkBehaviour, PeerId,
 };
-use libp2p_streaming_response::v2::{StreamingResponse, StreamingResponseConfig};
+use libp2p_streaming_response::v2::{RequestReceived, StreamingResponse, StreamingResponseConfig};
 use parking_lot::Mutex;
 use serde_json::json;
 use std::{
@@ -75,7 +76,7 @@ use util::{
             decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse,
         },
         events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
+        ActyxOSCode, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
     },
     trace_poll::TracePoll,
 };
@@ -83,8 +84,6 @@ use zstd::stream::write::Decoder;
 
 pub mod formats;
 
-type PendingRequest = BoxFuture<'static, (ChannelId, ActyxOSResult<AdminResponse>)>;
-type PendingStream = BoxStream<'static, (ChannelId, Option<EventsResponse>)>;
 type PendingFinalise = BoxFuture<'static, (ResponseChannel<BanyanResponse>, BanyanResponse)>;
 
 struct BanyanWriter {
@@ -120,11 +119,7 @@ struct State {
     auth_info: Arc<Mutex<NodeApiSettings>>,
     store: StoreTx,
     events: EventService,
-    /// Pending inflight requests to Node.
-    pending_oneshot: FuturesUnordered<PendingRequest>,
-    pending_stream: MergeUnordered<PendingStream, stream::Empty<PendingStream>>,
     pending_finalise: FuturesUnordered<PendingFinalise>,
-    stream_handles: BTreeMap<ChannelId, AbortHandle>,
     admin_sockets: Variable<BTreeSet<Multiaddr>>,
     banyan_stores: BTreeMap<String, BanyanWriter>,
 }
@@ -149,28 +144,6 @@ pub struct ApiBehaviour {
 }
 type WrappedBehaviour = Swarm<ApiBehaviour>;
 
-macro_rules! request_oneshot {
-    ($channel_id:expr, $slf:expr, $build_request:expr, $result:expr) => {{
-        let maybe_add_key = $slf.maybe_add_key($channel_id.peer());
-        let (tx, rx) = tokio::sync::oneshot::channel();
-        $slf.state.node_tx.send($build_request(tx)).unwrap();
-        let fut = async move {
-            if let Err(e) = maybe_add_key.await {
-                tracing::error!("Error adding initial key {}", e);
-            }
-
-            let result = rx
-                .await
-                .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error waiting for response")
-                .and_then(|x| x.map($result));
-
-            ($channel_id, result)
-        }
-        .boxed();
-        $slf.state.pending_oneshot.push(fut);
-    }};
-}
-
 impl ApiBehaviour {
     fn new(
         node_id: NodeId,
@@ -193,10 +166,7 @@ impl ApiBehaviour {
             store_dir,
             events,
             auth_info,
-            pending_oneshot: FuturesUnordered::new(),
-            pending_stream: MergeUnordered::without_input(),
             pending_finalise: FuturesUnordered::new(),
-            stream_handles: BTreeMap::default(),
             admin_sockets: Variable::default(),
             banyan_stores: BTreeMap::default(),
         };
@@ -223,274 +193,42 @@ impl ApiBehaviour {
         g.authorized_keys.is_empty() || g.authorized_keys.contains(peer)
     }
 
-    fn maybe_add_key(&self, peer: PeerId) -> BoxFuture<'static, ActyxOSResult<()>> {
+    fn maybe_add_key(&self, key_id: PublicKey, peer: PeerId) -> Option<BoxFuture<'static, ActyxOSResult<()>>> {
         let mut auth_info = self.state.auth_info.lock();
         if auth_info.authorized_keys.is_empty() {
-            match PublicKey::try_from(peer) {
-                Ok(key_id) => {
-                    tracing::debug!("Adding {} (peer {}) to authorized users", key_id, peer);
-                    // Directly add the peer. This will be overridden as soon as the settings round
-                    // tripped.
-                    auth_info.authorized_keys.push(peer);
-                    drop(auth_info);
-                    let (tx, rx) = tokio::sync::oneshot::channel();
-                    self.state
-                        .node_tx
-                        .send(ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
-                            scope: format!("{}/admin/authorizedUsers", SYSTEM_SCOPE).parse().unwrap(),
-                            ignore_errors: false,
-                            json: serde_json::json!([format!("{}", key_id)]),
-                            response: tx,
-                        }))
-                        .unwrap();
-                    async move {
-                        rx.await
-                            .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error waiting for response")
-                            .and_then(|x| {
-                                x.map(|_| {
-                                    tracing::info!(
-                                        "User with public key {} has been added as the first authorized user.",
-                                        key_id
-                                    );
-                                })
-                            })
-                    }
-                    .boxed()
-                }
-                Err(e) => {
-                    async move { Err(ActyxOSError::internal(format!("Error converting to PublicKey: {}", e))) }.boxed()
-                }
-            }
-        } else {
-            async move { Ok(()) }.boxed()
-        }
-    }
-
-    // Assumes peer is authorized
-    fn enqueue(&mut self, channel_id: ChannelId, request: AdminRequest) {
-        match request {
-            AdminRequest::NodesLs => request_oneshot!(
-                channel_id,
-                self,
-                |tx| ExternalEvent::NodesRequest(NodesRequest::Ls(tx)),
-                AdminResponse::NodesLsResponse
-            ),
-
-            AdminRequest::SettingsGet { no_defaults, scope } => request_oneshot!(
-                channel_id,
-                self,
-                |tx| ExternalEvent::SettingsRequest(SettingsRequest::GetSettings {
-                    no_defaults,
-                    scope,
-                    response: tx
-                }),
-                AdminResponse::SettingsGetResponse
-            ),
-            AdminRequest::SettingsSchema { scope } => request_oneshot!(
-                channel_id,
-                self,
-                |tx| ExternalEvent::SettingsRequest(SettingsRequest::GetSchema { scope, response: tx }),
-                AdminResponse::SettingsSchemaResponse
-            ),
-            AdminRequest::SettingsScopes => request_oneshot!(
-                channel_id,
-                self,
-                |tx| ExternalEvent::SettingsRequest(SettingsRequest::GetSchemaScopes { response: tx }),
-                AdminResponse::SettingsScopesResponse
-            ),
-            AdminRequest::SettingsSet {
-                ignore_errors,
-                json,
-                scope,
-            } => request_oneshot!(
-                channel_id,
-                self,
-                |tx| ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
-                    scope,
-                    json,
-                    ignore_errors,
-                    response: tx
-                }),
-                AdminResponse::SettingsSetResponse
-            ),
-            AdminRequest::SettingsUnset { scope } => request_oneshot!(
-                channel_id,
-                self,
-                |tx| ExternalEvent::SettingsRequest(SettingsRequest::UnsetSettings { scope, response: tx }),
-                |_| AdminResponse::SettingsUnsetResponse
-            ),
-            AdminRequest::NodesInspect => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                self.state
-                    .store
-                    .send(ComponentRequest::Individual(StoreRequest::NodesInspect(tx)))
-                    .unwrap();
-                let maybe_add_key = self.maybe_add_key(channel_id.peer());
-                let admin_addrs = self
-                    .state
-                    .admin_sockets
-                    .get_cloned()
-                    .iter()
-                    .map(|a| a.to_string())
-                    .collect();
-                let fut = async move {
-                    if let Err(e) = maybe_add_key.await {
-                        tracing::error!("Error adding initial key {}", e);
-                    }
-                    let res = rx
-                        .await
+            tracing::debug!("Adding {} (peer {}) to authorized users", key_id, peer);
+            // Directly add the peer. This will be overridden as soon as the settings round
+            // tripped.
+            auth_info.authorized_keys.push(peer);
+            drop(auth_info);
+            let (tx, rx) = tokio::sync::oneshot::channel();
+            self.state
+                .node_tx
+                .send(ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
+                    scope: format!("{}/admin/authorizedUsers", SYSTEM_SCOPE).parse().unwrap(),
+                    ignore_errors: false,
+                    json: serde_json::json!([format!("{}", key_id)]),
+                    response: tx,
+                }))
+                .unwrap();
+            Some(
+                async move {
+                    rx.await
                         .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error waiting for response")
                         .and_then(|x| {
-                            x.ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error getting swarm state")
-                                .map(|res| {
-                                    AdminResponse::NodesInspectResponse(NodesInspectResponse {
-                                        peer_id: res.peer_id,
-                                        swarm_addrs: res.swarm_addrs,
-                                        announce_addrs: res.announce_addrs,
-                                        admin_addrs,
-                                        connections: res.connections,
-                                        known_peers: res.known_peers,
-                                    })
-                                })
-                        });
-                    (channel_id, res)
-                }
-                .boxed();
-                self.state.pending_oneshot.push(fut);
-            }
-            AdminRequest::NodesShutdown => {
-                trigger_shutdown();
-            }
-        }
-    }
-
-    fn wrap(
-        &self,
-        c: ChannelId,
-        f: impl Future<Output = impl Stream<Item = (ChannelId, Option<EventsResponse>)> + Send + 'static> + Send + 'static,
-    ) -> (BoxStream<'static, (ChannelId, Option<EventsResponse>)>, AbortHandle) {
-        let mac = self.maybe_add_key(c.peer());
-        let (handle, reg) = AbortHandle::new_pair();
-        let c2 = c.clone();
-        let s = async move {
-            match mac.await {
-                Ok(_) => f.await.left_stream(),
-                Err(e) => {
-                    stream::once(ready((c2, Some(EventsResponse::Error { message: e.to_string() })))).right_stream()
-                }
-            }
-        }
-        .flatten_stream()
-        .chain(stream::once(ready((c, None))));
-        let s = Abortable::new(s, reg);
-        (s.boxed(), handle)
-    }
-
-    fn enqueue_events_v2(&mut self, channel_id: ChannelId, request: EventsRequest) {
-        let channel_id2 = channel_id.clone();
-        let events = self.state.events.clone();
-        let (s, h) = match request {
-            EventsRequest::Offsets => self.wrap(channel_id.clone(), async move {
-                match events.offsets().await {
-                    Ok(o) => stream::once(ready((channel_id, Some(EventsResponse::Offsets(o))))),
-                    Err(e) => stream::once(ready((
-                        channel_id,
-                        Some(EventsResponse::Error { message: e.to_string() }),
-                    ))),
-                }
-            }),
-            EventsRequest::Query(request) => self.wrap(channel_id.clone(), async move {
-                match events.query(app_id!("com.actyx.cli"), request).await {
-                    Ok(resp) => TracePoll::new(
-                        resp.filter_map(move |x| {
-                            tracing::trace!("got query response {:?}", x);
-                            match x {
-                                QueryResponse::Event(ev) => {
-                                    let span = tracing::trace_span!("ready event");
-                                    let _enter = span.enter();
-                                    ready(Some((channel_id.clone(), Some(EventsResponse::Event(ev)))))
-                                }
-                                QueryResponse::Offsets(o) => ready(Some((
-                                    channel_id.clone(),
-                                    Some(EventsResponse::OffsetMap { offsets: o.offsets }),
-                                ))),
-                                QueryResponse::Diagnostic(d) => {
-                                    ready(Some((channel_id.clone(), Some(EventsResponse::Diagnostic(d)))))
-                                }
-                                QueryResponse::FutureCompat => ready(None),
-                            }
-                        }),
-                        "node_api events query",
-                    )
-                    .left_stream(),
-                    Err(e) => stream::once(ready((
-                        channel_id,
-                        Some(EventsResponse::Error { message: e.to_string() }),
-                    )))
-                    .right_stream(),
-                }
-            }),
-            EventsRequest::Subscribe(request) => self.wrap(channel_id.clone(), async move {
-                match events.subscribe(app_id!("com.actyx.cli"), request).await {
-                    Ok(resp) => resp
-                        .filter_map(move |x| match x {
-                            SubscribeResponse::Event(ev) => {
-                                ready(Some((channel_id.clone(), Some(EventsResponse::Event(ev)))))
-                            }
-                            SubscribeResponse::Offsets(o) => ready(Some((
-                                channel_id.clone(),
-                                Some(EventsResponse::OffsetMap { offsets: o.offsets }),
-                            ))),
-                            SubscribeResponse::Diagnostic(d) => {
-                                ready(Some((channel_id.clone(), Some(EventsResponse::Diagnostic(d)))))
-                            }
-                            SubscribeResponse::FutureCompat => ready(None),
+                            x.map(|_| {
+                                tracing::info!(
+                                    "User with public key {} has been added as the first authorized user.",
+                                    key_id
+                                );
+                            })
                         })
-                        .left_stream(),
-                    Err(e) => stream::once(ready((
-                        channel_id,
-                        Some(EventsResponse::Error { message: e.to_string() }),
-                    )))
-                    .right_stream(),
                 }
-            }),
-            EventsRequest::SubscribeMonotonic(request) => self.wrap(channel_id.clone(), async move {
-                match events.subscribe_monotonic(app_id!("com.actyx.cli"), request).await {
-                    Ok(resp) => resp
-                        .filter_map(move |x| match x {
-                            SubscribeMonotonicResponse::Offsets(o) => ready(Some((
-                                channel_id.clone(),
-                                Some(EventsResponse::OffsetMap { offsets: o.offsets }),
-                            ))),
-                            SubscribeMonotonicResponse::Event { event, .. } => {
-                                ready(Some((channel_id.clone(), Some(EventsResponse::Event(event)))))
-                            }
-                            SubscribeMonotonicResponse::TimeTravel { .. } => ready(Some((channel_id.clone(), None))),
-                            SubscribeMonotonicResponse::Diagnostic(d) => {
-                                ready(Some((channel_id.clone(), Some(EventsResponse::Diagnostic(d)))))
-                            }
-                            SubscribeMonotonicResponse::FutureCompat => ready(None),
-                        })
-                        .left_stream(),
-                    Err(e) => stream::once(ready((
-                        channel_id,
-                        Some(EventsResponse::Error { message: e.to_string() }),
-                    )))
-                    .right_stream(),
-                }
-            }),
-            EventsRequest::Publish(request) => self.wrap(channel_id.clone(), async move {
-                match events.publish(app_id!("com.actyx.cli"), 0.into(), request).await {
-                    Ok(resp) => stream::once(ready((channel_id, Some(EventsResponse::Publish(resp))))),
-                    Err(e) => stream::once(ready((
-                        channel_id,
-                        Some(EventsResponse::Error { message: e.to_string() }),
-                    ))),
-                }
-            }),
-        };
-        self.state.stream_handles.insert(channel_id2, h);
-        self.state.pending_stream.push(s);
+                .boxed(),
+            )
+        } else {
+            None
+        }
     }
 
     /// The main purpose of this function is to shovel responses from any
@@ -501,36 +239,7 @@ impl ApiBehaviour {
         _: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<NoEvent, <Self as NetworkBehaviour>::ProtocolsHandler>> {
         let mut wake_me_up = false;
-        let span = tracing::trace_span!("poll");
-        let _enter = span.enter();
-
-        // Handle pending requests
-        while let Poll::Ready(Some((chan, resp))) = self.state.pending_oneshot.poll_next_unpin(cx) {
-            if self.admin.respond_final(chan, resp).is_err() {
-                tracing::debug!("Client dropped request");
-            }
-            wake_me_up = true;
-        }
-
-        let span = tracing::trace_span!("poll streams");
-        let enter = span.enter();
-        let mut count = 0;
-        while let Poll::Ready(Some((chan, resp))) = self.state.pending_stream.poll_next_unpin(cx) {
-            count += 1;
-            if let Some(msg) = resp {
-                if self.events.respond(chan.clone(), msg).is_err() {
-                    if let Some(h) = self.state.stream_handles.remove(&chan) {
-                        h.abort();
-                    }
-                }
-            } else {
-                self.state.stream_handles.remove(&chan);
-                let _ = self.events.finish_response(chan);
-            }
-            wake_me_up = true;
-        }
-        tracing::trace!("handled {} stream events", count);
-        drop(enter);
+        let _span = tracing::trace_span!("poll").entered();
 
         while let Poll::Ready(Some((channel, response))) = self.state.pending_finalise.poll_next_unpin(cx) {
             if let BanyanResponse::Error(ref e) = response {
@@ -553,60 +262,265 @@ impl ApiBehaviour {
     }
 }
 
-impl NetworkBehaviourEventProcess<StreamingResponseEvent<AdminProtocol>> for ApiBehaviour {
-    fn inject_event(&mut self, event: StreamingResponseEvent<AdminProtocol>) {
-        tracing::debug!("Received streaming_response event: {:?}", event);
-
-        match event {
-            StreamingResponseEvent::<AdminProtocol>::ReceivedRequest { payload, channel_id } => {
-                let peer = channel_id.peer();
-                if !self.is_authorized(&peer) {
-                    tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
-                    let _ = self.admin.respond_final(
-                        channel_id,
-                        Err(ActyxOSCode::ERR_UNAUTHORIZED
-                            .with_message("Provided key is not authorized to access the API.")),
+impl NetworkBehaviourEventProcess<RequestReceived<AdminProtocol>> for ApiBehaviour {
+    fn inject_event(&mut self, mut req: RequestReceived<AdminProtocol>) {
+        tracing::debug!("Received streaming_response admin: {:?}", req);
+        if !self.is_authorized(&req.peer_id) {
+            tracing::warn!("Received unauthorized request from {}. Rejecting.", req.peer_id);
+            req.channel
+                .try_send(Err(
+                    ActyxOSCode::ERR_UNAUTHORIZED.with_message("Provided key is not authorized to access the API.")
+                ))
+                .ok();
+        } else {
+            fn respond<T, F>(
+                node_tx: Sender<ExternalEvent>,
+                mut channel: mpsc::Sender<ActyxOSResult<AdminResponse>>,
+                f: F,
+                wrap: fn(T) -> AdminResponse,
+            ) where
+                F: FnOnce(oneshot::Sender<ActyxOSResult<T>>) -> ExternalEvent + Send + 'static,
+                T: Send + 'static,
+            {
+                let (tx, rx) = oneshot::channel();
+                node_tx.send(f(tx)).expect("node must keep running");
+                tokio::spawn(async move {
+                    let result = rx
+                        .await
+                        .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "receiving response from node")
+                        .unwrap_or_else(|e| Err(e))
+                        .map(wrap);
+                    channel.feed(result).await.ok();
+                });
+            }
+            match req.request {
+                AdminRequest::NodesLs => respond(
+                    self.state.node_tx.clone(),
+                    req.channel,
+                    |tx| ExternalEvent::NodesRequest(NodesRequest::Ls(tx)),
+                    AdminResponse::NodesLsResponse,
+                ),
+                AdminRequest::NodesInspect => {
+                    let (tx, rx) = oneshot::channel();
+                    let send = self
+                        .state
+                        .store
+                        .send(ComponentRequest::Individual(StoreRequest::NodesInspect(tx)));
+                    let admin_addrs = self
+                        .state
+                        .admin_sockets
+                        .get_cloned()
+                        .iter()
+                        .map(|a| a.to_string())
+                        .collect();
+                    let mut channel = req.channel;
+                    tokio::spawn(
+                        async move {
+                            send.ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "sending to store")?;
+                            let res = rx
+                                .await
+                                .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error waiting for response")?
+                                .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error getting swarm state")?;
+                            ActyxOSResult::Ok(AdminResponse::NodesInspectResponse(NodesInspectResponse {
+                                peer_id: res.peer_id,
+                                swarm_addrs: res.swarm_addrs,
+                                announce_addrs: res.announce_addrs,
+                                admin_addrs,
+                                connections: res.connections,
+                                known_peers: res.known_peers,
+                            }))
+                        }
+                        .then(move |res| async move {
+                            channel.feed(res).await.ok();
+                        }),
                     );
-                    return;
                 }
-
-                self.enqueue(channel_id, payload);
-            }
-            StreamingResponseEvent::<AdminProtocol>::CancelledRequest { .. } => {
-                // all responses are one-shot at the moment, no need to cancel anything ongoing.
-            }
-            StreamingResponseEvent::<AdminProtocol>::ResponseReceived { .. } => {}
-            StreamingResponseEvent::<AdminProtocol>::ResponseFinished { .. } => {}
+                AdminRequest::NodesShutdown => trigger_shutdown(),
+                AdminRequest::SettingsGet { scope, no_defaults } => respond(
+                    self.state.node_tx.clone(),
+                    req.channel,
+                    move |tx| {
+                        ExternalEvent::SettingsRequest(SettingsRequest::GetSettings {
+                            scope,
+                            no_defaults,
+                            response: tx,
+                        })
+                    },
+                    AdminResponse::SettingsGetResponse,
+                ),
+                AdminRequest::SettingsSet {
+                    scope,
+                    json,
+                    ignore_errors,
+                } => respond(
+                    self.state.node_tx.clone(),
+                    req.channel,
+                    move |tx| {
+                        ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
+                            scope,
+                            json,
+                            ignore_errors,
+                            response: tx,
+                        })
+                    },
+                    AdminResponse::SettingsSetResponse,
+                ),
+                AdminRequest::SettingsSchema { scope } => respond(
+                    self.state.node_tx.clone(),
+                    req.channel,
+                    |tx| ExternalEvent::SettingsRequest(SettingsRequest::GetSchema { scope, response: tx }),
+                    AdminResponse::SettingsSchemaResponse,
+                ),
+                AdminRequest::SettingsScopes => respond(
+                    self.state.node_tx.clone(),
+                    req.channel,
+                    |tx| ExternalEvent::SettingsRequest(SettingsRequest::GetSchemaScopes { response: tx }),
+                    AdminResponse::SettingsScopesResponse,
+                ),
+                AdminRequest::SettingsUnset { scope } => respond(
+                    self.state.node_tx.clone(),
+                    req.channel,
+                    |tx| ExternalEvent::SettingsRequest(SettingsRequest::UnsetSettings { scope, response: tx }),
+                    |_| AdminResponse::SettingsUnsetResponse,
+                ),
+            };
         }
     }
 }
 
-impl NetworkBehaviourEventProcess<StreamingResponseEvent<EventsProtocol>> for ApiBehaviour {
-    fn inject_event(&mut self, event: StreamingResponseEvent<EventsProtocol>) {
-        tracing::debug!("Received streaming_response event: {:?}", event);
-
-        match event {
-            StreamingResponseEvent::<EventsProtocol>::ReceivedRequest { payload, channel_id } => {
-                let peer = channel_id.peer();
-                if !self.is_authorized(&peer) {
-                    tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
-                    let _ = self.admin.respond_final(
-                        channel_id,
-                        Err(ActyxOSCode::ERR_UNAUTHORIZED
-                            .with_message("Provided key is not authorized to access the API.")),
-                    );
-                    return;
+impl NetworkBehaviourEventProcess<RequestReceived<EventsProtocol>> for ApiBehaviour {
+    fn inject_event(&mut self, mut req: RequestReceived<EventsProtocol>) {
+        tracing::debug!("Received streaming_response event: {:?}", req);
+        if !self.is_authorized(&req.peer_id) {
+            tracing::warn!("Received unauthorized request from {}. Rejecting.", req.peer_id);
+            req.channel
+                .try_send(EventsResponse::Error {
+                    message: "Provided key is not authorized to access the API.".to_owned(),
+                })
+                .ok();
+        } else {
+            let events = self.state.events.clone();
+            tokio::spawn(async move {
+                match req.request {
+                    EventsRequest::Offsets => {
+                        req.channel
+                            .feed(match events.offsets().await {
+                                Ok(o) => EventsResponse::Offsets(o),
+                                Err(e) => EventsResponse::Error { message: e.to_string() },
+                            })
+                            .await?;
+                    }
+                    EventsRequest::Query(request) => match events.query(app_id!("com.actyx.cli"), request).await {
+                        Ok(resp) => {
+                            req.channel
+                                .send_all(&mut TracePoll::new(
+                                    resp.filter_map(move |x| {
+                                        tracing::trace!("got query response {:?}", x);
+                                        match x {
+                                            QueryResponse::Event(ev) => {
+                                                let span = tracing::trace_span!("ready event");
+                                                let _enter = span.enter();
+                                                ready(Some(Ok(EventsResponse::Event(ev))))
+                                            }
+                                            QueryResponse::Offsets(o) => {
+                                                ready(Some(Ok(EventsResponse::OffsetMap { offsets: o.offsets })))
+                                            }
+                                            QueryResponse::Diagnostic(d) => {
+                                                ready(Some(Ok(EventsResponse::Diagnostic(d))))
+                                            }
+                                            QueryResponse::FutureCompat => ready(None),
+                                        }
+                                    }),
+                                    "node_api events query",
+                                ))
+                                .await?;
+                        }
+                        Err(e) => {
+                            req.channel
+                                .feed(EventsResponse::Error { message: e.to_string() })
+                                .await?;
+                        }
+                    },
+                    EventsRequest::Subscribe(request) => {
+                        match events.subscribe(app_id!("com.actyx.cli"), request).await {
+                            Ok(resp) => {
+                                req.channel
+                                    .send_all(&mut TracePoll::new(
+                                        resp.filter_map(move |x| {
+                                            tracing::trace!("got subscribe response {:?}", x);
+                                            match x {
+                                                SubscribeResponse::Event(ev) => {
+                                                    let span = tracing::trace_span!("ready event");
+                                                    let _enter = span.enter();
+                                                    ready(Some(Ok(EventsResponse::Event(ev))))
+                                                }
+                                                SubscribeResponse::Offsets(o) => {
+                                                    ready(Some(Ok(EventsResponse::OffsetMap { offsets: o.offsets })))
+                                                }
+                                                SubscribeResponse::Diagnostic(d) => {
+                                                    ready(Some(Ok(EventsResponse::Diagnostic(d))))
+                                                }
+                                                SubscribeResponse::FutureCompat => ready(None),
+                                            }
+                                        }),
+                                        "node_api events subscribe",
+                                    ))
+                                    .await?;
+                            }
+                            Err(e) => {
+                                req.channel
+                                    .feed(EventsResponse::Error { message: e.to_string() })
+                                    .await?;
+                            }
+                        }
+                    }
+                    EventsRequest::SubscribeMonotonic(request) => {
+                        match events.subscribe_monotonic(app_id!("com.actyx.cli"), request).await {
+                            Ok(resp) => {
+                                req.channel
+                                    .send_all(&mut TracePoll::new(
+                                        resp.filter_map(move |x| {
+                                            tracing::trace!("got subscribe response {:?}", x);
+                                            match x {
+                                                SubscribeMonotonicResponse::Event { event, .. } => {
+                                                    let span = tracing::trace_span!("ready event");
+                                                    let _enter = span.enter();
+                                                    ready(Some(Ok(EventsResponse::Event(event))))
+                                                }
+                                                SubscribeMonotonicResponse::TimeTravel { .. } => ready(None),
+                                                SubscribeMonotonicResponse::Offsets(o) => {
+                                                    ready(Some(Ok(EventsResponse::OffsetMap { offsets: o.offsets })))
+                                                }
+                                                SubscribeMonotonicResponse::Diagnostic(d) => {
+                                                    ready(Some(Ok(EventsResponse::Diagnostic(d))))
+                                                }
+                                                SubscribeMonotonicResponse::FutureCompat => ready(None),
+                                            }
+                                        }),
+                                        "node_api events subscribe",
+                                    ))
+                                    .await?;
+                            }
+                            Err(e) => {
+                                req.channel
+                                    .feed(EventsResponse::Error { message: e.to_string() })
+                                    .await?;
+                            }
+                        }
+                    }
+                    EventsRequest::Publish(request) => {
+                        match events.publish(app_id!("com.actyx.cli"), 0.into(), request).await {
+                            Ok(resp) => req.channel.feed(EventsResponse::Publish(resp)).await?,
+                            Err(e) => {
+                                req.channel
+                                    .feed(EventsResponse::Error { message: e.to_string() })
+                                    .await?
+                            }
+                        }
+                    }
                 }
-
-                self.enqueue_events_v2(channel_id, payload);
-            }
-            StreamingResponseEvent::<EventsProtocol>::CancelledRequest { channel_id, .. } => {
-                if let Some(h) = self.state.stream_handles.remove(&channel_id) {
-                    h.abort();
-                }
-            }
-            StreamingResponseEvent::<EventsProtocol>::ResponseReceived { .. } => {}
-            StreamingResponseEvent::<EventsProtocol>::ResponseFinished { .. } => {}
+                ActyxOSResult::Ok(())
+            });
         }
     }
 }
@@ -921,8 +835,30 @@ impl NetworkBehaviourEventProcess<PingEvent> for ApiBehaviour {
 }
 
 impl NetworkBehaviourEventProcess<IdentifyEvent> for ApiBehaviour {
-    fn inject_event(&mut self, _event: IdentifyEvent) {
-        // ignored
+    fn inject_event(&mut self, event: IdentifyEvent) {
+        match event {
+            IdentifyEvent::Received { peer_id, info } => {
+                PublicKey::try_from(&info.public_key)
+                    .ok()
+                    .and_then(|key| self.maybe_add_key(key, peer_id))
+                    .map(tokio::spawn);
+            }
+            IdentifyEvent::Error { peer_id, .. } => {
+                // this is an old Actyx v2.0.x node without Identify protocol, where PeerId v0
+                // contains the raw public key
+                multihash::Multihash::from_bytes(&peer_id.to_bytes())
+                    .ok()
+                    .filter(|mh| mh.code() == u64::from(multihash::Code::Identity))
+                    .and_then(|mh| libp2p::core::identity::PublicKey::from_protobuf_encoding(mh.digest()).ok())
+                    .and_then(|pk| match pk {
+                        identity::PublicKey::Ed25519(ed) => Some(PublicKey::from(ed)),
+                        _ => None,
+                    })
+                    .and_then(|key| self.maybe_add_key(key, peer_id))
+                    .map(tokio::spawn);
+            }
+            _ => {}
+        }
     }
 }
 
@@ -1008,8 +944,8 @@ type TConnErr = libp2p::core::either::EitherError<
     libp2p::core::either::EitherError<
         libp2p::core::either::EitherError<
             libp2p::core::either::EitherError<
-                libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
-                libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
+                libp2p_streaming_response::v2::ProtocolError,
+                libp2p_streaming_response::v2::ProtocolError,
             >,
             libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
         >,

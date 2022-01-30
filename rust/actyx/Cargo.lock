@@ -467,6 +467,7 @@ dependencies = [
  "hex",
  "hyper",
  "ipfs-sqlite-block-store 0.11.4",
+ "itertools 0.10.3",
  "lazy_static",
  "libipld",
  "libp2p",

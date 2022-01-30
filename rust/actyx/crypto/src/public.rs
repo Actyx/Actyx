@@ -26,7 +26,7 @@ impl Display for PublicKey {
 
 impl Debug for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}", self)
     }
 }
 
@@ -128,6 +128,18 @@ impl TryFrom<libp2p::core::PeerId> for PublicKey {
     }
 }
 
+impl TryFrom<&libp2p::identity::PublicKey> for PublicKey {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &libp2p::identity::PublicKey) -> Result<Self, Self::Error> {
+        match value {
+            libp2p::core::PublicKey::Ed25519(key) => Ok(key.into()),
+            libp2p::core::PublicKey::Rsa(_) => bail!("RSA keys not supported"),
+            libp2p::core::PublicKey::Secp256k1(_) => bail!("secp256k1 keys not supported"),
+        }
+    }
+}
+
 impl From<PublicKey> for libp2p::core::identity::PublicKey {
     fn from(pk: PublicKey) -> libp2p::core::identity::PublicKey {
         libp2p::core::identity::PublicKey::Ed25519(
@@ -139,6 +151,12 @@ impl From<PublicKey> for libp2p::core::identity::PublicKey {
 
 impl From<libp2p::core::identity::ed25519::PublicKey> for PublicKey {
     fn from(o: libp2p::core::identity::ed25519::PublicKey) -> Self {
+        Self(o.encode())
+    }
+}
+
+impl From<&libp2p::core::identity::ed25519::PublicKey> for PublicKey {
+    fn from(o: &libp2p::core::identity::ed25519::PublicKey) -> Self {
         Self(o.encode())
     }
 }

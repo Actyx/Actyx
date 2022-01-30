@@ -1,7 +1,10 @@
-use crate::cmd::{AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{AxCliCommand, ConsoleOpt},
+    node_connection::{request_single, Task},
+};
 use futures::{stream, FutureExt, Stream};
 use structopt::StructOpt;
-use util::formats::ActyxOSResult;
+use util::formats::{ActyxOSResult, AdminRequest};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
@@ -17,7 +20,8 @@ impl AxCliCommand for Shutdown {
     type Output = String;
     fn run(opts: ShutdownOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let fut = async move {
-            opts.console_opt.connect().await?.shutdown().await?;
+            let mut conn = opts.console_opt.connect().await?;
+            request_single(&mut conn, |tx| Task::Admin(AdminRequest::NodesShutdown, tx), |f| f).await?;
             Ok("shutdown request sent".to_string())
         }
         .boxed();

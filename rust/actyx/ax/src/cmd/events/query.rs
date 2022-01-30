@@ -1,10 +1,14 @@
-use crate::cmd::{AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{AxCliCommand, ConsoleOpt},
+    node_connection::Task,
+};
 use actyx_sdk::{
     language::Query,
     service::{Diagnostic, EventResponse, Order, QueryRequest, Severity},
     Payload,
 };
-use futures::{future::ready, Stream, StreamExt};
+use futures::{channel::mpsc::channel, future::ready, SinkExt, Stream, StreamExt};
+use libp2p_streaming_response::v2::Response;
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 use util::{
@@ -39,18 +43,29 @@ impl AxCliCommand for EventsQuery {
 
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let ret = GenStream::new(move |co| async move {
-            let mut conn = opts.console_opt.connect().await?;
-            let mut s = conn
-                .request_events(EventsRequest::Query(QueryRequest {
+            let mut tx = opts.console_opt.connect().await?;
+            let (t, mut rx) = channel(2);
+            tx.feed(Task::Events(
+                EventsRequest::Query(QueryRequest {
                     lower_bound: None,
                     upper_bound: None,
                     query: opts.query,
                     order: Order::Asc,
-                }))
-                .await?;
+                }),
+                t,
+            ))
+            .await?;
 
-            while let Some(x) = s.next().await {
-                match x {
+            while let Some(x) = rx.next().await {
+                let msg = match x {
+                    Response::Msg(msg) => msg,
+                    Response::Error(e) => {
+                        tracing::error!("{}", e);
+                        return Err(ActyxOSError::new(ActyxOSCode::ERR_IO, e.to_string()));
+                    }
+                    Response::Finished => break,
+                };
+                match msg {
                     EventsResponse::Event(ev) => co.yield_(Ok(Some(EventDiagnostic::Event(ev)))).await,
                     EventsResponse::Diagnostic(d) => match d.severity {
                         Severity::Warning => co.yield_(Ok(Some(EventDiagnostic::Diagnostic(d)))).await,

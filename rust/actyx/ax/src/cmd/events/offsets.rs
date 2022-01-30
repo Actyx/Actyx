@@ -1,6 +1,10 @@
-use crate::cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt},
+    node_connection::Task,
+};
 use actyx_sdk::service::OffsetsResponse;
-use futures::{stream, FutureExt, Stream, StreamExt};
+use futures::{channel::mpsc::channel, stream, FutureExt, SinkExt, Stream, StreamExt};
+use libp2p_streaming_response::v2::Response;
 use prettytable::{cell, row, Table};
 use std::collections::BTreeSet;
 use structopt::StructOpt;
@@ -24,16 +28,12 @@ impl AxCliCommand for EventsOffsets {
 
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let fut = async move {
-            let response = opts
-                .console_opt
-                .connect()
-                .await?
-                .request_events(EventsRequest::Offsets)
-                .await?
-                .next()
-                .await;
+            let mut tx = opts.console_opt.connect().await?;
+            let (t, mut rx) = channel(2);
+            tx.feed(Task::Events(EventsRequest::Offsets, t)).await?;
+            let response = rx.next().await;
             match response {
-                Some(EventsResponse::Offsets(o)) => Ok(o),
+                Some(Response::Msg(EventsResponse::Offsets(o))) => Ok(o),
                 Some(x) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", x))),
                 None => Err(ActyxOSError::internal("stream closed without result".to_string())),
             }

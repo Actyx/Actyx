@@ -1,4 +1,7 @@
-use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{formats::Result, AxCliCommand, ConsoleOpt},
+    node_connection::{request_single, Task},
+};
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
@@ -47,17 +50,23 @@ struct UnsetSettingsCommand {
 pub async fn run(opts: UnsetOpt) -> Result<Output> {
     let scope = opts.actual_opts.scope.clone();
     let mut conn = opts.console_opt.connect().await?;
-
-    match conn
-        .request(AdminRequest::SettingsUnset {
-            scope: opts.actual_opts.scope,
-        })
-        .await
-    {
-        Ok(AdminResponse::SettingsUnsetResponse) => Ok(Output {
-            scope: super::print_scope(scope),
-        }),
-        Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
-        Err(err) => Err(err),
-    }
+    request_single(
+        &mut conn,
+        |tx| {
+            Task::Admin(
+                AdminRequest::SettingsUnset {
+                    scope: opts.actual_opts.scope,
+                },
+                tx,
+            )
+        },
+        move |m| match m {
+            Ok(AdminResponse::SettingsUnsetResponse) => Ok(Output {
+                scope: super::print_scope(scope.clone()),
+            }),
+            Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
+            Err(err) => Err(err),
+        },
+    )
+    .await
 }

@@ -62,6 +62,7 @@ pub enum ShutdownReason {
     Internal(NodeError),
 }
 #[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum NodeEvent {
     StateUpdate(NodeState),
     Shutdown(ShutdownReason),

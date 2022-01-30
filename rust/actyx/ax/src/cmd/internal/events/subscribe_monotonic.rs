@@ -1,4 +1,7 @@
-use crate::cmd::{AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{AxCliCommand, ConsoleOpt},
+    node_connection::request_events,
+};
 use actyx_sdk::{
     language::Query,
     service::{EventResponse, StartFrom, SubscribeMonotonicRequest},
@@ -7,10 +10,7 @@ use actyx_sdk::{
 use futures::{future::ready, Stream, StreamExt};
 use structopt::StructOpt;
 use util::{
-    formats::{
-        events_protocol::{EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult,
-    },
+    formats::{events_protocol::EventsRequest, ActyxOSResult},
     gen_stream::GenStream,
 };
 
@@ -32,22 +32,18 @@ impl AxCliCommand for EventsSubscribeMonotonic {
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let ret = GenStream::new(move |co| async move {
             let mut conn = opts.console_opt.connect().await?;
-            let mut s = conn
-                .request_events(EventsRequest::SubscribeMonotonic(SubscribeMonotonicRequest {
+            let mut s = request_events(
+                &mut conn,
+                EventsRequest::SubscribeMonotonic(SubscribeMonotonicRequest {
                     session: "".into(),
                     from: StartFrom::LowerBound(OffsetMap::default()),
                     query: opts.query,
-                }))
-                .await?;
+                }),
+            )
+            .await?;
 
-            while let Some(x) = s.next().await {
-                match x {
-                    EventsResponse::Event(ev) => co.yield_(Ok(Some(ev))).await,
-                    EventsResponse::Error { message } => {
-                        return Err(ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, message))
-                    }
-                    _ => {}
-                }
+            while let Some(ev) = s.next().await {
+                co.yield_(Ok(Some(ev?))).await;
             }
 
             Ok(None)
