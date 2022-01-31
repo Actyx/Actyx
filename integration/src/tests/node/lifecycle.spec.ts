@@ -1,5 +1,5 @@
 /**
- * @jest-environment ./dist/jest/environment
+ * @jest-environment ./dist/integration/src/jest/environment
  */
 import { getFreeRemotePort, occupyRemotePort } from '../../infrastructure/checkPort'
 import { runOnEach, runOnEvery } from '../../infrastructure/hosts'

@@ -1,5 +1,5 @@
 /**
- * @jest-environment ./dist/jest/environment
+ * @jest-environment ./dist/integration/src/jest/environment
  */
 import { assertOK } from '../assertOK'
 import { mkNodeIdService as mkNodeService, mkTrialHttpClient } from '../http-client'

@@ -11,11 +11,13 @@ import {
   Subject,
   takeWhile,
   throwError,
+  catchError,
 } from '../../node_modules/rxjs'
 import * as t from 'io-ts'
 import { unreachable } from '../util'
 import * as WebSocket from 'isomorphic-ws'
 import log from './log'
+import { massageError } from '../util/error'
 
 /**
  * Unique request id to be chosen by the client. 53 bit integer. Reusing existing request id will cancel the current
@@ -50,17 +52,6 @@ export const enum ResponseMessageType {
   Complete = 'complete',
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const formatError = (err: any) => {
-  if ('code' in err && 'reason' in err) {
-    return `code ${err.code}: '${err.reason}'`
-  }
-  if ('target' in err && 'type' in err && 'error' in err) {
-    return `${err.error}`
-  }
-  return err
-}
-
 const summariseEvent = (e: unknown): string => {
   if (Array.isArray(e)) {
     return '[' + e.map(summariseEvent).join() + ']'
@@ -84,6 +75,8 @@ export class MultiplexedWebsocket<Res extends { requestId: number; type: Respons
   private requestId = 0
   private lastDial = 0
   readonly errors = new Subject<unknown>()
+  private disconnected = true
+  private queue: [Date, string, unknown, Subject<Res & { type: ResponseMessageType.Next }>][] = []
 
   constructor(
     private config: WebSocketSubjectConfig<RequestMessage | Res>,
@@ -97,29 +90,61 @@ export class MultiplexedWebsocket<Res extends { requestId: number; type: Respons
 
   private keepAlive() {
     log.ws.debug('dialling', this.config.url)
+    this.disconnected = false
     this.lastDial = Date.now()
     this.subject?.subscribe({
       next: (msg) => log.ws.debug('received message:', summariseEvent(msg)),
       error: (err) => {
-        log.ws.error('connection error:', formatError(err))
+        log.ws.error('connection error:', massageError(err))
+        this.disconnected = true
         const now = Date.now()
         const delay = Math.max(this.lastDial + this.redialAfter, now) - now
-        setTimeout(() => this.keepAlive(), delay)
+        log.ws.debug(`triggering reconnect in ${delay}ms`)
+        setTimeout(() => this.subject && this.keepAlive(), delay)
         this.errors.next(err)
       },
       complete: () => {
         log.ws.warn('WebSocket closed')
+        this.disconnected = true
         const now = Date.now()
         const delay = Math.max(this.lastDial + this.redialAfter, now) - now
-        setTimeout(() => this.keepAlive(), delay)
+        setTimeout(() => this.subject && this.keepAlive(), delay)
       },
     })
+    this.retryAll()
   }
 
   close() {
     const s = this.subject
     this.subject = null
     s?.complete()
+    this.queue.forEach(([_d, _s, _p, subject]) =>
+      throwError(() => new Error('disconnected from Actyx')).subscribe(subject),
+    )
+    this.queue.length = 0
+  }
+
+  private enqueue(serviceId: string, payload: unknown) {
+    const s = new Subject<Res & { type: ResponseMessageType.Next }>()
+    this.queue.push([new Date(), serviceId, payload, s])
+    setTimeout(() => this.prune(), this.redialAfter * 1.5)
+    return s
+  }
+
+  private prune() {
+    if (this.queue.length < 1 || this.queue[0][0].valueOf() + this.redialAfter * 1.5 < Date.now()) {
+      return
+    }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const [_date, _serviceId, _payload, subject] = this.queue.shift()!
+    throwError(() => new Error('currently disconnected from Actyx')).subscribe(subject)
+  }
+
+  private retryAll() {
+    this.queue.forEach(([_date, serviceId, payload, subject]) =>
+      this.request(serviceId, payload).subscribe(subject),
+    )
+    this.queue.length = 0
   }
 
   request(
@@ -134,6 +159,12 @@ export class MultiplexedWebsocket<Res extends { requestId: number; type: Respons
       // the purpose was just to start a new webSocket
       return NEVER
     }
+
+    if (this.disconnected) {
+      log.ws.debug('enqueueing request for', serviceId)
+      return this.enqueue(serviceId, payload || null)
+    }
+    log.ws.debug('got request for service', serviceId)
 
     const requestId = this.requestId++
     const reqMsg: RequestMessage = {
@@ -154,6 +185,7 @@ export class MultiplexedWebsocket<Res extends { requestId: number; type: Respons
         (msg) => msg.requestId === requestId,
       )
       .pipe(
+        catchError((err: unknown) => throwError(() => massageError(err))),
         takeWhile((msg) => msg.type !== ResponseMessageType.Complete),
         mergeMap((msg) => {
           switch (msg.type) {

@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Actyx, AqlResponse, EventsSortOrder, Tag } from '@actyx/sdk'
 import { Observable, lastValueFrom } from 'rxjs'
-import { filter, first } from 'rxjs/operators'
+import { first } from 'rxjs/operators'
 import { SettingsInput } from '../../cli/exec'
 import { trialManifest } from '../../http-client'
 import { runOnEvery, runWithNewProcess } from '../../infrastructure/hosts'
@@ -250,14 +250,13 @@ describe('@actyx/sdk', () => {
         await actyx.publish(tag.apply('event 0'))
 
         // Wait for the value to arrive
-        await lastValueFrom(
-          p.pipe(
-            filter((x) => x === 'event 0'),
-            first(),
+        expect(await lastValueFrom(p.pipe(first()))).toEqual('event 0')
+
+        const expectErr = expect(lastValueFrom(p)).rejects.toEqual(
+          new Error(
+            '{"Symbol(kTarget)":"WebSocket","Symbol(kType)":"close","Symbol(kCode)":1006,"Symbol(kReason)":"","Symbol(kWasClean)":false}',
           ),
         )
-
-        const expectErr = expect(lastValueFrom(p)).rejects.toMatch('Connection lost')
         // Topic change causes WS to be closed. We cannot use `powerCycle` because that gives new port numbers...
         await node.ax.settings.set('/swarm/topic', SettingsInput.FromValue('A different topic'))
 
@@ -270,56 +269,6 @@ describe('@actyx/sdk', () => {
 
         // Assert that reconnection succeeded and we can publish again
         await expect(actyx.publish(tag.apply('qqqq'))).resolves.toMatchObject({ tags: [randomId] })
-      } finally {
-        actyx.dispose()
-      }
-    }))
-
-  test('should not reconnect if automaticReconnect=false, but also call onConnectionLost', async () =>
-    await runWithNewProcess(async (node) => {
-      let hookCalled = false
-
-      const actyx = await Actyx.of(trialManifest, {
-        actyxPort: node._private.apiPort,
-        onConnectionLost: () => {
-          hookCalled = true
-        },
-      })
-
-      try {
-        const randomId = String(Math.random())
-
-        const tag = Tag<string>(randomId)
-
-        const p = new Observable((o) =>
-          actyx.observeLatest(
-            { query: tag },
-            (x) => o.next(x),
-            (err) => o.error(err),
-          ),
-        )
-
-        await actyx.publish(tag.apply('event 0'))
-
-        // Wait for the value to arrive
-        await lastValueFrom(
-          p.pipe(
-            filter((x) => x === 'event 0'),
-            first(),
-          ),
-        )
-
-        const expectErr = expect(p.toPromise()).rejects.toMatch('Connection lost')
-
-        // Topic change causes WS to be closed. We cannot use `powerCycle` because that gives new port numbers...
-        await node.ax.settings.set('/swarm/topic', SettingsInput.FromValue('A different topic'))
-        await expectErr
-
-        await new Promise((resolve) => setTimeout(resolve, 3_000))
-        expect(hookCalled).toBeTruthy()
-
-        // Assert that reconnection succeeded and we can publish again
-        await expect(actyx.publish(tag.apply('qqqq'))).rejects.toMatch('Connection lost')
       } finally {
         actyx.dispose()
       }

@@ -1,5 +1,5 @@
 /**
- * @jest-environment ./dist/jest/environment
+ * @jest-environment ./dist/integration/src/jest/environment
  */
 /* eslint-disable @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-var-requires */
 import nodeSettingSchema from '../../../../protocols/json-schema/node-settings.schema.json'

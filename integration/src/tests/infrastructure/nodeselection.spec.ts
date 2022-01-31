@@ -1,5 +1,5 @@
 /**
- * @jest-environment ./dist/jest/environment
+ * @jest-environment ./dist/integration/src/jest/environment
  */
 import { selectNodes } from '../../infrastructure/nodeselection'
 import { ActyxNode } from '../../infrastructure/types'

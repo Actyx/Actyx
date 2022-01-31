@@ -53,6 +53,7 @@ export const getToken = async (opts: ActyxOpts, manifest: AppManifest): Promise<
 }
 
 export const checkToken = async (opts: ActyxOpts, token: string): Promise<boolean> => {
+  log.actyx.debug('checking token')
   const apiLocation = getApiLocation(opts.actyxHost, opts.actyxPort)
   const url = 'http://' + apiLocation + '/events/offsets'
 

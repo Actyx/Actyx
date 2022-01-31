@@ -1,5 +1,5 @@
 /**
- * @jest-environment ./dist/jest/environment
+ * @jest-environment ./dist/integration/src/jest/environment
  */
 import fetch from 'node-fetch'
 import {
@@ -334,6 +334,6 @@ describe('auth ws', () => {
     ))
 })
 
-const toWs = (url: string) => {
-  url.replace('http://', 'ws://')
+const toWs = (url: string): string => {
+  return url.replace('http://', 'ws://')
 }

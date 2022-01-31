@@ -1,5 +1,5 @@
 /**
- * @jest-environment ./dist/jest/environment
+ * @jest-environment ./dist/integration/src/jest/environment
  */
 import { Pond } from '@actyx/pond'
 import { execaCommand } from 'execa'

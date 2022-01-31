@@ -10,6 +10,7 @@ export { WebsocketEventStore as WebsocketEventStoreV2 } from './websocketEventSt
 import { Subject, takeUntil } from '../../node_modules/rxjs'
 import log from '../internal_common/log'
 import { ActyxOpts, AppManifest } from '../types'
+import { massageError } from '../util/error'
 import { mkConfig, MultiplexedWebsocket } from './multiplexedWebsocket'
 import { checkToken, getToken, getApiLocation } from './utils'
 
@@ -28,9 +29,16 @@ export const makeWsMultiplexerV2 = async (
   wsConfig.openObserver = openSubject
   const ws = new MultiplexedWebsocket(wsConfig)
 
+  let disconnected = false
+
+  log.ws.info('websocket initiated')
   closeSubject.subscribe({
-    next: () => {
-      log.ws.warn('connection to Actyx lost')
+    next: (err) => {
+      if (disconnected) {
+        return
+      }
+      disconnected = true
+      log.ws.warn('connection to Actyx lost', massageError(err))
       config.onConnectionLost && config.onConnectionLost()
       let renewing = false
       const renewToken = async () => {
@@ -52,6 +60,7 @@ export const makeWsMultiplexerV2 = async (
   openSubject.subscribe({
     next: () => {
       log.ws.info('connection to Actyx established')
+      disconnected = false
       config.onConnectionEstablished && config.onConnectionEstablished()
     },
   })

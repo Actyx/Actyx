@@ -1,5 +1,5 @@
 /**
- * @jest-environment ./dist/jest/environment
+ * @jest-environment ./dist/integration/src/jest/environment
  */
 import fse from 'fs-extra'
 import { runOnEvery } from '../../infrastructure/hosts'

@@ -1,9 +1,9 @@
 /**
- * @jest-environment ./dist/jest/environment
+ * @jest-environment ./dist/integration/src/jest/environment
  */
 import { Fish, FishId, Pond, Tag, Tags, Where } from '@actyx/pond'
-import { Observable, lastValueFrom, timer } from 'rxjs'
-import { filter, take } from 'rxjs/operators'
+import { Observable, lastValueFrom, timer, debounceTime } from 'rxjs'
+import { take } from 'rxjs/operators'
 import { SettingsInput } from '../../cli/exec'
 import { trialManifest } from '../../http-client'
 import { runConcurrentlyOnAll, runWithNewProcess, withPond } from '../../infrastructure/hosts'
@@ -140,10 +140,13 @@ describe('Pond', () => {
 
   test('automatically reconnect Fish (no error propagation to user) if automaticReconnect=true', async () =>
     runWithNewProcess(async (node) => {
+      let registerDisconnect
+      const disconnected = new Promise((res) => (registerDisconnect = res))
       const pond = await Pond.of(
         trialManifest,
         {
           actyxPort: node._private.apiPort,
+          onConnectionLost: registerDisconnect,
         },
         {},
       )
@@ -181,30 +184,24 @@ describe('Pond', () => {
 
         // Topic change causes WS to be closed. We cannot use `powerCycle` because that gives new port numbers...
         await node.ax.settings.set('/swarm/topic', SettingsInput.FromValue('A different topic'))
+        await disconnected
 
-        let numErrs = 0
         for (;;) {
           try {
             await pond.publish(tag.apply(5))
             break
-          } catch (_err) {
-            numErrs += 1
+          } catch (err) {
+            expect(err).toEqual(
+              new Error(
+                `{"Symbol(kTarget)":"WebSocket","Symbol(kType)":"error","Symbol(kError)":{},"Symbol(kMessage)":"connect ECONNREFUSED 127.0.0.1:${node._private.apiPort}"}`,
+              ),
+            )
           }
         }
-        // We should get 0-1 errors depending on the reconnect timing
-        expect(numErrs).toBeLessThan(2)
 
-        const e = lastValueFrom(
-          states.pipe(
-            filter((x) => x.lastEvent === 5),
-            take(1),
-          ),
-        )
-        expect(e).resolves.toEqual({
-          // We switched to the other topic and lost the events from the old one...
-          numEvents: 1,
-          lastEvent: 5,
-        })
+        const e = lastValueFrom(states.pipe(debounceTime(500), take(1)))
+        // We switched to the other topic and lost the events from the old one...
+        expect(await e).toEqual({ numEvents: 1, lastEvent: 5 })
       } finally {
         pond.dispose()
       }

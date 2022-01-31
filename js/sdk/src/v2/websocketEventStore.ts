@@ -26,7 +26,7 @@ import { EventKeyIO, OffsetMapIO } from '../types/wire'
 import { validateOrThrow } from '../util'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { lastValueFrom } from '../../node_modules/rxjs'
-import { map, filter, defaultIfEmpty, first } from '../../node_modules/rxjs/operators'
+import { map, filter, defaultIfEmpty, first, tap } from '../../node_modules/rxjs/operators'
 
 export const enum RequestTypes {
   Offsets = 'offsets',
@@ -76,7 +76,15 @@ export class WebsocketEventStore implements EventStore {
         query: aqlQuery,
         order: sortOrder,
       })
-      .pipe(map((x) => x as TypedMsg))
+      .pipe(
+        tap({
+          next: (item) =>
+            log.ws.debug(`got queryUnchecked response of type '${(<TypedMsg>item).type}'`),
+          error: (err) => log.ws.info('queryUnchecked response stream failed', err),
+          complete: () => log.ws.debug('queryUnchecked reponse completed'),
+        }),
+        map((x) => x as TypedMsg),
+      )
 
   query: DoQuery = (lowerBound, upperBound, whereObj, sortOrder) =>
     this.multiplexer
@@ -90,6 +98,11 @@ export class WebsocketEventStore implements EventStore {
         }),
       )
       .pipe(
+        tap({
+          next: (item) => log.ws.debug(`got query response of type '${(<TypedMsg>item).type}'`),
+          error: (err) => log.ws.info('query response stream failed', err),
+          complete: () => log.ws.debug('query reponse completed'),
+        }),
         filter((x) => (x as TypedMsg).type === 'event'),
         map(validateOrThrow(EventIO)),
       )
@@ -104,6 +117,11 @@ export class WebsocketEventStore implements EventStore {
         }),
       )
       .pipe(
+        tap({
+          next: (item) => log.ws.debug(`got subscribe response of type '${(<TypedMsg>item).type}'`),
+          error: (err) => log.ws.info('subscribe response stream failed', err),
+          complete: () => log.ws.debug('subscribe response completed'),
+        }),
         filter((x) => (x as TypedMsg).type === 'event'),
         map(validateOrThrow(EventIO)),
       )
@@ -114,7 +132,15 @@ export class WebsocketEventStore implements EventStore {
         lowerBound: lowerBound === undefined ? {} : lowerBound,
         query: aqlQuery,
       })
-      .pipe(map((x) => x as TypedMsg))
+      .pipe(
+        tap({
+          next: (item) =>
+            log.ws.debug(`got subscribeUnchecked response of type '${(<TypedMsg>item).type}'`),
+          error: (err) => log.ws.info('subscribeUnchecked response stream failed', err),
+          complete: () => log.ws.debug('subscribeUnchecked reponse completed'),
+        }),
+        map((x) => x as TypedMsg),
+      )
 
   persistEvents: DoPersistEvents = (events) => {
     const publishEvents = events

@@ -1,5 +1,5 @@
 /**
- * @jest-environment ./dist/jest/environment
+ * @jest-environment ./dist/integration/src/jest/environment
  */
 import { runWithClients } from '../../util'
 import { mySuite, publishRandom, testName } from './utils.support.test'

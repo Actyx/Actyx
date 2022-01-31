@@ -10,7 +10,6 @@ import { Ord as NumberOrd } from 'fp-ts/number'
 import { lastValueFrom, EMPTY, from, defaultIfEmpty, first } from '../../node_modules/rxjs'
 import {
   map,
-  filter,
   toArray,
   bufferCount,
   mergeScan,
@@ -280,7 +279,6 @@ export const EventFnsFromEventStoreV2 = (
 
     const buffered = s.pipe(
       bufferOp(bufTime, bufSize),
-      filter((x) => x.length > 0),
       map((buf) => buf.sort(EventKey.ord.compare)),
     )
 

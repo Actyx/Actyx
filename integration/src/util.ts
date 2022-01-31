@@ -6,6 +6,7 @@ import { runOnEvery } from './infrastructure/hosts'
 import { mkProcessLogger } from './infrastructure/mkProcessLogger'
 import { Ssh } from './infrastructure/ssh'
 import { ActyxNode } from './infrastructure/types'
+import { MyGlobal } from './jest/setup'
 import { waitForNodeToBeConfigured } from './retry'
 import { mySuite, testName } from './tests/event-service/utils.support.test'
 
@@ -343,7 +344,7 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
     ax,
     _private: {
       shutdown: async () => {
-        await ax.internal.shutdown()
+        await ax.internal.shutdown().catch(() => ({}))
         process.kill()
         await process.catch(() => ({}))
         sshProcess?.kill()
@@ -357,6 +358,7 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
       apiPort,
     },
   }
+  ;(<MyGlobal>global).axNodeSetup.thisTestEnvNodes?.push(newNode)
   await waitForNodeToBeConfigured(newNode)
   return newNode
 }

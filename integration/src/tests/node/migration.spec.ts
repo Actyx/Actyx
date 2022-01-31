@@ -1,5 +1,5 @@
 /**
- * @jest-environment ./dist/jest/environment
+ * @jest-environment ./dist/integration/src/jest/environment
  */
 /* eslint-disable no-empty */
 import { execa, execaCommand } from 'execa'

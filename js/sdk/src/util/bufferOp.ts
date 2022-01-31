@@ -41,8 +41,13 @@ export const bufferOp =
           buffer.push(value)
           if (buffer.length >= maxBuf) emit()
         },
-        complete: emit,
+        error: (err) => subscriber.error(err),
+        complete: () => {
+          emit()
+          subscriber.complete()
+        },
       })
+      sub.add(() => subscriber.error(new Error('cancelled')))
 
       return sub
     })
