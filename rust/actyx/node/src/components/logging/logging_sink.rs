@@ -40,7 +40,10 @@ impl LoggingSink {
 
         let builder = tracing_subscriber::FmtSubscriber::builder().with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE);
         // Store a handle to the generated filter (layer), so it can be swapped later
-        let (subscriber, filter_handle) = if log_as_json {
+        let (subscriber, filter_handle): (
+            Box<dyn Subscriber + Sync + Send + 'static>,
+            Box<dyn ReloadHandle + Send>,
+        ) = if log_as_json {
             let builder = builder
                 .json()
                 .flatten_event(true)
@@ -48,8 +51,11 @@ impl LoggingSink {
                 .with_ansi(log_color)
                 .with_writer(std::io::stderr)
                 .with_filter_reloading();
-            let filter_handle = Box::new(builder.reload_handle()) as Box<dyn ReloadHandle + Send>;
-            let sub = Box::new(builder.finish()) as Box<dyn Subscriber + Sync + Send + 'static>;
+            let filter_handle = Box::new(builder.reload_handle());
+            let subscriber = builder.finish();
+            #[cfg(target_os = "android")]
+            let subscriber = tracing_android::layer("com.actyx").unwrap().with_subscriber(subscriber);
+            let sub = Box::new(subscriber);
             (sub, filter_handle)
         } else {
             let builder = builder
@@ -57,15 +63,12 @@ impl LoggingSink {
                 .with_ansi(log_color)
                 .with_writer(std::io::stderr)
                 .with_filter_reloading();
-            let filter_handle = Box::new(builder.reload_handle()) as Box<dyn ReloadHandle + Send>;
-            let sub = Box::new(builder.finish()) as Box<dyn Subscriber + Sync + Send + 'static>;
+            let filter_handle = Box::new(builder.reload_handle());
+            let subscriber = builder.finish();
+            #[cfg(target_os = "android")]
+            let subscriber = tracing_android::layer("com.actyx").unwrap().with_subscriber(subscriber);
+            let sub = Box::new(subscriber);
             (sub, filter_handle)
-        };
-        #[cfg(target_os = "android")]
-        // Add additional layer on Android, so the logs also end up in logcat
-        let subscriber = {
-            use tracing_subscriber::layer::SubscriberExt;
-            subscriber.with(tracing_android::layer("com.actyx").unwrap())
         };
         if tracing::subscriber::set_global_default(subscriber).is_err() {
             eprintln!("`tracing::subscriber::set_global_default` has been called more than once!");
