@@ -27,7 +27,6 @@ resolver = "2"
 [profile.release]
 panic = "unwind"
 debug = 0
-lto = "thin"
 
 [profile.dev]
 panic = "abort"
