@@ -35,7 +35,7 @@ export type ActyxOpts = {
     actyxHost?: string;
     actyxPort?: number;
     onConnectionLost?: () => void;
-    automaticReconnect?: boolean;
+    onConnectionEstablished?: () => void;
 };
 
 // @public
