@@ -136,6 +136,12 @@ describe('typed tag query system', () => {
     expect(ww.toString()).toEqual("'0' | '1' | 'A' | 'B'")
   })
 
+  it('should allow adding tags that don’t change the type', () => {
+    const w = tag0.and(tagWithQuotes)
+    const _w1: Where<T0> = w
+    w.apply({ type: '0', t0: {} })
+  })
+
   it('should tolerate tags with spaces and quotes', () => {
     const w0: Where<unknown> = tag0.or(tagWithQuotes)
 
