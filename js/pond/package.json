@@ -4,7 +4,7 @@
     "url": "https://community.actyx.com/"
   },
   "dependencies": {
-    "@actyx/sdk": "^0.4.0-rc8",
+    "@actyx/sdk": "^0.4.0",
     "fp-ts": "2.11.5",
     "immutable": "4.0.0",
     "io-ts": "2.2.16",
@@ -83,5 +83,5 @@
     "build:docs": "rm -rf ../../web/developer.actyx.com/static/@actyx/pond/ && typedoc --mode library --options typedoc.json src/index.ts"
   },
   "types": "./lib/index.d.ts",
-  "version": "3.2.0-rc3"
+  "version": "3.2.0"
 }
