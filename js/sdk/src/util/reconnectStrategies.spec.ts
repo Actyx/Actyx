@@ -6,55 +6,92 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Observable } from '../../node_modules/rxjs'
-import { marbles } from 'rxjs-marbles'
 import reconnectStrategies from './reconnectStrategies'
+import { TestScheduler } from 'rxjs/testing'
 
-// see https://github.com/redux-observable/redux-observable/issues/180
-const injectTimeBasedOperators = (testScheduler: any) => {
-  const originalDelay = Observable.prototype.delay
-  function stubDelay(this: any, dueTime: number) {
-    return originalDelay.call(this, dueTime, testScheduler)
-  }
-  spyOn(Observable.prototype, 'delay').and.callFake(stubDelay)
-}
+const scheduler = () =>
+  new TestScheduler((actual, expected) => {
+    expect(actual).toEqual(expected)
+  })
 
 describe('retry', () => {
-  it(
-    'should give up after the given number of retries',
-    marbles(m => {
-      injectTimeBasedOperators(m.scheduler)
-      const i = 'x--x--x--x--x--x'
-      const o = '-x--x--x-#'
-      const errors = m.cold(i)
-      const result = reconnectStrategies.retry({ attempts: 3, delayMs: 10 })(errors)
-      return m.expect(result).toBeObservable(o, { x: 'x' }, new Error('Giving up after 3 retries!'))
-    }),
-  )
+  it('should give up after the given number of retries', () =>
+    scheduler().run(({ cold, expectObservable }) => {
+      const errors = cold('x--x--x-x')
+      const expected = '   -x--x--x#'
+      const result = reconnectStrategies.retry({
+        attempts: 3,
+        delayMs: 1,
+      })(errors)
 
-  it(
-    'should use the given delay',
-    marbles(m => {
-      injectTimeBasedOperators(m.scheduler)
-      const i = 'x--x'
-      const o = '---x--x'
-      const errors = m.cold(i)
-      const result = reconnectStrategies.retry({ delayMs: 30 })(errors)
-      return m.expect(result).toBeObservable(o)
-    }),
-  )
+      expectObservable(result).toBe(expected, undefined, new Error('Giving up after 3 retries!'))
+    }))
+  // This is the implementation. Note sure it actually makes sense.
+  it('should work use default 1000ms when given 0', () =>
+    scheduler().run(({ cold, expectObservable }) => {
+      const errors = cold('abc')
+      const expected = '1000ms abc'
+      const result = reconnectStrategies.retry({
+        delayMs: 0,
+      })(errors)
+
+      expectObservable(result).toBe(expected)
+    }))
+  it('should use the given delay (1)', () =>
+    scheduler().run(({ cold, expectObservable }) => {
+      const errors = cold('a-b')
+      const expected = '   -a-b'
+      const result = reconnectStrategies.retry({
+        delayMs: 1,
+      })(errors)
+
+      expectObservable(result).toBe(expected)
+    }))
+
+  it('should use the given delay (2)', () =>
+    scheduler().run(({ cold, expectObservable }) => {
+      const errors = cold('ab')
+      const expected = '   --------ab'
+      const result = reconnectStrategies.retry({
+        delayMs: 8,
+      })(errors)
+
+      expectObservable(result).toBe(expected)
+    }))
+
+  it('should use the given delay (3)', () =>
+    scheduler().run(({ cold, expectObservable }) => {
+      const errors = cold('a---b')
+      const expected = '   90ms a --- b'
+      const result = reconnectStrategies.retry({
+        delayMs: 90,
+      })(errors)
+
+      expectObservable(result).toBe(expected)
+    }))
 })
 
-describe('exponentialBackoff', () => {
-  it(
-    'should give up after the given number of retries',
-    marbles(m => {
-      injectTimeBasedOperators(m.scheduler)
-      const i = 'x------x------x-------x'
-      const o = '-x-------x--------x---#'
-      const errors = m.cold(i)
-      const result = reconnectStrategies.exponentialBackoff({ attempts: 3, minDelay: 10 })(errors)
-      return m.expect(result).toBeObservable(o, { x: 'x' }, new Error('Giving up after 3 retries!'))
-    }),
-  )
+describe('exponential backoff', () => {
+  it('should exponentially back off', () =>
+    scheduler().run(({ cold, expectObservable }) => {
+      const errors = cold('a-b-c-d')
+      const expected = '  1000ms a - 1000ms b - 2000ms c - 4000ms d'
+      const result = reconnectStrategies.exponentialBackoff({
+        minDelay: 1000,
+      })(errors)
+
+      expectObservable(result).toBe(expected)
+    }))
+
+  it('should give up after the given number of retries', () =>
+    scheduler().run(({ cold, expectObservable }) => {
+      const errors = cold('abcd')
+      const expected = '   ---#'
+      const result = reconnectStrategies.exponentialBackoff({
+        minDelay: 1000,
+        attempts: 3,
+      })(errors)
+
+      expectObservable(result).toBe(expected, undefined, new Error('Giving up after 3 retries!'))
+    }))
 })

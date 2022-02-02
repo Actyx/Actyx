@@ -9,7 +9,7 @@ import {
   Response_Swarms_Keygen,
   Response_Users_Keygen,
 } from './types'
-import execa from 'execa'
+import { execa, Options } from 'execa'
 import * as path from 'path'
 import { rightOrThrow } from '../infrastructure/rightOrThrow'
 import {
@@ -26,18 +26,20 @@ import {
 import { dotnetEventsCliAssembly } from '../infrastructure/settings'
 import { EventClients } from '../infrastructure/types'
 
-const exec = async (binaryPath: string, args: string[], options?: execa.Options) => {
+const exec = async (binaryPath: string, args: string[], options?: Options) => {
   try {
     const binaryPathResolved = path.resolve(binaryPath)
-    const response = await execa(binaryPathResolved, [`-j`, ...args], options)
+    const opts = {
+      reject: false,
+      ...options,
+    }
+    const response = await execa(binaryPathResolved, [`-j`, ...args], opts)
+    if (response.failed) {
+      return JSON.parse(response.stdout)
+    }
     return JSON.parse(response.stdout)
   } catch (error) {
-    try {
-      return JSON.parse(error.stdout)
-    } catch (errParse) {
-      console.error(error)
-      throw errParse
-    }
+    console.error(`executing ${binaryPath} ${args.join(' ')}:`, error)
   }
 }
 
@@ -60,14 +62,16 @@ export interface SettingsInputMatcher<T> {
 export const SettingsInput = {
   FromFile: (filePath: string): SettingsInputFile => ({ key: 'SettingsInputFile', path: filePath }),
   FromValue: (value: unknown): SettingsInputValue => ({ key: 'SettingsInputValue', value: value }),
-  match: <T>(matcher: SettingsInputMatcher<T>) => (input: SettingsInput): T => {
-    switch (input.key) {
-      case 'SettingsInputFile':
-        return matcher.File(input)
-      case 'SettingsInputValue':
-        return matcher.Value(input)
-    }
-  },
+  match:
+    <T>(matcher: SettingsInputMatcher<T>) =>
+    (input: SettingsInput): T => {
+      switch (input.key) {
+        case 'SettingsInputFile':
+          return matcher.File(input)
+        case 'SettingsInputValue':
+          return matcher.Value(input)
+      }
+    },
 }
 
 type Exec = {

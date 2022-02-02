@@ -15,7 +15,9 @@ import {
   Timestamp,
   Where,
 } from '@actyx/sdk'
-import { contramap, ordNumber } from 'fp-ts/lib/Ord'
+import { contramap } from 'fp-ts/lib/Ord'
+import { Ord as OrdNumber } from 'fp-ts/lib/number'
+import { map as mapE } from 'fp-ts/lib/Either'
 import * as t from 'io-ts'
 
 export type Semantics = string
@@ -39,8 +41,8 @@ export const Semantics = {
   FromString: new t.Type<Semantics, string>(
     'SemanticsFromString',
     (x): x is Semantics => isString(x),
-    (x, c) => t.string.validate(x, c).map(s => s as Semantics),
-    x => x,
+    (x, c) => mapE((s) => s as Semantics)(t.string.validate(x, c)),
+    (x) => x,
   ),
 }
 
@@ -51,8 +53,8 @@ export const FishName = {
   FromString: new t.Type<FishName, string>(
     'FishNameFromString',
     (x): x is FishName => isString(x),
-    (x, c) => t.string.validate(x, c).map(s => s as FishName),
-    x => x,
+    (x, c) => mapE((s) => s as FishName)(t.string.validate(x, c)),
+    (x) => x,
   ),
 }
 
@@ -119,8 +121,8 @@ export type SnapshotFormat<S, Serialized> = {
 export const SnapshotFormat = {
   identity: <S>(version: number): SnapshotFormat<S, S> => ({
     version,
-    serialize: x => x,
-    deserialize: x => x,
+    serialize: (x) => x,
+    deserialize: (x) => x,
   }),
 }
 
@@ -133,7 +135,7 @@ export type TaggedIndex = {
 }
 
 export const TaggedIndex = {
-  ord: contramap((ti: TaggedIndex) => ti.i, ordNumber),
+  ord: contramap((ti: TaggedIndex) => ti.i)(OrdNumber),
 }
 
 export type CachedState<S> = {

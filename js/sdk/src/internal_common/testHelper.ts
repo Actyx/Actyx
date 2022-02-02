@@ -1,7 +1,7 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
 import { AppId, Lamport, NodeId, Offset, Timestamp } from '..'
@@ -23,7 +23,7 @@ export type LastPublished = Readonly<{
 export const eventFactory = () => {
   const lastPublishedForSources: Record<string, LastPublished> = {}
 
-  const mkEvent: (raw: RawEvent) => Event = raw => {
+  const mkEvent: (raw: RawEvent) => Event = (raw) => {
     const lastPublished = lastPublishedForSources[raw.source]
     // Choosing random starting psns for sources should never change test outcomes.
     const offset = lastPublished ? lastPublished.psn : Math.round(Math.random() * 1000)
@@ -51,7 +51,7 @@ export const eventFactory = () => {
     return fullEvent
   }
 
-  const mkEvents: (raw: RawEvent[]) => Events = raw => raw.map(mkEvent)
+  const mkEvents: (raw: RawEvent[]) => Events = (raw) => raw.map(mkEvent)
 
   return {
     mkEvent,
@@ -127,6 +127,6 @@ export const mkTimeline = (...events: MkEvent[]): Timeline => {
 
   return {
     all: timeline,
-    of: (...sources: string[]) => timeline.filter(ev => sources.includes(ev.stream)),
+    of: (...sources: string[]) => timeline.filter((ev) => sources.includes(ev.stream)),
   }
 }

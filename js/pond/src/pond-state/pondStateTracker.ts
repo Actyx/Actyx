@@ -1,12 +1,12 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import { Milliseconds } from '@actyx/sdk'
 import { Loggers } from '@actyx/sdk/lib/util/logging'
-import { BehaviorSubject, Observable } from 'rxjs'
+import { BehaviorSubject, Observable } from '../../node_modules/rxjs'
 import { FishName, Semantics } from '../types'
 import { PondState, PondStateTracker } from './pond-state'
 
@@ -25,10 +25,10 @@ export const mkInitialState = (): PondState => ({
   },
 })
 
-const mkKeyWithTimestamp = (now: () => number) => (
-  fishSemantics: Semantics,
-  fishName: FishName,
-): string => `${fishSemantics}:${fishName}:${now()}`
+const mkKeyWithTimestamp =
+  (now: () => number) =>
+  (fishSemantics: Semantics, fishName: FishName): string =>
+    `${fishSemantics}:${fishName}:${now()}`
 
 export const mkPondStateTracker = (log: Loggers, now?: () => Milliseconds): PondStateTracker => {
   const state: PondState = mkInitialState()
@@ -38,28 +38,29 @@ export const mkPondStateTracker = (log: Loggers, now?: () => Milliseconds): Pond
   const mkKey = mkKeyWithTimestamp(now || Milliseconds.now)
   const notifySubscribers = (): void => stateSubject.next(state)
 
-  const processStarted = (reg: keyof PondState) => (
-    fishSemantics: Semantics,
-    fishName: FishName,
-  ): string => {
-    const key = mkKey(fishSemantics, fishName)
-    state[reg].fish[key] = true
-    state[reg].numBeingProcessed += 1
-    notifySubscribers()
+  const processStarted =
+    (reg: keyof PondState) =>
+    (fishSemantics: Semantics, fishName: FishName): string => {
+      const key = mkKey(fishSemantics, fishName)
+      state[reg].fish[key] = true
+      state[reg].numBeingProcessed += 1
+      notifySubscribers()
 
-    return key
-  }
-
-  const processingFinished = (reg: keyof PondState, errorMsg: string) => (key: string): void => {
-    if (state[reg].fish[key] === undefined) {
-      log.warn(errorMsg, key)
-      return
+      return key
     }
 
-    delete state[reg].fish[key]
-    state[reg].numBeingProcessed -= 1
-    notifySubscribers()
-  }
+  const processingFinished =
+    (reg: keyof PondState, errorMsg: string) =>
+    (key: string): void => {
+      if (state[reg].fish[key] === undefined) {
+        log.warn(errorMsg, key)
+        return
+      }
+
+      delete state[reg].fish[key]
+      state[reg].numBeingProcessed -= 1
+      notifySubscribers()
+    }
 
   return {
     hydrationStarted: processStarted('hydration'),

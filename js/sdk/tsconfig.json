@@ -2,7 +2,7 @@
   "compilerOptions": {
     "declaration": true,
     "outDir": "lib",
-    "sourceMap": false,
+    "sourceMap": true,
     // TODO: temporary while RxJs fix their issues https://github.com/ReactiveX/rxjs/issues/3031
     "skipLibCheck": true,
     "module": "commonjs",

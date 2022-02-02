@@ -1,11 +1,12 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
-import { Observable } from 'rxjs'
 import { Caching, Fish, FishId, Milliseconds, Pond, Tag } from '.'
+import { Observable, lastValueFrom, timer } from '../node_modules/rxjs'
+import { debounceTime, first } from '../node_modules/rxjs/operators'
 
 type InitFish = {
   readonly fishSpecificTag: string
@@ -13,21 +14,21 @@ type InitFish = {
 
 const seedEvents = Tag<InitFish>('init')
 
-const makeMakeFish = (overrides?: (f: InitFish) => Partial<Fish<FishState, unknown>>) => (
-  f: InitFish,
-): Fish<FishState, unknown> => {
-  const myTag = f.fishSpecificTag
+const makeMakeFish =
+  (overrides?: (f: InitFish) => Partial<Fish<FishState, unknown>>) =>
+  (f: InitFish): Fish<FishState, unknown> => {
+    const myTag = f.fishSpecificTag
 
-  const upper = overrides ? overrides(f) : {}
+    const upper = overrides ? overrides(f) : {}
 
-  return {
-    where: Tag(myTag),
-    initialState: { myTag, numEvents: 0 },
-    fishId: FishId.of('hello', myTag, 1),
-    onEvent: (state, _event) => ({ ...state, numEvents: state.numEvents + 1 }),
-    ...upper,
+    return {
+      where: Tag(myTag),
+      initialState: { myTag, numEvents: 0 },
+      fishId: FishId.of('hello', myTag, 1),
+      onEvent: (state, _event) => ({ ...state, numEvents: state.numEvents + 1 }),
+      ...upper,
+    }
   }
-}
 
 const initFish = (pond: Pond, ...tags: unknown[]) => {
   for (const fishSpecificTag of tags) {
@@ -45,21 +46,23 @@ const expectFishWithEvents = async (
   makeFish: (f: InitFish) => Fish<FishState, unknown>,
   expectations: Record<string, number>,
 ) => {
-  const states = await new Observable<FishState[]>(o =>
-    pond.observeAll(
-      seedEvents,
-      makeFish,
-      {
-        // Randomly enable or disable caching - should make no difference
-        caching: Math.random() > 0.5 ? Caching.inProcess('test') : undefined,
-      },
-      x => o.next(x),
+  const states = await lastValueFrom(
+    new Observable<FishState[]>((o) =>
+      pond.observeAll(
+        seedEvents,
+        makeFish,
+        {
+          // Randomly enable or disable caching - should make no difference
+          caching: Math.random() > 0.5 ? Caching.inProcess('test') : undefined,
+        },
+        (x) => o.next(x),
+      ),
+    ).pipe(
+      // Double the chunk time
+      debounceTime(40),
+      first(),
     ),
   )
-    // Double the chunk time
-    .debounceTime(40)
-    .first()
-    .toPromise()
 
   const actual: Record<string, number> = {}
   for (const { myTag, numEvents } of states) {
@@ -146,7 +149,7 @@ describe('Pond.observeAll', () => {
     const pond = Pond.test()
 
     // Make the same fish from every event
-    const makeFish = makeMakeFish(_f => ({
+    const makeFish = makeMakeFish((_f) => ({
       fishId: FishId.of('same', 'same', 1),
       where: seedEvents,
     }))
@@ -232,18 +235,17 @@ describe('Pond.observeAll', () => {
     initFish(pond, 1, 2, 3)
 
     // Sleep 20 ms -> trigger expiry
-    await Observable.timer(20).toPromise()
+    await lastValueFrom(timer(20))
 
     initFish(pond, 2, 5)
 
-    const states = new Observable<FishState[]>(o =>
-      pond.observeAll(seedEvents, makeFish, { expireAfterSeed: Milliseconds.of(4) }, x =>
-        o.next(x),
-      ),
+    const states = lastValueFrom(
+      new Observable<FishState[]>((o) =>
+        pond.observeAll(seedEvents, makeFish, { expireAfterSeed: Milliseconds.of(4) }, (x) =>
+          o.next(x),
+        ),
+      ).pipe(debounceTime(0), first()),
     )
-      .debounceTime(0)
-      .first()
-      .toPromise()
 
     // 2 got another seed event, so it’s included -- the others are dropped
     await expectFishWithEvents(pond, makeFish, {
@@ -264,7 +266,7 @@ describe('Pond.observeAll', () => {
     let cbInvoked = 0
     const assertInvocations = async (expected: number) => {
       // yield double the chunk time
-      await Observable.timer(40).toPromise()
+      await lastValueFrom(timer(40))
       expect(cbInvoked).toEqual(expected)
     }
 
@@ -274,7 +276,7 @@ describe('Pond.observeAll', () => {
       {
         caching: Caching.inProcess('test'),
       },
-      _x => (cbInvoked += 1),
+      (_x) => (cbInvoked += 1),
     )
     // Immediately invoked with empty array
     await assertInvocations(1)
@@ -292,7 +294,7 @@ describe('Pond.observeAll', () => {
       {
         caching: Caching.inProcess('test'),
       },
-      _x => (cbInvoked += 1),
+      (_x) => (cbInvoked += 1),
     )
     await assertInvocations(3)
 
@@ -306,12 +308,16 @@ describe('Pond.observeOne', () => {
   const seedEvent = seedEvents
 
   const readState = async (pond: Pond, makeFish: (f: InitFish) => Fish<FishState, unknown>) =>
-    new Observable<FishState>(o =>
-      pond.observeOne(seedEvent, makeFish, x => o.next(x), err => o.error(err)),
+    lastValueFrom(
+      new Observable<FishState>((o) =>
+        pond.observeOne(
+          seedEvent,
+          makeFish,
+          (x) => o.next(x),
+          (err) => o.error(err),
+        ),
+      ).pipe(debounceTime(0), first()),
     )
-      .debounceTime(0)
-      .first()
-      .toPromise()
 
   it('should create the Fish from seedEvent', async () => {
     const pond = Pond.test()

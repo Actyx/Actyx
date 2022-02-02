@@ -1,5 +1,8 @@
+/**
+ * @jest-environment ./dist/integration/src/jest/environment
+ */
 /* eslint-disable no-empty */
-import execa from 'execa'
+import { execa, execaCommand } from 'execa'
 import { settings } from '../../infrastructure/settings'
 import { randomString, runUntil } from '../../util'
 
@@ -90,4 +93,4 @@ describe('v1 to v2 migration', () => {
   })
 })
 
-const currentHead = () => execa.command('git rev-parse HEAD').then((x) => x.stdout)
+const currentHead = () => execaCommand('git rev-parse HEAD').then((x) => x.stdout)

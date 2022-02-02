@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/integration/src/jest/environment
+ */
 import { getFreeRemotePort, occupyRemotePort } from '../../infrastructure/checkPort'
 import { runOnEach, runOnEvery } from '../../infrastructure/hosts'
 import { ActyxNode } from '../../infrastructure/types'
@@ -143,7 +146,7 @@ describe('node lifecycle', () => {
           'NODE_STOPPED_BY_NODE: ERR_PORT_COLLISION',
         )
         expect(logs).toMatch(
-          `Actyx shut down because it could not bind to port ${port.toString()}. Please specify a different ${x} port.`,
+          `Actyx shut down because it could not bind to port /ip4/0.0.0.0/tcp/${port.toString()}. Please specify a different ${x} port.`,
         )
       }).then(() => done(), done)
     }),
@@ -177,7 +180,7 @@ describe('node lifecycle', () => {
 
       expect(logs).toMatch('NODE_STOPPED_BY_NODE: ERR_PORT_COLLISION')
       expect(logs).toMatch(
-        `Actyx shut down because it could not bind to port ${port.toString()}. Please specify a different Admin port.`,
+        `Actyx shut down because it could not bind to port /ip4/0.0.0.0/tcp/${port.toString()}. Please specify a different Admin port.`,
       )
     }).then(() => done(), done)
   })

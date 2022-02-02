@@ -1,4 +1,7 @@
-import execa from 'execa'
+/**
+ * @jest-environment ./dist/integration/src/jest/environment
+ */
+import { execa } from 'execa'
 import { runOnEvery } from '../../infrastructure/hosts'
 import { dotnetIntegrationTestsAssembly } from '../../infrastructure/settings'
 

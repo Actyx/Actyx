@@ -1,6 +1,15 @@
 import { EventKey, LocalSnapshot, Timestamp } from '@actyx/sdk'
 import { last, partition } from 'fp-ts/lib/Array'
-import { none, Option, some } from 'fp-ts/lib/Option'
+import {
+  none,
+  Option,
+  some,
+  map as mapO,
+  getOrElse as getOrElseO,
+  alt as altO,
+  filter as filterO,
+} from 'fp-ts/lib/Option'
+import { pipe } from 'fp-ts/lib/function'
 import { gt } from 'fp-ts/lib/Ord'
 import log from '../loggers'
 import { SnapshotScheduler } from './snapshotScheduler'
@@ -40,12 +49,16 @@ export const cachingReducer = <S>(
 
   let latestStateSerialized: Option<SerializedStateSnap> = none
 
-  const appendEvents: CachingReducer<S>['appendEvents'] = events => {
+  const appendEvents: CachingReducer<S>['appendEvents'] = (events) => {
     // FIXME: Arguments are a bit questionable, but we can’t change the scheduler yet, otherwise the FES-based tests start failing.
     const statesToStore = snapshotScheduler.getSnapshotLevels(
-      latestStateSerialized.map(x => x.cycle).getOrElse(0),
+      pipe(
+        latestStateSerialized,
+        mapO((x) => x.cycle),
+        getOrElseO(() => 0),
+      ),
       // FIXME: We only put payload in here for chaos.spec.ts hacky custom scheduling
-      events.map(x => ({ timestamp: x.meta.timestampMicros, payload: x.payload })),
+      events.map((x) => ({ timestamp: x.meta.timestampMicros, payload: x.payload })),
       0,
     )
 
@@ -96,21 +109,28 @@ export const cachingReducer = <S>(
     appendEvents,
     awaitPendingPersistence: () => storeSnapshotsPromise,
     latestKnownValidState: (lowestInvalidating, highestInvalidating) =>
-      latestStateSerialized
-        .filter(isSnapshotValid(lowestInvalidating, highestInvalidating))
-        .orElse(() => queue.latestValid(lowestInvalidating, highestInvalidating).map(x => x.snap)),
+      pipe(
+        latestStateSerialized,
+        filterO(isSnapshotValid(lowestInvalidating, highestInvalidating)),
+        altO(() =>
+          pipe(
+            queue.latestValid(lowestInvalidating, highestInvalidating),
+            mapO((x) => x.snap),
+          ),
+        ),
+      ),
     setState,
   }
 }
 
-const isSnapshotValid = (lowestInvalidating: EventKey, highestInvalidating: EventKey) => (
-  snap: SerializedStateSnap,
-): boolean => {
-  const snapshotValid = eventKeyGreater(lowestInvalidating, snap.eventKey)
-  const horizonVoidsTimeTravel =
-    !!snap.horizon && eventKeyGreater(snap.horizon, highestInvalidating)
-  return snapshotValid || horizonVoidsTimeTravel
-}
+const isSnapshotValid =
+  (lowestInvalidating: EventKey, highestInvalidating: EventKey) =>
+  (snap: SerializedStateSnap): boolean => {
+    const snapshotValid = eventKeyGreater(lowestInvalidating, snap.eventKey)
+    const horizonVoidsTimeTravel =
+      !!snap.horizon && eventKeyGreater(snap.horizon, highestInvalidating)
+    return snapshotValid || horizonVoidsTimeTravel
+  }
 
 type SnapshotQueue = {
   // Add a pending snapshot
@@ -140,13 +160,13 @@ const snapshotQueue = (): SnapshotQueue => {
   }
 
   const invalidateLaterThan = (cutOff: EventKey) => {
-    queue = queue.filter(entry => eventKeyGreater(cutOff, entry.snap.eventKey))
+    queue = queue.filter((entry) => eventKeyGreater(cutOff, entry.snap.eventKey))
   }
 
   const getSnapshotsToStore = (
     storeNow: (snapshot: PendingSnapshot) => boolean,
   ): ReadonlyArray<PendingSnapshot> => {
-    const seperated = partition(queue, storeNow)
+    const seperated = partition(storeNow)(queue)
 
     queue = seperated.left
 

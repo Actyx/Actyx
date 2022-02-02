@@ -1,7 +1,7 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
 import {
@@ -199,7 +199,7 @@ export interface EventFns {
    * @param chunkSize   - Maximum size of chunks. Chunks may be smaller than this.
    * @param onChunk     - Callback that will be invoked for each chunk, in sequence. Second argument is an offset map covering all events passed as first arg.
    *
-   * @returns A `Promise` that resolves to updated offset-map after all chunks have been delivered.
+   * @returns A function that can be called in order to cancel the delivery of further chunks.
    */
   queryAllKnownChunked: (
     query: AutoCappedQuery,
@@ -218,6 +218,25 @@ export interface EventFns {
    * @beta
    */
   queryAql: (query: AqlQuery) => Promise<AqlResponse[]>
+
+  /**
+   * Run a custom AQL subscription and get back the raw responses collected via a callback.
+   *
+   * @param query       - A plain AQL query string.
+   * @param onResponse  - Callback that will be invoked for each raw response, in sequence. Even if this is an async function (returning `Promise<void>`), there will be no concurrent invocations of it.
+   * @param onError     - Callback that will be invoked in case on a error.
+   * @param lowerBound  - Starting point (exclusive) for the query. Everything up-to-and-including `lowerBound` will be omitted from the result. Defaults empty record.
+   *
+   * @returns A `Promise` that resolves to updated offset-map after all chunks have been delivered.
+   *
+   * @beta
+   */
+  subscribeAql: (
+    query: AqlQuery,
+    onResponse: (r: AqlResponse) => Promise<void> | void,
+    onError?: (err: unknown) => void,
+    lowerBound?: OffsetMap,
+  ) => CancelSubscription
 
   /**
    * Run a custom AQL query and get the response messages in chunks.

@@ -4,17 +4,17 @@
  *   - Create nodes as separate ec2 instances or locally
  *   - Bootstrap all nodes in the same swarm
  */
-import { EC2 } from 'aws-sdk'
-import execa from 'execa'
+import { EC2Client } from '@aws-sdk/client-ec2'
+import { execaCommand } from 'execa'
 import { promises as fs } from 'fs'
 import YAML from 'yaml'
-import { CLI } from '../src/cli'
-import { SettingsInput } from '../src/cli/exec'
-import { createKey, deleteKey } from '../src/infrastructure/aws'
-import { createNode } from '../src/infrastructure/create'
-import { rightOrThrow } from '../src/infrastructure/rightOrThrow'
-import { ActyxNode, AwsKey, printTarget } from '../src/infrastructure/types'
-import { retryTimes } from '../src/retry'
+import { CLI } from '../cli'
+import { SettingsInput } from '../cli/exec'
+import { createKey, deleteKey } from '../infrastructure/aws'
+import { createNode } from '../infrastructure/create'
+import { rightOrThrow } from '../infrastructure/rightOrThrow'
+import { ActyxNode, AwsKey, printTarget } from '../infrastructure/types'
+import { retryTimes } from '../retry'
 import { Config, Settings } from './types'
 
 export type LogEntry = {
@@ -24,7 +24,7 @@ export type LogEntry = {
 
 export type NodeSetup = {
   nodes: ActyxNode[]
-  ec2?: EC2
+  ec2?: EC2Client
   key?: AwsKey
   settings: Settings
   gitHash: string
@@ -35,9 +35,9 @@ export type NodeSetup = {
   thisTestEnvNodes?: ActyxNode[]
 }
 
-export type MyGlobal = typeof global & { axNodeSetup: NodeSetup }
+export type MyGlobal = typeof global & { axNodeSetup: NodeSetup; isSuite?: boolean }
 
-const currentHead = () => execa.command('git rev-parse HEAD').then((x) => x.stdout)
+const currentHead = () => execaCommand('git rev-parse HEAD').then((x) => x.stdout)
 
 const getGitHash = async (settings: Settings) => {
   const maybeEnv = process.env['AX_GIT_HASH']
@@ -239,11 +239,11 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   } catch (e) {
     //ignore
   }
-  let ec2: EC2 | undefined = undefined
+  let ec2: EC2Client | undefined = undefined
   let key: AwsKey | undefined = undefined
   let runIdentifier = 'local-run'
   try {
-    ec2 = new EC2({ region: 'eu-central-1' })
+    ec2 = new EC2Client({ region: 'eu-central-1' })
     key = await createKey(config, ec2)
     runIdentifier = key.keyName
   } catch (e) {

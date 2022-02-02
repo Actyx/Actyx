@@ -4,7 +4,8 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { Observable } from '../../node_modules/rxjs'
+import { from, lastValueFrom, timer } from '../../node_modules/rxjs'
+import { delay } from '../../node_modules/rxjs/operators'
 import { RunStats } from './runStats'
 
 describe('runStats', () => {
@@ -66,10 +67,7 @@ describe('runStats', () => {
     const runStats = RunStats.create()
     const profileObservable = runStats.profile.profileObservable('test', Number.MAX_SAFE_INTEGER)
 
-    const foo = Observable.from([1, 2, 3])
-      .delay(1000)
-      .pipe(profileObservable)
-      .toPromise()
+    const foo = lastValueFrom(from([1, 2, 3]).pipe(delay(1000), profileObservable))
 
     await foo
     expect(runStats.counters.current()).toEqual({})
@@ -132,7 +130,7 @@ describe('runStats', () => {
     const runStats = RunStats.create()
     const profileObservable = runStats.profile.profileObservable('test')
     // very long-running profiled operation
-    const foo = Observable.timer(100000).pipe(profileObservable)
+    const foo = timer(100000).pipe(profileObservable)
 
     const subs = []
 
@@ -140,14 +138,14 @@ describe('runStats', () => {
       subs.push(foo.subscribe())
     }
     // wait a second
-    await Observable.timer(1000).toPromise()
+    await lastValueFrom(timer(1000))
     const stats = runStats.durations.getAndClear()
     // all of the long-running operations should still be pending
     const { pending } = stats.test
     expect('count' in stats.test).toBeFalsy()
     expect(pending).toEqual(10)
 
-    subs.forEach(s => s.unsubscribe())
+    subs.forEach((s) => s.unsubscribe())
   })
 
   it('should be roughly correct', () => {

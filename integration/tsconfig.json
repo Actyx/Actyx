@@ -2,16 +2,19 @@
   "compilerOptions": {
     "target": "es2020",
     "outDir": "dist",
-    "module": "commonjs",
+    "module": "ES2020",
+    "rootDir": "..",
+    "sourceMap": true,
     "strict": true,
     "moduleResolution": "node",
+    "resolveJsonModule": true,
     "esModuleInterop": true,
     "lib": [
       "dom",
       "es2020"
-    ],
+    ]
   },
   "exclude": [
-    "temp",
+    "temp"
   ]
 }

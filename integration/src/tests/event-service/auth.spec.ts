@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/integration/src/jest/environment
+ */
 import fetch from 'node-fetch'
 import {
   getToken,
@@ -282,7 +285,7 @@ describe('auth http', () => {
 describe('auth ws', () => {
   const mkWs = (path: string, f: (ws: WebSocket, resolve: () => void) => void): Promise<void[]> =>
     run((httpApi) => {
-      const ws = new WebSocket(httpApi + mkEventsPath(path))
+      const ws = new WebSocket(toWs(httpApi) + mkEventsPath(path))
       return new Promise<void>((resolve) => {
         f(ws, resolve)
       })
@@ -308,7 +311,7 @@ describe('auth ws', () => {
       getToken(trialManifest, httpApi)
         .then((authResponse) => authResponse.json())
         .then((x) => {
-          const ws = new WebSocket(httpApi + mkEventsPath(`?${x.token}`))
+          const ws = new WebSocket(toWs(httpApi) + mkEventsPath(`?${x.token}`))
           const message = {
             type: 'request',
             serviceId: 'offsets',
@@ -330,3 +333,7 @@ describe('auth ws', () => {
         }),
     ))
 })
+
+const toWs = (url: string): string => {
+  return url.replace('http://', 'ws://')
+}

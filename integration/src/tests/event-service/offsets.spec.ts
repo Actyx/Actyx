@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/integration/src/jest/environment
+ */
 import { runWithClients } from '../../util'
 
 describe('event service', () => {

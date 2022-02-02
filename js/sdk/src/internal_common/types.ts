@@ -18,7 +18,7 @@ export class EnumType<A> extends t.Type<A> {
   public constructor(e: object, name?: string) {
     super(
       name || 'enum',
-      (u): u is A => Object.values(this.enumObject).some(v => v === u),
+      (u): u is A => Object.values(this.enumObject).some((v) => v === u),
       (u, c) => (this.is(u) ? t.success(u) : t.failure(u, c)),
       t.identity,
     )
@@ -48,7 +48,7 @@ const Tags = new t.Type<Tags, TagsOnWire>(
   // Rust side for now expresses empty tag arrays as omitting the field
   (x, c) => (x === undefined ? right([]) : stringRA.validate(x, c)),
   // Sending empty arrays is fine, though
-  x => x,
+  (x) => x,
 )
 
 export const EventIO = t.type({
@@ -61,7 +61,7 @@ export const EventIO = t.type({
   payload: t.unknown,
 })
 export type Event = t.TypeOf<typeof EventIO>
-const compareEvents = (a: Event, b: Event): Ordering => {
+export const _compareEvents = (a: Event, b: Event): Ordering => {
   const lamportOrder = ordNumber.compare(a.lamport, b.lamport)
   if (lamportOrder !== 0) {
     return lamportOrder
@@ -86,7 +86,7 @@ const eventsEqual = (a: Event, b: Event): boolean =>
  */
 const ordEvent: Ord<Event> = {
   equals: eventsEqual,
-  compare: compareEvents,
+  compare: _compareEvents,
 }
 export const Event = {
   ord: ordEvent,

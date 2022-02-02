@@ -1,4 +1,4 @@
-import { Arch, Host, OS } from '../../jest/types'
+import { Arch, Host, OS } from '../jest/types'
 import { ExecuteFn } from '.'
 import { CLI } from '../cli'
 import { AxEventService } from '../http-client'

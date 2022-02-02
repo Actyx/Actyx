@@ -1,7 +1,7 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -17,10 +17,20 @@ import {
   Timestamp,
   Where,
 } from '@actyx/sdk'
-import { lessThan } from 'fp-ts/lib/Ord'
+import { lt } from 'fp-ts/lib/Ord'
 import { Map } from 'immutable'
-import { Observable, Subject, Subscription as RxSubscription } from 'rxjs'
-import { catchError, tap } from 'rxjs/operators'
+import { Observable, Subject, Subscription as RxSubscription, from, of } from '../node_modules/rxjs'
+import {
+  catchError,
+  tap,
+  filter,
+  map,
+  take,
+  concatMap,
+  mergeScan,
+  reduce,
+  startWith,
+} from '../node_modules/rxjs/operators'
 import log from './loggers'
 import { PondStateTracker } from './pond-state'
 import { Fish, FishId } from './types'
@@ -76,9 +86,9 @@ const commandPipeline = <S, I>(
   pondStateTracker: PondStateTracker,
   semantics: string,
   name: string,
-  handler: ((input: I) => Promise<Metadata[]>),
+  handler: (input: I) => Promise<Metadata[]>,
   stateSubject: Observable<StateWithProvenance<S>>,
-  eventFilter: ((t: Metadata) => boolean),
+  eventFilter: (t: Metadata) => boolean,
 ): CommandPipeline<S, I> => {
   const commandIn: Subject<CommandInput<S, I>> = new Subject()
 
@@ -101,8 +111,8 @@ const commandPipeline = <S, I>(
       pondStateTracker.commandProcessingFinished(pondStateTrackerCommandProcessingToken)
     }
 
-    const result = stateSubject
-      .filter(stateWithProvenance => {
+    const result = stateSubject.pipe(
+      filter((stateWithProvenance) => {
         const pass = hasAllOffsets(stateWithProvenance.offsets, current.waitFor)
 
         if (!pass) {
@@ -117,45 +127,48 @@ const commandPipeline = <S, I>(
           )
         }
         return pass
-      })
-      .map(sp => sp.state)
-      .take(1)
-      .concatMap(s => {
+      }),
+      map((sp) => sp.state),
+      take(1),
+      concatMap((s) => {
         const onCommandResult = command(s)
-        const stored = Observable.from(handler(onCommandResult))
+        const stored = from(handler(onCommandResult))
 
-        return stored.concatMap(envelopes => {
-          if (envelopes.length === 0) {
-            return Observable.of({ ...current })
-          }
+        return stored.pipe(
+          concatMap((envelopes) => {
+            if (envelopes.length === 0) {
+              return of({ ...current })
+            }
 
-          // We only care about events we ourselves are actually subscribed to.
-          const filtered = envelopes.filter(eventFilter)
-          if (filtered.length === 0) {
-            return Observable.of({ ...current })
-          }
+            // We only care about events we ourselves are actually subscribed to.
+            const filtered = envelopes.filter(eventFilter)
+            if (filtered.length === 0) {
+              return of({ ...current })
+            }
 
-          // We must wait for all of our generated events to be applied to the state,
-          // before we may apply the next command.
-          // The events may be in different streams.
-          const finalOffsets: Record<StreamId, Offset> = {}
+            // We must wait for all of our generated events to be applied to the state,
+            // before we may apply the next command.
+            // The events may be in different streams.
+            const finalOffsets: Record<StreamId, Offset> = {}
 
-          for (const env of envelopes) {
-            // Since envelopes are returned in ascending order, we will
-            // just overwrite the same entry again and again with higher number
-            // in case the events all go into the same stream.
-            finalOffsets[env.stream] = env.offset
-          }
+            for (const env of envelopes) {
+              // Since envelopes are returned in ascending order, we will
+              // just overwrite the same entry again and again with higher number
+              // in case the events all go into the same stream.
+              finalOffsets[env.stream] = env.offset
+            }
 
-          return Observable.of({ waitFor: finalOffsets })
-        })
-      })
+            return of({ waitFor: finalOffsets })
+          }),
+        )
+      }),
+    )
 
     return result.pipe(
-      catchError(x => {
+      catchError((x) => {
         unblock()
         onError(x)
-        return Observable.of(current)
+        return of(current)
       }),
       tap(() => {
         unblock()
@@ -164,7 +177,7 @@ const commandPipeline = <S, I>(
     )
   }
 
-  const subscription = commandIn.mergeScan(cmdScanAcc, { waitFor: {} }, 1).subscribe()
+  const subscription = commandIn.pipe(mergeScan(cmdScanAcc, { waitFor: {} }, 1)).subscribe()
 
   return {
     subject: commandIn,
@@ -177,14 +190,14 @@ const getEventsForwardChunked = (
   subscriptionSet: Where<unknown>,
   present: OffsetMap,
 ): Observable<ActyxEvent[]> =>
-  new Observable<ActyxEvent[]>(o =>
+  new Observable<ActyxEvent[]>((o) =>
     fns.queryKnownRangeChunked(
       {
         upperBound: present,
         query: subscriptionSet,
       },
       500,
-      chunk => o.next(chunk.events),
+      (chunk) => o.next(chunk.events),
       () => o.complete(),
     ),
   )
@@ -196,35 +209,43 @@ type StartedFish<S> = {
 
 export type StartedFishMap<S> = Map<string, StartedFish<S>>
 
-const observeAll = (eventStore: EventFns, _pondStateTracker: PondStateTracker) => <ESeed, S>(
-  firstEvents: Where<ESeed>,
-  makeFish: (seed: ESeed) => Fish<S, any> | undefined,
-  expireAfterSeed?: Milliseconds,
-): Observable<StartedFishMap<S>> => {
-  const fish$ = Observable.from(eventStore.present()).concatMap(present => {
-    const persisted = getEventsForwardChunked(eventStore, firstEvents, present)
+const observeAll =
+  (eventStore: EventFns, _pondStateTracker: PondStateTracker) =>
+  <ESeed, S>(
+    firstEvents: Where<ESeed>,
+    makeFish: (seed: ESeed) => Fish<S, any> | undefined,
+    expireAfterSeed?: Milliseconds,
+  ): Observable<StartedFishMap<S>> => {
+    const fish$ = from(eventStore.present()).pipe(
+      concatMap((present) => {
+        const persisted = getEventsForwardChunked(eventStore, firstEvents, present)
 
-    // This step is only so that we don’t emit outdated collection while receiving chunks of old events
-    const initialFishs = persisted.reduce((acc: Record<string, StartedFish<S>>, chunk) => {
-      for (const evt of chunk) {
-        const fish = makeFish(evt.payload as ESeed)
+        // This step is only so that we don’t emit outdated collection while receiving chunks of old events
+        const initialFishs: Observable<Record<string, StartedFish<S>>> = persisted.pipe(
+          reduce((acc: Record<string, StartedFish<S>>, chunk) => {
+            for (const evt of chunk) {
+              const fish = makeFish(evt.payload as ESeed)
 
-        if (fish !== undefined) {
-          acc[FishId.canonical(fish.fishId)] = { fish, startedFrom: evt }
-        }
-      }
-      return acc
-    }, {})
+              if (fish !== undefined) {
+                acc[FishId.canonical(fish.fishId)] = { fish, startedFrom: evt }
+              }
+            }
+            return acc
+          }, {}),
+        )
 
-    return initialFishs.concatMap(
-      observeAllStartWithInitial(eventStore, makeFish, firstEvents, present, expireAfterSeed),
+        return initialFishs.pipe(
+          concatMap(
+            observeAllStartWithInitial(eventStore, makeFish, firstEvents, present, expireAfterSeed),
+          ),
+        )
+      }),
     )
-  })
 
-  return fish$
-}
+    return fish$
+  }
 
-const earlier = lessThan(ActyxEvent.ord)
+const earlier = lt(ActyxEvent.ord)
 
 const mkPrune = (timeout?: Milliseconds) => {
   if (!timeout) return <S>(cur: Map<string, StartedFish<S>>) => cur
@@ -233,70 +254,73 @@ const mkPrune = (timeout?: Milliseconds) => {
 
   return <S>(cur: Map<string, StartedFish<S>>) => {
     const now = Timestamp.now()
-    return cur.filter(started => started.startedFrom.meta.timestampMicros + timeoutMicros > now)
+    return cur.filter((started) => started.startedFrom.meta.timestampMicros + timeoutMicros > now)
   }
 }
 
-const observeAllStartWithInitial = <ESeed, S>(
-  eventStore: EventFns,
-  makeFish: (seed: ESeed) => Fish<S, any> | undefined,
-  subscriptionSet: Where<unknown>,
-  present: OffsetMap,
-  expireAfterSeed?: Milliseconds,
-) => (init: Record<string, StartedFish<S>>) => {
-  // Switch to immutable representation so as to not screw over downstream consumers
-  let immutableFishSet = Map(init)
+const observeAllStartWithInitial =
+  <ESeed, S>(
+    eventStore: EventFns,
+    makeFish: (seed: ESeed) => Fish<S, any> | undefined,
+    subscriptionSet: Where<unknown>,
+    present: OffsetMap,
+    expireAfterSeed?: Milliseconds,
+  ) =>
+  (init: Record<string, StartedFish<S>>) => {
+    // Switch to immutable representation so as to not screw over downstream consumers
+    let immutableFishSet = Map(init)
 
-  const liveEvents = new Observable<ActyxEvent[]>(o =>
-    eventStore.subscribeChunked(
-      {
-        lowerBound: present,
-        query: subscriptionSet,
-      },
-      {
-        // Buffer slightly to improve performance
-        maxChunkTimeMs: 20,
-      },
-      chunk => o.next(chunk.events),
-    ),
-  )
+    const liveEvents = new Observable<ActyxEvent[]>((o) =>
+      eventStore.subscribeChunked(
+        {
+          lowerBound: present,
+          query: subscriptionSet,
+        },
+        {
+          // Buffer slightly to improve performance
+          maxChunkTimeMs: 20,
+        },
+        (chunk) => o.next(chunk.events),
+      ),
+    )
 
-  const prune = mkPrune(expireAfterSeed)
+    const prune = mkPrune(expireAfterSeed)
 
-  const updates = liveEvents.concatMap(chunk => {
-    const oldSize = immutableFishSet.size
+    const updates = liveEvents.pipe(
+      concatMap((chunk) => {
+        const oldSize = immutableFishSet.size
 
-    for (const evt of chunk) {
-      const fish = makeFish(evt.payload as ESeed)
+        for (const evt of chunk) {
+          const fish = makeFish(evt.payload as ESeed)
 
-      if (fish === undefined) {
-        continue
-      }
+          if (fish === undefined) {
+            continue
+          }
 
-      const newEntry = { fish, startedFrom: evt }
+          const newEntry = { fish, startedFrom: evt }
 
-      // Latest writer wins. This is only relevant for expiry -- the Fish ought to be the same, and the Pond will have it cached.
-      immutableFishSet = immutableFishSet.update(
-        FishId.canonical(fish.fishId),
-        existing => (!existing || earlier(existing.startedFrom, evt) ? newEntry : existing),
-      )
-    }
+          // Latest writer wins. This is only relevant for expiry -- the Fish ought to be the same, and the Pond will have it cached.
+          immutableFishSet = immutableFishSet.update(FishId.canonical(fish.fishId), (existing) =>
+            !existing || earlier(existing.startedFrom, evt) ? newEntry : existing,
+          )
+        }
 
-    const newSize = immutableFishSet.size
-    const newFishAppeared = newSize > oldSize
+        const newSize = immutableFishSet.size
+        const newFishAppeared = newSize > oldSize
 
-    immutableFishSet = prune(immutableFishSet)
-    const oldFishPruned = immutableFishSet.size < newSize
+        immutableFishSet = prune(immutableFishSet)
+        const oldFishPruned = immutableFishSet.size < newSize
 
-    if (newFishAppeared || oldFishPruned) {
-      return [immutableFishSet]
-    }
+        if (newFishAppeared || oldFishPruned) {
+          return [immutableFishSet]
+        }
 
-    return []
-  })
+        return []
+      }),
+    )
 
-  return updates.startWith(Map(init))
-}
+    return updates.pipe(startWith(Map(init)))
+  }
 
 export const FishJar = {
   commandPipeline,

@@ -9,7 +9,19 @@
             "args": [
                 "--verbose",
                 "-i",
-                "--no-cache"
+                "--no-cache",
+                "libraries/sdk.spec",
+                "-t",
+                "automaticReconnect=true"
+            ],
+            "env": {
+              "DEBUG": "ws:*",
+              "AX_CI_HOSTS": "my_hosts.yaml",
+              "VAULT_TOKEN": "b48e66c3-dfa7-8695-ecf2-1fdc75540cba"
+            },
+            "runtimeArgs": [
+              "--es-module-specifier-resolution=node",
+              "--experimental-vm-modules"
             ],
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen"

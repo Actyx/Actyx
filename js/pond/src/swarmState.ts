@@ -1,13 +1,13 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import { Offset, OffsetMap } from '@actyx/sdk'
 import * as immutable from 'immutable'
-import { Observable } from 'rxjs'
-import * as rx from 'rxjs/operators'
+import { Observable, merge } from '../node_modules/rxjs'
+import { map, scan } from '../node_modules/rxjs/operators'
 
 /**
  * All the info we got for a single node
@@ -110,7 +110,7 @@ type SourcedOffsetMap = Readonly<{
 }>
 
 const addOrigin = (from: From) =>
-  rx.map<OffsetMap, SourcedOffsetMap>(roots => ({
+  map<OffsetMap, SourcedOffsetMap>((roots) => ({
     from,
     roots,
   }))
@@ -119,9 +119,8 @@ export const swarmState = (
   own: Observable<OffsetMap>,
   pubSub: Observable<OffsetMap>,
 ): Observable<SwarmInfo> =>
-  Observable.merge(own.pipe(addOrigin('own')), pubSub.pipe(addOrigin('swarm'))).scan(
-    addPsnMap,
-    emptySwarmInfo,
+  merge(own.pipe(addOrigin('own')), pubSub.pipe(addOrigin('swarm'))).pipe(
+    scan(addPsnMap, emptySwarmInfo),
   )
 const emptySwarmSummary = toSwarmSummary(emptySwarmInfo)
 

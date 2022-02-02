@@ -1,17 +1,25 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import * as t from 'io-ts'
-import { Observable } from '../../node_modules/rxjs'
+import { Observable, lastValueFrom, defer, combineLatest, of } from '../../node_modules/rxjs'
+import {
+  map,
+  first,
+  shareReplay,
+  take,
+  concatMap,
+  defaultIfEmpty,
+} from '../../node_modules/rxjs/operators'
 import {
   DoPersistEvents,
   DoQuery,
@@ -83,11 +91,11 @@ export const PersistEventsRequest = t.readonly(t.type({ events: UnstoredEvents }
 export type PersistEventsRequest = t.TypeOf<typeof PersistEventsRequest>
 
 export const getSourceId = (multiplexedWebsocket: MultiplexedWebsocket): Promise<string> =>
-  multiplexedWebsocket
-    .request(RequestTypes.SourceId)
-    .map(validateOrThrow(t.string))
-    .first()
-    .toPromise()
+  lastValueFrom(
+    multiplexedWebsocket
+      .request(RequestTypes.SourceId)
+      .pipe(map(validateOrThrow(t.string)), first()),
+  )
 
 const toSubscriptionSet = (where: Where<unknown>): SubscriptionSet => {
   const wire = where.toV1WireFormat()
@@ -131,25 +139,31 @@ export class WebsocketEventStore implements EventStore {
   private _highestSeen: Observable<OffsetMapWithDefault>
 
   constructor(private readonly multiplexer: MultiplexedWebsocket, readonly sourceId: string) {
-    this._present = Observable.defer(() =>
-      this.multiplexer.request(RequestTypes.Present).map(validateOrThrow(OffsetMapWithDefault)),
-    ).shareReplay(1)
+    this._present = defer(() =>
+      this.multiplexer
+        .request(RequestTypes.Present)
+        .pipe(map(validateOrThrow(OffsetMapWithDefault)), shareReplay(1)),
+    )
 
-    this._highestSeen = Observable.defer(() =>
-      this.multiplexer.request(RequestTypes.HighestSeen).map(validateOrThrow(OffsetMapWithDefault)),
-    ).shareReplay(1)
+    this._highestSeen = defer(() =>
+      this.multiplexer
+        .request(RequestTypes.HighestSeen)
+        .pipe(map(validateOrThrow(OffsetMapWithDefault)), shareReplay(1)),
+    )
   }
 
   offsets: RequestOffsets = () =>
-    Observable.combineLatest(this._present, this._highestSeen)
-      .take(1)
-      .toPromise()
-      .then(([pres, _hi]) => {
+    lastValueFrom(combineLatest([this._present, this._highestSeen]).pipe(take(1))).then(
+      ([pres, _hi]) => {
         // FIXME: Calculate toReplicate from highestSeen
         return { present: pres.psns, toReplicate: {} }
-      })
+      },
+    )
 
   queryUnchecked = () => {
+    throw new Error('not implemented for V1')
+  }
+  subscribeUnchecked = () => {
     throw new Error('not implemented for V1')
   }
 
@@ -170,8 +184,7 @@ export class WebsocketEventStore implements EventStore {
           count: 'max',
         }),
       )
-      .concatMap(validateOrThrow(Events))
-      .map(convertV1toV2)
+      .pipe(concatMap(validateOrThrow(Events)), map(convertV1toV2))
   }
 
   subscribe: DoSubscribe = (lowerBound, query) => {
@@ -191,16 +204,15 @@ export class WebsocketEventStore implements EventStore {
           count: 'max',
         }),
       )
-      .concatMap(validateOrThrow(Events))
-      .map(convertV1toV2)
+      .pipe(concatMap(validateOrThrow(Events)), map(convertV1toV2))
   }
 
-  persistEvents: DoPersistEvents = eventsV2 => {
+  persistEvents: DoPersistEvents = (eventsV2) => {
     if (eventsV2.length === 0) {
-      return Observable.of()
+      return of()
     }
 
-    const events = eventsV2.map(e => ({
+    const events = eventsV2.map((e) => ({
       ...e,
       semantics: '_t_',
       name: '_t_',
@@ -209,26 +221,28 @@ export class WebsocketEventStore implements EventStore {
 
     return this.multiplexer
       .request(RequestTypes.PersistEvents, PersistEventsRequest.encode({ events }))
-      .map(validateOrThrow(t.type({ events: Events })))
-      .map(({ events: persistedEvents }) => {
-        if (events.length !== persistedEvents.length) {
-          log.ws.error(
-            'PutEvents: Sent %d events, but only got %d PSNs back.',
-            events.length,
-            persistedEvents.length,
-          )
-          return []
-        }
-        return events.map((ev, idx) => ({
-          appId: 'com.unknown',
-          stream: this.sourceId,
-          tags: ev.tags,
-          payload: ev.payload,
-          timestamp: persistedEvents[idx].timestamp,
-          lamport: persistedEvents[idx].lamport,
-          offset: persistedEvents[idx].psn,
-        }))
-      })
-      .defaultIfEmpty([])
+      .pipe(
+        map(validateOrThrow(t.type({ events: Events }))),
+        map(({ events: persistedEvents }) => {
+          if (events.length !== persistedEvents.length) {
+            log.ws.error(
+              'PutEvents: Sent %d events, but only got %d PSNs back.',
+              events.length,
+              persistedEvents.length,
+            )
+            return []
+          }
+          return events.map((ev, idx) => ({
+            appId: 'com.unknown',
+            stream: this.sourceId,
+            tags: ev.tags,
+            payload: ev.payload,
+            timestamp: persistedEvents[idx].timestamp,
+            lamport: persistedEvents[idx].lamport,
+            offset: persistedEvents[idx].psn,
+          }))
+        }),
+        defaultIfEmpty([]),
+      )
   }
 }

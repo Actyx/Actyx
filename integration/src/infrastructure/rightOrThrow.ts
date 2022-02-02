@@ -4,7 +4,7 @@ import { Errors } from 'io-ts'
 export const rightOrThrow = <A>(e: Either<Errors, A>, obj: unknown): A => {
   if (isLeft(e)) {
     throw new Error(
-      e.value
+      e.left
         .map((err) => {
           const path = err.context.map(({ key }) => key).join('.')
           return `invalid ${err.value} at ${path}: ${err.message}`
@@ -14,5 +14,5 @@ export const rightOrThrow = <A>(e: Either<Errors, A>, obj: unknown): A => {
         JSON.stringify(obj, null, 2),
     )
   }
-  return e.value
+  return e.right
 }

@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/integration/src/jest/environment
+ */
 import {
   AxEventService,
   mkESFromTrial,
@@ -182,9 +185,9 @@ describe('event service', () => {
             { tags: [mySuite(), 'query-canon', 'fi'], payload: 6 },
           ],
         })
-        expect(
-          await query(es, `FROM isLocal & "${mySuite()}" & "query-canon" & "\u{e9}"`),
-        ).toEqual([1, 2])
+        expect(await query(es, `FROM isLocal & "${mySuite()}" & "query-canon" & "\u{e9}"`)).toEqual(
+          [1, 2],
+        )
         expect(
           await query(es, `FROM isLocal & "${mySuite()}" & "query-canon" & "e\u{301}"`),
         ).toEqual([1, 2])

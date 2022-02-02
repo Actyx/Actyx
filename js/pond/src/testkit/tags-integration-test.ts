@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2020 Actyx AG
  */
-import { Observable } from 'rxjs'
+import { timer } from '../../node_modules/rxjs'
 import { Fish, FishId, Pond, Tag, Tags } from '../'
 
 type Event = string
@@ -15,7 +15,7 @@ export const start = async () => {
     appId: 'com.example.dev-pond',
     displayName: 'Pond dev',
     version: '1.0.0',
-  }).catch(ex => {
+  }).catch((ex) => {
     console.log('cannot start Pond, is Actyx running in development mode on this computer?', ex)
     process.exit(1)
   })
@@ -31,7 +31,7 @@ export const start = async () => {
     fishId: FishId.of('test', 'test-entity', 0),
   }
 
-  const cancel = pond.observe<State, Event>(aggregate, state =>
+  const cancel = pond.observe<State, Event>(aggregate, (state) =>
     console.log('updated state to', state),
   )
 
@@ -44,16 +44,16 @@ export const start = async () => {
   q.subscribe(() => console.log('emission callback 1'))
   await pond.emit(Tag('t2'), 't2 only').toPromise()
 
-  await Observable.timer(500).toPromise()
+  await timer(500).toPromise()
   cancel()
 
   // should not be printed immediately
   await pond.emit(Tags('t0', 't1'), 'full match 2').toPromise()
 
   // The Promise behind `emitTagged` completing does not actually imply the store will be ready to serve the event already.
-  await Observable.timer(500).toPromise()
+  await timer(500).toPromise()
 
-  pond.observe<State, Event>(aggregate, state =>
+  pond.observe<State, Event>(aggregate, (state) =>
     console.log('2nd start -- updated state to', state),
   )
 

@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { Observable } from '../../node_modules/rxjs'
+import { Observable, EMPTY } from '../../node_modules/rxjs'
 import { EventsSortOrder, NodeId, OffsetMap, Where } from '../types'
 import { mockEventStore } from './mockEventStore'
 import { testEventStore, TestEventStore } from './testEventStore'
@@ -71,18 +71,24 @@ export type TypedMsg = {
 
 export type EventStore = {
   readonly offsets: RequestOffsets
-  readonly queryUnchecked: (aqlQuery: string, sortOrder: EventsSortOrder) => Observable<TypedMsg>
+  readonly queryUnchecked: (
+    aqlQuery: string,
+    sortOrder: EventsSortOrder,
+    lowerBound?: OffsetMap,
+  ) => Observable<TypedMsg>
   readonly query: DoQuery
   readonly subscribe: DoSubscribe
+  readonly subscribeUnchecked: (aqlQuery: string, lowerBound?: OffsetMap) => Observable<TypedMsg>
   readonly persistEvents: DoPersistEvents
 }
 
 const noopEventStore: EventStore = {
-  subscribe: () => Observable.empty(),
-  query: () => Observable.empty(),
-  queryUnchecked: () => Observable.empty(),
+  subscribe: () => EMPTY,
+  subscribeUnchecked: () => EMPTY,
+  query: () => EMPTY,
+  queryUnchecked: () => EMPTY,
   offsets: () => Promise.resolve({ present: {}, toReplicate: {} }),
-  persistEvents: () => Observable.empty(),
+  persistEvents: () => EMPTY,
 }
 
 export const EventStore: {

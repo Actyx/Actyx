@@ -3,9 +3,10 @@ import { CLI } from './cli'
 import { mkEventClients } from './cli/exec'
 import { AxEventService } from './http-client'
 import { runOnEvery } from './infrastructure/hosts'
-import { mkProcessLogger, netString } from './infrastructure/mkProcessLogger'
+import { mkProcessLogger } from './infrastructure/mkProcessLogger'
 import { Ssh } from './infrastructure/ssh'
 import { ActyxNode } from './infrastructure/types'
+import { MyGlobal } from './jest/setup'
 import { waitForNodeToBeConfigured } from './retry'
 import { mySuite, testName } from './tests/event-service/utils.support.test'
 
@@ -46,7 +47,9 @@ export const withContext = <T>(context: string, f: () => T): T => {
   try {
     return f()
   } catch (err) {
-    err.message += `\n\ncontext:\n${context}`
+    if (err instanceof Error) {
+      err.message += `\n\ncontext:\n${context}`
+    }
     throw err
   }
 }
@@ -76,7 +79,14 @@ export const binaryUrlAndNameForVersion = (
   }
 }
 
-export const randomBinds = ['--bind-admin', '0.0.0.0:0', '--bind-api', '0.0.0.0:0', '--bind-swarm', '0.0.0.0:0']
+export const randomBinds = [
+  '--bind-admin',
+  '0.0.0.0:0',
+  '--bind-api',
+  '0.0.0.0:0',
+  '--bind-swarm',
+  '0.0.0.0:0',
+]
 const randomBindsWin = randomBinds.map((x) => `'${x}'`).join(',')
 
 export const runActyxVersion = async (
@@ -176,22 +186,27 @@ const getLog = async (
     (res) => {
       const logs: string[] = []
       setTimeout(() => res([logs, p, workdir, ssh]), timeout)
-      const { log } = mkProcessLogger((s) => logs.push(s), '', triggers)
-      const prefix = () => `${new Date().toISOString()} ${nodeName} ${mySuite()} ${testName()}`
+      const { log } = mkProcessLogger(
+        (s) => logs.push(s),
+        '',
+        triggers,
+        process.stderr,
+        `${nodeName} ${mySuite()} ${testName()}`,
+      )
       p.stdout?.on('data', (buf) => {
-        process.stderr.write(`${prefix()} ${netString(buf)}`)
         if (log('stdout', buf)) {
           res([logs, p, workdir, ssh])
         }
       })
       p.stderr?.on('data', (buf) => {
-        process.stderr.write(`${prefix()} ${netString(buf)}`)
         if (log('stderr', buf)) {
           res([logs, p, workdir, ssh])
         }
       })
       p.stdout?.on('end', () => {
-        process.stderr.write(`${prefix()} ended\n`)
+        process.stderr.write(
+          `${new Date().toISOString()} ${nodeName} ${mySuite()} ${testName()}: ended\n`,
+        )
       })
       p.then(res, res)
     },
@@ -300,7 +315,7 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
     workingDir ? 15 : 1,
     () => startup(runActyx(node, workingDir, randomBinds), node.name),
   )
-  const api = bound.api.find(([addr]) => addr === '127.0.0.1')?.[1]
+  const api = bound.api.find(([addr]) => addr === '0.0.0.0')?.[1]
   const admin = bound.admin.find(([addr]) => addr === '127.0.0.1')?.[1]
   if (api === undefined || admin === undefined) {
     process.kill()
@@ -329,7 +344,7 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
     ax,
     _private: {
       shutdown: async () => {
-        await ax.internal.shutdown()
+        await ax.internal.shutdown().catch(() => ({}))
         process.kill()
         await process.catch(() => ({}))
         sshProcess?.kill()
@@ -343,6 +358,7 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
       apiPort,
     },
   }
+  ;(<MyGlobal>global).axNodeSetup.thisTestEnvNodes?.push(newNode)
   await waitForNodeToBeConfigured(newNode)
   return newNode
 }

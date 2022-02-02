@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { deleteKey } from '../src/infrastructure/aws'
-import { printTarget } from '../src/infrastructure/types'
+import { deleteKey } from '../infrastructure/aws'
+import { printTarget } from '../infrastructure/types'
 import { MyGlobal } from './setup'
 
 const teardown = async (_config: Record<string, unknown>): Promise<void> => {
@@ -29,7 +29,7 @@ const teardown = async (_config: Record<string, unknown>): Promise<void> => {
     console.log('process will not end since SSH forwarding remains active')
     console.log('please press ctrl-C when done (and shut down those instances!)')
   } else {
-    await new Promise((res, rej) => {
+    await new Promise<void>((res, rej) => {
       Promise.all(
         axNodeSetup.nodes.map((node) =>
           node._private.shutdown().catch((err) => {

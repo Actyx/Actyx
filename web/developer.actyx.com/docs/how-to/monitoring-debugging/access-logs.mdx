@@ -14,7 +14,7 @@ import TabItem from '@theme/TabItem'
 
 <Tabs
   groupId="os"
-  defaultValue={"cli"}
+  defaultValue={"windows"}
   values={[
     { label: 'Windows', value: 'windows' },
     { label: 'Linux/macOS/Docker', value: 'linux' },
@@ -22,9 +22,7 @@ import TabItem from '@theme/TabItem'
   ]}
 >
 
-
 <TabItem value="windows">
-
 
 You can access Actyx logs through the Windows Event Viewer. In the Event Viewer, you can create a custom view filtering for Actyx logs and a log level:
 
@@ -42,7 +40,6 @@ You can then see all Actyx logs in that view:
 
 </TabItem>
 <TabItem value="linux">
-
 
 On Linux, macOS, and Docker, Actyx logs to stdout so you should see logs in your terminal after startup:
 
@@ -100,7 +97,7 @@ To enable debug logging, it is not sufficient to [set the log level for the node
 Additionally, you need to enable debug logging on your device by running `adb shell "setprop log.tag.com.actyx DEBUG"`.
 :::
 
-:::tip 
+:::tip
 [Rogcat](https://github.com/flxo/rogcat) is a wrapper application for `logcat` allowing to vizualize and filter logs more conveniently.
 It also supports saving logs into a set of files of a maximum size, which is useful if you need to monitor your device over a longer period of time.
 :::

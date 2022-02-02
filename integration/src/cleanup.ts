@@ -1,7 +1,7 @@
 /**
  * Cleans up all leftover ec2 instances. Triggered regularly by CI
  */
-import { EC2 } from 'aws-sdk'
+import { EC2Client as EC2 } from '@aws-sdk/client-ec2'
 import { cleanUpInstances, cleanUpKeys } from './infrastructure/aws'
 
 const main = async () => {

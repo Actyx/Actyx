@@ -1,10 +1,10 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
-import { Observable } from '../../node_modules/rxjs'
+import { Observable, lastValueFrom } from '../../node_modules/rxjs'
 import { Where } from './tags'
 import { Metadata, PendingEmission } from './various'
 
@@ -27,13 +27,13 @@ export const toEventPredicate = (where: Where<unknown>) => {
   const tagSets = where.toV1WireFormat()
 
   return (event: HasTags) =>
-    tagSets.some(tagIntersection => tagIntersection.tags.every(tag => event.tags.includes(tag)))
+    tagSets.some((tagIntersection) => tagIntersection.tags.every((tag) => event.tags.includes(tag)))
 }
 
 /** Create a PendingEmission object from an Observable. @internal */
 export const pendingEmission = (o: Observable<Metadata[]>): PendingEmission => ({
   subscribe: o.subscribe.bind(o),
-  toPromise: () => o.toPromise(),
+  toPromise: () => lastValueFrom(o),
 })
 
 /**

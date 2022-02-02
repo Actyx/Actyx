@@ -1,14 +1,16 @@
-import execa from 'execa'
+import { execaCommand } from 'execa'
 import fs from 'fs'
-import { ensureDirSync } from 'fs-extra'
+import fse from 'fs-extra'
 import https from 'https'
 import * as t from 'io-ts'
 import { tmpdir } from 'os'
 import path from 'path'
-import { MyGlobal } from '../../jest/setup'
-import { Arch, currentArch, currentOS, OS, Settings } from '../../jest/types'
+import { MyGlobal } from '../jest/setup'
+import { Arch, currentArch, currentOS, OS, Settings } from '../jest/types'
 import { archToDockerPlatform, DockerPlatform } from './linux'
 import { randIdentifier } from './util'
+import { map as mapE, getOrElse as getOrElseE } from 'fp-ts/lib/Either'
+import { pipe } from 'fp-ts/lib/function'
 
 const DockerSingleManifest = t.type({
   digest: t.string,
@@ -59,27 +61,27 @@ export const actyxCliWindowsBinary = async (arch: Arch): Promise<string> =>
 export const actyxDockerImage = async (arch: Arch, version: string): Promise<string> => {
   const repo = 'actyx/actyx-ci'
   const dockerTag = `${repo}:actyx-${version}`
-  const inspect = await execa.command(`docker manifest inspect ${dockerTag}`)
+  const inspect = await execaCommand(`docker manifest inspect ${dockerTag}`)
   const json = JSON.parse(inspect.stdout)
 
-  return (
-    DockerManifest.decode(json)
-      .map(({ manifests }: DockerManifest) => {
-        const targetPlatform = archToDockerPlatform(arch)
-        const sha = manifests.find(
-          ({ platform }: DockerSingleManifest) =>
-            platform.architecture === targetPlatform.architecture &&
-            platform.variant === targetPlatform.variant,
-        )
+  return pipe(
+    DockerManifest.decode(json),
+    mapE(({ manifests }: DockerManifest) => {
+      const targetPlatform = archToDockerPlatform(arch)
+      const sha = manifests.find(
+        ({ platform }: DockerSingleManifest) =>
+          platform.architecture === targetPlatform.architecture &&
+          platform.variant === targetPlatform.variant,
+      )
 
-        if (!sha) {
-          throw `Image for taget platform ${targetPlatform} not found in docker tag ${dockerTag}`
-        }
+      if (!sha) {
+        throw `Image for taget platform ${targetPlatform} not found in docker tag ${dockerTag}`
+      }
 
-        return `${repo}@${sha.digest}`
-      })
-      // Assume that this is not a multi-arch manifest, but a single-arch image
-      .getOrElse(`${repo}:actyx-${version}`)
+      return `${repo}@${sha.digest}`
+    }),
+    // Assume that this is not a multi-arch manifest, but a single-arch image
+    getOrElseE(() => `${repo}:actyx-${version}`),
   )
 }
 
@@ -89,19 +91,41 @@ export const windowsActyxInstaller = async (arch: Arch): Promise<string> =>
 export const actyxAndroidApk = async (): Promise<string> =>
   getOrDownload('android', 'x86_64', Binary.actyxAndroid, settings().gitHash)
 
+const built: Record<string, Promise<string>> = {}
+
 const ensureBinaryExists = async (os: OS, p: string): Promise<string> => {
   p = os === 'windows' ? `${p}.exe` : p
-  if (!fs.existsSync(p)) {
-    if (os === 'windows') {
-      throw new Error('unable to make on Windows')
+  if ((<MyGlobal>global).isSuite) {
+    if (!fs.existsSync(p)) {
+      throw new Error('won’t create from test suite')
     }
-    const cmd = `make ${path.relative('..', p)}`
-    const cwd = path.resolve('..')
-    console.log(`${p} doesn't exist. Running ${cmd} in ${cwd}. This might take a while.`)
-    await execa.command(cmd, { cwd })
-    console.log(`Successfully built ${p}`)
+    return p
   }
-  return p
+  const key = `${os}:${p}`
+  if (built[key] !== undefined) {
+    return built[key]
+  } else {
+    const build = (async () => {
+      if (os === 'windows') {
+        if (!fs.existsSync(p)) {
+          throw new Error('unable to make on Windows')
+        }
+        return p
+      }
+      const key =
+        process.env['ACTYX_PUBLIC_KEY'] ||
+        (await execaCommand('vault kv get -field=public secret/sec.actyx/signing/actyx')).stdout
+      const env = { ACTYX_PUBLIC_KEY: key }
+      const cmd = `make ${path.relative('..', p)}`
+      const cwd = path.resolve('..')
+      console.log(`Running ${cmd} in ${cwd}. This might take a while.`)
+      await execaCommand(cmd, { cwd, env })
+      console.log(`Successfully built ${p}`)
+      return p
+    })()
+    built[key] = build
+    return build
+  }
 }
 
 const mutex: { [_: string]: Promise<unknown> | undefined } = {}
@@ -128,7 +152,7 @@ const getOrDownload = async (
       // `localPath` is already being downloaded or created. Waiting ..
       await mutex[localPath]
     } else {
-      const p = new Promise((res, rej) => {
+      const p = new Promise<void>((res, rej) => {
         ;(gitHash != null
           ? download(gitHash, os, arch, binary, localPath)
           : ensureBinaryExists(os, localPath)
@@ -148,7 +172,7 @@ const download = (
   arch: Arch,
   binary: Binary,
   targetFile: string,
-): Promise<string> => {
+): Promise<void> => {
   const bin = binary === 'actyx-x64' ? 'actyx-x64.msi' : os === 'windows' ? `${binary}.exe` : binary
   // actyx.apk sits in the root
   const p = os == 'android' ? '' : `/${os}-${arch}`
@@ -173,7 +197,7 @@ const download = (
           reject(err)
         })
         .on('close', () => {
-          ensureDirSync(path.dirname(targetFile))
+          fse.ensureDirSync(path.dirname(targetFile))
           fs.copyFileSync(tmpFile, targetFile)
           fs.unlinkSync(tmpFile)
           resolve()

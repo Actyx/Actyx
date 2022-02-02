@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { fromNullable } from 'fp-ts/lib/Option'
+import { fromNullable, getOrElse as getOrElseO } from 'fp-ts/lib/Option'
 import { lookup } from '../util'
 import { Offset, StreamId } from './various'
 
@@ -31,8 +31,11 @@ export type OffsetsResponse = {
 }
 
 const emptyOffsetMap: OffsetMap = {}
-const offsetMapLookup = (m: OffsetMap, s: string): Offset =>
-  fromNullable(m[s]).getOrElse(Offset.min)
+/**
+ * @internal
+ */
+export const _offsetMapLookup = (m: OffsetMap, s: string): Offset =>
+  getOrElseO(() => Offset.min)(fromNullable(m[s]))
 
 /** Anything with offset on a stream. @public */
 export type HasOffsetAndStream = {
@@ -74,8 +77,8 @@ export type OffsetMapCompanion = Readonly<{
 /** OffsetMap companion functions. @public */
 export const OffsetMap: OffsetMapCompanion = {
   empty: emptyOffsetMap,
-  isEmpty: m => Object.keys(m).length === 0,
-  lookup: offsetMapLookup,
+  isEmpty: (m) => Object.keys(m).length === 0,
+  lookup: _offsetMapLookup,
   lookupOrUndefined: (m: OffsetMapBuilder, s: string) => m[s],
   update: includeEvent,
 }
