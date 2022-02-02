@@ -26,12 +26,12 @@ module.exports = {
         entryPoints: ['../../js/pond/src/index.ts'],
         tsconfig: '../../js/pond/tsconfig.json',
         out: 'reference/pond',
-        disableSources: true,
-        sidebar: {
-          categoryLabel: 'Actyx Pond (JS/TS)',
-          fullNames: false,
-          position: 0,
-        },
+        //disableSources: true,
+        //sidebar: {
+        //  categoryLabel: 'Actyx Pond (JS/TS)',
+        //  fullNames: false,
+        //  position: 0,
+        //},
       },
     ],
   ],
