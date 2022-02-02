@@ -103,7 +103,7 @@ export const Actyx = {
    * @public
    */
   test: (opts: ActyxTestOpts = {}): TestActyx => {
-    const store = EventStoreV2.test(opts.nodeId)
+    const store = EventStoreV2.test(opts.nodeId, opts.timeInjector)
     const snaps = SnapshotStore.inMem()
     const nodeId = opts.nodeId || NodeId.of('TESTNODEID')
 

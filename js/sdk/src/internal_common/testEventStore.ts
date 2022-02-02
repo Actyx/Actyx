@@ -32,6 +32,7 @@ import {
   Offset,
   OffsetMap,
   OffsetMapBuilder,
+  TimeInjector,
   Timestamp,
   toEventPredicate,
   Where,
@@ -224,10 +225,9 @@ const persistence = () => {
   }
 }
 
-export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestEventStore = (
-  nodeId = NodeId.of('TEST'),
-) => {
+export const testEventStore = (nodeId: NodeId = NodeId.of('TEST'), timeInjector?: TimeInjector) => {
   const { persist, getPersistedPreFiltered, allPersisted } = persistence()
+  const time = timeInjector || (() => Timestamp.now())
 
   const present = new ReplaySubject<OffsetMap>(1)
   const live = new Subject<Events>()
@@ -287,7 +287,7 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
         appId: AppId.of('test'),
         stream: streamId,
         lamport,
-        timestamp: Timestamp.now(),
+        timestamp: time(unstoredEvent.tags, unstoredEvent.payload),
         offset: Offset.of(psn++),
       }
     })
