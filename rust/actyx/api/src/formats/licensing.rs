@@ -1,4 +1,8 @@
+use crate::rejections::ApiError;
 use actyx_sdk::AppId;
+use certs::{AppLicenseType, Expiring, SignedAppLicense};
+use chrono::Utc;
+use crypto::PublicKey;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -14,8 +18,36 @@ impl Licensing {
         Self { node, apps }
     }
 
-    pub fn is_node_licensed(&self) -> bool {
-        self.node != "development"
+    pub fn is_node_licensed(&self, ax_public_key: &PublicKey) -> Result<bool, ApiError> {
+        if self.node == "development" {
+            return Ok(false);
+        }
+        let license = self
+            .node
+            .parse::<SignedAppLicense>()
+            .map_err(|_| ApiError::NodeUnauthorized {
+                reason: "invalid license key format".to_owned(),
+            })?;
+        license
+            .validate(ax_public_key)
+            .map_err(|_| ApiError::NodeUnauthorized {
+                reason: "invalid license signature".to_owned(),
+            })?;
+        match license.license.license_type {
+            AppLicenseType::Expiring(Expiring { app_id, expires_at }) => {
+                if app_id.as_str() != "com.actyx.node" {
+                    Err(ApiError::NodeUnauthorized {
+                        reason: "invalid license subject".to_owned(),
+                    })
+                } else if expires_at < Utc::now() {
+                    Err(ApiError::NodeUnauthorized {
+                        reason: "license expired".to_owned(),
+                    })
+                } else {
+                    Ok(true)
+                }
+            }
+        }
     }
 
     pub fn app_id_license(&self, app_id: &AppId) -> Option<&String> {
@@ -36,7 +68,7 @@ impl Default for Licensing {
 mod tests {
     use std::collections::BTreeMap;
 
-    use crate::formats::Licensing;
+    use crate::{formats::Licensing, rejections::ApiError, util::get_ax_public_key};
 
     #[test]
     fn default() {
@@ -48,12 +80,18 @@ mod tests {
     #[test]
     fn is_node_licensed() {
         let licensing = Licensing::default();
-        assert!(!licensing.is_node_licensed());
+        let ax_key = get_ax_public_key();
+        assert!(!licensing.is_node_licensed(&ax_key).unwrap());
 
         let licensing = Licensing {
             node: "licensed".into(),
             apps: BTreeMap::default(),
         };
-        assert!(licensing.is_node_licensed());
+        assert_eq!(
+            licensing.is_node_licensed(&ax_key).unwrap_err(),
+            ApiError::NodeUnauthorized {
+                reason: "invalid license key format".to_owned()
+            }
+        );
     }
 }

@@ -21,8 +21,7 @@ fn mk_success_log_msg(token: &BearerToken) -> String {
     let expiration_time: DateTime<Utc> = token.expiration().into();
     let mode = match token.app_mode {
         AppMode::Trial => "trial",
-        // TODO: replace <testing|production> with the right token when we have it
-        AppMode::Signed => "<testing|production>",
+        AppMode::Signed => "production",
     };
     format!(
         "Successfully authenticated and authorized {} for {} usage (auth token expires {})",

@@ -1,7 +1,8 @@
-use certs::{SignedAppLicense, SignedAppManifest};
+use certs::{AppLicenseType, Expiring, SignedAppLicense, SignedAppManifest};
 use crypto::PublicKey;
 
 use crate::{formats::Licensing, rejections::ApiError};
+use chrono::Utc;
 
 pub fn validate_signed_manifest(
     manifest: &SignedAppManifest,
@@ -11,7 +12,7 @@ pub fn validate_signed_manifest(
     manifest
         .validate(ax_public_key)
         .map_err(|x| ApiError::InvalidManifest { msg: x.to_string() })?;
-    if licensing.is_node_licensed() {
+    if licensing.is_node_licensed(ax_public_key)? {
         let app_id = manifest.get_app_id();
         let license = licensing
             .app_id_license(&app_id)
@@ -32,9 +33,27 @@ pub fn validate_signed_manifest(
             app_id,
             reason: "Could not validate license".into(),
         })?;
-    }
 
-    Ok(())
+        match license.license.license_type {
+            AppLicenseType::Expiring(Expiring { expires_at, app_id }) => {
+                if app_id != manifest.app_id {
+                    Err(ApiError::AppUnauthorized {
+                        app_id,
+                        reason: "Wrong license subject".to_owned(),
+                    })
+                } else if expires_at < Utc::now() {
+                    Err(ApiError::AppUnauthorized {
+                        app_id,
+                        reason: "License expired".to_owned(),
+                    })
+                } else {
+                    Ok(())
+                }
+            }
+        }
+    } else {
+        Ok(())
+    }
 }
 
 #[cfg(test)]

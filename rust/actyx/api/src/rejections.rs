@@ -5,7 +5,7 @@ use runtime::features::FeatureError;
 use tracing::*;
 use warp::{http::StatusCode, *};
 
-#[derive(Debug, Display, Clone)]
+#[derive(Debug, Display, Clone, PartialEq)]
 pub enum ApiError {
     #[display(fmt = "The requested resource could not be found.")]
     NotFound,
@@ -29,6 +29,9 @@ pub enum ApiError {
         reason
     )]
     AppUnauthorized { app_id: AppId, reason: String },
+
+    #[display(fmt = "Node is not licensed: {}.", reason)]
+    NodeUnauthorized { reason: String },
 
     #[display(fmt = "\"Authorization\" header is missing.")]
     MissingAuthorizationHeader,
@@ -94,6 +97,7 @@ impl From<ApiError> for ApiErrorResponse {
     fn from(e: ApiError) -> Self {
         let (status, code) = match &e {
             ApiError::AppUnauthorized { .. } => (StatusCode::UNAUTHORIZED, "ERR_APP_UNAUTHORIZED"),
+            ApiError::NodeUnauthorized { .. } => (StatusCode::UNAUTHORIZED, "ERR_NODE_UNAUTHORIZED"),
             ApiError::BadRequest { .. } => (StatusCode::BAD_REQUEST, "ERR_BAD_REQUEST"),
             ApiError::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "ERR_INTERNAL"),
             ApiError::InvalidManifest { .. } => (StatusCode::BAD_REQUEST, "ERR_MANIFEST_INVALID"),
