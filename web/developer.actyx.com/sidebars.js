@@ -207,12 +207,12 @@ module.exports = {
         'reference/node-api',
       ],
     },
-    {
-      type: 'category',
-      label: 'Actyx Pond (JS/TS)',
-      collapsed: true,
-      items: require('./__pond-sidebar'),
-    },
+    //{
+    //  type: 'category',
+    //  label: 'Actyx Pond (JS/TS)',
+    //  collapsed: true,
+    //  items: require('./__pond-sidebar'),
+    //},
     'reference/node-manager',
     {
       type: 'category',

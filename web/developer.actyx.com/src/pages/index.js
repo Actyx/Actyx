@@ -3,35 +3,31 @@ import Layout from '@theme/Layout'
 import styles from './index.module.css'
 import Link from '@docusaurus/Link'
 import { Arrow } from '../icons/icons'
-import SearchBarHomePage from '../theme/SearchBar-Homepage'
+// import SearchBarHomePage from '../theme/SearchBar-Homepage'
 
 const CARDS = [
   {
     color: 'blue',
     headline: 'How-to Guides',
-    text:
-      'These problem-oriented guides take the reader through the steps required to solve a problem.',
+    text: 'These problem-oriented guides take the reader through the steps required to solve a problem.',
     link: '/docs/how-to/overview',
   },
   {
     color: 'green',
     headline: 'Conceptual Guides',
-    text:
-      'These understanding-oriented guides clarify a particular topic by giving context and a wider view.',
+    text: 'These understanding-oriented guides clarify a particular topic by giving context and a wider view.',
     link: '/docs/conceptual/overview',
   },
   {
     color: 'purple',
     headline: 'Reference Docs',
-    text:
-      'These information-oriented docs provide technical descriptions of the code and how to operate it.',
+    text: 'These information-oriented docs provide technical descriptions of the code and how to operate it.',
     link: '/docs/reference/overview',
   },
   {
     color: 'orange',
     headline: 'Tutorials',
-    text:
-      'These learning-oriented lessons take the reader by the hand to complete a small project.',
+    text: 'These learning-oriented lessons take the reader by the hand to complete a small project.',
     link: '/docs/tutorials/overview',
   },
 ]
@@ -109,9 +105,9 @@ export const Hero = () => (
         software on the Actyx Platform.
       </div>
     </div>
-    <div className={styles.lineWrapper}>
+    {/* <div className={styles.lineWrapper}>
       <SearchBarHomePage />
-    </div>
+    </div> */}
     <div className={styles.buttonWrapper + ' blue '}>
       <a style={{ textDecoration: 'none' }} href="docs/tutorials/quickstart">
         <div className={styles.button + ' green '}>Ready to dive in? Check out the Quickstart</div>

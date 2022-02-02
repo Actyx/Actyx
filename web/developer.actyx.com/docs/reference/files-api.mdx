@@ -70,9 +70,7 @@ It requires authentication and returns the files `CID` on success.
   ]}
 >
 
-
 <TabItem value="ref">
-
 
 ### Request
 
@@ -95,9 +93,7 @@ The response body is the `CID` of the uploaded file.
 
 </TabItem>
 
-
 <TabItem value="ex">
-
 
 Upload test HTML file using `cURL`:
 
@@ -113,7 +109,6 @@ bafybeieod6ngzponojuau3vwxshptnwqcdoa436obbgv3z2jluxzlc4wqy
 
 </TabItem>
 </Tabs>
-
 
 ## Retrieve file by `CID`
 
@@ -135,9 +130,7 @@ You can navigate a directory by appending a relative path within it to the URL.
   ]}
 >
 
-
 <TabItem value="ref1">
-
 
 ### Request
 
@@ -157,9 +150,7 @@ The contents of the file identified by the given `CID`.
 
 </TabItem>
 
-
 <TabItem value="ex1">
-
 
 Retrieve file contents using `cURL`:
 
@@ -209,7 +200,6 @@ $ curl -H "Authorization: Bearer $AUTH_TOKEN" \
 </TabItem>
 </Tabs>
 
-
 ## Retrieve file by name (API)
 
 To retrieve a file's contents by its name, you `GET` the file from `api/v2/files/<name>`.
@@ -230,9 +220,7 @@ You can navigate a directory by appending a relative path within it to the URL.
   ]}
 >
 
-
 <TabItem value="ref2">
-
 
 ### Request
 
@@ -253,9 +241,7 @@ The contents of the file identified by the given name.
 
 </TabItem>
 
-
 <TabItem value="ex2">
-
 
 Retrieve file contents using `cURL`:
 
@@ -269,8 +255,7 @@ $ curl -H "Authorization: Bearer $AUTH_TOKEN" \
 </TabItem>
 </Tabs>
 
-
-## Retrieve file by name (`ANS`)
+<!-- ## Retrieve file by name (`ANS`)
 
 `ANS` provides read-only access to named `CID`s through `http://<name>.actyx.localhost:4454` without authentication.
 This method is especially useful when opening Actyx apps in the browser.
@@ -421,4 +406,4 @@ curl -X DELETE \
 
   </TabItem>
   </Tabs>
-
+ -->
