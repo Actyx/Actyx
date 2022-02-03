@@ -32,6 +32,7 @@ pub extern "C" fn axnode_init(working_dir: FfiStr, callback: Callback, error: &m
                 BindTo::default(),
                 true,
                 false,
+                false,
             ) {
                 Ok(handle) => {
                     *state = Some(handle);

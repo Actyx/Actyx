@@ -82,6 +82,7 @@ fn spawn(
     bind_to: BindTo,
     log_no_color: bool,
     log_as_json: bool,
+    migrate_all: bool,
 ) -> anyhow::Result<ApplicationState> {
     #[cfg(not(target_os = "android"))]
     let _lock = crate::host::lock_working_dir(&working_dir)?;
@@ -113,7 +114,9 @@ fn spawn(
         "multistream_select",
     ])))?;
     log::set_max_level(log::LevelFilter::max());
-    migration::migrate_if_necessary(&working_dir, BTreeSet::new(), false)?;
+
+    let additional_sources = if migrate_all { None } else { Some(BTreeSet::new()) };
+    migration::migrate_if_necessary(&working_dir, additional_sources, false)?;
 
     // Host interface
     let host = Host::new(working_dir.clone()).context("creating host interface")?;
@@ -345,8 +348,10 @@ impl ApplicationState {
         bind_to: BindTo,
         log_no_color: bool,
         log_as_json: bool,
+        migrate_all: bool,
     ) -> anyhow::Result<Self> {
-        spawn(base_dir, runtime, bind_to, log_no_color, log_as_json).context("spawning core infrastructure")
+        spawn(base_dir, runtime, bind_to, log_no_color, log_as_json, migrate_all)
+            .context("spawning core infrastructure")
     }
 
     pub fn handle_settings_request(&self, message: SettingsRequest) {

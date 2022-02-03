@@ -58,7 +58,7 @@ fn find_earlier_working_dir(base: impl AsRef<Path>) -> Option<(PathBuf, PathBuf)
 /// is a no-op.
 pub fn migrate_if_necessary(
     working_dir: impl AsRef<Path>,
-    additional_sources: BTreeSet<SourceId>,
+    additional_sources: Option<BTreeSet<SourceId>>,
     dry_run: bool,
 ) -> anyhow::Result<()> {
     anyhow::ensure!(working_dir.as_ref().exists());
@@ -76,7 +76,7 @@ pub fn migrate_if_necessary(
                 v1::migrate(
                     &earlier_working_dir,
                     &working_dir,
-                    additional_sources.take().unwrap_or_default(),
+                    additional_sources.take().unwrap(),
                     true,
                     dry_run,
                     db_version,

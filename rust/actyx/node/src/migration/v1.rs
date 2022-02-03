@@ -347,7 +347,7 @@ pub(crate) fn find_v1_working_dir(base: impl AsRef<Path>) -> Option<PathBuf> {
 pub fn migrate(
     v1_working_dir: impl AsRef<Path>,
     v2_working_dir: impl AsRef<Path>,
-    additional_sources: BTreeSet<SourceId>,
+    additional_sources: Option<BTreeSet<SourceId>>,
     emit_own_source: bool,
     dry_run: bool,
     version: u32,
@@ -395,19 +395,17 @@ pub fn migrate(
     let node_id = NodeStorage::query_node_id(&v2_node_db_conn)
         .context("Getting node id")?
         .unwrap();
+    let filtered_sources = additional_sources.map(|s| {
+        if emit_own_source {
+            s.into_iter().chain(std::iter::once(v1_source_id)).collect()
+        } else {
+            s
+        }
+    });
     let opts = ConversionOptions {
         gc: true,
         vacuum: true,
-        filtered_sources: if emit_own_source {
-            Some(
-                additional_sources
-                    .into_iter()
-                    .chain(std::iter::once(v1_source_id))
-                    .collect(),
-            )
-        } else {
-            Some(additional_sources)
-        },
+        filtered_sources,
         source_to_stream: maplit::btreemap! { v1_source_id => node_id.stream(0.into()) },
     };
     swarm::convert::convert_from_v1(

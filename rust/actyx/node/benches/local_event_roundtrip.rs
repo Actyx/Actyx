@@ -36,6 +36,7 @@ fn round_trip(c: &mut Criterion) {
         },
         false,
         false,
+        false,
     )
     .unwrap();
 

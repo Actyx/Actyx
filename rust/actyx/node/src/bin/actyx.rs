@@ -86,6 +86,19 @@ struct Opts {
     )]
     /// Output logs as JSON objects (one per line)
     log_json: Option<Color>,
+
+    #[structopt(
+        long,
+        long_help = "When migrating from ActyxOS v1, only the local SourceId will \
+            be migrated by default, as every other node will migrate their stream \
+            in the process (and dead sources are migrated with a dedicated tool). \
+            This setting allows you to locally test an app with the data of the \
+            whole swarm: start Actyx with a copy of the v1 working-dir and this \
+            option.\n\n\
+            BE SURE TO NEVER USE THE RESULT IN PRODUCTION! You have been warned."
+    )]
+    /// Test facility for preparing a migration from ActyxOS v1, see --help.
+    migrate_all_sources: bool,
 }
 
 pub fn main() -> Result<()> {
@@ -97,6 +110,7 @@ pub fn main() -> Result<()> {
         background,
         log_color,
         log_json,
+        migrate_all_sources,
     } = Opts::from_args();
 
     let is_no_tty = atty::isnt(atty::Stream::Stderr);
@@ -145,7 +159,14 @@ pub fn main() -> Result<()> {
         let runtime: Runtime = Runtime::Windows;
         #[cfg(target_os = "android")]
         let runtime: Runtime = Runtime::Android;
-        let app_handle = ApplicationState::spawn(working_dir, runtime, bind_to, log_no_color, log_as_json)?;
+        let app_handle = ApplicationState::spawn(
+            working_dir,
+            runtime,
+            bind_to,
+            log_no_color,
+            log_as_json,
+            migrate_all_sources,
+        )?;
 
         shutdown_ceremony(app_handle);
     }
