@@ -284,7 +284,7 @@ stages:
               source ~/.nvm/nvm.sh
               nvm use
               npm install
-              npm test -- -w 4
+              npm run test:ci
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
