@@ -20,6 +20,7 @@ import {
   TaggedEvent,
   Tags,
   TestEvent,
+  TimeInjector,
   toEventPredicate,
   Where,
 } from '@actyx/sdk'
@@ -736,10 +737,12 @@ const mkPond = async (
 export type TestPond = Pond & {
   directlyPushEvents: (events: TestEvent[]) => void
 }
-const mkTestPond = (opts?: PondOptions): TestPond => {
-  const opts1: PondOptions = opts || {}
+export type TestPondOptions = PondOptions & { timeInjector?: TimeInjector }
+
+const mkTestPond = (opts?: TestPondOptions): TestPond => {
+  const opts1: TestPondOptions = opts || {}
   const actyx = {
-    ...Actyx.test({ nodeId: NodeId.of('TEST') }),
+    ...Actyx.test({ nodeId: NodeId.of('TEST'), timeInjector: opts1.timeInjector }),
     waitForSync: async () => {
       /* noop */
     },

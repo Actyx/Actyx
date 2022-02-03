@@ -16,6 +16,7 @@ import { PendingEmission } from '@actyx/sdk';
 import { TaggedEvent } from '@actyx/sdk';
 import { Tags } from '@actyx/sdk';
 import { TestEvent } from '@actyx/sdk';
+import { TimeInjector } from '@actyx/sdk';
 import { Where } from '@actyx/sdk';
 
 // @public
@@ -197,7 +198,7 @@ export type Pond = {
 export const Pond: {
     default: (manifest: AppManifest) => Promise<Pond>;
     of: (manifest: AppManifest, connectionOpts: ActyxOpts, opts: PondOptions) => Promise<Pond>;
-    test: (opts?: PondOptions | undefined) => TestPond;
+    test: (opts?: TestPondOptions | undefined) => TestPond;
 };
 
 // @public
@@ -288,6 +289,11 @@ export type SyncProgress = Readonly<{
 // @public
 export type TestPond = Pond & {
     directlyPushEvents: (events: TestEvent[]) => void;
+};
+
+// @public (undocumented)
+export type TestPondOptions = PondOptions & {
+    timeInjector?: TimeInjector;
 };
 
 // @public
