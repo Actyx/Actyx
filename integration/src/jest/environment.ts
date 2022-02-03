@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EC2Client as EC2 } from '@aws-sdk/client-ec2'
 import NodeEnvironment from 'jest-environment-node'
-import { CLI } from '../cli'
-import { mkExecute } from '../infrastructure'
-import { MyGlobal } from './setup'
+import { type MyGlobal } from './setup'
 
 class MyEnvironment extends NodeEnvironment {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -17,6 +15,9 @@ class MyEnvironment extends NodeEnvironment {
     const axNodeSetup = (<MyGlobal>(<unknown>this.global)).axNodeSetup
     axNodeSetup.ec2 = new EC2({ region: 'eu-central-1' })
     axNodeSetup.thisTestEnvNodes = []
+
+    const { CLI } = await import('../cli')
+    const { mkExecute } = await import('../infrastructure')
 
     /**
      * Global objects must be serializable to copy into jest's test context.

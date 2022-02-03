@@ -62,7 +62,7 @@ describe('auth http', () => {
       const getErr = (msg: string) =>
         get({
           code: 'ERR_APP_UNAUTHORIZED',
-          message: `'com.actyx.auth-test' is not authorized. ${msg}. Provide a valid app license to the node.`,
+          message: `App 'com.actyx.auth-test' is not authorized: ${msg}. Provide a valid app license in the node settings.`,
         })
 
       const offsets = async (token: string) => {
@@ -81,8 +81,8 @@ describe('auth http', () => {
       })
 
       // should fail when node in prod mode without app license
-      await set('node', 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-      await getErr('License not found for app')
+      await set('node', process.env['AUTH_TEST_NODE_LICENSE'] || '')
+      await getErr('no license found')
 
       // FIXME: previous token should actually be invalidated
       expect(await offsets(token1)).toEqual({
@@ -94,13 +94,13 @@ describe('auth http', () => {
       await setAppLicense(
         'MALFORMED_LICENSE_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
       )
-      await getErr('Could not parse license')
+      await getErr('invalid license key format')
 
       // try out with falsified license
       await setAppLicense(
         'v25saWNlbnNlVmVyc2lvbgBrbGljZW5zZVR5cGWhaGV4cGlyaW5nomVhcHBJZHNjb20uYWN0eXguYXV0aC10ZXN0aWV4cGlyZXNBdHQxOTcxLTAxLTAxVDAwOjAxOjAxWmljcmVhdGVkQXR0MTk3MC0wMS0wMVQwMDowMTowMVppc2lnbmF0dXJleFg1dmEvQ3NYWlk3TUV6VVJ0SUEwVm9mL3R1T3FlejZCN3FYby9JNTl4T0NkUDNwUFVabGZEekZPbExIK09oZXJjWGkwRTJ1RXFnZ2x1cUdyaGFDVVhDZz09aXJlcXVlc3RlcqFlZW1haWx0Y3VzdG9tZXJAZXhhbXBsZS5jb23/',
       )
-      await getErr('Could not validate license')
+      await getErr('invalid signature')
 
       // use proper app manifest
       await setAppLicense(process.env['AUTH_TEST_LICENSE'] || '')
