@@ -45,6 +45,7 @@
     "build": "rimraf dist && npm run tsc",
     "test:run": "TZ=UTC node --trace-warnings --es-module-specifier-resolution=node --experimental-vm-modules node_modules/.bin/jest --config=jest.config.js --env=node",
     "test": "npm run build && npm run test:run",
+    "test:ci": "npm run build && npm run test:run -- --maxWorkers=4",
     "test:debug": "TZ=UTC node --inspect-brk node_modules/.bin/jest --runInBand --config=jest.config.js",
     "lint:fix": "eslint './{src,jest}/**/*.{js,ts,tsx}' --fix & prettier './{src,jest}/**/*.{js,ts,tsx}' --write",
     "lint": "eslint './{src,jest}/**/*.{js,ts,tsx}' & prettier './{src,jest}/**/*.{js,ts,tsx}' --check",
