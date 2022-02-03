@@ -13,6 +13,9 @@ class MyEnvironment extends NodeEnvironment {
     await super.setup()
 
     const axNodeSetup = (<MyGlobal>(<unknown>this.global)).axNodeSetup
+    // mkExecute below needs the settings, which it takes from `global`, not `this.global`
+    // (the test suite will later be run with `this.global` installed)
+    ;(<MyGlobal>global).axNodeSetup = axNodeSetup
     axNodeSetup.ec2 = new EC2({ region: 'eu-central-1' })
     axNodeSetup.thisTestEnvNodes = []
 
