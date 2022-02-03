@@ -1,4 +1,4 @@
-use crate::rejections::ApiError;
+use crate::rejections::{ApiError, UnauthorizedReason};
 use actyx_sdk::AppId;
 use certs::{AppLicenseType, Expiring, SignedAppLicense};
 use chrono::Utc;
@@ -26,22 +26,22 @@ impl Licensing {
             .node
             .parse::<SignedAppLicense>()
             .map_err(|_| ApiError::NodeUnauthorized {
-                reason: "invalid license key format".to_owned(),
+                reason: UnauthorizedReason::MalformedLicense,
             })?;
         license
             .validate(ax_public_key)
             .map_err(|_| ApiError::NodeUnauthorized {
-                reason: "invalid license signature".to_owned(),
+                reason: UnauthorizedReason::InvalidSignature,
             })?;
         match license.license.license_type {
             AppLicenseType::Expiring(Expiring { app_id, expires_at }) => {
                 if app_id.as_str() != "com.actyx.node" {
                     Err(ApiError::NodeUnauthorized {
-                        reason: "invalid license subject".to_owned(),
+                        reason: UnauthorizedReason::WrongSubject,
                     })
                 } else if expires_at < Utc::now() {
                     Err(ApiError::NodeUnauthorized {
-                        reason: "license expired".to_owned(),
+                        reason: UnauthorizedReason::Expired,
                     })
                 } else {
                     Ok(true)
@@ -66,9 +66,9 @@ impl Default for Licensing {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
+    use super::*;
     use crate::{formats::Licensing, rejections::ApiError, util::get_ax_public_key};
+    use std::collections::BTreeMap;
 
     #[test]
     fn default() {
@@ -90,7 +90,7 @@ mod tests {
         assert_eq!(
             licensing.is_node_licensed(&ax_key).unwrap_err(),
             ApiError::NodeUnauthorized {
-                reason: "invalid license key format".to_owned()
+                reason: UnauthorizedReason::MalformedLicense
             }
         );
     }

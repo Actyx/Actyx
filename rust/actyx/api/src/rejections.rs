@@ -6,6 +6,20 @@ use tracing::*;
 use warp::{http::StatusCode, *};
 
 #[derive(Debug, Display, Clone, PartialEq)]
+pub enum UnauthorizedReason {
+    #[display(fmt = "no license found")]
+    NoLicense,
+    #[display(fmt = "invalid license key format")]
+    MalformedLicense,
+    #[display(fmt = "invalid signature")]
+    InvalidSignature,
+    #[display(fmt = "wrong license subject")]
+    WrongSubject,
+    #[display(fmt = "license expired")]
+    Expired,
+}
+
+#[derive(Debug, Display, Clone, PartialEq)]
 pub enum ApiError {
     #[display(fmt = "The requested resource could not be found.")]
     NotFound,
@@ -24,14 +38,14 @@ pub enum ApiError {
     InvalidManifest { msg: String },
 
     #[display(
-        fmt = "'{}' is not authorized. {}. Provide a valid app license to the node.",
+        fmt = "App '{}' is not authorized: {}. Provide a valid app license in the node settings.",
         app_id,
         reason
     )]
-    AppUnauthorized { app_id: AppId, reason: String },
+    AppUnauthorized { app_id: AppId, reason: UnauthorizedReason },
 
-    #[display(fmt = "Node is not licensed: {}.", reason)]
-    NodeUnauthorized { reason: String },
+    #[display(fmt = "Node is not licensed: {}. Please correct this in the settings.", reason)]
+    NodeUnauthorized { reason: UnauthorizedReason },
 
     #[display(fmt = "\"Authorization\" header is missing.")]
     MissingAuthorizationHeader,
