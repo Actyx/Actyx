@@ -5,7 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { Observable, EMPTY } from '../../node_modules/rxjs'
-import { EventsSortOrder, NodeId, OffsetMap, Where } from '../types'
+import { EventsSortOrder, NodeId, OffsetMap, TimeInjector, Where } from '../types'
 import { mockEventStore } from './mockEventStore'
 import { testEventStore, TestEventStore } from './testEventStore'
 import { Event, Events, OffsetsResponse, UnstoredEvents } from './types'
@@ -94,7 +94,7 @@ const noopEventStore: EventStore = {
 export const EventStore: {
   noop: EventStore
   mock: () => EventStore
-  test: (nodeId?: NodeId, eventChunkSize?: number) => TestEventStore
+  test: (nodeId?: NodeId, timeInjector?: TimeInjector) => TestEventStore
 } = {
   noop: noopEventStore,
   mock: mockEventStore,

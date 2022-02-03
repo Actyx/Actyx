@@ -9,6 +9,7 @@ import { Ord as OrdString } from 'fp-ts/lib/string'
 import { Ord as OrdNumber } from 'fp-ts/lib/number'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import { OffsetMap } from './offsetMap'
+import { Tags } from './tags'
 
 /**
  * An Actyx source id.
@@ -356,10 +357,13 @@ export type ActyxOpts = {
   onConnectionEstablished?: () => void
 }
 
+export type TimeInjector = (tags: ReadonlyArray<string>, events: unknown) => Timestamp
+
 /** Options used when creating a new TEST `Actyx` instance. @public */
 export type ActyxTestOpts = Readonly<{
   /** Local node id to use @public */
   nodeId?: NodeId
+  timeInjector?: TimeInjector
 }>
 
 /** Manifest describing an Actyx application. Used for authorizing API access. @public */

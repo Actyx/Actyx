@@ -10,40 +10,40 @@ use crate::signature::Signature;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct RequesterInfo {
-    email: String,
+pub struct RequesterInfo {
+    pub email: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct Expiring {
-    app_id: AppId,
-    expires_at: DateTime<Utc>,
+pub struct Expiring {
+    pub app_id: AppId,
+    pub expires_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-enum AppLicenseType {
+pub enum AppLicenseType {
     Expiring(Expiring),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct AppLicense {
+pub struct AppLicense {
     // this is zero for now
     license_version: u8,
-    license_type: AppLicenseType,
+    pub license_type: AppLicenseType,
     /// when it was created
-    created_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SignedAppLicense {
     #[serde(flatten)]
-    license: AppLicense,
+    pub license: AppLicense,
     signature: Signature,
-    requester: RequesterInfo,
+    pub requester: RequesterInfo,
 }
 
 impl SignedAppLicense {

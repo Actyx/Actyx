@@ -41,6 +41,7 @@ export type ActyxOpts = {
 // @public
 export type ActyxTestOpts = Readonly<{
     nodeId?: NodeId;
+    timeInjector?: TimeInjector;
 }>;
 
 // @public
@@ -401,7 +402,7 @@ export type TaggedEvent = Readonly<{
 
 // @public
 export interface Tags<E> extends Where<E> {
-    and<E1>(tag: Tags<E1>): Tags<Extract<E1, E>>;
+    and<E1>(tag: Tags<E1>): Tags<E1 & E>;
     and(tag: string): Tags<E>;
     apply(event: E): TaggedEvent;
     apply(...events: E[]): ReadonlyArray<TaggedEvent>;
@@ -432,6 +433,9 @@ export type TestEvent = {
 export type TestEventFns = EventFns & {
     directlyPushEvents: (events: ReadonlyArray<TestEvent>) => void;
 };
+
+// @public (undocumented)
+export type TimeInjector = (tags: ReadonlyArray<string>, events: unknown) => Timestamp;
 
 // @public
 export type Timestamp = number;

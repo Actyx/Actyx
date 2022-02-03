@@ -94,7 +94,7 @@ export interface Tags<E> extends Where<E> {
   /**
    * Add more tags to this requirement. E.g `Tag<FooEvent>('foo').and(Tag<BarEvent>('bar'))` will require both 'foo' and 'bar'.
    */
-  and<E1>(tag: Tags<E1>): Tags<Extract<E1, E>>
+  and<E1>(tag: Tags<E1>): Tags<E1 & E>
 
   /**
    * Add an additional untyped tag to this requirement.
@@ -197,7 +197,7 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: ReadonlyArray<TagInternal>): 
       const local = onlyLocalEvents || !!otherTags.onlyLocalEvents
       const tags = rawTags.concat(otherTags.rawTags)
 
-      return req<Extract<E1, E>>(local, tags)
+      return req<E1 & E>(local, tags)
     },
 
     or: <E1>(other: Where<E1>) => {
