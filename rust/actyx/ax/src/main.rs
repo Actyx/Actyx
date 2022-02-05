@@ -4,7 +4,7 @@ mod private_key;
 
 use cmd::{
     apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
-    swarms::SwarmsOpts, users::UsersOpts, Verbosity,
+    swarms::SwarmsOpts, users::UsersOpts,
 };
 use std::process::exit;
 use structopt::{
@@ -26,8 +26,9 @@ struct Opt {
     /// Format output as JSON
     #[structopt(long, short, global = true)]
     json: bool,
-    #[structopt(flatten)]
-    verbosity: Verbosity,
+    /// Verbosity level. Add more v for higher verbosity (-v, -vv, -vvv, etc.).
+    #[structopt(short, parse(from_occurrences), global = true)]
+    verbosity: u64,
 }
 
 #[derive(Debug)]
@@ -104,7 +105,7 @@ async fn main() {
     let Opt {
         command,
         json,
-        verbosity: _verbosity,
+        verbosity,
     } = match Opt::from_args_safe() {
         Ok(o) => o,
         Err(e) => match e.kind {
@@ -120,7 +121,7 @@ async fn main() {
         },
     };
 
-    util::setup_logger();
+    util::setup_logger(verbosity);
 
     match command {
         CommandsOpt::Apps(opts) => cmd::apps::run(opts, json).await,

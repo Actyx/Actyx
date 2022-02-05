@@ -25,13 +25,13 @@ pub enum ProtocolError {
     #[display(fmt = "message too large sent: {}", _0)]
     #[from(ignore)]
     MessageTooLargeSent(#[error(ignore)] usize),
-    #[display(fmt = "substream protocol negotiation error")]
+    #[display(fmt = "substream protocol negotiation error: {}", _0)]
     Negotiation(NegotiationError),
-    #[display(fmt = "I/O error")]
+    #[display(fmt = "I/O error: {}", _0)]
     Io(std::io::Error),
-    #[display(fmt = "(de)serialisation error")]
+    #[display(fmt = "(de)serialisation error: {}", _0)]
     Serde(serde_cbor::Error),
-    #[display(fmt = "internal channel error:")]
+    #[display(fmt = "internal channel error")]
     Channel(mpsc::SendError),
     /// This variant is useful for implementing the function to pass to
     /// [`with_spawner`](crate::v2::StreamingResponseConfig)
@@ -93,27 +93,25 @@ pub async fn write_msg(
     io: &mut NegotiatedSubstream,
     msg: impl serde::Serialize,
     max_size: u32,
+    buffer: &mut Vec<u8>,
 ) -> Result<(), ProtocolError> {
-    let res = serde_cbor::to_vec(&msg);
-    let msg_bytes = match res {
-        Ok(b) => b,
-        Err(e) => {
-            let err = ProtocolError::Serde(e);
-            write_err(io, &err).await?;
-            return Err(err);
-        }
-    };
-    let size = msg_bytes.len();
+    buffer.resize(4, 0);
+    let res = serde_cbor::to_writer(&mut *buffer, &msg);
+    if let Err(e) = res {
+        let err = ProtocolError::Serde(e);
+        write_err(io, &err).await?;
+        return Err(err);
+    }
+    let size = buffer.len() - 4;
     if size > (max_size as usize) {
         log::debug!("message size {} too large (max = {})", size, max_size);
         let err = ProtocolError::MessageTooLargeSent(size);
         write_err(io, &err).await?;
         return Err(err);
     }
-    log::trace!("sending request of size {}", size);
-    let size_bytes = (size as u32).to_be_bytes();
-    io.write_all(&size_bytes).await?;
-    io.write_all(msg_bytes.as_slice()).await?;
+    log::trace!("sending message of size {}", size);
+    buffer.as_mut_slice()[..4].copy_from_slice(&(size as u32).to_be_bytes());
+    io.write_all(buffer.as_slice()).await?;
     Ok(())
 }
 
@@ -136,6 +134,7 @@ pub async fn write_finish(io: &mut NegotiatedSubstream) -> Result<(), std::io::E
 pub async fn read_msg<T: DeserializeOwned>(
     io: &mut NegotiatedSubstream,
     max_size: u32,
+    buffer: &mut Vec<u8>,
 ) -> Result<Response<T>, ProtocolError> {
     let mut size_bytes = [0u8; 4];
     let mut to_read = &mut size_bytes[..];
@@ -160,14 +159,18 @@ pub async fn read_msg<T: DeserializeOwned>(
 
     if size > max_size {
         log::debug!("message size {} too large (max = {})", size, max_size);
+        let mut bytes = [0u8; 4096];
+        bytes[..4].copy_from_slice(&size_bytes);
+        let n = io.read(&mut bytes[4..]).await?;
+        log::debug!("{:?}", &bytes[..n + 4]);
         return Err(ProtocolError::MessageTooLargeRecv(size as usize));
     }
     log::trace!("received header: msg is {} bytes", size);
 
-    let mut msg_bytes = vec![0u8; size as usize];
-    io.read_exact(msg_bytes.as_mut_slice()).await?;
+    buffer.resize(size as usize, 0);
+    io.read_exact(buffer.as_mut_slice()).await?;
     log::trace!("all bytes read");
-    Ok(Response::Msg(serde_cbor::from_slice(msg_bytes.as_slice())?))
+    Ok(Response::Msg(serde_cbor::from_slice(buffer.as_slice())?))
 }
 
 #[derive(Debug)]
@@ -218,7 +221,9 @@ impl<T: Codec> InboundUpgrade<NegotiatedSubstream> for Responder<T> {
         let max_message_size = self.max_message_size;
         async move {
             log::trace!("starting inbound upgrade `{}`", ProtoNameDisplay(info));
-            let msg = read_msg(&mut socket, max_message_size).await?.into_msg()?;
+            let msg = read_msg(&mut socket, max_message_size, &mut Vec::new())
+                .await?
+                .into_msg()?;
             log::trace!("request received: {:?}", msg);
             Ok((msg, socket))
         }
@@ -262,7 +267,7 @@ impl<T: Codec> OutboundUpgrade<NegotiatedSubstream> for Requester<T> {
         } = self;
         async move {
             log::trace!("starting output upgrade `{}`", ProtoNameDisplay(info));
-            write_msg(&mut socket, request, max_message_size).await?;
+            write_msg(&mut socket, request, max_message_size, &mut Vec::new()).await?;
             socket.flush().await?;
             log::trace!("all bytes sent");
             Ok(socket)

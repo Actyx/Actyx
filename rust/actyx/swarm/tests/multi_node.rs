@@ -12,7 +12,7 @@ struct MyEvent {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn banyan_multi_node() -> Result<()> {
-    util::setup_logger();
+    util::setup_logger(1);
     let s1 = BanyanStore::test("a").await?;
     let s2 = BanyanStore::test("b").await?;
     s1.ipfs()

@@ -22,10 +22,18 @@ use util::{
     SocketAddrHelper,
 };
 
-#[derive(Debug)]
 pub(crate) enum StoreRequest {
     NodesInspect(oneshot::Sender<Result<InspectResponse>>),
     EventsV2(EventStoreRequest),
+}
+
+impl std::fmt::Debug for StoreRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NodesInspect(_) => f.debug_tuple("NodesInspect").finish(),
+            Self::EventsV2(arg0) => write!(f, "EventsV2({})", arg0),
+        }
+    }
 }
 
 #[derive(Debug)]

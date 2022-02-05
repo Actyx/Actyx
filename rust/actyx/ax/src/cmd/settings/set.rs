@@ -109,12 +109,11 @@ pub async fn run(opts: SetOpt) -> Result<Output> {
             )
         },
         move |m| match m {
-            Ok(AdminResponse::SettingsSetResponse(settings)) => Ok(Output {
+            AdminResponse::SettingsSetResponse(settings) => Ok(Output {
                 scope: super::print_scope(scope2.clone()),
                 settings,
             }),
-            Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
-            Err(err) => Err(err),
+            r => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
         },
     )
     .await

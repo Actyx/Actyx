@@ -99,7 +99,7 @@ impl MultiaddrExt for Multiaddr {
 }
 
 pub fn setup_env() -> Result<()> {
-    ::util::setup_logger();
+    ::util::setup_logger(1);
     netsim_embed::unshare_user()?;
     Ok(())
 }

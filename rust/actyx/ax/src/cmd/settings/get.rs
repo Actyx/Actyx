@@ -54,9 +54,8 @@ pub async fn run(opts: GetOpt) -> Result<serde_json::Value> {
             )
         },
         |t| match t {
-            Ok(AdminResponse::SettingsGetResponse(resp)) => Ok(resp),
-            Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
-            Err(err) => Err(err),
+            AdminResponse::SettingsGetResponse(resp) => Ok(resp),
+            r => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
         },
     )
     .await

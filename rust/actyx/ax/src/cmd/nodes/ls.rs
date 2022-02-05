@@ -81,9 +81,9 @@ fn format_output(output: Vec<Output>) -> String {
 async fn request(timeout: u8, identity: AxPrivateKey, authority: Authority) -> Output {
     let host = authority.original.clone();
     let response = tokio::time::timeout(Duration::from_secs(timeout.into()), async move {
-        let (task, mut channel) = connect(identity, authority);
+        let (task, mut channel) = connect(identity, authority).await?;
         tokio::spawn(task);
-        request_single(&mut channel, |tx| Task::Admin(AdminRequest::NodesLs, tx), |t| t).await
+        request_single(&mut channel, |tx| Task::Admin(AdminRequest::NodesLs, tx), Ok).await
     })
     .await;
     match response {

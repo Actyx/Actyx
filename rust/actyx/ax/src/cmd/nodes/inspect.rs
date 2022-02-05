@@ -28,9 +28,8 @@ impl AxCliCommand for NodesInspect {
                 &mut conn,
                 |tx| Task::Admin(AdminRequest::NodesInspect, tx),
                 |m| match m {
-                    Ok(AdminResponse::NodesInspectResponse(r)) => Ok(r),
-                    Ok(x) => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("invalid response: {:?}", x))),
-                    Err(e) => Err(e),
+                    AdminResponse::NodesInspectResponse(r) => Ok(r),
+                    x => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("invalid response: {:?}", x))),
                 },
             )
             .await

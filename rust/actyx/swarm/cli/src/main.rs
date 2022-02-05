@@ -23,7 +23,7 @@ use trees::{query::TagExprQuery, AxKey};
 
 #[tokio::main]
 async fn main() {
-    util::setup_logger();
+    util::setup_logger(1);
     if let Err(err) = run().await {
         tracing::error!("{}", err);
     }

@@ -34,7 +34,7 @@ ipfs-embed = "0.23.0"
 ipfs-sqlite-block-store = "0.11.0"
 lazy_static = "1.4.0"
 libipld = "0.12.0"
-libp2p = { version = "0.41.0", default-features = false, features = ["gossipsub", "ping"] }
+libp2p = { version = "0.42.1", default-features = false, features = ["gossipsub", "ping"] }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 log = { version = "0.4.14", features = ["std"] }
 maplit = "1.0.2"

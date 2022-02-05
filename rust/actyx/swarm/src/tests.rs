@@ -44,7 +44,7 @@ fn cids_to_string(cids: Vec<Cid>) -> String {
 #[tokio::test]
 #[ignore]
 async fn smoke() -> Result<()> {
-    util::setup_logger();
+    util::setup_logger(1);
     let mut tagger = Tagger::new();
     let mut ev = move |tag| (tagger.tags(&[tag]), Payload::null());
     let store = BanyanStore::test("smoke").await?;
@@ -247,7 +247,7 @@ async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_add_cat() -> Result<()> {
     use rand::RngCore;
-    util::setup_logger();
+    util::setup_logger(1);
     let store = BanyanStore::test("local").await?;
     let mut data = Vec::with_capacity(16_000_000);
     data.resize(data.capacity(), 0);
@@ -270,7 +270,7 @@ async fn test_add_cat() -> Result<()> {
 fn test_add_zero_bytes() -> Result<()> {
     let rt = Runtime::new()?;
     rt.block_on(async {
-        util::setup_logger();
+        util::setup_logger(1);
         let store = BanyanStore::test("local").await?;
         tracing::info!("store created");
         let mut tmp = store.ipfs().create_temp_pin()?;

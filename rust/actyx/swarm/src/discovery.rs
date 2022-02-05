@@ -414,7 +414,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_discovery() -> Result<()> {
-        util::setup_logger();
+        util::setup_logger(1);
         let a = BanyanStore::test("a").await?;
         let b = BanyanStore::test("b").await?;
         let c = BanyanStore::test("c").await?;

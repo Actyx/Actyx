@@ -35,9 +35,15 @@ use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::EnvFilter;
 
 /// Sets up a logging and a panic handler that logs panics.
-pub fn setup_logger() {
+pub fn setup_logger(verbosity: u64) {
     tracing_log::LogTracer::init().ok();
-    let env = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_| "info".to_owned());
+    let level = match verbosity {
+        0 => "warn",
+        1 => "info",
+        2 => "debug",
+        _ => "trace",
+    };
+    let env = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_| level.to_owned());
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
         .with_env_filter(EnvFilter::new(env))

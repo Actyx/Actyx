@@ -42,7 +42,7 @@ fn setup() {
     // (so you don't have to spend scratching your head about the code that is being run ..)
     static INIT: Once = Once::new();
     INIT.call_once(|| {
-        util::setup_logger();
+        util::setup_logger(1);
         // build needed binaries for quicker execution
         eprintln!("building actyx");
         for msg in CargoBuild::new()

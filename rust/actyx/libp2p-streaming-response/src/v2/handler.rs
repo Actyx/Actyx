@@ -191,6 +191,7 @@ impl<T: Codec + Send + 'static> ProtocolsHandler for Handler<T> {
         let task = (self.spawner)(
             async move {
                 log::trace!("starting send loop");
+                let mut buffer = Vec::new();
                 loop {
                     // only flush once we’re going to sleep
                     let response = match rx.try_next() {
@@ -205,7 +206,7 @@ impl<T: Codec + Send + 'static> ProtocolsHandler for Handler<T> {
                             }
                         }
                     };
-                    protocol::write_msg(&mut stream, response, max_message_size).await?;
+                    protocol::write_msg(&mut stream, response, max_message_size, &mut buffer).await?;
                 }
                 log::trace!("flushing and closing substream");
                 protocol::write_finish(&mut stream).await?;
@@ -227,8 +228,9 @@ impl<T: Codec + Send + 'static> ProtocolsHandler for Handler<T> {
         let task = (self.spawner)(
             async move {
                 log::trace!("starting receive loop");
+                let mut buffer = Vec::new();
                 loop {
-                    match protocol::read_msg(&mut stream, max_message_size)
+                    match protocol::read_msg(&mut stream, max_message_size, &mut buffer)
                         .await
                         .unwrap_or_else(Response::Error)
                     {

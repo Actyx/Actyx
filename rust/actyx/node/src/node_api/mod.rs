@@ -411,31 +411,25 @@ impl NetworkBehaviourEventProcess<RequestReceived<EventsProtocol>> for ApiBehavi
                             .await?;
                     }
                     EventsRequest::Query(request) => match events.query(app_id!("com.actyx.cli"), request).await {
-                        Ok(resp) => {
-                            req.channel
-                                .send_all(&mut TracePoll::new(
-                                    resp.filter_map(move |x| {
-                                        tracing::trace!("got query response {:?}", x);
-                                        match x {
-                                            QueryResponse::Event(ev) => {
-                                                let span = tracing::trace_span!("ready event");
-                                                let _enter = span.enter();
-                                                ready(Some(Ok(EventsResponse::Event(ev))))
-                                            }
-                                            QueryResponse::Offsets(o) => {
-                                                ready(Some(Ok(EventsResponse::OffsetMap { offsets: o.offsets })))
-                                            }
-                                            QueryResponse::Diagnostic(d) => {
-                                                ready(Some(Ok(EventsResponse::Diagnostic(d))))
-                                            }
-                                            QueryResponse::FutureCompat => ready(None),
-                                        }
-                                    }),
-                                    "node_api events query",
-                                ))
-                                .await?;
+                        Ok(mut resp) => {
+                            tracing::trace!("got response");
+                            while let Some(msg) = resp.next().await {
+                                tracing::trace!("got message");
+                                let item = match msg {
+                                    QueryResponse::Event(ev) => {
+                                        let span = tracing::trace_span!("ready event");
+                                        let _enter = span.enter();
+                                        EventsResponse::Event(ev)
+                                    }
+                                    QueryResponse::Offsets(o) => EventsResponse::OffsetMap { offsets: o.offsets },
+                                    QueryResponse::Diagnostic(d) => EventsResponse::Diagnostic(d),
+                                    QueryResponse::FutureCompat => continue,
+                                };
+                                req.channel.feed(item).await?;
+                            }
                         }
                         Err(e) => {
+                            tracing::trace!("got error");
                             req.channel
                                 .feed(EventsResponse::Error { message: e.to_string() })
                                 .await?;

@@ -36,9 +36,8 @@ pub async fn run(opts: SchemaOpt) -> Result<serde_json::Value> {
         &mut conn,
         |tx| Task::Admin(AdminRequest::SettingsSchema { scope }, tx),
         |m| match m {
-            Ok(AdminResponse::SettingsSchemaResponse(resp)) => Ok(resp),
-            Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
-            Err(err) => Err(err),
+            AdminResponse::SettingsSchemaResponse(resp) => Ok(resp),
+            r => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
         },
     )
     .await

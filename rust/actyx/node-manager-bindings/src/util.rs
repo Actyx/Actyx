@@ -35,22 +35,8 @@ pub fn run_ft<T, F: Future<Output = ActyxOSResult<T>>>(future: F) -> ActyxOSResu
     rt.block_on(future)
 }
 
-pub fn node_connection(addr: &str) -> ActyxOSResult<NodeConnection> {
-    NodeConnection::from_str(addr)
-}
-
 pub fn default_private_key() -> ActyxOSResult<AxPrivateKey> {
     AxPrivateKey::try_from(&None)
-}
-
-pub fn node_request(addr: &str, request: AdminRequest) -> ActyxOSResult<AdminResponse> {
-    run_ft(async move {
-        node_connection(addr)?
-            .connect(&default_private_key()?)
-            .await?
-            .request(request)
-            .await
-    })
 }
 
 pub fn run_task<I: serde::de::DeserializeOwned + Sync + Send + 'static, O: serde::Serialize + Sync + Send + 'static>(

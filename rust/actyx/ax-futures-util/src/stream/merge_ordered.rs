@@ -110,6 +110,7 @@ where
                 stream: Box::pin(stream),
             });
         }
+        tracing::trace!("starting with {} streams", to_poll.len());
         MergeOrdered {
             mode,
             to_poll,
@@ -181,6 +182,7 @@ where
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let s = self.get_mut();
+        tracing::trace!("poll");
 
         loop {
             // first look for new incoming streams
@@ -191,11 +193,13 @@ where
 
             // bail out if at least one stream returned Pending
             if !s.to_poll.is_empty() {
+                tracing::trace!("going to sleep");
                 return Poll::Pending;
             }
 
             // using Reverse makes this a min-heap: we need the smallest element
             if let Some(mut st) = s.to_deliver.pop() {
+                tracing::trace!("emitting");
                 let item = st.current.take();
                 s.to_poll.push(st);
                 if s.mode == NewSourceMode::AdmitStragglers || item >= s.last_emitted {
@@ -205,6 +209,7 @@ where
                 // here we drop the straggler element and go back to polling
                 continue;
             }
+            tracing::trace!("not ready");
 
             // the loop is only for the continue above
             break;

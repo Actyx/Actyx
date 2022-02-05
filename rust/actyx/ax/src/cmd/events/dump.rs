@@ -11,7 +11,6 @@ use chrono::{DateTime, Duration, Local, Utc};
 use console::{user_attended_stderr, Term};
 use futures::{channel::mpsc::channel, SinkExt, Stream, StreamExt};
 use itertools::Itertools;
-use libp2p_streaming_response::v2::Response;
 use std::{
     fs::File,
     io::{ErrorKind, Write},
@@ -164,9 +163,8 @@ impl AxCliCommand for EventsDump {
                 &mut conn,
                 |tx| Task::Admin(AdminRequest::NodesLs, tx),
                 |resp| match resp {
-                    Ok(AdminResponse::NodesLsResponse(ls)) => Ok(ls),
-                    Ok(m) => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("got invalid response {:?}", m))),
-                    Err(e) => Err(e),
+                    AdminResponse::NodesLsResponse(ls) => Ok(ls),
+                    m => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("got invalid response {:?}", m))),
                 },
             )
             .await?;
@@ -174,9 +172,8 @@ impl AxCliCommand for EventsDump {
                 &mut conn,
                 |tx| Task::Admin(AdminRequest::NodesInspect, tx),
                 |resp| match resp {
-                    Ok(AdminResponse::NodesInspectResponse(ls)) => Ok(ls),
-                    Ok(m) => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("got invalid response {:?}", m))),
-                    Err(e) => Err(e),
+                    AdminResponse::NodesInspectResponse(ls) => Ok(ls),
+                    m => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("got invalid response {:?}", m))),
                 },
             )
             .await?;
@@ -192,9 +189,8 @@ impl AxCliCommand for EventsDump {
                     )
                 },
                 |resp| match resp {
-                    Ok(AdminResponse::SettingsGetResponse(ls)) => Ok(ls),
-                    Ok(m) => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("got invalid response {:?}", m))),
-                    Err(e) => Err(e),
+                    AdminResponse::SettingsGetResponse(ls) => Ok(ls),
+                    m => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("got invalid response {:?}", m))),
                 },
             )
             .await?;
@@ -252,11 +248,7 @@ impl AxCliCommand for EventsDump {
             let mut max_size = cbor.as_slice().len();
             let mut last_printed = now;
             while let Some(ev) = events.next().await {
-                let ev = match ev {
-                    Response::Msg(ev) => ev,
-                    Response::Error(e) => return Err(ActyxOSCode::ERR_IO.with_message(e.to_string())),
-                    Response::Finished => break,
-                };
+                let ev = ev?;
                 match ev {
                     EventsResponse::Error { message } => diag.log(format!("AQL error: {}", message))?,
                     EventsResponse::Event(ev) => {

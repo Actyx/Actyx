@@ -124,9 +124,12 @@ impl EventService {
         .stop_on_error();
 
         let gen = Gen::new(move |co: Co<QueryResponse>| async move {
+            // tracing::trace!("generator starting");
             while let Some(ev) = stream.next().await {
+                // tracing::trace!("got event");
                 let vs = query.feed(Some(to_value(&ev)));
                 for v in vs {
+                    // tracing::trace!("dispatching result");
                     co.yield_(match v {
                         Ok(v) => QueryResponse::Event(to_event(v, Some(&ev))),
                         Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e)),

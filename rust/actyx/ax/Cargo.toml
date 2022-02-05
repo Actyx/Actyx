@@ -35,7 +35,7 @@ ipfs-sqlite-block-store = "0.11.0"
 itertools = "0.10.3"
 lazy_static = "1.4.0"
 libipld = "0.12.0"
-libp2p = { version = "0.41.0", default-features = false }
+libp2p = { version = "0.42.1", default-features = false }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 maplit = "1.0.2"
 prettytable-rs = "0.8.0"

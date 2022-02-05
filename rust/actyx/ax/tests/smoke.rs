@@ -84,7 +84,7 @@ fn with_api(
     mut log: impl Write + Clone + Send + 'static,
     f: impl FnOnce(u16, &Path) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    util::setup_logger();
+    util::setup_logger(1);
     setup();
 
     let workdir = tempdir()?;

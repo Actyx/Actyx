@@ -171,7 +171,7 @@ mod test {
     }
 
     async fn create_store() -> anyhow::Result<BanyanStore> {
-        util::setup_logger();
+        util::setup_logger(1);
         let cfg: SwarmConfig = SwarmConfig {
             node_name: Some("ephemeral".to_owned()),
             topic: "topic".into(),
@@ -203,7 +203,7 @@ mod test {
     }
     async fn test_retain_count(events_to_retain: u64) -> anyhow::Result<()> {
         let event_count = 1024;
-        util::setup_logger();
+        util::setup_logger(1);
         let test_stream = 42.into();
 
         let store = publish_events(test_stream, event_count).await?;
@@ -308,7 +308,7 @@ mod test {
     async fn test_retain_age(percentage_to_keep: usize) -> anyhow::Result<()> {
         let event_count = 1024;
         let max_leaf_count = SwarmConfig::test("..").banyan_config.tree.max_leaf_count as usize;
-        util::setup_logger();
+        util::setup_logger(1);
         let test_stream = 42.into();
 
         let now = Timestamp::now();

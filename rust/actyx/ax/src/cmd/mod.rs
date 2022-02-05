@@ -20,13 +20,6 @@ pub mod settings;
 pub mod swarms;
 pub mod users;
 
-#[derive(StructOpt, Debug)]
-pub struct Verbosity {
-    /// Verbosity level. Add more v for higher verbosity (-v, -vv, -vvv, etc.).
-    #[structopt(short, parse(from_occurrences = util::set_log_level), global = true)]
-    verbosity: u64,
-}
-
 #[derive(Debug, Clone)]
 pub struct Authority {
     pub original: String,
@@ -79,7 +72,7 @@ pub struct ConsoleOpt {
 impl ConsoleOpt {
     pub async fn connect(&self) -> ActyxOSResult<Sender<Task>> {
         let key = AxPrivateKey::try_from(&self.identity)?;
-        let (task, channel) = connect(key, self.authority.clone());
+        let (task, channel) = connect(key, self.authority.clone()).await?;
         tokio::spawn(task);
         Ok(channel)
     }
