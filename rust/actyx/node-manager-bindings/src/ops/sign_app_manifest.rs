@@ -7,9 +7,10 @@ use neon::{
     types::JsUndefined,
 };
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 use crate::util::run_task;
+use futures::FutureExt;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,18 +22,22 @@ pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let ud = cx.undefined();
     run_task::<Args, SignedAppManifest>(
         cx,
-        Arc::new(
-            |Args {
+        Box::new(
+            |mut _tx,
+             Args {
                  path_to_certificate,
                  path_to_manifest,
              }| {
-                create_signed_app_manifest(SignOpts {
-                    path_to_certificate,
-                    path_to_manifest,
-                })
-                .map_err(|e| anyhow!("error signing manifest: {}", e))
+                async move {
+                    create_signed_app_manifest(SignOpts {
+                        path_to_certificate,
+                        path_to_manifest,
+                    })
+                    .map_err(|e| anyhow!("error signing manifest: {}", e))
+                }
+                .boxed()
             },
         ),
-    );
+    )?;
     Ok(ud)
 }

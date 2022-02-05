@@ -1,20 +1,15 @@
-use crate::util::{default_private_key, node_connection, run_ft, run_task};
+use crate::util::run_task;
 use actyx_sdk::{
     language::Query,
     service::{Diagnostic, EventResponse, Order, QueryRequest},
     Payload,
 };
-use anyhow::anyhow;
-use axlib::{node_connection::NodeConnection, private_key::AxPrivateKey};
-use futures::StreamExt;
+use axlib::node_connection::{request_events, Task};
+use futures::{channel::mpsc::Sender, FutureExt, StreamExt};
+use libp2p::PeerId;
 use neon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use util::formats::{
-    ax_err,
-    events_protocol::{EventsRequest, EventsResponse},
-    ActyxOSCode, ActyxOSResult,
-};
+use util::formats::{ax_err, events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -26,7 +21,7 @@ pub enum EventDiagnostic {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 struct Args {
-    addr: String,
+    peer: String,
     query: String,
 }
 
@@ -36,16 +31,18 @@ struct Res {
     events: Option<Vec<EventDiagnostic>>,
 }
 
-async fn do_query(key: &AxPrivateKey, node: NodeConnection, query: Query) -> ActyxOSResult<Res> {
-    let mut conn = node.connect(key).await?;
-    let r = conn
-        .request_events(EventsRequest::Query(QueryRequest {
+async fn do_query(mut tx: Sender<Task>, peer: PeerId, query: Query) -> ActyxOSResult<Res> {
+    let r = request_events(
+        &mut tx,
+        peer,
+        EventsRequest::Query(QueryRequest {
             lower_bound: None,
             upper_bound: None,
             query,
             order: Order::Asc,
-        }))
-        .await;
+        }),
+    )
+    .await;
 
     match r {
         Err(err) if err.code() == ActyxOSCode::ERR_UNSUPPORTED => Ok(Res { events: None }),
@@ -53,23 +50,13 @@ async fn do_query(key: &AxPrivateKey, node: NodeConnection, query: Query) -> Act
             util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
             format!("EventsRequests::Query returned unexpected error: {:?}", err),
         ),
-        Ok(stream) => {
+        Ok(mut stream) => {
             async {
-                let events: Vec<EventsResponse> = stream.collect().await;
-                let appropriate: Vec<EventDiagnostic> = events
-                    .iter()
-                    .filter_map(|r| match r {
-                        EventsResponse::Diagnostic(d) => Some(EventDiagnostic::Diagnostic(d.clone())),
-                        EventsResponse::Event(e) => Some(EventDiagnostic::Event(e.clone())),
-                        e => {
-                            eprintln!("got unexpected response {:?}", e);
-                            None
-                        }
-                    })
-                    .collect();
-                Ok(Res {
-                    events: Some(appropriate),
-                })
+                let mut events = Vec::new();
+                while let Some(ev) = stream.next().await {
+                    events.push(EventDiagnostic::Event(ev?));
+                }
+                Ok(Res { events: Some(events) })
             }
             .await
         }
@@ -80,34 +67,31 @@ pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let ud = cx.undefined();
     run_task::<Args, Res>(
         cx,
-        Arc::new(|Args { addr, query }| {
-            let parsed_query = match query.parse::<Query>() {
-                Ok(q) => Ok(q),
-                Err(err) => ax_err(
-                    ActyxOSCode::ERR_INVALID_INPUT,
-                    format!("unable to parse query: {}", err),
-                ),
-            }?;
-
-            let key = default_private_key().map_err(|e| anyhow!("error getting default key: {}", e))?;
-            let node = node_connection(&addr).map_err(|e| anyhow!("error connecting to node {}: {}", addr, e))?;
-            let res = run_ft(do_query(&key, node, parsed_query));
-            match res {
-                Err(e) if e.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => {
-                    eprintln!("unable to reach node {}", addr);
-                    Err(anyhow::anyhow!(e))
+        Box::new(|tx, Args { peer, query }| {
+            async move {
+                let parsed_query = query
+                    .parse::<Query>()
+                    .ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "unable to parse query")?;
+                let peer_id = peer.parse::<PeerId>()?;
+                let res = do_query(tx, peer_id, parsed_query).await;
+                match res {
+                    Err(e) if e.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => {
+                        eprintln!("unable to reach node {}", peer);
+                        Err(anyhow::anyhow!(e))
+                    }
+                    Err(e) if e.code() == ActyxOSCode::ERR_UNAUTHORIZED => {
+                        eprintln!("not authorized with node {}", peer);
+                        Err(anyhow::anyhow!(e))
+                    }
+                    Err(e) => {
+                        eprintln!("error querying node {}: {}", peer, e);
+                        Err(anyhow::anyhow!(e))
+                    }
+                    Ok(res) => Ok(res),
                 }
-                Err(e) if e.code() == ActyxOSCode::ERR_UNAUTHORIZED => {
-                    eprintln!("not authorized with node {}", addr);
-                    Err(anyhow::anyhow!(e))
-                }
-                Err(e) => {
-                    eprintln!("error querying node {}: {}", addr, e);
-                    Err(anyhow::anyhow!(e))
-                }
-                Ok(res) => Ok(res),
             }
+            .boxed()
         }),
-    );
+    )?;
     Ok(ud)
 }

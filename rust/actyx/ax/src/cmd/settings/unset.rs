@@ -49,11 +49,12 @@ struct UnsetSettingsCommand {
 
 pub async fn run(opts: UnsetOpt) -> Result<Output> {
     let scope = opts.actual_opts.scope.clone();
-    let mut conn = opts.console_opt.connect().await?;
+    let (mut conn, peer) = opts.console_opt.connect().await?;
     request_single(
         &mut conn,
-        |tx| {
+        move |tx| {
             Task::Admin(
+                peer,
                 AdminRequest::SettingsUnset {
                     scope: opts.actual_opts.scope,
                 },

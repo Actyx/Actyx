@@ -146,12 +146,17 @@ impl AxCliCommand for EventsRestore {
             let topic = format!("dump-{}", timestamp.to_rfc3339()).replace(':', "-");
             diag.log(format!("uploading to topic `{}`", topic))?;
 
-            let mut conn = opts.console_opt.connect().await?;
+            let (mut conn, peer) = opts.console_opt.connect().await?;
 
-            request_banyan(&mut conn, BanyanRequest::MakeFreshTopic(topic.clone())).await?;
+            request_banyan(&mut conn, peer, BanyanRequest::MakeFreshTopic(topic.clone())).await?;
             let mut count = 0;
             loop {
-                request_banyan(&mut conn, BanyanRequest::AppendEvents(topic.clone(), buf[..pos].into())).await?;
+                request_banyan(
+                    &mut conn,
+                    peer,
+                    BanyanRequest::AppendEvents(topic.clone(), buf[..pos].into()),
+                )
+                .await?;
                 count += pos;
                 diag.status(format!("{} bytes uploaded", count))?;
                 pos = input.read(buf.as_mut_slice()).io("reading dump")?;
@@ -160,7 +165,7 @@ impl AxCliCommand for EventsRestore {
                 }
             }
             diag.log(format!("in total {} bytes uploaded", count))?;
-            request_banyan(&mut conn, BanyanRequest::Finalise(topic.clone())).await?;
+            request_banyan(&mut conn, peer, BanyanRequest::Finalise(topic.clone())).await?;
             diag.log(format!("topic switched to `{}`", topic))?;
             diag.log("Actyx node switched into read-only network mode")?;
 

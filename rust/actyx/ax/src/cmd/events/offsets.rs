@@ -28,10 +28,10 @@ impl AxCliCommand for EventsOffsets {
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         Box::new(stream::once(
             async move {
-                let mut conn = opts.console_opt.connect().await?;
+                let (mut conn, peer) = opts.console_opt.connect().await?;
                 request_single(
                     &mut conn,
-                    |tx| Task::Events(EventsRequest::Offsets, tx),
+                    move |tx| Task::Events(peer, EventsRequest::Offsets, tx),
                     |response| match response {
                         EventsResponse::Offsets(o) => Ok(o),
                         x => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", x))),

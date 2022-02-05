@@ -31,9 +31,10 @@ impl AxCliCommand for EventsSubscribeMonotonic {
 
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let ret = GenStream::new(move |co| async move {
-            let mut conn = opts.console_opt.connect().await?;
+            let (mut conn, peer) = opts.console_opt.connect().await?;
             let mut s = request_events(
                 &mut conn,
+                peer,
                 EventsRequest::SubscribeMonotonic(SubscribeMonotonicRequest {
                     session: "".into(),
                     from: StartFrom::LowerBound(OffsetMap::default()),

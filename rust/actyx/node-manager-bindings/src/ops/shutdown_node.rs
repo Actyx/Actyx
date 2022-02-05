@@ -1,29 +1,33 @@
-use crate::{
-    types::Nothing,
-    util::{default_private_key, node_connection, run_ft, run_task},
-};
-use anyhow::anyhow;
+use crate::{types::Nothing, util::run_task};
+use axlib::node_connection::{request_single, Task};
+use futures::FutureExt;
 use neon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use util::formats::AdminRequest;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 struct Args {
-    addr: String,
+    peer: String,
 }
 pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let ud = cx.undefined();
     run_task::<Args, Nothing>(
         cx,
-        Arc::new(|Args { addr }| {
-            println!("shutting down node {:?}", addr);
-            let node = node_connection(&addr).map_err(|e| anyhow!("error connecting to node {}: {}", addr, e))?;
-            let key = default_private_key().map_err(|e| anyhow!("error getting default key: {}", e))?;
-            run_ft(async move { node.connect(&key).await?.shutdown().await })
-                .map_err(|e| anyhow!("error shutting down node: {}", e))?;
-            Ok(Nothing {})
+        Box::new(|mut tx, Args { peer }| {
+            async move {
+                println!("shutting down node {}", peer);
+                let peer_id = peer.parse()?;
+                request_single(
+                    &mut tx,
+                    move |tx| Task::Admin(peer_id, AdminRequest::NodesShutdown, tx),
+                    Ok,
+                )
+                .await?;
+                Ok(Nothing {})
+            }
+            .boxed()
         }),
-    );
+    )?;
     Ok(ud)
 }

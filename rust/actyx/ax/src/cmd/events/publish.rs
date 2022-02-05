@@ -43,9 +43,10 @@ impl AxCliCommand for EventsPublish {
                 let payload = Payload::from_json_value(opts.payload)
                     .map_err(|msg| ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, msg))?;
 
-                let mut conn = opts.console_opt.connect().await?;
+                let (mut conn, peer) = opts.console_opt.connect().await?;
                 let (tx, mut rx) = channel(2);
                 conn.feed(Task::Events(
+                    peer,
                     EventsRequest::Publish(PublishRequest {
                         data: vec![PublishEvent { tags, payload }],
                     }),

@@ -4,8 +4,10 @@ use crate::{
     cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt},
     node_connection::{request_single, Task},
 };
+use actyx_sdk::NodeId;
 use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
+use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 use util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse};
 
@@ -17,22 +19,32 @@ pub struct InspectOpts {
     console_opt: ConsoleOpt,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Output {
+    node_id: NodeId,
+    #[serde(flatten)]
+    inspect: NodesInspectResponse,
+}
+
 pub struct NodesInspect();
 impl AxCliCommand for NodesInspect {
     type Opt = InspectOpts;
-    type Output = NodesInspectResponse;
+    type Output = Output;
     fn run(opts: InspectOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let fut = async move {
-            let mut conn = opts.console_opt.connect().await?;
-            request_single(
+            let (mut conn, peer) = opts.console_opt.connect().await?;
+            let node_id = request_single(&mut conn, move |tx| Task::NodeId(peer, tx), Ok).await?;
+            let inspect = request_single(
                 &mut conn,
-                |tx| Task::Admin(AdminRequest::NodesInspect, tx),
+                move |tx| Task::Admin(peer, AdminRequest::NodesInspect, tx),
                 |m| match m {
                     AdminResponse::NodesInspectResponse(r) => Ok(r),
                     x => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("invalid response: {:?}", x))),
                 },
             )
-            .await
+            .await?;
+            Ok(Output { node_id, inspect })
         }
         .boxed();
         Box::new(stream::once(fut))
@@ -40,13 +52,12 @@ impl AxCliCommand for NodesInspect {
 
     fn pretty(result: Self::Output) -> String {
         let mut s = String::new();
+        let Output {
+            node_id,
+            inspect: result,
+        } = result;
         writeln!(&mut s, "PeerId: {}", result.peer_id).unwrap();
-        writeln!(
-            &mut s,
-            "NodeId: {}",
-            crypto::peer_id_to_node_id(result.peer_id.parse().unwrap()).unwrap()
-        )
-        .unwrap();
+        writeln!(&mut s, "NodeId: {}", node_id).unwrap();
 
         writeln!(&mut s, "SwarmAddrs:").unwrap();
         for addr in &result.swarm_addrs {

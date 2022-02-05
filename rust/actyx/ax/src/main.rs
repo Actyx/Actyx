@@ -122,6 +122,7 @@ async fn main() {
     };
 
     util::setup_logger(verbosity);
+    tracing::debug!("logging");
 
     match command {
         CommandsOpt::Apps(opts) => cmd::apps::run(opts, json).await,

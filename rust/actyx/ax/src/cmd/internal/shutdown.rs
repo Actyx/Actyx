@@ -20,8 +20,13 @@ impl AxCliCommand for Shutdown {
     type Output = String;
     fn run(opts: ShutdownOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let fut = async move {
-            let mut conn = opts.console_opt.connect().await?;
-            request_single(&mut conn, |tx| Task::Admin(AdminRequest::NodesShutdown, tx), Ok).await?;
+            let (mut conn, peer) = opts.console_opt.connect().await?;
+            request_single(
+                &mut conn,
+                move |tx| Task::Admin(peer, AdminRequest::NodesShutdown, tx),
+                Ok,
+            )
+            .await?;
             Ok("shutdown request sent".to_string())
         }
         .boxed();

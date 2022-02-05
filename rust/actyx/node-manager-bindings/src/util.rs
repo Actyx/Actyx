@@ -1,93 +1,75 @@
+use crate::Ctx;
 use anyhow::Result;
-use axlib::{node_connection::connect, private_key::AxPrivateKey};
+use axlib::node_connection::Task;
+use axlib::private_key::AxPrivateKey;
+use futures::channel::mpsc::Sender;
+use futures::future::BoxFuture;
 use neon::context::Context;
 use neon::context::FunctionContext;
 use neon::object::Object;
+use neon::result::NeonResult;
+use neon::types::JsBox;
 use neon::types::JsFunction;
+use neon::types::JsObject;
 use neon::types::JsString;
 use serde::{de::DeserializeOwned, Serialize};
-use std::future::Future;
-use std::sync::Arc;
-use std::{convert::TryFrom, str::FromStr};
-use tokio::runtime::Runtime;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
+use std::convert::TryFrom;
+use util::formats::ActyxOSResult;
 
 pub fn to_stringified<Se: Serialize>(s: Se) -> Result<String> {
     Ok(serde_json::to_string(&s)?)
 }
 
-pub fn from_stringified<De: DeserializeOwned>(str: String) -> Result<De> {
+pub fn from_stringified<'a, De: DeserializeOwned>(cx: &mut impl Context<'a>, str: String) -> NeonResult<De> {
     match serde_json::from_str::<De>(str.as_str()) {
         Ok(v) => Ok(v),
-        Err(err) => Err(anyhow::anyhow!("{}", err)),
+        Err(err) => cx.throw_error(err.to_string()),
     }
-}
-
-// This may seem like a strange function, but in this case it is quite useful.
-// The reason is that many of the Actyx internal functions are built around
-// futures to run in multi-threaded/async environments (which makes lots of
-// sense). In this case though, the functions are executed async by Node.js,
-// meaning we don't need to provide an async runtime ourselves and it is
-// completely fine to just block on the current thread (which is already async).
-pub fn run_ft<T, F: Future<Output = ActyxOSResult<T>>>(future: F) -> ActyxOSResult<T> {
-    let rt = Runtime::new()
-        .map_err(|e| ActyxOSError::new(ActyxOSCode::ERR_INTERNAL_ERROR, format!("error running future: {}", e)))?;
-    rt.block_on(future)
 }
 
 pub fn default_private_key() -> ActyxOSResult<AxPrivateKey> {
     AxPrivateKey::try_from(&None)
 }
 
+#[allow(clippy::type_complexity)]
 pub fn run_task<I: serde::de::DeserializeOwned + Sync + Send + 'static, O: serde::Serialize + Sync + Send + 'static>(
     mut cx: FunctionContext,
-    executor: Arc<dyn Fn(I) -> Result<O> + Sync + Send>,
-) {
-    let json_input = match cx.argument::<JsString>(0).map(|h| h.value(&mut cx)) {
-        Ok(str) => str,
-        Err(err) => {
-            // Panic turns into JS exception (throws)
-            panic!("error getting task json_input argument {}", err.to_string());
-        }
-    };
-    let input: I = match from_stringified(json_input) {
-        Ok(i) => i,
-        Err(err) => {
-            panic!("error decoding json_input argument {}", err.to_string());
-        }
-    };
+    executor: Box<dyn Fn(Sender<Task>, I) -> BoxFuture<'static, Result<O>> + Send + 'static>,
+) -> NeonResult<()> {
+    let ctx = cx
+        .this()
+        .downcast_or_throw::<JsObject, _>(&mut cx)?
+        .get(&mut cx, "_ctx")?
+        .downcast_or_throw::<JsBox<Ctx>, _>(&mut cx)?;
+    let json_input = cx.argument::<JsString>(0).map(|h| h.value(&mut cx))?;
+    let input: I = from_stringified(&mut cx, json_input)?;
 
-    let callback = match cx.argument::<JsFunction>(1) {
-        Ok(cb) => cb,
-        Err(err) => {
-            panic!("error getting callback argument {}", err.to_string());
-        }
-    };
+    let callback = cx.argument::<JsFunction>(1)?;
     let callback = callback.root(&mut cx);
     let queue = cx.channel();
-    std::thread::spawn(move || {
-        let res = executor(input);
+    let tx = ctx.tx.clone();
+    ctx.rt.spawn(async move {
+        let f = executor(tx, input);
+        let res = f.await;
         queue.send(move |mut cx| {
             let callback = callback.into_inner(&mut cx);
             let undef = cx.undefined();
             let empty_str = cx.string("");
-            let call_res = match res.and_then(to_stringified) {
+            match res.and_then(to_stringified) {
                 Err(err) => {
                     let stringified_err = cx.string(err.to_string());
-                    callback.call(&mut cx, undef, vec![stringified_err, empty_str])
+                    callback.call(&mut cx, undef, vec![stringified_err, empty_str])?;
                 }
                 Ok(stringified_res) => {
                     let stringified_res = cx.string(stringified_res);
-                    callback.call(&mut cx, undef, vec![empty_str, stringified_res])
+                    callback.call(&mut cx, undef, vec![empty_str, stringified_res])?;
                 }
             };
-            if let Err(err) = call_res {
-                panic!("error calling task callback {}", err.to_string());
-            }
             Ok(())
         });
         Ok::<(), ()>(())
     });
+    Ok(())
 }
 
 #[cfg(test)]

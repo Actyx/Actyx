@@ -6,10 +6,10 @@ use structopt::StructOpt;
 use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult};
 
 use crate::{
-    node_connection::{connect, Task},
+    node_connection::{connect, mk_swarm, Task},
     private_key::AxPrivateKey,
 };
-use libp2p::{multiaddr::Protocol, Multiaddr};
+use libp2p::{multiaddr::Protocol, Multiaddr, PeerId};
 
 pub mod apps;
 pub mod events;
@@ -70,11 +70,12 @@ pub struct ConsoleOpt {
 }
 
 impl ConsoleOpt {
-    pub async fn connect(&self) -> ActyxOSResult<Sender<Task>> {
+    pub async fn connect(&self) -> ActyxOSResult<(Sender<Task>, PeerId)> {
         let key = AxPrivateKey::try_from(&self.identity)?;
-        let (task, channel) = connect(key, self.authority.clone()).await?;
+        let (task, mut channel) = mk_swarm(key).await?;
         tokio::spawn(task);
-        Ok(channel)
+        let peer_id = connect(&mut channel, self.authority.clone()).await?;
+        Ok((channel, peer_id))
     }
 }
 

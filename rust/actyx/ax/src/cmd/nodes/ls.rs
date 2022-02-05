@@ -2,10 +2,10 @@ use std::{convert::TryInto, time::Duration};
 
 use crate::{
     cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand, KeyPathWrapper},
-    node_connection::{connect, request_single, Task},
+    node_connection::{connect, mk_swarm, request_single, Task},
     private_key::AxPrivateKey,
 };
-use futures::{future::join_all, stream, Stream};
+use futures::{channel::mpsc, future::join_all, stream, Stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
@@ -78,12 +78,11 @@ fn format_output(output: Vec<Output>) -> String {
     table.to_string()
 }
 
-async fn request(timeout: u8, identity: AxPrivateKey, authority: Authority) -> Output {
+async fn request(timeout: u8, mut conn: mpsc::Sender<Task>, authority: Authority) -> Output {
     let host = authority.original.clone();
     let response = tokio::time::timeout(Duration::from_secs(timeout.into()), async move {
-        let (task, mut channel) = connect(identity, authority).await?;
-        tokio::spawn(task);
-        request_single(&mut channel, |tx| Task::Admin(AdminRequest::NodesLs, tx), Ok).await
+        let peer = connect(&mut conn, authority).await?;
+        request_single(&mut conn, move |tx| Task::Admin(peer, AdminRequest::NodesLs, tx), Ok).await
     })
     .await;
     match response {
@@ -105,10 +104,12 @@ async fn request(timeout: u8, identity: AxPrivateKey, authority: Authority) -> O
 async fn run(opts: LsOpts) -> ActyxOSResult<Vec<Output>> {
     let identity: AxPrivateKey = (&opts.identity).try_into()?;
     let timeout = opts.timeout;
+    let (task, channel) = mk_swarm(identity).await?;
+    tokio::spawn(task);
     Ok(join_all(
         opts.authority
             .into_iter()
-            .map(|a| request(timeout, identity.clone(), a))
+            .map(|a| request(timeout, channel.clone(), a))
             .collect::<Vec<_>>(),
     )
     .await)

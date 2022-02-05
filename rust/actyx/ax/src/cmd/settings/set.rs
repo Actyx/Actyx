@@ -95,11 +95,12 @@ pub async fn run(opts: SetOpt) -> Result<Output> {
         util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
         "cannot parse provided value",
     )?;
-    let mut conn = opts.console_opt.connect().await?;
+    let (mut conn, peer) = opts.console_opt.connect().await?;
     request_single(
         &mut conn,
-        |tx| {
+        move |tx| {
             Task::Admin(
+                peer,
                 AdminRequest::SettingsSet {
                     scope,
                     json,

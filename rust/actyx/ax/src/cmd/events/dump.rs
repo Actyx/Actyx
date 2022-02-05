@@ -135,7 +135,7 @@ impl AxCliCommand for EventsDump {
                 .parse::<Query>()
                 .map_err(|e| ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, format!("query invalid: {}", e)))?;
 
-            let mut conn = opts.console_opt.connect().await?;
+            let (mut conn, peer) = opts.console_opt.connect().await?;
 
             let mut out = zstd::Encoder::<Box<dyn Write>>::new(
                 if let Some(ref out) = opts.output {
@@ -161,7 +161,7 @@ impl AxCliCommand for EventsDump {
 
             let node_info = request_single(
                 &mut conn,
-                |tx| Task::Admin(AdminRequest::NodesLs, tx),
+                move |tx| Task::Admin(peer, AdminRequest::NodesLs, tx),
                 |resp| match resp {
                     AdminResponse::NodesLsResponse(ls) => Ok(ls),
                     m => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("got invalid response {:?}", m))),
@@ -170,7 +170,7 @@ impl AxCliCommand for EventsDump {
             .await?;
             let node_details = request_single(
                 &mut conn,
-                |tx| Task::Admin(AdminRequest::NodesInspect, tx),
+                move |tx| Task::Admin(peer, AdminRequest::NodesInspect, tx),
                 |resp| match resp {
                     AdminResponse::NodesInspectResponse(ls) => Ok(ls),
                     m => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("got invalid response {:?}", m))),
@@ -179,8 +179,9 @@ impl AxCliCommand for EventsDump {
             .await?;
             let settings = request_single(
                 &mut conn,
-                |tx| {
+                move |tx| {
                     Task::Admin(
+                        peer,
                         AdminRequest::SettingsGet {
                             scope: "com.actyx".parse().unwrap(),
                             no_defaults: false,
@@ -196,7 +197,7 @@ impl AxCliCommand for EventsDump {
             .await?;
             let offsets = request_single(
                 &mut conn,
-                |tx| Task::Events(EventsRequest::Offsets, tx),
+                move |tx| Task::Events(peer, EventsRequest::Offsets, tx),
                 |m| match m {
                     EventsResponse::Offsets(o) => Ok(o),
                     x => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("got invalid response {:?}", x))),
@@ -233,6 +234,7 @@ impl AxCliCommand for EventsDump {
 
             let (tx, mut events) = channel(20);
             conn.feed(Task::Events(
+                peer,
                 EventsRequest::Query(QueryRequest {
                     lower_bound: None,
                     upper_bound: None,
