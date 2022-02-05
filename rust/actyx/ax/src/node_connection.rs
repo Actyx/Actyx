@@ -94,7 +94,7 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
             RequestResponseConfig::default(),
         ),
         ping: Ping::new(PingConfig::new().with_keep_alive(true)),
-        identify: Identify::new(IdentifyConfig::new("Actyx".to_owned(), public_key)),
+        identify: Identify::new(IdentifyConfig::new("Actyx".to_owned(), public_key).with_initial_delay(Duration::ZERO)),
     };
     let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id)
         .executor(Box::new(|task| {

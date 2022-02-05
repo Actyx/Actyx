@@ -22,7 +22,7 @@ pub struct InspectOpts {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Output {
-    node_id: NodeId,
+    node_id: Option<NodeId>,
     #[serde(flatten)]
     inspect: NodesInspectResponse,
 }
@@ -34,7 +34,9 @@ impl AxCliCommand for NodesInspect {
     fn run(opts: InspectOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let fut = async move {
             let (mut conn, peer) = opts.console_opt.connect().await?;
-            let node_id = request_single(&mut conn, move |tx| Task::NodeId(peer, tx), Ok).await?;
+            let node_id = request_single(&mut conn, move |tx| Task::NodeId(peer, tx), Ok)
+                .await
+                .ok();
             let inspect = request_single(
                 &mut conn,
                 move |tx| Task::Admin(peer, AdminRequest::NodesInspect, tx),
@@ -57,7 +59,9 @@ impl AxCliCommand for NodesInspect {
             inspect: result,
         } = result;
         writeln!(&mut s, "PeerId: {}", result.peer_id).unwrap();
-        writeln!(&mut s, "NodeId: {}", node_id).unwrap();
+        if let Some(node_id) = node_id {
+            writeln!(&mut s, "NodeId: {}", node_id).unwrap()
+        }
 
         writeln!(&mut s, "SwarmAddrs:").unwrap();
         for addr in &result.swarm_addrs {
