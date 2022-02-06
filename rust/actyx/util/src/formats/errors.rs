@@ -105,6 +105,11 @@ impl From<mpsc::SendError> for ActyxOSError {
         ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("Error sending on channel: {}", err))
     }
 }
+impl From<libp2p_streaming_response::SendError> for ActyxOSError {
+    fn from(_err: libp2p_streaming_response::SendError) -> Self {
+        ActyxOSCode::ERR_INTERNAL_ERROR.with_message("Error sending on channel: channel closed")
+    }
+}
 
 impl From<RepositoryError> for ActyxOSError {
     fn from(err: RepositoryError) -> ActyxOSError {

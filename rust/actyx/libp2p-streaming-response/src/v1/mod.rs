@@ -59,26 +59,34 @@
 
 mod protocol;
 
-pub use protocol::{SequenceNo, StreamingResponseConfig};
+pub use protocol::{RequestId, SequenceNo, StreamingResponseConfig};
 
-use crate::{Codec, StreamingResponseError};
+use crate::Codec;
 use libp2p::swarm::{
     IntoProtocolsHandler, NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, OneShotHandler, PollParameters,
 };
+use libp2p::PeerId;
 use libp2p::{
     core::{connection::ConnectionId, ConnectedPoint},
     swarm::{OneShotHandlerConfig, SubstreamProtocol},
 };
-use libp2p::{Multiaddr, PeerId};
-use protocol::{RequestId, StreamingResponseMessage};
+use protocol::StreamingResponseMessage;
 use std::fmt::Debug;
 use std::task::{Context, Poll};
 use std::{
     collections::{BTreeMap, VecDeque},
     convert::Into,
 };
+use thiserror::Error;
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Error, Debug)]
+pub enum StreamingResponseError {
+    #[error("Channel closed")]
+    ChannelClosed,
+}
+type Result<T> = std::result::Result<T, StreamingResponseError>;
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 /// Opaque struct identifying a response stream.
 pub struct ChannelId {
     peer_id: PeerId,
@@ -96,6 +104,9 @@ impl ChannelId {
     }
     pub fn peer(&self) -> PeerId {
         self.peer_id
+    }
+    pub fn connection(&self) -> ConnectionId {
+        self.con
     }
 }
 
@@ -147,6 +158,17 @@ pub enum StreamingResponseEvent<TCodec: Codec> {
     },
 }
 
+impl<TCodec: Codec> StreamingResponseEvent<TCodec> {
+    pub fn request_id(&self) -> RequestId {
+        match self {
+            StreamingResponseEvent::ReceivedRequest { channel_id, .. } => channel_id.peer_request_id,
+            StreamingResponseEvent::CancelledRequest { channel_id, .. } => channel_id.peer_request_id,
+            StreamingResponseEvent::ResponseReceived { request_id, .. } => *request_id,
+            StreamingResponseEvent::ResponseFinished { request_id, .. } => *request_id,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct StreamingResponse<TCodec: Codec + Clone + Send + Debug + 'static> {
     config: StreamingResponseConfig<TCodec>,
@@ -195,7 +217,7 @@ where
 
     /// Initiates sending a response given a `ChannelIdentifier`. This function
     /// will return an error, if the channel is not intact any more.
-    pub fn respond(&mut self, id: ChannelId, payload: TCodec::Response) -> crate::Result<()> {
+    pub fn respond(&mut self, id: ChannelId, payload: TCodec::Response) -> Result<()> {
         let x = self
             .open_channels
             .get_mut(&(id.peer_id, id.con))
@@ -218,7 +240,7 @@ where
     }
 
     /// Finalize a response stream.
-    pub fn finish_response(&mut self, id: ChannelId) -> crate::Result<()> {
+    pub fn finish_response(&mut self, id: ChannelId) -> Result<()> {
         let x = self
             .open_channels
             .get_mut(&(id.peer_id, id.con))
@@ -245,8 +267,8 @@ where
 
     /// Send a response and finalize the stream. This is just a convenient
     /// method.
-    pub fn respond_final(&mut self, id: ChannelId, payload: TCodec::Response) -> crate::Result<()> {
-        self.respond(id.clone(), payload)?;
+    pub fn respond_final(&mut self, id: ChannelId, payload: TCodec::Response) -> Result<()> {
+        self.respond(id, payload)?;
         self.finish_response(id)
     }
 
@@ -280,21 +302,6 @@ where
         )
     }
 
-    fn addresses_of_peer(&mut self, _: &PeerId) -> Vec<Multiaddr> {
-        Vec::new()
-    }
-
-    // No bookkeeping done here.
-    fn inject_connection_established(
-        &mut self,
-        _: &PeerId,
-        _: &ConnectionId,
-        _: &ConnectedPoint,
-        _: Option<&Vec<Multiaddr>>,
-    ) {
-    }
-    fn inject_connected(&mut self, _: &PeerId) {}
-
     fn inject_connection_closed(
         &mut self,
         peer_id: &PeerId,
@@ -318,10 +325,6 @@ where
         }
     }
 
-    fn inject_disconnected(&mut self, _: &PeerId) {
-        // Handled by `inject_connection_closed`
-    }
-
     fn inject_event(&mut self, peer: PeerId, con_id: ConnectionId, msg: HandlerEvent<TCodec>) {
         use HandlerEvent::*;
         let ev = match msg {
@@ -337,7 +340,7 @@ where
             }
             Rx(StreamingResponseMessage::CancelRequest { id }) => {
                 let channel_id = ChannelId::new(peer, con_id, id);
-                if let Some(requests_per_peer) = self.open_channels.get_mut(&channel_id.clone().into()) {
+                if let Some(requests_per_peer) = self.open_channels.get_mut(&channel_id.into()) {
                     if let Some(mut seq_no) = requests_per_peer.remove(&channel_id.peer_request_id) {
                         // Acknowledge end of stream to peer
                         seq_no.increment();
@@ -348,7 +351,7 @@ where
                         });
                         // Cleanup if this was the only request from `peer`
                         if requests_per_peer.is_empty() {
-                            self.open_channels.remove(&channel_id.clone().into());
+                            self.open_channels.remove(&channel_id.into());
                         }
                         StreamingResponseEvent::CancelledRequest {
                             channel_id,
@@ -425,7 +428,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libp2p::swarm::AddressRecord;
+    use libp2p::{swarm::AddressRecord, Multiaddr};
     use serde::{Deserialize, Serialize};
     use std::sync::{Arc, Mutex};
     struct DummySwarm {
@@ -451,10 +454,10 @@ mod tests {
         fn request(&self, peer_id: PeerId, request: TestRequest) -> RequestId {
             self.behaviour.lock().unwrap().request(peer_id, request)
         }
-        fn respond(&self, cid: ChannelId, response: TestResponse) -> crate::Result<()> {
+        fn respond(&self, cid: ChannelId, response: TestResponse) -> Result<()> {
             self.behaviour.lock().unwrap().respond(cid, response)
         }
-        fn finish_response(&self, cid: ChannelId) -> crate::Result<()> {
+        fn finish_response(&self, cid: ChannelId) -> Result<()> {
             self.behaviour.lock().unwrap().finish_response(cid)
         }
         fn poll_until_pending(&self) -> Vec<StreamingResponseEvent<TestCodec>> {
@@ -539,16 +542,15 @@ mod tests {
             assert_eq!(*payload, request);
             assert_eq!(channel_id.peer_request_id, test_request_id);
             assert_eq!(channel_id.peer_id, *a.peer_id());
-            channel_id
+            *channel_id
         } else {
             panic!()
-        }
-        .clone();
+        };
 
         // send response
         {
             let response = TestResponse { counter: 43 };
-            b.respond(channel_id.clone(), response.clone()).unwrap();
+            b.respond(channel_id, response.clone()).unwrap();
             assert!(b.poll_until_pending().is_empty());
             if let StreamingResponseEvent::ResponseReceived {
                 payload,
@@ -601,11 +603,10 @@ mod tests {
             assert_eq!(*payload, request);
             assert_eq!(channel_id.peer_request_id, request_id_1);
             assert_eq!(channel_id.peer_id, *a.peer_id());
-            channel_id
+            *channel_id
         } else {
             panic!()
-        }
-        .clone();
+        };
 
         // send request 2
         let request_2 = TestRequest { initial_count: 84 };
@@ -617,16 +618,15 @@ mod tests {
             assert_eq!(*payload, request_2);
             assert_eq!(channel_id.peer_request_id, request_id_2);
             assert_eq!(channel_id.peer_id, *a.peer_id());
-            channel_id
+            *channel_id
         } else {
             panic!()
-        }
-        .clone();
+        };
 
         // send response for request 1
         {
             let response = TestResponse { counter: 43 };
-            b.respond(channel_id_1.clone(), response.clone()).unwrap();
+            b.respond(channel_id_1, response.clone()).unwrap();
             assert!(b.poll_until_pending().is_empty());
             if let StreamingResponseEvent::ResponseReceived {
                 payload,
@@ -644,7 +644,7 @@ mod tests {
 
         // finish request 1
         {
-            b.finish_response(channel_id_1.clone()).unwrap();
+            b.finish_response(channel_id_1).unwrap();
             assert!(b.poll_until_pending().is_empty());
             if let StreamingResponseEvent::ResponseFinished {
                 request_id,

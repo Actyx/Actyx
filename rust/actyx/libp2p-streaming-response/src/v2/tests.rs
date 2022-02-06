@@ -35,12 +35,9 @@ fn test_swarm(use_spawner: Option<Handle>) -> Swarm<StreamingResponse<Proto>> {
     let mut config = StreamingResponseConfig::default()
         .with_keep_alive(true)
         .with_max_message_size(100);
+    #[allow(clippy::redundant_closure)]
     if let Some(rt) = use_spawner {
-        config = config.with_spawner(move |f| {
-            rt.spawn(f)
-                .map(|r| r.unwrap_or_else(|e| Err(ProtocolError::JoinError(e.is_cancelled()))))
-                .boxed()
-        });
+        config = config.with_spawner(move |f| rt.spawn(f).map(|r| r.unwrap_or_else(|e| Box::new(e))).boxed());
     }
     let behaviour = StreamingResponse::new(config);
     SwarmBuilder::new(transport, behaviour, local_peer_id).build()

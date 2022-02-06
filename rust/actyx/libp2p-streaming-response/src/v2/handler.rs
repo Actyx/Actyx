@@ -16,6 +16,7 @@ use libp2p::{
     PeerId,
 };
 use std::{
+    any::Any,
     collections::VecDeque,
     fmt::Debug,
     io::ErrorKind,
@@ -124,7 +125,7 @@ type ProtocolEvent<T> = ProtocolsHandlerEvent<
     RequestReceived<T>,
     ProtocolError,
 >;
-pub type ResponseFuture = BoxFuture<'static, Result<(), ProtocolError>>;
+pub type ResponseFuture = BoxFuture<'static, Box<dyn Any + Send + 'static>>;
 pub type Spawner = Arc<dyn Fn(ResponseFuture) -> ResponseFuture + Send + Sync + 'static>;
 
 pub struct Handler<T: Codec> {
@@ -210,8 +211,9 @@ impl<T: Codec + Send + 'static> ProtocolsHandler for Handler<T> {
                 }
                 log::trace!("flushing and closing substream");
                 protocol::write_finish(&mut stream).await?;
-                Ok(())
+                Result::<_, ProtocolError>::Ok(())
             }
+            .map(|res| -> Box<dyn Any + Send + 'static> { Box::new(res) })
             .boxed(),
         );
         self.streams.push(task);
@@ -241,7 +243,7 @@ impl<T: Codec + Send + 'static> ProtocolsHandler for Handler<T> {
                         Response::Error(e) => {
                             log::debug!("sending substream error {}", e);
                             tx.feed(Response::Error(e)).await?;
-                            return Ok(());
+                            return Result::<_, ProtocolError>::Ok(());
                         }
                         Response::Finished => {
                             log::trace!("finishing substream");
@@ -251,6 +253,7 @@ impl<T: Codec + Send + 'static> ProtocolsHandler for Handler<T> {
                     }
                 }
             }
+            .map(|res| -> Box<dyn Any + Send + 'static> { Box::new(res) })
             .boxed(),
         );
         self.streams.push(task);
@@ -297,7 +300,7 @@ impl<T: Codec + Send + 'static> ProtocolsHandler for Handler<T> {
             }
             if let Poll::Ready(result) = self.streams.poll_next_unpin(cx) {
                 // since the set was not empty, this must be a Some()
-                if let Some(Err(e)) = result {
+                if let Some(Err(e)) = result.and_then(|e| e.downcast::<Result<(), ProtocolError>>().ok().map(|b| *b)) {
                     // no need to tear down the connection, substream is already closed
                     log::warn!("error in substream task: {}", e);
                 }

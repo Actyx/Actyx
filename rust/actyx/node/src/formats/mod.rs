@@ -69,12 +69,12 @@ pub(crate) enum NodeEvent {
 }
 
 pub(crate) trait ResultInspect<T, E> {
-    fn inspect_err<F>(self, f: F) -> Self
+    fn ax_inspect_err<F>(self, f: F) -> Self
     where
         F: FnMut(&E);
 }
 impl<T, E> ResultInspect<T, E> for Result<T, E> {
-    fn inspect_err<F>(self, mut f: F) -> Self
+    fn ax_inspect_err<F>(self, mut f: F) -> Self
     where
         F: FnMut(&E),
     {

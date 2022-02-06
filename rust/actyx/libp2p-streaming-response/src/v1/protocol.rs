@@ -12,7 +12,7 @@ use std::{
 };
 
 /// Local requestId
-#[derive(Debug, Default, Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Default, Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct RequestId(pub(crate) u64);
 
 #[derive(
@@ -45,10 +45,10 @@ pub enum StreamingResponseMessage<TCodec: Codec> {
 #[derive(Clone, Debug)]
 pub struct StreamingResponseConfig<TCodec: Codec> {
     /// Maximum size in bytes accepted for incoming requests
-    max_buf_size: usize,
+    pub(crate) max_buf_size: usize,
     /// Serializes all outgoing responses, effectively making the stream FIFO
     pub(crate) ordered_outgoing: bool,
-    _c: PhantomData<TCodec>,
+    pub(crate) _c: PhantomData<TCodec>,
 }
 
 impl<TCodec> Default for StreamingResponseConfig<TCodec>

@@ -31,7 +31,7 @@ use std::{
 use swarm::transport::build_transport;
 use util::formats::{
     banyan_protocol::{BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse},
-    events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
+    events_protocol::{EventsProtocol, EventsProtocolV2, EventsRequest, EventsResponse},
     ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol, AdminRequest, AdminResponse,
 };
 
@@ -39,7 +39,7 @@ use util::formats::{
 #[behaviour(event_process = false, out_event = "OutEvent")]
 struct Behaviour {
     admin: StreamingResponse<AdminProtocol>,
-    events: StreamingResponse<EventsProtocol>,
+    events: libp2p_streaming_response::StreamingResponse<EventsProtocol, EventsProtocolV2>,
     banyan: RequestResponse<BanyanProtocol>,
     ping: Ping,
     identify: Identify,
@@ -48,7 +48,7 @@ struct Behaviour {
 #[derive(Debug, From)]
 enum OutEvent {
     Admin(RequestReceived<AdminProtocol>),
-    Events(RequestReceived<EventsProtocol>),
+    Events(libp2p_streaming_response::Output<EventsProtocol, EventsProtocolV2>),
     Banyan(RequestResponseEvent<BanyanRequest, BanyanResponse>),
     Ping(PingEvent),
     Identify(IdentifyEvent),
@@ -85,7 +85,7 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
         .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "cannot build network transport")?;
     let behaviour = Behaviour {
         admin: StreamingResponse::new(StreamingResponseConfig::default().with_request_timeout(Duration::from_secs(20))),
-        events: StreamingResponse::new(
+        events: libp2p_streaming_response::StreamingResponse::new(
             StreamingResponseConfig::default().with_request_timeout(Duration::from_secs(20)),
         ),
         banyan: RequestResponse::new(

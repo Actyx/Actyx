@@ -5,10 +5,9 @@ mod protocol;
 mod tests;
 
 pub use behaviour::StreamingResponse;
-pub use handler::Response;
+pub use handler::{Response, ResponseFuture, Spawner};
 pub use protocol::ProtocolError;
 
-use self::handler::{ResponseFuture, Spawner};
 use crate::Codec;
 use futures::channel::mpsc;
 use libp2p::{core::connection::ConnectionId, PeerId};
@@ -32,11 +31,11 @@ impl<T: Codec> Debug for RequestReceived<T> {
 }
 
 pub struct StreamingResponseConfig {
-    spawner: Spawner,
-    request_timeout: Duration,
-    max_message_size: u32,
-    response_send_buffer_size: usize,
-    keep_alive: bool,
+    pub spawner: Spawner,
+    pub request_timeout: Duration,
+    pub max_message_size: u32,
+    pub response_send_buffer_size: usize,
+    pub keep_alive: bool,
 }
 
 impl StreamingResponseConfig {

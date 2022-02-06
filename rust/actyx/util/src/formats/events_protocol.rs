@@ -20,6 +20,18 @@ impl Codec for EventsProtocol {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct EventsProtocolV2;
+
+impl Codec for EventsProtocolV2 {
+    type Request = EventsRequest;
+    type Response = EventsResponse;
+
+    fn protocol_info() -> &'static [u8] {
+        b"/actyx/events/v2.1"
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum EventsRequest {

@@ -39,12 +39,15 @@ use libp2p::{
         ResponseChannel,
     },
     swarm::{
-        NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters, Swarm, SwarmBuilder,
-        SwarmEvent,
+        IntoProtocolsHandler, NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
+        ProtocolsHandler, Swarm, SwarmBuilder, SwarmEvent,
     },
     Multiaddr, NetworkBehaviour, PeerId,
 };
-use libp2p_streaming_response::v2::{RequestReceived, StreamingResponse, StreamingResponseConfig};
+use libp2p_streaming_response::{
+    v2::{RequestReceived, StreamingResponse, StreamingResponseConfig},
+    Output,
+};
 use parking_lot::Mutex;
 use serde_json::json;
 use std::{
@@ -68,7 +71,7 @@ use trees::{
     tags::{ScopedTag, ScopedTagSet, TagScope},
     AxKey, AxTreeHeader,
 };
-use util::SocketAddrHelper;
+use util::{formats::events_protocol::EventsProtocolV2, SocketAddrHelper};
 use util::{
     formats::{
         admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
@@ -135,7 +138,7 @@ impl<T: std::fmt::Debug> From<T> for NoEvent {
 #[behaviour(poll_method = "poll", out_event = "NoEvent", event_process = true)]
 pub struct ApiBehaviour {
     admin: StreamingResponse<AdminProtocol>,
-    events: StreamingResponse<EventsProtocol>,
+    events: libp2p_streaming_response::StreamingResponse<EventsProtocol, EventsProtocolV2>,
     banyan: RequestResponse<BanyanProtocol>,
     ping: Ping,
     identify: Identify,
@@ -180,7 +183,7 @@ impl ApiBehaviour {
                 [(BanyanProtocolName, ProtocolSupport::Inbound)],
                 request_response_config,
             ),
-            events: StreamingResponse::new(StreamingResponseConfig::default()),
+            events: libp2p_streaming_response::StreamingResponse::new(StreamingResponseConfig::default()),
             identify: Identify::new(IdentifyConfig::new("Actyx".to_owned(), local_public_key)),
             state,
         }
@@ -388,22 +391,30 @@ impl NetworkBehaviourEventProcess<RequestReceived<AdminProtocol>> for ApiBehavio
     }
 }
 
-impl NetworkBehaviourEventProcess<RequestReceived<EventsProtocol>> for ApiBehaviour {
-    fn inject_event(&mut self, mut req: RequestReceived<EventsProtocol>) {
+impl NetworkBehaviourEventProcess<Output<EventsProtocol, EventsProtocolV2>> for ApiBehaviour {
+    fn inject_event(&mut self, req: Output<EventsProtocol, EventsProtocolV2>) {
         tracing::debug!("Received streaming_response event: {:?}", req);
-        if !self.is_authorized(&req.peer_id) {
-            tracing::warn!("Received unauthorized request from {}. Rejecting.", req.peer_id);
-            req.channel
-                .try_send(EventsResponse::Error {
-                    message: "Provided key is not authorized to access the API.".to_owned(),
-                })
-                .ok();
+        if !self.is_authorized(&req.peer_id()) {
+            tracing::warn!("Received unauthorized request from {}. Rejecting.", req.peer_id());
+            let mut feeder = req.feeder();
+            tokio::spawn(async move {
+                feeder
+                    .feed(EventsResponse::Error {
+                        message: "Provided key is not authorized to access the API.".to_owned(),
+                    })
+                    .await
+            });
         } else {
             let events = self.state.events.clone();
             tokio::spawn(async move {
-                match req.request {
+                let mut feeder = req.feeder();
+                let request = match req {
+                    Output::V1(r) => r.request,
+                    Output::V2(r) => r.request,
+                };
+                match request {
                     EventsRequest::Offsets => {
-                        req.channel
+                        feeder
                             .feed(match events.offsets().await {
                                 Ok(o) => EventsResponse::Offsets(o),
                                 Err(e) => EventsResponse::Error { message: e.to_string() },
@@ -416,100 +427,68 @@ impl NetworkBehaviourEventProcess<RequestReceived<EventsProtocol>> for ApiBehavi
                             while let Some(msg) = resp.next().await {
                                 tracing::trace!("got message");
                                 let item = match msg {
-                                    QueryResponse::Event(ev) => {
-                                        let span = tracing::trace_span!("ready event");
-                                        let _enter = span.enter();
-                                        EventsResponse::Event(ev)
-                                    }
+                                    QueryResponse::Event(ev) => EventsResponse::Event(ev),
                                     QueryResponse::Offsets(o) => EventsResponse::OffsetMap { offsets: o.offsets },
                                     QueryResponse::Diagnostic(d) => EventsResponse::Diagnostic(d),
                                     QueryResponse::FutureCompat => continue,
                                 };
-                                req.channel.feed(item).await?;
+                                feeder.feed(item).await?;
                             }
                         }
                         Err(e) => {
                             tracing::trace!("got error");
-                            req.channel
-                                .feed(EventsResponse::Error { message: e.to_string() })
-                                .await?;
+                            feeder.feed(EventsResponse::Error { message: e.to_string() }).await?;
                         }
                     },
                     EventsRequest::Subscribe(request) => {
                         match events.subscribe(app_id!("com.actyx.cli"), request).await {
-                            Ok(resp) => {
-                                req.channel
-                                    .send_all(&mut TracePoll::new(
-                                        resp.filter_map(move |x| {
-                                            tracing::trace!("got subscribe response {:?}", x);
-                                            match x {
-                                                SubscribeResponse::Event(ev) => {
-                                                    let span = tracing::trace_span!("ready event");
-                                                    let _enter = span.enter();
-                                                    ready(Some(Ok(EventsResponse::Event(ev))))
-                                                }
-                                                SubscribeResponse::Offsets(o) => {
-                                                    ready(Some(Ok(EventsResponse::OffsetMap { offsets: o.offsets })))
-                                                }
-                                                SubscribeResponse::Diagnostic(d) => {
-                                                    ready(Some(Ok(EventsResponse::Diagnostic(d))))
-                                                }
-                                                SubscribeResponse::FutureCompat => ready(None),
-                                            }
-                                        }),
-                                        "node_api events subscribe",
-                                    ))
-                                    .await?;
+                            Ok(mut resp) => {
+                                tracing::trace!("got response");
+                                while let Some(msg) = resp.next().await {
+                                    tracing::trace!("got message");
+                                    let item = match msg {
+                                        SubscribeResponse::Event(ev) => EventsResponse::Event(ev),
+                                        SubscribeResponse::Offsets(o) => {
+                                            EventsResponse::OffsetMap { offsets: o.offsets }
+                                        }
+                                        SubscribeResponse::Diagnostic(d) => EventsResponse::Diagnostic(d),
+                                        SubscribeResponse::FutureCompat => continue,
+                                    };
+                                    feeder.feed(item).await?;
+                                }
                             }
                             Err(e) => {
-                                req.channel
-                                    .feed(EventsResponse::Error { message: e.to_string() })
-                                    .await?;
+                                feeder.feed(EventsResponse::Error { message: e.to_string() }).await?;
                             }
                         }
                     }
                     EventsRequest::SubscribeMonotonic(request) => {
                         match events.subscribe_monotonic(app_id!("com.actyx.cli"), request).await {
-                            Ok(resp) => {
-                                req.channel
-                                    .send_all(&mut TracePoll::new(
-                                        resp.filter_map(move |x| {
-                                            tracing::trace!("got subscribe response {:?}", x);
-                                            match x {
-                                                SubscribeMonotonicResponse::Event { event, .. } => {
-                                                    let span = tracing::trace_span!("ready event");
-                                                    let _enter = span.enter();
-                                                    ready(Some(Ok(EventsResponse::Event(event))))
-                                                }
-                                                SubscribeMonotonicResponse::TimeTravel { .. } => ready(None),
-                                                SubscribeMonotonicResponse::Offsets(o) => {
-                                                    ready(Some(Ok(EventsResponse::OffsetMap { offsets: o.offsets })))
-                                                }
-                                                SubscribeMonotonicResponse::Diagnostic(d) => {
-                                                    ready(Some(Ok(EventsResponse::Diagnostic(d))))
-                                                }
-                                                SubscribeMonotonicResponse::FutureCompat => ready(None),
-                                            }
-                                        }),
-                                        "node_api events subscribe",
-                                    ))
-                                    .await?;
+                            Ok(mut resp) => {
+                                tracing::trace!("got response");
+                                while let Some(msg) = resp.next().await {
+                                    tracing::trace!("got message");
+                                    let item = match msg {
+                                        SubscribeMonotonicResponse::Event { event, .. } => EventsResponse::Event(event),
+                                        SubscribeMonotonicResponse::Offsets(o) => {
+                                            EventsResponse::OffsetMap { offsets: o.offsets }
+                                        }
+                                        SubscribeMonotonicResponse::Diagnostic(d) => EventsResponse::Diagnostic(d),
+                                        SubscribeMonotonicResponse::FutureCompat => continue,
+                                        SubscribeMonotonicResponse::TimeTravel { .. } => continue,
+                                    };
+                                    feeder.feed(item).await?;
+                                }
                             }
                             Err(e) => {
-                                req.channel
-                                    .feed(EventsResponse::Error { message: e.to_string() })
-                                    .await?;
+                                feeder.feed(EventsResponse::Error { message: e.to_string() }).await?;
                             }
                         }
                     }
                     EventsRequest::Publish(request) => {
                         match events.publish(app_id!("com.actyx.cli"), 0.into(), request).await {
-                            Ok(resp) => req.channel.feed(EventsResponse::Publish(resp)).await?,
-                            Err(e) => {
-                                req.channel
-                                    .feed(EventsResponse::Error { message: e.to_string() })
-                                    .await?
-                            }
+                            Ok(resp) => feeder.feed(EventsResponse::Publish(resp)).await?,
+                            Err(e) => feeder.feed(EventsResponse::Error { message: e.to_string() }).await?,
                         }
                     }
                 }
@@ -934,19 +913,7 @@ pub(crate) async fn mk_swarm(
     Ok(peer_id)
 }
 
-type TConnErr = libp2p::core::either::EitherError<
-    libp2p::core::either::EitherError<
-        libp2p::core::either::EitherError<
-            libp2p::core::either::EitherError<
-                libp2p_streaming_response::v2::ProtocolError,
-                libp2p_streaming_response::v2::ProtocolError,
-            >,
-            libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
-        >,
-        libp2p::ping::PingFailure,
-    >,
-    std::io::Error,
->;
+type TConnErr = <<<ApiBehaviour as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::Error;
 
 /// Wrapper object for driving the whole swarm
 struct SwarmFuture(WrappedBehaviour);
@@ -956,10 +923,7 @@ impl SwarmFuture {
     }
 
     /// Poll the swarm once
-    pub(crate) fn poll_swarm(
-        &mut self,
-        cx: &mut task::Context,
-    ) -> std::task::Poll<Option<SwarmEvent<NoEvent, TConnErr>>> {
+    pub(crate) fn poll_swarm(&mut self, cx: &mut task::Context) -> Poll<Option<SwarmEvent<NoEvent, TConnErr>>> {
         self.swarm().poll_next_unpin(cx)
     }
 }

@@ -103,8 +103,9 @@ lazy_static::lazy_static! {
     static ref SHUTDOWN_THREAD: Thread = std::thread::current();
 }
 
+/// Must be called from the thread that shall be woken up from trigger_shutdown.
 pub fn init_shutdown_ceremony() {
-    SHUTDOWN_THREAD.name();
+    let _ = SHUTDOWN_THREAD.name();
 }
 
 pub fn trigger_shutdown() {
