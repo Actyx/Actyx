@@ -19,6 +19,7 @@ import { contramap } from 'fp-ts/lib/Ord'
 import { Ord as OrdNumber } from 'fp-ts/lib/number'
 import { map as mapE } from 'fp-ts/lib/Either'
 import * as t from 'io-ts'
+import { Pond } from '.'
 
 export type Semantics = string
 
@@ -357,6 +358,8 @@ export type StateEffect<S, EWrite> = (
   state: S,
   // Queue an event for emission. Can be called any number of times.
   enqueue: AddEmission<EWrite>,
+  // access to the Pond running this effect, mainly for observing other fishes
+  pond: Pond,
 ) => void | Promise<void>
 
 /** Context for an error thrown by a Fish’s functions. @public */

@@ -256,7 +256,7 @@ export type SplashStateSync = Readonly<{
 }>;
 
 // @public
-export type StateEffect<S, EWrite> = (state: S, enqueue: AddEmission<EWrite>) => void | Promise<void>;
+export type StateEffect<S, EWrite> = (state: S, enqueue: AddEmission<EWrite>, pond: Pond) => void | Promise<void>;
 
 // @public
 export type SwarmInfo = Readonly<{

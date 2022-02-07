@@ -105,7 +105,7 @@ const omitObservable = <S>(
   }
 }
 
-const wrapStateFn = <S, EWrite>(fn: StateEffect<S, EWrite>) => {
+const wrapStateFn = <S, EWrite>(pond: Pond, fn: StateEffect<S, EWrite>) => {
   const effect = async (state: S) => {
     const emissions: Emit<any>[] = []
     let returned = false
@@ -120,7 +120,7 @@ const wrapStateFn = <S, EWrite>(fn: StateEffect<S, EWrite>) => {
       emissions.push({ tags, payload })
     }
 
-    await fn(state, enqueueEmission)
+    await fn(state, enqueueEmission, pond)
     returned = true
 
     return emissions
@@ -659,7 +659,7 @@ class Pond2Impl implements Pond {
     fn: StateEffect<S, EWrite>,
   ): PendingCommand => {
     const handle = this.run0(agg)
-    return handle(wrapStateFn(fn))
+    return handle(wrapStateFn(this, fn))
   }
 
   keepRunning = <S, EWrite>(
@@ -667,7 +667,7 @@ class Pond2Impl implements Pond {
     fn: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription => {
-    const effect = wrapStateFn(fn)
+    const effect = wrapStateFn(this, fn)
 
     // We use this state `cancelled` to stop effects "asap" when user code calls the cancellation function.
     // Otherwise it might happen that we have already queued the next effect and run longer than desired.
