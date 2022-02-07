@@ -90,11 +90,11 @@ export interface Where<E> {
  * Selection of events based on required tags. `Tags('a', 'b')` will select all events that have tag 'a' *as well as* tag 'b'.
  * @public
  */
-export interface Tags<E> extends Where<E> {
+export interface Tags<E = unknown> extends Where<E> {
   /**
    * Add more tags to this requirement. E.g `Tag<FooEvent>('foo').and(Tag<BarEvent>('bar'))` will require both 'foo' and 'bar'.
    */
-  and<E1>(tag: Tags<E1>): Tags<E1 & E>
+  and<E1 = unknown>(tag: Tags<E1>): Tags<E1 & E>
 
   /**
    * Add an additional untyped tag to this requirement.
@@ -135,14 +135,14 @@ export interface Tags<E> extends Where<E> {
  * This is a generator function to be called WITHOUT new, e.g. `const required = Tags('a', 'b', 'c')`
  * @public
  */
-export const Tags = <E>(...requiredTags: string[]): Tags<E> =>
+export const Tags = <E = unknown>(...requiredTags: string[]): Tags<E> =>
   req<E>(false, requiredTags.map(makeInternal))
 
 /**
  * Representation of a single tag.
  * @public
  */
-export interface Tag<E> extends Tags<E> {
+export interface Tag<E = unknown> extends Tags<E> {
   /** The underlying actual tag as pure string. @internal */
   readonly rawTag: string
 
@@ -169,7 +169,7 @@ export interface Tag<E> extends Tags<E> {
  *                        The automatism is disabled if there is a manual `withId` call.
  * @public
  */
-export const Tag = <E>(rawTagString: string, extractId?: (e: E) => string): Tag<E> => {
+export const Tag = <E = unknown>(rawTagString: string, extractId?: (e: E) => string): Tag<E> => {
   const internalTag: TagInternal = {
     tag: rawTagString,
     extractId: extractId || noop,
