@@ -25,8 +25,6 @@ src/                 # contains the Electron app code
   |-- node/          # node-side code (incl. IPC setup)
   |-- common/        # shared types and utils
   |-- index.ts       # app setup and launch code
-native/              # native Rust code for interacting with Actyx nodes
-forge.config.js      # Electron packaging configuration
 tailwind.config.js   # config of tailwind CSS framework
 ```
 
@@ -36,7 +34,7 @@ A native Node.js module written in Rust using [Neon](https://github.com/neon-bin
 
 In the `/src/node/native` folder, a typescript definition files describes the functions made available by the native module.
 
-Build the native bindings using `npm run build-native-bindings` before running or building the Node Manager.
+Build the native bindings (in the `<Actyx>/rust/node-manager-bindings` directory) using `npm run build` before running or building the Node Manager.
 
 ### Electron app
 
