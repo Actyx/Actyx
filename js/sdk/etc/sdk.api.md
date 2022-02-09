@@ -387,12 +387,13 @@ export const StreamId: {
 };
 
 // @public
-export interface Tag<E> extends Tags<E> {
+export interface Tag<E = unknown> extends Tags<E> {
+    id(name: string): Tags<unknown>;
     withId(name: string): Tags<E>;
 }
 
 // @public
-export const Tag: <E>(rawTagString: string, extractId?: ((e: E) => string) | undefined) => Tag<E>;
+export const Tag: <E = unknown>(rawTagString: string, extractId?: ((e: E) => string) | undefined) => Tag<E>;
 
 // @public
 export type TaggedEvent = Readonly<{
@@ -401,16 +402,27 @@ export type TaggedEvent = Readonly<{
 }>;
 
 // @public
-export interface Tags<E> extends Where<E> {
-    and<E1>(tag: Tags<E1>): Tags<E1 & E>;
+export interface TaggedTypedEvent<E = unknown> extends TaggedEvent {
+    // (undocumented)
+    readonly event: E;
+    // (undocumented)
+    readonly tags: string[];
+    // (undocumented)
+    withTags<E1>(tags: Tags<E1> & (E extends E1 ? unknown : never)): TaggedTypedEvent<E>;
+}
+
+// @public
+export interface Tags<E = unknown> extends Where<E> {
+    and<E1 = unknown>(tag: Tags<E1>): Tags<E1 & E>;
     and(tag: string): Tags<E>;
     apply(event: E): TaggedEvent;
     apply(...events: E[]): ReadonlyArray<TaggedEvent>;
+    applyTyped<E1 extends E>(event: E1): TaggedTypedEvent<E1>;
     local(): Tags<E>;
 }
 
 // @public
-export const Tags: <E>(...requiredTags: string[]) => Tags<E>;
+export const Tags: <E = unknown>(...requiredTags: string[]) => Tags<E>;
 
 // @public
 export type TestActyx = TestEventFns & {

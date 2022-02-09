@@ -7,14 +7,20 @@
 import { contramap, gt, lt, tuple } from 'fp-ts/lib/Ord'
 import { Ord as StringOrd } from 'fp-ts/string'
 import { Ord as NumberOrd } from 'fp-ts/number'
-import { lastValueFrom, EMPTY, from, defaultIfEmpty, first } from '../../node_modules/rxjs'
+import {
+  lastValueFrom,
+  EMPTY,
+  from,
+  defaultIfEmpty,
+  first,
+  ReplaySubject,
+} from '../../node_modules/rxjs'
 import {
   map,
   toArray,
   bufferCount,
   mergeScan,
   reduce as rxReduce,
-  shareReplay,
 } from '../../node_modules/rxjs/operators'
 import {
   AqlQuery,
@@ -565,13 +571,16 @@ export const EventFnsFromEventStoreV2 = (
       }
     })
 
-    const allPersisted = eventStore.persistEvents(events).pipe(
-      toArray(),
-      map((x) => x.flat().map(mkMeta)),
-      shareReplay(1),
-    )
+    const allPersisted = new ReplaySubject<Metadata[]>(1)
+    eventStore
+      .persistEvents(events)
+      .pipe(
+        toArray(),
+        map((x) => x.flat().map(mkMeta)),
+      )
+      .subscribe(allPersisted)
 
-    return pendingEmission(allPersisted)
+    return pendingEmission(allPersisted.asObservable())
   }
 
   // TS doesn’t understand how we are implementing this overload.

@@ -295,6 +295,13 @@ export type TaggedEvent = Readonly<{
   event: unknown
 }>
 
+/** A typed event with tags attached. @public */
+export interface TaggedTypedEvent<E = unknown> extends TaggedEvent {
+  readonly tags: string[]
+  readonly event: E
+  withTags<E1>(tags: Tags<E1> & (E extends E1 ? unknown : never)): TaggedTypedEvent<E>
+}
+
 /** An event with its metadata. @public */
 export type ActyxEvent<E = unknown> = {
   meta: Metadata
