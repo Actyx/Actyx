@@ -84,3 +84,43 @@ Which settings are available and which values they may have is defined in the so
 The most recent version thereof is available for download at:
 
 [https://developer.actyx.com/schemas/node-settings.schema.json](pathname:///schemas/node-settings.schema.json)
+
+The `admin` section of the settings holds a list of authorized users, represented by their public keys (you can find yours in your O/S-specific user profile folder under `actyx/keys/users/id.pub`).
+If you need to access a node that doesn’t accept your key, but you have administrator access to the (virtual) device it is running on, then you may use `ax users add-key` to get yourself in — make sure to stop Actyx before doing this.
+The `displayName` property is shown in the Node Manager or `ax nodes inspect` etc., so it is useful to set it to some short string that helps you identify the node.
+You can change the `/admin/logLevels/node` setting to adjust the logging output verbosity at runtime; valid values are DEBUG, INFO, WARN, or ERROR.
+
+The `/api/events/readOnly` setting controls whether the node will send events to the rest of the swarm.
+Its main use is to create a “silent observer” that you use to test new app versions without risking to taint the swarm with development or test events.
+
+The `licensing` section is described in [licensing apps](../how-to/licensing/license-apps.mdx).
+
+In the `swarm` section you can fine-tune the networking behavior of Actyx:
+
+- **announceAddresses:** an array of addresses allows you to declare IP addresses under which the node is reachable, but that are not listen addresses.
+  This is frequently necessary when running Actyx inside a Docker container, see [configuring the `announceAddresses` setting](../how-to/swarms/configure-announced-addresses.mdx).
+
+- **initialPeers:** an array of addresses of the form `/ip4/<IP address>/tcp/<port>` to which this node shall [immediately try to connect](../how-to/swarms/connect-nodes.mdx).
+
+- **bitswapTimeout:** maximal wait time for a data request sent to another swarm node.
+  You may need to increase this on very slow networks if you regularly see bitswap timeout warnings in the logs.
+
+- **pingTimeout:** Each connection to another Actyx node is continually monitored via messages sent over that TCP connection (they are called “ping”, but have nothing to do with the `ping` network tool).
+  When three successive pings have not been answered within the allotted timeout, the connection is closed and will be re-established.
+  You may need to increase this on very slow networks if you regularly see ping timeout warnings in the logs.
+
+- **blockCacheCount:** the number of IPFS data blocks kept in the local `actyx-data` folder for the current topic.
+  All swarm event data blocks and pinned files will be kept regardless of this setting, only voluntarily cached blocks can be evicted.
+
+- **blockCacheSize:** the size in bytes up to which data blocks are kept in the local `actyx-data` folder for the current topic.
+  The same restriction applies as for blocks in that events and pinned files are not eligible for eviction, so the cache may grow larger.
+
+- **blockGcInterval:** the interval at which eligible data are evicted from the local `actyx-data` folder for the current topic.
+  There should be no need to change this.
+
+- **swarmKey:** an additional layer of encryption between Actyx nodes that allows you to separate swarm so that they cannot connect to each other.
+  See [the guide on swarm keys](../how-to/swarms/setup-swarm.mdx#create-a-swarm-key).
+
+- **topic:** a logical separation of nodes within the same swarm — events can only be replicated within the same topic, and each node can only be part of one topic.
+  This is mainly useful for effectively erasing all events within a swarm by switching all nodes to a new topic.
+  The old events will still be in the `actyx-data` folder, you can access them by switching a node back to the old topic; there will be no interference between old and new topic.

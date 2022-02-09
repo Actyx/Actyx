@@ -12,7 +12,7 @@ import TabItem from '@theme/TabItem'
 You need to configure the `announceAddresses` settings if the following statements are both true:
 
 - there is NAT between the discovery helper node and your other nodes, **and**
-- one (or more) of your nodes is a Docker node, and the Actyx container is running with the `--network=host` option
+- one (or more) of your nodes is a Docker node, and the Actyx container is not running with the `--network=host` option
 
 In this case, you have to manually configure the address of your node's host in the `announceAddress` property in the node settings:
 
@@ -33,9 +33,7 @@ You can configure it by using the Actyx CLI or the Node Manager. The following e
   ]}
 >
 
-
 <TabItem value="cli">
-
 
 You can use the output from above and `ax settings set` to configure it:
 
@@ -46,14 +44,12 @@ ax settings set /swarm/announceAddresses [/ip4/192.168.2.10/tcp/4001] localhost
 </TabItem>
 <TabItem value="manager">
 
-
 Go to the settings tab change the `announceAddresses` property and press save:
 
 ![announce-address-node-manager](../../../static/images/how-to/swarms/announce-addresses.png)
 
 </TabItem>
 </Tabs>
-
 
 :::tip conceptual guide on discovery
 For more information on discovery, please refer to our [conceptual guide](../../conceptual/discovery.mdx).
