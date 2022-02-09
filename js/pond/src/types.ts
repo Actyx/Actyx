@@ -11,6 +11,7 @@ import {
   Milliseconds,
   NodeId,
   StateWithProvenance,
+  TaggedTypedEvent,
   Tags,
   Timestamp,
   Where,
@@ -347,7 +348,9 @@ export const Fish = {
  * Queue emission of an event whose type is covered by `EWrite`.
  * @public
  */
-export type AddEmission<EWrite> = <E extends EWrite>(tags: Tags<E>, event: E) => void
+export type AddEmission<EWrite> = <E extends EWrite>(
+  ...args: [Tags<E>, E] | [TaggedTypedEvent<E>]
+) => void
 
 /**
  * Enqueue event emissions based on currently known local state.

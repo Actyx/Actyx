@@ -15,6 +15,7 @@ import {
   EventOrder,
   EventsSortOrder,
   NodeId,
+  Tags,
   Where,
 } from '..'
 import { SnapshotStore } from '../snapshotStore'
@@ -23,6 +24,9 @@ import { EventStore } from './eventStore'
 import { emitter, mkTimeline } from './testHelper'
 import { Events } from './types'
 import { gt, lt } from 'fp-ts/lib/Ord'
+import { MultiplexedWebsocket } from '../v2/multiplexedWebsocket'
+import { MockWebSocket, MockWebSocketConstructor } from '../v2/multiplexedWebsocket.spec'
+import { WebsocketEventStoreV2 } from '../v2'
 
 const assertPayloadsEqual = (actual: ActyxEvent[], expected: Events) =>
   expect(actual.map((x) => x.payload)).toEqual(expected.map((x) => x.payload))
@@ -571,6 +575,41 @@ describe('EventFns', () => {
 
       await expectResultEq(() => store.directlyPushEvents(tl.of('B')), 6)
       store.close()
+    })
+  })
+
+  describe('event emission', () => {
+    it('must work with `emit`', () => {
+      const multiplexer = new MultiplexedWebsocket({
+        url: 'ws://socket',
+        WebSocketCtor: MockWebSocketConstructor,
+      })
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const socket = MockWebSocket.lastSocket!
+      socket.open()
+      const store = new WebsocketEventStoreV2(multiplexer, 'my-app')
+      const fns = EventFnsFromEventStoreV2(NodeId.of('noop'), store, SnapshotStore.noop)
+      fns.emit([Tags('a', 'b').apply('hello')])
+      expect(socket.lastMessageSent).toMatchObject({
+        serviceId: 'publish',
+        payload: { data: [{ tags: ['a', 'b'], payload: 'hello' }] },
+      })
+    })
+    it('must work with `publish`', () => {
+      const multiplexer = new MultiplexedWebsocket({
+        url: 'ws://socket',
+        WebSocketCtor: MockWebSocketConstructor,
+      })
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const socket = MockWebSocket.lastSocket!
+      socket.open()
+      const store = new WebsocketEventStoreV2(multiplexer, 'my-app')
+      const fns = EventFnsFromEventStoreV2(NodeId.of('noop'), store, SnapshotStore.noop)
+      fns.publish(Tags('a', 'b').apply('hello'))
+      expect(socket.lastMessageSent).toMatchObject({
+        serviceId: 'publish',
+        payload: { data: [{ tags: ['a', 'b'], payload: 'hello' }] },
+      })
     })
   })
 })

@@ -110,14 +110,20 @@ const wrapStateFn = <S, EWrite>(pond: Pond, fn: StateEffect<S, EWrite>) => {
     const emissions: Emit<any>[] = []
     let returned = false
 
-    const enqueueEmission: AddEmission<EWrite> = (tags, payload) => {
+    const enqueueEmission: AddEmission<EWrite> = (...args) => {
       if (returned) {
         throw new Error(
           'The function you passed to run/keepRunning has already returned -- enqueuing emissions via the passed "AddEmission" function is no longer possible.',
         )
       }
 
-      emissions.push({ tags, payload })
+      if (args.length === 1) {
+        const { tags, event } = args[0]
+        emissions.push({ tags: Tags<EWrite>(...tags), payload: event })
+      } else {
+        const [tags, payload] = args
+        emissions.push({ tags, payload })
+      }
     }
 
     await fn(state, enqueueEmission, pond)

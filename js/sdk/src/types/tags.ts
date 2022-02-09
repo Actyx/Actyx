@@ -6,7 +6,7 @@
  */
 import { noop } from '../util'
 import { isString } from './functions'
-import { TaggedEvent } from './various'
+import { TaggedEvent, TaggedTypedEvent } from './various'
 
 /** V1 tag subscription wire format. @internal */
 export type TagSubscription = Readonly<{ tags: ReadonlyArray<string>; local: boolean }>
@@ -119,6 +119,11 @@ export interface Tags<E = unknown> extends Where<E> {
   apply(...events: E[]): ReadonlyArray<TaggedEvent>
 
   /**
+   * Apply these tags to a list of events that match their type, and allow further tags to be added.
+   */
+  applyTyped<E1 extends E>(event: E1): TaggedTypedEvent<E1>
+
+  /**
    * The actual included tags. @internal
    */
   readonly rawTags: ReadonlyArray<TagInternal>
@@ -158,6 +163,17 @@ export interface Tag<E = unknown> extends Tags<E> {
    * and enable selection of it all without knowing every individual specific ID.
    */
   withId(name: string): Tags<E>
+
+  /**
+   * Returns the ID-specific variant of this particular tag, see also `withId`.
+   *
+   * Use this if you want to tag an event belonging to entity A with a specific identity of entity B.
+   * For example an activity has been started by some user, so you may add
+   * `activityTag.withId(activityId).and(userTag.id(userId))`; this would result in three tags.
+   *
+   * This returns a tag for arbitrary events (type `unknown`) because the base tag is omitted.
+   */
+  id(name: string): Tags<unknown>
 }
 
 /**
@@ -177,12 +193,13 @@ export const Tag = <E = unknown>(rawTagString: string, extractId?: (e: E) => str
 
   const withId = (name: string): Tags<E> =>
     req(false, namedSubSpace(rawTagString, name).map(makeInternal))
+  const id = (name: string): Tags<unknown> =>
+    req(false, [{ tag: `${rawTagString}:${name}`, extractId: noop }])
 
   return {
     rawTag: rawTagString,
-
     withId,
-
+    id,
     ...req(false, [internalTag]),
   }
 }
@@ -206,21 +223,33 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: ReadonlyArray<TagInternal>): 
 
     local: () => req<E>(true, rawTags),
 
-    // TS cannot fathom our awesome "if arg list length is 1, there is not a list of args but just a single arg" logic
-    /* eslint-disable @typescript-eslint/ban-ts-comment */
-    // @ts-ignore
     apply: (...events: E[]) => {
       if (events.length === 1) {
         const event = events[0]
         const res: TaggedEvent = { event, tags: rawTags.flatMap(autoExtract(event)) }
-        return res
+        // TS cannot fathom our awesome "if arg list length is 1, there is not a list of args but just a single arg" logic
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return res as any
       } else {
         const res: ReadonlyArray<TaggedEvent> = events.map((event) => ({
           event,
           tags: rawTags.flatMap(autoExtract(event)),
         }))
-        return res
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return res as any
       }
+    },
+
+    applyTyped: <E1>(event: E1) => {
+      const withTags =
+        (myTags: readonly TagInternal[]) =>
+        <E2>(tags: Tags<unknown> | (Tags<E2> & (E extends E2 ? unknown : never))) => {
+          const myTags2 = [...myTags, ...tags.rawTags]
+          return { event, tags: myTags2.map((x) => x.tag), withTags: withTags(myTags2) }
+        }
+      return withTags(
+        rawTags.flatMap(autoExtract(event)).map((tag) => ({ tag, extractId: () => undefined })),
+      )(Tags())
     },
 
     onlyLocalEvents,

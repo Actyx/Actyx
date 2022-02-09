@@ -14,13 +14,14 @@ import { Milliseconds } from '@actyx/sdk';
 import { NodeId } from '@actyx/sdk';
 import { PendingEmission } from '@actyx/sdk';
 import { TaggedEvent } from '@actyx/sdk';
+import { TaggedTypedEvent } from '@actyx/sdk';
 import { Tags } from '@actyx/sdk';
 import { TestEvent } from '@actyx/sdk';
 import { TimeInjector } from '@actyx/sdk';
 import { Where } from '@actyx/sdk';
 
 // @public
-export type AddEmission<EWrite> = <E extends EWrite>(tags: Tags<E>, event: E) => void;
+export type AddEmission<EWrite> = <E extends EWrite>(...args: [Tags<E>, E] | [TaggedTypedEvent<E>]) => void;
 
 // @beta
 export type Caching = NoCaching | InProcessCaching;
