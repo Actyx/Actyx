@@ -100,7 +100,7 @@ In the `swarm` section you can fine-tune the networking behavior of Actyx:
 - **announceAddresses:** an array of addresses allows you to declare IP addresses under which the node is reachable, but that are not listen addresses.
   This is frequently necessary when running Actyx inside a Docker container, see [configuring the `announceAddresses` setting](../how-to/swarms/configure-announced-addresses.mdx).
 
-- **initialPeers:** an array of addresses of the form `/ip4/<IP address>/tcp/<port>` to which this node shall [immediately try to connect](../how-to/swarms/connect-nodes.mdx).
+- **initialPeers:** an array of addresses of the form `/ip4/<IP address>/tcp/<port>/p2p/<PeerId>` to which this node shall [immediately try to connect](../how-to/swarms/connect-nodes.mdx).
 
 - **bitswapTimeout:** maximal wait time for a data request sent to another swarm node.
   You may need to increase this on very slow networks if you regularly see bitswap timeout warnings in the logs.
