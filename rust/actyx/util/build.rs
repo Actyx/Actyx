@@ -1,6 +1,30 @@
 use std::env;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+
+fn find_commit(prefix: &str, commit: String) -> Option<String> {
+    let mut here = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    here.push("..");
+    here.push("..");
+    here.push("..");
+    here.push("versions");
+    let versions = File::open(&here).expect("versions file");
+    for line in BufReader::new(versions).lines() {
+        let line = line.expect("valid versions line");
+        if line.starts_with('#') || line.trim().is_empty() {
+            continue;
+        }
+        let mut items = line.trim().split_whitespace();
+        let version = items.next().expect("version");
+        let hash = items.next().expect("hash");
+        if version.starts_with(prefix) && hash == &*commit {
+            return Some(version[prefix.len()..].to_owned());
+        }
+    }
+    None
+}
 
 struct Version {
     version: String,
@@ -25,7 +49,22 @@ fn get_version(env_var: &str) -> Version {
         }
 
         Err(_) => {
-            let version = "unknown".to_string();
+            let mut history = Command::new("git")
+                .args(["log", "--format=%H"])
+                .stdout(Stdio::piped())
+                .spawn()
+                .expect("Error running git log --format=%H");
+            let reader = BufReader::new(history.stdout.take().expect("stdout was piped"));
+            let mut version = None;
+            let prefix = if env_var == "ACTYX_VERSION" { "actyx-" } else { "cli-" };
+            for line in reader.lines() {
+                let line = line.expect("a single git hash");
+                version = find_commit(prefix, line);
+                if version.is_some() {
+                    break;
+                }
+            }
+            let version = format!("{}_dev", version.as_deref().unwrap_or("0.0.0"));
 
             // https://stackoverflow.com/a/5737794/576180
             let out = Command::new("git")

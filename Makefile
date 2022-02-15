@@ -111,11 +111,28 @@ CARGO := RUST_BACKTRACE=1  cargo +$(BUILD_RUST_TOOLCHAIN)
 #################################
 
 export GIT_COMMIT = $(shell git rev-parse HEAD)$(shell [ -n "$(shell git status --porcelain)" ] && echo _dirty)
-export ACTYX_VERSION ?= 0.0.0_dev-$(GIT_COMMIT)
-export ACTYX_VERSION_CLI ?= 0.0.0_dev-$(GIT_COMMIT)
-export ACTYX_VERSION_NODEMANAGER ?= 0.0.0-dev-$(GIT_COMMIT)
+export ACTYX_VERSION_NODEMANAGER ?= $(or $(shell git log --format=%H | while read hash; do grep node-manager-.*$$hash versions && exit; done | (IFS="- " read n1 n2 v r; echo $$v)), 0.0.0)_dev-$(GIT_COMMIT)
 
 $(shell env | sort >&2)
+
+ifeq ($(origin ACTYX_VERSION), undefined)
+  AXV :=
+  AXV_DOCKER :=
+  export ACTYX_VERSION_MSI := $(or $(shell git log --format=%H | while read hash; do grep actyx-.*$$hash versions && exit; done | (IFS="- " read n1 v r; echo $$v)), 0.0.0)_dev-$(GIT_COMMIT)
+else
+  AXV := -e "ACTYX_VERSION=$(ACTYX_VERSION)"
+  AXV_DOCKER := --build-arg "ACTYX_VERSION=$(ACTYX_VERSION)"
+  export ACTYX_VERSION_MSI := $(ACTYX_VERSION)
+endif
+
+ifeq ($(origin ACTYX_VERSION_CLI), undefined)
+  AXVC :=
+  AXVC_DOCKER :=
+else
+  AXVC := -e "ACTYX_VERSION_CLI=$(ACTYX_VERSION_CLI)"
+  AXVC_DOCKER := --build-arg "ACTYX_VERSION_CLI=$(ACTYX_VERSION_CLI)"
+endif
+
 ifeq ($(origin ACTYX_PUBLIC_KEY), undefined)
   AXP :=
   AXP_DOCKER :=
@@ -130,14 +147,14 @@ all-ANDROID := $(android-bins)
 all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t macos-aarch64/$t)
 
 docker-platforms = $(foreach arch,$(architectures),$(docker-platform-$(arch)))
-docker-build-args = ${AXP_DOCKER} --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg CARGO_BUILD_ARGS="$(CARGO_BUILD_ARGS)"
+docker-build-args = ${AXP_DOCKER} ${AXV_DOCKER} --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg CARGO_BUILD_ARGS="$(CARGO_BUILD_ARGS)"
 docker-multiarch-build-args = $(docker-build-args) --platform $(shell echo $(docker-platforms) | sed 's/ /,/g')
 
 export CARGO_HOME ?= $(HOME)/.cargo
 export DOCKER_CLI_EXPERIMENTAL := enabled
 
 # Use docker run -ti only if the input device is a TTY (so that Ctrl+C works)
-export DOCKER_FLAGS ?= ${AXP} -e "ACTYX_VERSION=${ACTYX_VERSION}" -e "ACTYX_VERSION_CLI=${ACTYX_VERSION_CLI}" $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
+export DOCKER_FLAGS ?= ${AXP} ${AXV} ${AXVC} $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
 
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
@@ -552,7 +569,7 @@ dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/actyx.exe make-al
 	  -e WIN_CODESIGN_PASSWORD \
 	  --rm \
 	  actyx/util:actyx-win-installer-builder \
-	  bash /src/wix/actyx-installer/build.sh ${ACTYX_VERSION} "/src/dist/bin/windows-x86_64"
+	  bash /src/wix/actyx-installer/build.sh ${ACTYX_VERSION_MSI} "/src/dist/bin/windows-x86_64"
 
 define mkDockerRule =
 docker-$(1):
