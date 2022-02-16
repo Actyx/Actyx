@@ -89,22 +89,23 @@ It requires authentication and returns the files `CID` on success.
   - `200` on success
   - `401` if auth header is missing or invalid
 
-The response body is the `CID` of the uploaded file.
+The response body is the `CID` of the uploaded file or directory.
 
 </TabItem>
-
 <TabItem value="ex">
 
 Upload test HTML file using `cURL`:
 
 ```bash title="File Upload"
-$ echo "<h1>Hello Files API</h1>" > test.html
+$ echo '<html><head><link rel="stylesheet" href="style.css"/></head><body>Hello!</body></html>' > index.html
+$ echo 'body { color: blue }' > style.css
 $ curl -X POST \
    -H "Authorization: Bearer $AUTH_TOKEN" \
-   -F file=@test.html \
+   -F file=@index.html \
+   -F file=@style.css \
    http://localhost:4454/api/v2/files
 
-bafybeieod6ngzponojuau3vwxshptnwqcdoa436obbgv3z2jluxzlc4wqy
+bafybeiepcfq26leve4yf5vdmdybmd3amhkyng3f4myhtji7dpemijspjle
 ```
 
 </TabItem>
@@ -149,52 +150,93 @@ The contents of the file identified by the given `CID`.
   - `405` if the `CID` is invalid.
 
 </TabItem>
-
 <TabItem value="ex1">
 
 Retrieve file contents using `cURL`:
 
 ```bash title="Get file by CID"
 $ curl -H "Authorization: Bearer $AUTH_TOKEN" \
-   http://localhost:4454/api/v2/files/bafybeieod6ngzponojuau3vwxshptnwqcdoa436obbgv3z2jluxzlc4wqy
+   http://localhost:4454/api/v2/files/bafybeiepcfq26leve4yf5vdmdybmd3amhkyng3f4myhtji7dpemijspjle/style.css
 
-<h1>Hello Files API</h1>
-```
-
-To save to a file, simply redirect the output. This also works for binary formats.
-
-```bash title="Save contents to file"
-$ curl -H "Authorization: Bearer $AUTH_TOKEN" \
-   http://localhost:4454/api/v2/files/bafybeieod6ngzponojuau3vwxshptnwqcdoa436obbgv3z2jluxzlc4wqy \
-   > test.html
-$ cat test.html
-
-<h1>Hello Files API</h1>
+body { color: blue }
 ```
 
 ```bash title="Retrieve directory listing"
 $ curl -H "Authorization: Bearer $AUTH_TOKEN" \
-   http://localhost:4454/api/v2/files/bafy...points to directory...wwl2be \
-   | jq
+   http://localhost:4454/api/v2/files/bafybeiepcfq26leve4yf5vdmdybmd3amhkyng3f4myhtji7dpemijspjle \
+   | jq .
 
 {
   "directory": {
-    "name": "src",
-    "cid": "bafybeibpy4u4if24ii7ss5iugs63zls5zysdlbu6n23e775hzr7r4odyym",
+    "name": "/",
+    "cid": "bafybeiepcfq26leve4yf5vdmdybmd3amhkyng3f4myhtji7dpemijspjle",
     "children": [
       {
-        "size": 1817,
+        "size": 87,
         "name": "index.html",
-        "cid": "bafybeiazvgy45hzjoerwoh26wvh5g4tmx6dypimc3nhxn3tets4ykpcp3m"
+        "cid": "bafybeia7dsmkkhfv4jrydxbqmc5aab2w7iyjvq6ylrahu2cs4o4cwe3foy"
       },
       {
-        "size": 1752,
-        "name": "root.tsx",
-        "cid": "bafybeidamr7cbvdlo7s57ghw3fdvvejx66acr2m4euj5etc5w4tsq2fpvu"
+        "size": 21,
+        "name": "style.css",
+        "cid": "bafybeidhxrg35juujwifsudztkvceyohjfs72lni6zgcsu27mg3l65peju"
       }
     ]
   }
 }
+# or get HTML listing — note the trailing slash!
+$ curl -H "Authorization: Bearer $AUTH_TOKEN" \
+   -H "Accept: text/html" \
+   http://localhost:4454/api/v2/files/bafybeiepcfq26leve4yf5vdmdybmd3amhkyng3f4myhtji7dpemijspjle/
+
+<!DOCTYPE html>
+...
+```
+
+</TabItem>
+</Tabs>
+
+## Attach names to files or directories (API)
+
+While a CID uniquely identifies the stored contents, it is not the most natural form for humans to refer to the data.
+You can attach a human-readable name by creating an entry under the `api/v2/files/` endpoint using the HTTP `PUT` verb.
+Names can be updated by another `PUT` or removed using the `DELETE` verb.
+
+<Tabs groupId="content" defaultValue="ref" values={[{label: 'Reference', value: 'ref'}, {label: 'Example', value: 'ex'}]} >
+<TabItem value="ref">
+
+### Request
+
+- Endpoint: `http://localhost:4454/api/v2/files/<name>`
+- HTTP method: `PUT` or `DELETE`
+- HTTP headers:
+  - `Authorization`: must be `Bearer <valid Actyx Auth Token>`
+- Request body: in case of `PUT` the CID that the name shall refer to, otherwise empty
+
+Please note that the `name` must not be of the form of a valid CID.
+
+### Response
+
+The previously assigned CID, if there was one.
+
+- HTTP Status:
+  - `200` on success
+  - `401` if auth header is missing or invalid
+  - `405` if the `name` or `CID` is invalid.
+
+</TabItem>
+<TabItem value="ex">
+
+```bash title="Assign a name for a CID"
+$ curl -H "Authorization: Bearer $AUTH_TOKEN" \
+   -X PUT -d bafybeiepcfq26leve4yf5vdmdybmd3amhkyng3f4myhtji7dpemijspjle \
+   http://localhost:4454/api/v2/files/website
+```
+
+```bash title="Remove a name for a CID"
+$ curl -H "Authorization: Bearer $AUTH_TOKEN" \
+   -X DELETE \
+   http://localhost:4454/api/v2/files/website
 ```
 
 </TabItem>
@@ -213,26 +255,25 @@ You can navigate a directory by appending a relative path within it to the URL.
 
 <Tabs
   groupId="content"
-  defaultValue={"ref2"}
+  defaultValue={"ref1"}
   values={[
-    { label: 'Reference', value: 'ref2' },
-    { label: 'Example', value: 'ex2' },
+    { label: 'Reference', value: 'ref1' },
+    { label: 'Example', value: 'ex1' },
   ]}
 >
 
-<TabItem value="ref2">
+<TabItem value="ref1">
 
 ### Request
 
-- Endpoints:
-  - `http://localhost:4454/api/v2/files/<name>` (requires authentication)
+- Endpoint: `http://localhost:4454/api/v2/files/<name>`
 - HTTP method: `GET`
 - HTTP headers:
-  - `Authorization`: must be `Bearer <valid Actyx Auth Token>` when using `api/v2/files`
+  - `Authorization`: must be `Bearer <valid Actyx Auth Token>`
 
 ### Response
 
-The contents of the file identified by the given name.
+The contents of the file identified by the given `name`.
 
 - HTTP Status:
   - `200` on success
@@ -240,170 +281,60 @@ The contents of the file identified by the given name.
   - `405` if the `CID` is invalid.
 
 </TabItem>
-
-<TabItem value="ex2">
+<TabItem value="ex1">
 
 Retrieve file contents using `cURL`:
 
-```bash title="Get file by name"
+```bash title="Get file by CID"
 $ curl -H "Authorization: Bearer $AUTH_TOKEN" \
-   http://localhost:4454/api/v2/files/hello
+   http://localhost:4454/api/v2/files/website/style.css
 
-<h1>Hello Files API</h1>
+body { color: blue }
+```
+
+```bash title="Retrieve directory listing"
+$ curl -H "Authorization: Bearer $AUTH_TOKEN" \
+   http://localhost:4454/api/v2/files/website \
+   | jq .
+
+{
+  "directory": {
+    "name": "/",
+    "cid": "bafybeiepcfq26leve4yf5vdmdybmd3amhkyng3f4myhtji7dpemijspjle",
+    "children": [
+      {
+        "size": 87,
+        "name": "index.html",
+        "cid": "bafybeia7dsmkkhfv4jrydxbqmc5aab2w7iyjvq6ylrahu2cs4o4cwe3foy"
+      },
+      {
+        "size": 21,
+        "name": "style.css",
+        "cid": "bafybeidhxrg35juujwifsudztkvceyohjfs72lni6zgcsu27mg3l65peju"
+      }
+    ]
+  }
+}
+# or get HTML listing — note the trailing slash!
+$ curl -H "Authorization: Bearer $AUTH_TOKEN" \
+   -H "Accept: text/html" \
+   http://localhost:4454/api/v2/files/website/
+
+<!DOCTYPE html>
+...
 ```
 
 </TabItem>
 </Tabs>
 
-<!-- ## Retrieve file by name (`ANS`)
+## Retrieve stored directory as website
 
-`ANS` provides read-only access to named `CID`s through `http://<name>.actyx.localhost:4454` without authentication.
-This method is especially useful when opening Actyx apps in the browser.
+Actyx also supports serving a web app stored in the Files API to a web browser without requiring an app token.
+This works only via assigned names to give you control over which files are exposed in this fashion;
+keep in mind that the API endpoint is by default only visible on `localhost` and we strongly recommend to keep it that way.
 
-If the entry points to a directory, a directory listing in JSON is returned when requested with the content type `application/json`.
+With the above example in place, you should see a blue “Hello!” when pointing a browser running on the same machine as Actyx to the URL
 
-If the content type is `text/html`, a directory listing is returned if the directory does not contain an `index.html` file.
-If it does, `index.html` is returned.
-
-You can navigate a directory by appending a relative path within it to the URL.
-
-<Tabs
-  groupId="content"
-  defaultValue={"ref3"}
-  values={[
-    { label: 'Reference', value: 'ref3' },
-    { label: 'Example', value: 'ex3' },
-  ]}
->
-
-
-<TabItem value="ref3">
-
-
-### Request
-
-- Endpoints:
-  - `http://<name>.actyx.localhost:4454`
-- HTTP method: `GET`
-
-### Response
-
-The contents of the file identified by the given name.
-
-- HTTP Status:
-  - `200` on success
-  - `401` if auth header is missing or invalid
-  - `405` if the `CID` is invalid.
-
-</TabItem>
-
-
-<TabItem value="ex3">
-
-
-To access a file/app from the browser, use `http://<name>.actyx.localhost:4454`
-
-![files-api-browser-access](/images/reference/files-api/access-from-browser.png)
-
-</TabItem>
-</Tabs>
-
-
-## Assign name to a `CID`
-
-To be able to use human-understandable names when retrieving files, you can assign names to `CID`s
-by `PUT`ting the name to `api/v2/files/<name to assign>`.
-
-If the name already exists, it is updated to point to the given `CID`. Names that represent valid `CID`s are rejected.
-
-<Tabs
-  groupId="content"
-  defaultValue={"ref4"}
-  values={[
-    { label: 'Reference', value: 'ref4' },
-    { label: 'Example', value: 'ex4' },
-  ]}
->
-
-
-<TabItem value="ref4">
-
-
-### Request
-
-- Endpoint: `http://localhost:4454/api/v2/files/<name>`
-- HTTP method: `PUT`
-- HTTP headers:
-  - `Authorization`: must be `Bearer <valid Actyx Auth Token>`
-- Body: The `CID` to assign the name to
-
-### Response
-
-- HTTP Status:
-  - `200` on success
-  - `401` if auth header is missing or invalid
-  - `405` if the `CID` is invalid.
-
-</TabItem>
-
-
-<TabItem value="ex4">
-
-
-This example assigns the name `hello` to the `CID` `bafy...4wqy`:
-
-```bash title="Assign name to CID"
-$ curl -s -X PUT \
-  -d "bafybeieod6ngzponojuau3vwxshptnwqcdoa436obbgv3z2jluxzlc4wqy" \
-  -H "Authorization: Bearer $AUTH_TOKEN"  \
-  http://localhost:4454/api/v2/files/hello -v
+```plain
+http://website.actyx.localhost:4454/
 ```
-
-</TabItem>
-</Tabs>
-
-
-## Remove `CID` name
-
-<Tabs
-  groupId="content"
-  defaultValue={"ref5"}
-  values={[
-    { label: 'Reference', value: 'ref5' },
-    { label: 'Example', value: 'ex5' },
-  ]}
->
-
-
-To remove a name previously assigned to a `CID`, use the `DELETE` HTTP verb.
-
-<TabItem value="ref5">
-
-
-- Endpoint: `http://localhost:4454/api/v2/files/<name>`
-- HTTP method: `DELETE`
-- HTTP headers:
-  - `Authorization` must be `Bearer <valid Actyx Auth Token>`
-
-### Response
-
-- HTTP Status:
-  - `200` on success
-  - `401` if auth header is missing or invalid
-  - `405` if the name does not exist
-
-</TabItem>
-
-
-<TabItem value="ex5">
-
-
-```bash title="Unassign name"
-curl -X DELETE \
-  -H "Authorization: Bearer $AUTH_TOKEN" \
-  http://localhost:4454/api/v2/files/hello
-```
-
-  </TabItem>
-  </Tabs>
- -->
