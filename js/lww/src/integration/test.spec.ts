@@ -1,5 +1,6 @@
 import { Actyx as SDK, AppManifest } from '@actyx/sdk'
 import { Lww, State } from '..'
+import { mkUniqueId } from '../uuid'
 
 const TEST_MANIFEST: AppManifest = {
   appId: 'com.example.lww.test',
@@ -13,7 +14,7 @@ type TestType = {
   b: boolean
 }
 
-const mkModel = (name: string) => Lww<TestType>(`${name}-${Date.now().toString()}`)
+const mkModel = (name: string) => Lww<TestType>(`${name}-${mkUniqueId()}-${Date.now().toString()}`)
 const defaultModel = mkModel('lww-test')
 // set in beforeAll
 let sdk: SDK = undefined as any as SDK
@@ -198,25 +199,44 @@ describe(`running with Acytx`, () => {
   })
 
   it(`doesn't fail if query can't find anything`, async () => {
-    const model = mkModel('test33029384hf83hf983hf34fm9mf03hasdlj')(sdk)
+    const model = mkModel('test')(sdk)
     const results = await model.readAll()
     expect(results).toHaveLength(0)
   })
 
   it(`doesn't fail if query can't find anything`, async () => {
-    const model = mkModel('test330129321329384hf83hf983hf34fm9mf03hasdlj')(sdk)
+    const model = mkModel('test')(sdk)
     const results = await model.readIds()
     expect(results).toHaveLength(0)
   })
 
   it(`doesn't fail if subscribe can't find anything`, async () => {
-    const model = mkModel('test33029384h12419123f83hf983hf34fm9mf03hasdlj')(sdk)
+    const model = mkModel('test')(sdk)
     let wasCalled = false
     const cancel = model.subscribeAll(() => {
       wasCalled = true
     }, console.error)
-    await new Promise((res) => setTimeout(res, 3000))
+    await new Promise((res) => setTimeout(res, 500))
     cancel()
     expect(wasCalled).toBe(false)
+  })
+  it(`works with custom IDs`, async () => {
+    const model = mkModel('test')(sdk)
+    const id1 = await model.create({ b: true, n: 0, s: '' }, 'id1')
+    expect(id1).toBe('id1')
+    const id2 = await model.create({ b: true, n: 0, s: '' }, 'id2')
+    expect(id2).toBe('id2')
+    await new Promise((res) => setTimeout(res, 500))
+
+    const entities = await model.readAll()
+    expect(entities).toHaveLength(2)
+    expect(entities[0].meta.id).toBe('id1')
+    expect(entities[1].meta.id).toBe('id2')
+
+    await model.update('id1', { b: false, n: 0, s: '' })
+    await new Promise((res) => setTimeout(res, 500))
+    const entity = await model.read('id1')
+    expect(entity).not.toBeUndefined()
+    expect(entity?.meta.id).toBe('id1')
   })
 })

@@ -82,7 +82,7 @@ const mkTags = (entityName: EntityName): MkTag => ({
 })
 
 export type Lww<Data> = (sdk: SDK) => {
-  create: (data: Data) => Promise<UniqueId>
+  create: (data: Data, id?: UniqueId) => Promise<UniqueId>
   update: (id: UniqueId, data: Data) => Promise<boolean>
   archive: (id: UniqueId) => Promise<boolean>
   unarchive: (id: UniqueId) => Promise<boolean>
@@ -128,20 +128,21 @@ const createEntity = async <Data>(
   sdk: SDK,
   entityName: EntityName,
   data: Data,
+  id?: UniqueId,
 ): Promise<UniqueId> => {
-  const id = mkUniqueId()
+  const entityId = id || mkUniqueId()
   const event: CreatedE<Data> = {
     key: 'created',
     meta: {
-      id,
+      id: entityId,
       createdOn: Date.now(),
       entity: entityName,
       archived: false,
     },
     data,
   }
-  await sdk.publish({ tags: mkTags(entityName).create(id), event })
-  return id
+  await sdk.publish({ tags: mkTags(entityName).create(entityId), event })
+  return entityId
 }
 const readById = async <Data>(sdk: SDK, entityName: EntityName, id: InstanceId) => {
   const res = await _readById<Data>(sdk, entityName, id)
@@ -610,7 +611,7 @@ const _find = async <Data>(
 export const Lww =
   <Data>(entityName: EntityName): Lww<Data> =>
   (sdk) => ({
-    create: (data) => createEntity(sdk, entityName, data),
+    create: (data, id) => createEntity(sdk, entityName, data, id),
     update: (id, data) => update(sdk, entityName, id, data),
     archive: (id) => setArchivedState(sdk, entityName, id, true),
     unarchive: (id) => setArchivedState(sdk, entityName, id, false),
