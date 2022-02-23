@@ -4,7 +4,7 @@
     "url": "https://community.actyx.com/"
   },
   "dependencies": {
-    "@actyx/sdk": "^0.4.0-rc6",
+    "@actyx/sdk": "^0.4.0",
     "debug": "^4.3.3",
     "ramda": "^0.28.0",
     "uuid": "^8.3.2"
