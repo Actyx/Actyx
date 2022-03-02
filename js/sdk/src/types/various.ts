@@ -446,3 +446,14 @@ export type AqlFutureCompat = {
 
 /** Response message returned by running AQL query. @beta */
 export type AqlResponse = AqlEventMessage | AqlOffsetsMsg | AqlDiagnosticMessage | AqlFutureCompat
+
+export type Uptime = {
+  secs: number
+  nanos: number
+}
+
+export type NodeInfo = {
+  connectedNodes: number
+  uptime: Uptime
+  version: string
+}

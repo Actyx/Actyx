@@ -7,6 +7,7 @@
 import { EventFns, TestEventFns } from './event-fns'
 import { EventFnsFromEventStoreV2, EventStoreV2 } from './internal_common'
 import { log } from './internal_common/log'
+import { getInfo, invalidNodeInfo, NodeInfo } from './node-info'
 import { SnapshotStore } from './snapshotStore'
 import { ActyxOpts, ActyxTestOpts, AppId, AppManifest, NodeId } from './types'
 import { mkV1eventStore } from './v1'
@@ -26,6 +27,15 @@ export type Actyx = EventFns & {
    * node has been started. This can be used in order to reduce stale state
    * inside the application when started together with an Actyx node. @public */
   waitForSync: () => Promise<void>
+
+  /**
+   * Obtain information on the Actyx node. In order to save some cycles, and because the information
+   * doesn’t change all that quickly, please provide a time parameter that matches your app’s
+   * freshness requirements — for human consumption a couple hundred milliseconds is good enough.
+   *
+   * The underlying API endpoint has been added in Actyx 2.5.0, earlier versions report dummy data.
+   */
+  nodeInfo: (maxAgeMillis: number) => Promise<NodeInfo>
 }
 
 /**
@@ -48,18 +58,20 @@ export type TestActyx = TestEventFns & {
 
 const createV2 = async (manifest: AppManifest, opts: ActyxOpts, nodeId: string): Promise<Actyx> => {
   const token = await getToken(opts, manifest)
-  const ws = await makeWsMultiplexerV2(opts, token, manifest)
+  const [ws, tok] = await makeWsMultiplexerV2(opts, token, manifest)
   const eventStore = new WebsocketEventStoreV2(ws, AppId.of(manifest.appId))
   // No snapshotstore impl available for V2 prod
   const fns = EventFnsFromEventStoreV2(nodeId, eventStore, SnapshotStore.noop)
 
   const waitForSync = async () => v2WaitForSwarmSync(opts, token, fns.offsets)
+  const getNodeInfo = getInfo(opts)
 
   return {
     ...fns,
     nodeId,
     dispose: () => ws.close(),
     waitForSync,
+    nodeInfo: (maxAgeMillis) => getNodeInfo(tok[0], maxAgeMillis),
   }
 }
 
@@ -73,6 +85,7 @@ const createV1 = async (opts: ActyxOpts): Promise<Actyx> => {
     nodeId: sourceId,
     dispose: () => close(),
     waitForSync: () => Promise.resolve(),
+    nodeInfo: () => Promise.resolve(invalidNodeInfo),
   }
 }
 

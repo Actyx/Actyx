@@ -15,6 +15,7 @@ import {
   Metadata,
   Milliseconds,
   NodeId,
+  NodeInfo,
   PendingEmission,
   StateWithProvenance,
   TaggedEvent,
@@ -356,6 +357,15 @@ export type Pond = {
    * Information about the current pond
    */
   info(): PondInfo
+
+  /**
+   * Obtain information on the Actyx node. In order to save some cycles, and because the information
+   * doesn’t change all that quickly, please provide a time parameter that matches your app’s
+   * freshness requirements — for human consumption a couple hundred milliseconds is good enough.
+   *
+   * The underlying API endpoint has been added in Actyx 2.5.0, earlier versions report dummy data.
+   */
+  nodeInfo(maxAgeMillis: number): Promise<NodeInfo>
 
   /**
    * Register a callback invoked whenever the Pond’s state changes.
@@ -713,6 +723,10 @@ class Pond2Impl implements Pond {
   }
 
   events = () => this.actyx
+
+  nodeInfo(maxAgeMillis: number): Promise<NodeInfo> {
+    return this.actyx.nodeInfo(maxAgeMillis)
+  }
 }
 
 /**
@@ -752,6 +766,8 @@ const mkTestPond = (opts?: TestPondOptions): TestPond => {
     waitForSync: async () => {
       /* noop */
     },
+    nodeInfo: async () =>
+      new NodeInfo({ connectedNodes: 0, version: '2.0.0-test', uptime: { secs: 0, nanos: 0 } }),
   }
   const snapshotStore = SnapshotStore.noop
   return {

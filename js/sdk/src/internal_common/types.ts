@@ -184,3 +184,13 @@ export type WsStoreConfig = Readonly<{
 
   // todo timeouts?, heartbeats? etc.
 }>
+
+export const NodeInfo = t.type({
+  connectedNodes: t.number,
+  uptime: t.type({
+    secs: t.number,
+    nanos: t.number,
+  }),
+  version: t.string,
+})
+export type NodeInfo = t.TypeOf<typeof NodeInfo>

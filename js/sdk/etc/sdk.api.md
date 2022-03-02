@@ -5,12 +5,14 @@
 ```ts
 
 import { Ord } from 'fp-ts/lib/Ord';
+import * as t from 'io-ts';
 
 // @public
 export type Actyx = EventFns & {
     readonly nodeId: NodeId;
     dispose: () => void;
     waitForSync: () => Promise<void>;
+    nodeInfo: (maxAgeMillis: number) => Promise<NodeInfo>;
 };
 
 // @public
@@ -310,6 +312,22 @@ export const NodeId: {
     streamNo: (nodeId: NodeId, num: number) => string;
 };
 
+// @public (undocumented)
+export class NodeInfo {
+    // Warning: (ae-forgotten-export) The symbol "NodeInfo" needs to be exported by the entry point index.d.ts
+    constructor(io: NodeInfo_2);
+    // (undocumented)
+    connectedNodes(): number;
+    // (undocumented)
+    isAtLeastVersion(version: string): boolean;
+    // (undocumented)
+    longVersion(): string;
+    // (undocumented)
+    semVer(): string;
+    // (undocumented)
+    uptimeMillis(): number;
+}
+
 // @public
 export type Offset = number;
 
@@ -479,6 +497,12 @@ export type TimeTravelMsg<E> = Readonly<{
 
 // @alpha
 export const toEventPredicate: (where: Where<unknown>) => (event: HasTags) => boolean;
+
+// @public (undocumented)
+export type Uptime = {
+    secs: number;
+    nanos: number;
+};
 
 // @public
 export interface Where<E> {

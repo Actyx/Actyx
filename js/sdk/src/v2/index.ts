@@ -18,7 +18,8 @@ export const makeWsMultiplexerV2 = async (
   config: ActyxOpts,
   token: string,
   manifest: AppManifest,
-): Promise<MultiplexedWebsocket> => {
+): Promise<[MultiplexedWebsocket, [string]]> => {
+  const tok: [string] = [token]
   const apiLocation = getApiLocation(config.actyxHost, config.actyxPort)
   const wsUrl = (tok: string) => `ws://${apiLocation}/events?${tok}`
   const wsConfig = mkConfig(wsUrl(token))
@@ -44,10 +45,10 @@ export const makeWsMultiplexerV2 = async (
       const renewToken = async () => {
         if (renewing) return
         renewing = true
-        if (!(await checkToken(config, token))) {
-          // token invalid but API working => reauthenticate
-          token = await getToken(config, manifest)
-          wsConfig.url = wsUrl(token)
+        if (!(await checkToken(config, tok[0]))) {
+          // tok[0] invalid but API working => reauthenticate
+          tok[0] = await getToken(config, manifest)
+          wsConfig.url = wsUrl(tok[0])
           ws.close() // this disposes of the internal WebSocketSubject
           ws.request('wake up')
         }
@@ -65,5 +66,5 @@ export const makeWsMultiplexerV2 = async (
     },
   })
 
-  return ws
+  return [ws, tok]
 }

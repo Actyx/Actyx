@@ -7,3 +7,4 @@
 export * from './actyx'
 export * from './event-fns'
 export * from './types'
+export { NodeInfo } from './node-info'

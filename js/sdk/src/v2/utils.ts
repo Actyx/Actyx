@@ -109,7 +109,7 @@ type NodeInfo = {
   version: string
 }
 
-const mkHeaders = (token: string) => ({
+export const mkHeaders = (token: string) => ({
   Accept: 'application/json',
   'Content-Type': 'application/json',
   Authorization: `Bearer ${token}`,
