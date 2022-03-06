@@ -85,6 +85,9 @@ pub enum ApiError {
 
     #[display(fmt = "Service shutting down. {}", cause)]
     Shutdown { cause: String },
+
+    #[display(fmt = "Payload too large or Content-Length header missing.")]
+    TooLarge,
 }
 impl warp::reject::Reject for ApiError {}
 impl std::error::Error for ApiError {}
@@ -128,6 +131,7 @@ impl From<ApiError> for ApiErrorResponse {
             ApiError::UnsupportedAuthType { .. } => (StatusCode::UNAUTHORIZED, "ERR_UNSUPPORTED_AUTH_TYPE"),
             ApiError::UnsupportedFeature { .. } => (StatusCode::IM_A_TEAPOT, "ERR_UNSUPPORTED_FEATURE"),
             ApiError::UnsupportedMediaType { .. } => (StatusCode::UNSUPPORTED_MEDIA_TYPE, "ERR_UNSUPPORTED_MEDIA_TYPE"),
+            ApiError::TooLarge => (StatusCode::PAYLOAD_TOO_LARGE, "ERR_PAYLOAD_TOO_LARGE"),
         };
         ApiErrorResponse {
             code: code.to_string(),
@@ -157,6 +161,8 @@ pub fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
         ApiError::BadRequest {
             cause: e.source().map_or("unknown".to_string(), |e| e.to_string()),
         }
+    } else if r.find::<reject::PayloadTooLarge>().is_some() || r.find::<reject::LengthRequired>().is_some() {
+        ApiError::TooLarge
     } else if r.find::<reject::MethodNotAllowed>().is_some() {
         ApiError::MethodNotAllowed
     } else {
