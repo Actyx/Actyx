@@ -9,6 +9,7 @@ export { WebsocketEventStore as WebsocketEventStoreV2 } from './websocketEventSt
 
 import { Subject, takeUntil } from '../../node_modules/rxjs'
 import log from '../internal_common/log'
+import { getInfo } from '../node-info'
 import { ActyxOpts, AppManifest } from '../types'
 import { massageError } from '../util/error'
 import { mkConfig, MultiplexedWebsocket } from './multiplexedWebsocket'
@@ -18,11 +19,13 @@ export const makeWsMultiplexerV2 = async (
   config: ActyxOpts,
   token: string,
   manifest: AppManifest,
-): Promise<[MultiplexedWebsocket, [string]]> => {
-  const tok: [string] = [token]
+): Promise<[MultiplexedWebsocket, [string, string]]> => {
   const apiLocation = getApiLocation(config.actyxHost, config.actyxPort)
   const wsUrl = (tok: string) => `ws://${apiLocation}/events?${tok}`
   const wsConfig = mkConfig(wsUrl(token))
+  const getVersion = async (token: string) => (await getInfo(config)(token, -1)).semVer()
+  const version = await getVersion(token)
+  const tokVer: [string, string] = [token, version]
 
   const closeSubject = new Subject()
   wsConfig.closeObserver = closeSubject
@@ -45,10 +48,11 @@ export const makeWsMultiplexerV2 = async (
       const renewToken = async () => {
         if (renewing) return
         renewing = true
-        if (!(await checkToken(config, tok[0]))) {
-          // tok[0] invalid but API working => reauthenticate
-          tok[0] = await getToken(config, manifest)
-          wsConfig.url = wsUrl(tok[0])
+        if (!(await checkToken(config, tokVer[0]))) {
+          // tokVer[0] invalid but API working => reauthenticate
+          tokVer[0] = await getToken(config, manifest)
+          wsConfig.url = wsUrl(tokVer[0])
+          tokVer[1] = await getVersion(tokVer[0])
           ws.close() // this disposes of the internal WebSocketSubject
           ws.request('wake up')
         }
@@ -66,5 +70,5 @@ export const makeWsMultiplexerV2 = async (
     },
   })
 
-  return [ws, tok]
+  return [ws, tokVer]
 }

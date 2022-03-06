@@ -59,6 +59,8 @@ import { EventStore } from './eventStore'
 import { eventsMonotonic, EventsOrTimetravel as EventsOrTtInternal } from './subscribe_monotonic'
 import { Event, Events } from './types'
 import { bufferOp } from '../util/bufferOp'
+import { gte } from 'semver'
+import { eventsMonotonicEmulated } from './subscribe_monotonic_emulated'
 
 export const _ordByTimestamp = contramap((e: ActyxEvent): [number, string] => [
   e.meta.timestampMicros,
@@ -70,6 +72,7 @@ export const EventFnsFromEventStoreV2 = (
   nodeId: NodeId,
   eventStore: EventStore,
   snapshotStore: SnapshotStore,
+  currentActyxVersion: () => string,
 ): EventFns => {
   const mkMeta = toMetadata(nodeId)
 
@@ -309,21 +312,23 @@ export const EventFnsFromEventStoreV2 = (
       case MsgType.timetravel:
         return {
           type: MsgType.timetravel,
-          trigger: wrap<E>(m.trigger),
-          high: wrap<E>(m.high),
+          trigger: m.trigger,
         }
       default:
         throw new Error('Unknown msg type in: ' + JSON.stringify(m))
     }
   }
 
-  const subMono = eventsMonotonic(eventStore, snapshotStore)
+  const subMonoReal = eventsMonotonic(eventStore)
+  const subMonoEmulated = eventsMonotonicEmulated(eventStore, snapshotStore)
+  const subMono = () => (gte(currentActyxVersion(), '2.12.0') ? subMonoReal : subMonoEmulated)
+
   const subscribeMonotonic = <E>(
     query: MonotonicSubscription<E>,
     cb: (data: EventsOrTimetravel<E>) => Promise<void> | void,
     onCompleteOrError?: (err?: unknown) => void,
   ): CancelSubscription => {
-    const x = subMono(query.sessionId, query.query, query.attemptStartFrom)
+    const x = subMono()(query.sessionId, query.query, query.attemptStartFrom)
       .pipe(
         map((x) => convertMsg<E>(x)),
         mergeScan((_a: void, m: EventsOrTimetravel<E>) => from(Promise.resolve(cb(m))), void 0, 1),

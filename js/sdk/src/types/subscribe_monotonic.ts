@@ -72,8 +72,7 @@ export type EventsMsg<E> = Readonly<{
 /** Implies consumer should re-subscribe starting from `trigger` or earlier. @alpha */
 export type TimeTravelMsg<E> = Readonly<{
   type: MsgType.timetravel
-  trigger: ActyxEvent<E> // earliest known event to cause time travel
-  high: ActyxEvent<E> // latest known event to cause time travel
+  trigger: EventKey
 }>
 
 /** Possible subscribe_monotonic message types. @alpha */

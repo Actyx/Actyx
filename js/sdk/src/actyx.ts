@@ -12,6 +12,7 @@ import { SnapshotStore } from './snapshotStore'
 import { ActyxOpts, ActyxTestOpts, AppId, AppManifest, NodeId } from './types'
 import { mkV1eventStore } from './v1'
 import { makeWsMultiplexerV2, v2getNodeId, WebsocketEventStoreV2 } from './v2'
+import { BlobSnapshotStore } from './v2/blobSnapshotStore'
 import { getToken, v2WaitForSwarmSync } from './v2/utils'
 
 /** Access all sorts of functionality related to the Actyx system! @public */
@@ -59,9 +60,12 @@ export type TestActyx = TestEventFns & {
 const createV2 = async (manifest: AppManifest, opts: ActyxOpts, nodeId: string): Promise<Actyx> => {
   const token = await getToken(opts, manifest)
   const [ws, tok] = await makeWsMultiplexerV2(opts, token, manifest)
-  const eventStore = new WebsocketEventStoreV2(ws, AppId.of(manifest.appId))
-  // No snapshotstore impl available for V2 prod
-  const fns = EventFnsFromEventStoreV2(nodeId, eventStore, SnapshotStore.noop)
+  const eventStore = new WebsocketEventStoreV2(ws, AppId.of(manifest.appId), () => tok[1])
+  const snapshotStore = new BlobSnapshotStore(
+    () => tok[0],
+    () => tok[1],
+  )
+  const fns = EventFnsFromEventStoreV2(nodeId, eventStore, snapshotStore, () => tok[1])
 
   const waitForSync = async () => v2WaitForSwarmSync(opts, token, fns.offsets)
   const getNodeInfo = getInfo(opts)
@@ -78,7 +82,7 @@ const createV2 = async (manifest: AppManifest, opts: ActyxOpts, nodeId: string):
 const createV1 = async (opts: ActyxOpts): Promise<Actyx> => {
   const { eventStore, sourceId, close } = await mkV1eventStore(opts)
 
-  const fns = EventFnsFromEventStoreV2(sourceId, eventStore, SnapshotStore.noop)
+  const fns = EventFnsFromEventStoreV2(sourceId, eventStore, SnapshotStore.noop, () => '1.0.0')
 
   return {
     ...fns,
@@ -120,7 +124,7 @@ export const Actyx = {
     const snaps = SnapshotStore.inMem()
     const nodeId = opts.nodeId || NodeId.of('TESTNODEID')
 
-    const fns = EventFnsFromEventStoreV2(nodeId, store, snaps)
+    const fns = EventFnsFromEventStoreV2(nodeId, store, snaps, () => '2.0.0')
     return {
       ...fns,
       nodeId,

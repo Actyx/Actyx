@@ -142,7 +142,7 @@ const setup = () => {
   const tl = mkTimeline(srcC(5), srcB(6), srcA(7), srcA(8), srcB(9), srcC(10))
 
   const store = EventStore.test()
-  const fns = EventFnsFromEventStoreV2(NodeId.of('noop'), store, SnapshotStore.noop)
+  const fns = EventFnsFromEventStoreV2(NodeId.of('noop'), store, SnapshotStore.noop, () => '2.0.0')
 
   return { store, fns, tl }
 }
@@ -587,8 +587,13 @@ describe('EventFns', () => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const socket = MockWebSocket.lastSocket!
       socket.open()
-      const store = new WebsocketEventStoreV2(multiplexer, 'my-app')
-      const fns = EventFnsFromEventStoreV2(NodeId.of('noop'), store, SnapshotStore.noop)
+      const store = new WebsocketEventStoreV2(multiplexer, 'my-app', () => '')
+      const fns = EventFnsFromEventStoreV2(
+        NodeId.of('noop'),
+        store,
+        SnapshotStore.noop,
+        () => '2.0.0',
+      )
       fns.emit([Tags('a', 'b').apply('hello')])
       expect(socket.lastMessageSent).toMatchObject({
         serviceId: 'publish',
@@ -603,8 +608,13 @@ describe('EventFns', () => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const socket = MockWebSocket.lastSocket!
       socket.open()
-      const store = new WebsocketEventStoreV2(multiplexer, 'my-app')
-      const fns = EventFnsFromEventStoreV2(NodeId.of('noop'), store, SnapshotStore.noop)
+      const store = new WebsocketEventStoreV2(multiplexer, 'my-app', () => '')
+      const fns = EventFnsFromEventStoreV2(
+        NodeId.of('noop'),
+        store,
+        SnapshotStore.noop,
+        () => '2.0.0',
+      )
       fns.publish(Tags('a', 'b').apply('hello'))
       expect(socket.lastMessageSent).toMatchObject({
         serviceId: 'publish',

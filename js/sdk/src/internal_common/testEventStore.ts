@@ -338,6 +338,9 @@ export const testEventStore = (nodeId: NodeId = NodeId.of('TEST'), timeInjector?
     subscribeUnchecked: () => {
       throw new Error('not implemented for test event store')
     },
+    subscribeMonotonic: () => {
+      throw new Error('not implemented for test event store')
+    },
     persistEvents,
     directlyPushEvents,
     storedEvents: allPersisted,

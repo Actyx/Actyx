@@ -1484,6 +1484,16 @@ impl BanyanStore {
     pub fn abort_task(&self, name: &'static str) {
         self.lock().abort_task(name)
     }
+
+    pub fn blob_put(&self, app_id: AppId, path: String, mime_type: String, data: &[u8]) -> Result<()> {
+        self.state.lock().index_store.blob_put(app_id, path, mime_type, data)
+    }
+    pub fn blob_del(&self, app_id: AppId, path: String) -> Result<()> {
+        self.state.lock().index_store.blob_del(app_id, path)
+    }
+    pub fn blob_get(&self, app_id: AppId, path: String) -> Result<Option<(Vec<u8>, String)>> {
+        self.state.lock().index_store.blob_get(app_id, path)
+    }
 }
 
 #[derive(Debug)]

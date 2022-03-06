@@ -105,7 +105,7 @@ export type MonotonicSubscription<E> = {
   query: Where<E>
 
   /** Sending 'attemptStartFrom' means we DONT want a snapshot sent as initial message. */
-  attemptStartFrom?: FixedStart
+  attemptStartFrom: FixedStart
 }
 
 /** Query for observeEarliest. @beta  */

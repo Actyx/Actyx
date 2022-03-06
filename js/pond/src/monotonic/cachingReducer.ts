@@ -108,13 +108,13 @@ export const cachingReducer = <S>(
   return {
     appendEvents,
     awaitPendingPersistence: () => storeSnapshotsPromise,
-    latestKnownValidState: (lowestInvalidating, highestInvalidating) =>
+    latestKnownValidState: (lowestInvalidating) =>
       pipe(
         latestStateSerialized,
-        filterO(isSnapshotValid(lowestInvalidating, highestInvalidating)),
+        filterO(isSnapshotValid(lowestInvalidating)),
         altO(() =>
           pipe(
-            queue.latestValid(lowestInvalidating, highestInvalidating),
+            queue.latestValid(lowestInvalidating),
             mapO((x) => x.snap),
           ),
         ),
@@ -124,13 +124,9 @@ export const cachingReducer = <S>(
 }
 
 const isSnapshotValid =
-  (lowestInvalidating: EventKey, highestInvalidating: EventKey) =>
-  (snap: SerializedStateSnap): boolean => {
-    const snapshotValid = eventKeyGreater(lowestInvalidating, snap.eventKey)
-    const horizonVoidsTimeTravel =
-      !!snap.horizon && eventKeyGreater(snap.horizon, highestInvalidating)
-    return snapshotValid || horizonVoidsTimeTravel
-  }
+  (lowestInvalidating: EventKey) =>
+  (snap: SerializedStateSnap): boolean =>
+    eventKeyGreater(lowestInvalidating, snap.eventKey)
 
 type SnapshotQueue = {
   // Add a pending snapshot
@@ -146,10 +142,7 @@ type SnapshotQueue = {
 
   // Try to find the latest still valid snapshot according to the given arguments.
   // Only calling this function does not evict anything
-  latestValid: (
-    lowestInvalidating: EventKey,
-    highestInvalidating: EventKey,
-  ) => Option<PendingSnapshot>
+  latestValid: (lowestInvalidating: EventKey) => Option<PendingSnapshot>
 }
 
 const snapshotQueue = (): SnapshotQueue => {
@@ -173,13 +166,8 @@ const snapshotQueue = (): SnapshotQueue => {
     return seperated.right
   }
 
-  const latestValid = (
-    lowestInvalidating: EventKey,
-    highestInvalidating: EventKey,
-  ): Option<PendingSnapshot> => {
-    return last(
-      queue.filter(({ snap }) => isSnapshotValid(lowestInvalidating, highestInvalidating)(snap)),
-    )
+  const latestValid = (lowestInvalidating: EventKey): Option<PendingSnapshot> => {
+    return last(queue.filter(({ snap }) => isSnapshotValid(lowestInvalidating)(snap)))
   }
 
   return {

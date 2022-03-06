@@ -1,9 +1,11 @@
-use actyx_sdk::{LamportTimestamp, StreamId};
+use actyx_sdk::{AppId, LamportTimestamp, StreamId, Timestamp};
 use anyhow::{Context, Result};
 use ax_futures_util::stream::variable::{Observer, Variable};
 use parking_lot::Mutex;
-use rusqlite::backup;
+use rusqlite::{backup, named_params};
 use rusqlite::{params, Connection, OpenFlags};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::time::Duration;
 use std::{collections::BTreeSet, sync::Arc};
 use std::{convert::TryFrom, path::PathBuf};
@@ -153,6 +155,113 @@ impl SqliteIndexStore {
     pub fn lamport(&self) -> actyx_sdk::LamportTimestamp {
         self.lamport.get()
     }
+
+    pub fn blob_put(&self, app_id: AppId, path: String, mime_type: String, data: &[u8]) -> Result<()> {
+        let compressed = zstd::encode_all(data, 19)?;
+
+        let mut conn = self.conn.lock();
+        let txn = conn.transaction()?;
+
+        // example: path = a/b/c
+
+        // first delete a/b/c/...
+        txn.prepare_cached("DELETE FROM blobs WHERE appId = ? and path like ?")?
+            .execute(params![app_id.as_str(), format!("{}/%", path)])?;
+
+        // then delete a/b and a
+        for (idx, _) in path.rmatch_indices('/') {
+            txn.prepare_cached("DELETE FROM blobs WHERE appId = ? and path = ?")?
+                .execute(params![app_id.as_str(), &path[..idx]])?;
+        }
+
+        // the put a/b/c in place, overwriting any previous valud
+        txn.prepare_cached(
+            "INSERT INTO blobs (appId, path, ctime, size, mimetype, compressed) \
+                VALUES (:appId, :path, :ctime, :size, :mimetype, :compressed) \
+                ON CONFLICT DO UPDATE SET \
+                    ctime = :ctime, size = :size, mimetype = :mimetype, compressed = :compressed",
+        )?
+        .execute(named_params! {
+            ":appId": app_id.as_str(),
+            ":path": path,
+            ":ctime": Timestamp::now().as_i64() / 1000,
+            ":size": data.len(),
+            ":mimetype": mime_type,
+            ":compressed": compressed,
+        })?;
+
+        txn.commit()?;
+        Ok(())
+    }
+
+    pub fn blob_del(&self, app_id: AppId, path: String) -> Result<()> {
+        let mut conn = self.conn.lock();
+        let txn = conn.transaction()?;
+        txn.prepare_cached("DELETE FROM blobs WHERE appId = ? AND (path = ? OR path like ?)")?
+            .execute(params![app_id.as_str(), path.as_str(), format!("{}/%", path)])?;
+        txn.commit()?;
+        Ok(())
+    }
+
+    pub fn blob_get(&self, app_id: AppId, path: String) -> Result<Option<(Vec<u8>, String)>> {
+        let mut conn = self.conn.lock();
+        let txn = conn.transaction()?;
+        let mut stmt = txn.prepare_cached(
+            "SELECT path, atime, ctime, size, length(compressed), mimetype \
+                FROM blobs WHERE appId = ? AND (path = ? OR path like ?)",
+        )?;
+        let mut res = stmt.query_map(params![app_id.as_str(), path.as_str(), format!("{}/%", path)], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, Option<i64>>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, i64>(4)?,
+                row.get::<_, String>(5)?,
+            ))
+        })?;
+        let mut listing = HashMap::new();
+        while let Some(row) = res.next() {
+            let row = row?;
+            if row.0 == path {
+                txn.prepare_cached("UPDATE blobs SET atime = ? WHERE appId = ? AND path = ?")?
+                    .execute(params![
+                        Timestamp::now().as_i64() / 1000,
+                        app_id.as_str(),
+                        path.as_str()
+                    ])?;
+                let compressed: Vec<u8> = txn
+                    .prepare_cached("SELECT compressed FROM blobs WHERE appId = ? AND path = ?")?
+                    .query_row(params![app_id.as_str(), path.as_str()], |row| row.get(0))?;
+                drop(res);
+                drop(stmt);
+                txn.commit()?;
+                drop(conn);
+                let blob = zstd::decode_all(&*compressed)?;
+                return Ok(Some((blob, row.5)));
+            } else {
+                let rest = &row.0[path.len() + 1..];
+                match rest.find('/') {
+                    Some(idx) => listing.insert(rest[..idx].to_owned(), PathInfo::Folder),
+                    None => listing.insert(
+                        rest.to_owned(),
+                        PathInfo::File {
+                            original_size: row.3 as usize,
+                            compressed_size: row.4 as usize,
+                            mime_type: row.5,
+                            atime_millis: row.1.map(|x| x as u64),
+                            ctime_millis: row.2 as u64,
+                        },
+                    ),
+                };
+            }
+        }
+        if listing.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some((serde_json::to_vec(&listing)?, "application/json".to_owned())))
+        }
+    }
 }
 
 pub fn initialize_db(conn: &Connection) -> Result<()> {
@@ -183,9 +292,33 @@ pub fn initialize_db(conn: &Connection) -> Result<()> {
             (stream TEXT UNIQUE);\n\
         CREATE TABLE IF NOT EXISTS meta \
             (lamport INTEGER);\n\
+        CREATE TABLE IF NOT EXISTS blobs \
+            (	appId TEXT NOT NULL,\
+                path TEXT NOT NULL,\
+                atime INTEGER,\
+                ctime INTEGER,\
+                size INTEGER,\
+                mimetype TEXT,\
+                compressed BLOB,\
+                PRIMARY KEY (appId, path)\
+            );\n\
         COMMIT;",
     )?;
     Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+enum PathInfo {
+    Folder,
+    #[serde(rename_all = "camelCase")]
+    File {
+        original_size: usize,
+        compressed_size: usize,
+        mime_type: String,
+        atime_millis: Option<u64>,
+        ctime_millis: u64,
+    },
 }
 
 #[cfg(test)]

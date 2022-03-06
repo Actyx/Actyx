@@ -1,5 +1,6 @@
 mod ans;
 mod auth;
+mod blob;
 mod events;
 mod files;
 pub mod formats;
@@ -79,6 +80,7 @@ fn routes(
     let node = node::route(node_info.clone(), store.clone());
     let auth = auth::route(node_info.clone());
     let files = files::route(store.clone(), node_info.clone(), pinner);
+    let blob = blob::routes(store.clone(), node_info.clone());
 
     let api_path = path!("api" / "v2" / ..);
     let cors = cors()
@@ -106,6 +108,7 @@ fn routes(
             path("node").and(node),
             path("auth").and(auth),
             path("files").and(files),
+            path("blob").and(blob),
         ))
     )
     .recover(|r| async { rejections::handle_rejection(r) })
