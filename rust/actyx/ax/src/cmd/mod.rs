@@ -25,13 +25,6 @@ pub mod swarms;
 pub mod users;
 
 #[derive(StructOpt, Debug)]
-pub struct Verbosity {
-    /// Verbosity level. Add more v for higher verbosity (-v, -vv, -vvv, etc.).
-    #[structopt(short, parse(from_occurrences = util::set_log_level), global = true)]
-    verbosity: u64,
-}
-
-#[derive(StructOpt, Debug)]
 pub struct ConsoleOpt {
     #[structopt(name = "NODE", required = true)]
     /// the IP address or <host>:<admin port> of the node to perform the operation on.

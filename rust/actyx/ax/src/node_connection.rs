@@ -344,13 +344,13 @@ async fn mk_transport(keypair: identity::Keypair) -> ActyxOSResult<(PeerId, Boxe
 /// Dials all provided `potential_addresses`, and yields with the first
 /// successful established one.
 async fn poll_until_connected(
-    mut swarm: &mut Swarm<RequestBehaviour>,
+    swarm: &mut Swarm<RequestBehaviour>,
     potential_addresses: impl Iterator<Item = Multiaddr>,
 ) -> ActyxOSResult<(PeerId, Multiaddr)> {
     let mut to_try = 0usize;
     for addr in potential_addresses {
         info!("Trying to connect to {}", addr);
-        Swarm::dial(&mut swarm, DialOpts::unknown_peer_id().address(addr).build()).expect("Connection limit exceeded");
+        Swarm::dial(swarm, DialOpts::unknown_peer_id().address(addr).build()).expect("Connection limit exceeded");
         to_try += 1;
     }
     while let Some(event) = swarm.next().await {

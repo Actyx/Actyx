@@ -14,12 +14,10 @@ pub mod reentrant_safe_mutex;
 pub mod serde_support;
 pub mod serde_util;
 pub mod trace_poll;
-pub mod tracing_set_log_level;
 pub mod value_or_limit;
 pub mod version;
 
 pub use self::value_or_limit::*;
-pub use tracing_set_log_level::*;
 
 use anyhow::bail;
 use multiaddr::{Multiaddr, Protocol};
@@ -35,9 +33,17 @@ use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::EnvFilter;
 
 /// Sets up a logging and a panic handler that logs panics.
-pub fn setup_logger() {
+pub fn setup_logger_with_level(level: u8) {
     tracing_log::LogTracer::init().ok();
-    let env = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_| "info".to_owned());
+    let env = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_| {
+        match level {
+            0 => "warning",
+            1 => "info",
+            2 => "debug",
+            _ => "trace",
+        }
+        .to_owned()
+    });
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
         .with_env_filter(EnvFilter::new(env))
@@ -45,6 +51,9 @@ pub fn setup_logger() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).ok();
     log_panics::init();
+}
+pub fn setup_logger() {
+    setup_logger_with_level(0);
 }
 
 #[derive(Clone, Debug, PartialEq)]

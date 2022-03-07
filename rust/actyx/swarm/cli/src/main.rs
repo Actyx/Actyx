@@ -11,7 +11,7 @@ use std::sync::Arc;
 use structopt::StructOpt;
 use swarm::{
     event_store_ref::{self, EventStoreHandler, EventStoreRef, EventStoreRequest},
-    BanyanStore, GossipMessage, SwarmConfig,
+    BanyanStore, GossipMessage, SwarmConfig, blob_store::BlobStore, DbPath,
 };
 use swarm_cli::{Command, Config, Event};
 use tokio::{
@@ -77,12 +77,14 @@ async fn run() -> Result<()> {
             });
             EventStoreRef::new(move |e| tx.try_send(e).map_err(event_store_ref::Error::from))
         };
+        let blobs = BlobStore::new(DbPath::Memory)?;
         swarm.spawn_task(
             "api",
             api::run(
                 node_info,
                 swarm.clone(),
                 event_store,
+                blobs,
                 Arc::new(Mutex::new(addr.into())),
                 tx,
             ),

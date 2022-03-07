@@ -161,7 +161,7 @@ impl Node {
             } => {
                 let res = self
                     .handle_set_settings_request(&scope, json, ignore_errors)
-                    .inspect_err(|e| debug!("Error handling set settings request: {}", e));
+                    .ax_inspect_err(|e| debug!("Error handling set settings request: {}", e));
                 if res.is_ok() {
                     info!(target: "NODE_SETTINGS_CHANGED", "Node settings at scope {} were changed.", scope);
                 }
@@ -170,7 +170,7 @@ impl Node {
             SettingsRequest::UnsetSettings { response, scope } => {
                 let res = self
                     .handle_unset_settings_request(&scope)
-                    .inspect_err(|e| debug!("Error handling unset settings request: {}", e));
+                    .ax_inspect_err(|e| debug!("Error handling unset settings request: {}", e));
                 let _ = response.send(res);
             }
             SettingsRequest::GetSettings {

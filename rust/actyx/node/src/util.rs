@@ -104,7 +104,7 @@ lazy_static::lazy_static! {
 }
 
 pub fn init_shutdown_ceremony() {
-    SHUTDOWN_THREAD.name();
+    SHUTDOWN_THREAD.unpark();
 }
 
 pub fn trigger_shutdown() {

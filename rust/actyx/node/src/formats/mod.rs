@@ -62,18 +62,19 @@ pub enum ShutdownReason {
     Internal(NodeError),
 }
 #[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum NodeEvent {
     StateUpdate(NodeState),
     Shutdown(ShutdownReason),
 }
 
 pub(crate) trait ResultInspect<T, E> {
-    fn inspect_err<F>(self, f: F) -> Self
+    fn ax_inspect_err<F>(self, f: F) -> Self
     where
         F: FnMut(&E);
 }
 impl<T, E> ResultInspect<T, E> for Result<T, E> {
-    fn inspect_err<F>(self, mut f: F) -> Self
+    fn ax_inspect_err<F>(self, mut f: F) -> Self
     where
         F: FnMut(&E),
     {

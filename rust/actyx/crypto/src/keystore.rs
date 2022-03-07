@@ -46,7 +46,7 @@ type DumpFn = Box<dyn Fn(Box<[u8]>) -> Result<()> + Send + Sync>;
 ///
 /// The KeyStore holds a number of keys, either complete pairs or only public keys.
 /// These keys are referenced by PublicKey.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct KeyStore {
     pub(crate) pairs: BTreeMap<PublicKey, PrivateKey>,
     pub(crate) publics: BTreeSet<PublicKey>,
@@ -68,16 +68,6 @@ impl std::fmt::Debug for KeyStore {
             .field("pairs", &self.pairs)
             .field("publics", &self.publics)
             .finish()
-    }
-}
-
-impl Default for KeyStore {
-    fn default() -> Self {
-        Self {
-            pairs: BTreeMap::new(),
-            publics: BTreeSet::new(),
-            dump_after_modify: None,
-        }
     }
 }
 
