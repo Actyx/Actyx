@@ -35,6 +35,7 @@ export const enum RequestTypes {
   Offsets = 'offsets',
   Query = 'query',
   Subscribe = 'subscribe',
+  SubscribeMonotonic = 'subscribe_monotonic',
   Publish = 'publish',
 }
 
@@ -145,7 +146,7 @@ export class WebsocketEventStore implements EventStore {
   subscribeMonotonic: DoSubscribeMonotonic = (session, lowerBound, whereObj, horizon) =>
     this.multiplexer
       .request(
-        RequestTypes.Subscribe,
+        RequestTypes.SubscribeMonotonic,
         SubscribeMonotonicRequest.encode({
           session,
           lowerBound,

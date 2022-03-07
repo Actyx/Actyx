@@ -64,7 +64,9 @@ impl BlobStore {
     }
 
     pub fn blob_put(&self, app_id: AppId, path: String, mime_type: String, data: &[u8]) -> anyhow::Result<()> {
+        let _span = tracing::debug_span!("blob_put", appId = %app_id, path = %path).entered();
         let compressed = zstd::encode_all(data, 19)?;
+        tracing::trace!(raw = data.len(), compressed = compressed.len(), "size");
 
         let mut conn = self.conn.lock();
         let txn = conn.transaction()?;
@@ -72,42 +74,51 @@ impl BlobStore {
         // example: path = a/b/c
 
         // first delete a/b/c/...
-        txn.prepare_cached("DELETE FROM blobs WHERE (appId = :appId AND substr(path, 1, length(:pathe)) = :pathe)")?
+        let n = txn
+            .prepare_cached("DELETE FROM blobs WHERE (appId = :appId AND substr(path, 1, length(:pathe)) = :pathe)")?
             .execute(named_params! {
                 ":appId": app_id.as_str(),
                 ":pathe": format!("{}/", path),
             })?;
+        tracing::trace!(descendants = n, "deleted");
 
         // then delete a/b and a
         for (idx, _) in path.rmatch_indices('/') {
-            txn.prepare_cached("DELETE FROM blobs WHERE appId = ? and path = ?")?
+            let n = txn
+                .prepare_cached("DELETE FROM blobs WHERE appId = ? and path = ?")?
                 .execute(params![app_id.as_str(), &path[..idx]])?;
+            if n > 0 {
+                tracing::trace!(path = &path[..idx], "deleted");
+            }
         }
 
         // the put a/b/c in place, overwriting any previous valud
-        txn.prepare_cached(
-            "INSERT INTO blobs (appId, path, ctime, size, mimetype, compressed) \
+        let n = txn
+            .prepare_cached(
+                "INSERT INTO blobs (appId, path, ctime, size, mimetype, compressed) \
                 VALUES (:appId, :path, :ctime, :size, :mimetype, :compressed) \
                 ON CONFLICT DO UPDATE SET \
                     ctime = :ctime, size = :size, mimetype = :mimetype, compressed = :compressed",
-        )?
-        .execute(named_params! {
-            ":appId": app_id.as_str(),
-            ":path": path,
-            ":ctime": Timestamp::now().as_i64() / 1000,
-            ":size": data.len(),
-            ":mimetype": mime_type,
-            ":compressed": compressed,
-        })?;
+            )?
+            .execute(named_params! {
+                ":appId": app_id.as_str(),
+                ":path": path,
+                ":ctime": Timestamp::now().as_i64() / 1000,
+                ":size": data.len(),
+                ":mimetype": mime_type,
+                ":compressed": compressed,
+            })?;
+        tracing::trace!(rows = n, "stored");
 
         txn.commit()?;
         Ok(())
     }
 
     pub fn blob_del(&self, app_id: AppId, path: String) -> anyhow::Result<()> {
+        let _span = tracing::debug_span!("blob_del", appId = %app_id, path = %path).entered();
         let mut conn = self.conn.lock();
         let txn = conn.transaction()?;
-        txn.prepare_cached(
+        let n = txn.prepare_cached(
             "DELETE FROM blobs WHERE (appId = :appId AND (path = :path OR substr(path, 1, length(:pathe)) = :pathe))",
         )?
         .execute(named_params! {
@@ -115,11 +126,13 @@ impl BlobStore {
             ":path": path.as_str(),
             ":pathe": format!("{}/", path),
         })?;
+        tracing::trace!(rows = n, "deleted");
         txn.commit()?;
         Ok(())
     }
 
     pub fn blob_get(&self, app_id: AppId, path: String) -> anyhow::Result<Option<(Vec<u8>, String)>> {
+        let _span = tracing::debug_span!("blob_get", appId = %app_id, path = %path).entered();
         let mut conn = self.conn.lock();
         let txn = conn.transaction()?;
         let mut stmt = txn.prepare_cached(
@@ -147,6 +160,7 @@ impl BlobStore {
         while let Some(row) = res.next() {
             let row = row?;
             if row.0 == path {
+                tracing::trace!("found direct match");
                 txn.prepare_cached("UPDATE blobs SET atime = ? WHERE appId = ? AND path = ?")?
                     .execute(params![
                         Timestamp::now().as_i64() / 1000,
@@ -163,6 +177,7 @@ impl BlobStore {
                 let blob = zstd::decode_all(&*compressed)?;
                 return Ok(Some((blob, row.5)));
             } else {
+                tracing::trace!(path = %row.0, "found descendant");
                 let rest = &row.0[path.len() + 1..];
                 match rest.find('/') {
                     Some(idx) => listing.insert(rest[..idx].to_owned(), PathInfo::Folder),

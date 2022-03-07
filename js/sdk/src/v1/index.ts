@@ -7,14 +7,17 @@
 import { Subject } from '../../node_modules/rxjs'
 import { EventStore } from '../internal_common/eventStore'
 import { log } from '../internal_common/log'
+import { SnapshotStore } from '../snapshotStore'
 import { ActyxOpts } from '../types'
 import { mkConfig, MultiplexedWebsocket } from './multiplexedWebsocket'
 import { getSourceId, WebsocketEventStore } from './websocketEventStore'
+import { WebsocketSnapshotStore } from './websocketSnapshotStore'
 
 export type Ret = {
   eventStore: EventStore
   close: () => void
   sourceId: string
+  snapshotStore: SnapshotStore
 }
 
 export const mkV1eventStore = async (axOpts: ActyxOpts): Promise<Ret> => {
@@ -56,5 +59,6 @@ export const mkV1eventStore = async (axOpts: ActyxOpts): Promise<Ret> => {
     eventStore: new WebsocketEventStore(ws, src),
     sourceId: src,
     close: () => ws.close(),
+    snapshotStore: new WebsocketSnapshotStore(ws),
   }
 }

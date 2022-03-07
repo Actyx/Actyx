@@ -1,4 +1,4 @@
-import fetch from 'cross-fetch'
+import crossFetch from 'cross-fetch'
 import * as t from 'io-ts'
 import * as E from 'fp-ts/Either'
 import { lt } from 'semver'
@@ -14,7 +14,7 @@ import { EventKeyIO, OffsetMapIO } from '../types/wire'
 import { mkHeaders } from './utils'
 import log from '../internal_common/log'
 
-const ENDPOINT = 'api/v2/blob'
+const ENDPOINT = 'blob'
 const entityFolder = (api: string, semantics: string, entity: string) =>
   `${api}/${ENDPOINT}/-/@pond/snap/${semantics}/${entity}`
 const versionFolder = (api: string, semantics: string, entity: string, version: number) =>
@@ -24,11 +24,18 @@ const snapFolder = (api: string, semantics: string, entity: string, version: num
 
 const Folder = t.record(
   t.string,
-  t.type({
-    type: t.keyof({ file: 1, folder: 1 }),
-    sizeOrEntries: t.number,
-    modifiedMillis: t.number,
-  }),
+  t.union([
+    t.type({
+      type: t.literal('folder'),
+    }),
+    t.type({
+      type: t.literal('file'),
+      originalSize: t.number,
+      compressedSize: t.number,
+      atimeMillis: t.number,
+      ctimeMillis: t.number,
+    }),
+  ]),
 )
 type Folder = t.TypeOf<typeof Folder>
 
@@ -77,6 +84,15 @@ const SetElasticity = t.type({
   definition: Elasticity,
 })
 
+const fetch: typeof crossFetch = async (input, init) => {
+  const res = await crossFetch(input, init)
+  if (!res.ok) {
+    const method = init?.method || 'GET'
+    throw new Error(`fetch ${method} ${input}: (${res.status}) ${await res.text()}`)
+  }
+  return res
+}
+
 export class BlobSnapshotStore implements SnapshotStore {
   constructor(
     private api: string,
@@ -121,22 +137,22 @@ export class BlobSnapshotStore implements SnapshotStore {
   ) => {
     if (lt(this.currentActyxVersion(), '2.12.0')) return false
 
-    const headers = mkHeaders(this.currentToken())
+    log.http.debug('storeSnapshot start', semantics, entity, tag)
+    try {
+      const headers = mkHeaders(this.currentToken())
 
-    const folder = snapFolder(this.api, semantics, entity, version, tag)
-    await fetch(folder, { method: 'DELETE', headers })
+      const folder = snapFolder(this.api, semantics, entity, version, tag)
+      await fetch(folder, { method: 'DELETE', headers })
 
-    await fetch(`${folder}/blob`, { method: 'PUT', body: blob, headers })
-    await fetch(`${folder}/meta`, {
-      method: 'PUT',
-      body: JSON.stringify(mkMeta(key, offsets, horizon, cycle)),
-      headers,
-    })
+      await fetch(`${folder}/blob`, { method: 'PUT', body: blob, headers })
+      await fetch(`${folder}/meta`, {
+        method: 'PUT',
+        body: JSON.stringify(mkMeta(key, offsets, horizon, cycle)),
+        headers,
+      })
 
-    const entityF = entityFolder(this.api, semantics, entity)
-    const lsRes = await fetch(entityF, { headers })
-    if (lsRes.ok) {
-      const ls = Folder.decode(await lsRes.json())
+      const entityF = entityFolder(this.api, semantics, entity)
+      const ls = Folder.decode(await (await fetch(entityF, { headers })).json())
       if (E.isRight(ls)) {
         for (const v of Object.keys(ls.right)) {
           if (Number(v) < version) {
@@ -144,80 +160,96 @@ export class BlobSnapshotStore implements SnapshotStore {
           }
         }
       }
-    }
 
-    return true
+      return true
+    } catch (e) {
+      log.http.error('storeSnapshot', semantics, entity, tag, e)
+      return false
+    } finally {
+      log.http.debug('storeSnapshot done', semantics, entity, tag)
+    }
   }
 
   retrieveSnapshot: RetrieveSnapshot = async (semantics, entity, version) => {
     if (lt(this.currentActyxVersion(), '2.12.0')) return undefined
 
-    const headers = mkHeaders(this.currentToken())
+    log.http.debug('retrieveSnapshot start', semantics, entity)
+    try {
+      const headers = mkHeaders(this.currentToken())
 
-    const folder = versionFolder(this.api, semantics, entity, version)
-    const lsRes = await fetch(folder, { headers })
-    if (!lsRes.ok) return
-    const ls = Folder.decode(await lsRes.json())
-    if (E.isLeft(ls)) return
+      const folder = versionFolder(this.api, semantics, entity, version)
+      const ls = Folder.decode(await (await fetch(folder, { headers })).json())
+      if (E.isLeft(ls)) return
 
-    let meta: Meta | undefined = undefined
-    let blob = ''
-    for (const tag of Object.keys(ls.right)) {
-      const metaRes = await fetch(`${folder}/${tag}/meta`, { headers })
-      if (!metaRes.ok) continue
-      const m = Meta.decode(await metaRes.json())
-      if (E.isLeft(m)) continue
-      if (meta !== undefined && EventKey.ord.compare(meta.key, m.right.key) > 0) continue
-      const blobRes = await fetch(`${folder}/${tag}/blob`, { headers })
-      if (!blobRes.ok) continue
-      meta = m.right
-      blob = await blobRes.text()
-    }
+      let meta: Meta | undefined = undefined
+      let blob = ''
+      for (const tag of Object.keys(ls.right)) {
+        const metaRes = await crossFetch(`${folder}/${tag}/meta`, { headers })
+        if (!metaRes.ok) continue
+        const m = Meta.decode(await metaRes.json())
+        if (E.isLeft(m)) continue
+        if (meta !== undefined && EventKey.ord.compare(meta.key, m.right.key) > 0) continue
+        const blobRes = await crossFetch(`${folder}/${tag}/blob`, { headers })
+        if (!blobRes.ok) continue
+        meta = m.right
+        blob = await blobRes.text()
+      }
 
-    if (meta === undefined) return
-    return {
-      state: blob,
-      offsets: meta.offsets,
-      eventKey: meta.key,
-      horizon: meta.horizon,
-      cycle: meta.cycle,
+      if (meta === undefined) return
+      return {
+        state: blob,
+        offsets: meta.offsets,
+        eventKey: meta.key,
+        horizon: meta.horizon,
+        cycle: meta.cycle,
+      }
+    } catch (e) {
+      log.http.error('retrieveSnapshot', semantics, entity, e)
+      return
+    } finally {
+      log.http.debug('retrieveSnapshot done', semantics, entity)
     }
   }
 
   invalidateSnapshots: InvalidateSnapshots = async (semantics, entity, key) => {
     if (lt(this.currentActyxVersion(), '2.12.0')) return
 
-    const headers = mkHeaders(this.currentToken())
+    log.http.debug('invalidateSnapshots start', semantics, entity, key)
+    try {
+      const headers = mkHeaders(this.currentToken())
 
-    const folder = entityFolder(this.api, semantics, entity)
-    const lsRes = await fetch(folder, { headers })
-    if (!lsRes.ok) return
-    const ls = Folder.decode(await lsRes.json())
-    if (E.isLeft(ls)) return
+      const folder = entityFolder(this.api, semantics, entity)
+      const ls = Folder.decode(await (await fetch(folder, { headers })).json())
+      if (E.isLeft(ls)) return
 
-    for (const version of Object.keys(ls)) {
-      const vf = `${folder}/${version}`
-      const vflsRes = await fetch(vf, { headers })
-      if (!vflsRes.ok) continue
-      const vfls = Folder.decode(await vflsRes.json())
-      if (E.isLeft(vfls)) continue
+      for (const version of Object.keys(ls)) {
+        const vf = `${folder}/${version}`
+        const vfls = Folder.decode(await (await fetch(vf, { headers })).json())
+        if (E.isLeft(vfls)) continue
 
-      for (const tag of Object.keys(vfls)) {
-        const metaRes = await fetch(`${vf}/${tag}/meta`, { headers })
-        if (!metaRes.ok) continue
-        const meta = Meta.decode(await metaRes.json())
-        if (E.isLeft(meta)) continue
+        for (const tag of Object.keys(vfls)) {
+          const meta = Meta.decode(await (await fetch(`${vf}/${tag}/meta`, { headers })).json())
+          if (E.isLeft(meta)) continue
 
-        if (EventKey.ord.compare(key, meta.right.key) < 0) {
-          await fetch(`${vf}/${tag}`, { method: 'DELETE', headers })
+          if (EventKey.ord.compare(key, meta.right.key) < 0) {
+            await fetch(`${vf}/${tag}`, { method: 'DELETE', headers })
+          }
         }
       }
+    } catch (e) {
+      log.http.error('invalidateSnapshot', semantics, entity, key, e)
+    } finally {
+      log.http.debug('invalidateSnapshots', semantics, entity, key)
     }
   }
 
   invalidateAllSnapshots: InvalidateAllSnapshots = async () => {
     if (lt(this.currentActyxVersion(), '2.12.0')) return
-    const headers = mkHeaders(this.currentToken())
-    await fetch(`${this.api}/${ENDPOINT}/-/@pond/snap`)
+    try {
+      const headers = mkHeaders(this.currentToken())
+      await fetch(`${this.api}/${ENDPOINT}/-/@pond/snap`)
+    } catch (e) {
+      log.http.error('invalidateAllSnapshots', e)
+    }
   }
 }

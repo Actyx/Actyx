@@ -134,7 +134,7 @@ export const observeMonotonic =
 
     const storeSnapshot = async (toStore: PendingSnapshot) => {
       const { snap, tag } = toStore
-      snapshotStore.storeSnapshot(
+      await snapshotStore.storeSnapshot(
         fishId.entityType,
         fishId.name,
         snap.eventKey,

@@ -729,28 +729,13 @@ class Pond2Impl implements Pond {
   }
 }
 
-/**
- * All services needed by the pond
- */
-type Services = Readonly<{
-  actyx: Actyx
-  snapshotStore: SnapshotStore
-}>
-
 const mkPond = async (
   manifest: AppManifest,
   connectionOpts: ActyxOpts,
   opts: PondOptions,
 ): Promise<Pond> => {
   const actyx = await Actyx.of(manifest, connectionOpts)
-  return pondFromServices(
-    {
-      actyx,
-      // UNavailable in V2. FIXME: Enable if we are on V1
-      snapshotStore: SnapshotStore.noop,
-    },
-    opts,
-  )
+  return pondFromServices(actyx, opts)
 }
 
 /** A Pond with extensions for testing. @public */
@@ -769,19 +754,16 @@ const mkTestPond = (opts?: TestPondOptions): TestPond => {
     nodeInfo: async () =>
       new NodeInfo({ connectedNodes: 0, version: '2.0.0-test', uptime: { secs: 0, nanos: 0 } }),
   }
-  const snapshotStore = SnapshotStore.noop
   return {
-    ...pondFromServices({ actyx, snapshotStore }, opts1),
+    ...pondFromServices(actyx, opts1),
     directlyPushEvents: actyx.directlyPushEvents,
   }
 }
-const pondFromServices = (services: Services, opts: PondOptions): Pond => {
-  const { actyx, snapshotStore } = services
-
+const pondFromServices = (actyx: Actyx, opts: PondOptions): Pond => {
   log.pond.debug('start pond with SourceID %s from store', actyx.nodeId)
 
   const pondStateTracker = mkPondStateTracker(log.pond)
-  const pond: Pond2Impl = new Pond2Impl(actyx, snapshotStore, pondStateTracker, opts)
+  const pond: Pond2Impl = new Pond2Impl(actyx, actyx.snapshotStore, pondStateTracker, opts)
 
   return pond
 }

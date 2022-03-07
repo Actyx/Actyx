@@ -259,12 +259,22 @@ impl EventService {
                 *latest = key;
                 let vs = query.feed(Some(to_value(&event)));
                 if !vs.is_empty() {
-                    let last = vs.len() - 1;
+                    let last = {
+                        let mut l = None;
+                        for idx in (0..vs.len()).rev() {
+                            if vs[idx].is_ok() {
+                                l = Some(idx);
+                                break;
+                            }
+                        }
+                        l
+                    };
                     for (idx, v) in vs.into_iter().enumerate() {
+                        let caught_up = Some(idx) == last && caught_up;
                         co.yield_(match v {
                             Ok(v) => SubscribeMonotonicResponse::Event {
                                 event: to_event(v, Some(&event)),
-                                caught_up: idx == last && caught_up,
+                                caught_up,
                             },
                             Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
                         })
@@ -294,7 +304,7 @@ impl EventService {
             let mut event = unbounded.next().await;
             while let Some(ev) = event {
                 let next = poll_fn(|cx| Poll::Ready(unbounded.next().poll_unpin(cx))).await;
-                if send_and_timetravel(&co, ev, &mut latest, !next.is_ready(), &mut query).await {
+                if send_and_timetravel(&co, ev, &mut latest, next.is_pending(), &mut query).await {
                     break;
                 }
                 match next {

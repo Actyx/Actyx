@@ -100,6 +100,7 @@ export const eventsMonotonic = (eventStore: EventStore): SubscribeMonotonic => {
                 break
               }
               case 'event': {
+                x.caughtUp && log.submono.debug('caught up', session)
                 if (events === null) {
                   events = { type: MsgType.events, events: [x], caughtUp: x.caughtUp }
                   emit.push(events)
