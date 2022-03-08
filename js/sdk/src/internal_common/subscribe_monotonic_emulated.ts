@@ -6,7 +6,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { fromNullable, Option, map as mapOption, fold as foldOption } from 'fp-ts/lib/Option'
-import { gt } from 'fp-ts/lib/Ord'
+import { gt, geq } from 'fp-ts/lib/Ord'
 import { Observable, EMPTY, from, of, combineLatest, concat, defer } from 'rxjs'
 import {
   filter,
@@ -65,11 +65,12 @@ export type SubscribeMonotonic = (
 ) => Observable<EventsOrTimetravel>
 
 const eventKeyGreater = gt(EventKey.ord)
+const eventKeyGreaterEq = geq(EventKey.ord)
 
 type SessionId = string
 const GenericSemantics = 'generic-snapshot-v2'
 
-const horizonFilter = (horizon: EventKey) => (x: Event) => eventKeyGreater(x, horizon)
+const horizonFilter = (horizon: EventKey) => (x: Event) => eventKeyGreaterEq(x, horizon)
 
 /**
  * Create a new endpoint, based on the given EventStore and SnapshotStore.

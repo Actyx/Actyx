@@ -137,7 +137,7 @@ export const Actyx = {
     const fns = EventFnsFromEventStoreV2(nodeId, store, snaps, () => '2.0.0')
     return {
       ...fns,
-      snapshotStore: SnapshotStore.inMem(),
+      snapshotStore: snaps,
       nodeId,
       directlyPushEvents: store.directlyPushEvents,
       dispose: () => {

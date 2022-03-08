@@ -177,6 +177,14 @@ pub fn initialize_db(conn: &Connection) -> Result<()> {
         );
         Ok(())
     })?;
+    conn.execute_batch(
+        "BEGIN;\n\
+        CREATE TABLE IF NOT EXISTS streams \
+            (stream TEXT UNIQUE);\n\
+        CREATE TABLE IF NOT EXISTS meta \
+            (lamport INTEGER);\n\
+        COMMIT;",
+    )?;
     Ok(())
 }
 

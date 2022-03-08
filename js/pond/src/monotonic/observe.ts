@@ -223,7 +223,7 @@ export const observeMonotonic =
               1,
               (chunk) => {
                 const ev = chunk.events[0]
-                if (isReset(ev.payload as E, ev.meta)) {
+                if (isResetWrapped(ev)) {
                   res(ev.meta)
                 }
               },
