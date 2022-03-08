@@ -7,7 +7,13 @@ import {
   CancelSubscription,
   OffsetMap,
 } from '@actyx/sdk'
-import { LWW_TAG, LWW_CREATED_TAG, LWW_UPDATED_TAG, LWW_VERSION } from './consts'
+import {
+  LWW_TAG,
+  LWW_CREATED_TAG,
+  LWW_UPDATED_TAG,
+  LWW_VERSION,
+  LWW_CUSTOM_TAG_PREFIX,
+} from './consts'
 import { mkUniqueId } from './uuid'
 import { toError } from './util'
 import debug from 'debug'
@@ -36,6 +42,7 @@ export type Metadata = {
 export type State<Data> = {
   data: Data
   meta: Metadata
+  tags: string[]
 }
 
 type CreatedE<Data> = {
@@ -59,41 +66,77 @@ type UpdatedE<Data> = {
   data: Data
 }
 
-type MkTag = {
-  create: (id: UniqueId) => string[]
-  update: (id: UniqueId) => string[]
+type Tags = {
+  create: (id: UniqueId, customTags: string[]) => string[]
+  update: (id: UniqueId, customTags: string[]) => string[]
+  readIds: (customTags: string[]) => string[]
+  custom: (customTags: string[]) => string[]
+  getCustomTags: (tags: readonly string[]) => string[]
 }
 
-const mkTags = (entityName: EntityName): MkTag => ({
-  create: (id) => [
+const Tags = (entityName: EntityName): Tags => ({
+  create: (id, customTags: string[]) => [
     entityName,
     `${entityName}:${id}`,
     LWW_TAG,
     `${LWW_TAG}-${LWW_VERSION}`,
     LWW_CREATED_TAG,
+    ...Tags(entityName).custom(customTags),
   ],
-  update: (id) => [
+  update: (id, customTags) => [
     entityName,
     `${entityName}:${id}`,
     LWW_TAG,
     `${LWW_TAG}-${LWW_VERSION}`,
     LWW_UPDATED_TAG,
+    ...Tags(entityName).custom(customTags),
   ],
+  readIds: (customTags: string[]) => [
+    LWW_TAG,
+    `${LWW_TAG}-${LWW_VERSION}`,
+    LWW_CREATED_TAG,
+    entityName,
+    ...Tags(entityName).custom(customTags),
+  ],
+  custom: (customTags: string[]) => customTags.map((t) => `${LWW_CUSTOM_TAG_PREFIX}${t}`),
+  getCustomTags: (tags: readonly string[]) =>
+    tags
+      .filter((t) => t.startsWith(LWW_CUSTOM_TAG_PREFIX))
+      .map((t) => t.substring(LWW_CUSTOM_TAG_PREFIX.length)),
 })
 
 export type Lww<Data> = (sdk: SDK) => {
-  create: (data: Data, id?: UniqueId) => Promise<UniqueId>
+  create: (
+    data: Data,
+    opts?: {
+      id?: UniqueId
+      tags?: string[]
+    },
+  ) => Promise<UniqueId>
   update: (id: UniqueId, data: Data) => Promise<boolean>
   archive: (id: UniqueId) => Promise<boolean>
   unarchive: (id: UniqueId) => Promise<boolean>
   read: (id: UniqueId) => Promise<State<Data> | undefined>
-  readAll: () => Promise<State<Data>[]>
-  readIds: () => Promise<UniqueId[]>
-  find: (props: Partial<Data>) => Promise<State<Data>[]>
-  findOne: (props: Partial<Data>) => Promise<State<Data> | undefined>
+  readAll: (opts?: { tags?: string[] }) => Promise<State<Data>[]>
+  readIds: (opts?: { tags?: string[] }) => Promise<UniqueId[]>
+  find: (
+    props: Partial<Data>,
+    opts?: {
+      tags?: string[]
+    },
+  ) => Promise<State<Data>[]>
+  findOne: (
+    props: Partial<Data>,
+    opts?: {
+      tags?: string[]
+    },
+  ) => Promise<State<Data> | undefined>
   subscribeIds: (
     onId: (id: UniqueId) => void,
     onError: (error: Error) => void,
+    opts?: {
+      tags?: string[]
+    },
   ) => CancelSubscription
   subscribe: (
     id: UniqueId,
@@ -103,6 +146,9 @@ export type Lww<Data> = (sdk: SDK) => {
   subscribeAll: (
     onStates: (states: State<Data>[]) => void,
     onError: (error: Error) => void,
+    opts?: {
+      tags?: string[]
+    },
   ) => CancelSubscription
 
   // Does this actually work? It uses an AQL filter, but the
@@ -128,9 +174,13 @@ const createEntity = async <Data>(
   sdk: SDK,
   entityName: EntityName,
   data: Data,
-  id?: UniqueId,
+  opts?: {
+    id?: UniqueId
+    tags?: string[]
+  },
 ): Promise<UniqueId> => {
-  const entityId = id || mkUniqueId()
+  const entityId = opts?.id || mkUniqueId()
+  const customTags = opts?.tags || []
   const event: CreatedE<Data> = {
     key: 'created',
     meta: {
@@ -141,7 +191,7 @@ const createEntity = async <Data>(
     },
     data,
   }
-  await sdk.publish({ tags: mkTags(entityName).create(entityId), event })
+  await sdk.publish({ tags: Tags(entityName).create(entityId, customTags), event })
   return entityId
 }
 const readById = async <Data>(sdk: SDK, entityName: EntityName, id: InstanceId) => {
@@ -174,16 +224,21 @@ const _readById = async <Data>(
   if (!offsets) {
     throw new Error(`internal error in _readById; queryAql did not return an 'offsets' event`)
   }
-  const state = event.payload as State<Data>
+  const state = {
+    ...(event.payload as Omit<State<Data>, 'tags'>),
+    tags: Tags(entityName).getCustomTags(event.meta.tags),
+  }
   return { offsets: offsets.offsets, state }
 }
 
 const _readIds = async (
   sdk: SDK,
   entityName: EntityName,
+  customTags: string[],
 ): Promise<{ ids: UniqueId[]; offsets: OffsetMap }> => {
   dbg(`_readIds(entityName: '${entityName}')`)
-  const query = `FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & '${LWW_CREATED_TAG}' & '${entityName}'`
+  const tags = Tags(entityName).readIds(customTags)
+  const query = `FROM allEvents & ${tags.map((t) => `'${t}'`).join(' & ')}`
 
   dbg(`running query "${query}"`)
   const results = await sdk.queryAql(query)
@@ -200,9 +255,13 @@ const _readIds = async (
   return { ids, offsets: offsets.offsets }
 }
 
-const readIds = async (sdk: SDK, entityName: EntityName): Promise<UniqueId[]> => {
+const readIds = async (
+  sdk: SDK,
+  entityName: EntityName,
+  customTags: string[],
+): Promise<UniqueId[]> => {
   dbg(`readIds(entityName: '${entityName}')`)
-  const res = await _readIds(sdk, entityName)
+  const res = await _readIds(sdk, entityName, customTags)
   return res.ids
 }
 
@@ -210,9 +269,10 @@ const readIds = async (sdk: SDK, entityName: EntityName): Promise<UniqueId[]> =>
 const _readAll = async <Data>(
   sdk: SDK,
   entityName: EntityName,
+  customTags: string[],
 ): Promise<{ states: State<Data>[]; offsets: OffsetMap }> => {
   dbg(`readAll(entityName: '${entityName}')`)
-  const all = await _readIds(sdk, entityName)
+  const all = await _readIds(sdk, entityName, customTags)
   dbg(`got ${all.ids.length} ids`)
   return {
     offsets: all.offsets,
@@ -223,9 +283,13 @@ const _readAll = async <Data>(
 }
 
 // Read latest and return state and offset map for all
-const readAll = async <Data>(sdk: SDK, entityName: EntityName): Promise<State<Data>[]> => {
+const readAll = async <Data>(
+  sdk: SDK,
+  entityName: EntityName,
+  customTags: string[],
+): Promise<State<Data>[]> => {
   dbg(`readAll(entityName: '${entityName}')`)
-  const ids = await readIds(sdk, entityName)
+  const ids = await readIds(sdk, entityName, customTags)
   dbg(`got ${ids.length} ids`)
   return (await Promise.all(ids.map((id) => readById<Data>(sdk, entityName, id)))).filter(
     (state: State<Data> | undefined): state is State<Data> => state !== undefined,
@@ -236,6 +300,7 @@ const subscribeIds = (
   entityName: EntityName,
   onId: (id: UniqueId) => void,
   onError: (error: Error) => void,
+  customTags: string[],
 ): CancelSubscription => {
   dbg(`subscribeIds(entityName: '${entityName}')`)
   let cancelled = false
@@ -249,12 +314,14 @@ const subscribeIds = (
     }
   }
 
-  _readIds(sdk, entityName).then(({ ids, offsets }) => {
+  _readIds(sdk, entityName, customTags).then(({ ids, offsets }) => {
     dbg(`got ${ids.length} initial ids`)
     ids.forEach(onId)
 
-    const query = `FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & '${LWW_CREATED_TAG}' & '${entityName}'`
-    dbg(`subscribing with query: ${query.trim()}`)
+    //const query = `FROM allEvents & '${LWW_TAG}' & '${LWW_TAG}-${LWW_VERSION}' & '${LWW_CREATED_TAG}' & '${entityName}'`
+    const tags = Tags(entityName).readIds(customTags)
+    const query = `FROM allEvents & ${tags.map((t) => `'${t}'`).join(' & ')}`
+    dbg(`subscribing with query: ${query}`)
     cancelSub = sdk.subscribeAql(
       query,
       (res) => {
@@ -285,8 +352,10 @@ const subscribeAll = <Data>(
   entityName: EntityName,
   onStates: (states: State<Data>[]) => void,
   onError: (error: Error) => void,
+  customTags: string[],
 ): CancelSubscription => {
   dbg(`subscribeAll(entityName: '${entityName}')`)
+
   let cancelled = false
   const states: Map<InstanceId, State<Data>> = new Map()
   let cancelSubs: CancelSubscription[] = []
@@ -351,6 +420,7 @@ const subscribeAll = <Data>(
         )
       },
       handleError,
+      customTags,
     ),
   )
 
@@ -390,7 +460,10 @@ const subscribeById = <Data>(
         (res) => {
           trc(`subscription with query "${query}" got result`, res)
           if (res.type === 'event' && !cancelled) {
-            onState(res.payload as State<Data>)
+            onState({
+              ...(res.payload as Omit<State<Data>, 'tags'>),
+              tags: Tags(entityName).getCustomTags(res.meta.tags),
+            })
           }
         },
         (err) => {
@@ -428,7 +501,7 @@ const update = async <Data>(
   }
 
   const updatedOn = Date.now()
-  const tags = mkTags(entityName).update(id)
+  const tags = Tags(entityName).update(id, current.tags)
   const event: UpdatedE<Data> = {
     key: 'updated',
     meta: {
@@ -456,7 +529,7 @@ const setArchivedState = async (
     return false
   }
 
-  const tags = mkTags(entityName).update(id)
+  const tags = Tags(entityName).update(id, current.tags)
   const event: UpdatedE<unknown> = {
     key: 'updated',
     meta: {
@@ -475,13 +548,18 @@ const find = async <Data>(
   sdk: SDK,
   entityName: EntityName,
   props: Partial<Data>,
-): Promise<State<Data>[]> => _find(sdk, entityName, props).then((r) => r.states)
+  customTags: string[],
+): Promise<State<Data>[]> => _find(sdk, entityName, props, customTags).then((r) => r.states)
+
 const findOne = async <Data>(
   sdk: SDK,
   entityName: EntityName,
   props: Partial<Data>,
+  customTags: string[],
 ): Promise<State<Data> | undefined> =>
-  _find(sdk, entityName, props).then((r) => (r.states.length > 0 ? r.states[0] : undefined))
+  _find(sdk, entityName, props, customTags).then((r) =>
+    r.states.length > 0 ? r.states[0] : undefined,
+  )
 
 //const _mqAqlFilter = (name: string, value: AqlFilterTypes): string => {
 //  switch (typeof value) {
@@ -506,8 +584,9 @@ const _find = async <Data>(
   sdk: SDK,
   entityName: EntityName,
   props: Partial<Data>,
+  customTags: string[],
 ): Promise<{ states: State<Data>[]; offsets: OffsetMap }> => {
-  const all = await _readAll<Data>(sdk, entityName)
+  const all = await _readAll<Data>(sdk, entityName, customTags)
   const matches = all.states.filter((s) => {
     const sProps = R.pick(R.keys(props), s.data)
     // @ts-ignore
@@ -611,18 +690,20 @@ const _find = async <Data>(
 export const Lww =
   <Data>(entityName: EntityName): Lww<Data> =>
   (sdk) => ({
-    create: (data, id) => createEntity(sdk, entityName, data, id),
+    create: (data, opts) => createEntity(sdk, entityName, data, opts),
     update: (id, data) => update(sdk, entityName, id, data),
     archive: (id) => setArchivedState(sdk, entityName, id, true),
     unarchive: (id) => setArchivedState(sdk, entityName, id, false),
     read: (id) => readById(sdk, entityName, id),
-    readIds: () => readIds(sdk, entityName),
-    readAll: () => readAll(sdk, entityName),
-    find: (props) => find(sdk, entityName, props),
-    findOne: (props) => findOne(sdk, entityName, props),
+    readIds: (opts) => readIds(sdk, entityName, opts?.tags || []),
+    readAll: (opts) => readAll(sdk, entityName, opts?.tags || []),
+    find: (props, opts) => find(sdk, entityName, props, opts?.tags || []),
+    findOne: (props, opts) => findOne(sdk, entityName, props, opts?.tags || []),
     subscribe: (id, onState, onError) => subscribeById(sdk, entityName, id, onState, onError),
-    subscribeAll: (onStates, onError) => subscribeAll(sdk, entityName, onStates, onError),
-    subscribeIds: (onId, onError) => subscribeIds(sdk, entityName, onId, onError),
+    subscribeAll: (onStates, onError, opts) =>
+      subscribeAll(sdk, entityName, onStates, onError, opts?.tags || []),
+    subscribeIds: (onId, onError, opts) =>
+      subscribeIds(sdk, entityName, onId, onError, opts?.tags || []),
     //subscribeFind: (props, onStates, onError) =>
     //  subscribeFind(sdk, entityName, props, onStates, onError),
   })

@@ -1,4 +1,5 @@
 import { Actyx as SDK, AppManifest } from '@actyx/sdk'
+import { o } from 'ramda'
 import { Lww, State } from '..'
 import { mkUniqueId } from '../uuid'
 
@@ -182,8 +183,10 @@ describe(`running with Acytx`, () => {
     await new Promise((res) => setTimeout(res, 500))
 
     expect(subscribeResults).toHaveLength(1)
-    expect(subscribeResults[0][0].meta.id).toBe(entity1id)
-    expect(subscribeResults[0][1].meta.id).toBe(entity2id)
+    //expect(subscribeResults[0][0].meta.id).toBe(entity1id)
+    //expect(subscribeResults[0][1].meta.id).toBe(entity2id)
+    expect(subscribeResults[0].map((r) => r.meta.id)).toContain(entity1id)
+    expect(subscribeResults[0].map((r) => r.meta.id)).toContain(entity2id)
 
     const entity3id = await model.create({ b: true, n: 1, s: 'a' })
     expect(entity3id).toBeTruthy()
@@ -222,9 +225,9 @@ describe(`running with Acytx`, () => {
   })
   it(`works with custom IDs`, async () => {
     const model = mkModel('test')(sdk)
-    const id1 = await model.create({ b: true, n: 0, s: '' }, 'id1')
+    const id1 = await model.create({ b: true, n: 0, s: '' }, { id: 'id1' })
     expect(id1).toBe('id1')
-    const id2 = await model.create({ b: true, n: 0, s: '' }, 'id2')
+    const id2 = await model.create({ b: true, n: 0, s: '' }, { id: 'id2' })
     expect(id2).toBe('id2')
     await new Promise((res) => setTimeout(res, 500))
 
@@ -238,5 +241,78 @@ describe(`running with Acytx`, () => {
     const entity = await model.read('id1')
     expect(entity).not.toBeUndefined()
     expect(entity?.meta.id).toBe('id1')
+  })
+  it(`works with custom tags`, async () => {
+    const model = mkModel('test')(sdk)
+    await model.create({ b: true, n: 0, s: '0' }, { tags: ['0'] })
+    await model.create({ b: true, n: 0, s: '1' }, { tags: ['0', '1'] })
+    await model.create({ b: true, n: 0, s: '2.1' }, { tags: ['0', '2', '2.1'] })
+    const id = await model.create({ b: true, n: 0, s: '2.2' }, { tags: ['0', '2', '2.2'] })
+    await new Promise((res) => setTimeout(res, 500))
+
+    expect(await model.readAll()).toHaveLength(4)
+    expect(await model.readAll({ tags: ['0'] })).toHaveLength(4)
+    expect(await model.readAll({ tags: ['1'] })).toHaveLength(1)
+    expect(await model.readAll({ tags: ['2'] })).toHaveLength(2)
+    expect(await model.readAll({ tags: ['2.1'] })).toHaveLength(1)
+    expect(await model.readAll({ tags: ['2.2'] })).toHaveLength(1)
+
+    await model.update(id, { b: true, n: 0, s: 'xxx' })
+    const res = await model.readAll({ tags: ['2.2'] })
+    expect(res).toHaveLength(1)
+    expect(res[0]).toEqual(
+      expect.objectContaining({
+        data: {
+          b: true,
+          n: 0,
+          s: 'xxx',
+        },
+      }),
+    )
+    await new Promise((res) => setTimeout(res, 500))
+
+    const onStates = jest.fn()
+    model.subscribeAll(onStates, () => {}, {
+      tags: ['2'],
+    })
+
+    await new Promise((res) => setTimeout(res, 500))
+
+    expect(onStates).toHaveBeenCalledTimes(1)
+    expect(onStates).toHaveBeenNthCalledWith(
+      1,
+      expect.arrayContaining([
+        expect.objectContaining({
+          data: {
+            b: true,
+            n: 0,
+            s: 'xxx',
+          },
+        }),
+        expect.objectContaining({
+          data: {
+            b: true,
+            n: 0,
+            s: '2.1',
+          },
+        }),
+      ]),
+    )
+    await model.update(id, { b: true, n: 0, s: 'yyy' })
+    await new Promise((res) => setTimeout(res, 500))
+    expect(onStates).toHaveBeenCalledTimes(2)
+    expect(onStates).toHaveBeenNthCalledWith(
+      2,
+      expect.arrayContaining([
+        expect.objectContaining({
+          data: expect.objectContaining({
+            s: 'yyy',
+          }),
+          meta: expect.objectContaining({
+            id,
+          }),
+        }),
+      ]),
+    )
   })
 })
