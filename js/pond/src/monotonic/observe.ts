@@ -109,8 +109,13 @@ export const observeMonotonic =
       fishId: FishId,
       subscriptions: Where<E>,
       attemptStartFrom: FixedStart,
-    ): Observable<EventsOrTimetravel<E>> =>
-      new Observable<EventsOrTimetravel<E>>((o) =>
+    ): Observable<EventsOrTimetravel<E>> => {
+      log.submono.debug(
+        'endpoint subscription from',
+        fishId,
+        attemptStartFrom.horizon ? EventKey.format(attemptStartFrom.horizon) : 'unknown',
+      )
+      return new Observable<EventsOrTimetravel<E>>((o) =>
         eventStore.subscribeMonotonic(
           { query: subscriptions, sessionId: FishId.canonical(fishId), attemptStartFrom },
           (c) => {
@@ -122,6 +127,7 @@ export const observeMonotonic =
           (err) => o.error(err),
         ),
       )
+    }
 
     const initialStateAsString = JSON.stringify(initialState)
     const initialStateSnapshot: SerializedStateSnap = {
@@ -208,7 +214,12 @@ export const observeMonotonic =
         const horizon = await new Promise<EventKey | null>(
           (res) =>
             (cancel = eventStore.queryAllKnownChunked(
-              { query: where, lowerBound: snap.offsets, order: EventsSortOrder.Descending },
+              {
+                query: where,
+                lowerBound: snap.offsets,
+                order: EventsSortOrder.Descending,
+                horizon: snap.horizon ? EventKey.format(snap.horizon) : undefined,
+              },
               1,
               (chunk) => {
                 const ev = chunk.events[0]
@@ -224,7 +235,18 @@ export const observeMonotonic =
           horizon &&
           (snap.horizon === undefined || EventKey.ord.compare(horizon, snap.horizon) > 0)
         ) {
+          log.submono.debug(
+            'found horizon',
+            EventKey.format(horizon),
+            'old:',
+            snap.horizon ? EventKey.format(snap.horizon) : 'unknown',
+          )
           snap.horizon = horizon
+        } else {
+          log.submono.debug(
+            'kept horizon',
+            snap.horizon ? EventKey.format(snap.horizon) : 'unknown',
+          )
         }
       }
       return stateMsg(snap)
@@ -280,14 +302,6 @@ type StartingStateMsg<E> = (timeTravel?: TimeTravelMsg<E>) => Promise<StateMsg>
 type GetMonotonicUpdates<E> = (from: FixedStart) => Observable<EventsOrTimetravel<E>>
 
 const snapshotToFixedStart = (snapshot: LocalSnapshot<unknown>): FixedStart => {
-  if (OffsetMap.isEmpty(snapshot.offsets)) {
-    return {
-      from: {},
-      latestEventKey: EventKey.zero,
-      horizon: undefined,
-    }
-  }
-
   return {
     from: snapshot.offsets,
     latestEventKey: snapshot.eventKey,

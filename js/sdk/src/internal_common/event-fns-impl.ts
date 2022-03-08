@@ -159,11 +159,17 @@ export const EventFnsFromEventStoreV2 = (
   const offsets = () => eventStore.offsets()
 
   const queryKnownRange = (rangeQuery: RangeQuery) => {
-    const { lowerBound, upperBound, query, order } = rangeQuery
+    const { lowerBound, upperBound, query, order, horizon } = rangeQuery
 
     return lastValueFrom(
       eventStore
-        .query(lowerBound || {}, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
+        .query(
+          lowerBound || {},
+          upperBound,
+          query || allEvents,
+          order || EventsSortOrder.Ascending,
+          horizon,
+        )
         .pipe(map(wrap), toArray()),
     )
   }
@@ -174,7 +180,7 @@ export const EventFnsFromEventStoreV2 = (
     onChunk: (chunk: EventChunk) => void,
     onComplete?: (err?: unknown) => void,
   ) => {
-    const { lowerBound, upperBound, query, order } = rangeQuery
+    const { lowerBound, upperBound, query, order, horizon } = rangeQuery
 
     const lb = lowerBound || {}
 
@@ -188,7 +194,7 @@ export const EventFnsFromEventStoreV2 = (
     const onCompleteOrErr = onComplete ? onComplete : noop
 
     const s = eventStore
-      .query(lb, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
+      .query(lb, upperBound, query || allEvents, order || EventsSortOrder.Ascending, horizon)
       .pipe(
         bufferCount(chunkSize),
         mergeScan(
