@@ -20,7 +20,7 @@
   ],
   "description": "Actyx SDK",
   "devDependencies": {
-    "@microsoft/api-extractor": "7.19.2",
+    "@microsoft/api-extractor": "7.19.4",
     "@types/debug": "4.1.7",
     "@types/jest": "27.0.3",
     "@types/node": "16.11.13",

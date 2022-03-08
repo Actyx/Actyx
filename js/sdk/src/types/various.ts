@@ -364,12 +364,16 @@ export type ActyxOpts = {
   onConnectionEstablished?: () => void
 }
 
+/**
+ * Test tool. @beta
+ */
 export type TimeInjector = (tags: ReadonlyArray<string>, events: unknown) => Timestamp
 
 /** Options used when creating a new TEST `Actyx` instance. @public */
 export type ActyxTestOpts = Readonly<{
   /** Local node id to use @public */
   nodeId?: NodeId
+  /** Install the given time source for test purposes @beta */
   timeInjector?: TimeInjector
 }>
 
@@ -447,11 +451,13 @@ export type AqlFutureCompat = {
 /** Response message returned by running AQL query. @beta */
 export type AqlResponse = AqlEventMessage | AqlOffsetsMsg | AqlDiagnosticMessage | AqlFutureCompat
 
+/** Uptime data type returned by Actyx @internal */
 export type Uptime = {
   secs: number
   nanos: number
 }
 
+/** Node information block returned by Actyx @internal */
 export type NodeInfo = {
   connectedNodes: number
   uptime: Uptime

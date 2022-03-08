@@ -20,7 +20,7 @@ export type Actyx = EventFns & {
   /** Id of the Actyx node this interface is connected to. */
   readonly nodeId: NodeId
 
-  /** Fish snapshot store for the Pond */
+  /** Fish snapshot store for the Pond @beta */
   readonly snapshotStore: SnapshotStore
 
   /** Dispose of this Actyx connector, cancelling all ongoing subscriptions and freeing all underlying ressources. @public */
@@ -52,7 +52,7 @@ export type TestActyx = TestEventFns & {
   /** Prented id of the underlying Actyx instance that actually is just simulated. */
   readonly nodeId: NodeId
 
-  /** Fish snapshot store for the Pond */
+  /** Fish snapshot store for the Pond @beta */
   readonly snapshotStore: SnapshotStore
 
   /** For `TestActyx` instances, this method does nothing; it’s just there so all normal `Actyx` functions are provided. @public */

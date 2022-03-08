@@ -12,8 +12,10 @@ export interface Multiplexer {
   request: (reqType: string, payload?: unknown) => Observable<unknown>
 }
 
+/** The format of snapshots coming back from the store. @beta */
 export type LocalSnapshotFromIndex = LocalSnapshot<string>
 
+/** The signature of the function to store a snapshot. @beta */
 export type StoreSnapshot = (
   semantics: string,
   name: string,
@@ -26,33 +28,35 @@ export type StoreSnapshot = (
   serializedBlob: string,
 ) => Promise<boolean>
 
+/** The signature of the function to retrieve a snapshot. @beta */
 export type RetrieveSnapshot = (
   semantics: string,
   name: string,
   version: number,
 ) => Promise<LocalSnapshotFromIndex | undefined>
 
+/** The signature of the function to invalidate snapshots for a given fish. @beta */
 export type InvalidateSnapshots = (semantics: string, name: string, key: EventKey) => Promise<void>
 
+/** The signature of the function to invalidate all stored snapshots. @beta */
 export type InvalidateAllSnapshots = () => Promise<void>
 
 /**
- * Interface to the snapshot store. This is colocated with the ipfs index store, but completely independent
- * conceptually.
+ * Interface to the snapshot store. @beta
  */
 export interface SnapshotStore {
   /**
    * Store local snapshot (best effort)
    *
-   * @param version For each semantics, the store is partitioned into versions corresponding to the snapshot format.
+   * @param version - For each semantics, the store is partitioned into versions corresponding to the snapshot format.
    * Only the newest known version should be kept.
    *
-   * @param key is the EventKey of the event from which the snapshot state was computed.
+   * @param key - is the EventKey of the event from which the snapshot state was computed.
    *
-   * @param tag is a unique identifier for a given semantics, name, and version; it is used to ensure that only
+   * @param tag - is a unique identifier for a given semantics, name, and version; it is used to ensure that only
    * one snapshot is kept for the a given interval (hour, day, month, year)
    *
-   * @param psnMap is needed to recognize whether the given snapshot has already been invalidated by the
+   * @param psnMap - is needed to recognize whether the given snapshot has already been invalidated by the
    * root updates that have been performed between the one that triggered the snapshot computation and now
    *
    * @returns success if the snapshot was accepted, false if it was rejected due to using an old format
@@ -86,9 +90,9 @@ export interface SnapshotStore {
   /**
    * Invalidate all snapshots for the fish identified by semantics and name that are at or above the given event key.
    *
-   * @param semantics semantics of the fish to invalidate snapshots for
-   * @param name name of the fish to invalidate snapshots for
-   * @param eventKey eventKey at or above which to purge snapshots
+   * @param semantics - semantics of the fish to invalidate snapshots for
+   * @param name - name of the fish to invalidate snapshots for
+   * @param eventKey - eventKey at or above which to purge snapshots
    * @returns a void promise that will complete once the snapshot invalidation is done in the persistence layer.
    */
   invalidateSnapshots: InvalidateSnapshots
@@ -108,6 +112,7 @@ const noopSnapshotStore: SnapshotStore = {
   invalidateAllSnapshots: () => Promise.resolve(undefined),
 }
 
+/** Interface to the snapshot store. @beta */
 export const SnapshotStore = {
   noop: noopSnapshotStore,
   inMem: InMemSnapshotStore.of,

@@ -42,6 +42,9 @@ export const getInfo = (config: ActyxOpts) => {
   }
 }
 
+/**
+ * Accessor to information on the Actyx node this SDK is connected to. @public
+ */
 export class NodeInfo {
   private semver: SV.SemVer
 
@@ -67,7 +70,7 @@ export class NodeInfo {
 
   /**
    *
-   * @param version The version to compare with, in semantic version format `<major>.<minor>.<patch>`
+   * @param version - The version to compare with, in semantic version format `<major>.<minor>.<patch>`
    * @returns `true` if the reported Actyx version is greater than or equal to the supplied version
    */
   isAtLeastVersion(version: string): boolean {

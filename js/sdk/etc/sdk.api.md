@@ -10,6 +10,7 @@ import * as t from 'io-ts';
 // @public
 export type Actyx = EventFns & {
     readonly nodeId: NodeId;
+    readonly snapshotStore: SnapshotStore;
     dispose: () => void;
     waitForSync: () => Promise<void>;
     nodeInfo: (maxAgeMillis: number) => Promise<NodeInfo>;
@@ -106,6 +107,7 @@ export type AutoCappedQuery = {
     lowerBound?: OffsetMap;
     query?: Where<unknown>;
     order?: EventsSortOrder;
+    horizon?: string;
 };
 
 // @public
@@ -228,6 +230,12 @@ export type HasTags = {
     tags: ReadonlyArray<string>;
 };
 
+// @beta
+export type InvalidateAllSnapshots = () => Promise<void>;
+
+// @beta
+export type InvalidateSnapshots = (semantics: string, name: string, key: EventKey) => Promise<void>;
+
 // @public
 export const isBoolean: (x: any) => x is boolean;
 
@@ -249,12 +257,15 @@ export const Lamport: {
 // @beta
 export type LatestQuery<E> = EarliestQuery<E>;
 
-// @alpha
+// @beta
 export type LocalSnapshot<S> = StateWithProvenance<S> & {
     eventKey: EventKey;
     horizon: EventKey | undefined;
     cycle: number;
 };
+
+// @beta
+export type LocalSnapshotFromIndex = LocalSnapshot<string>;
 
 // @public
 export type Metadata = Readonly<{
@@ -289,7 +300,7 @@ export const Milliseconds: {
 export type MonotonicSubscription<E> = {
     sessionId: string;
     query: Where<E>;
-    attemptStartFrom?: FixedStart;
+    attemptStartFrom: FixedStart;
 };
 
 // @alpha
@@ -312,7 +323,7 @@ export const NodeId: {
     streamNo: (nodeId: NodeId, num: number) => string;
 };
 
-// @public (undocumented)
+// @public
 export class NodeInfo {
     // Warning: (ae-forgotten-export) The symbol "NodeInfo" needs to be exported by the entry point index.d.ts
     constructor(io: NodeInfo_2);
@@ -378,10 +389,28 @@ export type RangeQuery = {
     lowerBound?: OffsetMap;
     upperBound: OffsetMap;
     order?: EventsSortOrder;
+    horizon?: string;
 };
 
-// @alpha
+// @beta
+export type RetrieveSnapshot = (semantics: string, name: string, version: number) => Promise<LocalSnapshotFromIndex | undefined>;
+
+// @beta
 export type SerializedStateSnap = LocalSnapshot<string>;
+
+// @beta
+export interface SnapshotStore {
+    invalidateAllSnapshots: InvalidateAllSnapshots;
+    invalidateSnapshots: InvalidateSnapshots;
+    retrieveSnapshot: RetrieveSnapshot;
+    storeSnapshot: StoreSnapshot;
+}
+
+// @beta
+export const SnapshotStore: {
+    noop: SnapshotStore;
+    inMem: () => SnapshotStore;
+};
 
 // @alpha
 export type StateMsg = Readonly<{
@@ -389,11 +418,14 @@ export type StateMsg = Readonly<{
     snapshot: SerializedStateSnap;
 }>;
 
-// @alpha
+// @beta
 export type StateWithProvenance<S> = {
     readonly state: S;
     readonly offsets: OffsetMap;
 };
+
+// @beta
+export type StoreSnapshot = (semantics: string, name: string, key: EventKey, offsets: OffsetMap, horizon: EventKey | undefined, cycle: number, version: number, tag: string, serializedBlob: string) => Promise<boolean>;
 
 // @public
 export type StreamId = string;
@@ -445,6 +477,7 @@ export const Tags: <E = unknown>(...requiredTags: string[]) => Tags<E>;
 // @public
 export type TestActyx = TestEventFns & {
     readonly nodeId: NodeId;
+    readonly snapshotStore: SnapshotStore;
     dispose: () => void;
     waitForSync: () => Promise<void>;
 };
@@ -464,7 +497,7 @@ export type TestEventFns = EventFns & {
     directlyPushEvents: (events: ReadonlyArray<TestEvent>) => void;
 };
 
-// @public (undocumented)
+// @beta
 export type TimeInjector = (tags: ReadonlyArray<string>, events: unknown) => Timestamp;
 
 // @public
@@ -491,18 +524,11 @@ export const Timestamp: {
 // @alpha
 export type TimeTravelMsg<E> = Readonly<{
     type: MsgType.timetravel;
-    trigger: ActyxEvent<E>;
-    high: ActyxEvent<E>;
+    trigger: EventKey;
 }>;
 
 // @alpha
 export const toEventPredicate: (where: Where<unknown>) => (event: HasTags) => boolean;
-
-// @public (undocumented)
-export type Uptime = {
-    secs: number;
-    nanos: number;
-};
 
 // @public
 export interface Where<E> {
