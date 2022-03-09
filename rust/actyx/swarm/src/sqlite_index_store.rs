@@ -156,27 +156,19 @@ impl SqliteIndexStore {
 }
 
 pub fn initialize_db(conn: &Connection) -> Result<()> {
-    // `PRAGMA journal_mode = WAL;` https://www.sqlite.org/wal.html
+    // We use TRUNCATE to avoid an explosion of WAL file size (multiple GB were observed)
+    // DELETE (the default) needs one extra directory write op per transaction
     // This PRAGMA statement returns the new journal mode, so we need to see if it succeeded
-    conn.query_row("PRAGMA journal_mode = WAL;", [], |row| {
+    conn.query_row("PRAGMA journal_mode = TRUNCATE;", [], |row| {
         let res: String = row.get(0)?;
         match res.as_str() {
-            "wal" => Ok("wal"),
-            "memory" => Ok("memory"), // There is no WAL for memory databases
+            "truncate" => Ok(()),
+            "memory" => Ok(()), // There is no config choice for memory databases
             _other => Err(rusqlite::Error::InvalidQuery),
         }
     })?;
     // `PRAGMA synchronous = NORMAL;` https://www.sqlite.org/pragma.html#pragma_synchronous
     conn.execute("PRAGMA synchronous = NORMAL;", [])?;
-    conn.query_row("PRAGMA wal_checkpoint(TRUNCATE);", [], |x| {
-        tracing::info!(
-            "wal_checkpoint(TRUNCATE) returned busy={:?} log={:?} checkpointed={:?}",
-            x.get::<_, i64>(0),
-            x.get::<_, i64>(1),
-            x.get::<_, i64>(2)
-        );
-        Ok(())
-    })?;
     conn.execute_batch(
         "BEGIN;\n\
         CREATE TABLE IF NOT EXISTS streams \
