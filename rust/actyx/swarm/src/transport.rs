@@ -31,7 +31,17 @@ pub async fn build_transport(
         TokioDnsConfig::custom(tcp, ResolverConfig::cloudflare(), Default::default())
             .context("Creating TokioDnsConfig")?
     } else {
-        TokioDnsConfig::system(tcp).context("Creating TokioDnsConfig")?
+        match trust_dns_resolver::system_conf::read_system_conf() {
+            Ok((cfg, opts)) => TokioDnsConfig::custom(tcp, cfg, opts).context("Creating TokioDnsConfig")?,
+            Err(e) => {
+                tracing::warn!(
+                    "falling back to Cloudflare DNS since parsing system settings failed with {:#}",
+                    e
+                );
+                TokioDnsConfig::custom(tcp, ResolverConfig::cloudflare(), Default::default())
+                    .context("Creating TokioDnsConfig")?
+            }
+        }
     };
     let maybe_encrypted = match psk {
         Some(psk) => {
