@@ -61,7 +61,7 @@ impl BlockWriter<Sha256Digest> for SqliteStoreWrite {
         let cid = digest.into();
         let block = Block::new_unchecked(cid, data);
         self.store.0.temp_pin(&mut self.pin, &cid)?;
-        self.store.0.insert(&block)?;
+        self.store.0.insert(block)?;
         self.written.lock().insert(digest);
         Ok(digest)
     }
@@ -109,7 +109,7 @@ impl BlockWriter<Sha256Digest> for StorageServiceStoreWrite {
         let cid = Cid::from(digest);
         let block = Block::new_unchecked(cid, data);
         self.store.0.temp_pin(&mut self.pin, std::iter::once(cid))?;
-        self.store.0.insert(&block)?;
+        self.store.0.insert(block)?;
         Ok(digest)
     }
 }

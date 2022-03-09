@@ -365,7 +365,7 @@ fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
                         // FIXME: revisit the pinning behaviour of the files api
                         store.ipfs().temp_pin(&mut tmp, &node.cid)?;
                         let block = Block::new_unchecked(node.cid, node.block.to_vec());
-                        store.ipfs().insert(&block)?;
+                        store.ipfs().insert(block)?;
 
                         output = Some((
                             node.cid,

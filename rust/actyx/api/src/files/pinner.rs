@@ -234,9 +234,10 @@ async fn evaluate(event_svc: &EventService, ipfs: &Ipfs, app_id: &AppId, query: 
     if !cids.is_empty() {
         let root = RootLinkNode(cids.into_iter().collect());
         let block = Block::encode(DagCborCodec, Code::Blake3_256, &root)?;
-        ipfs.insert(&block)?;
-        ipfs.alias(AppPinAlias::from(app_id), Some(block.cid()))?;
-        tracing::debug!(root = %block.cid(), %app_id, "Updated pinned files");
+        let cid = *block.cid();
+        ipfs.insert(block)?;
+        ipfs.alias(AppPinAlias::from(app_id), Some(&cid))?;
+        tracing::debug!(root = %cid, %app_id, "Updated pinned files");
     }
     Ok(())
 }
