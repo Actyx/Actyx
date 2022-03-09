@@ -329,20 +329,20 @@ validate-js: diagnostics validate-js-sdk validate-js-pond validate-js-integratio
 # validate js sdk
 validate-js-sdk:
 	cd js/sdk && source ~/.nvm/nvm.sh && nvm install && \
-		npm install && \
+		npm ci && \
 		npm run test && \
 		npm run build:prod
 
 # validate js pond
 validate-js-pond:
 	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
-		npm install && \
+		npm ci && \
 		npm run test && \
 		npm run build:prod
 
 # validate js integration suite (does it compile?)
 validate-js-integration:
-	cd integration && source ~/.nvm/nvm.sh && nvm install && npm install && npm run tsc
+	cd integration && source ~/.nvm/nvm.sh && nvm install && npm ci && npm run tsc
 
 # fix and test all js projects
 fix-js: diagnostics fix-js-sdk fix-js-pond
@@ -369,7 +369,7 @@ fix-js-pond:
 dist/js/sdk: make-always
 	mkdir -p $@
 	cd js/sdk && source ~/.nvm/nvm.sh && nvm install && \
-		npm install && \
+		npm ci && \
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
 
@@ -378,7 +378,7 @@ dist/js/sdk: make-always
 dist/js/pond: make-always
 	mkdir -p $@
 	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
-		npm install && \
+		npm ci && \
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
 
@@ -399,7 +399,7 @@ validate-node-manager-bindings:
 	cd rust/actyx/node-manager-bindings && \
 		source ~/.nvm/nvm.sh && \
 		nvm install && \
-		npm install && \
+		npm ci && \
 		npm run build
 
 node-manager-win:
@@ -408,13 +408,13 @@ node-manager-win:
 	-w /src/js/node-manager \
 	--rm \
 	actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
-	bash -c "source /root/.nvm/nvm.sh && nvm install && npm install && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
+	bash -c "source /root/.nvm/nvm.sh && nvm install && npm ci && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
 
 node-manager-mac-linux:
 	cd js/node-manager && \
 		source ~/.nvm/nvm.sh && \
 		nvm install && \
-		npm install && \
+		npm ci && \
 		npm version $(ACTYX_VERSION_NODEMANAGER) && \
 		npm run build && \
 		npm run dist && \
