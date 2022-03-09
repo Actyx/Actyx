@@ -14,7 +14,7 @@ ENV CARGO_BUILD_TARGET=armv7-unknown-linux-musleabihf
 FROM --platform=$BUILDPLATFORM build-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} AS crossbuild
 ENV CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
-ARG RUSTVER=1.56.1
+ARG RUSTVER=1.59.0
 ARG ACTYX_VERSION=2.0.0_dev-unknown
 ENV ACTYX_VERSION=${ACTYX_VERSION}
 ARG CARGO_BUILD_ARGS
