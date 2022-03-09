@@ -61,6 +61,9 @@ export type RangeQuery = {
 
   /** Desired order of delivery. Defaults to 'Asc' */
   order?: EventsSortOrder
+
+  /** Earliest event ID to consider in the result */
+  horizon?: string
 }
 
 /** Query for a set of events which is automatically capped at the latest available upperBound. @public */
@@ -77,6 +80,9 @@ export type AutoCappedQuery = {
 
   /** Desired order of delivery. Defaults to 'Asc' */
   order?: EventsSortOrder
+
+  /** Earliest event ID to consider in the result */
+  horizon?: string
 }
 
 /** Subscription to a set of events that may still grow. @public */
@@ -105,7 +111,7 @@ export type MonotonicSubscription<E> = {
   query: Where<E>
 
   /** Sending 'attemptStartFrom' means we DONT want a snapshot sent as initial message. */
-  attemptStartFrom?: FixedStart
+  attemptStartFrom: FixedStart
 }
 
 /** Query for observeEarliest. @beta  */

@@ -61,20 +61,20 @@ pub fn run_task<I: serde::de::DeserializeOwned + Sync + Send + 'static, O: serde
         Ok(str) => str,
         Err(err) => {
             // Panic turns into JS exception (throws)
-            panic!("error getting task json_input argument {}", err.to_string());
+            panic!("error getting task json_input argument {}", err);
         }
     };
     let input: I = match from_stringified(json_input) {
         Ok(i) => i,
         Err(err) => {
-            panic!("error decoding json_input argument {}", err.to_string());
+            panic!("error decoding json_input argument {}", err);
         }
     };
 
     let callback = match cx.argument::<JsFunction>(1) {
         Ok(cb) => cb,
         Err(err) => {
-            panic!("error getting callback argument {}", err.to_string());
+            panic!("error getting callback argument {}", err);
         }
     };
     let callback = callback.root(&mut cx);
@@ -96,7 +96,7 @@ pub fn run_task<I: serde::de::DeserializeOwned + Sync + Send + 'static, O: serde
                 }
             };
             if let Err(err) = call_res {
-                panic!("error calling task callback {}", err.to_string());
+                panic!("error calling task callback {}", err);
             }
             Ok(())
         });

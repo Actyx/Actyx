@@ -23,7 +23,7 @@ pub struct ConnectedNodeDetails {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "camelCase")]
-#[allow(clippy::enum_variant_names)]
+#[allow(clippy::enum_variant_names, clippy::large_enum_variant)]
 pub enum Node {
     ReachableNode {
         addr: String,

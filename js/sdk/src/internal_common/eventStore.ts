@@ -4,6 +4,7 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
+import { SubscribeMonotonicResponseIO } from '.'
 import { Observable, EMPTY } from '../../node_modules/rxjs'
 import { EventsSortOrder, NodeId, OffsetMap, TimeInjector, Where } from '../types'
 import { mockEventStore } from './mockEventStore'
@@ -42,8 +43,9 @@ export type RequestOffsets = () => Promise<OffsetsResponse>
 export type DoQuery = (
   lowerBound: OffsetMap, // this is the lower bound, regardless of requested sort order.
   upperBound: OffsetMap,
-  query: Where<unknown> | string,
+  query: Where<unknown>,
   sortOrder: EventsSortOrder,
+  horizon?: string,
 ) => Observable<Event>
 
 /**
@@ -57,8 +59,16 @@ export type DoQuery = (
  */
 export type DoSubscribe = (
   lowerBound: OffsetMap,
-  query: Where<unknown> | string,
+  query: Where<unknown>,
+  horizon?: string,
 ) => Observable<Event>
+
+export type DoSubscribeMonotonic = (
+  session: string,
+  lowerBound: OffsetMap,
+  query: Where<unknown>,
+  horizon?: string,
+) => Observable<SubscribeMonotonicResponseIO>
 
 /**
  * Store the events in the store and return them as generic events.
@@ -79,12 +89,14 @@ export type EventStore = {
   readonly query: DoQuery
   readonly subscribe: DoSubscribe
   readonly subscribeUnchecked: (aqlQuery: string, lowerBound?: OffsetMap) => Observable<TypedMsg>
+  readonly subscribeMonotonic: DoSubscribeMonotonic
   readonly persistEvents: DoPersistEvents
 }
 
 const noopEventStore: EventStore = {
   subscribe: () => EMPTY,
   subscribeUnchecked: () => EMPTY,
+  subscribeMonotonic: () => EMPTY,
   query: () => EMPTY,
   queryUnchecked: () => EMPTY,
   offsets: () => Promise.resolve({ present: {}, toReplicate: {} }),

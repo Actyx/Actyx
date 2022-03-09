@@ -26,7 +26,7 @@ impl Display for PublicKey {
 
 impl Debug for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_string())
+        Display::fmt(self, f)
     }
 }
 

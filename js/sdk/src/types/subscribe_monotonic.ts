@@ -10,7 +10,7 @@ import { ActyxEvent, EventKey } from './various'
 /// As we are still fleshing out the subscribe_monotonic endpoint, all types in here are alpha.
 
 /**
- * A state and its corresponding psn map. @alpha
+ * A state and its corresponding psn map. @beta
  */
 export type StateWithProvenance<S> = {
   readonly state: S
@@ -21,7 +21,7 @@ export type StateWithProvenance<S> = {
   readonly offsets: OffsetMap
 }
 
-/** A local snapshot of state. @alpha */
+/** A local snapshot of state. @beta */
 export type LocalSnapshot<S> = StateWithProvenance<S> & {
   /**
    * eventKey of the last event according to event order that went into the state.
@@ -46,7 +46,7 @@ export type LocalSnapshot<S> = StateWithProvenance<S> & {
   cycle: number
 }
 
-/** A local snapshot where the state has already been serialised. @alpha */
+/** A local snapshot where the state has already been serialised. @beta */
 export type SerializedStateSnap = LocalSnapshot<string>
 
 /** Possible subscribe_monotonic message types. @alpha */
@@ -72,8 +72,7 @@ export type EventsMsg<E> = Readonly<{
 /** Implies consumer should re-subscribe starting from `trigger` or earlier. @alpha */
 export type TimeTravelMsg<E> = Readonly<{
   type: MsgType.timetravel
-  trigger: ActyxEvent<E> // earliest known event to cause time travel
-  high: ActyxEvent<E> // latest known event to cause time travel
+  trigger: EventKey
 }>
 
 /** Possible subscribe_monotonic message types. @alpha */

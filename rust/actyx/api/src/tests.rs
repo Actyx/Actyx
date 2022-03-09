@@ -6,8 +6,9 @@ use hyper::Response;
 use parking_lot::lock_api::RwLock;
 use serde_json::*;
 use swarm::{
+    blob_store::BlobStore,
     event_store_ref::{self, EventStoreHandler, EventStoreRef},
-    BanyanStore,
+    BanyanStore, DbPath,
 };
 use warp::*;
 
@@ -64,7 +65,9 @@ async fn test_routes() -> (
     };
     let event_service = EventService::new(event_store, auth_args.node_id);
     let pinner = FilePinner::new(event_service.clone(), store.ipfs().clone());
-    let route = super::routes(auth_args.clone(), store, event_service, pinner).with(warp::trace::named("api_test"));
+    let blobs = BlobStore::new(DbPath::Memory).unwrap();
+    let route =
+        super::routes(auth_args.clone(), store, event_service, pinner, blobs).with(warp::trace::named("api_test"));
 
     let token = create_token(
         auth_args,

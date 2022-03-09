@@ -61,16 +61,12 @@ fn main() {
 
     #[derive(Clone, Debug)]
     struct HealthTest {
-        networks: usize,
-        nodes: usize,
         steps: Vec<Action>,
     }
 
     impl Arbitrary for HealthTest {
         fn arbitrary(gen: &mut Gen) -> Self {
             Self {
-                networks: NETWORKS.len(),
-                nodes: NODES.len(),
                 steps: Arbitrary::arbitrary(gen),
             }
         }

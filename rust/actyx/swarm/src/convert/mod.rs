@@ -131,7 +131,7 @@ fn build_banyan_tree<'a, RW: BlockWriter<Sha256Digest> + ReadOnlyStore<Sha256Dig
     let mut count = 0;
     let mut errors = Vec::new();
     let iter = iter
-        .map(|r| {
+        .flat_map(|r| {
             r.map(|envelopes| {
                 count += envelopes.len();
                 tracing::debug!("Building tree {} c={} e={}", source, count, errors.len());
@@ -142,7 +142,6 @@ fn build_banyan_tree<'a, RW: BlockWriter<Sha256Digest> + ReadOnlyStore<Sha256Dig
             })
             .unwrap_or_default()
         })
-        .flatten()
         .flat_map(|e| {
             let offset = OffsetOrMin::from(e.offset);
             let diff = offset - last_offset;

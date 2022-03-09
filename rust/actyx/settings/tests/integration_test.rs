@@ -10,7 +10,7 @@ fn load_schema(path: PathBuf) -> serde_json::Value {
 }
 
 fn repo(path: &TempDir) -> Repository {
-    Repository::new(Database::new(path.path().to_path_buf()).unwrap())
+    Repository::new(Database::new(path.path()).unwrap())
 }
 
 // Test cases

@@ -5,6 +5,7 @@ import {
   EventKey,
   EventsMsg,
   EventsOrTimetravel,
+  EventsSortOrder,
   FixedStart,
   LocalSnapshot,
   Metadata,
@@ -16,10 +17,10 @@ import {
   Where,
 } from '@actyx/sdk'
 import { SnapshotStore } from '@actyx/sdk/lib/snapshotStore'
-import { none, Option, some, toUndefined as toUndefinedO, fold as foldO } from 'fp-ts/lib/Option'
+import * as O from 'fp-ts/Option'
 import { clone } from 'ramda'
-import { Observable, from as fromRx, queueScheduler, throwError } from '../../node_modules/rxjs'
-import { subscribeOn, first, concatMap } from '../../node_modules/rxjs/operators'
+import { Observable } from '../../node_modules/rxjs'
+import * as Rx from '../../node_modules/rxjs'
 import log from '../loggers'
 import { mkNoopPondStateTracker, PondStateTracker } from '../pond-state'
 import { FishErrorReporter, FishId, IsReset } from '../types'
@@ -27,6 +28,8 @@ import { cachingReducer } from './cachingReducer'
 import { simpleReducer } from './simpleReducer'
 import { SnapshotScheduler } from './snapshotScheduler'
 import { PendingSnapshot, SerializedStateSnap } from './types'
+import { pipe } from 'fp-ts/lib/function'
+import { noop } from '../util'
 
 const stateMsg = (latestValid: SerializedStateSnap): StateMsg => ({
   type: MsgType.state,
@@ -76,8 +79,15 @@ const withErrorHandling = <S, E>(
   return { onEventWrapped, isResetWrapped, deserializeStateWrapped }
 }
 
-/*
- * Observe a Fish using the subscribe_monotonic endpoint (currently TS impl., but can drop in real impl.)
+/**
+ * Observe a Fish using the subscribe_monotonic endpoint (emulated in Actyx <2.12)
+ *
+ * The rules are:
+ * 1. state snapshots are written asynchronously according to the scheduler
+ * 1. upon start or after time travel, the latest valid snapshot is used, otherwise initialState, empty offsets, no horizon
+ * 1. if isReset is given, query from present to lowerBound to possibly find a newer horizon
+ * 1. start subMono from lowerBound with horizon
+ * 1. upon time travel, await snapshot persistence and then start over from 2
  */
 export const observeMonotonic =
   (
@@ -98,9 +108,14 @@ export const observeMonotonic =
     const endpoint = <E>(
       fishId: FishId,
       subscriptions: Where<E>,
-      attemptStartFrom?: FixedStart,
-    ): Observable<EventsOrTimetravel<E>> =>
-      new Observable<EventsOrTimetravel<E>>((o) =>
+      attemptStartFrom: FixedStart,
+    ): Observable<EventsOrTimetravel<E>> => {
+      log.submono.debug(
+        'endpoint subscription from',
+        fishId,
+        attemptStartFrom.horizon ? EventKey.format(attemptStartFrom.horizon) : 'unknown',
+      )
+      return new Observable<EventsOrTimetravel<E>>((o) =>
         eventStore.subscribeMonotonic(
           { query: subscriptions, sessionId: FishId.canonical(fishId), attemptStartFrom },
           (c) => {
@@ -112,6 +127,7 @@ export const observeMonotonic =
           (err) => o.error(err),
         ),
       )
+    }
 
     const initialStateAsString = JSON.stringify(initialState)
     const initialStateSnapshot: SerializedStateSnap = {
@@ -124,7 +140,7 @@ export const observeMonotonic =
 
     const storeSnapshot = async (toStore: PendingSnapshot) => {
       const { snap, tag } = toStore
-      snapshotStore.storeSnapshot(
+      await snapshotStore.storeSnapshot(
         fishId.entityType,
         fishId.name,
         snap.eventKey,
@@ -164,36 +180,82 @@ export const observeMonotonic =
     )
 
     // The stream of update messages. Should end with a time travel message.
-    const monotonicUpdates = (from: Option<FixedStart>): Observable<EventsOrTimetravel<E>> => {
-      const stream = () =>
-        endpoint(fishId, where, toUndefinedO(from))
-          // Run on a scheduler to avoid locking the program up if lots of data is coming in.
-          .pipe(subscribeOn(queueScheduler))
+    const monotonicUpdates = (from: FixedStart): Observable<EventsOrTimetravel<E>> => {
+      // Run on a scheduler to avoid locking the program up if lots of data are coming in
+      const stream = () => endpoint(fishId, where, from).pipe(Rx.subscribeOn(Rx.queueScheduler))
 
       // Wait for pending snapshot storage requests to finish
-      return fromRx(reducer.awaitPendingPersistence()).pipe(first(), concatMap(stream))
+      return Rx.from(reducer.awaitPendingPersistence()).pipe(Rx.first(), Rx.concatMap(stream))
     }
 
-    const resetToInitialState = stateMsg(initialStateSnapshot)
-
-    const timeTravelToStateMsg = (timeTravel: TimeTravelMsg<E>): StateMsg => {
-      const localStartingState = reducer.latestKnownValidState(
-        timeTravel.trigger.meta,
-        timeTravel.high.meta,
-      )
-
-      return foldO(() => resetToInitialState, stateMsg)(localStartingState)
+    const startingStateMsg = async (timeTravel?: TimeTravelMsg<E>): Promise<StateMsg> => {
+      let snap = initialStateSnapshot
+      if (timeTravel) {
+        await snapshotStore.invalidateSnapshots(fishId.entityType, fishId.name, timeTravel.trigger)
+        pipe(
+          reducer.latestKnownValidState(timeTravel.trigger),
+          // here reducer snapshots are not yet invalidated, that happens when receiving stateMsg
+          O.map((localState) => (snap = localState)),
+        )
+      } // otherwise: initial startup
+      if (EventKey.ord.equals(snap.eventKey, EventKey.zero)) {
+        // only ask snapshot store if there is no locally cached valid snapshot
+        const maybeSnap = await snapshotStore.retrieveSnapshot(
+          fishId.entityType,
+          fishId.name,
+          fishId.version,
+        )
+        if (maybeSnap) {
+          snap = maybeSnap
+        }
+      }
+      if (isReset) {
+        let cancel: () => void = noop
+        const horizon = await new Promise<EventKey | null>(
+          (res) =>
+            (cancel = eventStore.queryAllKnownChunked(
+              {
+                query: where,
+                lowerBound: snap.offsets,
+                order: EventsSortOrder.Descending,
+                horizon: snap.horizon ? EventKey.format(snap.horizon) : undefined,
+              },
+              1,
+              (chunk) => {
+                const ev = chunk.events[0]
+                if (isResetWrapped(ev)) {
+                  res(ev.meta)
+                }
+              },
+              () => res(null),
+            )),
+        )
+        cancel()
+        if (
+          horizon &&
+          (snap.horizon === undefined || EventKey.ord.compare(horizon, snap.horizon) > 0)
+        ) {
+          log.submono.debug(
+            'found horizon',
+            EventKey.format(horizon),
+            'old:',
+            snap.horizon ? EventKey.format(snap.horizon) : 'unknown',
+          )
+          snap.horizon = horizon
+        } else {
+          log.submono.debug(
+            'kept horizon',
+            snap.horizon ? EventKey.format(snap.horizon) : 'unknown',
+          )
+        }
+      }
+      return stateMsg(snap)
     }
 
     const trackingId = FishId.canonical(fishId)
 
-    return makeEndless(
-      monotonicUpdates,
-      timeTravelToStateMsg,
-      resetToInitialState,
-      trackingId,
-    ).pipe(
-      concatMap((msg) => {
+    return makeEndless(monotonicUpdates, startingStateMsg, trackingId).pipe(
+      Rx.concatMap((msg) => {
         const pondStateTrackerId = pondStateTracker.eventsFromOtherSourcesProcessingStarted(
           fishId.entityType,
           fishId.name,
@@ -228,7 +290,7 @@ export const observeMonotonic =
             }
           }
         } catch (err) {
-          return throwError(err)
+          return Rx.throwError(() => err)
         } finally {
           pondStateTracker.eventsFromOtherSourcesProcessingFinished(pondStateTrackerId)
         }
@@ -236,20 +298,15 @@ export const observeMonotonic =
     )
   }
 
-type TimeTravelToStateMsg<E> = (timeTravel: TimeTravelMsg<E>) => StateMsg
+type StartingStateMsg<E> = (timeTravel?: TimeTravelMsg<E>) => Promise<StateMsg>
+type GetMonotonicUpdates<E> = (from: FixedStart) => Observable<EventsOrTimetravel<E>>
 
-type GetMonotonicUpdates<E> = (from: Option<FixedStart>) => Observable<EventsOrTimetravel<E>>
-
-const snapshotToFixedStart = (snapshot: LocalSnapshot<unknown>): Option<FixedStart> => {
-  if (OffsetMap.isEmpty(snapshot.offsets)) {
-    return none
-  }
-
-  return some({
+const snapshotToFixedStart = (snapshot: LocalSnapshot<unknown>): FixedStart => {
+  return {
     from: snapshot.offsets,
     latestEventKey: snapshot.eventKey,
     horizon: snapshot.horizon,
-  })
+  }
 }
 
 // Make a monotonic, limited stream of updates into an unlimited one,
@@ -257,22 +314,24 @@ const snapshotToFixedStart = (snapshot: LocalSnapshot<unknown>): Option<FixedSta
 // automatic restart of the monotonic stream, with appropriate arguments.
 const makeEndless = <E>(
   monotonicUpdates: GetMonotonicUpdates<E>,
-  timeTravelToStateMsg: TimeTravelToStateMsg<E>,
-  resetCompletely: StateMsg,
+  startingStateMsg: StartingStateMsg<E>,
   trackingId: string,
 ): Observable<StateMsg | EventsMsg<E>> =>
   new Observable<StateMsg | EventsMsg<E>>((endlessUpdates) => {
     let latestTimeTravelMsg: TimeTravelMsg<E> | undefined = undefined
 
-    const onError = (err: any) => {
+    const onError = async (err: any) => {
       log.pond.error(err)
 
       // On error, just try starting from scratch completely
       // (Should happen very rarely.)
-      endlessUpdates.next(resetCompletely)
+      const resetMsg = await startingStateMsg()
+      endlessUpdates.next(resetMsg)
 
       // This is the error handler, so we know that the old subscription has completed.
-      currentSubscription = monotonicUpdates(none).subscribe(autoRestartSubscriber)
+      currentSubscription = monotonicUpdates(snapshotToFixedStart(resetMsg.snapshot)).subscribe(
+        autoRestartSubscriber,
+      )
     }
 
     const autoRestartSubscriber = {
@@ -288,7 +347,7 @@ const makeEndless = <E>(
 
       error: onError,
 
-      complete: () => {
+      complete: async () => {
         if (!latestTimeTravelMsg) {
           return onError(
             new Error(trackingId + ': subscribe_monotonic completed without a time travel message'),
@@ -296,14 +355,10 @@ const makeEndless = <E>(
         }
 
         const msg = latestTimeTravelMsg
-
-        log.pond.info(trackingId, 'time traveling due to', EventKey.format(msg.trigger.meta))
-
-        // Reset for next time
         latestTimeTravelMsg = undefined
+        log.pond.info(trackingId, 'time traveling due to', EventKey.format(msg.trigger))
 
-        const resetMsg = timeTravelToStateMsg(msg)
-
+        const resetMsg = await startingStateMsg(msg)
         endlessUpdates.next(resetMsg)
 
         // This is the completion handler, so we know that the old subscription has completed.
@@ -312,8 +367,15 @@ const makeEndless = <E>(
         )
       },
     }
+
     // Start the initial subscription
-    let currentSubscription = monotonicUpdates(none).subscribe(autoRestartSubscriber)
+    let currentSubscription = Rx.from(startingStateMsg())
+      .pipe(
+        Rx.concatMap((start) =>
+          Rx.concat(Rx.of(start), monotonicUpdates(snapshotToFixedStart(start.snapshot))),
+        ),
+      )
+      .subscribe(autoRestartSubscriber)
 
     // Cancel upstream, if this Observable is torn down
     return () => currentSubscription.unsubscribe()

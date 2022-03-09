@@ -5,11 +5,13 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { right } from 'fp-ts/lib/Either'
-import { Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
+import { Ord } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
+import * as N from 'fp-ts/number'
+import * as S from 'fp-ts/string'
 import * as t from 'io-ts'
 import { EventsSortOrder, isString } from '../types'
-import { Codecs, OffsetMapIO } from '../types/wire'
+import { Codecs, EventKeyIO, OffsetMapIO } from '../types/wire'
 
 // EnumType Class
 export class EnumType<A> extends t.Type<A> {
@@ -62,16 +64,48 @@ export const EventIO = t.type({
 })
 export type Event = t.TypeOf<typeof EventIO>
 export const _compareEvents = (a: Event, b: Event): Ordering => {
-  const lamportOrder = ordNumber.compare(a.lamport, b.lamport)
+  const lamportOrder = N.Ord.compare(a.lamport, b.lamport)
   if (lamportOrder !== 0) {
     return lamportOrder
   }
-  const sourceOrder = ordString.compare(a.stream, b.stream)
+  const sourceOrder = S.Ord.compare(a.stream, b.stream)
   if (sourceOrder !== 0) {
     return sourceOrder
   }
-  return ordNumber.compare(a.offset, b.offset)
+  return N.Ord.compare(a.offset, b.offset)
 }
+
+export const MonotonicEventIO = t.intersection([
+  EventIO,
+  t.type({
+    type: t.literal('event'),
+    caughtUp: t.boolean,
+  }),
+])
+
+export const DiagnosticIO = t.type({
+  type: t.literal('diagnostic'),
+  severity: t.keyof({ warning: 1, error: 1 }),
+  message: t.string,
+})
+
+export const OffsetsIO = t.type({
+  type: t.literal('offsets'),
+  offsets: OffsetMapIO,
+})
+
+export const TimeTravelIO = t.type({
+  type: t.literal('timeTravel'),
+  newStart: EventKeyIO,
+})
+
+export const SubscribeMonotonicResponseIO = t.union([
+  MonotonicEventIO,
+  DiagnosticIO,
+  OffsetsIO,
+  TimeTravelIO,
+])
+export type SubscribeMonotonicResponseIO = t.TypeOf<typeof SubscribeMonotonicResponseIO>
 
 const eventsEqual = (a: Event, b: Event): boolean =>
   // compare numerical fields first since it should be faster
@@ -184,3 +218,13 @@ export type WsStoreConfig = Readonly<{
 
   // todo timeouts?, heartbeats? etc.
 }>
+
+export const NodeInfo = t.type({
+  connectedNodes: t.number,
+  uptime: t.type({
+    secs: t.number,
+    nanos: t.number,
+  }),
+  version: t.string,
+})
+export type NodeInfo = t.TypeOf<typeof NodeInfo>

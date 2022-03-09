@@ -52,16 +52,26 @@ export const enum ResponseMessageType {
   Complete = 'complete',
 }
 
-const summariseEvent = (e: unknown): string => {
+const summariseEvent = (e: unknown, level: number = 0): string => {
   if (Array.isArray(e)) {
-    return '[' + e.map(summariseEvent).join() + ']'
+    return (
+      '[' +
+      (level > 2
+        ? '...'
+        : e.map((x, idx) => (idx === 0 ? summariseEvent(x, level + 1) : '')).join()) +
+      ']'
+    )
   }
   if (typeof e === 'object' && e !== null) {
     return (
       '{' +
       Object.entries(e)
         .map(([k, v]) =>
-          k === 'type' ? `type:${v}` : k === 'payload' ? `payload:${summariseEvent(v)}` : k,
+          k === 'type'
+            ? `type:${v}`
+            : k === 'payload'
+            ? `payload:${summariseEvent(v, level + 1)}`
+            : k,
         )
         .join() +
       '}'

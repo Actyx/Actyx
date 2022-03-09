@@ -9,6 +9,7 @@
 //! ## BanyanStoreGuard
 //! temporary struct that is created when acquiring mutable access to the state.
 //! inside this you have mutable access to the state - but if you lock again you will deadlock.
+pub mod blob_store;
 pub mod convert;
 mod discovery;
 pub mod event_store;
@@ -165,6 +166,7 @@ impl Default for EphemeralEventsConfig {
 pub struct SwarmConfig {
     pub topic: String,
     pub index_store: Option<PathBuf>,
+    pub blob_store: Option<PathBuf>,
     pub keypair: Option<KeyPair>,
     pub psk: Option<[u8; 32]>,
     pub node_name: Option<String>,
@@ -196,6 +198,7 @@ impl SwarmConfig {
             enable_loopback: false,
             topic: String::from("default"),
             index_store: None,
+            blob_store: None,
             keypair: None,
             psk: None,
             node_name: None,
@@ -1214,15 +1217,14 @@ impl BanyanStore {
         let mut txn = Transaction::new(self.data.forest.clone(), writer);
         // take a snapshot of the initial state
         let mut guard = stream.transaction();
-        let res = f(&mut txn, &mut guard);
-        if res.is_err() {
-            // stream builder state will be reverted, except for the cipher offset
-            return res;
-        }
+
+        // in case of error: stream builder state will be reverted, except for the cipher offset
+        let res = f(&mut txn, &mut guard)?;
+
         let curr = guard.snapshot();
         if curr.link() == prev.link() {
             // nothing to do, return
-            return res;
+            return Ok(res);
         }
         // make sure we did not lose events. If we did, return a failure
         anyhow::ensure!(curr.count() >= prev.count(), "tree rejected because it lost events!");
@@ -1248,7 +1250,7 @@ impl BanyanStore {
         // publish new blocks and root
         self.data.gossip.publish(stream_nr, root, blocks, lamport, offset)?;
         tracing::trace!("transform_stream successful");
-        res
+        Ok(res)
     }
 
     fn update_root(&self, stream_id: StreamId, root: Link, source: RootSource) {

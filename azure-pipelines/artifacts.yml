@@ -252,10 +252,14 @@ stages:
 
   - stage: integration
     displayName: Nightly integration test
+    variables:
+      - name: ACTYX_VERSION
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_actyx'] ]
     pool:
       name: Native
     dependsOn:
       - upload
+      - calculateActyxVersion
     jobs:
       - job: integrationTest
         displayName: Integration Test

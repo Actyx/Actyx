@@ -12,6 +12,7 @@
     "isomorphic-ws": "^4.0.1",
     "ramda": "0.27.1",
     "rxjs": "7.4.0",
+    "semver": "^7.3.5",
     "ws": "8.3.0"
   },
   "bundledDependencies": [
@@ -19,11 +20,12 @@
   ],
   "description": "Actyx SDK",
   "devDependencies": {
-    "@microsoft/api-extractor": "7.19.2",
+    "@microsoft/api-extractor": "7.19.4",
     "@types/debug": "4.1.7",
     "@types/jest": "27.0.3",
     "@types/node": "16.11.13",
     "@types/ramda": "0.27.60",
+    "@types/semver": "^7.3.9",
     "@types/ws": "8.2.2",
     "@typescript-eslint/eslint-plugin": "5.7.0",
     "@typescript-eslint/parser": "5.7.0",
@@ -89,5 +91,5 @@
     "build:docs": "rm -rf ../../web/developer.actyx.com/static/@actyx/pond/ && typedoc --mode library --options typedoc.json src/index.ts"
   },
   "types": "./lib/index.d.ts",
-  "version": "0.4.2"
+  "version": "0.5.0"
 }

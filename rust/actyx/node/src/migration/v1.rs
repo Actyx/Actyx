@@ -142,7 +142,7 @@ fn copy_db(from: &Connection, to: impl AsRef<Path>) -> anyhow::Result<Connection
 /// Migrates settings from a given `old` repository to a new one, which is
 /// created within `new_in_dir`.
 fn migrate_settings(old: &settings::Repository, new_in_dir: impl AsRef<Path>) -> anyhow::Result<()> {
-    let mut new = settings::Repository::new(settings::Database::new(new_in_dir.as_ref().to_path_buf())?);
+    let mut new = settings::Repository::new(settings::Database::new(new_in_dir.as_ref())?);
     apply_system_schema(&mut new)?;
 
     for (source, target) in [

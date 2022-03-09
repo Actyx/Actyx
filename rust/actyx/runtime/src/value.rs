@@ -49,7 +49,7 @@ impl Display for Value {
             "{}/{}: {}",
             u64::from(self.sort_key.lamport),
             self.sort_key.stream,
-            self.value.to_string()
+            self.value
         )
     }
 }

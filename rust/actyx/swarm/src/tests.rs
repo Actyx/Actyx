@@ -98,7 +98,6 @@ async fn should_compact_regularly() -> Result<()> {
         .map(|_| (tags!("abc"), Payload::null()))
         .collect::<Vec<_>>()
         .chunks(10)
-        .into_iter()
     {
         store.append(0.into(), app_id(), chunk.to_vec()).await?;
     }

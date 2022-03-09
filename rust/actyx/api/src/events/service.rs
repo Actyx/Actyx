@@ -5,11 +5,12 @@ use actyx_sdk::{
         PublishResponse, PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    AppId, Event, NodeId, OffsetMap, OffsetOrMin, Payload, StreamNr,
+    AppId, Event, EventKey, NodeId, OffsetMap, OffsetOrMin, Payload, StreamNr,
 };
 use futures::{
-    future::ready,
+    future::{poll_fn, ready},
     stream::{BoxStream, StreamExt},
+    FutureExt,
 };
 use genawaiter::sync::{Co, Gen};
 use runtime::{
@@ -17,7 +18,7 @@ use runtime::{
     query::Query,
     value::Value,
 };
-use std::{convert::TryFrom, num::NonZeroU64};
+use std::{convert::TryFrom, num::NonZeroU64, task::Poll};
 use swarm::event_store_ref::EventStoreRef;
 use tokio::sync::mpsc::Receiver;
 use tokio_stream::wrappers::ReceiverStream;
@@ -209,10 +210,11 @@ impl EventService {
         _app_id: AppId,
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        let present = self.store.offsets().await?.present();
         let lower_bound = match &request.from {
             StartFrom::LowerBound(x) => x.clone(),
         };
+        let mut present = self.store.offsets().await?.present();
+        present.union_with(&lower_bound);
 
         let mut query = Query::from(request.query);
         let tag_expr = query.from.clone();
@@ -237,21 +239,60 @@ impl EventService {
                 .recv()
                 .await
                 .transpose()?
-                .map(|event| event.key),
+                .map(|event| event.key)
+                .unwrap_or(EventKey {
+                    lamport: 0.into(),
+                    stream: Default::default(),
+                    offset: 0.into(),
+                }),
         };
+
+        async fn send_and_timetravel(
+            co: &Co<SubscribeMonotonicResponse>,
+            event: Event<Payload>,
+            latest: &mut EventKey,
+            caught_up: bool,
+            query: &mut Query,
+        ) -> bool {
+            let key = event.key;
+            if key > *latest {
+                *latest = key;
+                let vs = query.feed(Some(to_value(&event)));
+                if !vs.is_empty() {
+                    let last = {
+                        let mut l = None;
+                        for idx in (0..vs.len()).rev() {
+                            if vs[idx].is_ok() {
+                                l = Some(idx);
+                                break;
+                            }
+                        }
+                        l
+                    };
+                    for (idx, v) in vs.into_iter().enumerate() {
+                        let caught_up = Some(idx) == last && caught_up;
+                        co.yield_(match v {
+                            Ok(v) => SubscribeMonotonicResponse::Event {
+                                event: to_event(v, Some(&event)),
+                                caught_up,
+                            },
+                            Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
+                        })
+                        .await;
+                    }
+                }
+                false
+            } else {
+                co.yield_(SubscribeMonotonicResponse::TimeTravel { new_start: event.key })
+                    .await;
+                true
+            }
+        }
 
         let gen = Gen::new(move |co: Co<SubscribeMonotonicResponse>| async move {
             while let Some(ev) = bounded.next().await {
-                let vs = query.feed(Some(to_value(&ev)));
-                for v in vs {
-                    co.yield_(match v {
-                        Ok(v) => SubscribeMonotonicResponse::Event {
-                            event: to_event(v, Some(&ev)),
-                            caught_up: true,
-                        },
-                        Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
-                    })
-                    .await;
+                if send_and_timetravel(&co, ev, &mut latest, false, &mut query).await {
+                    break;
                 }
             }
 
@@ -260,25 +301,15 @@ impl EventService {
             }))
             .await;
 
-            while let Some(ev) = unbounded.next().await {
-                let key = Some(ev.key);
-                if key > latest {
-                    latest = key;
-                    let vs = query.feed(Some(to_value(&ev)));
-                    for v in vs {
-                        co.yield_(match v {
-                            Ok(v) => SubscribeMonotonicResponse::Event {
-                                event: to_event(v, Some(&ev)),
-                                caught_up: true,
-                            },
-                            Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
-                        })
-                        .await;
-                    }
-                } else {
-                    co.yield_(SubscribeMonotonicResponse::TimeTravel { new_start: ev.key })
-                        .await;
-                    return;
+            let mut event = unbounded.next().await;
+            while let Some(ev) = event {
+                let next = poll_fn(|cx| Poll::Ready(unbounded.next().poll_unpin(cx))).await;
+                if send_and_timetravel(&co, ev, &mut latest, next.is_pending(), &mut query).await {
+                    break;
+                }
+                match next {
+                    Poll::Ready(x) => event = x,
+                    Poll::Pending => event = unbounded.next().await,
                 }
             }
         });

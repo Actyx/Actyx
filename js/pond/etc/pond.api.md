@@ -12,6 +12,7 @@ import * as immutable from 'immutable';
 import { Metadata } from '@actyx/sdk';
 import { Milliseconds } from '@actyx/sdk';
 import { NodeId } from '@actyx/sdk';
+import { NodeInfo } from '@actyx/sdk';
 import { PendingEmission } from '@actyx/sdk';
 import { TaggedEvent } from '@actyx/sdk';
 import { TaggedTypedEvent } from '@actyx/sdk';
@@ -190,6 +191,7 @@ export type Pond = {
     keepRunning<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>, autoCancel?: (state: S) => boolean): CancelSubscription;
     dispose(): void;
     info(): PondInfo;
+    nodeInfo(maxAgeMillis: number): Promise<NodeInfo>;
     getPondState(callback: (newState: PondState) => void): CancelSubscription;
     waitForSwarmSync(params: WaitForSwarmSyncParams): void;
     events(): EventFns;

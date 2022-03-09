@@ -12,8 +12,9 @@ use libp2p::{multiaddr::Protocol, Multiaddr};
 use parking_lot::Mutex;
 use std::{convert::TryInto, path::PathBuf, sync::Arc, time::Duration};
 use swarm::{
+    blob_store::BlobStore,
     event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
-    BanyanStore, Ipfs, SwarmConfig,
+    BanyanStore, DbPath, Ipfs, SwarmConfig,
 };
 use tokio::sync::oneshot;
 use tracing::*;
@@ -183,8 +184,18 @@ impl Component<StoreRequest, StoreConfig> for Store {
             let event_store = self.event_store.clone();
             let swarm_config = cfg.swarm_config;
             let store = rt.block_on(async move {
+                let blobs = BlobStore::new(
+                    swarm_config
+                        .blob_store
+                        .clone()
+                        .map(DbPath::File)
+                        .unwrap_or(DbPath::Memory),
+                )?;
                 let store = BanyanStore::new(swarm_config).await?;
-                store.spawn_task("api", api::run(node_info, store.clone(), event_store, bind_api, snd));
+                store.spawn_task(
+                    "api",
+                    api::run(node_info, store.clone(), event_store, blobs, bind_api, snd),
+                );
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;
 
@@ -214,11 +225,13 @@ impl Component<StoreRequest, StoreConfig> for Store {
         let topic = s.swarm.topic.replace('/', "_");
         let db_path = self.working_dir.join(format!("{}.sqlite", topic));
         let index_store = Some(self.working_dir.join(format!("{}-index", topic)));
+        let blob_store = Some(self.working_dir.join(format!("{}-blobs", topic)));
         let read_only = s.api.events.read_only;
 
         let swarm_config = SwarmConfig {
             topic,
             index_store,
+            blob_store,
             keypair: Some(keypair),
             psk: Some(psk),
             node_name: Some(s.admin.display_name),

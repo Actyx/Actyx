@@ -112,7 +112,9 @@ fn spawn(
         "yamux",
         "libp2p_gossipsub",
         "multistream_select",
-    ])))?;
+    ])))
+    // this may be called more than once on Android, so don’t complain
+    .ok();
     log::set_max_level(log::LevelFilter::max());
 
     let additional_sources = if migrate_all { None } else { Some(BTreeSet::new()) };

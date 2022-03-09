@@ -42,6 +42,7 @@ import { Fish, FishId } from '.'
 import { observeMonotonic } from './monotonic'
 import { minSnapshotAge, SnapshotScheduler } from './monotonic/snapshotScheduler'
 import { FishErrorContext, FishErrorReporter, FishName, Semantics, SnapshotFormat } from './types'
+import log from './loggers'
 
 export type NumberFishEvent = number | 'padding'
 export type NumberFishState = number[]
@@ -117,6 +118,7 @@ export const mkNumberFish = (
   initialState: [],
   fishId: testFishId,
   onEvent: (state, payload) => {
+    log.chaos.debug('event', payload)
     if (payload === 'padding') {
       return state
     }

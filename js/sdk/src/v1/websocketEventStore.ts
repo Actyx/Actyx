@@ -24,6 +24,7 @@ import {
   DoPersistEvents,
   DoQuery,
   DoSubscribe,
+  DoSubscribeMonotonic,
   EventStore,
   RequestOffsets,
 } from '../internal_common/eventStore'
@@ -205,6 +206,10 @@ export class WebsocketEventStore implements EventStore {
         }),
       )
       .pipe(concatMap(validateOrThrow(Events)), map(convertV1toV2))
+  }
+
+  subscribeMonotonic: DoSubscribeMonotonic = () => {
+    throw new Error('ActyxOS v1 does not support subscribeMonotonic')
   }
 
   persistEvents: DoPersistEvents = (eventsV2) => {

@@ -1,5 +1,6 @@
 mod ans;
 mod auth;
+mod blob;
 mod events;
 mod files;
 pub mod formats;
@@ -23,17 +24,19 @@ use crate::{files::FilePinner, util::hyper_serve::serve_it};
 use actyx_util::{to_multiaddr, SocketAddrHelper};
 use parking_lot::Mutex;
 use std::sync::Arc;
+use swarm::blob_store::BlobStore;
 
 pub async fn run(
     node_info: NodeInfo,
     store: BanyanStore,
     event_store: EventStoreRef,
+    blobs: BlobStore,
     bind_to: Arc<Mutex<SocketAddrHelper>>,
     snd: Sender<anyhow::Result<()>>,
 ) {
     let event_service = events::service::EventService::new(event_store, node_info.node_id);
     let pinner = FilePinner::new(event_service.clone(), store.ipfs().clone());
-    let api = routes(node_info, store, event_service, pinner);
+    let api = routes(node_info, store, event_service, pinner, blobs);
     #[allow(clippy::needless_collect)]
     // following clippy here would lead to deadlock, d’oh
     let addrs = bind_to.lock().iter().collect::<Vec<_>>();
@@ -74,11 +77,13 @@ fn routes(
     store: BanyanStore,
     event_service: EventService,
     pinner: FilePinner,
+    blobs: BlobStore,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let events = events::routes(node_info.clone(), event_service);
     let node = node::route(node_info.clone(), store.clone());
     let auth = auth::route(node_info.clone());
     let files = files::route(store.clone(), node_info.clone(), pinner);
+    let blob = blob::routes(blobs, node_info.clone());
 
     let api_path = path!("api" / "v2" / ..);
     let cors = cors()
@@ -106,6 +111,7 @@ fn routes(
             path("node").and(node),
             path("auth").and(auth),
             path("files").and(files),
+            path("blob").and(blob),
         ))
     )
     .recover(|r| async { rejections::handle_rejection(r) })

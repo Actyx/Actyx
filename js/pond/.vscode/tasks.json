@@ -10,7 +10,9 @@
                 "$tsc-watch"
             ],
             "group": "build",
-            "isBackground": true
+            "isBackground": true,
+            "label": "npm: tsc:watch",
+            "detail": "npm run tsc -- --watch --pretty"
         }
     ]
 }

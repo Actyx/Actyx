@@ -23,9 +23,6 @@ const isTestEnv =
   typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production'
 
 export function validateOrThrow<T>(decoder: t.Decoder<any, T>) {
-  if (isTestEnv) {
-    return (value: any) => value as T
-  }
   return (value: any) => {
     const validated = decoder.decode(value)
     if (isLeft(validated)) {

@@ -106,8 +106,8 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
       )
 
       const emitEventSequenceWithError = async () => {
-        await pond.emit(Tag('t1'), 't1 event 1').toPromise()
-        await pond.emit(Tag('t1'), 'error').toPromise()
+        await pond.run(fish, (_state, enqueue) => enqueue(Tag('t1'), 't1 event 1')).toPromise()
+        await pond.run(fish, (_state, enqueue) => enqueue(Tag('t1'), 'error')).toPromise()
         await pond.emit(Tag('t1'), 't1 event 2').toPromise()
       }
 
@@ -222,17 +222,16 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
     })
 
     it('should report if error was caused by deserializeState', async () => {
-      const { pond, emitEventSequenceWithError, assertLatestState, errors, rejectCurrentState } =
-        setup(undefined, {
-          onEvent: (x) => x,
-          deserializeState: () => {
-            throw new Error('oh, I am broken')
-          },
-        })
+      const { pond, assertLatestState, errors, rejectCurrentState } = setup(undefined, {
+        onEvent: (x) => x,
+        deserializeState: () => {
+          throw new Error('oh, I am broken')
+        },
+      })
 
       const nextErr = lastValueFrom(errors.pipe(take(1)))
       assertLatestState('unset')
-      await emitEventSequenceWithError()
+      await pond.publish(Tag('t1').apply('whatever'))
 
       await expect(nextErr).resolves.toMatchObject({ occuredIn: 'deserializeState' })
       await rejectCurrentState()

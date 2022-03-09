@@ -39,8 +39,5 @@ export type CachingReducer<S> = {
 
   // Get the latest state still valid according to the given arguments.
   // This method by itself does not invalidate anything inside the cache, it just filters.
-  latestKnownValidState: (
-    invalidateStatesAfter: EventKey,
-    highestTrigger: EventKey,
-  ) => Option<SerializedStateSnap>
+  latestKnownValidState: (invalidateStatesAfter: EventKey) => Option<SerializedStateSnap>
 }

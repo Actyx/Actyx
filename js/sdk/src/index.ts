@@ -7,3 +7,12 @@
 export * from './actyx'
 export * from './event-fns'
 export * from './types'
+export { NodeInfo } from './node-info'
+export {
+  SnapshotStore,
+  LocalSnapshotFromIndex,
+  StoreSnapshot,
+  RetrieveSnapshot,
+  InvalidateAllSnapshots,
+  InvalidateSnapshots,
+} from './snapshotStore'

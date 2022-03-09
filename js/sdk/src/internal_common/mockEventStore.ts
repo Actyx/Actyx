@@ -84,6 +84,9 @@ export const mockEventStore: () => EventStore = () => {
     subscribeUnchecked: () => {
       throw new Error('not implemented for mock event store')
     },
+    subscribeMonotonic: () => {
+      throw new Error('not implemented for mock event store')
+    },
     persistEvents,
     connectivityStatus: () => EMPTY,
   }

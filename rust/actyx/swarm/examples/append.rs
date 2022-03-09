@@ -5,7 +5,6 @@
 use actyx_sdk::{app_id, tags, AppId, Payload};
 use std::{path::PathBuf, time::Instant};
 use swarm::*;
-use util::set_log_level;
 
 fn app_id() -> AppId {
     app_id!("test")
@@ -13,7 +12,7 @@ fn app_id() -> AppId {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    set_log_level(0);
+    util::setup_logger();
     let dir = tempfile::tempdir()?;
     let db = PathBuf::from(dir.path().join("db").to_str().expect("illegal filename"));
     let index = PathBuf::from(dir.path().join("index").to_str().expect("illegal filename"));
