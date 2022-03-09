@@ -65,7 +65,7 @@ export BUILD_RUST_TOOLCHAIN ?= 1.56.1
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 24fc473cb8766c28a59cc368d05769aa7ca4b160
+export LATEST_STABLE_IMAGE_VERSION := f575d0c635a421309bd04f09b1b1338b2a3cf2bb
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -93,7 +93,7 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/util:osxbuilder-5df6c3baf0143be10458e412241dfb90069008ba
+image-darwin = actyx/util:osxbuilder-a5483d2105b145f5c3ceb23fd47adfffca3c94ef
 
 image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
 
