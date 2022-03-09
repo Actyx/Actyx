@@ -66,7 +66,8 @@ async fn test_routes() -> (
     let event_service = EventService::new(event_store, auth_args.node_id);
     let pinner = FilePinner::new(event_service.clone(), store.ipfs().clone());
     let blobs = BlobStore::new(DbPath::Memory).unwrap();
-    let route = super::routes(auth_args.clone(), store, event_service, pinner, blobs).with(warp::trace::named("api_test"));
+    let route =
+        super::routes(auth_args.clone(), store, event_service, pinner, blobs).with(warp::trace::named("api_test"));
 
     let token = create_token(
         auth_args,

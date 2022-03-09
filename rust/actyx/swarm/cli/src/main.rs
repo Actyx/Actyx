@@ -10,8 +10,9 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 use structopt::StructOpt;
 use swarm::{
+    blob_store::BlobStore,
     event_store_ref::{self, EventStoreHandler, EventStoreRef, EventStoreRequest},
-    BanyanStore, GossipMessage, SwarmConfig, blob_store::BlobStore, DbPath,
+    BanyanStore, DbPath, GossipMessage, SwarmConfig,
 };
 use swarm_cli::{Command, Config, Event};
 use tokio::{
