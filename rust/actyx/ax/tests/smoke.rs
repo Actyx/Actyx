@@ -220,7 +220,7 @@ fn offsets() -> anyhow::Result<()> {
         );
         ensure!(out.status.success());
         let out = String::from_utf8(out.stdout)?;
-        ensure!(out.contains(&stream));
+        ensure!(out.contains(&stream), "{}", out);
         Ok(())
     });
     if result.is_err() {
@@ -328,9 +328,11 @@ fn bad_query() -> anyhow::Result<()> {
             String::from_utf8_lossy(&out.stderr)
         );
         ensure!(!out.status.success());
+        let out = String::from_utf8(out.stderr)?;
         ensure!(
-            String::from_utf8(out.stderr)?
-                == "[ERR_INVALID_INPUT] Error: The query uses beta features that are not enabled: timeRange.\n"
+            out == "[ERR_INVALID_INPUT] Error: The query uses beta features that are not enabled: timeRange.\n",
+            "{}",
+            out
         );
 
         let out = run("ax")?
@@ -349,10 +351,12 @@ fn bad_query() -> anyhow::Result<()> {
             String::from_utf8_lossy(&out.stderr)
         );
         ensure!(!out.status.success());
+        let out = String::from_utf8(out.stdout)?;
         ensure!(
-            String::from_utf8(out.stdout)?
-                == r#"{"code":"ERR_INVALID_INPUT","message":"The query uses beta features that are not enabled: timeRange."}
-"#
+            out == r#"{"code":"ERR_INVALID_INPUT","message":"The query uses beta features that are not enabled: timeRange."}
+"#,
+            "{}",
+            out
         );
 
         Ok(())
@@ -417,7 +421,8 @@ fn diagnostics() -> anyhow::Result<()> {
             String::from_utf8_lossy(&out.stderr)
         );
         ensure!(out.status.success());
-        ensure!(String::from_utf8(out.stdout)?.contains("is not a number"));
+        let out = String::from_utf8(out.stdout)?;
+        ensure!(out.contains("is not a number"), "{}", out);
         Ok(())
     });
     if result.is_err() {
@@ -447,8 +452,12 @@ fn aggregate() -> anyhow::Result<()> {
         );
         ensure!(out.status.success());
         let json = serde_json::from_slice::<Value>(&out.stdout)?;
-        ensure!(get(&json, "/code")? == json!("OK"));
-        ensure!(get(&json, "/result/payload")?.as_u64() > Some(0));
+        ensure!(get(&json, "/code")? == json!("OK"), "{}", get(&json, "/code")?);
+        ensure!(
+            get(&json, "/result/payload")?.as_u64() > Some(0),
+            "{:?}",
+            get(&json, "/result/payload")?.as_u64()
+        );
         Ok(())
     });
     if result.is_err() {

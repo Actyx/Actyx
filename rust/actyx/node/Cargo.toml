@@ -9,6 +9,7 @@ migration-v1 = ["crypto/legacy"]
 
 [build-dependencies]
 prost-build = "0.9.0"
+util = { path = "../util" }
 
 [dependencies]
 actyx_sdk = { path = "../../sdk" }

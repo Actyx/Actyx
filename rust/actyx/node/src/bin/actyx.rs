@@ -41,7 +41,8 @@ struct NoColor;
         the latter logs at debug level for the “node” code module and info level for everything \
         else).
         ",
-    rename_all = "kebab-case"
+    rename_all = "kebab-case",
+    version = env!("AX_VERSION"),
 )]
 struct Opts {
     #[structopt(
