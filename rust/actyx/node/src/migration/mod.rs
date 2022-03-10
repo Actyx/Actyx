@@ -6,6 +6,7 @@ use std::{
 };
 
 use crate::{node_storage::NodeStorage, node_storage::CURRENT_VERSION};
+use anyhow::Context;
 
 pub mod v1;
 
@@ -83,7 +84,11 @@ pub fn migrate_if_necessary(
                 )
                 .map_err(|e| {
                     tracing::error!(target: "MIGRATION", "Error during migration: {:#}", e);
-                    e
+                    if db_version == 0 {
+                        e.context("migrating from storage version 0")
+                    } else {
+                        e.context("migrating from storage version 1")
+                    }
                 })?;
                 tracing::info!(target:"MIGRATION", "Migration succeeded.");
             }
@@ -91,7 +96,7 @@ pub fn migrate_if_necessary(
                 tracing::info!(target:"MIGRATION", "Migrating data from an earlier version (2 to 3) ..");
                 tracing::debug!("Opening database {}", node_db.display());
                 let mut conn = rusqlite::Connection::open(&node_db)?;
-                NodeStorage::migrate(&mut conn, db_version)?;
+                NodeStorage::migrate(&mut conn, db_version).context("migrating from storage version 2")?;
                 tracing::info!(target:"MIGRATION", "Migration succeeded.");
             }
             CURRENT_VERSION => break,

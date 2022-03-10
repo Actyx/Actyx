@@ -248,12 +248,14 @@ fn write_index_store(
     streams: impl Iterator<Item = StreamId>,
 ) -> anyhow::Result<()> {
     let flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_FULL_MUTEX;
-    let conn = rusqlite::Connection::open_with_flags(v2_index_path, flags)?;
+    let conn = rusqlite::Connection::open_with_flags(v2_index_path, flags).context("opening DB")?;
     let conn = Arc::new(Mutex::new(conn));
-    let mut store = SqliteIndexStore::from_conn(conn)?;
-    store.received_lamport(lamport)?;
+    let mut store = SqliteIndexStore::from_conn(conn).context("creating store")?;
+    store.received_lamport(lamport).context("setting lamport clock")?;
     for stream in streams {
-        store.add_stream(stream)?;
+        store
+            .add_stream(stream)
+            .with_context(|| format!("adding stream {}", stream))?;
     }
     Ok(())
 }
@@ -299,7 +301,7 @@ pub fn convert_from_v1(
     let v1_blocks_path = v1_actyx_data.as_ref().join(format!("{}-blocks.sqlite", topic));
     let v1_index_path = v1_actyx_data.as_ref().join(topic);
     let v2_blocks_path = v2_actyx_data.as_ref().join(format!("store/{}.sqlite", topic));
-    let v2_index_path = v2_actyx_data.as_ref().join("node.sqlite");
+    let v2_index_path = v2_actyx_data.as_ref().join(format!("store/{}-index.sqlite", topic));
     anyhow::ensure!(
         fs::metadata(&v1_actyx_data)?.is_dir(),
         "source directory does not exist: {:?}",
@@ -339,19 +341,25 @@ pub fn convert_from_v1(
     );
 
     tracing::debug!("opening existing v1 block store at {:?}", v1_blocks_path);
-    let db1 = Arc::new(Mutex::new(BlockStore::open(
-        v1_blocks_path,
-        ipfs_sqlite_block_store::Config::default().with_pragma_synchronous(Synchronous::Normal),
-    )?));
-    let stats1 = db1.lock().get_store_stats()?;
+    let db1 = Arc::new(Mutex::new(
+        BlockStore::open(
+            v1_blocks_path,
+            ipfs_sqlite_block_store::Config::default().with_pragma_synchronous(Synchronous::Normal),
+        )
+        .context("opening v1 DB")?,
+    ));
+    let stats1 = db1.lock().get_store_stats().context("getting v1 store stats")?;
     tracing::debug!("source block store stats at start of conversion {:?}", stats1);
 
     tracing::debug!("opening existing v2 block store at {:?}", v2_blocks_path);
-    let db2 = Arc::new(Mutex::new(BlockStore::open(
-        v2_blocks_path,
-        ipfs_sqlite_block_store::Config::default().with_pragma_synchronous(Synchronous::Normal),
-    )?));
-    let stats2 = db2.lock().get_store_stats()?;
+    let db2 = Arc::new(Mutex::new(
+        BlockStore::open(
+            v2_blocks_path,
+            ipfs_sqlite_block_store::Config::default().with_pragma_synchronous(Synchronous::Normal),
+        )
+        .context("opening v2 DB")?,
+    ));
+    let stats2 = db2.lock().get_store_stats().context("getting v2 store stats")?;
     tracing::debug!("target block store stats at start of conversion {:?}", stats2);
 
     let config = banyan::Config {
@@ -427,18 +435,19 @@ pub fn convert_from_v1(
     tracing::debug!("conversion done: {:?}", result);
 
     tracing::debug!("writing info to existing v2 index store at {:?}", v1_index_path);
-    write_index_store(v2_index_path, *lamport.lock(), result.iter().map(|(_, s, _)| *s))?;
+    write_index_store(v2_index_path, *lamport.lock(), result.iter().map(|(_, s, _)| *s))
+        .context("writing index store")?;
 
     if options.gc {
         tracing::debug!("running gc.");
-        db2.lock().gc()?;
+        db2.lock().gc().context("performing GC")?;
     }
     if options.vacuum {
         tracing::debug!("running vacuum.");
-        db2.lock().vacuum()?;
+        db2.lock().vacuum().context("vacuuming DB")?;
     }
 
-    let stats = db2.lock().get_store_stats()?;
+    let stats = db2.lock().get_store_stats().context("getting final store stats")?;
     tracing::debug!("target block store stats at end of conversion {:?}", stats);
 
     Ok(())

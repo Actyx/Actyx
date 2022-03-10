@@ -66,7 +66,7 @@ impl SqliteIndexStore {
      **/
     pub fn from_conn(conn: Arc<Mutex<Connection>>) -> Result<Self> {
         let locked = conn.lock();
-        initialize_db(&locked)?;
+        initialize_db(&locked).context("initializing DB")?;
         let lamport = locked
             .query_row("SELECT lamport FROM meta", [], |row| {
                 let lamport: i64 = row.get(0)?;
@@ -77,7 +77,8 @@ impl SqliteIndexStore {
             .or_else(|_| -> Result<u64> {
                 locked.execute("INSERT INTO meta VALUES (0)", [])?;
                 Ok(0)
-            })?;
+            })
+            .context("initializing lamport clock")?;
         drop(locked);
         Ok(Self {
             conn,
@@ -166,9 +167,9 @@ pub fn initialize_db(conn: &Connection) -> Result<()> {
             "memory" => Ok(()), // There is no config choice for memory databases
             _other => Err(rusqlite::Error::InvalidQuery),
         }
-    })?;
+    }).context("setting journal_mode")?;
     // `PRAGMA synchronous = NORMAL;` https://www.sqlite.org/pragma.html#pragma_synchronous
-    conn.execute("PRAGMA synchronous = NORMAL;", [])?;
+    conn.execute("PRAGMA synchronous = NORMAL;", []).context("setting sync mode")?;
     conn.execute_batch(
         "BEGIN;\n\
         CREATE TABLE IF NOT EXISTS streams \
@@ -176,7 +177,7 @@ pub fn initialize_db(conn: &Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS meta \
             (lamport INTEGER);\n\
         COMMIT;",
-    )?;
+    ).context("creating tables")?;
     Ok(())
 }
 
