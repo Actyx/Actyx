@@ -167,9 +167,11 @@ pub fn initialize_db(conn: &Connection) -> Result<()> {
             "memory" => Ok(()), // There is no config choice for memory databases
             _other => Err(rusqlite::Error::InvalidQuery),
         }
-    }).context("setting journal_mode")?;
+    })
+    .context("setting journal_mode")?;
     // `PRAGMA synchronous = NORMAL;` https://www.sqlite.org/pragma.html#pragma_synchronous
-    conn.execute("PRAGMA synchronous = NORMAL;", []).context("setting sync mode")?;
+    conn.execute("PRAGMA synchronous = NORMAL;", [])
+        .context("setting sync mode")?;
     conn.execute_batch(
         "BEGIN;\n\
         CREATE TABLE IF NOT EXISTS streams \
@@ -177,7 +179,8 @@ pub fn initialize_db(conn: &Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS meta \
             (lamport INTEGER);\n\
         COMMIT;",
-    ).context("creating tables")?;
+    )
+    .context("creating tables")?;
     Ok(())
 }
 
