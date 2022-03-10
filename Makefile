@@ -402,6 +402,7 @@ validate-node-manager-bindings:
 		npm run build
 
 node-manager-win:
+	env | sort
 	docker run \
 	-v `pwd`:/src \
 	-w /src/js/node-manager \

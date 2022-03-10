@@ -4,9 +4,9 @@
   "description": "Native Node.js bindings for interacting with Actyx nodes",
   "main": "index.node",
   "scripts": {
-    "_comment": "the next three scripts added since '-1.56.1' is ok on Linux/Darwin, but Win32 requires '1.56.1'; don't ask me why",
-    "build:darwin:linux": "cross-env RUSTUP_TOOLCHAIN=\"${BUILD_RUST_TOOLCHAIN:-1.56.1}\" cargo-cp-artifact -nc node-manager-bindings.node -- cargo build --locked --message-format=json-render-diagnostics",
-    "build:win32": "cross-env RUSTUP_TOOLCHAIN=\"${BUILD_RUST_TOOLCHAIN:1.56.1}\" cargo-cp-artifact -nc node-manager-bindings.node -- cargo build --locked --message-format=json-render-diagnostics",
+    "_comment": "the next three scripts added since '-1.59.0' is ok on Linux/Darwin, but Win32 requires '1.59.0'; don't ask me why",
+    "build:darwin:linux": "cross-env RUSTUP_TOOLCHAIN=\"${BUILD_RUST_TOOLCHAIN:-1.59.0}\" cargo-cp-artifact -nc node-manager-bindings.node -- cargo build --locked --message-format=json-render-diagnostics",
+    "build:win32": "cross-env RUSTUP_TOOLCHAIN=\"${BUILD_RUST_TOOLCHAIN:1.59.0}\" cargo-cp-artifact -nc node-manager-bindings.node -- cargo build --locked --message-format=json-render-diagnostics",
     "build": "run-script-os",
     "test": "cargo test"
   },
