@@ -195,18 +195,19 @@ impl Gossip {
                             if let Some(offset) = root_update.offset {
                                 store.update_highest_seen(root_update.stream, offset);
                             }
-                            for block in &root_update.blocks {
-                                if let Err(err) = store.ipfs().insert(block) {
-                                    tracing::error!("{}", err);
-                                } else {
-                                    tracing::trace!("{} written", display(**block));
-                                }
-                            }
                             let path = if root_update.blocks.is_empty() {
                                 RootPath::SlowPath
                             } else {
                                 RootPath::FastPath
                             };
+                            for block in root_update.blocks {
+                                let cid = *block.cid();
+                                if let Err(err) = store.ipfs().insert(block) {
+                                    tracing::error!("{}", err);
+                                } else {
+                                    tracing::trace!("{} written", display(cid));
+                                }
+                            }
                             match Link::try_from(root_update.root) {
                                 Ok(root) => store.update_root(root_update.stream, root, RootSource::new(peer_id, path)),
                                 Err(err) => tracing::error!("failed to parse link {}", err),

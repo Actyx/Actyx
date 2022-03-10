@@ -702,12 +702,15 @@ impl BanyanStore {
                 dns: if cfg!(target_os = "android") {
                     // No official support for DNS on Android.
                     // see https://github.com/Actyx/Cosmos/issues/6582
-                    Some(DnsConfig {
+                    Some(DnsConfig::Custom {
                         config: ResolverConfig::cloudflare(),
                         opts: Default::default(),
                     })
                 } else {
-                    None
+                    Some(DnsConfig::SystemWithFallback {
+                        config: ResolverConfig::cloudflare(),
+                        opts: Default::default(),
+                    })
                 },
                 ping: Some(
                     PingConfig::new()
@@ -1072,7 +1075,7 @@ impl BanyanStore {
                     for (cid, data) in adder.finish() {
                         let block = Block::new_unchecked(cid, data);
                         self.ipfs().temp_pin(tmp, block.cid())?;
-                        self.ipfs().insert(&block)?;
+                        self.ipfs().insert(block)?;
                         root = Some(cid)
                     }
                     return Ok((root.expect("must return a root"), bytes_read));
@@ -1084,7 +1087,7 @@ impl BanyanStore {
                         for (cid, data) in blocks {
                             let block = Block::new_unchecked(cid, data);
                             self.ipfs().temp_pin(tmp, block.cid())?;
-                            self.ipfs().insert(&block)?;
+                            self.ipfs().insert(block)?;
                         }
                         total += consumed;
                     }

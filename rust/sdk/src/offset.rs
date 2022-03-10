@@ -482,7 +482,7 @@ mod postgresql {
 /// An `OffsetMap` only contains valid offsets (non-negative numbers), but during deserialization
 /// negative values are tolerated and ignored. This is to keep compatibility with previously
 /// documented API endpoints.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, DagCbor)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize, DagCbor)]
 #[serde(from = "BTreeMap<StreamId, OffsetOrMin>")]
 #[ipld(repr = "value")]
 pub struct OffsetMap(BTreeMap<StreamId, Offset>);
@@ -641,12 +641,6 @@ impl PartialOrd for OffsetMap {
 impl AsRef<BTreeMap<StreamId, Offset>> for OffsetMap {
     fn as_ref(&self) -> &BTreeMap<StreamId, Offset> {
         &self.0
-    }
-}
-
-impl Default for OffsetMap {
-    fn default() -> Self {
-        OffsetMap(BTreeMap::new())
     }
 }
 

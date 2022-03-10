@@ -19,7 +19,7 @@ pub fn ed25519_to_x25519_sk(ed25519_sk: &ed25519_dalek::SecretKey) -> x25519_dal
     // the same to yield a Curve25519 keypair with the same public key.
     let mut curve25519_sk: [u8; 32] = [0; 32];
     let hash = Sha512::digest(ed25519_sk.as_ref());
-    curve25519_sk.copy_from_slice(&hash.as_ref()[..32]);
+    curve25519_sk.copy_from_slice(&hash.as_slice()[..32]);
     let sk = x25519_dalek::StaticSecret::from(curve25519_sk); // Copy
     curve25519_sk.zeroize();
     sk

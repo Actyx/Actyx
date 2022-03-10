@@ -60,7 +60,7 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    let versions = ["2.0.0", "2.3.0", "2.5.0", "2.8.2", "current"];
+    let versions = ["2.0.0", "2.3.0", "2.5.0", "2.8.2", "2.10.0", "2.11.0", "current"];
 
     setup_env().context("setting up env")?;
     let tmp_dir = TempDir::new("swarm-versions").context("creating temp_dir")?;

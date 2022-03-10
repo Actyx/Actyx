@@ -361,27 +361,28 @@ pub fn migrate(
     tracing::debug!("V1 dir {} intact", v1_working_dir.as_ref().display());
 
     // create temporary directory for v2
-    let temp_v2 = tempdir_in(&v2_working_dir)?;
+    let temp_v2 = tempdir_in(&v2_working_dir).context("creating tempdir for v2 storage")?;
 
     // migrate settings
-    migrate_settings(&v1_dir.settings_repo, temp_v2.path())?;
+    migrate_settings(&v1_dir.settings_repo, temp_v2.path()).context("migrating settings")?;
 
     // Migrate node db
     let mut v2_node_db_conn = copy_db(
         &v1_dir.node_storage.connection.lock(),
         temp_v2.path().join(NODE_DB_FILENAME),
-    )?;
-    NodeStorage::migrate(&mut v2_node_db_conn, version).context("Migrating settings")?;
+    )
+    .context("copying the data")?;
+    NodeStorage::migrate(&mut v2_node_db_conn, version).context("migrating node DB")?;
 
     // index db is node db
     // create blocks db
-    std::fs::create_dir(temp_v2.path().join("store"))?;
+    std::fs::create_dir(temp_v2.path().join("store")).context("creating store directory")?;
     let v2_blocks_db = temp_v2
         .path()
         .join("store")
         // ipfs-embed block store is named `<topic>.sqlite`
         .join(v1_dir.index_db.with_extension("sqlite").file_name().unwrap());
-    BlockStore::<libipld::DefaultParams>::open(&v2_blocks_db, Default::default())?;
+    BlockStore::<libipld::DefaultParams>::open(&v2_blocks_db, Default::default()).context("creating block store")?;
     // migrate swarm dbs
     let v1_source_id: SourceId = {
         let conn = open_readonly(&v1_dir.index_db).context("Opening v1 index db")?;

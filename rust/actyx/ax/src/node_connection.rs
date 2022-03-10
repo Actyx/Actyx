@@ -357,7 +357,7 @@ async fn poll_until_connected(
         match event {
             SwarmEvent::ConnectionEstablished { endpoint, peer_id, .. } => {
                 let addr = match endpoint {
-                    ConnectedPoint::Dialer { address } => address,
+                    ConnectedPoint::Dialer { address, .. } => address,
                     ConnectedPoint::Listener { send_back_addr, .. } => send_back_addr,
                 };
 
