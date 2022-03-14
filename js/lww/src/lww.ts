@@ -236,7 +236,11 @@ const _readIds = async (
   entityName: EntityName,
   customTags: string[],
 ): Promise<{ ids: UniqueId[]; offsets: OffsetMap }> => {
-  dbg(`_readIds(entityName: '${entityName}')`)
+  dbg(
+    `_readIds(entityName: '${entityName}', customTags=[${customTags
+      .map((t) => `'${t}'`)
+      .join(',')}])`,
+  )
   const tags = Tags(entityName).readIds(customTags)
   const query = `FROM allEvents & ${tags.map((t) => `'${t}'`).join(' & ')}`
 
@@ -260,7 +264,11 @@ const readIds = async (
   entityName: EntityName,
   customTags: string[],
 ): Promise<UniqueId[]> => {
-  dbg(`readIds(entityName: '${entityName}')`)
+  dbg(
+    `readIds(entityName: '${entityName}', customTags=[${customTags
+      .map((t) => `'${t}'`)
+      .join(',')}])`,
+  )
   const res = await _readIds(sdk, entityName, customTags)
   return res.ids
 }
@@ -271,7 +279,11 @@ const _readAll = async <Data>(
   entityName: EntityName,
   customTags: string[],
 ): Promise<{ states: State<Data>[]; offsets: OffsetMap }> => {
-  dbg(`readAll(entityName: '${entityName}')`)
+  dbg(
+    `readAll(entityName: '${entityName}', customTags=[${customTags
+      .map((t) => `'${t}'`)
+      .join(',')}])`,
+  )
   const all = await _readIds(sdk, entityName, customTags)
   dbg(`got ${all.ids.length} ids`)
   return {
