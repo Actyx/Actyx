@@ -98,7 +98,11 @@ const omitObservable = <S>(
         // Use async scheduler to make direct cancelation work
         subscribeOn(asyncScheduler),
       )
-      .subscribe(callback, typeof stoppedByError === 'function' ? stoppedByError : noop)
+      .subscribe({
+        next: callback,
+        error: typeof stoppedByError === 'function' ? stoppedByError : noop,
+        complete: typeof stoppedByError === 'function' ? () => stoppedByError(null) : noop,
+      })
     return sub.unsubscribe.bind(sub)
   } catch (err) {
     stoppedByError && stoppedByError(err)
@@ -478,9 +482,17 @@ class Pond2Impl implements Pond {
   }
 
   dispose = () => {
-    Object.values(this.activeFishes).forEach(({ subscription }) => subscription.unsubscribe())
+    for (const s of Object.values(this.activeFishes)) {
+      s.states.complete()
+      s.subscription.unsubscribe()
+    }
+    this.activeFishes = {}
 
-    Object.values(this.activeObserveAll).forEach(({ subscription }) => subscription.unsubscribe())
+    for (const s of Object.values(this.activeObserveAll)) {
+      s.states.complete()
+      s.subscription.unsubscribe()
+    }
+    this.activeObserveAll = {}
 
     this.actyx.dispose()
   }
