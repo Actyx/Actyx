@@ -51,7 +51,7 @@ export type TestEvent = {
 
   timestamp: Timestamp
   lamport: Lamport
-  tags: ReadonlyArray<string>
+  tags: string[]
 
   payload: unknown
 }
@@ -59,7 +59,7 @@ export type TestEvent = {
 export type TestEventStore = EventStore & {
   // It is up to the test case to judge which events
   // might realistically appear in the live stream.
-  directlyPushEvents: (events: ReadonlyArray<TestEvent>) => void
+  directlyPushEvents: (events: TestEvent[]) => void
   storedEvents: () => Event[]
 
   // End all streams. The real store is not expected to do this.
@@ -296,7 +296,7 @@ export const testEventStore = (nodeId: NodeId = NodeId.of('TEST'), timeInjector?
     return of(newEvents)
   }
 
-  const directlyPushEvents = (newEvents: ReadonlyArray<TestEvent>) => {
+  const directlyPushEvents = (newEvents: TestEvent[]) => {
     let b = { ...curOffsets }
     for (const ev of newEvents) {
       b = includeEvent(b, ev)

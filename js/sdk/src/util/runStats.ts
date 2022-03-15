@@ -342,7 +342,7 @@ const createRunStats = (): RunStats => {
 /**
  * Methods to work with simple and rather cheap invocation counters
  */
-export type Counters = Readonly<{
+export type Counters = {
   /**
    * Increment a named counter value. Default increment is one.
    */
@@ -351,12 +351,12 @@ export type Counters = Readonly<{
    * Get all current counter values. Returns an immutable copy.
    */
   current: () => CounterMap
-}>
+}
 
 /**
  * Methods to work with duration statistics
  */
-export type Durations = Readonly<{
+export type Durations = {
   /**
    * Start a long-running operation for a metric name. The operation will be
    * ongoing until `end()` is called!
@@ -381,12 +381,12 @@ export type Durations = Readonly<{
    * Get all current duration statistics. Returns an immutable copy.
    */
   getAndClear: () => DurationMap
-}>
+}
 
 /**
  * Convenience methods for profiling synchronous and asynchronous operations
  */
-export type ProfileMethods = Readonly<{
+export type ProfileMethods = {
   /**
    * Profile a synchronous block of code. Will add the duration it took to execute
    * the block to the statistics, regardless of whether the block terminates normally
@@ -404,12 +404,12 @@ export type ProfileMethods = Readonly<{
    * This is meant to be used with the rxjs pipe operator.
    */
   profileObservable: <T>(name: string, n?: Integer) => (inner: Observable<T>) => Observable<T>
-}>
+}
 
 /**
  * Methods to work with simple gauges
  */
-export type Gauges = Readonly<{
+export type Gauges = {
   /**
    * Set a gauge value.
    */
@@ -419,7 +419,7 @@ export type Gauges = Readonly<{
    * Get all current gauge values. Returns an immutable copy.
    */
   current: () => GaugeMap
-}>
+}
 
 export interface RunStats {
   readonly counters: Counters

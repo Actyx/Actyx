@@ -169,7 +169,7 @@ pub fn main() -> Result<()> {
             migrate_all_sources,
         )?;
 
-        shutdown_ceremony(app_handle);
+        shutdown_ceremony(app_handle)?;
     }
 
     Ok(())

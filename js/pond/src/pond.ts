@@ -161,7 +161,7 @@ type Emit<E> = {
   payload: E
 }
 type StateEffectInternal<S, EWrite> = (state: S) => EmissionRequest<EWrite>
-type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<Emit<E>>>
+type EmissionRequest<E> = Emit<E>[] | Promise<Emit<E>[]>
 // endof TODO cleanup
 
 type ActiveFish<S> = {
@@ -171,17 +171,16 @@ type ActiveFish<S> = {
 }
 
 /** Parameter object for the `Pond.getNodeConnectivity` call. @public */
-export type GetNodeConnectivityParams = Readonly<{
+export type GetNodeConnectivityParams = {
   callback: (newState: unknown) => void
-  specialSources?: ReadonlyArray<NodeId>
-}>
+  specialSources?: NodeId[]
+}
 
 /** Parameter object for the `Pond.waitForSwarmSync` call. @public */
-export type WaitForSwarmSyncParams = WaitForSwarmConfig &
-  Readonly<{
-    onSyncComplete: () => void
-    onProgress?: (newState: SplashState) => void
-  }>
+export type WaitForSwarmSyncParams = WaitForSwarmConfig & {
+  onSyncComplete: () => void
+  onProgress?: (newState: SplashState) => void
+}
 
 /**
  * Main interface for interaction with the Actyx event system.
@@ -215,7 +214,7 @@ export type Pond = {
    * @returns        A Promise that resolves to the emitted event’s metadata.
    */
   publish(event: TaggedEvent): Promise<Metadata>
-  publish(events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]>
+  publish(events: TaggedEvent[]): Promise<Metadata[]>
 
   /* AGGREGATION */
 
@@ -390,10 +389,10 @@ export type Pond = {
   events(): EventFns
 }
 
-type ActiveObserveAll<S> = Readonly<{
+type ActiveObserveAll<S> = {
   states: Subject<S[]>
   subscription: Subscription
-}>
+}
 
 const getOrInitialize = <T>(
   cache: Record<string, { states: Subject<T>; subscription: Subscription }>,
@@ -754,6 +753,7 @@ const mkPond = async (
 export type TestPond = Pond & {
   directlyPushEvents: (events: TestEvent[]) => void
 }
+/** Extended options for TestPond. @public */
 export type TestPondOptions = PondOptions & { timeInjector?: TimeInjector }
 
 const mkTestPond = (opts?: TestPondOptions): TestPond => {

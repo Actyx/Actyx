@@ -404,7 +404,7 @@ export interface EventFns {
    *
    * @deprecated Use `publish` instead, and always await the Promise.
    */
-  emit: (events: ReadonlyArray<TaggedEvent>) => PendingEmission
+  emit: (events: TaggedEvent[]) => PendingEmission
 
   /**
    * Publish a number of events with tags attached.
@@ -415,11 +415,11 @@ export interface EventFns {
    * @returns        A Promise that resolves to the persisted event’s metadata, in the same order they were passed into the function.
    */
   publish(event: TaggedEvent): Promise<Metadata>
-  publish(events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]>
+  publish(events: TaggedEvent[]): Promise<Metadata[]>
 }
 
 /** EventFns for unit-tests. @public */
 export type TestEventFns = EventFns & {
   /** Inject an event as if it arrived from anywhere. @public */
-  directlyPushEvents: (events: ReadonlyArray<TestEvent>) => void
+  directlyPushEvents: (events: TestEvent[]) => void
 }

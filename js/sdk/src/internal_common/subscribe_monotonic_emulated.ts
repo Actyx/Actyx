@@ -38,22 +38,22 @@ import { bufferOp } from '../util/bufferOp'
 // Stream events as they become available, until time-travel would occour.
 // To be eventually implemented on the rust-store side with lots of added cleverness.
 
-export type StateMsg = Readonly<{
+export type StateMsg = {
   type: MsgType.state
   snapshot: SerializedStateSnap
-}>
+}
 
-export type EventsMsg = Readonly<{
+export type EventsMsg = {
   type: MsgType.events
   events: Events
   caughtUp: boolean
-}>
+}
 
-export type TimeTravelMsg = Readonly<{
+export type TimeTravelMsg = {
   type: MsgType.timetravel
   trigger: Event // earliest known event to cause time travel
   high: Event // latest known event to cause time travel
-}>
+}
 
 export type EventsOrTimetravel = StateMsg | EventsMsg | TimeTravelMsg
 

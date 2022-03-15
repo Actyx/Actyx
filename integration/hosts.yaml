@@ -57,20 +57,20 @@ hosts:
       armv7: true
     install:
       type: docker
-  - name: windows-1
-    prepare:
-      type: create-aws-ec2
-      # Windows Server 2019
-      # Note: This is a public AMI. The underlying image might be upgraded from
-      # time to time, thus the AMI's ID is going to change, and the old one is
-      # not accessible anymore.  If that happens, search for the current "Windows
-      # Server 2019 Base" Image in the AWS Marketplace (FOR EU FRANKFURT!)
-      # https://aws.amazon.com/marketplace
-      ami: ami-0a296b89d507d9eae
-      instance: t2.large
-      user: Administrator
-    install:
-      type: windows
+#  - name: windows-1
+#    prepare:
+#      type: create-aws-ec2
+#      # Windows Server 2019
+#      # Note: This is a public AMI. The underlying image might be upgraded from
+#      # time to time, thus the AMI's ID is going to change, and the old one is
+#      # not accessible anymore.  If that happens, search for the current "Windows
+#      # Server 2019 Base" Image in the AWS Marketplace (FOR EU FRANKFURT!)
+#      # https://aws.amazon.com/marketplace
+#      ami: ami-0a296b89d507d9eae
+#      instance: t2.large
+#      user: Administrator
+#    install:
+#      type: windows
   - name: x86_64-android-emulator
     prepare:
       type: create-aws-ec2
@@ -89,6 +89,6 @@ settings:
   # and the spawned hosts alive, so that you can investigate them. ctrl-C will kill them.
   keepNodesRunning: false
   # Set this to a specific hash instead of null to use Docker artifacts from that commit.
-  gitHash: null
+  gitHash: d8988cd8563816a03dd72234e793c558297bbacd
   # Rather than writing all logs to individual files, dump everything on stdout
   logToStdout: false

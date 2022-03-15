@@ -57,23 +57,23 @@ export enum MsgType {
 }
 
 /** Implies consumer should apply the given state. @alpha */
-export type StateMsg = Readonly<{
+export type StateMsg = {
   type: MsgType.state
   snapshot: SerializedStateSnap
-}>
+}
 
 /** Implies consumer should apply the given events to its latest local state. @alpha */
-export type EventsMsg<E> = Readonly<{
+export type EventsMsg<E> = {
   type: MsgType.events
   events: ActyxEvent<E>[]
   caughtUp: boolean
-}>
+}
 
 /** Implies consumer should re-subscribe starting from `trigger` or earlier. @alpha */
-export type TimeTravelMsg<E> = Readonly<{
+export type TimeTravelMsg<E> = {
   type: MsgType.timetravel
   trigger: EventKey
-}>
+}
 
 /** Possible subscribe_monotonic message types. @alpha */
 export type EventsOrTimetravel<E> = StateMsg | EventsMsg<E> | TimeTravelMsg<E>
@@ -83,8 +83,8 @@ export type EventsOrTimetravel<E> = StateMsg | EventsMsg<E> | TimeTravelMsg<E>
  * Implies that a state was cached in-process by the client and so it does not want to start from a snapshot known to Actyx.
  * @alpha
  */
-export type FixedStart = Readonly<{
+export type FixedStart = {
   from: OffsetMap
   latestEventKey: EventKey
   horizon?: EventKey
-}>
+}

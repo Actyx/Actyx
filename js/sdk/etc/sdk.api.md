@@ -42,10 +42,10 @@ export type ActyxOpts = {
 };
 
 // @public
-export type ActyxTestOpts = Readonly<{
+export type ActyxTestOpts = {
     nodeId?: NodeId;
     timeInjector?: TimeInjector;
-}>;
+};
 
 // @public
 export const allEvents: Tags<unknown>;
@@ -130,7 +130,7 @@ export type EventChunk = {
 // @public
 export interface EventFns {
     // @deprecated
-    emit: (events: ReadonlyArray<TaggedEvent>) => PendingEmission;
+    emit: (events: TaggedEvent[]) => PendingEmission;
     observeBestMatch: <E>(query: Where<E>, shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean, onReplaced: (event: E, metadata: Metadata) => void, onError?: (err: unknown) => void) => CancelSubscription;
     // @beta
     observeEarliest: <E>(query: EarliestQuery<E>, onNewEarliest: (event: E, metadata: Metadata) => void, onError?: (err: unknown) => void) => CancelSubscription;
@@ -141,7 +141,7 @@ export interface EventFns {
     present: () => Promise<OffsetMap>;
     publish(event: TaggedEvent): Promise<Metadata>;
     // (undocumented)
-    publish(events: ReadonlyArray<TaggedEvent>): Promise<Metadata[]>;
+    publish(events: TaggedEvent[]): Promise<Metadata[]>;
     queryAllKnown: (query: AutoCappedQuery) => Promise<EventChunk>;
     queryAllKnownChunked: (query: AutoCappedQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: OnCompleteOrErr) => CancelSubscription;
     // @beta
@@ -162,24 +162,16 @@ export interface EventFns {
 }
 
 // @public
-export type EventKey = Readonly<{
+export type EventKey = {
     lamport: Lamport;
     offset: Offset;
     stream: StreamId;
-}>;
+};
 
 // @public
 export const EventKey: {
-    zero: Readonly<{
-        lamport: Lamport;
-        offset: Offset;
-        stream: StreamId;
-    }>;
-    ord: Ord<Readonly<{
-        lamport: Lamport;
-        offset: Offset;
-        stream: StreamId;
-    }>>;
+    zero: EventKey;
+    ord: Ord<EventKey>;
     format: (key: EventKey) => string;
 };
 
@@ -190,11 +182,11 @@ export enum EventOrder {
 }
 
 // @alpha
-export type EventsMsg<E> = Readonly<{
+export type EventsMsg<E> = {
     type: MsgType.events;
     events: ActyxEvent<E>[];
     caughtUp: boolean;
-}>;
+};
 
 // @alpha
 export type EventsOrTimetravel<E> = StateMsg | EventsMsg<E> | TimeTravelMsg<E>;
@@ -213,11 +205,11 @@ export type EventSubscription = {
 };
 
 // @alpha
-export type FixedStart = Readonly<{
+export type FixedStart = {
     from: OffsetMap;
     latestEventKey: EventKey;
     horizon?: EventKey;
-}>;
+};
 
 // @public
 export type HasOffsetAndStream = {
@@ -227,7 +219,7 @@ export type HasOffsetAndStream = {
 
 // @alpha
 export type HasTags = {
-    tags: ReadonlyArray<string>;
+    tags: string[];
 };
 
 // @beta
@@ -268,9 +260,9 @@ export type LocalSnapshot<S> = StateWithProvenance<S> & {
 export type LocalSnapshotFromIndex = LocalSnapshot<string>;
 
 // @public
-export type Metadata = Readonly<{
+export type Metadata = {
     isLocalEvent: boolean;
-    tags: ReadonlyArray<string>;
+    tags: string[];
     timestampMicros: Timestamp;
     timestampAsDate: () => Date;
     lamport: Lamport;
@@ -278,7 +270,7 @@ export type Metadata = Readonly<{
     appId: AppId;
     stream: StreamId;
     offset: Offset;
-}>;
+};
 
 // @public
 export type Milliseconds = number;
@@ -360,13 +352,13 @@ export const OffsetMap: OffsetMapCompanion;
 export type OffsetMapBuilder = Record<string, Offset>;
 
 // @public
-export type OffsetMapCompanion = Readonly<{
+export type OffsetMapCompanion = {
     empty: OffsetMap;
     isEmpty: (m: OffsetMap) => boolean;
     lookup: (m: OffsetMap, s: string) => Offset;
     lookupOrUndefined: (m: OffsetMap, s: string) => Offset | undefined;
     update: (m: OffsetMapBuilder, ev: HasOffsetAndStream) => OffsetMapBuilder;
-}>;
+};
 
 // @public
 export type OffsetsResponse = {
@@ -413,10 +405,10 @@ export const SnapshotStore: {
 };
 
 // @alpha
-export type StateMsg = Readonly<{
+export type StateMsg = {
     type: MsgType.state;
     snapshot: SerializedStateSnap;
-}>;
+};
 
 // @beta
 export type StateWithProvenance<S> = {
@@ -446,10 +438,10 @@ export interface Tag<E = unknown> extends Tags<E> {
 export const Tag: <E = unknown>(rawTagString: string, extractId?: ((e: E) => string) | undefined) => Tag<E>;
 
 // @public
-export type TaggedEvent = Readonly<{
+export type TaggedEvent = {
     tags: string[];
     event: unknown;
-}>;
+};
 
 // @public
 export interface TaggedTypedEvent<E = unknown> extends TaggedEvent {
@@ -466,7 +458,7 @@ export interface Tags<E = unknown> extends Where<E> {
     and<E1 = unknown>(tag: Tags<E1>): Tags<E1 & E>;
     and(tag: string): Tags<E>;
     apply(event: E): TaggedEvent;
-    apply(...events: E[]): ReadonlyArray<TaggedEvent>;
+    apply(...events: E[]): TaggedEvent[];
     applyTyped<E1 extends E>(event: E1): TaggedTypedEvent<E1>;
     local(): Tags<E>;
 }
@@ -488,17 +480,17 @@ export type TestEvent = {
     stream: string;
     timestamp: Timestamp;
     lamport: Lamport;
-    tags: ReadonlyArray<string>;
+    tags: string[];
     payload: unknown;
 };
 
 // @public
 export type TestEventFns = EventFns & {
-    directlyPushEvents: (events: ReadonlyArray<TestEvent>) => void;
+    directlyPushEvents: (events: TestEvent[]) => void;
 };
 
 // @beta
-export type TimeInjector = (tags: ReadonlyArray<string>, events: unknown) => Timestamp;
+export type TimeInjector = (tags: string[], events: unknown) => Timestamp;
 
 // @public
 export type Timestamp = number;
@@ -522,10 +514,10 @@ export const Timestamp: {
 };
 
 // @alpha
-export type TimeTravelMsg<E> = Readonly<{
+export type TimeTravelMsg<E> = {
     type: MsgType.timetravel;
     trigger: EventKey;
-}>;
+};
 
 // @alpha
 export const toEventPredicate: (where: Where<unknown>) => (event: HasTags) => boolean;

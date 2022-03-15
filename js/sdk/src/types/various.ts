@@ -166,13 +166,13 @@ export const Milliseconds = {
  *
  * @public
  */
-export type EventKey = Readonly<{
+export type EventKey = {
   // This is not using t.typeof, so that public API has no io-ts dep
 
   lamport: Lamport
   offset: Offset
   stream: StreamId
-}>
+}
 
 const zeroKey: EventKey = {
   lamport: Lamport.zero,
@@ -213,12 +213,12 @@ export const EventKey = {
 }
 
 /** Generic Metadata attached to every event. @public */
-export type Metadata = Readonly<{
+export type Metadata = {
   // Was this event written by the very node we are running on?
   isLocalEvent: boolean
 
   // Tags belonging to the event.
-  tags: ReadonlyArray<string>
+  tags: string[]
 
   // Time since Unix Epoch **in Microseconds**!
   timestampMicros: Timestamp
@@ -242,20 +242,20 @@ export type Metadata = Readonly<{
 
   // Offset of this event inside its stream
   offset: Offset
-}>
+}
 
 /** Max length of a lamport timestamp as string. @internal */
 export const maxLamportLength = String(Number.MAX_SAFE_INTEGER).length
 
 /** Anthing that has metadata. @internal */
-export type HasMetadata = Readonly<{
+export type HasMetadata = {
   timestamp: Timestamp
   lamport: Lamport
   stream: StreamId
-  tags: ReadonlyArray<string>
+  tags: string[]
   offset: Offset
   appId: AppId
-}>
+}
 
 /** Make a function that makes metadata from an Event as received over the wire. @internal */
 export const toMetadata =
@@ -290,10 +290,10 @@ export type PendingEmission = {
 }
 
 /** An event with tags attached. @public */
-export type TaggedEvent = Readonly<{
+export type TaggedEvent = {
   tags: string[]
   event: unknown
-}>
+}
 
 /** A typed event with tags attached. @public */
 export interface TaggedTypedEvent<E = unknown> extends TaggedEvent {
@@ -324,7 +324,7 @@ export type TestEvent = {
 
   timestamp: Timestamp
   lamport: Lamport
-  tags: ReadonlyArray<string>
+  tags: string[]
 
   payload: unknown
 }
@@ -367,15 +367,15 @@ export type ActyxOpts = {
 /**
  * Test tool. @beta
  */
-export type TimeInjector = (tags: ReadonlyArray<string>, events: unknown) => Timestamp
+export type TimeInjector = (tags: string[], events: unknown) => Timestamp
 
 /** Options used when creating a new TEST `Actyx` instance. @public */
-export type ActyxTestOpts = Readonly<{
+export type ActyxTestOpts = {
   /** Local node id to use @public */
   nodeId?: NodeId
   /** Install the given time source for test purposes @beta */
   timeInjector?: TimeInjector
-}>
+}
 
 /** Manifest describing an Actyx application. Used for authorizing API access. @public */
 export type AppManifest = {

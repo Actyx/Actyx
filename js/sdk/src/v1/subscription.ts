@@ -67,11 +67,11 @@ export type SubscriptionSet = t.TypeOf<typeof SubscriptionSetIO>
 export type SubscriptionSetCompanion = {
   empty: SubscriptionSet
   all: SubscriptionSet
-  or: (s: ReadonlyArray<Subscription>) => SubscriptionSet
+  or: (s: Subscription[]) => SubscriptionSet
 }
 
 export const SubscriptionSet: SubscriptionSetCompanion = {
   empty: { type: 'empty' },
   all: { type: 'all' },
-  or: (subscriptions: ReadonlyArray<Subscription>) => ({ type: 'or', subscriptions }),
+  or: (subscriptions: Subscription[]) => ({ type: 'or', subscriptions }),
 }

@@ -66,13 +66,13 @@ const includeEvent = (psnMap: OffsetMapBuilder, ev: HasOffsetAndStream): OffsetM
  */
 export type OffsetMapBuilder = Record<string, Offset>
 /** OffsetMap companion functions. @public */
-export type OffsetMapCompanion = Readonly<{
+export type OffsetMapCompanion = {
   empty: OffsetMap
   isEmpty: (m: OffsetMap) => boolean
   lookup: (m: OffsetMap, s: string) => Offset
   lookupOrUndefined: (m: OffsetMap, s: string) => Offset | undefined
   update: (m: OffsetMapBuilder, ev: HasOffsetAndStream) => OffsetMapBuilder
-}>
+}
 
 /** OffsetMap companion functions. @public */
 export const OffsetMap: OffsetMapCompanion = {

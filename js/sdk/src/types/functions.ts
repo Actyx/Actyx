@@ -10,7 +10,7 @@ import { Metadata, PendingEmission } from './various'
 
 /** Anything that has tags. @alpha */
 export type HasTags = {
-  tags: ReadonlyArray<string>
+  tags: string[]
 }
 
 /**

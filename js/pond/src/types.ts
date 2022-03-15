@@ -64,11 +64,11 @@ export const FishName = {
  * The source of an event stream: a single localized fish instance
  * characterised by its semantic name, instance name, pond sourceId.
  */
-export type Source = Readonly<{
+export type Source = {
   semantics: Semantics
   name: FishName
   sourceId: NodeId
-}>
+}
 
 export type Envelope<E> = {
   readonly source: Source
@@ -210,12 +210,12 @@ export const FishId = {
 }
 
 /** Indicate in-process (nonpersistent) Caching. @beta */
-export type InProcessCaching = Readonly<{
+export type InProcessCaching = {
   type: 'in-process'
 
   /* Cache key used to find previously stored values */
   key: string
-}>
+}
 
 /** Indicator for disabled caching of pond.observeAll(). @beta */
 export type NoCaching = { readonly type: 'none' }
@@ -263,7 +263,7 @@ export type ObserveAllOpts = Partial<{
  * from an earlier state, instead of passing that event to the Fish out of order.
  * @public
  */
-export type Fish<S, E> = Readonly<{
+export type Fish<S, E> = {
   /**
    * Selection of events to aggregate in this Fish.
    * You may specify plain strings inline: `where: Tags('my', 'tag', 'selection')` (which requires all three tags)
@@ -295,7 +295,7 @@ export type Fish<S, E> = Readonly<{
   // Serialisation is done via JSON. To enable custom serialisation, implement `toJSON` on your state.
   // To turn a custom-serialised state back into its proper type, set `deserializeState`.
   deserializeState?: (jsonState: unknown) => S
-}>
+}
 
 /**
  * Fish generic generator methods.

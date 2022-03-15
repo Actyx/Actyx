@@ -61,9 +61,9 @@ export const minSnapshotAge = 60 * 60 * 1000 * 1000
  *
  * Not taking whole events makes it easier to write tests
  */
-export type HasTimestamp = Readonly<{
+export type HasTimestamp = {
   timestamp: Timestamp
-}>
+}
 
 const multiplesBetween = (low: number, high: number) => (n: number) => {
   let m = Math.floor(high / n)

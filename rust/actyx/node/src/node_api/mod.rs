@@ -359,7 +359,7 @@ impl ApiBehaviour {
                 self.state.pending_oneshot.push(fut);
             }
             AdminRequest::NodesShutdown => {
-                trigger_shutdown();
+                trigger_shutdown(true);
             }
         }
     }

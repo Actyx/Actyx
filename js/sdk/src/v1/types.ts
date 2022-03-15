@@ -53,10 +53,10 @@ export const OffsetMapWithDefault = t.readonly(
 )
 export type OffsetMapWithDefault = t.TypeOf<typeof OffsetMapWithDefault>
 
-const stringRA = t.readonlyArray(t.string)
+const stringRA = t.array(t.string)
 
-type Tags = ReadonlyArray<string>
-type TagsOnWire = ReadonlyArray<string> | undefined
+type Tags = string[]
+type TagsOnWire = string[] | undefined
 const Tags = new t.Type<Tags, TagsOnWire>(
   'TagsSetFromArray',
   (x): x is Tags => x instanceof Array && x.every(isString),
@@ -220,7 +220,7 @@ export type ConnectivityStatus = t.TypeOf<typeof ConnectivityStatus>
 export type StoreConnectionClosedHook = () => void
 
 /** Configuration for the WebSocket store connection. @public */
-export type WsStoreConfig = Readonly<{
+export type WsStoreConfig = {
   /** url of the destination */
   url: string
   /** protocol of the destination */
@@ -231,4 +231,4 @@ export type WsStoreConfig = Readonly<{
   reconnectTimeout?: number
 
   // todo timeouts?, heartbeats? etc.
-}>
+}

@@ -57,9 +57,10 @@ export const makeWsMultiplexerV2 = async (
           ws.request('wake up')
         }
       }
+      setTimeout(() => renewToken().catch(() => (renewing = false)), 100)
       ws.errors()
         .pipe(takeUntil(openSubject))
-        .forEach(() => renewToken().catch(() => (renewing = false)))
+        .subscribe(() => renewToken().catch(() => (renewing = false)))
     },
   })
   openSubject.subscribe({

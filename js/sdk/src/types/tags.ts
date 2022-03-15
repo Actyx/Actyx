@@ -9,7 +9,7 @@ import { isString } from './functions'
 import { TaggedEvent, TaggedTypedEvent } from './various'
 
 /** V1 tag subscription wire format. @internal */
-export type TagSubscription = Readonly<{ tags: ReadonlyArray<string>; local: boolean }>
+export type TagSubscription = { tags: string[]; local: boolean }
 
 const namedSubSpace = (rawTag: string, sub: string): string[] => {
   return [rawTag, rawTag + ':' + sub]
@@ -75,7 +75,7 @@ export interface Where<E> {
    * FOR INTERNAL USE. Convert to Actyx wire format.
    * @internal
    */
-  toV1WireFormat(): ReadonlyArray<TagSubscription>
+  toV1WireFormat(): TagSubscription[]
 
   /**
    * For merging with another Where statement. (Worse API than the public one, but easier to implement.)
@@ -116,7 +116,7 @@ export interface Tags<E = unknown> extends Where<E> {
   /**
    * Apply these tags to a list of events that they may legally be attached to.
    */
-  apply(...events: E[]): ReadonlyArray<TaggedEvent>
+  apply(...events: E[]): TaggedEvent[]
 
   /**
    * Apply these tags to a list of events that match their type, and allow further tags to be added.
@@ -126,7 +126,7 @@ export interface Tags<E = unknown> extends Where<E> {
   /**
    * The actual included tags. @internal
    */
-  readonly rawTags: ReadonlyArray<TagInternal>
+  readonly rawTags: TagInternal[]
 
   /**
    * Whether this specific set is meant to be local-only.
@@ -204,7 +204,7 @@ export const Tag = <E = unknown>(rawTagString: string, extractId?: (e: E) => str
   }
 }
 
-const req = <E>(onlyLocalEvents: boolean, rawTags: ReadonlyArray<TagInternal>): Tags<E> => {
+const req = <E>(onlyLocalEvents: boolean, rawTags: TagInternal[]): Tags<E> => {
   const r: Tags<E> = {
     and: <E1>(otherTags: Tags<E1> | string) => {
       if (isString(otherTags)) {
@@ -231,7 +231,7 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: ReadonlyArray<TagInternal>): 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return res as any
       } else {
-        const res: ReadonlyArray<TaggedEvent> = events.map((event) => ({
+        const res: TaggedEvent[] = events.map((event) => ({
           event,
           tags: rawTags.flatMap(autoExtract(event)),
         }))

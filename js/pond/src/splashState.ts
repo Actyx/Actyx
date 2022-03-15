@@ -28,7 +28,7 @@ import {
 import { NodeInfoEntry, SwarmInfo, SwarmSummary } from './swarmState'
 
 /** Configure how to wait for swarm. @public */
-export type FullWaitForSwarmConfig = Readonly<{
+export type FullWaitForSwarmConfig = {
   /**
    * Splash screen enabled
    */
@@ -49,7 +49,7 @@ export type FullWaitForSwarmConfig = Readonly<{
    * True if we allow the user to skip the splash screen
    */
   allowSkip: boolean
-}>
+}
 
 const defaults: FullWaitForSwarmConfig = {
   enabled: true,
@@ -67,13 +67,13 @@ export const WaitForSwarmConfig = {
 }
 
 /** Sync progress in terms of event numbers. @public */
-export type Progress = Readonly<{ min: number; current: number; max: number }>
+export type Progress = { min: number; current: number; max: number }
 
 /** Sync progress per source, and overall. @public */
-export type SyncProgress = Readonly<{
+export type SyncProgress = {
   sources: Progress
   events: Progress
-}>
+}
 
 export const getSyncProgress = (current: SwarmInfo, reference: SwarmInfo): SyncProgress => {
   const r = {
@@ -183,23 +183,23 @@ export const getSplashStateImpl = (
  * Discovering swarm state.
  * @public
  */
-export type SplashStateDiscovery = Readonly<{
+export type SplashStateDiscovery = {
   mode: 'discovery'
   current: SwarmSummary
   skip?: () => void
-}>
+}
 
 /**
  * Synchronizing up to the discovered swarm state.
  * @public
  */
-export type SplashStateSync = Readonly<{
+export type SplashStateSync = {
   mode: 'sync'
   reference: SwarmSummary
   progress: SyncProgress
   current: SwarmSummary
   skip?: () => void
-}>
+}
 
 /**
  * Current state of swarm synchronization procedure.

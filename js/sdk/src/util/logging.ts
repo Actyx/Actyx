@@ -39,8 +39,8 @@ export type Loggers = {
  * Loggers which just buffer messages.
  */
 export type TestLoggers = {
-  errors: ReadonlyArray<string>
-  warnings: ReadonlyArray<string>
+  errors: string[]
+  warnings: string[]
   error: Logger
   warn: Logger
   debug: Logger

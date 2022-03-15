@@ -574,7 +574,7 @@ export const EventFnsFromEventStoreV2 = (
     }
   }
 
-  const emit = (taggedEvents: ReadonlyArray<TaggedEvent>) => {
+  const emit = (taggedEvents: TaggedEvent[]) => {
     const events = taggedEvents.map(({ tags, event }) => {
       return {
         tags,
@@ -597,7 +597,7 @@ export const EventFnsFromEventStoreV2 = (
   // TS doesn’t understand how we are implementing this overload.
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
-  const publish: EventFns['publish'] = (taggedEvents: ReadonlyArray<TaggedEvent> | TaggedEvent) => {
+  const publish: EventFns['publish'] = (taggedEvents: TaggedEvent[] | TaggedEvent) => {
     if (Array.isArray(taggedEvents)) {
       return emit(taggedEvents).toPromise()
     } else {

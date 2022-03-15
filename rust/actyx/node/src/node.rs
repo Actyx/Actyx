@@ -391,7 +391,7 @@ impl NodeWrapper {
             if let Err(e) = &r {
                 eprintln!("Node exited with error {:?}", e);
             }
-            trigger_shutdown();
+            trigger_shutdown(false);
         });
         Ok(Self { tx })
     }

@@ -54,7 +54,7 @@ export type TimeTravelMsg = {
   trigger: EventKey
 }
 
-export type EventsOrTimetravel = Readonly<StateMsg | EventsMsg | TimeTravelMsg>
+export type EventsOrTimetravel = StateMsg | EventsMsg | TimeTravelMsg
 
 export type SubscribeMonotonic = (
   session: string,

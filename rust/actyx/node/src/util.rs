@@ -7,7 +7,7 @@ use signal_hook::{consts::TERM_SIGNALS, low_level};
 use std::{
     io,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicU8, Ordering},
         Arc,
     },
     thread::Thread,
@@ -99,7 +99,7 @@ pub(crate) fn init_panic_hook(tx: Sender<ExternalEvent>) {
 }
 
 lazy_static::lazy_static! {
-    static ref SHUTDOWN_FLAG: AtomicBool = AtomicBool::new(false);
+    static ref SHUTDOWN_FLAG: AtomicU8 = AtomicU8::new(0);
     static ref SHUTDOWN_THREAD: Thread = std::thread::current();
 }
 
@@ -107,32 +107,44 @@ pub fn init_shutdown_ceremony() {
     SHUTDOWN_THREAD.unpark();
 }
 
-pub fn trigger_shutdown() {
-    SHUTDOWN_FLAG.store(true, Ordering::Release);
+pub fn trigger_shutdown(success: bool) {
+    let v = if success { 1 } else { 2 };
+    SHUTDOWN_FLAG.store(v, Ordering::Release);
     SHUTDOWN_THREAD.unpark();
 }
 
-pub fn shutdown_ceremony(app_handle: ApplicationState) {
+pub fn shutdown_ceremony(app_handle: ApplicationState) -> anyhow::Result<()> {
     for sig in TERM_SIGNALS {
         // if term_requested is already true, then this is the second signal, so exit
         unsafe {
             low_level::register(*sig, || {
-                if SHUTDOWN_FLAG.load(Ordering::Acquire) {
+                if SHUTDOWN_FLAG.load(Ordering::Acquire) > 0 {
                     low_level::exit(1);
                 }
             })
         }
         .unwrap_or_else(|e| panic!("cannot register handler for signal {}: {}", sig, e));
-        unsafe { low_level::register(*sig, trigger_shutdown) }
+        unsafe { low_level::register(*sig, || trigger_shutdown(true)) }
             .unwrap_or_else(|e| panic!("cannot register handler for signal {}: {}", sig, e));
     }
 
     // now the function of this thread is solely to keep the app_handle from dropping
     // until we actually want to trigger a graceful shutdown
-    while !SHUTDOWN_FLAG.load(Ordering::Relaxed) {
+    let mut ret;
+    loop {
+        ret = SHUTDOWN_FLAG.load(Ordering::Relaxed);
+        if ret > 0 {
+            break;
+        }
         std::thread::park();
         tracing::trace!("wake-up of guardian thread");
     }
-    tracing::debug!("graceful shutdown triggered");
+    tracing::debug!(flag = ret, "graceful shutdown triggered");
     drop(app_handle);
+
+    if ret == 1 {
+        Ok(())
+    } else {
+        anyhow::bail!("stopped due to a failure in another thread")
+    }
 }
