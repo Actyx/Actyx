@@ -11,7 +11,6 @@ import {
   ActyxOpts,
   AppManifest,
   CancelSubscription,
-  EventFns,
   Metadata,
   Milliseconds,
   NodeId,
@@ -95,7 +94,7 @@ const omitObservable = <S>(
     const sub = states
       .pipe(
         map((x) => x.state),
-        // Use async scheduler to make direct cancelation work
+        // Use async scheduler to make direct cancelation work: must not sync call cbs
         subscribeOn(asyncScheduler),
       )
       .subscribe({
@@ -386,7 +385,7 @@ export type Pond = {
   /**
    * Get an object that offers a number of functions related purely to events (no Fish).
    */
-  events(): EventFns
+  events(): Actyx
 }
 
 type ActiveObserveAll<S> = {
@@ -660,22 +659,21 @@ class Pond2Impl implements Pond {
     callback: (newState: S) => void,
     stoppedByError?: (err: unknown) => void,
   ): CancelSubscription => {
-    let cancelInitialSubscription: CancelSubscription | undefined = undefined
-
-    const initial = new Promise<ActyxEvent>((resolve) => {
-      cancelInitialSubscription = this.actyx.subscribe(
+    const initial = new Promise<ActyxEvent>((resolve, reject) => {
+      const cancel = this.actyx.subscribe(
         {
           query: seedEvent,
         },
-        resolve,
+        (x) => {
+          resolve(x)
+          cancel()
+        },
+        reject,
       )
     })
 
     const states = from(initial).pipe(
-      concatMap((f) => {
-        cancelInitialSubscription && cancelInitialSubscription()
-        return this.observeTagBased0<S, unknown>(makeFish(f.payload as ESeed)).states
-      }),
+      concatMap((f) => this.observeTagBased0<S, unknown>(makeFish(f.payload as ESeed)).states),
     )
 
     return omitObservable(stoppedByError, callback, states)
@@ -714,12 +712,11 @@ class Pond2Impl implements Pond {
             cancelled = true
             return false
           }
-
           return true
         }
       : () => !cancelled
 
-    states
+    const sub = states
       .pipe(
         observeOn(asyncScheduler),
         map((swp) => swp.state),
@@ -730,7 +727,10 @@ class Pond2Impl implements Pond {
       )
       .subscribe()
 
-    return () => (cancelled = true)
+    return () => {
+      cancelled = true
+      sub.unsubscribe()
+    }
   }
 
   events = () => this.actyx
@@ -786,6 +786,8 @@ export const Pond = {
   default: async (manifest: AppManifest): Promise<Pond> => Pond.of(manifest, {}, {}),
   /** Start Pond with custom parameters. @public */
   of: mkPond,
+  /** Start Pond from provided Actyx SDK instance. @public */
+  from: (actyx: Actyx, opts: PondOptions) => pondFromServices(actyx, opts),
   /**
    * Get a Pond instance that runs a simulated store locally
    * whose contents can be manually modified.

@@ -4,10 +4,10 @@
 
 ```ts
 
+import { Actyx } from '@actyx/sdk';
 import { ActyxOpts } from '@actyx/sdk';
 import { AppManifest } from '@actyx/sdk';
 import { CancelSubscription } from '@actyx/sdk';
-import { EventFns } from '@actyx/sdk';
 import * as immutable from 'immutable';
 import { Metadata } from '@actyx/sdk';
 import { Milliseconds } from '@actyx/sdk';
@@ -170,13 +170,14 @@ export type Pond = {
     nodeInfo(maxAgeMillis: number): Promise<NodeInfo>;
     getPondState(callback: (newState: PondState) => void): CancelSubscription;
     waitForSwarmSync(params: WaitForSwarmSyncParams): void;
-    events(): EventFns;
+    events(): Actyx;
 };
 
 // @public
 export const Pond: {
     default: (manifest: AppManifest) => Promise<Pond>;
     of: (manifest: AppManifest, connectionOpts: ActyxOpts, opts: PondOptions) => Promise<Pond>;
+    from: (actyx: Actyx, opts: PondOptions) => Pond;
     test: (opts?: TestPondOptions | undefined) => TestPond;
 };
 

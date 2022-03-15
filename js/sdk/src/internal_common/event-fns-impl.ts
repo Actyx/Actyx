@@ -14,6 +14,7 @@ import {
   defaultIfEmpty,
   first,
   ReplaySubject,
+  asyncScheduler,
 } from '../../node_modules/rxjs'
 import {
   map,
@@ -21,6 +22,7 @@ import {
   bufferCount,
   mergeScan,
   reduce as rxReduce,
+  subscribeOn,
 } from '../../node_modules/rxjs/operators'
 import {
   AqlQuery,
@@ -197,6 +199,7 @@ export const EventFnsFromEventStoreV2 = (
       .query(lb, upperBound, query || allEvents, order || EventsSortOrder.Ascending, horizon)
       .pipe(
         bufferCount(chunkSize),
+        subscribeOn(asyncScheduler), // ensure that callbacks are never called during .subscribe below
         mergeScan(
           (_a: void, chunk: Events) => {
             return cancelled ? EMPTY : from(cb(chunk))
@@ -249,6 +252,7 @@ export const EventFnsFromEventStoreV2 = (
         upperBound: present,
       }
 
+      // this is safe because queryKnownRangeChunked doesn’t invoke callbacks synchronously
       cancelUpstream = queryKnownRangeChunked(rangeQuery, chunkSize, onChunk, onComplete)
     })
 
@@ -269,6 +273,7 @@ export const EventFnsFromEventStoreV2 = (
     const rxSub = eventStore
       .subscribe(lb, query || allEvents)
       .pipe(
+        subscribeOn(asyncScheduler), // ensure that no cb is called synchronously
         map(wrap),
         mergeScan((_a: void, e: ActyxEvent) => from(Promise.resolve(onEvent(e))), void 0, 1),
       )
@@ -437,7 +442,7 @@ export const EventFnsFromEventStoreV2 = (
     onError?: (err: unknown) => void,
   ): CancelSubscription => {
     let cancelled = false
-    let cancelSubscription: CancelSubscription | null = null
+    let cancelSubscription: CancelSubscription = () => (cancelled = true)
 
     reduceUpToPresent<ActyxEvent<E> | undefined, E>(
       query,
@@ -456,11 +461,15 @@ export const EventFnsFromEventStoreV2 = (
         shouldReplace,
         onError,
       )
+
+      if (cancelled) {
+        cancelSubscription()
+      }
     })
 
     return () => {
       cancelled = true
-      cancelSubscription && cancelSubscription()
+      cancelSubscription()
     }
   }
 
@@ -476,7 +485,7 @@ export const EventFnsFromEventStoreV2 = (
     }
 
     let cancelled = false
-    let cancelSubscription: CancelSubscription | null = null
+    let cancelSubscription: CancelSubscription = () => (cancelled = true)
 
     /** If lamport order is desired, we can use store-support to speed up the query. */
     findFirstKnown(query, EventsSortOrder.Ascending).then(([earliest, offsets]) => {
@@ -492,11 +501,15 @@ export const EventFnsFromEventStoreV2 = (
         lt(_ordByKey),
         onError,
       )
+
+      if (cancelled) {
+        cancelSubscription()
+      }
     })
 
     return () => {
       cancelled = true
-      cancelSubscription && cancelSubscription()
+      cancelSubscription()
     }
   }
 
@@ -512,7 +525,7 @@ export const EventFnsFromEventStoreV2 = (
     }
 
     let cancelled = false
-    let cancelSubscription: CancelSubscription | null = null
+    let cancelSubscription: CancelSubscription = () => (cancelled = true)
 
     /** If lamport order is desired, we can use store-support to speed up the query. */
     findFirstKnown(query, EventsSortOrder.Descending).then(([latest, offsets]) => {
@@ -528,11 +541,15 @@ export const EventFnsFromEventStoreV2 = (
         gt(_ordByKey),
         onError,
       )
+
+      if (cancelled) {
+        cancelSubscription()
+      }
     })
 
     return () => {
       cancelled = true
-      cancelSubscription && cancelSubscription()
+      cancelSubscription()
     }
   }
 
@@ -544,7 +561,7 @@ export const EventFnsFromEventStoreV2 = (
     onError?: (err: unknown) => void,
   ): CancelSubscription => {
     let cancelled = false
-    let cancelSubscription: CancelSubscription | null = null
+    let cancelSubscription: CancelSubscription = () => (cancelled = true)
 
     const reduceDirect = (r: R, evt: ActyxEvent) => reduce(r, evt.payload as E, evt.meta)
 
@@ -566,11 +583,15 @@ export const EventFnsFromEventStoreV2 = (
       }
 
       cancelSubscription = subscribeChunked({ query, lowerBound: offsets }, {}, cb, onError)
+
+      if (cancelled) {
+        cancelSubscription()
+      }
     })
 
     return () => {
       cancelled = true
-      cancelSubscription && cancelSubscription()
+      cancelSubscription()
     }
   }
 
