@@ -1,9 +1,19 @@
 use crate::DbPath;
 use actyx_sdk::{AppId, Timestamp};
+use derive_more::{Display, Error};
 use parking_lot::Mutex;
 use rusqlite::{named_params, params, Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
+
+#[derive(Debug, Display, Error)]
+#[display(fmt = "stored blob is too large after compression: {}bytes", size)]
+pub struct BlobTooLarge {
+    #[error(ignore)]
+    pub size: usize,
+    #[error(ignore)]
+    pub limit: usize,
+}
 
 #[derive(Clone)]
 pub struct BlobStore {
@@ -66,7 +76,11 @@ impl BlobStore {
     pub fn blob_put(&self, app_id: AppId, path: String, mime_type: String, data: &[u8]) -> anyhow::Result<()> {
         let _span = tracing::debug_span!("blob_put", appId = %app_id, path = %path).entered();
         let compressed = zstd::encode_all(data, 19)?;
-        tracing::trace!(raw = data.len(), compressed = compressed.len(), "size");
+        let size = compressed.len();
+        if size > 1048576 {
+            return Err(BlobTooLarge { size, limit: 1048576 }.into());
+        }
+        tracing::trace!(raw = data.len(), compressed = size, "size");
 
         let mut conn = self.conn.lock();
         let txn = conn.transaction()?;

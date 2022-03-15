@@ -8,17 +8,35 @@ use actyx_sdk::AppId;
 use bytes::Bytes;
 use http::StatusCode;
 use std::{borrow::Cow, convert::TryFrom};
-use swarm::blob_store::BlobStore;
+use swarm::blob_store::{BlobStore, BlobTooLarge};
 use warp::{
-    body::{bytes, content_length_limit},
+    body::bytes,
     delete, get,
-    header::header,
+    header::{header, optional},
     http::Response,
     path::{self, Tail},
     post, put,
     reject::{self},
     Filter, Rejection, Reply,
 };
+
+fn content_length(limit: usize) -> impl Filter<Extract = (), Error = Rejection> + Clone {
+    optional::<usize>("Content-Length")
+        .and_then(move |cl| async move {
+            let error = if let Some(cl) = cl {
+                if cl <= limit {
+                    return Ok(());
+                } else {
+                    ApiError::TooLarge { size: cl, limit }
+                }
+            } else {
+                ApiError::LengthUnknown { limit }
+            };
+            tracing::warn!("rejecting upload: {}", error);
+            Err(reject::custom(error))
+        })
+        .untuple_one()
+}
 
 pub(crate) fn routes(
     store: BlobStore,
@@ -35,7 +53,7 @@ pub(crate) fn routes(
         delete().and(f.clone()).and_then(handle_delete),
         put()
             .and(f.clone())
-            .and(content_length_limit(1048576))
+            .and(content_length(10485760))
             .and(bytes())
             .and(header("Content-Type"))
             .and_then(handle_put),
@@ -112,8 +130,16 @@ async fn handle_put(
     match store.blob_put(app_id.clone(), path, mime_type, bytes.as_ref()) {
         Ok(_) => Ok(StatusCode::NO_CONTENT),
         Err(err) => {
-            tracing::error!("error while putting blob {}/{}: {}", app_id, tail.as_str(), err);
-            Err(reject::custom(ApiError::Internal))
+            if let Some(err) = err.downcast_ref::<BlobTooLarge>() {
+                tracing::warn!("error while putting blob {}/{}: {}", app_id, tail.as_str(), err);
+                Err(reject::custom(ApiError::TooLarge {
+                    size: err.size,
+                    limit: err.limit,
+                }))
+            } else {
+                tracing::error!("error while putting blob {}/{}: {}", app_id, tail.as_str(), err);
+                Err(reject::custom(ApiError::Internal))
+            }
         }
     }
 }
