@@ -232,6 +232,9 @@ export const mkActyxNodeWithLogging = async (
 ): Promise<ActyxNode> => {
   const logs: LogEntry[] = []
   const logger = (line: string) => {
+    if (logs.length >= 20_000) {
+      logs.splice(0, 1000)
+    }
     logs.push({ time: new Date(), line })
   }
 

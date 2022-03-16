@@ -116,7 +116,7 @@ const setAllSettings = async (
   const settings = (displayName: string) => ({
     admin: {
       displayName,
-      logLevels: { node: 'DEBUG' },
+      logLevels: { node: 'INFO' },
     },
     swarm: {
       initialPeers,
