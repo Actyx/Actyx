@@ -2,7 +2,7 @@
   "compilerOptions": {
     "declaration": true,
     "outDir": "lib",
-    "sourceMap": false,
+    "sourceMap": true,
     // TODO: currently broken by fp-ts (of all projects ...)
     "skipLibCheck": true,
     "module": "commonjs",

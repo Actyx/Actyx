@@ -194,15 +194,15 @@ type SnapShotTestSetup<S> = {
   >
   latestErr: () => FishErrorContext | null
   snapshotStore: SnapshotStore
-  applyAndGetState: (events: ReadonlyArray<TestEvent>) => Promise<S>
+  applyAndGetState: (events: TestEvent[]) => Promise<S>
   observe: Observable<S>
-  pubEvents: (events: readonly TestEvent[]) => void
+  pubEvents: (events: TestEvent[]) => void
   wakeup: () => Promise<S>
 }
 
 export const snapshotTestSetup = async <S>(
   fish: Fish<S, NumberFishEvent>,
-  storedEvents?: ReadonlyArray<TestEvent>,
+  storedEvents?: TestEvent[],
   storedSnapshots?: ReadonlyArray<SnapshotData>,
 ): Promise<SnapShotTestSetup<S>> => {
   const sourceId = NodeId.of('LOCAL-test-source')
@@ -259,7 +259,7 @@ export const snapshotTestSetup = async <S>(
 
   const wakeup = () => lastValueFrom(observe.pipe(take(1)))
 
-  const applyAndGetState = async (events: ReadonlyArray<TestEvent>) => {
+  const applyAndGetState = async (events: TestEvent[]) => {
     const state = await wakeup()
     // adding events may or may not emit a new state, depending on whether the events
     // were relevant (might be before semantic snapshot or duplicates)

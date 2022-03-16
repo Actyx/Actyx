@@ -35,7 +35,7 @@ export function collect<T, U>(
   return u
 }
 
-export const shuffle = <T>(a: ReadonlyArray<T>): ReadonlyArray<T> => {
+export const shuffle = <T>(a: ReadonlyArray<T>): T[] => {
   const aa = [...a]
   let x: T
   for (let i = aa.length - 1; i > 0; i--) {
@@ -47,7 +47,7 @@ export const shuffle = <T>(a: ReadonlyArray<T>): ReadonlyArray<T> => {
   return aa
 }
 
-export const permute = <T>(array: ReadonlyArray<T>): ReadonlyArray<ReadonlyArray<T>> => {
+export const permute = <T>(array: ReadonlyArray<T>): T[][] => {
   const result: T[][] = []
   const permute0 = (a: ReadonlyArray<T>, m: T[] = []) => {
     if (a.length === 0) {

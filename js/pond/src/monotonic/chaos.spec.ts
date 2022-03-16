@@ -116,11 +116,7 @@ const testReportFishError: FishErrorReporter = (err, _fishId, detail) => console
 type Run = <S>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fish: Fish<S, any>,
-) => (
-  streamId: StreamId,
-  events: ReadonlyArray<ReadonlyArray<TestEvent>>,
-  snapshotScheduler: SnapshotScheduler,
-) => Promise<S>
+) => (streamId: StreamId, events: TestEvent[][], snapshotScheduler: SnapshotScheduler) => Promise<S>
 
 const hydrate: Run = (fish) => async (sourceId, events, snapshotScheduler) => {
   const { state: finalState } = await events.reduce(
@@ -156,7 +152,7 @@ const hydrate: Run = (fish) => async (sourceId, events, snapshotScheduler) => {
   return finalState
 }
 
-const delayBy10ms = <T>(val: T) => new Promise((res) => setTimeout(res, 10)).then(() => val)
+const delayBy10ms = <T>(val: T) => new Promise((res) => setTimeout(res, 100)).then(() => val)
 
 const live: (intermediateStates: boolean) => Run =
   (intermediates) => (fish) => async (sourceId, events, snapshotScheduler) => {
