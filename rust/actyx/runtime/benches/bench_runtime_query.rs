@@ -1,4 +1,4 @@
-use actyx_sdk::{language, OffsetMap};
+use actyx_sdk::{language, service::Order, OffsetMap};
 use cbor_data::Encoder;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use futures::executor::block_on;
@@ -10,7 +10,13 @@ fn store() -> EventStoreRef {
 }
 
 fn v() -> (Value, Context<'static>) {
-    let cx = Context::owned(Default::default(), store(), OffsetMap::empty(), OffsetMap::empty());
+    let cx = Context::owned(
+        Default::default(),
+        Order::Asc,
+        store(),
+        OffsetMap::empty(),
+        OffsetMap::empty(),
+    );
     let v = cx.value(|b| {
         b.encode_dict(|b| {
             b.with_key("x", |b| b.encode_u64(5));

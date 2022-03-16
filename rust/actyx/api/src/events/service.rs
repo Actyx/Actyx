@@ -94,15 +94,17 @@ impl EventService {
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Query)?;
         let mut query = query.make_feeder();
+        let order = query.preferred_order().unwrap_or(request.order);
 
         let cx = Context::owned(
             SortKey::default(),
+            order,
             self.store.clone(),
             lower_bound.clone(),
             upper_bound.clone(),
         );
 
-        let mut stream = match request.order {
+        let mut stream = match order {
             Order::Asc => {
                 self.store
                     .bounded_forward(tag_expr, lower_bound, upper_bound.clone(), false)
@@ -135,7 +137,11 @@ impl EventService {
             while let Some(ev) = stream.next().await {
                 let vs = query.feed(Some(to_value(&ev)), &cx).await;
                 y(&co, vs, Some(&ev)).await;
+                if query.is_done() {
+                    break;
+                }
             }
+            drop(stream);
 
             let vs = query.feed(None, &cx).await;
             y(&co, vs, None).await;
@@ -164,6 +170,7 @@ impl EventService {
 
         let cx = Context::owned(
             SortKey::default(),
+            Order::StreamAsc,
             self.store.clone(),
             OffsetMap::empty(),
             OffsetMap::empty(),
@@ -228,6 +235,7 @@ impl EventService {
 
         let cx = Context::owned(
             SortKey::default(),
+            Order::Asc,
             self.store.clone(),
             OffsetMap::empty(),
             OffsetMap::empty(),

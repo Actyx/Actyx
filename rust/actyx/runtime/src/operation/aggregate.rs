@@ -1,5 +1,8 @@
 use crate::{eval::Context, value::Value};
-use actyx_sdk::language::{AggrOp, Num, SimpleExpr, Var};
+use actyx_sdk::{
+    language::{AggrOp, Num, SimpleExpr, Var},
+    service::Order,
+};
 use anyhow::{anyhow, bail};
 use cbor_data::Encoder;
 use futures::{future::BoxFuture, FutureExt};
@@ -8,6 +11,7 @@ use std::{cmp::Ordering, marker::PhantomData, ops::AddAssign, sync::Arc};
 pub trait Aggregator {
     fn feed(&mut self, input: Value) -> anyhow::Result<()>;
     fn flush(&mut self, cx: &Context) -> anyhow::Result<Value>;
+    fn has_value(&self) -> bool;
 }
 
 trait SumOp {
@@ -92,6 +96,10 @@ impl<T: SumOp> Aggregator for Sum<T> {
             Summable::Error(e) => Err(anyhow!("incompatible types in sum: {}", e)),
         }
     }
+
+    fn has_value(&self) -> bool {
+        true
+    }
 }
 
 struct First(Option<Value>);
@@ -110,6 +118,10 @@ impl Aggregator for First {
     fn flush(&mut self, _cx: &Context) -> anyhow::Result<Value> {
         self.0.clone().ok_or_else(|| anyhow!("no value added"))
     }
+
+    fn has_value(&self) -> bool {
+        self.0.is_some()
+    }
 }
 
 struct Last(Option<Value>);
@@ -127,6 +139,10 @@ impl Aggregator for Last {
 
     fn flush(&mut self, _cx: &Context) -> anyhow::Result<Value> {
         self.0.clone().ok_or_else(|| anyhow!("no value added"))
+    }
+
+    fn has_value(&self) -> bool {
+        self.0.is_some()
     }
 }
 
@@ -153,6 +169,10 @@ impl Aggregator for Min {
                 Err(e) => Err(anyhow!("incompatible types in min: {}", e)),
             })
     }
+
+    fn has_value(&self) -> bool {
+        self.0.is_some()
+    }
 }
 
 struct Max(Option<anyhow::Result<Value>>);
@@ -178,6 +198,10 @@ impl Aggregator for Max {
                 Err(e) => Err(anyhow!("incompatible types in max: {}", e)),
             })
     }
+
+    fn has_value(&self) -> bool {
+        self.0.is_some()
+    }
 }
 
 struct AggrState {
@@ -189,6 +213,7 @@ struct AggrState {
 struct Aggregate {
     expr: SimpleExpr,
     state: Vec<AggrState>,
+    order: Option<Order>,
 }
 impl super::Processor for Aggregate {
     fn apply<'a, 'b: 'a>(&'a mut self, cx: &'a Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
@@ -218,6 +243,14 @@ impl super::Processor for Aggregate {
             vec![cx.eval(&self.expr).await]
         }
         .boxed()
+    }
+
+    fn preferred_order(&self) -> Option<Order> {
+        self.order
+    }
+
+    fn is_done(&self, order: Order) -> bool {
+        Some(order) == self.order && self.state.iter().all(|a| a.aggregator.has_value()) || self.state.is_empty()
     }
 }
 
@@ -258,7 +291,32 @@ pub(super) fn aggregate(expr: &SimpleExpr) -> Box<dyn super::Processor> {
         _ => None,
     });
 
-    Box::new(Aggregate { expr, state })
+    let order = {
+        let mut first = false;
+        let mut last = false;
+        let mut other = false;
+        for s in &state {
+            match s.key.0 {
+                AggrOp::Sum => other = true,
+                AggrOp::Prod => other = true,
+                AggrOp::Min => other = true,
+                AggrOp::Max => other = true,
+                AggrOp::First => first = true,
+                AggrOp::Last => last = true,
+            }
+        }
+        if other || first && last {
+            None
+        } else if first {
+            Some(Order::Asc)
+        } else if last {
+            Some(Order::Desc)
+        } else {
+            None
+        }
+    };
+
+    Box::new(Aggregate { expr, state, order })
 }
 
 #[cfg(test)]
@@ -291,6 +349,7 @@ mod tests {
                 lamport: Default::default(),
                 stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
             },
+            Order::Asc,
             store(),
             OffsetMap::empty(),
             OffsetMap::empty(),

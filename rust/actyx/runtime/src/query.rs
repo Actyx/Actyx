@@ -3,7 +3,7 @@ use crate::{
     operation::{Operation, Processor},
     value::Value,
 };
-use actyx_sdk::language;
+use actyx_sdk::{language, service::Order};
 use ax_futures_util::ReceiverExt;
 use cbor_data::{Encoder, Writer};
 use futures::StreamExt;
@@ -19,28 +19,46 @@ impl Query {
     /// run a query in the given evaluation context and collect all results
     pub async fn eval(query: &language::Query, cx: &Context<'_>) -> Result<Value, anyhow::Error> {
         let mut feeder = Query::feeder_from(&query.ops);
-        let mut stream = cx
-            .store
-            .bounded_forward(
-                query.from.clone(),
-                cx.from_offsets_excluding.as_ref().clone(),
-                cx.to_offsets_including.as_ref().clone(),
-                true,
-            )
-            .await?
-            .stop_on_error();
+        let (mut stream, cx) = if feeder.preferred_order() == Some(Order::Desc) {
+            let stream = cx
+                .store
+                .bounded_backward(
+                    query.from.clone(),
+                    cx.from_offsets_excluding.as_ref().clone(),
+                    cx.to_offsets_including.as_ref().clone(),
+                )
+                .await?
+                .stop_on_error();
+            (stream, cx.child_with_order(Order::Desc))
+        } else {
+            let stream = cx
+                .store
+                .bounded_forward(
+                    query.from.clone(),
+                    cx.from_offsets_excluding.as_ref().clone(),
+                    cx.to_offsets_including.as_ref().clone(),
+                    false, // must keep order because some stage may have demanded it
+                )
+                .await?
+                .stop_on_error();
+            (stream, cx.child_with_order(Order::Asc))
+        };
 
         let mut results = vec![];
         while let Some(ev) = stream.next().await {
             let value = Value::from((ev.key, ev.payload.clone()));
-            let vs = feeder.feed(Some(value), cx).await;
+            let vs = feeder.feed(Some(value), &cx).await;
             results.reserve(vs.len());
             for v in vs {
                 results.push(v?);
             }
+            if feeder.is_done() {
+                break;
+            }
         }
+        drop(stream);
 
-        let vs = feeder.feed(None, cx).await;
+        let vs = feeder.feed(None, &cx).await;
         results.reserve(vs.len());
         for v in vs {
             results.push(v?);
@@ -56,7 +74,7 @@ impl Query {
 
     pub fn make_feeder(&self) -> Feeder {
         let processors = self.stages.iter().map(|op| op.make_processor()).collect();
-        Feeder { processors }
+        Feeder::new(processors)
     }
 
     pub fn feeder_from(stages: &[language::Operation]) -> Feeder {
@@ -64,14 +82,35 @@ impl Query {
             .iter()
             .map(|s| Operation::from(s.clone()).make_processor())
             .collect();
-        Feeder { processors }
+        Feeder::new(processors)
     }
 }
 
 pub struct Feeder {
+    is_done: bool,
     processors: Vec<Box<dyn Processor>>,
 }
 impl Feeder {
+    fn new(processors: Vec<Box<dyn Processor>>) -> Self {
+        Self {
+            is_done: false,
+            processors,
+        }
+    }
+
+    pub fn preferred_order(&self) -> Option<Order> {
+        for op in &self.processors {
+            if let Some(order) = op.preferred_order() {
+                return Some(order);
+            }
+        }
+        None
+    }
+
+    pub fn is_done(&self) -> bool {
+        self.is_done
+    }
+
     pub async fn feed(&mut self, input: Option<Value>, cx: &Context<'_>) -> Vec<Result<Value, anyhow::Error>> {
         // create storage space for one context per stage
         let mut ctx = Vec::<Option<Context<'_>>>::new();
@@ -109,6 +148,9 @@ impl Feeder {
                     Some(Err(e)) => output.push(Some(Err(e))),
                 }
             }
+            if op.is_done(cx.order) {
+                self.is_done = true;
+            }
             input = output;
             if input.is_empty() {
                 break;
@@ -145,11 +187,14 @@ mod tests {
         EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
     }
 
+    fn feeder(q: &str) -> Feeder {
+        Query::from(q.parse::<language::Query>().unwrap()).make_feeder()
+    }
+
     async fn feed(q: &str, v: &str) -> Vec<String> {
-        let q = Query::from(q.parse::<language::Query>().unwrap());
-        let cx = Context::owned(key(), store(), OffsetMap::empty(), OffsetMap::empty());
+        let cx = Context::owned(key(), Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
         let v = cx.eval(&v.parse().unwrap()).await.unwrap();
-        q.make_feeder()
+        feeder(q)
             .feed(Some(v), &cx)
             .await
             .into_iter()
@@ -180,5 +225,61 @@ mod tests {
             .await,
             vec!["\"a\"", "42", r#"path .z does not exist in value {"x": "a", "y": "b"}"#]
         );
+    }
+
+    #[test]
+    fn order() {
+        assert_eq!(feeder("FROM 'x' SELECT y").preferred_order(), None);
+        assert_eq!(feeder("FROM 'x' FILTER x").preferred_order(), None);
+        assert_eq!(feeder("FROM 'x' AGGREGATE x").preferred_order(), None);
+        assert_eq!(
+            feeder("FROM 'x' AGGREGATE LAST(_)").preferred_order(),
+            Some(Order::Desc)
+        );
+        assert_eq!(
+            feeder("FROM 'x' AGGREGATE FIRST(_)").preferred_order(),
+            Some(Order::Asc)
+        );
+        assert_eq!(feeder("FROM 'x' AGGREGATE [FIRST(_), LAST(_)]").preferred_order(), None);
+        assert_eq!(feeder("FROM 'x' AGGREGATE SUM(_)").preferred_order(), None);
+    }
+
+    #[tokio::test]
+    async fn done() {
+        let mut f = feeder("FROM 'x' AGGREGATE x");
+        let cx = Context::owned(key(), Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
+        f.feed(Some(v), &cx).await;
+        assert!(f.is_done());
+
+        let mut f = feeder("FROM 'x' AGGREGATE x");
+        let cx = Context::owned(key(), Order::Desc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
+        f.feed(Some(v), &cx).await;
+        assert!(f.is_done());
+
+        let mut f = feeder("FROM 'x' AGGREGATE LAST(_)");
+        let cx = Context::owned(key(), Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
+        f.feed(Some(v), &cx).await;
+        assert!(!f.is_done());
+
+        let mut f = feeder("FROM 'x' AGGREGATE LAST(_)");
+        let cx = Context::owned(key(), Order::Desc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
+        f.feed(Some(v), &cx).await;
+        assert!(f.is_done());
+
+        let mut f = feeder("FROM 'x' AGGREGATE FIRST(_)");
+        let cx = Context::owned(key(), Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
+        f.feed(Some(v), &cx).await;
+        assert!(f.is_done());
+
+        let mut f = feeder("FROM 'x' AGGREGATE FIRST(_)");
+        let cx = Context::owned(key(), Order::Desc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
+        f.feed(Some(v), &cx).await;
+        assert!(!f.is_done());
     }
 }

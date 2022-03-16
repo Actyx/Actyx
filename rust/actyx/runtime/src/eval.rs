@@ -4,6 +4,7 @@ use crate::{
 };
 use actyx_sdk::{
     language::{BinOp, Ind, Index, Num, SimpleExpr, SortKey},
+    service::Order,
     OffsetMap,
 };
 use anyhow::{anyhow, bail, ensure};
@@ -17,6 +18,7 @@ pub struct Context<'a> {
     bindings: BTreeMap<String, anyhow::Result<Value>>,
     pub parent: Option<&'a Context<'a>>,
     pub store: Cow<'a, EventStoreRef>,
+    pub order: Order,
     pub from_offsets_excluding: Cow<'a, OffsetMap>,
     pub to_offsets_including: Cow<'a, OffsetMap>,
 }
@@ -24,6 +26,7 @@ pub struct Context<'a> {
 impl<'a> Context<'a> {
     pub fn new(
         sort_key: SortKey,
+        order: Order,
         store: &'a EventStoreRef,
         from_offsets_excluding: &'a OffsetMap,
         to_offsets_including: &'a OffsetMap,
@@ -32,6 +35,7 @@ impl<'a> Context<'a> {
             sort_key,
             bindings: BTreeMap::new(),
             parent: None,
+            order,
             store: Cow::Borrowed(store),
             from_offsets_excluding: Cow::Borrowed(from_offsets_excluding),
             to_offsets_including: Cow::Borrowed(to_offsets_including),
@@ -40,6 +44,7 @@ impl<'a> Context<'a> {
 
     pub fn owned(
         sort_key: SortKey,
+        order: Order,
         store: EventStoreRef,
         from_offsets_excluding: OffsetMap,
         to_offsets_including: OffsetMap,
@@ -48,6 +53,7 @@ impl<'a> Context<'a> {
             sort_key,
             bindings: BTreeMap::new(),
             parent: None,
+            order,
             store: Cow::Owned(store),
             from_offsets_excluding: Cow::Owned(from_offsets_excluding),
             to_offsets_including: Cow::Owned(to_offsets_including),
@@ -59,6 +65,19 @@ impl<'a> Context<'a> {
             sort_key: self.sort_key,
             bindings: BTreeMap::new(),
             parent: Some(self),
+            order: self.order,
+            store: Cow::Borrowed(self.store.as_ref()),
+            from_offsets_excluding: Cow::Borrowed(self.from_offsets_excluding.as_ref()),
+            to_offsets_including: Cow::Borrowed(self.to_offsets_including.as_ref()),
+        }
+    }
+
+    pub fn child_with_order(&'a self, order: Order) -> Self {
+        Self {
+            sort_key: self.sort_key,
+            bindings: BTreeMap::new(),
+            parent: Some(self),
+            order,
             store: Cow::Borrowed(self.store.as_ref()),
             from_offsets_excluding: Cow::Borrowed(self.from_offsets_excluding.as_ref()),
             to_offsets_including: Cow::Borrowed(self.to_offsets_including.as_ref()),
@@ -302,6 +321,7 @@ mod tests {
                 lamport: Default::default(),
                 stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
             },
+            Order::Asc,
             mk_store(),
             OffsetMap::empty(),
             OffsetMap::empty(),
