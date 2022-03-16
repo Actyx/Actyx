@@ -11,19 +11,46 @@ import {
   ActyxOpts,
   AppManifest,
   CancelSubscription,
-  EventFns,
   Metadata,
   Milliseconds,
   NodeId,
+  NodeInfo,
   PendingEmission,
   StateWithProvenance,
+  TaggedEvent,
   Tags,
   TestEvent,
+  TimeInjector,
   toEventPredicate,
   Where,
 } from '@actyx/sdk'
 import { SnapshotStore } from '@actyx/sdk/lib/snapshotStore'
-import { Observable, ReplaySubject, Scheduler, Subject, Subscription } from 'rxjs'
+import {
+  Observable,
+  ReplaySubject,
+  asyncScheduler,
+  queueScheduler,
+  Subject,
+  Subscription,
+  lastValueFrom,
+  EMPTY,
+  of,
+  combineLatest,
+  from,
+} from '../node_modules/rxjs'
+import {
+  catchError,
+  shareReplay,
+  map,
+  subscribeOn,
+  finalize,
+  take,
+  switchMap,
+  concatMap,
+  observeOn,
+  takeWhile,
+  mergeMap,
+} from '../node_modules/rxjs/operators'
 import { CommandPipeline, FishJar, StartedFishMap } from './fishJar'
 import log from './loggers'
 import { observeMonotonic } from './monotonic'
@@ -65,10 +92,16 @@ const omitObservable = <S>(
   try {
     // Not passing an error callback seems to cause bad behavior with RXjs internally
     const sub = states
-      .map(x => x.state)
-      // Use async scheduler to make direct cancelation work
-      .subscribeOn(Scheduler.async)
-      .subscribe(callback, typeof stoppedByError === 'function' ? stoppedByError : noop)
+      .pipe(
+        map((x) => x.state),
+        // Use async scheduler to make direct cancelation work: must not sync call cbs
+        subscribeOn(asyncScheduler),
+      )
+      .subscribe({
+        next: callback,
+        error: typeof stoppedByError === 'function' ? stoppedByError : noop,
+        complete: typeof stoppedByError === 'function' ? () => stoppedByError(null) : noop,
+      })
     return sub.unsubscribe.bind(sub)
   } catch (err) {
     stoppedByError && stoppedByError(err)
@@ -76,22 +109,28 @@ const omitObservable = <S>(
   }
 }
 
-const wrapStateFn = <S, EWrite>(fn: StateEffect<S, EWrite>) => {
+const wrapStateFn = <S, EWrite>(pond: Pond, fn: StateEffect<S, EWrite>) => {
   const effect = async (state: S) => {
     const emissions: Emit<any>[] = []
     let returned = false
 
-    const enqueueEmission: AddEmission<EWrite> = (tags, payload) => {
+    const enqueueEmission: AddEmission<EWrite> = (...args) => {
       if (returned) {
         throw new Error(
           'The function you passed to run/keepRunning has already returned -- enqueuing emissions via the passed "AddEmission" function is no longer possible.',
         )
       }
 
-      emissions.push({ tags, payload })
+      if (args.length === 1) {
+        const { tags, event } = args[0]
+        emissions.push({ tags: Tags<EWrite>(...tags), payload: event })
+      } else {
+        const [tags, payload] = args
+        emissions.push({ tags, payload })
+      }
     }
 
-    await fn(state, enqueueEmission)
+    await fn(state, enqueueEmission, pond)
     returned = true
 
     return emissions
@@ -121,7 +160,7 @@ type Emit<E> = {
   payload: E
 }
 type StateEffectInternal<S, EWrite> = (state: S) => EmissionRequest<EWrite>
-type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<Emit<E>>>
+type EmissionRequest<E> = Emit<E>[] | Promise<Emit<E>[]>
 // endof TODO cleanup
 
 type ActiveFish<S> = {
@@ -131,17 +170,16 @@ type ActiveFish<S> = {
 }
 
 /** Parameter object for the `Pond.getNodeConnectivity` call. @public */
-export type GetNodeConnectivityParams = Readonly<{
+export type GetNodeConnectivityParams = {
   callback: (newState: unknown) => void
-  specialSources?: ReadonlyArray<NodeId>
-}>
+  specialSources?: NodeId[]
+}
 
 /** Parameter object for the `Pond.waitForSwarmSync` call. @public */
-export type WaitForSwarmSyncParams = WaitForSwarmConfig &
-  Readonly<{
-    onSyncComplete: () => void
-    onProgress?: (newState: SplashState) => void
-  }>
+export type WaitForSwarmSyncParams = WaitForSwarmConfig & {
+  onSyncComplete: () => void
+  onProgress?: (newState: SplashState) => void
+}
 
 /**
  * Main interface for interaction with the Actyx event system.
@@ -162,8 +200,20 @@ export type Pond = {
    * @param event  - The event itself.
    * @returns        A `PendingEmission` object that can be used to register
    *                 callbacks with the emission’s completion.
+   *
+   * @deprecated Use `publish` instead, and always await the Promise.
    */
   emit<E>(tags: Tags<E>, event: E): PendingEmission
+
+  /**
+   * Publish any number of events.
+   *
+   * @param events - Events to publish. Use `Tag('foo').apply(event)` to create an array of `TaggedEvent`.
+   *
+   * @returns        A Promise that resolves to the emitted event’s metadata.
+   */
+  publish(event: TaggedEvent): Promise<Metadata>
+  publish(events: TaggedEvent[]): Promise<Metadata[]>
 
   /* AGGREGATION */
 
@@ -185,6 +235,19 @@ export type Pond = {
     callback: (newState: S) => void,
     stoppedByError?: (err: unknown) => void,
   ): CancelSubscription
+
+  /**
+   * Read the current state of a Fish.
+   *
+   * Caching is done based on the `fishId` inside the `fish`, i.e. if a fish with the included
+   * `fishId` is already known, that other Fish’s ongoing aggregation will be used instead of
+   * starting a new one.
+   *
+   * @param fish       - Complete Fish information.
+   *
+   * @returns A Promise that resolves to the Fish’s latest known state. If the Fish was stopped due to an error, the Promise will reject with that error.
+   */
+  currentState<S, E>(fish: Fish<S, E>): Promise<S>
 
   /**
    * Create Fish from events and observe them all.
@@ -298,6 +361,15 @@ export type Pond = {
   info(): PondInfo
 
   /**
+   * Obtain information on the Actyx node. In order to save some cycles, and because the information
+   * doesn’t change all that quickly, please provide a time parameter that matches your app’s
+   * freshness requirements — for human consumption a couple hundred milliseconds is good enough.
+   *
+   * The underlying API endpoint has been added in Actyx 2.5.0, earlier versions report dummy data.
+   */
+  nodeInfo(maxAgeMillis: number): Promise<NodeInfo>
+
+  /**
    * Register a callback invoked whenever the Pond’s state changes.
    * The `PondState` is a general description of activity within the Pond internals.
    */
@@ -313,13 +385,13 @@ export type Pond = {
   /**
    * Get an object that offers a number of functions related purely to events (no Fish).
    */
-  events(): EventFns
+  events(): Actyx
 }
 
-type ActiveObserveAll<S> = Readonly<{
+type ActiveObserveAll<S> = {
   states: Subject<S[]>
   subscription: Subscription
-}>
+}
 
 const getOrInitialize = <T>(
   cache: Record<string, { states: Subject<T>; subscription: Subscription }>,
@@ -331,7 +403,7 @@ const getOrInitialize = <T>(
     return existing
   }
 
-  const stateSubject = new ReplaySubject<T>(1, undefined, Scheduler.queue)
+  const stateSubject = new ReplaySubject<T>(1, undefined, queueScheduler)
   const subscription = makeT().subscribe(stateSubject)
 
   const a = {
@@ -392,7 +464,7 @@ class Pond2Impl implements Pond {
   }
 
   waitForSwarmSync = (params: WaitForSwarmSyncParams) => {
-    const splash = streamSplashState(this.actyx, params).finally(params.onSyncComplete)
+    const splash = streamSplashState(this.actyx, params).pipe(finalize(params.onSyncComplete))
 
     if (params.onProgress) {
       splash.subscribe(params.onProgress)
@@ -408,17 +480,27 @@ class Pond2Impl implements Pond {
   }
 
   dispose = () => {
-    Object.values(this.activeFishes).forEach(({ subscription }) => subscription.unsubscribe())
+    for (const s of Object.values(this.activeFishes)) {
+      s.states.complete()
+      s.subscription.unsubscribe()
+    }
+    this.activeFishes = {}
 
-    Object.values(this.activeObserveAll).forEach(({ subscription }) => subscription.unsubscribe())
+    for (const s of Object.values(this.activeObserveAll)) {
+      s.states.complete()
+      s.subscription.unsubscribe()
+    }
+    this.activeObserveAll = {}
 
     this.actyx.dispose()
   }
 
   /* POND V2 FUNCTIONS */
   emit = <E>(tags: Tags<E>, payload: E): PendingEmission => {
-    return this.actyx.emit(tags.apply(payload))
+    return this.actyx.emit([tags.apply(payload)])
   }
+
+  publish = this.actyx.publish
 
   private getCachedOrInitialize = <S, E>(
     subscriptionSet: Where<E>,
@@ -453,6 +535,15 @@ class Pond2Impl implements Pond {
     return omitObservable(stoppedByError, callback, this.observeTagBased0<S, E>(fish).states)
   }
 
+  currentState = <S, E>(fish: Fish<S, E>): Promise<S> => {
+    const states = this.observeTagBased0<S, E>(fish).states
+    if (states.hasError) {
+      return Promise.reject(states.thrownError)
+    }
+
+    return lastValueFrom(states.pipe(take(1))).then((x) => x.state)
+  }
+
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
   private run0 = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
@@ -460,13 +551,13 @@ class Pond2Impl implements Pond {
     const cached = this.observeTagBased0(agg)
     const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
 
-    return effect => pendingCmd(handleInternal(effect))
+    return (effect) => pendingCmd(handleInternal(effect))
   }
 
   private v2CommandHandler = async (emit: EmissionRequest<unknown>): Promise<Metadata[]> => {
     const r = await Promise.resolve(emit)
 
-    const e = r.flatMap(x => x.tags.apply(x.payload))
+    const e = r.flatMap((x) => x.tags.apply(x.payload))
 
     return this.actyx.emit(e).toPromise()
   }
@@ -489,8 +580,8 @@ class Pond2Impl implements Pond {
       )
     cached.commandPipeline = commandPipeline
 
-    return effect => {
-      const o = new Observable<void>(x =>
+    return (effect) => {
+      const o = new Observable<void>((x) =>
         commandPipeline.subject.next({
           type: 'command',
           command: effect,
@@ -500,14 +591,15 @@ class Pond2Impl implements Pond {
           },
           onError: (err: any) => x.error(err),
         }),
-      )
-        .shareReplay(1)
+      ).pipe(
+        shareReplay(1),
         // Subscribing on Scheduler.queue is not strictly required, but helps with dampening feedback loops
-        .subscribeOn(Scheduler.queue)
+        subscribeOn(queueScheduler),
+      )
 
       // We just subscribe to guarantee effect application;
       // user is responsible for handling errors on the returned object if desired.
-      o.catch(() => Observable.empty()).subscribe()
+      o.pipe(catchError(() => EMPTY)).subscribe()
 
       return o
     }
@@ -539,17 +631,17 @@ class Pond2Impl implements Pond {
         typeof opts.expireAfterSeed === 'number' ? opts.expireAfterSeed : opts.expireAfterFirst,
       )
 
-      return fishStructs$.switchMap(known => {
-        const observations = known
-          .toArray()
-          .map(([_key, fish]) =>
-            this.observeTagBased0<S, any>(fish.fish).states.map(swp => swp.state),
-          )
+      return fishStructs$.pipe(
+        switchMap((known) => {
+          const observations = known
+            .toArray()
+            .map(([_key, fish]) =>
+              this.observeTagBased0<S, any>(fish.fish).states.pipe(map((swp) => swp.state)),
+            )
 
-        return observations.length === 0
-          ? Observable.of([])
-          : Observable.combineLatest(observations)
-      })
+          return observations.length === 0 ? of([]) : combineLatest(observations)
+        }),
+      )
     }
 
     const fishStates$ = Caching.isEnabled(opts.caching)
@@ -567,21 +659,22 @@ class Pond2Impl implements Pond {
     callback: (newState: S) => void,
     stoppedByError?: (err: unknown) => void,
   ): CancelSubscription => {
-    let cancelInitialSubscription: CancelSubscription | undefined = undefined
-
-    const initial = new Promise<ActyxEvent>(resolve => {
-      cancelInitialSubscription = this.actyx.subscribe(
+    const initial = new Promise<ActyxEvent>((resolve, reject) => {
+      const cancel = this.actyx.subscribe(
         {
           query: seedEvent,
         },
-        resolve,
+        (x) => {
+          resolve(x)
+          cancel()
+        },
+        reject,
       )
     })
 
-    const states = Observable.from(initial).concatMap(f => {
-      cancelInitialSubscription && cancelInitialSubscription()
-      return this.observeTagBased0<S, unknown>(makeFish(f.payload as ESeed)).states
-    })
+    const states = from(initial).pipe(
+      concatMap((f) => this.observeTagBased0<S, unknown>(makeFish(f.payload as ESeed)).states),
+    )
 
     return omitObservable(stoppedByError, callback, states)
   }
@@ -591,7 +684,7 @@ class Pond2Impl implements Pond {
     fn: StateEffect<S, EWrite>,
   ): PendingCommand => {
     const handle = this.run0(agg)
-    return handle(wrapStateFn(fn))
+    return handle(wrapStateFn(this, fn))
   }
 
   keepRunning = <S, EWrite>(
@@ -599,7 +692,7 @@ class Pond2Impl implements Pond {
     fn: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription => {
-    const effect = wrapStateFn(fn)
+    const effect = wrapStateFn(this, fn)
 
     // We use this state `cancelled` to stop effects "asap" when user code calls the cancellation function.
     // Otherwise it might happen that we have already queued the next effect and run longer than desired.
@@ -619,33 +712,33 @@ class Pond2Impl implements Pond {
             cancelled = true
             return false
           }
-
           return true
         }
       : () => !cancelled
 
-    states
-      .observeOn(Scheduler.async)
-      .map(swp => swp.state)
-      .takeWhile(tw)
-      // We could also just use `do` instead of `mergeMap` (using the public API),
-      // for no real loss, but no gain either.
-      .mergeMap(() => handleInternal(wrappedEffect))
+    const sub = states
+      .pipe(
+        observeOn(asyncScheduler),
+        map((swp) => swp.state),
+        takeWhile(tw),
+        // We could also just use `do` instead of `mergeMap` (using the public API),
+        // for no real loss, but no gain either.
+        mergeMap(() => handleInternal(wrappedEffect)),
+      )
       .subscribe()
 
-    return () => (cancelled = true)
+    return () => {
+      cancelled = true
+      sub.unsubscribe()
+    }
   }
 
   events = () => this.actyx
-}
 
-/**
- * All services needed by the pond
- */
-type Services = Readonly<{
-  actyx: Actyx
-  snapshotStore: SnapshotStore
-}>
+  nodeInfo(maxAgeMillis: number): Promise<NodeInfo> {
+    return this.actyx.nodeInfo(maxAgeMillis)
+  }
+}
 
 const mkPond = async (
   manifest: AppManifest,
@@ -653,36 +746,36 @@ const mkPond = async (
   opts: PondOptions,
 ): Promise<Pond> => {
   const actyx = await Actyx.of(manifest, connectionOpts)
-  return pondFromServices(
-    {
-      actyx,
-      // UNavailable in V2. FIXME: Enable if we are on V1
-      snapshotStore: SnapshotStore.noop,
-    },
-    opts,
-  )
+  return pondFromServices(actyx, opts)
 }
 
 /** A Pond with extensions for testing. @public */
 export type TestPond = Pond & {
   directlyPushEvents: (events: TestEvent[]) => void
 }
-const mkTestPond = (opts?: PondOptions): TestPond => {
-  const opts1: PondOptions = opts || {}
-  const actyx = Actyx.test({ nodeId: NodeId.of('TEST') })
-  const snapshotStore = SnapshotStore.noop
+/** Extended options for TestPond. @public */
+export type TestPondOptions = PondOptions & { timeInjector?: TimeInjector }
+
+const mkTestPond = (opts?: TestPondOptions): TestPond => {
+  const opts1: TestPondOptions = opts || {}
+  const actyx = {
+    ...Actyx.test({ nodeId: NodeId.of('TEST'), timeInjector: opts1.timeInjector }),
+    waitForSync: async () => {
+      /* noop */
+    },
+    nodeInfo: async () =>
+      new NodeInfo({ connectedNodes: 0, version: '2.0.0-test', uptime: { secs: 0, nanos: 0 } }),
+  }
   return {
-    ...pondFromServices({ actyx, snapshotStore }, opts1),
+    ...pondFromServices(actyx, opts1),
     directlyPushEvents: actyx.directlyPushEvents,
   }
 }
-const pondFromServices = (services: Services, opts: PondOptions): Pond => {
-  const { actyx, snapshotStore } = services
-
+const pondFromServices = (actyx: Actyx, opts: PondOptions): Pond => {
   log.pond.debug('start pond with SourceID %s from store', actyx.nodeId)
 
   const pondStateTracker = mkPondStateTracker(log.pond)
-  const pond: Pond2Impl = new Pond2Impl(actyx, snapshotStore, pondStateTracker, opts)
+  const pond: Pond2Impl = new Pond2Impl(actyx, actyx.snapshotStore, pondStateTracker, opts)
 
   return pond
 }
@@ -693,6 +786,8 @@ export const Pond = {
   default: async (manifest: AppManifest): Promise<Pond> => Pond.of(manifest, {}, {}),
   /** Start Pond with custom parameters. @public */
   of: mkPond,
+  /** Start Pond from provided Actyx SDK instance. @public */
+  from: (actyx: Actyx, opts: PondOptions) => pondFromServices(actyx, opts),
   /**
    * Get a Pond instance that runs a simulated store locally
    * whose contents can be manually modified.

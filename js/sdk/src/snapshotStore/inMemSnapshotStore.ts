@@ -14,7 +14,7 @@ import {
   StoreSnapshot,
 } from './snapshotStore'
 
-const later: <T>(block: () => T) => Promise<T> = block => Promise.resolve().then(block)
+const later: <T>(block: () => T) => Promise<T> = (block) => Promise.resolve().then(block)
 
 type SnapshotKey = Readonly<{
   semantics: string
@@ -88,7 +88,7 @@ class Impl implements SnapshotStore {
     return later(() => {
       const values = Object.values(this.snapshots)
       const higherVersionValues = values.filter(
-        sr => sr.semantics === sem && sr.name === name && sr.version > version,
+        (sr) => sr.semantics === sem && sr.name === name && sr.version > version,
       )
       // fail if attempting to add a snapshot with version smaller than currently existing
       if (higherVersionValues.length > 0) {
@@ -96,7 +96,7 @@ class Impl implements SnapshotStore {
       }
       // now remove (strictly) older versions
       const newValues = values.filter(
-        sr => !(sr.semantics === sem && sr.name === name && sr.version < version),
+        (sr) => !(sr.semantics === sem && sr.name === name && sr.version < version),
       )
       this.snapshots = newValues.reduce<SnapshotMap>(
         (acc, value) => ({ ...acc, [JSON.stringify(selectSnapshotKey(value))]: value }),
@@ -114,7 +114,7 @@ class Impl implements SnapshotStore {
     const values = Object.values(this.snapshots)
     const retrievedSnapshots = values
       .filter(
-        snapshotRow =>
+        (snapshotRow) =>
           snapshotRow.semantics === s && snapshotRow.name === n && snapshotRow.version === v,
       )
       .sort(reverseKeyOrder)
@@ -151,7 +151,7 @@ class Impl implements SnapshotStore {
       }
       const values = Object.values(this.snapshots)
       const newValues = values.filter(
-        sr =>
+        (sr) =>
           !(
             sr.semantics === sem &&
             sr.name === name &&

@@ -1,7 +1,7 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import { Fish, FishId, Pond, Reduce, Tag, Tags, Where } from '.'
@@ -114,8 +114,7 @@ describe('application of commands in the pond', () => {
       const tags = tagA.and(tagAB)
       const payload: B = { type: 'B' }
 
-      // tagA cannot contain events with type: 'B'
-      // @ts-expect-error
+      // @ts-expect-error since tagA cannot contain events with type: 'B'
       await pond.emit(tags, payload).toPromise()
 
       const events = stateAsPromise(pond, tags)
@@ -162,7 +161,7 @@ describe('application of commands in the pond', () => {
     }
 
     it('should allow emission statements into larger tags', () => {
-      test(pond =>
+      test((pond) =>
         pond.emit(abcTag, {
           type: 'A',
           data0: 5,
@@ -171,9 +170,9 @@ describe('application of commands in the pond', () => {
     })
 
     it('should forbid emission statements for unknown types, known tags', () => {
-      test(pond =>
+      test((pond) =>
         pond.emit(tagA, {
-          // @ts-expect-error
+          // @ts-expect-error because
           type: 'whatever',
 
           // actually it would pass if we used the `data0` field here,
@@ -189,8 +188,8 @@ describe('application of commands in the pond', () => {
         t0: {},
       }
 
-      // @ts-expect-error
-      test(pond => pond.emit(abcTag, payload))
+      // @ts-expect-error because
+      test((pond) => pond.emit(abcTag, payload))
     })
   })
 })

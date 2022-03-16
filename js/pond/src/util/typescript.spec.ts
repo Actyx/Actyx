@@ -1,7 +1,7 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import { entriesOf, KeyValueMap, none, todo, toKeyValueMap, unreachable, valuesOf } from '.'
@@ -43,10 +43,20 @@ describe('KeyValueMap', () => {
 
   it('valuesIf() with undefined vals', () => expect(valuesOf(map)).toEqual(['first', 'second']))
 
-  it('entriesOf()', () => expect(entriesOf(map)).toEqual([['one', 'first'], ['two', 'second']]))
+  it('entriesOf()', () =>
+    expect(entriesOf(map)).toEqual([
+      ['one', 'first'],
+      ['two', 'second'],
+    ]))
 
   it('toKeyValueMap()', () =>
-    expect(toKeyValueMap('id', [{ id: 1, v: '1' }, { id: 2, v: '2' }, { id: 3, v: '3' }])).toEqual({
+    expect(
+      toKeyValueMap('id', [
+        { id: 1, v: '1' },
+        { id: 2, v: '2' },
+        { id: 3, v: '3' },
+      ]),
+    ).toEqual({
       '1': { id: 1, v: '1' },
       '2': { id: 2, v: '2' },
       '3': { id: 3, v: '3' },

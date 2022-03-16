@@ -10,10 +10,10 @@ use versions_ignore_file::VersionsIgnoreFile;
 mod changes;
 mod os_arch;
 mod products;
-#[cfg(not(windows))]
 mod publisher;
 mod releases;
 mod repo;
+mod util;
 mod versions;
 mod versions_file;
 mod versions_ignore_file;
@@ -335,12 +335,16 @@ Overview:"#
                 .into_iter()
                 .filter(|VersionLine { release, .. }| release.product == product);
             eprintln!("Checking releases for {}", product);
+
+            // CI has too many cores
+            rayon::ThreadPoolBuilder::new().num_threads(6).build_global().unwrap();
             for (idx, VersionLine { commit, release }) in versions.enumerate() {
                 if ignores_file.ignore_commit_ids.contains(&commit) {
                     println!("  {} ({}) ignored", release, commit);
                 } else {
                     let tmp = tempdir()?;
                     log::debug!("Temp dir for {}: {}", release, tmp.path().display());
+
                     let out = OsArch::all()
                         .par_iter()
                         .map(|os_arch| {
@@ -350,31 +354,22 @@ Overview:"#
                                     .map(|mut p| {
                                         let mut out = String::new();
                                         let source_exists = p.source_exists()?;
-                                        if source_exists {
-                                            let target_exists = p.target_exists()?;
-                                            if target_exists {
-                                                writeln!(&mut out, "    [OK] {} already exists.", p.target)?;
+                                        let target_exists = p.target_exists()?;
+                                        if target_exists {
+                                            writeln!(&mut out, "    [OK] {} already exists.", p.target)?;
+                                        } else if source_exists {
+                                            log::debug!("creating release artifact in dir {}", tmp.path().display());
+                                            p.create_release_artifact(tmp.path()).context(format!(
+                                                "creating release artifact at {}",
+                                                tmp.path().display()
+                                            ))?;
+                                            if dry_run {
+                                                writeln!(&mut out, "    [DRY RUN] Create and publish {}", p.target)?;
                                             } else {
-                                                log::debug!(
-                                                    "creating release artifact in dir {}",
-                                                    tmp.path().display()
-                                                );
-                                                p.create_release_artifact(tmp.path()).context(format!(
-                                                    "creating release artifact at {}",
-                                                    tmp.path().display()
-                                                ))?;
-                                                if dry_run {
-                                                    writeln!(
-                                                        &mut out,
-                                                        "    [DRY RUN] Create and publish {}",
-                                                        p.target
-                                                    )?;
-                                                } else {
-                                                    log::debug!("starting publishing");
-                                                    p.publish().context("publishing")?;
-                                                    log::debug!("finished publishing");
-                                                    writeln!(&mut out, "    [NEW] {}", p.target)?;
-                                                }
+                                                log::debug!("starting publishing");
+                                                p.publish().context("publishing")?;
+                                                log::debug!("finished publishing");
+                                                writeln!(&mut out, "    [NEW] {}", p.target)?;
                                             }
                                         } else {
                                             if !ignore_errors && !dry_run {

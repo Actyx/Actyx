@@ -1,7 +1,7 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
 import {
@@ -61,6 +61,9 @@ export type RangeQuery = {
 
   /** Desired order of delivery. Defaults to 'Asc' */
   order?: EventsSortOrder
+
+  /** Earliest event ID to consider in the result */
+  horizon?: string
 }
 
 /** Query for a set of events which is automatically capped at the latest available upperBound. @public */
@@ -77,6 +80,9 @@ export type AutoCappedQuery = {
 
   /** Desired order of delivery. Defaults to 'Asc' */
   order?: EventsSortOrder
+
+  /** Earliest event ID to consider in the result */
+  horizon?: string
 }
 
 /** Subscription to a set of events that may still grow. @public */
@@ -105,7 +111,7 @@ export type MonotonicSubscription<E> = {
   query: Where<E>
 
   /** Sending 'attemptStartFrom' means we DONT want a snapshot sent as initial message. */
-  attemptStartFrom?: FixedStart
+  attemptStartFrom: FixedStart
 }
 
 /** Query for observeEarliest. @beta  */
@@ -126,6 +132,25 @@ export type EarliestQuery<E> = {
 
 /** Query for observeLatest. @beta  */
 export type LatestQuery<E> = EarliestQuery<E>
+
+/** An aql query is either a plain string, or an object containing the string and the desired order.  @beta */
+export type AqlQuery =
+  | string
+  | {
+      /** Query as AQL string */
+      query: string
+
+      /** Desired order of delivery (relative to events). Defaults to 'Asc' */
+      order?: EventsSortOrder
+    }
+
+/**
+ * Handler for a streaming operation ending, either normally or with an error.
+ * If the `err` argument is defined, the operation completed due to an error.
+ * Otherwise, it completed normally.
+ * @public
+ **/
+export type OnCompleteOrErr = (err?: unknown) => void
 
 /** Functions that operate directly on Events. @public  */
 export interface EventFns {
@@ -153,13 +178,13 @@ export interface EventFns {
    * @param chunkSize   - Maximum size of chunks. Chunks may be smaller than this.
    * @param onChunk     - Callback that will be invoked with every chunk, in sequence.
    *
-   * @returns A function that can be called in order to cancel the subscription.
+   * @returns A function that can be called in order to cancel the delivery of further chunks.
    */
   queryKnownRangeChunked: (
     query: RangeQuery,
     chunkSize: number,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
-    onComplete?: () => void,
+    onComplete?: OnCompleteOrErr,
   ) => CancelSubscription
 
   /**
@@ -180,13 +205,13 @@ export interface EventFns {
    * @param chunkSize   - Maximum size of chunks. Chunks may be smaller than this.
    * @param onChunk     - Callback that will be invoked for each chunk, in sequence. Second argument is an offset map covering all events passed as first arg.
    *
-   * @returns A `Promise` that resolves to updated offset-map after all chunks have been delivered.
+   * @returns A function that can be called in order to cancel the delivery of further chunks.
    */
   queryAllKnownChunked: (
     query: AutoCappedQuery,
     chunkSize: number,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
-    onComplete?: () => void,
+    onComplete?: OnCompleteOrErr,
   ) => CancelSubscription
 
   /**
@@ -198,7 +223,44 @@ export interface EventFns {
    *
    * @beta
    */
-  queryAql: (query: string) => Promise<AqlResponse[]>
+  queryAql: (query: AqlQuery) => Promise<AqlResponse[]>
+
+  /**
+   * Run a custom AQL subscription and get back the raw responses collected via a callback.
+   *
+   * @param query       - A plain AQL query string.
+   * @param onResponse  - Callback that will be invoked for each raw response, in sequence. Even if this is an async function (returning `Promise<void>`), there will be no concurrent invocations of it.
+   * @param onError     - Callback that will be invoked in case on a error.
+   * @param lowerBound  - Starting point (exclusive) for the query. Everything up-to-and-including `lowerBound` will be omitted from the result. Defaults empty record.
+   *
+   * @returns A `Promise` that resolves to updated offset-map after all chunks have been delivered.
+   *
+   * @beta
+   */
+  subscribeAql: (
+    query: AqlQuery,
+    onResponse: (r: AqlResponse) => Promise<void> | void,
+    onError?: (err: unknown) => void,
+    lowerBound?: OffsetMap,
+  ) => CancelSubscription
+
+  /**
+   * Run a custom AQL query and get the response messages in chunks.
+   *
+   * @param query       - AQL query
+   * @param chunkSize   - Desired chunk size
+   * @param onChunk     - Callback that will be invoked for each chunk, in sequence. Even if this is an async function (returning `Promise<void>`), there will be no concurrent invocations of it.
+   *
+   * @returns A function that can be called in order to cancel the delivery of further chunks.
+   *
+   * @beta
+   */
+  queryAqlChunked: (
+    query: AqlQuery,
+    chunkSize: number,
+    onChunk: (chunk: AqlResponse[]) => Promise<void> | void,
+    onCompleteOrError: OnCompleteOrErr,
+  ) => CancelSubscription
 
   /**
    * Subscribe to all events fitting the `query` after `lowerBound`.
@@ -213,6 +275,7 @@ export interface EventFns {
   subscribe: (
     query: EventSubscription,
     onEvent: (e: ActyxEvent) => Promise<void> | void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**
@@ -240,7 +303,9 @@ export interface EventFns {
       maxChunkTimeMs?: number
     },
     onChunk: (chunk: EventChunk) => Promise<void> | void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
+
   /**
    * Subscribe to a stream of events until this would go back in time.
    * Instead of going back in time, receive a TimeTravelMsg and terminate the stream.
@@ -250,6 +315,7 @@ export interface EventFns {
   subscribeMonotonic: <E>(
     query: MonotonicSubscription<E>,
     callback: (data: EventsOrTimetravel<E>) => Promise<void> | void,
+    onCompleteOrErr?: OnCompleteOrErr,
   ) => CancelSubscription
 
   /**
@@ -268,6 +334,7 @@ export interface EventFns {
   observeEarliest: <E>(
     query: EarliestQuery<E>,
     onNewEarliest: (event: E, metadata: Metadata) => void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**
@@ -285,6 +352,7 @@ export interface EventFns {
   observeLatest: <E>(
     query: EarliestQuery<E>,
     onNewLatest: (event: E, metadata: Metadata) => void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**
@@ -304,6 +372,7 @@ export interface EventFns {
     query: Where<E>,
     shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean,
     onReplaced: (event: E, metadata: Metadata) => void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**
@@ -323,6 +392,7 @@ export interface EventFns {
     reduce: (acc: R, event: E, metadata: Metadata) => R,
     initial: R,
     onUpdate: (result: R) => void,
+    onError?: (err: unknown) => void,
   ) => CancelSubscription
 
   /**
@@ -331,12 +401,25 @@ export interface EventFns {
    * @param events - Events to emit.
    *
    * @returns        A `PendingEmission` object that can be used to register callbacks with the emission’s completion.
+   *
+   * @deprecated Use `publish` instead, and always await the Promise.
    */
-  emit: (events: ReadonlyArray<TaggedEvent>) => PendingEmission
+  emit: (events: TaggedEvent[]) => PendingEmission
+
+  /**
+   * Publish a number of events with tags attached.
+   * This function is the same as `emit`, only it directly returns the Promise.
+   *
+   * @param events - Events to publish.
+   *
+   * @returns        A Promise that resolves to the persisted event’s metadata, in the same order they were passed into the function.
+   */
+  publish(event: TaggedEvent): Promise<Metadata>
+  publish(events: TaggedEvent[]): Promise<Metadata[]>
 }
 
 /** EventFns for unit-tests. @public */
 export type TestEventFns = EventFns & {
   /** Inject an event as if it arrived from anywhere. @public */
-  directlyPushEvents: (events: ReadonlyArray<TestEvent>) => void
+  directlyPushEvents: (events: TestEvent[]) => void
 }

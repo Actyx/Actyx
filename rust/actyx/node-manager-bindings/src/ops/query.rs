@@ -6,7 +6,7 @@ use actyx_sdk::{
 };
 use anyhow::anyhow;
 use axlib::{node_connection::NodeConnection, private_key::AxPrivateKey};
-use futures::{future::ready, StreamExt};
+use futures::StreamExt;
 use neon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -36,26 +36,23 @@ struct Res {
     events: Option<Vec<EventDiagnostic>>,
 }
 
-async fn do_query(key: &AxPrivateKey, mut node: NodeConnection, query: Query) -> ActyxOSResult<Res> {
-    let r = node.request_events(
-        key,
-        EventsRequest::Query(QueryRequest {
+async fn do_query(key: &AxPrivateKey, node: NodeConnection, query: Query) -> ActyxOSResult<Res> {
+    let mut conn = node.connect(key).await?;
+    let r = conn
+        .request_events(EventsRequest::Query(QueryRequest {
             lower_bound: None,
             upper_bound: None,
             query,
             order: Order::Asc,
-        }),
-    );
+        }))
+        .await;
 
-    match r.await {
-        Err(err) if err.code() == ActyxOSCode::ERR_UNSUPPORTED => ready(Ok(Res { events: None })).await,
-        Err(err) => {
-            ready(ax_err(
-                util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
-                format!("EventsRequests::Query returned unexpected error: {:?}", err),
-            ))
-            .await
-        }
+    match r {
+        Err(err) if err.code() == ActyxOSCode::ERR_UNSUPPORTED => Ok(Res { events: None }),
+        Err(err) => ax_err(
+            util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+            format!("EventsRequests::Query returned unexpected error: {:?}", err),
+        ),
         Ok(stream) => {
             async {
                 let events: Vec<EventsResponse> = stream.collect().await;
@@ -94,7 +91,7 @@ pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
             let key = default_private_key().map_err(|e| anyhow!("error getting default key: {}", e))?;
             let node = node_connection(&addr).map_err(|e| anyhow!("error connecting to node {}: {}", addr, e))?;
-            let res = run_ft(do_query(&key, node, parsed_query))?;
+            let res = run_ft(do_query(&key, node, parsed_query));
             match res {
                 Err(e) if e.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => {
                     eprintln!("unable to reach node {}", addr);

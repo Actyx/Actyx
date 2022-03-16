@@ -1,5 +1,6 @@
 pub mod filters;
 pub mod hyper_serve;
+pub(crate) mod macros;
 
 use std::{str::FromStr, time::Duration};
 
@@ -44,7 +45,7 @@ impl NodeInfo {
     }
 }
 
-fn get_ax_public_key() -> PublicKey {
+pub(crate) fn get_ax_public_key() -> PublicKey {
     PublicKey::from_str(option_env!("AX_PUBLIC_KEY").unwrap_or("075i62XGQJuXjv6nnLQyJzECZhF29acYvYeEOJ3kc5M8="))
         .unwrap()
 }

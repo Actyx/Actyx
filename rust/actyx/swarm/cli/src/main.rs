@@ -6,10 +6,13 @@ use crypto::{KeyPair, KeyStore};
 use futures::{stream::StreamExt, TryStreamExt};
 use ipfs_embed::GossipEvent;
 use libipld::{cbor::DagCborCodec, codec::Codec};
+use parking_lot::Mutex;
+use std::sync::Arc;
 use structopt::StructOpt;
 use swarm::{
+    blob_store::BlobStore,
     event_store_ref::{self, EventStoreHandler, EventStoreRef, EventStoreRequest},
-    BanyanStore, GossipMessage, SwarmConfig,
+    BanyanStore, DbPath, GossipMessage, SwarmConfig,
 };
 use swarm_cli::{Command, Config, Event};
 use tokio::{
@@ -75,9 +78,17 @@ async fn run() -> Result<()> {
             });
             EventStoreRef::new(move |e| tx.try_send(e).map_err(event_store_ref::Error::from))
         };
+        let blobs = BlobStore::new(DbPath::Memory)?;
         swarm.spawn_task(
             "api",
-            api::run(node_info, swarm.clone(), event_store, std::iter::once(addr), tx),
+            api::run(
+                node_info,
+                swarm.clone(),
+                event_store,
+                blobs,
+                Arc::new(Mutex::new(addr.into())),
+                tx,
+            ),
         );
         swarm
     } else {

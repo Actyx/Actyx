@@ -5,10 +5,20 @@
  * Copyright (C) 2021 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { fromNullable, Option } from 'fp-ts/lib/Option'
-import { greaterThan } from 'fp-ts/lib/Ord'
-import { Observable } from '../../node_modules/rxjs'
-import { SnapshotStore } from '../snapshotStore'
+import { fromNullable, Option, map as mapOption, fold as foldOption } from 'fp-ts/lib/Option'
+import { gt } from 'fp-ts/lib/Ord'
+import { Observable, EMPTY, from, of, combineLatest, concat, defer } from '../../node_modules/rxjs'
+import {
+  filter,
+  mergeMap,
+  concatMap,
+  map,
+  first,
+  defaultIfEmpty,
+  bufferCount,
+  tap,
+} from '../../node_modules/rxjs/operators'
+import { LocalSnapshotFromIndex, SnapshotStore } from '../snapshotStore'
 import {
   EventKey,
   EventsSortOrder,
@@ -22,196 +32,102 @@ import { getInsertionIndex, runStats, takeWhileInclusive } from '../util'
 import { EventStore } from './eventStore'
 import log from './log'
 import { Event, Events } from './types'
+import { bufferOp } from '../util/bufferOp'
 
 // New API:
 // Stream events as they become available, until time-travel would occour.
 // To be eventually implemented on the rust-store side with lots of added cleverness.
 
-export type StateMsg = Readonly<{
+export type StateMsg = {
   type: MsgType.state
   snapshot: SerializedStateSnap
-}>
+}
 
-export type EventsMsg = Readonly<{
+export type EventsMsg = {
   type: MsgType.events
   events: Events
   caughtUp: boolean
-}>
+}
 
-export type TimeTravelMsg = Readonly<{
+export type TimeTravelMsg = {
   type: MsgType.timetravel
-  trigger: Event // earliest known event to cause time travel
-  high: Event // latest known event to cause time travel
-}>
+  trigger: EventKey
+}
 
 export type EventsOrTimetravel = StateMsg | EventsMsg | TimeTravelMsg
 
 export type SubscribeMonotonic = (
-  fishId: SessionId,
+  session: string,
   subscriptions: Where<unknown>,
-  // Sending 'attemptStartFrom' means we DONT want a snapshot
-  attemptStartFrom?: FixedStart,
+  attemptStartFrom: FixedStart,
 ) => Observable<EventsOrTimetravel>
 
-const eventKeyGreater = greaterThan(EventKey.ord)
+const eventKeyGreater = gt(EventKey.ord)
 
-type SessionId = string
-const GenericSemantics = 'generic-snapshot-v2'
-
-const horizonFilter = (horizon: EventKey) => (x: Event) => eventKeyGreater(x, horizon)
+const horizonFilter = (fixedStart: FixedStart | undefined) =>
+  fixedStart?.horizon ? `${fixedStart.horizon.lamport}/${fixedStart.horizon.stream}` : undefined
 
 /**
  * Create a new endpoint, based on the given EventStore and SnapshotStore.
  * The returned function itself is stateless between subsequent calls --
  * all state is within the EventStore itself.
  */
-export const eventsMonotonic = (
-  eventStore: EventStore,
-  // No snapshots are actually available in V2 so far.
-  snapshotStore: SnapshotStore,
-): SubscribeMonotonic => {
+export const eventsMonotonic = (eventStore: EventStore): SubscribeMonotonic => {
   // Stream realtime events from the given point on.
+  // Actyx delivers events before `present` (i.e. before the first `offsets` msg) in ascending order.
   // As soon as time-travel would occur, the stream terminates with a TimetravelMsg.
-  const realtimeFrom = (
-    fishId: SessionId,
-    subscriptions: Where<unknown>,
-    fixedStart: FixedStart,
-  ): Observable<EventsOrTimetravel> => {
-    const realtimeEvents = eventStore.subscribe(
-      fixedStart.from,
-      subscriptions,
-      // FIXME: Horizon not supported in V2 yet. https://github.com/Actyx/Cosmos/issues/6730
-      // fixedStart.horizon,
-    )
-
-    const rtAfterHorizon = fixedStart.horizon
-      ? realtimeEvents.filter(horizonFilter(fixedStart.horizon))
-      : realtimeEvents
-
-    let latest = fixedStart.latestEventKey
-
-    let tt = false
-
-    const liveBuffered = rtAfterHorizon
-      // Buffer live events for a small amount of time, so we don’t update state too often.
-      // Should be handled by the `caughtUp` flag in the store-side impl.
-      .bufferTime(1)
-      .filter(x => x.length > 0)
-      .mergeMap<Events, EventsOrTimetravel>(nextUnsorted => {
-        // Don't spam the logs. And avoid esoteric race conditions due to triggering multiple snapshot invalidations.
-        if (tt) {
-          return Observable.empty()
-        }
-
-        const next = nextUnsorted.sort(EventKey.ord.compare)
-
-        // Take while we are going strictly forwards
-        const nextKey = next[0]
-        const nextIsOlderThanLatest = eventKeyGreater(latest, nextKey)
-
-        if (nextIsOlderThanLatest) {
-          tt = true
-
-          log.submono.debug(
-            'started from',
-            fixedStart.from,
-            'got triggered by stream',
-            nextKey.stream,
-            'offset',
-            nextKey.offset,
-          )
-
-          return Observable.from(
-            snapshotStore
-              .invalidateSnapshots(GenericSemantics, fishId, nextKey)
-              .then(() => timeTravelMsg(fishId, latest, next)),
-          )
-        }
-
-        log.submono.debug(
-          'order-check passed: ' + EventKey.format(nextKey) + ' > ' + EventKey.format(latest),
-          'for realtime event',
-        )
-
-        // We have captured `latest` in the closure and are updating it here
-        const newLatest = next[next.length - 1]
-        latest = {
-          lamport: newLatest.lamport,
-          stream: newLatest.stream,
-          offset: newLatest.offset,
-        }
-        return Observable.of({
-          type: MsgType.events,
-          events: next,
-          caughtUp: true,
-        })
-      })
-      .pipe(takeWhileInclusive(m => m.type !== MsgType.timetravel))
-
-    return liveBuffered
-  }
-
-  // The only reason we need the "catch up to present" step is that `allEvents` makes no effort whatsoever
-  // to give you a proper ordering for *known* events; so we must take care of it by first streaming *to* present.
-
-  // Stream events monotonically from the given point on.
-  // This function is needed, because `realtimeFrom` will return *past* data out of order, too.
-  // So in order to have a meaningful shot at reaching a stable state, we must first "forward-stream" up to the known present,
-  // and then switch over to "realtime" streaming.
   const monotonicFrom = (
-    fishId: SessionId,
+    session: string,
     subscriptions: Where<unknown>,
-    present: OffsetMap,
-    fixedStart: FixedStart = {
-      from: {},
-      latestEventKey: EventKey.zero,
-    },
+    fixedStart?: FixedStart,
   ): Observable<EventsOrTimetravel> => {
-    let latest = fixedStart.latestEventKey
-
-    const persisted = eventStore.query(
-      fixedStart.from,
-      present,
-      subscriptions,
-      EventsSortOrder.Ascending,
-      // FIXME: Horizon not supported in V2 yet. https://github.com/Actyx/Cosmos/issues/6730
-      // fixedStart.horizon,
-    )
-
-    const persistedAfterHorizon = fixedStart.horizon
-      ? persisted.filter(horizonFilter(fixedStart.horizon))
-      : persisted
-
-    const persistedChunked: Observable<EventsMsg> = persistedAfterHorizon
-      // Speed up Fish hydration by applying chunks
-      .bufferCount(32)
-      .map<Events, EventsMsg>(chunk => ({
-        type: MsgType.events,
-        events: chunk,
-        caughtUp: false,
-      }))
-      .do(msg => (latest = msg.events[msg.events.length - 1]))
-
-    const realtimeStream = Observable.defer(() =>
-      realtimeFrom(fishId, subscriptions, {
-        from: present,
-        latestEventKey: latest,
-        horizon: fixedStart.horizon,
-      }),
-    )
-
-    return Observable.concat(
-      persistedChunked,
-      Observable.of<EventsMsg>({
-        type: MsgType.events,
-        events: [],
-        // Empty chunk with caughtUp=true, to trigger emission of current state.
-        // The proper impl should obviously set caughtUp=true for the final proper (nonempty) chunk;
-        // but we have a hard time detecting the final chunk here.
-        caughtUp: true,
-      }),
-      realtimeStream,
-    )
+    const horizon = horizonFilter(fixedStart)
+    let diagPrinted = false
+    return eventStore
+      .subscribeMonotonic(session, fixedStart?.from || {}, subscriptions, horizon)
+      .pipe(
+        bufferOp(1),
+        concatMap((next) => {
+          const emit: EventsOrTimetravel[] = []
+          let events: EventsMsg | null = null
+          for (const x of next) {
+            switch (x.type) {
+              case 'diagnostic': {
+                if (!diagPrinted) {
+                  diagPrinted = true
+                  log.submono.debug(`(${session}) AQL ${x.severity}: ${x.message}`)
+                }
+                break
+              }
+              case 'event': {
+                x.caughtUp && log.submono.debug('caught up', session)
+                if (events === null) {
+                  events = { type: MsgType.events, events: [x], caughtUp: x.caughtUp }
+                  emit.push(events)
+                } else {
+                  events.events.push(x)
+                  events.caughtUp = x.caughtUp
+                }
+                break
+              }
+              case 'offsets': {
+                if (events === null) {
+                  events = { type: MsgType.events, events: [], caughtUp: true }
+                  emit.push(events)
+                } else {
+                  events.caughtUp = true
+                }
+                break
+              }
+              case 'timeTravel': {
+                events = null
+                emit.push({ type: MsgType.timetravel, trigger: x.newStart })
+              }
+            }
+          }
+          return emit
+        }),
+      )
   }
 
   // Given a FixedStart point, check whether we can reach `present` without time travel.
@@ -223,157 +139,69 @@ export const eventsMonotonic = (
     whenInvalid: (outdatedChunk: Event) => Observable<EventsOrTimetravel>,
     whenValid: () => Observable<EventsOrTimetravel>,
   ): Observable<EventsOrTimetravel> => {
-    const earliestNewEvents = eventStore.query(
-      attemptStartFrom.from,
-      present,
-      subscriptions,
-      EventsSortOrder.Ascending,
-      // FIXME: Horizon not supported in V2 yet. https://github.com/Actyx/Cosmos/issues/6730
-      // attemptStartFrom.horizon,
-    )
-    // FIXME: Store should filter
-
-    const afterHorizon = attemptStartFrom.horizon
-      ? earliestNewEvents.filter(horizonFilter(attemptStartFrom.horizon))
-      : earliestNewEvents
-
-    const earliestNew = afterHorizon.defaultIfEmpty(null).first()
-
-    // Find the earliest persistent chunk after the starting point and see whether it’s after the FixedStart
-    return earliestNew.concatMap(
-      earliest =>
-        earliest && eventKeyGreater(attemptStartFrom.latestEventKey, earliest)
-          ? whenInvalid(earliest)
-          : whenValid(),
-    )
+    return eventStore
+      .query(
+        attemptStartFrom.from,
+        present,
+        subscriptions,
+        EventsSortOrder.Ascending,
+        horizonFilter(attemptStartFrom),
+      )
+      .pipe(
+        defaultIfEmpty(null),
+        first(),
+        concatMap((earliest) =>
+          earliest && eventKeyGreater(attemptStartFrom.latestEventKey, earliest)
+            ? whenInvalid(earliest)
+            : whenValid(),
+        ),
+      )
   }
 
   // Client thinks it has valid offsets to start from -- it may be wrong, though!
-  const startFromFixedOffsets = (
-    fishId: SessionId,
-    subscriptions: Where<unknown>,
-    present: OffsetMap,
-  ) => (attemptStartFrom: FixedStart): Observable<EventsOrTimetravel> => {
-    const whenValid = () => monotonicFrom(fishId, subscriptions, present, attemptStartFrom)
+  const startFromFixedOffsets =
+    (session: string, subscriptions: Where<unknown>, present: OffsetMap) =>
+    (attemptStartFrom: FixedStart): Observable<EventsOrTimetravel> => {
+      const whenValid = () => monotonicFrom(session, subscriptions, attemptStartFrom)
 
-    const whenInvalid = (earliest: Event) => {
-      log.submono.debug(
-        fishId,
-        'discarding outdated requested FixedStart',
-        EventKey.format(attemptStartFrom.latestEventKey),
-        'due to',
-        EventKey.format(earliest),
-      )
+      const whenInvalid = (earliest: Event) => {
+        log.submono.debug(
+          session,
+          'discarding outdated requested FixedStart',
+          EventKey.format(attemptStartFrom.latestEventKey),
+          'due to',
+          EventKey.format(earliest),
+        )
 
-      // TODO this time travel msg should also have a good `high` element
-      // (consider this if/when ever implementing this Rust-side)
-      return Observable.of(timeTravelMsg(fishId, attemptStartFrom.latestEventKey, [earliest]))
+        // TODO this time travel msg should also have a good `high` element
+        // (consider this if/when ever implementing this Rust-side)
+        return of(timeTravelMsg(session, attemptStartFrom.latestEventKey, [earliest]))
+      }
+
+      return validateFixedStart(subscriptions, present, attemptStartFrom, whenInvalid, whenValid)
     }
 
-    return validateFixedStart(subscriptions, present, attemptStartFrom, whenInvalid, whenValid)
-  }
-
-  const tryReadSnapshot = async (fishId: SessionId): Promise<Option<SerializedStateSnap>> => {
-    const retrieved = await snapshotStore.retrieveSnapshot(GenericSemantics, fishId, 0)
-
-    runStats.counters.add(`snapshot-wanted/${fishId}`)
-    return fromNullable(retrieved).map(x => {
-      runStats.counters.add(`snapshot-found/${fishId}`)
-      return x
-    })
-  }
-
-  // Try start from a snapshot we have found. The snapshot may be outdated, though.
-  const startFromSnapshot = (
-    fishId: SessionId,
+  return (
+    session: string,
     subscriptions: Where<unknown>,
-    present: OffsetMap,
-  ) => (snap: SerializedStateSnap): Observable<EventsOrTimetravel> => {
-    const fixedStart = {
-      from: snap.offsets,
-      horizon: snap.horizon,
-      latestEventKey: snap.eventKey,
-    }
-
-    const whenInvalid = (earliest: Event) => {
-      log.submono.debug(
-        fishId,
-        'discarding outdated snapshot',
-        EventKey.format(snap.eventKey),
-        'due to',
-        EventKey.format(earliest),
-      )
-
-      return Observable.from(
-        snapshotStore.invalidateSnapshots('generic-snapshot-v2', fishId, earliest),
-      )
-        .first()
-        .concatMap(() => observeMonotonicFromSnapshot(fishId, subscriptions))
-    }
-
-    const whenValid = () =>
-      Observable.concat(
-        Observable.of(stateMsg(fishId, snap)),
-        monotonicFrom(fishId, subscriptions, present, {
-          from: snap.offsets,
-          latestEventKey: snap.eventKey,
-          horizon: snap.horizon,
-        }),
-      )
-
-    return validateFixedStart(subscriptions, present, fixedStart, whenInvalid, whenValid)
-  }
-
-  const observeMonotonicFromSnapshot = (
-    fishId: SessionId,
-    subscriptions: Where<unknown>,
+    attemptStartFrom: FixedStart,
   ): Observable<EventsOrTimetravel> => {
-    return Observable.combineLatest(
-      Observable.from(tryReadSnapshot(fishId)).first(),
-      Observable.from(eventStore.offsets()).map(({ present }) => present),
-    ).concatMap(([maybeSnapshot, present]) =>
-      maybeSnapshot.fold(
-        // No snapshot found -> start from scratch
-        monotonicFrom(fishId, subscriptions, present),
-        startFromSnapshot(fishId, subscriptions, present),
+    // Client explicitly requests us to start at a certain point
+    return from(eventStore.offsets()).pipe(
+      concatMap((offsets) =>
+        startFromFixedOffsets(session, subscriptions, offsets.present)(attemptStartFrom),
       ),
     )
   }
-
-  return (
-    fishId: SessionId,
-    subscriptions: Where<unknown>,
-    attemptStartFrom?: FixedStart,
-  ): Observable<EventsOrTimetravel> => {
-    if (attemptStartFrom) {
-      // Client explicitly requests us to start at a certain point
-      return Observable.from(eventStore.offsets()).concatMap(offsets =>
-        startFromFixedOffsets(fishId, subscriptions, offsets.present)(attemptStartFrom),
-      )
-    } else {
-      // `from` NOT given -> try finding a snapshot
-      return observeMonotonicFromSnapshot(fishId, subscriptions)
-    }
-  }
 }
 
-const stateMsg = (fishId: SessionId, snapshot: SerializedStateSnap): StateMsg => {
-  log.submono.info(fishId, 'picking up from local snapshot', EventKey.format(snapshot.eventKey))
-
-  return {
-    type: MsgType.state,
-    snapshot,
-  }
-}
-
-const timeTravelMsg = (fishId: SessionId, previousHead: EventKey, next: Events): TimeTravelMsg => {
-  log.submono.info(fishId, 'must time-travel back to:', EventKey.format(next[0]))
+const timeTravelMsg = (session: string, previousHead: EventKey, next: Events): TimeTravelMsg => {
+  log.submono.info(session, 'must time-travel back to:', EventKey.format(next[0]))
 
   const high = getInsertionIndex(next, previousHead, EventKey.ord.compare) - 1
 
   return {
     type: MsgType.timetravel,
     trigger: next[0],
-    high: next[high],
   }
 }

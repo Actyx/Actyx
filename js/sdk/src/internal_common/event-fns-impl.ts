@@ -4,9 +4,28 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { contramap, getTupleOrd, gt, lt, ordNumber, ordString } from 'fp-ts/lib/Ord'
-import { Observable } from '../../node_modules/rxjs'
+import { contramap, gt, lt, tuple } from 'fp-ts/lib/Ord'
+import { Ord as StringOrd } from 'fp-ts/string'
+import { Ord as NumberOrd } from 'fp-ts/number'
 import {
+  lastValueFrom,
+  EMPTY,
+  from,
+  defaultIfEmpty,
+  first,
+  ReplaySubject,
+  asyncScheduler,
+} from '../../node_modules/rxjs'
+import {
+  map,
+  toArray,
+  bufferCount,
+  mergeScan,
+  reduce as rxReduce,
+  subscribeOn,
+} from '../../node_modules/rxjs/operators'
+import {
+  AqlQuery,
   AutoCappedQuery,
   EarliestQuery,
   EventFns,
@@ -26,6 +45,7 @@ import {
   EventKey,
   EventsOrTimetravel,
   EventsSortOrder,
+  isString,
   Metadata,
   MsgType,
   NodeId,
@@ -36,20 +56,25 @@ import {
   toMetadata,
   Where,
 } from '../types'
+import { noop } from '../util'
 import { EventStore } from './eventStore'
 import { eventsMonotonic, EventsOrTimetravel as EventsOrTtInternal } from './subscribe_monotonic'
 import { Event, Events } from './types'
+import { bufferOp } from '../util/bufferOp'
+import { gte } from 'semver'
+import { eventsMonotonicEmulated } from './subscribe_monotonic_emulated'
 
-const ordByTimestamp = contramap(
-  (e: ActyxEvent): [number, string] => [e.meta.timestampMicros, e.meta.eventId],
-  getTupleOrd(ordNumber, ordString),
-)
-const ordByKey = contramap((e: ActyxEvent) => e.meta.eventId, ordString)
+export const _ordByTimestamp = contramap((e: ActyxEvent): [number, string] => [
+  e.meta.timestampMicros,
+  e.meta.eventId,
+])(tuple(NumberOrd, StringOrd))
+export const _ordByKey = contramap((e: ActyxEvent) => e.meta.eventId)(StringOrd)
 
 export const EventFnsFromEventStoreV2 = (
   nodeId: NodeId,
   eventStore: EventStore,
   snapshotStore: SnapshotStore,
+  currentActyxVersion: () => string,
 ): EventFns => {
   const mkMeta = toMetadata(nodeId)
 
@@ -131,27 +156,33 @@ export const EventFnsFromEventStoreV2 = (
     return onChunk0
   }
 
-  const present = () => eventStore.offsets().then(x => x.present)
+  const present = () => eventStore.offsets().then((x) => x.present)
 
   const offsets = () => eventStore.offsets()
 
   const queryKnownRange = (rangeQuery: RangeQuery) => {
-    const { lowerBound, upperBound, query, order } = rangeQuery
+    const { lowerBound, upperBound, query, order, horizon } = rangeQuery
 
-    return eventStore
-      .query(lowerBound || {}, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
-      .map(wrap)
-      .toArray()
-      .toPromise()
+    return lastValueFrom(
+      eventStore
+        .query(
+          lowerBound || {},
+          upperBound,
+          query || allEvents,
+          order || EventsSortOrder.Ascending,
+          horizon,
+        )
+        .pipe(map(wrap), toArray()),
+    )
   }
 
   const queryKnownRangeChunked = (
     rangeQuery: RangeQuery,
     chunkSize: number,
     onChunk: (chunk: EventChunk) => void,
-    onComplete?: () => void,
+    onComplete?: (err?: unknown) => void,
   ) => {
-    const { lowerBound, upperBound, query, order } = rangeQuery
+    const { lowerBound, upperBound, query, order, horizon } = rangeQuery
 
     const lb = lowerBound || {}
 
@@ -162,22 +193,23 @@ export const EventFnsFromEventStoreV2 = (
 
     let cancelled = false
 
-    const s = eventStore
-      .query(lb, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
-      .bufferCount(chunkSize)
-      // The only way to avoid parallel invocations is to use mergeScan with final arg=1
-      .mergeScan(
-        (_a: void, chunk: Events) => {
-          return cancelled ? Observable.empty<void>() : Observable.from(cb(chunk))
-        },
-        void 0,
-        1,
-      )
-      .subscribe()
+    const onCompleteOrErr = onComplete ? onComplete : noop
 
-    if (onComplete instanceof Function) {
-      s.add(onComplete)
-    }
+    const s = eventStore
+      .query(lb, upperBound, query || allEvents, order || EventsSortOrder.Ascending, horizon)
+      .pipe(
+        bufferCount(chunkSize),
+        subscribeOn(asyncScheduler), // ensure that callbacks are never called during .subscribe below
+        mergeScan(
+          (_a: void, chunk: Events) => {
+            return cancelled ? EMPTY : from(cb(chunk))
+          },
+          void 0,
+          1,
+        ),
+      )
+      // The only way to avoid parallel invocations is to use mergeScan with final arg=1
+      .subscribe({ complete: onCompleteOrErr, error: onCompleteOrErr })
 
     return () => {
       cancelled = true
@@ -202,7 +234,7 @@ export const EventFnsFromEventStoreV2 = (
     query: AutoCappedQuery,
     chunkSize: number,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
-    onComplete?: () => void,
+    onComplete?: (err?: unknown) => void,
   ) => {
     let canceled = false
     let cancelUpstream = () => {
@@ -210,7 +242,7 @@ export const EventFnsFromEventStoreV2 = (
       // Function is bound again when the real query starts
     }
 
-    present().then(present => {
+    present().then((present) => {
       if (canceled) {
         return
       }
@@ -220,6 +252,7 @@ export const EventFnsFromEventStoreV2 = (
         upperBound: present,
       }
 
+      // this is safe because queryKnownRangeChunked doesn’t invoke callbacks synchronously
       cancelUpstream = queryKnownRangeChunked(rangeQuery, chunkSize, onChunk, onComplete)
     })
 
@@ -228,22 +261,23 @@ export const EventFnsFromEventStoreV2 = (
       cancelUpstream()
     }
   }
+
   const subscribe = (
     openQuery: EventSubscription,
     onEvent: (e: ActyxEvent) => Promise<void> | void,
+    onError?: (err: unknown) => void,
   ): CancelSubscription => {
     const { lowerBound, query } = openQuery
     const lb = lowerBound || {}
 
     const rxSub = eventStore
       .subscribe(lb, query || allEvents)
-      .map(wrap)
-      .mergeScan(
-        (_a: void, e: ActyxEvent) => Observable.from(Promise.resolve(onEvent(e))),
-        void 0,
-        1,
+      .pipe(
+        subscribeOn(asyncScheduler), // ensure that no cb is called synchronously
+        map(wrap),
+        mergeScan((_a: void, e: ActyxEvent) => from(Promise.resolve(onEvent(e))), void 0, 1),
       )
-      .subscribe()
+      .subscribe({ error: onError || noop })
 
     return () => rxSub.unsubscribe()
   }
@@ -252,6 +286,7 @@ export const EventFnsFromEventStoreV2 = (
     openQuery: EventSubscription,
     cfg: { maxChunkSize?: number; maxChunkTimeMs?: number },
     onChunk: (chunk: EventChunk) => Promise<void> | void,
+    onError?: (err: unknown) => void,
   ): CancelSubscription => {
     const { lowerBound, query } = openQuery
     const lb = lowerBound || {}
@@ -262,17 +297,15 @@ export const EventFnsFromEventStoreV2 = (
     const bufSize = cfg.maxChunkSize || 1000
     const s = eventStore.subscribe(lb, query || allEvents)
 
-    const buffered = s
-      // 2nd arg to bufferTime is not marked as optional, but it IS optional
-      /* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */
-      .bufferTime(bufTime, null!, bufSize)
-      .filter(x => x.length > 0)
-      .map(buf => buf.sort(EventKey.ord.compare))
+    const buffered = s.pipe(
+      bufferOp(bufTime, bufSize),
+      map((buf) => buf.sort(EventKey.ord.compare)),
+    )
 
     // The only way to avoid parallel invocations is to use mergeScan with final arg=1
     const rxSub = buffered
-      .mergeScan((_a: void, chunk: Events) => Observable.from(cb(chunk)), void 0, 1)
-      .subscribe()
+      .pipe(mergeScan((_a: void, chunk: Events) => from(cb(chunk)), void 0, 1))
+      .subscribe({ error: onError || noop })
 
     return () => rxSub.unsubscribe()
   }
@@ -290,28 +323,32 @@ export const EventFnsFromEventStoreV2 = (
       case MsgType.timetravel:
         return {
           type: MsgType.timetravel,
-          trigger: wrap<E>(m.trigger),
-          high: wrap<E>(m.high),
+          trigger: m.trigger,
         }
       default:
         throw new Error('Unknown msg type in: ' + JSON.stringify(m))
     }
   }
 
-  const subMono = eventsMonotonic(eventStore, snapshotStore)
+  const subMonoReal = eventsMonotonic(eventStore)
+  const subMonoEmulated = eventsMonotonicEmulated(eventStore, snapshotStore)
+  const subMono = () => (gte(currentActyxVersion(), '2.12.0') ? subMonoReal : subMonoEmulated)
+
   const subscribeMonotonic = <E>(
     query: MonotonicSubscription<E>,
     cb: (data: EventsOrTimetravel<E>) => Promise<void> | void,
+    onCompleteOrError?: (err?: unknown) => void,
   ): CancelSubscription => {
-    const x = subMono(query.sessionId, query.query, query.attemptStartFrom)
-      .map(x => convertMsg<E>(x))
-      // The only way to avoid parallel invocations is to use mergeScan with final arg=1
-      .mergeScan(
-        (_a: void, m: EventsOrTimetravel<E>) => Observable.from(Promise.resolve(cb(m))),
-        void 0,
-        1,
+    const x = subMono()(query.sessionId, query.query, query.attemptStartFrom)
+      .pipe(
+        map((x) => convertMsg<E>(x)),
+        mergeScan((_a: void, m: EventsOrTimetravel<E>) => from(Promise.resolve(cb(m))), void 0, 1),
       )
-      .subscribe()
+      // The only way to avoid parallel invocations is to use mergeScan with final arg=1
+      .subscribe({
+        complete: onCompleteOrError || noop,
+        error: onCompleteOrError || noop,
+      })
 
     return () => x.unsubscribe()
   }
@@ -323,11 +360,9 @@ export const EventFnsFromEventStoreV2 = (
   ): Promise<[ActyxEvent<E> | undefined, OffsetMap]> => {
     const cur = await present()
 
-    const firstEvent = await eventStore
-      .query({}, cur, query, order)
-      .defaultIfEmpty(null)
-      .first()
-      .toPromise()
+    const firstEvent = await lastValueFrom(
+      eventStore.query({}, cur, query, order).pipe(defaultIfEmpty(null), first()),
+    )
 
     return [firstEvent ? wrap(firstEvent) : undefined, cur]
   }
@@ -340,17 +375,20 @@ export const EventFnsFromEventStoreV2 = (
   ): Promise<[R, OffsetMap]> => {
     const cur = await present()
 
-    const reducedValue = await eventStore
-      .query(
-        {},
-        cur,
-        query,
-        // Doesn't matter, we have to go through all known events anyways
-        EventsSortOrder.Ascending,
-      )
-      .map(e => wrap<E>(e))
-      .reduce(reduce, initial)
-      .toPromise()
+    const reducedValue = await lastValueFrom(
+      eventStore
+        .query(
+          {},
+          cur,
+          query,
+          // Doesn't matter, we have to go through all known events anyways
+          EventsSortOrder.Ascending,
+        )
+        .pipe(
+          map((e) => wrap<E>(e)),
+          rxReduce(reduce, initial),
+        ),
+    )
 
     return [reducedValue, cur]
   }
@@ -361,6 +399,7 @@ export const EventFnsFromEventStoreV2 = (
     initial: ActyxEvent<E> | undefined,
     onEvent: (event: E, metadata: Metadata) => void,
     shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean,
+    onError?: (err: unknown) => void,
   ): CancelSubscription => {
     let cur = initial
 
@@ -393,16 +432,17 @@ export const EventFnsFromEventStoreV2 = (
       }
     }
 
-    return subscribeChunked({ query, lowerBound: startingOffsets }, {}, cb)
+    return subscribeChunked({ query, lowerBound: startingOffsets }, {}, cb, onError)
   }
 
   const observeBestMatch = <E>(
     query: Where<E>,
     shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean,
     onReplaced: (event: E, metadata: Metadata) => void,
+    onError?: (err: unknown) => void,
   ): CancelSubscription => {
     let cancelled = false
-    let cancelSubscription: CancelSubscription | null = null
+    let cancelSubscription: CancelSubscription = () => (cancelled = true)
 
     reduceUpToPresent<ActyxEvent<E> | undefined, E>(
       query,
@@ -413,27 +453,39 @@ export const EventFnsFromEventStoreV2 = (
         return
       }
 
-      cancelSubscription = callbackWhenReplaced(query, offsets, initial, onReplaced, shouldReplace)
+      cancelSubscription = callbackWhenReplaced(
+        query,
+        offsets,
+        initial,
+        onReplaced,
+        shouldReplace,
+        onError,
+      )
+
+      if (cancelled) {
+        cancelSubscription()
+      }
     })
 
     return () => {
       cancelled = true
-      cancelSubscription && cancelSubscription()
+      cancelSubscription()
     }
   }
 
   const observeEarliest = <E>(
     tq: EarliestQuery<E>,
     onEvent: (event: E, metadata: Metadata) => void,
+    onError?: (err: unknown) => void,
   ): CancelSubscription => {
     const { query, eventOrder } = tq
 
     if (eventOrder === EventOrder.Timestamp) {
-      return observeBestMatch(query, lt(ordByTimestamp), onEvent)
+      return observeBestMatch(query, lt(_ordByTimestamp), onEvent)
     }
 
     let cancelled = false
-    let cancelSubscription: CancelSubscription | null = null
+    let cancelSubscription: CancelSubscription = () => (cancelled = true)
 
     /** If lamport order is desired, we can use store-support to speed up the query. */
     findFirstKnown(query, EventsSortOrder.Ascending).then(([earliest, offsets]) => {
@@ -441,27 +493,39 @@ export const EventFnsFromEventStoreV2 = (
         return
       }
 
-      cancelSubscription = callbackWhenReplaced(query, offsets, earliest, onEvent, lt(ordByKey))
+      cancelSubscription = callbackWhenReplaced(
+        query,
+        offsets,
+        earliest,
+        onEvent,
+        lt(_ordByKey),
+        onError,
+      )
+
+      if (cancelled) {
+        cancelSubscription()
+      }
     })
 
     return () => {
       cancelled = true
-      cancelSubscription && cancelSubscription()
+      cancelSubscription()
     }
   }
 
   const observeLatest = <E>(
     tq: LatestQuery<E>,
     onEvent: (event: E, metadata: Metadata) => void,
+    onError?: (err: unknown) => void,
   ): CancelSubscription => {
     const { query, eventOrder } = tq
 
     if (eventOrder === EventOrder.Timestamp) {
-      return observeBestMatch(query, gt(ordByTimestamp), onEvent)
+      return observeBestMatch(query, gt(_ordByTimestamp), onEvent)
     }
 
     let cancelled = false
-    let cancelSubscription: CancelSubscription | null = null
+    let cancelSubscription: CancelSubscription = () => (cancelled = true)
 
     /** If lamport order is desired, we can use store-support to speed up the query. */
     findFirstKnown(query, EventsSortOrder.Descending).then(([latest, offsets]) => {
@@ -469,12 +533,23 @@ export const EventFnsFromEventStoreV2 = (
         return
       }
 
-      cancelSubscription = callbackWhenReplaced(query, offsets, latest, onEvent, gt(ordByKey))
+      cancelSubscription = callbackWhenReplaced(
+        query,
+        offsets,
+        latest,
+        onEvent,
+        gt(_ordByKey),
+        onError,
+      )
+
+      if (cancelled) {
+        cancelSubscription()
+      }
     })
 
     return () => {
       cancelled = true
-      cancelSubscription && cancelSubscription()
+      cancelSubscription()
     }
   }
 
@@ -483,9 +558,10 @@ export const EventFnsFromEventStoreV2 = (
     reduce: (acc: R, event: E, metadata: Metadata) => R,
     initialVal: R,
     onUpdate: (result: R) => void,
+    onError?: (err: unknown) => void,
   ): CancelSubscription => {
     let cancelled = false
-    let cancelSubscription: CancelSubscription | null = null
+    let cancelSubscription: CancelSubscription = () => (cancelled = true)
 
     const reduceDirect = (r: R, evt: ActyxEvent) => reduce(r, evt.payload as E, evt.meta)
 
@@ -506,16 +582,20 @@ export const EventFnsFromEventStoreV2 = (
         onUpdate(cur)
       }
 
-      cancelSubscription = subscribeChunked({ query, lowerBound: offsets }, {}, cb)
+      cancelSubscription = subscribeChunked({ query, lowerBound: offsets }, {}, cb, onError)
+
+      if (cancelled) {
+        cancelSubscription()
+      }
     })
 
     return () => {
       cancelled = true
-      cancelSubscription && cancelSubscription()
+      cancelSubscription()
     }
   }
 
-  const emit = (taggedEvents: ReadonlyArray<TaggedEvent>) => {
+  const emit = (taggedEvents: TaggedEvent[]) => {
     const events = taggedEvents.map(({ tags, event }) => {
       return {
         tags,
@@ -523,13 +603,29 @@ export const EventFnsFromEventStoreV2 = (
       }
     })
 
-    const allPersisted = eventStore
+    const allPersisted = new ReplaySubject<Metadata[]>(1)
+    eventStore
       .persistEvents(events)
-      .toArray()
-      .map(x => x.flat().map(mkMeta))
-      .shareReplay(1)
+      .pipe(
+        toArray(),
+        map((x) => x.flat().map(mkMeta)),
+      )
+      .subscribe(allPersisted)
 
-    return pendingEmission(allPersisted)
+    return pendingEmission(allPersisted.asObservable())
+  }
+
+  // TS doesn’t understand how we are implementing this overload.
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const publish: EventFns['publish'] = (taggedEvents: TaggedEvent[] | TaggedEvent) => {
+    if (Array.isArray(taggedEvents)) {
+      return emit(taggedEvents).toPromise()
+    } else {
+      return emit([taggedEvents as TaggedEvent])
+        .toPromise()
+        .then((x) => x[0])
+    }
   }
 
   // FIXME properly type EventStore. (This runs without error because in production mode the ws event store does not use io-ts.)
@@ -540,7 +636,7 @@ export const EventFnsFromEventStoreV2 = (
       return e as AqlResponse
     }
 
-    const w = wrap((e as unknown) as Event)
+    const w = wrap(e as unknown as Event)
 
     return {
       ...w,
@@ -549,12 +645,63 @@ export const EventFnsFromEventStoreV2 = (
     }
   }
 
-  const queryAql = async (query: string): Promise<AqlResponse[]> => {
-    return eventStore
-      .queryUnchecked(query)
-      .map(wrapAql)
-      .toArray()
-      .toPromise()
+  const getQueryAndOrd = (query: AqlQuery): [string, EventsSortOrder] => {
+    if (isString(query)) {
+      return [query, EventsSortOrder.Ascending]
+    } else {
+      return [query.query, query.order || EventsSortOrder.Ascending]
+    }
+  }
+
+  const queryAql = async (query: AqlQuery, lowerBound?: OffsetMap): Promise<AqlResponse[]> => {
+    const [aql, ord] = getQueryAndOrd(query)
+
+    return lastValueFrom(
+      eventStore.queryUnchecked(aql, ord, lowerBound).pipe(map(wrapAql), toArray()),
+    )
+  }
+  const subscribeAql = (
+    query: AqlQuery,
+    onResponse: (r: AqlResponse) => Promise<void> | void,
+    onError?: (err: unknown) => void,
+    lowerBound?: OffsetMap,
+  ): CancelSubscription => {
+    const lb = lowerBound || {}
+    const qr = typeof query === 'string' ? query : query.query
+
+    const rxSub = eventStore
+      .subscribeUnchecked(qr, lb)
+      .pipe(
+        map(wrapAql),
+        mergeScan((_a: void, r: AqlResponse) => from(Promise.resolve(onResponse(r))), void 0, 1),
+      )
+      .subscribe({ error: onError || noop })
+
+    return () => rxSub.unsubscribe()
+  }
+
+  const queryAqlChunked = (
+    query: AqlQuery,
+    chunkSize: number,
+    onChunk: (chunk: AqlResponse[]) => Promise<void> | void,
+    onCompleteOrError: (err?: unknown) => void,
+  ): CancelSubscription => {
+    const [aql, ord] = getQueryAndOrd(query)
+
+    const buffered = eventStore.queryUnchecked(aql, ord).pipe(map(wrapAql), bufferCount(chunkSize))
+
+    // The only way to avoid parallel invocations is to use mergeScan with final arg=1
+    const rxSub = buffered
+      .pipe(
+        mergeScan(
+          (_a: void, chunk: AqlResponse[]) => from(Promise.resolve(onChunk(chunk))),
+          undefined,
+          1,
+        ),
+      )
+      .subscribe({ error: onCompleteOrError, complete: onCompleteOrError })
+
+    return () => rxSub.unsubscribe()
   }
 
   return {
@@ -565,13 +712,16 @@ export const EventFnsFromEventStoreV2 = (
     queryAllKnown,
     queryAllKnownChunked,
     queryAql,
+    queryAqlChunked,
     subscribe,
     subscribeChunked,
+    subscribeAql,
     subscribeMonotonic,
     observeEarliest,
     observeLatest,
     observeBestMatch,
     observeUnorderedReduce,
     emit,
+    publish,
   }
 }

@@ -29,7 +29,7 @@ fn setup() {
     static INIT: Once = Once::new();
     INIT.call_once(|| {
         // build needed binaries for quicker execution
-        for bin in &["actyx-linux", "ax"] {
+        for bin in &["actyx", "ax"] {
             eprintln!("building {}", bin);
             for msg in CargoBuild::new()
                 .manifest_path("../Cargo.toml")
@@ -90,10 +90,11 @@ fn with_api(
     let workdir = tempdir()?;
 
     let _ = writeln!(log, "running Actyx in {}", std::env::current_dir()?.display());
-    let mut process = run("actyx-linux")?
+    let mut process = run("actyx")?
         .current_dir(workdir.path())
         .stderr(Stdio::piped())
         .args(&["--bind-api=0", "--bind-admin=0", "--bind-swarm=0"])
+        .env("RUST_LOG", "debug")
         .spawn()?;
     let stderr = process.stderr.take().unwrap();
 
@@ -185,6 +186,7 @@ fn offsets() -> anyhow::Result<()> {
                 identity.as_os_str(),
                 o(&format!("localhost:{}", api)),
             ])
+            .env("RUST_LOG", "debug")
             .output()?;
         eprintln!(
             "out:\n{}\nerr:\n{}\n---",
@@ -218,7 +220,7 @@ fn offsets() -> anyhow::Result<()> {
         );
         ensure!(out.status.success());
         let out = String::from_utf8(out.stdout)?;
-        ensure!(out.contains(&stream));
+        ensure!(out.contains(&stream), "{}", out);
         Ok(())
     });
     if result.is_err() {
@@ -326,9 +328,11 @@ fn bad_query() -> anyhow::Result<()> {
             String::from_utf8_lossy(&out.stderr)
         );
         ensure!(!out.status.success());
+        let out = String::from_utf8(out.stderr)?;
         ensure!(
-            String::from_utf8(out.stderr)?
-                == "[ERR_INVALID_INPUT] Error: The query uses beta features that are not enabled: timeRange.\n"
+            out == "[ERR_INVALID_INPUT] Error: The query uses beta features that are not enabled: timeRange.\n",
+            "{}",
+            out
         );
 
         let out = run("ax")?
@@ -347,12 +351,48 @@ fn bad_query() -> anyhow::Result<()> {
             String::from_utf8_lossy(&out.stderr)
         );
         ensure!(!out.status.success());
+        let out = String::from_utf8(out.stdout)?;
         ensure!(
-            String::from_utf8(out.stdout)?
-                == r#"{"code":"ERR_INVALID_INPUT","message":"The query uses beta features that are not enabled: timeRange."}
-"#
+            out == r#"{"code":"ERR_INVALID_INPUT","message":"The query uses beta features that are not enabled: timeRange."}
+"#,
+            "{}",
+            out
         );
 
+        Ok(())
+    });
+    if result.is_err() {
+        eprintln!("{}", log);
+    }
+    result
+}
+
+#[test]
+fn publish() -> anyhow::Result<()> {
+    let log = Log::default();
+    let result = with_api(log.clone(), |api, identity| {
+        let out = run("ax")?
+            .args(&[
+                o("events"),
+                o("publish"),
+                o("-ji"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+                o(r#"{ "baz":42 }"#),
+                o("-t"),
+                o("foo"),
+                o("-t"),
+                o("bar"),
+            ])
+            .output()?;
+        eprintln!(
+            "out:\n{}\nerr:\n{}\n---",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        ensure!(out.status.success());
+        let json = serde_json::from_slice::<Value>(&out.stdout)?;
+        ensure!(get(&json, "/code")? == json!("OK"), "line {} was: {}", line!(), json);
         Ok(())
     });
     if result.is_err() {
@@ -381,7 +421,8 @@ fn diagnostics() -> anyhow::Result<()> {
             String::from_utf8_lossy(&out.stderr)
         );
         ensure!(out.status.success());
-        ensure!(String::from_utf8(out.stdout)?.contains("is not a number"));
+        let out = String::from_utf8(out.stdout)?;
+        ensure!(out.contains("is not a number"), "{}", out);
         Ok(())
     });
     if result.is_err() {
@@ -411,8 +452,12 @@ fn aggregate() -> anyhow::Result<()> {
         );
         ensure!(out.status.success());
         let json = serde_json::from_slice::<Value>(&out.stdout)?;
-        ensure!(get(&json, "/code")? == json!("OK"));
-        ensure!(get(&json, "/result/payload")?.as_u64() > Some(0));
+        ensure!(get(&json, "/code")? == json!("OK"), "{}", get(&json, "/code")?);
+        ensure!(
+            get(&json, "/result/payload")?.as_u64() > Some(0),
+            "{:?}",
+            get(&json, "/result/payload")?.as_u64()
+        );
         Ok(())
     });
     if result.is_err() {

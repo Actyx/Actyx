@@ -9,7 +9,7 @@ use anyhow::Result;
 use crossbeam::channel::{Receiver, Sender};
 use libp2p::PeerId;
 use parking_lot::Mutex;
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 use util::SocketAddrHelper;
 
 impl NodeApi {
@@ -19,6 +19,7 @@ impl NodeApi {
         sender: Sender<ExternalEvent>,
         bind_to: SocketAddrHelper,
         rx: Receiver<ComponentRequest<()>>,
+        store_dir: PathBuf,
         store: StoreTx,
     ) -> Self {
         Self {
@@ -29,6 +30,7 @@ impl NodeApi {
             sender,
             rt: None,
             settings: Default::default(),
+            store_dir,
             store,
         }
     }
@@ -42,6 +44,7 @@ pub struct NodeApi {
     sender: Sender<ExternalEvent>,
     rt: Option<tokio::runtime::Runtime>,
     settings: Arc<Mutex<NodeApiSettings>>,
+    store_dir: PathBuf,
     store: StoreTx,
 }
 #[derive(Default, PartialEq, Clone)]
@@ -79,6 +82,7 @@ impl Component<(), NodeApiSettings> for NodeApi {
             self.keypair.clone(),
             self.sender.clone(),
             self.bind_to.clone(),
+            self.store_dir.clone(),
             self.store.clone(),
             self.settings.clone(),
         ))?;

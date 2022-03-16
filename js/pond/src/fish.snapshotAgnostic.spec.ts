@@ -1,7 +1,7 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import {
@@ -59,7 +59,7 @@ describe('fish event store + jar snapshot agnostic behaviour', () => {
     },
   ])
 
-  forAllFish(`should put events into the right order for state computation`, async fish => {
+  forAllFish(`should put events into the right order for state computation`, async (fish) => {
     const { applyAndGetState } = await setup(fish)
 
     expect(await applyAndGetState(aEvents)).toEqual([1, 3])
@@ -67,13 +67,13 @@ describe('fish event store + jar snapshot agnostic behaviour', () => {
     expect(await applyAndGetState(bEvents)).toEqual([1, 2, 3, 4])
   })
 
-  forAllFish(`should deal properly with unsorted live chunks, A first`, async fish => {
+  forAllFish(`should deal properly with unsorted live chunks, A first`, async (fish) => {
     const { applyAndGetState } = await setup(fish)
 
     expect(await applyAndGetState(aEvents.concat(bEvents))).toEqual([1, 2, 3, 4])
   })
 
-  forAllFish(`should deal properly with unsorted live chunks, B first`, async fish => {
+  forAllFish(`should deal properly with unsorted live chunks, B first`, async (fish) => {
     const { applyAndGetState } = await setup(fish)
 
     expect(await applyAndGetState(bEvents.concat(aEvents))).toEqual([1, 2, 3, 4])

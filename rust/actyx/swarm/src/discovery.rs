@@ -38,18 +38,21 @@
 //! while when configuring an external address you are telling other peers how to reach you, given
 //! you have a bootstrap node in common.
 use crate::{internal_app_id, BanyanStore};
-use actyx_sdk::{tag, tags, Payload, StreamNr};
+use actyx_sdk::{tag, tags, Payload, StreamNr, Timestamp};
 use anyhow::Result;
 use fnv::{FnvHashMap, FnvHashSet};
 use futures::stream::{Stream, StreamExt};
+use ipfs_embed::multiaddr;
 use libipld::cbor::DagCborCodec;
 use libipld::codec::{Codec, Decode, Encode};
 use libipld::DagCbor;
 use std::future::Future;
 use std::io::{Read, Seek, Write};
 use std::time::Duration;
+use tokio::time::timeout;
 use trees::query::{LamportQuery, TagExprQuery, TimeQuery};
 use trees::tags::{ScopedTag, ScopedTagSet, TagScope};
+use trees::AxKey;
 
 #[derive(DagCbor, Debug)]
 #[allow(clippy::enum_variant_names)]
@@ -82,7 +85,7 @@ impl Event {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 #[repr(transparent)]
 struct PeerId(ipfs_embed::PeerId);
 
@@ -116,7 +119,7 @@ where
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 struct Multiaddr(ipfs_embed::Multiaddr);
 
@@ -150,32 +153,74 @@ where
     }
 }
 
+fn decode_event(e: Result<(u64, AxKey, Payload)>, my_peer_id: ipfs_embed::PeerId) -> Option<Event> {
+    let (_off, _key, event) = match e {
+        Ok(event) => event,
+        Err(err) => {
+            tracing::warn!("store error: {}", err);
+            return None;
+        }
+    };
+    let event: Event = match DagCborCodec.decode(event.as_slice()) {
+        Ok(event) => event,
+        Err(err) => {
+            tracing::debug!("decoding error: {}", err);
+            return None;
+        }
+    };
+    if *event.peer_id() == my_peer_id {
+        None
+    } else {
+        Some(event)
+    }
+}
+
 pub async fn discovery_ingest(store: BanyanStore) {
     let mut tags: ScopedTagSet = tags!("discovery").into();
     tags.insert(ScopedTag::new(TagScope::Internal, tag!("app_id:com.actyx")));
-    let query = TagExprQuery::new(vec![tags], LamportQuery::all(), TimeQuery::all());
+    let query = TagExprQuery::new(
+        vec![tags],
+        LamportQuery::all(),
+        TimeQuery::from(Timestamp::now() - 1_000_000_000_000..),
+    );
     let mut stream = store.stream_filtered_stream_ordered(query);
     let peer_id = store.ipfs().local_peer_id();
-    let node_name = store.ipfs().local_node_name();
-    while let Some(event) = stream.next().await {
-        let event = match event {
-            Ok(event) => event,
-            Err(err) => {
-                tracing::warn!("{}", err);
-                continue;
-            }
+
+    // first catch up and build a list, we won’t want to spam the address book
+    let mut addresses = FnvHashMap::<PeerId, FnvHashSet<Multiaddr>>::default();
+    while let Ok(Some(event)) = timeout(Duration::from_secs(3), stream.next()).await {
+        let event = match decode_event(event, peer_id) {
+            Some(e) => e,
+            None => continue,
         };
-        let event: Event = match DagCborCodec.decode(event.2.as_slice()) {
-            Ok(event) => event,
-            Err(err) => {
-                tracing::warn!("{}", err);
-                continue;
+        tracing::debug!("discovery_ingest (catch-up) {:?}", event);
+        match event {
+            Event::NewListenAddr(peer, addr)
+            | Event::NewExternalAddr(peer, addr)
+            | Event::NewObservedAddr(peer, addr) => {
+                addresses.entry(peer).or_default().insert(addr);
             }
-        };
-        if *event.peer_id() == peer_id {
-            continue;
+            Event::ExpiredListenAddr(peer, addr)
+            | Event::ExpiredExternalAddr(peer, addr)
+            | Event::ExpiredObservedAddr(peer, addr) => {
+                addresses.entry(peer).or_default().remove(&addr);
+            }
         }
-        tracing::debug!("discovery_ingest {} {:?}", node_name, event);
+    }
+    for (peer, addrs) in addresses {
+        for addr in addrs {
+            store.ipfs().add_address(&peer.into(), addr.into());
+        }
+    }
+
+    // then switch to live mode
+    tracing::debug!("discovery_ingest switching to live mode");
+    while let Some(event) = stream.next().await {
+        let event = match decode_event(event, peer_id) {
+            Some(e) => e,
+            None => continue,
+        };
+        tracing::debug!("discovery_ingest {:?}", event);
         match event {
             Event::NewListenAddr(peer, addr)
             | Event::NewExternalAddr(peer, addr)
@@ -209,24 +254,48 @@ impl Drop for Dialer {
     }
 }
 
+fn is_loopback(addr: &ipfs_embed::Multiaddr) -> bool {
+    match addr.iter().next() {
+        Some(multiaddr::Protocol::Ip4(a)) => a.is_loopback(),
+        Some(multiaddr::Protocol::Ip6(a)) => a.is_loopback(),
+        _ => false,
+    }
+}
+
 pub fn discovery_publish(
     store: BanyanStore,
     mut stream: impl Stream<Item = ipfs_embed::Event> + Unpin,
     nr: StreamNr,
     external: FnvHashSet<ipfs_embed::Multiaddr>,
     enable_discovery: bool,
+    to_warn: Vec<ipfs_embed::PeerId>,
 ) -> Result<impl Future<Output = ()>> {
     let mut buffer = vec![];
     let tags = tags!("discovery");
     let peer_id: PeerId = store.ipfs().local_peer_id().into();
-    let node_name = store.ipfs().local_node_name();
     let mut dialers = FnvHashMap::<_, Dialer>::default();
+    let mut to_warn = to_warn
+        .into_iter()
+        .map(|id| (id, true))
+        .collect::<FnvHashMap<_, bool>>();
     Ok(async move {
         while let Some(event) = stream.next().await {
-            tracing::debug!("discovery_publish {} {:?}", node_name, event);
+            tracing::trace!("discovery_publish {:?}", event);
             let event = match event {
-                ipfs_embed::Event::NewListenAddr(_, addr) => Event::NewListenAddr(peer_id, addr.into()),
-                ipfs_embed::Event::ExpiredListenAddr(_, addr) => Event::ExpiredListenAddr(peer_id, addr.into()),
+                ipfs_embed::Event::NewListenAddr(_, addr) => {
+                    if !is_loopback(&addr) {
+                        Event::NewListenAddr(peer_id, addr.into())
+                    } else {
+                        continue;
+                    }
+                }
+                ipfs_embed::Event::ExpiredListenAddr(_, addr) => {
+                    if !is_loopback(&addr) {
+                        Event::ExpiredListenAddr(peer_id, addr.into())
+                    } else {
+                        continue;
+                    }
+                }
                 ipfs_embed::Event::NewExternalAddr(addr) => {
                     if external.contains(&addr) {
                         Event::NewExternalAddr(peer_id, addr.into())
@@ -241,17 +310,26 @@ pub fn discovery_publish(
                         Event::ExpiredObservedAddr(peer_id, addr.into())
                     }
                 }
-                ipfs_embed::Event::Discovered(peer) | ipfs_embed::Event::Disconnected(peer) => {
-                    // dialing on disconnected ensures the unreachable event fires.
+                ipfs_embed::Event::Discovered(peer) => {
                     store.ipfs().dial(&peer);
                     continue;
                 }
                 ipfs_embed::Event::Unreachable(peer) => {
+                    if let Some(warn) = to_warn.get_mut(&peer) {
+                        if *warn {
+                            tracing::warn!(id = display(&peer), "connection failed to initial peer");
+                        } else {
+                            tracing::debug!(id = display(&peer), "connection failed to initial peer");
+                        }
+                        *warn = false;
+                    } else {
+                        tracing::debug!(id = display(&peer), "connection failed");
+                    }
                     let ipfs = store.ipfs().clone();
                     let backoff = if let Some(dialer) = dialers.remove(&peer) {
-                        dialer.backoff.saturating_add(Duration::from_secs(10))
+                        dialer.backoff.saturating_mul(2).min(Duration::from_secs(60))
                     } else {
-                        Duration::from_secs(10)
+                        Duration::from_secs(1)
                     };
                     let task = tokio::spawn(async move {
                         tokio::time::sleep(backoff).await;
@@ -261,7 +339,49 @@ pub fn discovery_publish(
                     continue;
                 }
                 ipfs_embed::Event::Connected(peer) => {
+                    if let Some(warn) = to_warn.get_mut(&peer) {
+                        tracing::info!(id = display(&peer), "connected to initial peer");
+                        *warn = false;
+                    } else {
+                        tracing::debug!(id = display(&peer), "connected");
+                    }
+                    // dropping the Dialer will kill the task
                     dialers.remove(&peer);
+                    continue;
+                }
+                ipfs_embed::Event::Disconnected(peer) => {
+                    if let Some(warn) = to_warn.get_mut(&peer) {
+                        tracing::info!(id = display(&peer), "disconnected from initial peer");
+                        *warn = false;
+                    } else {
+                        tracing::debug!(id = display(&peer), "disconnected");
+                    }
+                    // dialing on disconnected ensures the unreachable event fires.
+                    store.ipfs().dial(&peer);
+                    continue;
+                }
+                ipfs_embed::Event::NewInfo(peer) => {
+                    if let Some(info) = store.ipfs().peer_info(&peer) {
+                        if let Some(rtt) = info.full_rtt() {
+                            if rtt.failures() > 0 {
+                                tracing::info!(peer = display(peer), info = debug(rtt), "ping failure");
+                            } else if rtt.current().as_secs() >= 1 {
+                                let addrs = store
+                                    .ipfs()
+                                    .connections()
+                                    .into_iter()
+                                    .filter(|x| x.0 == peer)
+                                    .map(|x| x.1)
+                                    .collect::<Vec<_>>();
+                                tracing::warn!(
+                                    peer = display(peer),
+                                    addr = debug(&addrs),
+                                    info = debug(rtt),
+                                    "slow ping time"
+                                );
+                            }
+                        }
+                    }
                     continue;
                 }
                 _ => continue,

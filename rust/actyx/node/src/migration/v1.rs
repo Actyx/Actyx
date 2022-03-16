@@ -20,7 +20,6 @@ use crate::{
     host::apply_system_schema,
     migration::{open_readonly, NODE_DB_FILENAME},
     node_storage::NodeStorage,
-    CURRENT_DB_VERSION,
 };
 
 #[allow(dead_code)]
@@ -143,7 +142,7 @@ fn copy_db(from: &Connection, to: impl AsRef<Path>) -> anyhow::Result<Connection
 /// Migrates settings from a given `old` repository to a new one, which is
 /// created within `new_in_dir`.
 fn migrate_settings(old: &settings::Repository, new_in_dir: impl AsRef<Path>) -> anyhow::Result<()> {
-    let mut new = settings::Repository::new(settings::Database::new(new_in_dir.as_ref().to_path_buf())?);
+    let mut new = settings::Repository::new(settings::Database::new(new_in_dir.as_ref())?);
     apply_system_schema(&mut new)?;
 
     for (source, target) in [
@@ -348,9 +347,10 @@ pub(crate) fn find_v1_working_dir(base: impl AsRef<Path>) -> Option<PathBuf> {
 pub fn migrate(
     v1_working_dir: impl AsRef<Path>,
     v2_working_dir: impl AsRef<Path>,
-    additional_sources: BTreeSet<SourceId>,
+    additional_sources: Option<BTreeSet<SourceId>>,
     emit_own_source: bool,
     dry_run: bool,
+    version: u32,
 ) -> anyhow::Result<()> {
     if is_v1_running() {
         bail!("ActyxOS v1 seems to be running. Please stop the process and retry.");
@@ -361,27 +361,28 @@ pub fn migrate(
     tracing::debug!("V1 dir {} intact", v1_working_dir.as_ref().display());
 
     // create temporary directory for v2
-    let temp_v2 = tempdir_in(&v2_working_dir)?;
+    let temp_v2 = tempdir_in(&v2_working_dir).context("creating tempdir for v2 storage")?;
 
     // migrate settings
-    migrate_settings(&v1_dir.settings_repo, temp_v2.path())?;
+    migrate_settings(&v1_dir.settings_repo, temp_v2.path()).context("migrating settings")?;
 
     // Migrate node db
     let mut v2_node_db_conn = copy_db(
         &v1_dir.node_storage.connection.lock(),
         temp_v2.path().join(NODE_DB_FILENAME),
-    )?;
-    NodeStorage::migrate(&mut &mut v2_node_db_conn).context("Migrating settings")?;
+    )
+    .context("copying the data")?;
+    NodeStorage::migrate(&mut v2_node_db_conn, version).context("migrating node DB")?;
 
     // index db is node db
     // create blocks db
-    std::fs::create_dir(temp_v2.path().join("store"))?;
+    std::fs::create_dir(temp_v2.path().join("store")).context("creating store directory")?;
     let v2_blocks_db = temp_v2
         .path()
         .join("store")
         // ipfs-embed block store is named `<topic>.sqlite`
         .join(v1_dir.index_db.with_extension("sqlite").file_name().unwrap());
-    let _ = BlockStore::<libipld::DefaultParams>::open(&v2_blocks_db, Default::default())?;
+    BlockStore::<libipld::DefaultParams>::open(&v2_blocks_db, Default::default()).context("creating block store")?;
     // migrate swarm dbs
     let v1_source_id: SourceId = {
         let conn = open_readonly(&v1_dir.index_db).context("Opening v1 index db")?;
@@ -395,19 +396,17 @@ pub fn migrate(
     let node_id = NodeStorage::query_node_id(&v2_node_db_conn)
         .context("Getting node id")?
         .unwrap();
+    let filtered_sources = additional_sources.map(|s| {
+        if emit_own_source {
+            s.into_iter().chain(std::iter::once(v1_source_id)).collect()
+        } else {
+            s
+        }
+    });
     let opts = ConversionOptions {
         gc: true,
         vacuum: true,
-        filtered_sources: if emit_own_source {
-            Some(
-                additional_sources
-                    .into_iter()
-                    .chain(std::iter::once(v1_source_id))
-                    .collect(),
-            )
-        } else {
-            Some(additional_sources)
-        },
+        filtered_sources,
         source_to_stream: maplit::btreemap! { v1_source_id => node_id.stream(0.into()) },
     };
     swarm::convert::convert_from_v1(
@@ -418,7 +417,7 @@ pub fn migrate(
         opts,
         true,
         NodeStorage::version(&v1_dir.node_storage.connection.lock())?.into(),
-        CURRENT_DB_VERSION.into(),
+        2,
         node_id,
     )
     .context("Converting swarm DBs")?;

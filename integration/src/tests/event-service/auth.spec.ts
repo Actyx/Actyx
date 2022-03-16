@@ -1,3 +1,6 @@
+/**
+ * @jest-environment ./dist/integration/src/jest/environment
+ */
 import fetch from 'node-fetch'
 import {
   getToken,
@@ -33,8 +36,7 @@ describe('auth http', () => {
     appId: 'com.actyx.auth-test',
     displayName: 'auth test app',
     version: 'v0.0.1',
-    signature:
-      'v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYZ0JGTTgyZVpMWTdJQzhRbmFuVzFYZ0xrZFRQaDN5aCtGeDJlZlVqYm9qWGtUTWhUdFZNRU9BZFJaMVdTSGZyUjZUOHl1NEFKdFN5azhMbkRvTVhlQnc9PWlkZXZQdWJrZXl4LTBuejFZZEh1L0pEbVM2Q0ltY1pnT2o5WTk2MHNKT1ByYlpIQUpPMTA3cVcwPWphcHBEb21haW5zgmtjb20uYWN0eXguKm1jb20uZXhhbXBsZS4qa2F4U2lnbmF0dXJleFg4QmwzekNObm81R2JwS1VvYXRpN0NpRmdyMEtHd05IQjFrVHdCVkt6TzlwelcwN2hGa2tRK0dYdnljOVFhV2hIVDVhWHp6TyttVnJ4M2VpQzdUUkVBUT09/w==',
+    signature: process.env['AUTH_TEST_SIGNATURE'],
   }
 
   it('auth flow signed manifest with node in prod mode', () =>
@@ -60,7 +62,7 @@ describe('auth http', () => {
       const getErr = (msg: string) =>
         get({
           code: 'ERR_APP_UNAUTHORIZED',
-          message: `'com.actyx.auth-test' is not authorized. ${msg}. Provide a valid app license to the node.`,
+          message: `App 'com.actyx.auth-test' is not authorized: ${msg}. Provide a valid app license in the node settings.`,
         })
 
       const offsets = async (token: string) => {
@@ -79,8 +81,8 @@ describe('auth http', () => {
       })
 
       // should fail when node in prod mode without app license
-      await set('node', 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-      await getErr('License not found for app')
+      await set('node', process.env['AUTH_TEST_NODE_LICENSE'] || '')
+      await getErr('no license found')
 
       // FIXME: previous token should actually be invalidated
       expect(await offsets(token1)).toEqual({
@@ -92,18 +94,16 @@ describe('auth http', () => {
       await setAppLicense(
         'MALFORMED_LICENSE_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
       )
-      await getErr('Could not parse license')
+      await getErr('invalid license key format')
 
       // try out with falsified license
       await setAppLicense(
         'v25saWNlbnNlVmVyc2lvbgBrbGljZW5zZVR5cGWhaGV4cGlyaW5nomVhcHBJZHNjb20uYWN0eXguYXV0aC10ZXN0aWV4cGlyZXNBdHQxOTcxLTAxLTAxVDAwOjAxOjAxWmljcmVhdGVkQXR0MTk3MC0wMS0wMVQwMDowMTowMVppc2lnbmF0dXJleFg1dmEvQ3NYWlk3TUV6VVJ0SUEwVm9mL3R1T3FlejZCN3FYby9JNTl4T0NkUDNwUFVabGZEekZPbExIK09oZXJjWGkwRTJ1RXFnZ2x1cUdyaGFDVVhDZz09aXJlcXVlc3RlcqFlZW1haWx0Y3VzdG9tZXJAZXhhbXBsZS5jb23/',
       )
-      await getErr('Could not validate license')
+      await getErr('invalid signature')
 
       // use proper app manifest
-      await setAppLicense(
-        'v25saWNlbnNlVmVyc2lvbgBrbGljZW5zZVR5cGWhaGV4cGlyaW5nomVhcHBJZHNjb20uYWN0eXguYXV0aC10ZXN0aWV4cGlyZXNBdHQxOTcxLTAxLTAxVDAwOjAxOjAxWmljcmVhdGVkQXR0MTk3MC0wMS0wMVQwMDowMTowMVppc2lnbmF0dXJleFhBQWRSd1U4UTZlb3JLY0N3SjE1T0t4OWVPQ0kxNjN3MFhwTFpHWkNPUWlDWUZlYkR1cFlBbWlNOVhsb3dDYWw5dUtuSWhRelkzSUo2RkdUbEtJMStEUT09aXJlcXVlc3RlcqFlZW1haWx0Y3VzdG9tZXJAZXhhbXBsZS5jb23/',
-      )
+      await setAppLicense(process.env['AUTH_TEST_LICENSE'] || '')
 
       const { token: token2 } = await get({ token: expect.any(String) })
       expect(await offsets(token2)).toEqual({
@@ -177,8 +177,7 @@ describe('auth http', () => {
           appId: 'com.actyx.my-app',
           displayName: 'Mine!',
           version: '0.8.5',
-          signature:
-            'v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYZ0JGTTgyZVpMWTdJQzhRbmFuVzFYZ0xrZFRQaDN5aCtGeDJlZlVqYm9qWGtUTWhUdFZNRU9BZFJaMVdTSGZyUjZUOHl1NEFKdFN5azhMbkRvTVhlQnc9PWlkZXZQdWJrZXl4LTBuejFZZEh1L0pEbVM2Q0ltY1pnT2o5WTk2MHNKT1ByYlpIQUpPMTA3cVcwPWphcHBEb21haW5zgmtjb20uYWN0eXguKm1jb20uZXhhbXBsZS4qa2F4U2lnbmF0dXJleFg4QmwzekNObm81R2JwS1VvYXRpN0NpRmdyMEtHd05IQjFrVHdCVkt6TzlwelcwN2hGa2tRK0dYdnljOVFhV2hIVDVhWHp6TyttVnJ4M2VpQzdUUkVBUT09/w==',
+          signature: process.env['AUTH_TEST_SIGNATURE'],
         }),
         headers: {
           Accept: 'application/json',
@@ -286,7 +285,7 @@ describe('auth http', () => {
 describe('auth ws', () => {
   const mkWs = (path: string, f: (ws: WebSocket, resolve: () => void) => void): Promise<void[]> =>
     run((httpApi) => {
-      const ws = new WebSocket(httpApi + mkEventsPath(path))
+      const ws = new WebSocket(toWs(httpApi) + mkEventsPath(path))
       return new Promise<void>((resolve) => {
         f(ws, resolve)
       })
@@ -312,7 +311,7 @@ describe('auth ws', () => {
       getToken(trialManifest, httpApi)
         .then((authResponse) => authResponse.json())
         .then((x) => {
-          const ws = new WebSocket(httpApi + mkEventsPath(`?${x.token}`))
+          const ws = new WebSocket(toWs(httpApi) + mkEventsPath(`?${x.token}`))
           const message = {
             type: 'request',
             serviceId: 'offsets',
@@ -334,3 +333,7 @@ describe('auth ws', () => {
         }),
     ))
 })
+
+const toWs = (url: string): string => {
+  return url.replace('http://', 'ws://')
+}

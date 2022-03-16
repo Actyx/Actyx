@@ -5,11 +5,13 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { right } from 'fp-ts/lib/Either'
-import { Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
+import { Ord } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
+import * as N from 'fp-ts/number'
+import * as S from 'fp-ts/string'
 import * as t from 'io-ts'
 import { EventsSortOrder, isString } from '../types'
-import { Codecs, OffsetMapIO } from '../types/wire'
+import { Codecs, EventKeyIO, OffsetMapIO } from '../types/wire'
 
 // EnumType Class
 export class EnumType<A> extends t.Type<A> {
@@ -18,7 +20,7 @@ export class EnumType<A> extends t.Type<A> {
   public constructor(e: object, name?: string) {
     super(
       name || 'enum',
-      (u): u is A => Object.values(this.enumObject).some(v => v === u),
+      (u): u is A => Object.values(this.enumObject).some((v) => v === u),
       (u, c) => (this.is(u) ? t.success(u) : t.failure(u, c)),
       t.identity,
     )
@@ -38,17 +40,17 @@ export const OffsetsResponse = t.readonly(
 
 export type OffsetsResponse = t.TypeOf<typeof OffsetsResponse>
 
-const stringRA = t.readonlyArray(t.string)
+const stringRA = t.array(t.string)
 
-type Tags = ReadonlyArray<string>
-type TagsOnWire = ReadonlyArray<string> | undefined
+type Tags = string[]
+type TagsOnWire = string[] | undefined
 const Tags = new t.Type<Tags, TagsOnWire>(
   'TagsSetFromArray',
   (x): x is Tags => x instanceof Array && x.every(isString),
   // Rust side for now expresses empty tag arrays as omitting the field
   (x, c) => (x === undefined ? right([]) : stringRA.validate(x, c)),
   // Sending empty arrays is fine, though
-  x => x,
+  (x) => x,
 )
 
 export const EventIO = t.type({
@@ -61,17 +63,49 @@ export const EventIO = t.type({
   payload: t.unknown,
 })
 export type Event = t.TypeOf<typeof EventIO>
-const compareEvents = (a: Event, b: Event): Ordering => {
-  const lamportOrder = ordNumber.compare(a.lamport, b.lamport)
+export const _compareEvents = (a: Event, b: Event): Ordering => {
+  const lamportOrder = N.Ord.compare(a.lamport, b.lamport)
   if (lamportOrder !== 0) {
     return lamportOrder
   }
-  const sourceOrder = ordString.compare(a.stream, b.stream)
+  const sourceOrder = S.Ord.compare(a.stream, b.stream)
   if (sourceOrder !== 0) {
     return sourceOrder
   }
-  return ordNumber.compare(a.offset, b.offset)
+  return N.Ord.compare(a.offset, b.offset)
 }
+
+export const MonotonicEventIO = t.intersection([
+  EventIO,
+  t.type({
+    type: t.literal('event'),
+    caughtUp: t.boolean,
+  }),
+])
+
+export const DiagnosticIO = t.type({
+  type: t.literal('diagnostic'),
+  severity: t.keyof({ warning: 1, error: 1 }),
+  message: t.string,
+})
+
+export const OffsetsIO = t.type({
+  type: t.literal('offsets'),
+  offsets: OffsetMapIO,
+})
+
+export const TimeTravelIO = t.type({
+  type: t.literal('timeTravel'),
+  newStart: EventKeyIO,
+})
+
+export const SubscribeMonotonicResponseIO = t.union([
+  MonotonicEventIO,
+  DiagnosticIO,
+  OffsetsIO,
+  TimeTravelIO,
+])
+export type SubscribeMonotonicResponseIO = t.TypeOf<typeof SubscribeMonotonicResponseIO>
 
 const eventsEqual = (a: Event, b: Event): boolean =>
   // compare numerical fields first since it should be faster
@@ -86,7 +120,7 @@ const eventsEqual = (a: Event, b: Event): boolean =>
  */
 const ordEvent: Ord<Event> = {
   equals: eventsEqual,
-  compare: compareEvents,
+  compare: _compareEvents,
 }
 export const Event = {
   ord: ordEvent,
@@ -172,7 +206,7 @@ export type ConnectivityStatus = t.TypeOf<typeof ConnectivityStatus>
 export type StoreConnectionClosedHook = () => void
 
 /** Configuration for the WebSocket store connection. */
-export type WsStoreConfig = Readonly<{
+export type WsStoreConfig = {
   /** url of the destination */
   url: string
   /** protocol of the destination */
@@ -183,4 +217,14 @@ export type WsStoreConfig = Readonly<{
   reconnectTimeout?: number
 
   // todo timeouts?, heartbeats? etc.
-}>
+}
+
+export const NodeInfo = t.type({
+  connectedNodes: t.number,
+  uptime: t.type({
+    secs: t.number,
+    nanos: t.number,
+  }),
+  version: t.string,
+})
+export type NodeInfo = t.TypeOf<typeof NodeInfo>

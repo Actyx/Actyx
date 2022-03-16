@@ -4,21 +4,25 @@
 
 ```ts
 
+import { Actyx } from '@actyx/sdk';
 import { ActyxOpts } from '@actyx/sdk';
 import { AppManifest } from '@actyx/sdk';
 import { CancelSubscription } from '@actyx/sdk';
-import { EventFns } from '@actyx/sdk';
 import * as immutable from 'immutable';
 import { Metadata } from '@actyx/sdk';
 import { Milliseconds } from '@actyx/sdk';
 import { NodeId } from '@actyx/sdk';
+import { NodeInfo } from '@actyx/sdk';
 import { PendingEmission } from '@actyx/sdk';
+import { TaggedEvent } from '@actyx/sdk';
+import { TaggedTypedEvent } from '@actyx/sdk';
 import { Tags } from '@actyx/sdk';
 import { TestEvent } from '@actyx/sdk';
+import { TimeInjector } from '@actyx/sdk';
 import { Where } from '@actyx/sdk';
 
 // @public
-export type AddEmission<EWrite> = <E extends EWrite>(tags: Tags<E>, event: E) => void;
+export type AddEmission<EWrite> = <E extends EWrite>(...args: [Tags<E>, E] | [TaggedTypedEvent<E>]) => void;
 
 // @beta
 export type Caching = NoCaching | InProcessCaching;
@@ -28,10 +32,7 @@ export const Caching: {
     none: {
         type: "none";
     };
-    isEnabled: (c: Caching | undefined) => c is Readonly<{
-        type: 'in-process';
-        key: string;
-    }>;
+    isEnabled: (c: Caching | undefined) => c is InProcessCaching;
     inProcess: (key: string) => Caching;
 };
 
@@ -46,41 +47,20 @@ export type CountersMut = {
 };
 
 // @public
-export type Fish<S, E> = Readonly<{
+export type Fish<S, E> = {
     where: Where<E>;
     initialState: S;
     onEvent: Reduce<S, E>;
     fishId: FishId;
     isReset?: IsReset<E>;
     deserializeState?: (jsonState: unknown) => S;
-}>;
+};
 
 // @public
 export const Fish: {
-    latestEvent: <E>(where: Where<E>) => Readonly<{
-        where: Where<E>;
-        initialState: E | undefined;
-        onEvent: Reduce<E | undefined, E>;
-        fishId: FishId;
-        isReset?: IsReset<E> | undefined;
-        deserializeState?: ((jsonState: unknown) => E | undefined) | undefined;
-    }>;
-    eventsDescending: <E_1>(where: Where<E_1>, capacity?: number) => Readonly<{
-        where: Where<E_1>;
-        initialState: E_1[];
-        onEvent: Reduce<E_1[], E_1>;
-        fishId: FishId;
-        isReset?: IsReset<E_1> | undefined;
-        deserializeState?: ((jsonState: unknown) => E_1[]) | undefined;
-    }>;
-    eventsAscending: <E_2>(where: Where<E_2>, capacity?: number) => Readonly<{
-        where: Where<E_2>;
-        initialState: E_2[];
-        onEvent: Reduce<E_2[], E_2>;
-        fishId: FishId;
-        isReset?: IsReset<E_2> | undefined;
-        deserializeState?: ((jsonState: unknown) => E_2[]) | undefined;
-    }>;
+    latestEvent: <E>(where: Where<E>) => Fish<E | undefined, E>;
+    eventsDescending: <E_1>(where: Where<E_1>, capacity?: number) => Fish<E_1[], E_1>;
+    eventsAscending: <E_2>(where: Where<E_2>, capacity?: number) => Fish<E_2[], E_2>;
 };
 
 // @public
@@ -127,25 +107,25 @@ export type FishProcessInfo = {
 };
 
 // @public
-export type FullWaitForSwarmConfig = Readonly<{
+export type FullWaitForSwarmConfig = {
     enabled: boolean;
     waitForSwarmMs: number;
     minSources: number;
     waitForSyncMs?: number;
     allowSkip: boolean;
-}>;
+};
 
 // @public
-export type GetNodeConnectivityParams = Readonly<{
+export type GetNodeConnectivityParams = {
     callback: (newState: unknown) => void;
-    specialSources?: ReadonlyArray<NodeId>;
-}>;
+    specialSources?: NodeId[];
+};
 
 // @beta
-export type InProcessCaching = Readonly<{
+export type InProcessCaching = {
     type: 'in-process';
     key: string;
-}>;
+};
 
 // @public
 export type IsReset<E> = (event: E, metadata: Metadata) => boolean;
@@ -156,10 +136,10 @@ export type NoCaching = {
 };
 
 // @public
-export type NodeInfoEntry = Readonly<{
+export type NodeInfoEntry = {
     own?: number;
     swarm?: number;
-}>;
+};
 
 // @beta
 export type ObserveAllOpts = Partial<{
@@ -177,23 +157,28 @@ export type PendingCommand = {
 // @public
 export type Pond = {
     emit<E>(tags: Tags<E>, event: E): PendingEmission;
+    publish(event: TaggedEvent): Promise<Metadata>;
+    publish(events: TaggedEvent[]): Promise<Metadata[]>;
     observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void, stoppedByError?: (err: unknown) => void): CancelSubscription;
+    currentState<S, E>(fish: Fish<S, E>): Promise<S>;
     observeAll<ESeed, S>(seedEventsSelector: Where<ESeed>, makeFish: (seedEvent: ESeed) => Fish<S, any> | undefined, opts: ObserveAllOpts, callback: (states: S[]) => void): CancelSubscription;
     observeOne<ESeed, S>(seedEventSelector: Where<ESeed>, makeFish: (seedEvent: ESeed) => Fish<S, any>, callback: (newState: S) => void, stoppedByError?: (err: unknown) => void): CancelSubscription;
     run<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>): PendingCommand;
     keepRunning<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>, autoCancel?: (state: S) => boolean): CancelSubscription;
     dispose(): void;
     info(): PondInfo;
+    nodeInfo(maxAgeMillis: number): Promise<NodeInfo>;
     getPondState(callback: (newState: PondState) => void): CancelSubscription;
     waitForSwarmSync(params: WaitForSwarmSyncParams): void;
-    events(): EventFns;
+    events(): Actyx;
 };
 
 // @public
 export const Pond: {
     default: (manifest: AppManifest) => Promise<Pond>;
     of: (manifest: AppManifest, connectionOpts: ActyxOpts, opts: PondOptions) => Promise<Pond>;
-    test: (opts?: PondOptions | undefined) => TestPond;
+    from: (actyx: Actyx, opts: PondOptions) => Pond;
+    test: (opts?: TestPondOptions | undefined) => TestPond;
 };
 
 // @public
@@ -222,11 +207,11 @@ export const PondState: {
 };
 
 // @public
-export type Progress = Readonly<{
+export type Progress = {
     min: number;
     current: number;
     max: number;
-}>;
+};
 
 // @public
 export type Reduce<S, E> = (state: S, event: E, metadata: Metadata) => S;
@@ -235,55 +220,56 @@ export type Reduce<S, E> = (state: S, event: E, metadata: Metadata) => S;
 export type SplashState = SplashStateDiscovery | SplashStateSync;
 
 // @public
-export type SplashStateDiscovery = Readonly<{
+export type SplashStateDiscovery = {
     mode: 'discovery';
     current: SwarmSummary;
     skip?: () => void;
-}>;
+};
 
 // @public
-export type SplashStateSync = Readonly<{
+export type SplashStateSync = {
     mode: 'sync';
     reference: SwarmSummary;
     progress: SyncProgress;
     current: SwarmSummary;
     skip?: () => void;
-}>;
+};
 
 // @public
-export type StateEffect<S, EWrite> = (state: S, enqueue: AddEmission<EWrite>) => void | Promise<void>;
+export type StateEffect<S, EWrite> = (state: S, enqueue: AddEmission<EWrite>, pond: Pond) => void | Promise<void>;
 
 // @public
-export type SwarmInfo = Readonly<{
+export type SwarmInfo = {
     nodes: immutable.Map<string, NodeInfoEntry>;
-}>;
+};
 
 // @public
-export type SwarmSummary = Readonly<{
+export type SwarmSummary = {
     info: SwarmInfo;
     sources: Counters;
     events: Counters;
-}>;
+};
 
 // @public
 export const SwarmSummary: {
-    empty: Readonly<{
-        info: SwarmInfo;
-        sources: Counters;
-        events: Counters;
-    }>;
+    empty: SwarmSummary;
     fromSwarmInfo: (info: SwarmInfo) => SwarmSummary;
 };
 
 // @public
-export type SyncProgress = Readonly<{
+export type SyncProgress = {
     sources: Progress;
     events: Progress;
-}>;
+};
 
 // @public
 export type TestPond = Pond & {
     directlyPushEvents: (events: TestEvent[]) => void;
+};
+
+// @public
+export type TestPondOptions = PondOptions & {
+    timeInjector?: TimeInjector;
 };
 
 // @public
@@ -297,20 +283,14 @@ export type WaitForSwarmConfig = Partial<FullWaitForSwarmConfig>;
 
 // @public
 export const WaitForSwarmConfig: {
-    defaults: Readonly<{
-        enabled: boolean;
-        waitForSwarmMs: number;
-        minSources: number;
-        waitForSyncMs?: number | undefined;
-        allowSkip: boolean;
-    }>;
+    defaults: FullWaitForSwarmConfig;
 };
 
 // @public
-export type WaitForSwarmSyncParams = WaitForSwarmConfig & Readonly<{
+export type WaitForSwarmSyncParams = WaitForSwarmConfig & {
     onSyncComplete: () => void;
     onProgress?: (newState: SplashState) => void;
-}>;
+};
 
 
 export * from "@actyx/sdk";

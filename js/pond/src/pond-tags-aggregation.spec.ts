@@ -1,21 +1,12 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
-import { Observable, Subject } from 'rxjs'
-import {
-  Fish,
-  FishErrorContext,
-  FishErrorReporter,
-  FishId,
-  noEvents,
-  Pond,
-  Tag,
-  Tags,
-  Where,
-} from '.'
+import { Observable, lastValueFrom, Subject, timer } from '../node_modules/rxjs'
+import { debounceTime, take } from '../node_modules/rxjs/operators'
+import { Fish, FishErrorContext, FishErrorReporter, FishId, Pond, Tag, Tags, Where } from '.'
 
 const emitTestEvents = async (pond: Pond) => {
   await pond.emit(Tags('t0', 't1', 't2'), 'hello').toPromise()
@@ -24,21 +15,16 @@ const emitTestEvents = async (pond: Pond) => {
   await pond.emit(Tag('t2'), 't2 only').toPromise()
 }
 
-const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond: Pond) => {
-  const res = states
-    .debounceTime(5)
-    .take(1)
-    .toPromise()
+const assertEventualState = async <S>(states: Observable<S>, expected: S) => {
+  const res = lastValueFrom(states.pipe(debounceTime(5), take(1)))
 
   await expect(res).resolves.toEqual(expected)
-
-  pond.dispose()
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const aggregateAsObservable = <S>(pond: Pond, agg: Fish<S, any>): Observable<S> =>
-  new Observable(x => {
-    pond.observe(agg, s => x.next(s))
+  new Observable((x) => {
+    pond.observe(agg, (s) => x.next(s))
   })
 
 describe('tag-based aggregation (Fish observe) in the Pond', () => {
@@ -54,7 +40,13 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
 
     await emitTestEvents(pond)
 
-    await assertStateAndDispose(res, expectedResult, pond)
+    await assertEventualState(res, expectedResult)
+
+    // Assert that Pond.currentState gives the same result
+    const readAsPromise = await pond.currentState(aggregate)
+    expect(readAsPromise).toEqual(expectedResult)
+
+    pond.dispose()
   }
 
   it('should aggregate based on tags intersection', async () =>
@@ -73,10 +65,6 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
   it('should aggregate everything', async () =>
     // Empty intersection matches everything
     expectAggregationToYield(Tags(), ['t2 only', 't1 only', 'world', 'hello']))
-
-  it('should aggregate nothing', async () =>
-    // Empty union means not a single subscription
-    expectAggregationToYield(noEvents, []))
 
   describe('error handling', () => {
     const brokenFish: Fish<string, string> = {
@@ -103,43 +91,52 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
 
       const pond = Pond.test({ fishErrorReporter })
 
+      const fish = {
+        ...brokenFish,
+        ...fishExt,
+      }
+
       let latestState: string = 'unset'
       pond.observe(
-        {
-          ...brokenFish,
-          ...fishExt,
-        },
-        s => {
+        fish,
+        (s) => {
           latestState = s
         },
         errorCb,
       )
 
       const emitEventSequenceWithError = async () => {
-        await pond.emit(Tag('t1'), 't1 event 1').toPromise()
-        await pond.emit(Tag('t1'), 'error').toPromise()
+        await pond.run(fish, (_state, enqueue) => enqueue(Tag('t1'), 't1 event 1')).toPromise()
+        await pond.run(fish, (_state, enqueue) => enqueue(Tag('t1'), 'error')).toPromise()
         await pond.emit(Tag('t1'), 't1 event 2').toPromise()
       }
+
+      const rejectCurrentState = () =>
+        expect(pond.currentState(brokenFish)).rejects.toMatchObject({ message: 'oh, I am broken' })
 
       return {
         pond,
         emitEventSequenceWithError,
         errors: reported,
         assertLatestState: (expected: string) => expect(latestState).toEqual(expected),
+        rejectCurrentState,
       }
     }
 
     it('should pass at least the last good state to the callback, even if an error has been thrown', async () => {
-      const { pond, emitEventSequenceWithError, assertLatestState, errors } = setup()
+      const { pond, emitEventSequenceWithError, assertLatestState, errors, rejectCurrentState } =
+        setup()
 
-      const nextErr = errors.take(1).toPromise()
+      const nextErr = lastValueFrom(errors.pipe(take(1)))
       await emitEventSequenceWithError()
 
       await expect(nextErr).resolves.toMatchObject({ occuredIn: 'onEvent' })
+      await rejectCurrentState()
+
       assertLatestState('t1 event 1')
 
       let stateCb2: ((s: string) => void) | undefined
-      const latestState2 = new Promise<string>(resolve => {
+      const latestState2 = new Promise<string>((resolve) => {
         stateCb2 = resolve
       })
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -151,16 +148,18 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
 
     it('should propagate errors to the supplied error callback', async () => {
       let stoppedByError
-      const reportedErr = new Promise(resolve => {
+      const reportedErr = new Promise((resolve) => {
         stoppedByError = resolve
       })
 
-      const { pond, emitEventSequenceWithError, assertLatestState } = setup(stoppedByError)
+      const { pond, emitEventSequenceWithError, assertLatestState, rejectCurrentState } =
+        setup(stoppedByError)
 
       assertLatestState('unset')
       await emitEventSequenceWithError()
 
       await expect(reportedErr).resolves.toBeDefined()
+      await rejectCurrentState()
       assertLatestState('t1 event 1')
 
       pond.dispose()
@@ -172,7 +171,8 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
         reportedErr = err
       }
 
-      const { pond, emitEventSequenceWithError, assertLatestState } = setup(stoppedByError)
+      const { pond, emitEventSequenceWithError, assertLatestState, rejectCurrentState } =
+        setup(stoppedByError)
 
       assertLatestState('unset')
       await emitEventSequenceWithError()
@@ -180,13 +180,13 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
       expect(reportedErr).toBeDefined()
 
       let reportErrCb2
-      const reportedErr2 = new Promise(resolve => {
+      const reportedErr2 = new Promise((resolve) => {
         reportErrCb2 = resolve
       })
       let latestState2: string = 'unset'
       pond.observe(
         brokenFish,
-        s => {
+        (s) => {
           latestState2 = s
         },
         reportErrCb2,
@@ -194,42 +194,47 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
       await expect(reportedErr2).resolves.toBeDefined()
       expect(latestState2).toEqual('t1 event 1')
 
+      await rejectCurrentState()
+
       pond.dispose()
     })
 
     it('should report if error was caused by isReset', async () => {
-      const { pond, emitEventSequenceWithError, assertLatestState, errors } = setup(undefined, {
-        isReset: ev => {
-          if (ev === 'error') {
-            throw new Error('broken')
-          }
-          return true
-        },
-      })
+      const { pond, emitEventSequenceWithError, assertLatestState, errors, rejectCurrentState } =
+        setup(undefined, {
+          isReset: (ev) => {
+            if (ev === 'error') {
+              throw new Error('oh, I am broken')
+            }
+            return true
+          },
+        })
 
-      const nextErr = errors.take(1).toPromise()
+      const nextErr = lastValueFrom(errors.pipe(take(1)))
       assertLatestState('unset')
       await emitEventSequenceWithError()
 
       await expect(nextErr).resolves.toMatchObject({ occuredIn: 'isReset' })
+      await rejectCurrentState()
       assertLatestState('t1 event 1')
 
       pond.dispose()
     })
 
     it('should report if error was caused by deserializeState', async () => {
-      const { pond, emitEventSequenceWithError, assertLatestState, errors } = setup(undefined, {
-        onEvent: x => x,
+      const { pond, assertLatestState, errors, rejectCurrentState } = setup(undefined, {
+        onEvent: (x) => x,
         deserializeState: () => {
-          throw new Error('broken')
+          throw new Error('oh, I am broken')
         },
       })
 
-      const nextErr = errors.take(1).toPromise()
+      const nextErr = lastValueFrom(errors.pipe(take(1)))
       assertLatestState('unset')
-      await emitEventSequenceWithError()
+      await pond.publish(Tag('t1').apply('whatever'))
 
       await expect(nextErr).resolves.toMatchObject({ occuredIn: 'deserializeState' })
+      await rejectCurrentState()
       assertLatestState('unset')
 
       pond.dispose()
@@ -255,7 +260,7 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
 
       const aggregate0 = mkAggregate(Tag('t1'))
 
-      const unsubscribe0 = pond.observe<State, Event>(aggregate0, _s => {
+      const unsubscribe0 = pond.observe<State, Event>(aggregate0, (_s) => {
         /* swallow */
       })
 
@@ -267,7 +272,8 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
       const res = aggregateAsObservable(pond, aggregate1)
 
       unsubscribe0()
-      await assertStateAndDispose(res, ['t1 only', 'world', 'hello'], pond)
+      await assertEventualState(res, ['t1 only', 'world', 'hello'])
+      pond.dispose()
     })
 
     it('should cache based on key, but always invoke callback with delay, so that cancelation works', async () => {
@@ -276,13 +282,11 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
       const aggregate0 = mkAggregate(Tag('t1'))
 
       await emitTestEvents(pond)
-      const res = await aggregateAsObservable(pond, aggregate0)
-        .take(1)
-        .toPromise()
+      const res = await lastValueFrom(aggregateAsObservable(pond, aggregate0).pipe(take(1)))
       expect(res).toEqual(['t1 only', 'world', 'hello'])
 
       const invocation = new Promise<boolean>((resolve, reject) => {
-        const unsubscribe1: () => void = pond.observe<State, Event>(aggregate0, _s => {
+        const unsubscribe1: () => void = pond.observe<State, Event>(aggregate0, (_s) => {
           try {
             // Assert unsubscribe1 is defined already and invoking it does not throw an exception
             unsubscribe1()
@@ -303,17 +307,17 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
 
       const aggregate = mkAggregate(Tag('t1'))
 
-      const unsubscribe0 = pond.observe<State, Event>(aggregate, _s => {
+      const unsubscribe0 = pond.observe<State, Event>(aggregate, (_s) => {
         /* swallow */
       })
 
       await emitTestEvents(pond)
       unsubscribe0()
-      await Observable.timer(500).toPromise()
+      await lastValueFrom(timer(500))
 
       // should immediately pick up the existing aggregation's pipeline
       const res = new Promise((resolve, _reject) =>
-        pond.observe(aggregate, state => resolve(state)),
+        pond.observe(aggregate, (state) => resolve(state)),
       )
 
       await expect(res).resolves.toEqual(['t1 only', 'world', 'hello'])
@@ -326,7 +330,7 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
 
       const aggregate0 = mkAggregate(Tag('t0'))
 
-      const unsubscribe0 = pond.observe<State, Event>(aggregate0, _s => {
+      const unsubscribe0 = pond.observe<State, Event>(aggregate0, (_s) => {
         /* swallow */
       })
 
@@ -338,7 +342,8 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
       const res = aggregateAsObservable(pond, aggregate1)
 
       unsubscribe0()
-      await assertStateAndDispose(res, ['t1 only', 'world', 'hello'], pond)
+      await assertEventualState(res, ['t1 only', 'world', 'hello'])
+      pond.dispose()
     })
   })
 })
@@ -382,8 +387,7 @@ describe('Fish declarations Tag checking', () => {
     const fishWrong: Fish<undefined, A | B> = {
       ...fishArgs,
 
-      // Expect error for too large subscription set
-      // @ts-expect-error
+      // @ts-expect-error for too large subscription set
       where: abcTag,
     }
 
@@ -413,8 +417,7 @@ describe('Fish declarations Tag checking', () => {
     const fishWrong: Fish<undefined, A | B> = {
       ...fishArgs,
 
-      // Without cast, this will fail
-      // @ts-expect-error
+      // @ts-expect-error since without cast, this will fail
       where: Tags('1', '2').or(Tag('foo')),
     }
 
@@ -456,20 +459,15 @@ describe('Fish declarations Tag checking', () => {
     const fishWrong: Fish<undefined, A | B> = {
       ...fishArgs,
 
-      // Without cast, this will fail
-      // @ts-expect-error
-      where: Tag('q')
-        .withId('n')
-        .and(Tag('some-other-tag').withId('foo')),
+      // @ts-expect-error since without cast, this will fail
+      where: Tag('q').withId('n').and(Tag('some-other-tag').withId('foo')),
     }
 
     const fishRight: Fish<undefined, A | B> = {
       ...fishArgs,
 
       // Casting works
-      where: Tag('q')
-        .withId('n')
-        .and(Tag('some-other-tag').withId('foo')) as Where<A>,
+      where: Tag('q').withId('n').and(Tag('some-other-tag').withId('foo')) as Where<A>,
     }
 
     ignoreUnusedVar(fishWrong)

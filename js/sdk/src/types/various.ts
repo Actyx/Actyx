@@ -4,9 +4,12 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { contramap, Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
+import { contramap, Ord } from 'fp-ts/lib/Ord'
+import { Ord as OrdString } from 'fp-ts/lib/string'
+import { Ord as OrdNumber } from 'fp-ts/lib/number'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import { OffsetMap } from './offsetMap'
+import { Tags } from './tags'
 
 /**
  * An Actyx source id.
@@ -163,13 +166,13 @@ export const Milliseconds = {
  *
  * @public
  */
-export type EventKey = Readonly<{
+export type EventKey = {
   // This is not using t.typeof, so that public API has no io-ts dep
 
   lamport: Lamport
   offset: Offset
   stream: StreamId
-}>
+}
 
 const zeroKey: EventKey = {
   lamport: Lamport.zero,
@@ -182,11 +185,11 @@ const keysEqual = (a: EventKey, b: EventKey): boolean =>
   a.lamport === b.lamport && a.stream === b.stream
 
 const keysCompare = (a: EventKey, b: EventKey): Ordering => {
-  const lamportOrder = ordNumber.compare(a.lamport, b.lamport)
+  const lamportOrder = OrdNumber.compare(a.lamport, b.lamport)
   if (lamportOrder !== 0) {
     return lamportOrder
   }
-  return ordString.compare(a.stream, b.stream)
+  return OrdString.compare(a.stream, b.stream)
 }
 
 /**
@@ -210,12 +213,12 @@ export const EventKey = {
 }
 
 /** Generic Metadata attached to every event. @public */
-export type Metadata = Readonly<{
+export type Metadata = {
   // Was this event written by the very node we are running on?
   isLocalEvent: boolean
 
   // Tags belonging to the event.
-  tags: ReadonlyArray<string>
+  tags: string[]
 
   // Time since Unix Epoch **in Microseconds**!
   timestampMicros: Timestamp
@@ -239,33 +242,35 @@ export type Metadata = Readonly<{
 
   // Offset of this event inside its stream
   offset: Offset
-}>
+}
 
 /** Max length of a lamport timestamp as string. @internal */
 export const maxLamportLength = String(Number.MAX_SAFE_INTEGER).length
 
 /** Anthing that has metadata. @internal */
-export type HasMetadata = Readonly<{
+export type HasMetadata = {
   timestamp: Timestamp
   lamport: Lamport
   stream: StreamId
-  tags: ReadonlyArray<string>
+  tags: string[]
   offset: Offset
   appId: AppId
-}>
+}
 
 /** Make a function that makes metadata from an Event as received over the wire. @internal */
-export const toMetadata = (sourceId: string) => (ev: HasMetadata): Metadata => ({
-  isLocalEvent: ev.stream === sourceId,
-  tags: ev.tags,
-  timestampMicros: ev.timestamp,
-  timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
-  lamport: ev.lamport,
-  appId: ev.appId,
-  eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.stream,
-  stream: ev.stream,
-  offset: ev.offset,
-})
+export const toMetadata =
+  (sourceId: string) =>
+  (ev: HasMetadata): Metadata => ({
+    isLocalEvent: ev.stream === sourceId,
+    tags: ev.tags,
+    timestampMicros: ev.timestamp,
+    timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
+    lamport: ev.lamport,
+    appId: ev.appId,
+    eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.stream,
+    stream: ev.stream,
+    offset: ev.offset,
+  })
 
 /**
  * Cancel an ongoing aggregation (the provided callback will stop being called).
@@ -285,10 +290,17 @@ export type PendingEmission = {
 }
 
 /** An event with tags attached. @public */
-export type TaggedEvent = Readonly<{
+export type TaggedEvent = {
   tags: string[]
   event: unknown
-}>
+}
+
+/** A typed event with tags attached. @public */
+export interface TaggedTypedEvent<E = unknown> extends TaggedEvent {
+  readonly tags: string[]
+  readonly event: E
+  withTags<E1>(tags: Tags<E1> & (E extends E1 ? unknown : never)): TaggedTypedEvent<E>
+}
 
 /** An event with its metadata. @public */
 export type ActyxEvent<E = unknown> = {
@@ -299,7 +311,7 @@ export type ActyxEvent<E = unknown> = {
 /** Things related to ActyxEvent. @public */
 export const ActyxEvent = {
   // TODO: Maybe improve this by just comparing the lamport -> stream combo
-  ord: contramap((e: ActyxEvent) => e.meta.eventId, ordString),
+  ord: contramap((e: ActyxEvent) => e.meta.eventId)(OrdString),
 }
 
 /**
@@ -312,7 +324,7 @@ export type TestEvent = {
 
   timestamp: Timestamp
   lamport: Lamport
-  tags: ReadonlyArray<string>
+  tags: string[]
 
   payload: unknown
 }
@@ -345,19 +357,31 @@ export type ActyxOpts = {
 
   /** Hook, when the connection to the store is closed */
   onConnectionLost?: () => void
+
+  /**
+   * Hook, when the connection to the store has been established.
+   */
+  onConnectionEstablished?: () => void
 }
 
+/**
+ * Test tool. @beta
+ */
+export type TimeInjector = (tags: string[], events: unknown) => Timestamp
+
 /** Options used when creating a new TEST `Actyx` instance. @public */
-export type ActyxTestOpts = Readonly<{
+export type ActyxTestOpts = {
   /** Local node id to use @public */
   nodeId?: NodeId
-}>
+  /** Install the given time source for test purposes @beta */
+  timeInjector?: TimeInjector
+}
 
 /** Manifest describing an Actyx application. Used for authorizing API access. @public */
 export type AppManifest = {
   /**
    * Structured application id.
-   * For testing and development purposes, you can always pass 'com.example.<somestring>'
+   * For testing and development purposes, you can always pass 'com.example.somestring'
    * For production, you will buy a license from Actyx for your specific app id like com.my-company.my-app.
    */
   appId: string
@@ -426,3 +450,16 @@ export type AqlFutureCompat = {
 
 /** Response message returned by running AQL query. @beta */
 export type AqlResponse = AqlEventMessage | AqlOffsetsMsg | AqlDiagnosticMessage | AqlFutureCompat
+
+/** Uptime data type returned by Actyx @internal */
+export type Uptime = {
+  secs: number
+  nanos: number
+}
+
+/** Node information block returned by Actyx @internal */
+export type NodeInfo = {
+  connectedNodes: number
+  uptime: Uptime
+  version: string
+}

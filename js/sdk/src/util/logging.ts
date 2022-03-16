@@ -12,7 +12,7 @@ import * as debug from 'debug'
  * Generic logging function signature.
  * @public
  */
-export type LogFunction = ((first: any, ...rest: any[]) => void)
+export type LogFunction = (first: any, ...rest: any[]) => void
 
 /**
  * A concrete logger that has a namespace and a flag indicating whether
@@ -39,8 +39,8 @@ export type Loggers = {
  * Loggers which just buffer messages.
  */
 export type TestLoggers = {
-  errors: ReadonlyArray<string>
-  warnings: ReadonlyArray<string>
+  errors: string[]
+  warnings: string[]
   error: Logger
   warn: Logger
   debug: Logger
@@ -48,7 +48,7 @@ export type TestLoggers = {
 }
 function mkTestLogger(dump: string[]): Logger {
   function logger(...args: any[]): void {
-    dump.push(args.map(x => JSON.stringify(x)).join(':'))
+    dump.push(args.map((x) => JSON.stringify(x)).join(':'))
   }
   logger.namespace = 'test'
   logger.enabled = true
@@ -96,7 +96,7 @@ export const mkLogger = (topic: string, logFnOverride?: LogFunction) => {
 }
 
 // todo: special treatment for errors?
-export const mkLoggers: (topic: string) => Loggers = topic => ({
+export const mkLoggers: (topic: string) => Loggers = (topic) => ({
   error: mkLogger(`${topic}:error`), // Options description available in README
   warn: mkLogger(`${topic}:warn`),
   info: mkLogger(`${topic}:info`),
@@ -128,7 +128,7 @@ export const Loggers = {
  * @public
  */
 export const makeLogPattern = (excludeModules: string[]) =>
-  `*,${excludeModules.map(x => `-${x}:((?!error).)*`).join(',')},*:error`
+  `*,${excludeModules.map((x) => `-${x}:((?!error).)*`).join(',')},*:error`
 
 /**
  * Utility function to enable all logging with exception for passed in logger namespaces.

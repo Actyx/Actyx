@@ -1,7 +1,6 @@
 use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
 use structopt::StructOpt;
 use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
 
@@ -45,18 +44,14 @@ struct UnsetSettingsCommand {
     scope: settings::Scope,
 }
 
-pub async fn run(mut opts: UnsetOpt) -> Result<Output> {
+pub async fn run(opts: UnsetOpt) -> Result<Output> {
     let scope = opts.actual_opts.scope.clone();
+    let mut conn = opts.console_opt.connect().await?;
 
-    match opts
-        .console_opt
-        .authority
-        .request(
-            &opts.console_opt.identity.try_into()?,
-            AdminRequest::SettingsUnset {
-                scope: opts.actual_opts.scope,
-            },
-        )
+    match conn
+        .request(AdminRequest::SettingsUnset {
+            scope: opts.actual_opts.scope,
+        })
         .await
     {
         Ok(AdminResponse::SettingsUnsetResponse) => Ok(Output {

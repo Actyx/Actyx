@@ -64,9 +64,9 @@ hosts:
       # Note: This is a public AMI. The underlying image might be upgraded from
       # time to time, thus the AMI's ID is going to change, and the old one is
       # not accessible anymore.  If that happens, search for the current "Windows
-      # Server 2019 Base" Image in the AWS Marketplace
+      # Server 2019 Base" Image in the AWS Marketplace (FOR EU FRANKFURT!)
       # https://aws.amazon.com/marketplace
-      ami: ami-086d0be14ab5129e1
+      ami: ami-0a296b89d507d9eae
       instance: t2.large
       user: Administrator
     install:

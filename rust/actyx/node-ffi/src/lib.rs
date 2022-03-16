@@ -3,7 +3,7 @@ use ffi_support::{ErrorCode, ExternError, FfiStr};
 use lazy_static::lazy_static;
 use node::{spawn_with_name, ApplicationState, BindTo, NodeError, Runtime, ShutdownReason};
 use parking_lot::Mutex;
-use std::{convert::TryFrom, os::raw::c_char, sync::Arc};
+use std::{collections::BTreeSet, convert::TryFrom, os::raw::c_char, sync::Arc};
 use tracing::*;
 
 lazy_static! {
@@ -30,6 +30,9 @@ pub extern "C" fn axnode_init(working_dir: FfiStr, callback: Callback, error: &m
                 working_dir.as_str().into(),
                 Runtime::Android { ffi_sink },
                 BindTo::default(),
+                true,
+                false,
+                Some(BTreeSet::new()),
             ) {
                 Ok(handle) => {
                     *state = Some(handle);

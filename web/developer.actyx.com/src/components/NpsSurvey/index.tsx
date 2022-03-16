@@ -68,24 +68,47 @@ type Props = Readonly<{
   hideAfterMs?: number
 }>
 
-const submitResult = async (result: number): Promise<void> => {
+const submitScore = async (score: number): Promise<void> => {
   const res = await fetch('/.netlify/functions/nps', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ result }),
+    body: JSON.stringify({ score }),
   })
 
   if (res.status !== 200) {
-    console.error(`submission did not return status code 200 (got ${res.status})`)
+    console.error(`score submission did not return status code 200 (got ${res.status})`)
     throw new Error(res.statusText)
   }
+  //console.log(`submitting score ${score}`)
 }
 
-type State = 'not-shown-yet' | 'visible' | 'clicked-away' | 'faded-away' | 'submitted'
+const submitFeedback = async (feedback: string, score: number | undefined): Promise<void> => {
+  const res = await fetch('/.netlify/functions/nps', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ feedback, score }),
+  })
 
-const QuestionView: React.FC<{ clickAway: () => void; submit: (result: number) => void }> = ({
+  if (res.status !== 200) {
+    console.error(`feedback submission did not return status code 200 (got ${res.status})`)
+    throw new Error(res.statusText)
+  }
+  //console.log(`submitting feedback ${feedback}`)
+}
+
+type State =
+  | 'not-shown-yet'
+  | 'showing-score'
+  | 'showing-feedback'
+  | 'clicked-away'
+  | 'faded-away'
+  | 'thank-you'
+
+const ScoreView: React.FC<{ clickAway: () => void; submit: (result: number) => void }> = ({
   clickAway,
   submit,
 }) => (
@@ -105,6 +128,59 @@ const QuestionView: React.FC<{ clickAway: () => void; submit: (result: number) =
     </Boxes>
   </>
 )
+
+const FeedbackInput = styled.textarea`
+  resize: none;
+  width: 100%;
+  height: 80px;
+  border: 1px solid #bfc4ca;
+  border-radius: 4px;
+  font-family: var(--ifm-font-family-base);
+  font-size: 120% !important;
+`
+
+const SubmitFeedbackButton = styled.button`
+  margin-top: 0.5rem;
+  &:focus {
+    outline: auto;
+  }
+`
+
+const FeedbackView: React.FC<{ clickAway: () => void; submit: (feedback: string) => void }> = ({
+  clickAway,
+  submit,
+}) => {
+  const [input, setInput] = useState('')
+
+  const onSubmit = () => {
+    submit(input)
+  }
+
+  return (
+    <>
+      <Heading>
+        What is your main reason for this score?{' '}
+        <a href="#" onClick={clickAway}>
+          Close.
+        </a>
+      </Heading>
+      <FeedbackInput
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        tabIndex={1}
+        autoFocus
+      />
+      <SubmitFeedbackButton
+        className="button button--outline button--primary"
+        onClick={onSubmit}
+        disabled={!input}
+        tabIndex={2}
+      >
+        Submit
+      </SubmitFeedbackButton>
+    </>
+  )
+}
 
 const ThankYouView: React.FC<{ clickAway: () => void }> = ({ clickAway }) => (
   <>
@@ -129,6 +205,7 @@ export const NpsSurvey = ({ showAfterMs, hideAfterMs }: Props): React.ReactEleme
   hideAfterMs = hideAfterMs === undefined ? HIDE_AFTER_SECONDS * 1000 : hideAfterMs
 
   const [cookies, setCookie] = useCookies([DONT_SHOW_COOKIE_NAME])
+  const [score, setScore] = useState<number | undefined>(undefined)
 
   const [state, setState] = useState<State>('not-shown-yet')
 
@@ -136,13 +213,13 @@ export const NpsSurvey = ({ showAfterMs, hideAfterMs }: Props): React.ReactEleme
     let showTimer = null
     if (state === 'not-shown-yet' && !cookies[DONT_SHOW_COOKIE_NAME]) {
       showTimer = setTimeout(() => {
-        setState('visible')
+        setState('showing-score')
       }, showAfterMs)
     }
 
     const hideTimer = setTimeout(() => {
       setState((current) => {
-        if (current === 'visible') {
+        if (current === 'showing-score' || current === 'showing-feedback') {
           return 'faded-away'
         }
       })
@@ -166,23 +243,34 @@ export const NpsSurvey = ({ showAfterMs, hideAfterMs }: Props): React.ReactEleme
   const clickAway = () => {
     // Check if clicked away from visible since this can also be
     // called from the thank you screen.
-    if (state === 'visible') {
+    if (state !== 'thank-you') {
       disableForSec(DONT_SHOW_FOR_SECONDS_AFTER_CLICKING_AWAY)
     }
     setState('clicked-away')
   }
 
-  const submit = (result: number) => {
-    submitResult(result)
-    setState('submitted')
+  const onSubmitScore = (score: number) => {
+    submitScore(score)
+    setScore(score)
+    setState('showing-feedback')
     disableForSec(DONT_SHOW_FOR_SECONDS_AFTER_SUBMISSION)
   }
 
+  const onSubmitFeedback = (feedback: string) => {
+    submitFeedback(feedback, score)
+    setState('thank-you')
+  }
+
+  const visible = state === 'showing-score' || state === 'showing-feedback' || state === 'thank-you'
+
   return (
     <Anchor>
-      <Wrapper visible={state === 'visible' || state === 'submitted'}>
-        {state === 'visible' && <QuestionView clickAway={clickAway} submit={submit} />}
-        {state === 'submitted' && <ThankYouView clickAway={clickAway} />}
+      <Wrapper visible={visible}>
+        {state === 'showing-score' && <ScoreView clickAway={clickAway} submit={onSubmitScore} />}
+        {state === 'showing-feedback' && (
+          <FeedbackView clickAway={clickAway} submit={onSubmitFeedback} />
+        )}
+        {state === 'thank-you' && <ThankYouView clickAway={clickAway} />}
       </Wrapper>
     </Anchor>
   )

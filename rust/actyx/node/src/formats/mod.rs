@@ -1,4 +1,4 @@
-use crate::{node::NodeError, node_api::formats::NodesRequest, settings::SettingsRequest};
+use crate::{components::ComponentType, node::NodeError, node_api::formats::NodesRequest, settings::SettingsRequest};
 use actyx_sdk::NodeId;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -33,6 +33,7 @@ pub enum Entity {
 pub enum ExternalEvent {
     NodesRequest(NodesRequest),
     SettingsRequest(SettingsRequest),
+    RestartRequest(ComponentType),
     ShutdownRequested(ShutdownReason),
 }
 
@@ -61,18 +62,19 @@ pub enum ShutdownReason {
     Internal(NodeError),
 }
 #[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum NodeEvent {
     StateUpdate(NodeState),
     Shutdown(ShutdownReason),
 }
 
 pub(crate) trait ResultInspect<T, E> {
-    fn inspect_err<F>(self, f: F) -> Self
+    fn ax_inspect_err<F>(self, f: F) -> Self
     where
         F: FnMut(&E);
 }
 impl<T, E> ResultInspect<T, E> for Result<T, E> {
-    fn inspect_err<F>(self, mut f: F) -> Self
+    fn ax_inspect_err<F>(self, mut f: F) -> Self
     where
         F: FnMut(&E),
     {

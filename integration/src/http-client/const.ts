@@ -3,6 +3,7 @@ export const EVENTS_PATH = '/events'
 
 export const AUTH_SEG = '/auth'
 export const NODE_ID_SEG = '/node/id'
+export const NODE_INFO_SEG = '/node/info'
 export const OFFSETS_SEG = '/offsets'
 export const PUBLISH_SEG = '/publish'
 export const QUERY_SEG = '/query'

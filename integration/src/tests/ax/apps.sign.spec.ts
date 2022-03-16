@@ -1,7 +1,10 @@
-import { readFile, copyFile, remove } from 'fs-extra'
+/**
+ * @jest-environment ./dist/integration/src/jest/environment
+ */
+import fse from 'fs-extra'
 import { runOnEvery } from '../../infrastructure/hosts'
 import path from 'path'
-import { OS } from '../../../jest/types'
+import { OS } from '../../jest/types'
 import { tmpdir } from 'os'
 
 const appManifestPath = path.resolve('.', 'fixtures/app_manifest.json')
@@ -57,20 +60,20 @@ describe('ax', () => {
     it('should sign manifest', () =>
       runOnEvery(async (node) => {
         const expectedManifest = {
-          ...JSON.parse(await readFile(appManifestPath, 'utf-8')),
+          ...JSON.parse(await fse.readFile(appManifestPath, 'utf-8')),
           signature:
             'v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYZ0JGTTgyZVpMWTdJQzhRbmFuVzFYZ0xrZFRQaDN5aCtGeDJlZlVqYm9qWGtUTWhUdFZNRU9BZFJaMVdTSGZyUjZUOHl1NEFKdFN5azhMbkRvTVhlQnc9PWlkZXZQdWJrZXl4LTBuejFZZEh1L0pEbVM2Q0ltY1pnT2o5WTk2MHNKT1ByYlpIQUpPMTA3cVcwPWphcHBEb21haW5zgmtjb20uYWN0eXguKm1jb20uZXhhbXBsZS4qa2F4U2lnbmF0dXJleFg4QmwzekNObm81R2JwS1VvYXRpN0NpRmdyMEtHd05IQjFrVHdCVkt6TzlwelcwN2hGa2tRK0dYdnljOVFhV2hIVDVhWHp6TyttVnJ4M2VpQzdUUkVBUT09/w==',
         }
         const tmpFile = path.join(tmpdir(), `signed-${Math.random().toString().substring(2)}.json`)
-        await copyFile(appManifestPath, tmpFile)
+        await fse.copyFile(appManifestPath, tmpFile)
         await expect(node.ax.apps.sign(devCertPath, tmpFile)).resolves.toEqual({
           code: 'OK',
           result: expectedManifest,
         })
 
-        const result = await readFile(tmpFile, 'utf-8')
+        const result = await fse.readFile(tmpFile, 'utf-8')
         expect(JSON.parse(result)).toEqual(expectedManifest)
-        await remove(tmpFile)
+        await fse.remove(tmpFile)
       }))
   })
 })

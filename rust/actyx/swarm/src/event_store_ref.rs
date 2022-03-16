@@ -2,7 +2,7 @@ use crate::{
     event_store::{EventStore, PersistenceMeta},
     BanyanStore, SwarmOffsets,
 };
-use actyx_sdk::{language::TagExpr, AppId, Event, OffsetMap, Payload, TagSet};
+use actyx_sdk::{language::TagExpr, AppId, Event, OffsetMap, Payload, StreamNr, TagSet};
 use futures::{Future, Stream, StreamExt};
 use parking_lot::Mutex;
 use std::{
@@ -15,7 +15,10 @@ use std::{
 };
 use tokio::{
     runtime::Handle,
-    sync::{mpsc, oneshot},
+    sync::{
+        mpsc::{self, error::TrySendError},
+        oneshot,
+    },
     task::JoinHandle,
 };
 use trees::query::TagExprError;
@@ -68,13 +71,14 @@ type OneShot<T> = oneshot::Sender<Result<T, Error>>;
 type StreamOf<T> = mpsc::Receiver<Result<T, Error>>;
 type StreamTo<T> = mpsc::Sender<Result<T, Error>>;
 
-#[derive(derive_more::Display)]
+#[derive(Debug, derive_more::Display)]
 pub enum EventStoreRequest {
     #[display(fmt = "Offsets")]
     Offsets { reply: OneShot<SwarmOffsets> },
     #[display(fmt = "Persist({}, {})", app_id, "events.len()")]
     Persist {
         app_id: AppId,
+        stream_nr: StreamNr,
         events: Vec<(TagSet, Payload)>,
         reply: OneShot<Vec<PersistenceMeta>>,
     },
@@ -114,9 +118,19 @@ impl EventStoreRef {
         rx.await.my_err()?
     }
 
-    pub async fn persist(&self, app_id: AppId, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>, Error> {
+    pub async fn persist(
+        &self,
+        app_id: AppId,
+        stream_nr: StreamNr,
+        events: Vec<(TagSet, Payload)>,
+    ) -> Result<Vec<PersistenceMeta>, Error> {
         let (reply, rx) = oneshot::channel();
-        (self.tx)(Persist { app_id, events, reply })?;
+        (self.tx)(Persist {
+            app_id,
+            events,
+            stream_nr,
+            reply,
+        })?;
         rx.await.my_err()?
     }
 
@@ -219,13 +233,18 @@ impl EventStoreHandler {
             Offsets { reply } => {
                 let _ = reply.send(Ok(self.store.current_offsets()));
             }
-            Persist { app_id, events, reply } => {
+            Persist {
+                app_id,
+                stream_nr,
+                events,
+                reply,
+            } => {
                 let store = self.store.clone();
                 self.state.persist.fetch_add(1, Ordering::Relaxed);
                 let state = self.state.clone();
                 runtime.spawn(async move {
                     let n = events.len();
-                    let _ = reply.send(store.persist(app_id, events).await.map_err(move |e| {
+                    let _ = reply.send(store.persist(app_id, stream_nr, events).await.map_err(move |e| {
                         tracing::error!("failed to persist {} events: {:#}", n, e);
                         Error::Aborted
                     }));
@@ -290,10 +309,10 @@ impl EventStoreHandler {
         let id = state.stream_id.fetch_add(1, Ordering::Relaxed);
         let (start, started) = oneshot::channel();
         let handle = runtime.spawn(async move {
-            tracing::debug!("stream {} initiated", id);
+            tracing::trace!("stream {} initiated", id);
             match f().await {
                 Ok(mut s) => {
-                    tracing::debug!("stream {} starting", id);
+                    tracing::trace!("stream {} starting", id);
                     let (tx, rx) = mpsc::channel(100);
                     let _ = started.await;
                     let doit = if let Some(x) = state.stream.lock().get_mut(&id) {
@@ -302,18 +321,31 @@ impl EventStoreHandler {
                     } else {
                         false
                     }; // lock is dropped here
-                    tracing::debug!("stream {} started {}", id, doit);
+                    tracing::trace!("stream {} started {}", id, doit);
                     if doit && reply.send(Ok(rx)).is_ok() {
                         while let Some(event) = s.next().await {
                             tracing::trace!("stream {} got {}/{}", id, event.key.lamport, event.key.stream);
-                            if tx.send(Ok(event)).await.is_err() {
-                                // stream recipient has lost interest
-                                tracing::debug!("stream {} aborted", id);
-                                break;
+                            match tx.try_reserve() {
+                                Ok(sender) => {
+                                    sender.send(Ok(event));
+                                    tracing::trace!("stream {} sent", id);
+                                }
+                                Err(TrySendError::Closed(_)) => {
+                                    // stream recipient has lost interest
+                                    tracing::trace!("stream {} aborted", id);
+                                    break;
+                                }
+                                Err(TrySendError::Full(_)) => {
+                                    tracing::trace!("stream {} hibernating", id);
+                                    if tx.send(Ok(event)).await.is_err() {
+                                        tracing::trace!("stream {} aborted", id);
+                                        break;
+                                    };
+                                    tracing::trace!("stream {} sent", id);
+                                }
                             }
-                            tracing::trace!("stream {} sent", id);
                         }
-                        tracing::debug!("stream {} ended", id);
+                        tracing::trace!("stream {} ended", id);
                     }
                 }
                 Err(e) => {
@@ -331,11 +363,15 @@ impl EventStoreHandler {
 impl Drop for EventStoreHandler {
     fn drop(&mut self) {
         let mut streams = self.state.stream.lock();
-        tracing::info!(
-            "stopping store with {} ongoing persist calls and {} ongoing queries",
-            self.state.persist.load(Ordering::Relaxed),
-            streams.len()
-        );
+        let ongoing_persist_calls = self.state.persist.load(Ordering::Relaxed);
+        let ongoing_queries = streams.len();
+        if ongoing_persist_calls > 0 || ongoing_queries > 1 {
+            tracing::info!(
+                "stopping store with {} ongoing persist calls and {} ongoing queries",
+                ongoing_persist_calls,
+                ongoing_queries
+            );
+        }
         for (_id, (handle, stream)) in streams.iter() {
             handle.abort();
             if let Some(stream) = stream {

@@ -26,6 +26,12 @@ pub struct Swarm {
     pub initial_peers: BTreeSet<String>,
     pub announce_addresses: BTreeSet<String>,
     pub topic: String,
+    pub block_cache_size: u64,
+    pub block_cache_count: u64,
+    pub block_gc_interval: u64,
+    pub metrics_interval: u64,
+    pub ping_timeout: u64,
+    pub bitswap_timeout: u64,
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -65,6 +71,12 @@ impl Settings {
                 initial_peers: btreeset!["some bootstrap node".into()],
                 announce_addresses: btreeset![],
                 topic: "some topic".into(),
+                block_cache_count: 1024 * 128,
+                block_cache_size: 1024 * 1024 * 1024,
+                block_gc_interval: 300,
+                metrics_interval: 1800,
+                ping_timeout: 5,
+                bitswap_timeout: 15,
             },
             admin: Admin {
                 display_name: "some name".into(),

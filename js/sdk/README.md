@@ -50,7 +50,3 @@ import { Actyx, Tags } from '@actyx/sdk'
     })
 })()
 ```
-
-## Contributing
-
-PRs are very welcome. Please review the contribution notes in [the root README](https://github.com/Actyx/Actyx/blob/master/README.md#contributing).

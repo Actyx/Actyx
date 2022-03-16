@@ -3,10 +3,8 @@
 //! Can be run using `RUST_LOG=debug cargo run --release --example append to see timings`,
 //! or `cargo flamegraph --example append` to see a flamegraph (on a proper linux).
 use actyx_sdk::{app_id, tags, AppId, Payload};
-use parking_lot::Mutex;
-use std::{path::PathBuf, sync::Arc, time::Instant};
+use std::{path::PathBuf, time::Instant};
 use swarm::*;
-use util::set_log_level;
 
 fn app_id() -> AppId {
     app_id!("test")
@@ -14,13 +12,12 @@ fn app_id() -> AppId {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    set_log_level(0);
+    util::setup_logger();
     let dir = tempfile::tempdir()?;
     let db = PathBuf::from(dir.path().join("db").to_str().expect("illegal filename"));
     let index = PathBuf::from(dir.path().join("index").to_str().expect("illegal filename"));
-    let index_store = Arc::new(Mutex::new(rusqlite::Connection::open(index)?));
     let config = SwarmConfig {
-        index_store: Some(index_store),
+        index_store: Some(index),
         node_name: Some("append_bench".to_owned()),
         db_path: Some(db),
         ..SwarmConfig::basic()

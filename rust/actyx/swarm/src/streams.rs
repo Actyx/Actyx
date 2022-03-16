@@ -144,7 +144,6 @@ pub struct ReplicatedStream {
     validated: Variable<Option<PublishedTree>>,
     // stream of incoming roots
     incoming: Variable<Option<(Link, RootSource)>>,
-    latest_seen: Variable<Option<(LamportTimestamp, Offset)>>,
 }
 
 /// Trees are published including a tree header.
@@ -182,7 +181,6 @@ impl ReplicatedStream {
         Self {
             validated: Variable::new(state),
             incoming: Variable::default(),
-            latest_seen: Variable::default(),
         }
     }
 

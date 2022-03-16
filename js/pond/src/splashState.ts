@@ -1,17 +1,34 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import { Actyx, OffsetMap } from '@actyx/sdk'
 import { takeWhileInclusive } from '@actyx/sdk/lib/util'
 import * as immutable from 'immutable'
-import { Observable, Subject } from 'rxjs'
+import {
+  Observable,
+  Subject,
+  EMPTY,
+  timer,
+  NEVER,
+  defer,
+  interval,
+  from,
+} from '../node_modules/rxjs'
+import {
+  mergeWith,
+  startWith,
+  scan,
+  takeUntil,
+  map,
+  concatMapTo,
+} from '../node_modules/rxjs/operators'
 import { NodeInfoEntry, SwarmInfo, SwarmSummary } from './swarmState'
 
 /** Configure how to wait for swarm. @public */
-export type FullWaitForSwarmConfig = Readonly<{
+export type FullWaitForSwarmConfig = {
   /**
    * Splash screen enabled
    */
@@ -32,7 +49,7 @@ export type FullWaitForSwarmConfig = Readonly<{
    * True if we allow the user to skip the splash screen
    */
   allowSkip: boolean
-}>
+}
 
 const defaults: FullWaitForSwarmConfig = {
   enabled: true,
@@ -50,13 +67,13 @@ export const WaitForSwarmConfig = {
 }
 
 /** Sync progress in terms of event numbers. @public */
-export type Progress = Readonly<{ min: number; current: number; max: number }>
+export type Progress = { min: number; current: number; max: number }
 
 /** Sync progress per source, and overall. @public */
-export type SyncProgress = Readonly<{
+export type SyncProgress = {
   sources: Progress
   events: Progress
-}>
+}
 
 export const getSyncProgress = (current: SwarmInfo, reference: SwarmInfo): SyncProgress => {
   const r = {
@@ -119,21 +136,19 @@ export const getSplashStateImpl = (
     ...config,
   }
   if (!enabled) {
-    return Observable.empty()
+    return EMPTY
   }
   const userSkip = new Subject<void>()
   // emits when either the user skips or the fixed splash time has elapsed
-  const skip = userSkip.merge(
-    waitForSyncMs !== undefined
-      ? Observable.timer(waitForSwarmMs + waitForSyncMs)
-      : Observable.never(),
+  const skip = userSkip.pipe(
+    mergeWith(waitForSyncMs !== undefined ? timer(waitForSwarmMs + waitForSyncMs) : NEVER),
   )
   const initial: SplashState = {
     mode: 'discovery',
     skip: allowSkip ? () => userSkip.next(undefined) : undefined,
     current: SwarmSummary.empty,
   }
-  return Observable.defer(() => {
+  return defer(() => {
     const t0 = Date.now()
     // true once we consider that we have enough info about the swarm, according to config
     const startSync = (current: SwarmSummary) =>
@@ -154,12 +169,13 @@ export const getSplashStateImpl = (
             current,
             progress: getSyncProgress(current.info, agg.reference.info),
           }
-    return swarmInfo
-      .map(SwarmSummary.fromSwarmInfo)
-      .startWith(SwarmSummary.empty)
-      .scan<SwarmSummary, SplashState>(scanner, initial)
-      .pipe(takeWhileInclusive(x => !synced(x)))
-      .takeUntil(skip)
+    return swarmInfo.pipe(
+      map(SwarmSummary.fromSwarmInfo),
+      startWith(SwarmSummary.empty),
+      scan<SwarmSummary, SplashState>(scanner, initial),
+      takeWhileInclusive((x) => !synced(x)),
+      takeUntil(skip),
+    )
   })
 }
 
@@ -167,23 +183,23 @@ export const getSplashStateImpl = (
  * Discovering swarm state.
  * @public
  */
-export type SplashStateDiscovery = Readonly<{
+export type SplashStateDiscovery = {
   mode: 'discovery'
   current: SwarmSummary
   skip?: () => void
-}>
+}
 
 /**
  * Synchronizing up to the discovered swarm state.
  * @public
  */
-export type SplashStateSync = Readonly<{
+export type SplashStateSync = {
   mode: 'sync'
   reference: SwarmSummary
   progress: SyncProgress
   current: SwarmSummary
   skip?: () => void
-}>
+}
 
 /**
  * Current state of swarm synchronization procedure.
@@ -217,16 +233,17 @@ export const streamSplashState = (
 ): Observable<SplashState> => {
   const waitForSwarmMs = config.waitForSwarmMs || defaults.waitForSwarmMs
 
-  const swarmInfo$ = Observable.interval(500)
-    .concatMapTo(Observable.from(actyx.offsets()))
-    .takeUntil(Observable.timer(waitForSwarmMs))
-    .map(({ present, toReplicate }) => {
+  const swarmInfo$ = interval(500).pipe(
+    concatMapTo(from(actyx.offsets())),
+    takeUntil(timer(waitForSwarmMs)),
+    map(({ present, toReplicate }) => {
       const seen = Object.entries(toReplicate).reduce(
         (acc, [k, v]) => ({ ...acc, [k]: (acc[k] || 0) + v }),
         present,
       )
       return toSwarmInfo([seen, present])
-    })
+    }),
+  )
 
   return getSplashStateImpl(config, swarmInfo$)
 }

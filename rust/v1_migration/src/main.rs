@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use crossterm::event::DisableMouseCapture;
 use crossterm::event::EnableMouseCapture;
 use crossterm::event::Event;
 use crossterm::event::EventStream;
@@ -6,8 +7,10 @@ use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
 use crossterm::event::KeyModifiers;
 use crossterm::execute;
+use crossterm::terminal::disable_raw_mode;
 use crossterm::terminal::enable_raw_mode;
 use crossterm::terminal::EnterAlternateScreen;
+use crossterm::terminal::LeaveAlternateScreen;
 use futures::StreamExt;
 use std::{io::Write, path::PathBuf, time::Duration};
 use structopt::StructOpt;
@@ -39,10 +42,7 @@ struct Opts {
 }
 
 async fn run(working_dir: PathBuf) -> anyhow::Result<()> {
-    enable_raw_mode()?;
     let mut out = std::io::stdout();
-    execute!(out, EnterAlternateScreen, EnableMouseCapture)?;
-
     let (key_tx, mut key_rx) = channel(128);
     let mut stream = EventStream::new();
     tokio::task::spawn(async move {
@@ -52,6 +52,9 @@ async fn run(working_dir: PathBuf) -> anyhow::Result<()> {
                 modifiers: KeyModifiers::CONTROL,
             })) = &k
             {
+                let mut out = std::io::stdout();
+                disable_raw_mode().expect("Error while disabling raw mode");
+                execute!(out, LeaveAlternateScreen, DisableMouseCapture).expect("Error while resettng screen");
                 tracing::error!("Caught ctrl-c. Exiting");
                 std::process::exit(1);
             }
@@ -96,7 +99,20 @@ fn main() -> Result<()> {
             .enable_all()
             .worker_threads(4)
             .build()?;
-        rt.block_on(run(working_dir))?;
+
+        enable_raw_mode()?;
+        let mut out = std::io::stdout();
+        execute!(out, EnterAlternateScreen, EnableMouseCapture)?;
+
+        let res = rt.block_on(run(working_dir));
+
+        disable_raw_mode()?;
+        execute!(out, LeaveAlternateScreen, DisableMouseCapture)?;
+
+        if let Err(err) = res {
+            eprintln!("Error during migration: {}", err);
+        }
+
         rt.shutdown_timeout(Duration::from_millis(500));
     }
 

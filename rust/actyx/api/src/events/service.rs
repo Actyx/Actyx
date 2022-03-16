@@ -6,18 +6,22 @@ use actyx_sdk::{
         PublishResponse, PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    AppId, Event, NodeId, OffsetMap, OffsetOrMin, Payload,
+    AppId, Event, EventKey, NodeId, OffsetMap, OffsetOrMin, Payload, StreamNr,
 };
 use ax_futures_util::ReceiverExt;
-use futures::stream::{BoxStream, StreamExt};
+use futures::{
+    future::poll_fn,
+    stream::{BoxStream, StreamExt},
+    FutureExt,
+};
 use genawaiter::sync::{Co, Gen};
 use runtime::{
     eval::Context,
     features::{Endpoint, Features},
-    query::Query,
+    query::{Feeder, Query},
     value::Value,
 };
-use std::{convert::TryFrom, num::NonZeroU64};
+use std::{convert::TryFrom, num::NonZeroU64, task::Poll};
 use swarm::event_store_ref::EventStoreRef;
 
 #[derive(Clone)]
@@ -48,13 +52,18 @@ impl EventService {
         Ok(OffsetsResponse { present, to_replicate })
     }
 
-    pub async fn publish(&self, app_id: AppId, request: PublishRequest) -> anyhow::Result<PublishResponse> {
+    pub async fn publish(
+        &self,
+        app_id: AppId,
+        stream_nr: StreamNr,
+        request: PublishRequest,
+    ) -> anyhow::Result<PublishResponse> {
         let events = request
             .data
             .into_iter()
             .map(|PublishEvent { tags, payload }| (tags, payload))
             .collect();
-        let meta = self.store.persist(app_id, events).await?;
+        let meta = self.store.persist(app_id, stream_nr, events).await?;
         let response = PublishResponse {
             data: meta
                 .into_iter()
@@ -204,10 +213,11 @@ impl EventService {
         _app_id: AppId,
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        let present = self.store.offsets().await?.present();
         let lower_bound = match &request.from {
             StartFrom::LowerBound(x) => x.clone(),
         };
+        let mut present = self.store.offsets().await?.present();
+        present.union_with(&lower_bound);
 
         let query = Query::from(request.query);
         let tag_expr = query.from.clone();
@@ -241,30 +251,62 @@ impl EventService {
                 .recv()
                 .await
                 .transpose()?
-                .map(|event| event.key),
+                .map(|event| event.key)
+                .unwrap_or(EventKey {
+                    lamport: 0.into(),
+                    stream: Default::default(),
+                    offset: 0.into(),
+                }),
         };
 
-        async fn y(
+        async fn send_and_timetravel(
             co: &Co<SubscribeMonotonicResponse>,
-            vs: Vec<anyhow::Result<Value>>,
-            event: Option<&Event<Payload>>,
-        ) {
-            for v in vs {
-                co.yield_(match v {
-                    Ok(v) => SubscribeMonotonicResponse::Event {
-                        event: to_event(v, event),
-                        caught_up: true,
-                    },
-                    Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e.to_string())),
-                })
-                .await;
+            event: Event<Payload>,
+            latest: &mut EventKey,
+            caught_up: bool,
+            query: &mut Feeder,
+            cx: &Context<'_>,
+        ) -> bool {
+            let key = event.key;
+            if key > *latest {
+                *latest = key;
+                let vs = query.feed(Some(to_value(&event)), cx).await;
+                if !vs.is_empty() {
+                    let last = {
+                        let mut l = None;
+                        for idx in (0..vs.len()).rev() {
+                            if vs[idx].is_ok() {
+                                l = Some(idx);
+                                break;
+                            }
+                        }
+                        l
+                    };
+                    for (idx, v) in vs.into_iter().enumerate() {
+                        let caught_up = Some(idx) == last && caught_up;
+                        co.yield_(match v {
+                            Ok(v) => SubscribeMonotonicResponse::Event {
+                                event: to_event(v, Some(&event)),
+                                caught_up,
+                            },
+                            Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e.to_string())),
+                        })
+                        .await;
+                    }
+                }
+                false
+            } else {
+                co.yield_(SubscribeMonotonicResponse::TimeTravel { new_start: event.key })
+                    .await;
+                true
             }
         }
 
         let gen = Gen::new(move |co: Co<SubscribeMonotonicResponse>| async move {
             while let Some(ev) = bounded.next().await {
-                let vs = query.feed(Some(to_value(&ev)), &cx).await;
-                y(&co, vs, Some(&ev)).await;
+                if send_and_timetravel(&co, ev, &mut latest, false, &mut query, &cx).await {
+                    break;
+                }
             }
 
             co.yield_(SubscribeMonotonicResponse::Offsets(OffsetMapResponse {
@@ -272,16 +314,15 @@ impl EventService {
             }))
             .await;
 
-            while let Some(ev) = unbounded.next().await {
-                let key = Some(ev.key);
-                if key > latest {
-                    latest = key;
-                    let vs = query.feed(Some(to_value(&ev)), &cx).await;
-                    y(&co, vs, Some(&ev)).await;
-                } else {
-                    co.yield_(SubscribeMonotonicResponse::TimeTravel { new_start: ev.key })
-                        .await;
-                    return;
+            let mut event = unbounded.next().await;
+            while let Some(ev) = event {
+                let next = poll_fn(|cx| Poll::Ready(unbounded.next().poll_unpin(cx))).await;
+                if send_and_timetravel(&co, ev, &mut latest, next.is_pending(), &mut query, &cx).await {
+                    break;
+                }
+                match next {
+                    Poll::Ready(x) => event = x,
+                    Poll::Pending => event = unbounded.next().await,
                 }
             }
         });

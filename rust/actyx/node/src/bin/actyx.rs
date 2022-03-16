@@ -1,0 +1,198 @@
+use actyx_sdk::legacy::SourceId;
+use anyhow::Result;
+use anyhow::{anyhow, Context};
+use derive_more::{Display, Error};
+use node::{init_shutdown_ceremony, shutdown_ceremony, ApplicationState, BindTo, BindToOpts, Runtime};
+use std::str::FromStr;
+use std::{convert::TryInto, path::PathBuf};
+use structopt::StructOpt;
+use util::version::NodeVersion;
+
+#[derive(Debug)]
+enum Color {
+    Off,
+    Auto,
+    On,
+}
+
+impl FromStr for Color {
+    type Err = NoColor;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "1" | "on" | "true" => Ok(Self::On),
+            "0" | "off" | "false" => Ok(Self::Off),
+            "auto" => Ok(Self::Auto),
+            _ => Err(NoColor),
+        }
+    }
+}
+
+#[derive(Debug, Display, Error)]
+#[display(fmt = "allowed values are 1, on, true, 0, off, false, auto (case insensitive)")]
+struct NoColor;
+
+#[derive(StructOpt, Debug)]
+#[structopt(
+    name = "actyx",
+    about = concat!("\n", include_str!("../../../../../NOTICE")),
+    help_message = "Print help information (use --help for more details)",
+    after_help = "For one-off log verbosity override, you may start with the environment variable \
+        RUST_LOG set to “debug” or “node=debug,info” (the former logs all debug messages while \
+        the latter logs at debug level for the “node” code module and info level for everything \
+        else).
+        ",
+    rename_all = "kebab-case",
+    version = env!("AX_VERSION"),
+)]
+struct Opts {
+    #[structopt(
+        long,
+        env = "ACTYX_PATH",
+        long_help = "Path where to store all the data of the Actyx node. \
+            Defaults to creating <current working dir>/actyx-data"
+    )]
+    /// Path where to store all the data of the Actyx node.
+    working_dir: Option<PathBuf>,
+
+    #[structopt(flatten)]
+    bind_options: BindToOpts,
+
+    #[structopt(short, long, hidden = true)]
+    random: bool,
+
+    #[structopt(long)]
+    /// This does not do anything; kept for backward-compatibility
+    background: bool,
+
+    #[structopt(long)]
+    version: bool,
+
+    #[structopt(
+        long,
+        env = "ACTYX_COLOR",
+        long_help = "Control whether to use ANSI color sequences in log output. \
+            Valid values (case insensitive) are 1, true, on, 0, false, off, auto \
+            (default is on, auto only uses colour when stderr is a terminal). \
+            Defaults to 1."
+    )]
+    /// Control whether to use ANSI color sequences in log output.
+    log_color: Option<Color>,
+
+    #[structopt(
+        long,
+        env = "ACTYX_LOG_JSON",
+        long_help = "Output logs as JSON objects (one per line) if the value is \
+            1, true, on or if stderr is not a terminal and the value is auto \
+            (all case insensitive). Defaults to 0."
+    )]
+    /// Output logs as JSON objects (one per line)
+    log_json: Option<Color>,
+
+    #[structopt(
+        long,
+        long_help = "When migrating from ActyxOS v1, only the local SourceId will \
+            be migrated by default, as every other node will migrate their stream \
+            in the process (and dead sources are migrated with a dedicated tool). \
+            This setting allows you to locally test an app with the data of the \
+            whole swarm: start Actyx with a copy of the v1 working-dir and this \
+            option.\n\n\
+            BE SURE TO NEVER USE THE RESULT IN PRODUCTION! You have been warned."
+    )]
+    /// Test facility for preparing a migration from ActyxOS v1, see --help.
+    migrate_all_sources: bool,
+
+    #[structopt(
+        long,
+        long_help = "By default, each node converts its own event stream only, renaming it \
+            from its old SourceId to the new NodeId with stream number 0. With this option \
+            you can manually select a set of SourceIds to convert, e.g. to add some \
+            previously forgotten dead sources. If you want to convert no data at all, use \
+            this option with a non-existing source ID (e.g. `a`).\n\n\
+            Make sure to never convert a SourceId twice because this will lead to a \
+            duplication of all its events!"
+    )]
+    /// Migration tool from ActyxOS v1 (see --help)
+    migrate_specific_sources: Vec<SourceId>,
+}
+
+pub fn main() -> Result<()> {
+    let Opts {
+        working_dir,
+        bind_options,
+        random,
+        version,
+        background,
+        log_color,
+        log_json,
+        migrate_all_sources,
+        migrate_specific_sources,
+    } = Opts::from_args();
+
+    let is_no_tty = atty::isnt(atty::Stream::Stderr);
+    let log_no_color = match log_color {
+        Some(Color::On) => false,
+        Some(Color::Off) => true,
+        Some(Color::Auto) => is_no_tty,
+        None => false,
+    };
+    let log_as_json = match log_json {
+        Some(Color::On) => true,
+        Some(Color::Off) => false,
+        Some(Color::Auto) => is_no_tty,
+        None => false,
+    };
+
+    if background {
+        eprintln!("Notice: the `--background` flag is no longer used and will just be ignored.")
+    }
+
+    if version {
+        println!("Actyx {}", NodeVersion::get());
+    } else {
+        let bind_to = if random {
+            BindTo::random()?
+        } else {
+            bind_options.try_into()?
+        };
+        let working_dir = working_dir.ok_or_else(|| anyhow!("empty")).or_else(|_| -> Result<_> {
+            Ok(std::env::current_dir()
+                .context("getting current working directory")?
+                .join("actyx-data"))
+        })?;
+
+        std::fs::create_dir_all(working_dir.clone())
+            .with_context(|| format!("creating working directory `{}`", working_dir.display()))?;
+        // printed by hand since things can fail before logging is set up and we want the user to know this
+        eprintln!("using data directory `{}`", working_dir.display());
+
+        // must be done before starting the application
+        init_shutdown_ceremony();
+
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        let runtime: Runtime = Runtime::Linux;
+        #[cfg(target_os = "windows")]
+        let runtime: Runtime = Runtime::Windows;
+        #[cfg(target_os = "android")]
+        let runtime: Runtime = Runtime::Android;
+
+        let migrate_sources_filter = if migrate_all_sources {
+            None
+        } else {
+            Some(migrate_specific_sources.into_iter().collect())
+        };
+
+        let app_handle = ApplicationState::spawn(
+            working_dir,
+            runtime,
+            bind_to,
+            log_no_color,
+            log_as_json,
+            migrate_sources_filter,
+        )?;
+
+        shutdown_ceremony(app_handle)?;
+    }
+
+    Ok(())
+}

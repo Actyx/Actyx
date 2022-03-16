@@ -1,17 +1,19 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import { right } from 'fp-ts/lib/Either'
-import { Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
+import { Ord } from 'fp-ts/lib/Ord'
+import { Ord as OrdString } from 'fp-ts/lib/string'
+import { Ord as OrdNumber } from 'fp-ts/lib/number'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
 import { isString } from '../types'
@@ -23,7 +25,7 @@ export class EnumType<A> extends t.Type<A> {
   public constructor(e: object, name?: string) {
     super(
       name || 'enum',
-      (u): u is A => Object.values(this.enumObject).some(v => v === u),
+      (u): u is A => Object.values(this.enumObject).some((v) => v === u),
       (u, c) => (this.is(u) ? t.success(u) : t.failure(u, c)),
       t.identity,
     )
@@ -51,17 +53,17 @@ export const OffsetMapWithDefault = t.readonly(
 )
 export type OffsetMapWithDefault = t.TypeOf<typeof OffsetMapWithDefault>
 
-const stringRA = t.readonlyArray(t.string)
+const stringRA = t.array(t.string)
 
-type Tags = ReadonlyArray<string>
-type TagsOnWire = ReadonlyArray<string> | undefined
+type Tags = string[]
+type TagsOnWire = string[] | undefined
 const Tags = new t.Type<Tags, TagsOnWire>(
   'TagsSetFromArray',
   (x): x is Tags => x instanceof Array && x.every(isString),
   // Rust side for now expresses empty tag arrays as omitting the field
   (x, c) => (x === undefined ? right([]) : stringRA.validate(x, c)),
   // Sending empty arrays is fine, though
-  x => x,
+  (x) => x,
 )
 
 export const EventIO = t.type({
@@ -77,16 +79,16 @@ export const EventIO = t.type({
 
 /** A single Actyx Event */
 export type Event = t.TypeOf<typeof EventIO>
-const compareEvents = (a: Event, b: Event): Ordering => {
-  const lamportOrder = ordNumber.compare(a.lamport, b.lamport)
+export const _compareEvents = (a: Event, b: Event): Ordering => {
+  const lamportOrder = OrdNumber.compare(a.lamport, b.lamport)
   if (lamportOrder !== 0) {
     return lamportOrder
   }
-  const sourceOrder = ordString.compare(a.sourceId, b.sourceId)
+  const sourceOrder = OrdString.compare(a.sourceId, b.sourceId)
   if (sourceOrder !== 0) {
     return sourceOrder
   }
-  return ordNumber.compare(a.psn, b.psn)
+  return OrdNumber.compare(a.psn, b.psn)
 }
 
 const eventsEqual = (a: Event, b: Event): boolean =>
@@ -102,7 +104,7 @@ const eventsEqual = (a: Event, b: Event): boolean =>
  */
 const ordEvent: Ord<Event> = {
   equals: eventsEqual,
-  compare: compareEvents,
+  compare: _compareEvents,
 }
 
 /** Event-related constants */
@@ -148,9 +150,8 @@ export enum PersistedEventsSortOrders {
   ReverseEventKey = 'reverseEventKey',
   Unsorted = 'unsorted',
 }
-export const PersistedEventsSortOrder: EnumType<PersistedEventsSortOrders> = createEnumType<
-  PersistedEventsSortOrders
->(PersistedEventsSortOrders, 'PersistedEventsSortOrders')
+export const PersistedEventsSortOrder: EnumType<PersistedEventsSortOrders> =
+  createEnumType<PersistedEventsSortOrders>(PersistedEventsSortOrders, 'PersistedEventsSortOrders')
 export type PersistedEventsSortOrder = t.TypeOf<typeof PersistedEventsSortOrder>
 
 /**
@@ -160,9 +161,8 @@ export enum AllEventsSortOrders {
   EventKey = 'eventKey',
   Unsorted = 'unsorted',
 }
-export const AllEventsSortOrder: EnumType<AllEventsSortOrders> = createEnumType<
-  AllEventsSortOrders
->(AllEventsSortOrders, 'AllEventsSortOrders')
+export const AllEventsSortOrder: EnumType<AllEventsSortOrders> =
+  createEnumType<AllEventsSortOrders>(AllEventsSortOrders, 'AllEventsSortOrders')
 export type AllEventsSortOrder = t.TypeOf<typeof AllEventsSortOrder>
 
 /**
@@ -220,7 +220,7 @@ export type ConnectivityStatus = t.TypeOf<typeof ConnectivityStatus>
 export type StoreConnectionClosedHook = () => void
 
 /** Configuration for the WebSocket store connection. @public */
-export type WsStoreConfig = Readonly<{
+export type WsStoreConfig = {
   /** url of the destination */
   url: string
   /** protocol of the destination */
@@ -231,4 +231,4 @@ export type WsStoreConfig = Readonly<{
   reconnectTimeout?: number
 
   // todo timeouts?, heartbeats? etc.
-}>
+}

@@ -2,7 +2,7 @@
   "compilerOptions": {
     "declaration": true,
     "outDir": "lib",
-    "sourceMap": false,
+    "sourceMap": true,
     // TODO: temporary while RxJs fix their issues https://github.com/ReactiveX/rxjs/issues/3031
     "skipLibCheck": true,
     "module": "commonjs",
@@ -19,8 +19,8 @@
     "stripInternal": true,
     "noImplicitThis": true,
     "alwaysStrict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "preserveConstEnums": true

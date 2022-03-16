@@ -1,7 +1,7 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
 /**
@@ -31,7 +31,7 @@ const _root: any = __window || __global || __self
 // Workaround Closure Compiler restriction: The body of a goog.module cannot use throw.
 // This is needed when used with angular/tsickle which inserts a goog.module statement.
 // Wrap in IIFE
-;(function() {
+;(function () {
   if (!_root) {
     throw new Error('RxJS could not find any global context (window, self, global)')
   }

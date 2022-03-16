@@ -45,7 +45,7 @@ fn deserialize_signature<'de, D: Deserializer<'de>>(d: D) -> Result<AppManifestS
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SignedAppManifest {
-    app_id: AppId,
+    pub app_id: AppId,
     pub display_name: String,
     pub version: String,
     #[serde(serialize_with = "serialize_signature")]

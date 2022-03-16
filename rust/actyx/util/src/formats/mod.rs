@@ -1,7 +1,5 @@
-use derive_more::{AsRef, Display, From, Into};
-use serde::{Deserialize, Serialize};
-
 pub mod admin_protocol;
+pub mod banyan_protocol;
 pub mod errors;
 pub mod events_protocol;
 pub mod logs;
@@ -12,6 +10,10 @@ pub use admin_protocol::*;
 pub use errors::*;
 pub use logs::*;
 
+use derive_more::{AsRef, Display, From, Into};
+use libp2p::Multiaddr;
+use serde::{Deserialize, Serialize};
+
 /// Keeps track of how many times a node was restarted
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, From)]
 pub struct NodeCycleCount(u64);
@@ -21,8 +23,8 @@ pub struct NodeName(pub String);
 
 #[derive(Debug, Display)]
 pub enum NodeErrorContext {
-    #[display(fmt = "Bind failed on port {} for {}", port, component)]
-    BindFailed { port: u16, component: String },
+    #[display(fmt = "Bind failed on port {} for {}", addr, component)]
+    BindFailed { addr: Multiaddr, component: String },
 }
 
 #[macro_export]

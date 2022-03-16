@@ -235,6 +235,7 @@ whitespace
 combinators
 subtyping
 64bit
+bitswap
  - blog/2020-06-09-building-docker-apps-for-arm64v8.md
 arm64
 ActyxOS
@@ -513,6 +514,12 @@ FinishedGoodsBooked
 - ./docs/reference/actyx.mdx
 ff02
 fb
+announceAddresses
+bitswapTimeout
+pingTimeout
+blockCacheCount
+blockCacheSize
+blockGcInterval
 - ./docs/tutorials/advanced-tutorial/business-logic.mdx
 statemachine.svg
 orderfish.svg
@@ -572,3 +579,17 @@ _x_
 eventKeyRange
 user_id
 uptime
+- ./docs/reference/files-api.mdx
+Uploader
+inlining
+ing
+ref1
+ex1
+ref2
+ex2
+ref3
+ex3
+ref4
+ex4
+ref5
+ex5

@@ -5,12 +5,15 @@
 ```ts
 
 import { Ord } from 'fp-ts/lib/Ord';
+import * as t from 'io-ts';
 
 // @public
 export type Actyx = EventFns & {
     readonly nodeId: NodeId;
+    readonly snapshotStore: SnapshotStore;
     dispose: () => void;
     waitForSync: () => Promise<void>;
+    nodeInfo: (maxAgeMillis: number) => Promise<NodeInfo>;
 };
 
 // @public
@@ -35,12 +38,14 @@ export type ActyxOpts = {
     actyxHost?: string;
     actyxPort?: number;
     onConnectionLost?: () => void;
+    onConnectionEstablished?: () => void;
 };
 
 // @public
-export type ActyxTestOpts = Readonly<{
+export type ActyxTestOpts = {
     nodeId?: NodeId;
-}>;
+    timeInjector?: TimeInjector;
+};
 
 // @public
 export const allEvents: Tags<unknown>;
@@ -89,6 +94,12 @@ export type AqlOffsetsMsg = {
 };
 
 // @beta
+export type AqlQuery = string | {
+    query: string;
+    order?: EventsSortOrder;
+};
+
+// @beta
 export type AqlResponse = AqlEventMessage | AqlOffsetsMsg | AqlDiagnosticMessage | AqlFutureCompat;
 
 // @public
@@ -96,6 +107,7 @@ export type AutoCappedQuery = {
     lowerBound?: OffsetMap;
     query?: Where<unknown>;
     order?: EventsSortOrder;
+    horizon?: string;
 };
 
 // @public
@@ -117,49 +129,49 @@ export type EventChunk = {
 
 // @public
 export interface EventFns {
-    emit: (events: ReadonlyArray<TaggedEvent>) => PendingEmission;
-    observeBestMatch: <E>(query: Where<E>, shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean, onReplaced: (event: E, metadata: Metadata) => void) => CancelSubscription;
+    // @deprecated
+    emit: (events: TaggedEvent[]) => PendingEmission;
+    observeBestMatch: <E>(query: Where<E>, shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean, onReplaced: (event: E, metadata: Metadata) => void, onError?: (err: unknown) => void) => CancelSubscription;
     // @beta
-    observeEarliest: <E>(query: EarliestQuery<E>, onNewEarliest: (event: E, metadata: Metadata) => void) => CancelSubscription;
+    observeEarliest: <E>(query: EarliestQuery<E>, onNewEarliest: (event: E, metadata: Metadata) => void, onError?: (err: unknown) => void) => CancelSubscription;
     // @beta
-    observeLatest: <E>(query: EarliestQuery<E>, onNewLatest: (event: E, metadata: Metadata) => void) => CancelSubscription;
-    observeUnorderedReduce: <R, E>(query: Where<E>, reduce: (acc: R, event: E, metadata: Metadata) => R, initial: R, onUpdate: (result: R) => void) => CancelSubscription;
+    observeLatest: <E>(query: EarliestQuery<E>, onNewLatest: (event: E, metadata: Metadata) => void, onError?: (err: unknown) => void) => CancelSubscription;
+    observeUnorderedReduce: <R, E>(query: Where<E>, reduce: (acc: R, event: E, metadata: Metadata) => R, initial: R, onUpdate: (result: R) => void, onError?: (err: unknown) => void) => CancelSubscription;
     offsets: () => Promise<OffsetsResponse>;
     present: () => Promise<OffsetMap>;
+    publish(event: TaggedEvent): Promise<Metadata>;
+    // (undocumented)
+    publish(events: TaggedEvent[]): Promise<Metadata[]>;
     queryAllKnown: (query: AutoCappedQuery) => Promise<EventChunk>;
-    queryAllKnownChunked: (query: AutoCappedQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
+    queryAllKnownChunked: (query: AutoCappedQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: OnCompleteOrErr) => CancelSubscription;
     // @beta
-    queryAql: (query: string) => Promise<AqlResponse[]>;
+    queryAql: (query: AqlQuery) => Promise<AqlResponse[]>;
+    // @beta
+    queryAqlChunked: (query: AqlQuery, chunkSize: number, onChunk: (chunk: AqlResponse[]) => Promise<void> | void, onCompleteOrError: OnCompleteOrErr) => CancelSubscription;
     queryKnownRange: (query: RangeQuery) => Promise<ActyxEvent[]>;
-    queryKnownRangeChunked: (query: RangeQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
-    subscribe: (query: EventSubscription, onEvent: (e: ActyxEvent) => Promise<void> | void) => CancelSubscription;
+    queryKnownRangeChunked: (query: RangeQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: OnCompleteOrErr) => CancelSubscription;
+    subscribe: (query: EventSubscription, onEvent: (e: ActyxEvent) => Promise<void> | void, onError?: (err: unknown) => void) => CancelSubscription;
+    // @beta
+    subscribeAql: (query: AqlQuery, onResponse: (r: AqlResponse) => Promise<void> | void, onError?: (err: unknown) => void, lowerBound?: OffsetMap) => CancelSubscription;
     subscribeChunked: (query: EventSubscription, chunkConfig: {
         maxChunkSize?: number;
         maxChunkTimeMs?: number;
-    }, onChunk: (chunk: EventChunk) => Promise<void> | void) => CancelSubscription;
+    }, onChunk: (chunk: EventChunk) => Promise<void> | void, onError?: (err: unknown) => void) => CancelSubscription;
     // @alpha
-    subscribeMonotonic: <E>(query: MonotonicSubscription<E>, callback: (data: EventsOrTimetravel<E>) => Promise<void> | void) => CancelSubscription;
+    subscribeMonotonic: <E>(query: MonotonicSubscription<E>, callback: (data: EventsOrTimetravel<E>) => Promise<void> | void, onCompleteOrErr?: OnCompleteOrErr) => CancelSubscription;
 }
 
 // @public
-export type EventKey = Readonly<{
+export type EventKey = {
     lamport: Lamport;
     offset: Offset;
     stream: StreamId;
-}>;
+};
 
 // @public
 export const EventKey: {
-    zero: Readonly<{
-        lamport: Lamport;
-        offset: Offset;
-        stream: StreamId;
-    }>;
-    ord: Ord<Readonly<{
-        lamport: Lamport;
-        offset: Offset;
-        stream: StreamId;
-    }>>;
+    zero: EventKey;
+    ord: Ord<EventKey>;
     format: (key: EventKey) => string;
 };
 
@@ -170,11 +182,11 @@ export enum EventOrder {
 }
 
 // @alpha
-export type EventsMsg<E> = Readonly<{
+export type EventsMsg<E> = {
     type: MsgType.events;
     events: ActyxEvent<E>[];
     caughtUp: boolean;
-}>;
+};
 
 // @alpha
 export type EventsOrTimetravel<E> = StateMsg | EventsMsg<E> | TimeTravelMsg<E>;
@@ -193,11 +205,11 @@ export type EventSubscription = {
 };
 
 // @alpha
-export type FixedStart = Readonly<{
+export type FixedStart = {
     from: OffsetMap;
     latestEventKey: EventKey;
     horizon?: EventKey;
-}>;
+};
 
 // @public
 export type HasOffsetAndStream = {
@@ -207,8 +219,14 @@ export type HasOffsetAndStream = {
 
 // @alpha
 export type HasTags = {
-    tags: ReadonlyArray<string>;
+    tags: string[];
 };
+
+// @beta
+export type InvalidateAllSnapshots = () => Promise<void>;
+
+// @beta
+export type InvalidateSnapshots = (semantics: string, name: string, key: EventKey) => Promise<void>;
 
 // @public
 export const isBoolean: (x: any) => x is boolean;
@@ -231,17 +249,20 @@ export const Lamport: {
 // @beta
 export type LatestQuery<E> = EarliestQuery<E>;
 
-// @alpha
+// @beta
 export type LocalSnapshot<S> = StateWithProvenance<S> & {
     eventKey: EventKey;
     horizon: EventKey | undefined;
     cycle: number;
 };
 
+// @beta
+export type LocalSnapshotFromIndex = LocalSnapshot<string>;
+
 // @public
-export type Metadata = Readonly<{
+export type Metadata = {
     isLocalEvent: boolean;
-    tags: ReadonlyArray<string>;
+    tags: string[];
     timestampMicros: Timestamp;
     timestampAsDate: () => Date;
     lamport: Lamport;
@@ -249,7 +270,7 @@ export type Metadata = Readonly<{
     appId: AppId;
     stream: StreamId;
     offset: Offset;
-}>;
+};
 
 // @public
 export type Milliseconds = number;
@@ -271,7 +292,7 @@ export const Milliseconds: {
 export type MonotonicSubscription<E> = {
     sessionId: string;
     query: Where<E>;
-    attemptStartFrom?: FixedStart;
+    attemptStartFrom: FixedStart;
 };
 
 // @alpha
@@ -295,7 +316,20 @@ export const NodeId: {
 };
 
 // @public
-export const noEvents: Where<never>;
+export class NodeInfo {
+    // Warning: (ae-forgotten-export) The symbol "NodeInfo" needs to be exported by the entry point index.d.ts
+    constructor(io: NodeInfo_2);
+    // (undocumented)
+    connectedNodes(): number;
+    // (undocumented)
+    isAtLeastVersion(version: string): boolean;
+    // (undocumented)
+    longVersion(): string;
+    // (undocumented)
+    semVer(): string;
+    // (undocumented)
+    uptimeMillis(): number;
+}
 
 // @public
 export type Offset = number;
@@ -318,19 +352,22 @@ export const OffsetMap: OffsetMapCompanion;
 export type OffsetMapBuilder = Record<string, Offset>;
 
 // @public
-export type OffsetMapCompanion = Readonly<{
+export type OffsetMapCompanion = {
     empty: OffsetMap;
     isEmpty: (m: OffsetMap) => boolean;
     lookup: (m: OffsetMap, s: string) => Offset;
     lookupOrUndefined: (m: OffsetMap, s: string) => Offset | undefined;
     update: (m: OffsetMapBuilder, ev: HasOffsetAndStream) => OffsetMapBuilder;
-}>;
+};
 
 // @public
 export type OffsetsResponse = {
     present: OffsetMap;
     toReplicate: Record<StreamId, number>;
 };
+
+// @public
+export type OnCompleteOrErr = (err?: unknown) => void;
 
 // @public
 export type PendingEmission = {
@@ -344,22 +381,43 @@ export type RangeQuery = {
     lowerBound?: OffsetMap;
     upperBound: OffsetMap;
     order?: EventsSortOrder;
+    horizon?: string;
+};
+
+// @beta
+export type RetrieveSnapshot = (semantics: string, name: string, version: number) => Promise<LocalSnapshotFromIndex | undefined>;
+
+// @beta
+export type SerializedStateSnap = LocalSnapshot<string>;
+
+// @beta
+export interface SnapshotStore {
+    invalidateAllSnapshots: InvalidateAllSnapshots;
+    invalidateSnapshots: InvalidateSnapshots;
+    retrieveSnapshot: RetrieveSnapshot;
+    storeSnapshot: StoreSnapshot;
+}
+
+// @beta
+export const SnapshotStore: {
+    noop: SnapshotStore;
+    inMem: () => SnapshotStore;
 };
 
 // @alpha
-export type SerializedStateSnap = LocalSnapshot<string>;
-
-// @alpha
-export type StateMsg = Readonly<{
+export type StateMsg = {
     type: MsgType.state;
     snapshot: SerializedStateSnap;
-}>;
+};
 
-// @alpha
+// @beta
 export type StateWithProvenance<S> = {
     readonly state: S;
     readonly offsets: OffsetMap;
 };
+
+// @beta
+export type StoreSnapshot = (semantics: string, name: string, key: EventKey, offsets: OffsetMap, horizon: EventKey | undefined, cycle: number, version: number, tag: string, serializedBlob: string) => Promise<boolean>;
 
 // @public
 export type StreamId = string;
@@ -371,34 +429,49 @@ export const StreamId: {
 };
 
 // @public
-export interface Tag<E> extends Tags<E> {
+export interface Tag<E = unknown> extends Tags<E> {
+    id(name: string): Tags<unknown>;
     withId(name: string): Tags<E>;
 }
 
 // @public
-export const Tag: <E>(rawTagString: string, extractId?: ((e: E) => string) | undefined) => Tag<E>;
+export const Tag: <E = unknown>(rawTagString: string, extractId?: ((e: E) => string) | undefined) => Tag<E>;
 
 // @public
-export type TaggedEvent = Readonly<{
+export type TaggedEvent = {
     tags: string[];
     event: unknown;
-}>;
+};
 
 // @public
-export interface Tags<E> extends Where<E> {
-    and<E1>(tag: Tags<E1>): Tags<Extract<E1, E>>;
+export interface TaggedTypedEvent<E = unknown> extends TaggedEvent {
+    // (undocumented)
+    readonly event: E;
+    // (undocumented)
+    readonly tags: string[];
+    // (undocumented)
+    withTags<E1>(tags: Tags<E1> & (E extends E1 ? unknown : never)): TaggedTypedEvent<E>;
+}
+
+// @public
+export interface Tags<E = unknown> extends Where<E> {
+    and<E1 = unknown>(tag: Tags<E1>): Tags<E1 & E>;
     and(tag: string): Tags<E>;
-    apply(...events: E[]): ReadonlyArray<TaggedEvent>;
+    apply(event: E): TaggedEvent;
+    apply(...events: E[]): TaggedEvent[];
+    applyTyped<E1 extends E>(event: E1): TaggedTypedEvent<E1>;
     local(): Tags<E>;
 }
 
 // @public
-export const Tags: <E>(...requiredTags: string[]) => Tags<E>;
+export const Tags: <E = unknown>(...requiredTags: string[]) => Tags<E>;
 
 // @public
 export type TestActyx = TestEventFns & {
     readonly nodeId: NodeId;
+    readonly snapshotStore: SnapshotStore;
     dispose: () => void;
+    waitForSync: () => Promise<void>;
 };
 
 // @public
@@ -407,14 +480,17 @@ export type TestEvent = {
     stream: string;
     timestamp: Timestamp;
     lamport: Lamport;
-    tags: ReadonlyArray<string>;
+    tags: string[];
     payload: unknown;
 };
 
 // @public
 export type TestEventFns = EventFns & {
-    directlyPushEvents: (events: ReadonlyArray<TestEvent>) => void;
+    directlyPushEvents: (events: TestEvent[]) => void;
 };
+
+// @beta
+export type TimeInjector = (tags: string[], events: unknown) => Timestamp;
 
 // @public
 export type Timestamp = number;
@@ -438,11 +514,10 @@ export const Timestamp: {
 };
 
 // @alpha
-export type TimeTravelMsg<E> = Readonly<{
+export type TimeTravelMsg<E> = {
     type: MsgType.timetravel;
-    trigger: ActyxEvent<E>;
-    high: ActyxEvent<E>;
-}>;
+    trigger: EventKey;
+};
 
 // @alpha
 export const toEventPredicate: (where: Where<unknown>) => (event: HasTags) => boolean;
@@ -453,7 +528,6 @@ export interface Where<E> {
     or<E1>(tag: Where<E1>): Where<E1 | E>;
     toString(): string;
 }
-
 
 // (No @packageDocumentation comment for this package)
 

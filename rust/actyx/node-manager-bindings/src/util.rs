@@ -1,5 +1,5 @@
 use anyhow::Result;
-use axlib::{cmd::KeyPathWrapper, node_connection::NodeConnection, private_key::AxPrivateKey};
+use axlib::{node_connection::NodeConnection, private_key::AxPrivateKey};
 use neon::context::Context;
 use neon::context::FunctionContext;
 use neon::object::Object;
@@ -8,7 +8,7 @@ use neon::types::JsString;
 use serde::{de::DeserializeOwned, Serialize};
 use std::future::Future;
 use std::sync::Arc;
-use std::{convert::TryInto, str::FromStr};
+use std::{convert::TryFrom, str::FromStr};
 use tokio::runtime::Runtime;
 use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
 
@@ -29,10 +29,10 @@ pub fn from_stringified<De: DeserializeOwned>(str: String) -> Result<De> {
 // sense). In this case though, the functions are executed async by Node.js,
 // meaning we don't need to provide an async runtime ourselves and it is
 // completely fine to just block on the current thread (which is already async).
-pub fn run_ft<F: Future>(future: F) -> ActyxOSResult<F::Output> {
+pub fn run_ft<T, F: Future<Output = ActyxOSResult<T>>>(future: F) -> ActyxOSResult<T> {
     let rt = Runtime::new()
         .map_err(|e| ActyxOSError::new(ActyxOSCode::ERR_INTERNAL_ERROR, format!("error running future: {}", e)))?;
-    Ok(rt.block_on(future))
+    rt.block_on(future)
 }
 
 pub fn node_connection(addr: &str) -> ActyxOSResult<NodeConnection> {
@@ -40,11 +40,17 @@ pub fn node_connection(addr: &str) -> ActyxOSResult<NodeConnection> {
 }
 
 pub fn default_private_key() -> ActyxOSResult<AxPrivateKey> {
-    None::<KeyPathWrapper>.try_into()
+    AxPrivateKey::try_from(&None)
 }
 
 pub fn node_request(addr: &str, request: AdminRequest) -> ActyxOSResult<AdminResponse> {
-    run_ft(node_connection(addr)?.request(&default_private_key()?, request))?
+    run_ft(async move {
+        node_connection(addr)?
+            .connect(&default_private_key()?)
+            .await?
+            .request(request)
+            .await
+    })
 }
 
 pub fn run_task<I: serde::de::DeserializeOwned + Sync + Send + 'static, O: serde::Serialize + Sync + Send + 'static>(
@@ -55,20 +61,20 @@ pub fn run_task<I: serde::de::DeserializeOwned + Sync + Send + 'static, O: serde
         Ok(str) => str,
         Err(err) => {
             // Panic turns into JS exception (throws)
-            panic!("error getting task json_input argument {}", err.to_string());
+            panic!("error getting task json_input argument {}", err);
         }
     };
     let input: I = match from_stringified(json_input) {
         Ok(i) => i,
         Err(err) => {
-            panic!("error decoding json_input argument {}", err.to_string());
+            panic!("error decoding json_input argument {}", err);
         }
     };
 
     let callback = match cx.argument::<JsFunction>(1) {
         Ok(cb) => cb,
         Err(err) => {
-            panic!("error getting callback argument {}", err.to_string());
+            panic!("error getting callback argument {}", err);
         }
     };
     let callback = callback.root(&mut cx);
@@ -90,7 +96,7 @@ pub fn run_task<I: serde::de::DeserializeOwned + Sync + Send + 'static, O: serde
                 }
             };
             if let Err(err) = call_res {
-                panic!("error calling task callback {}", err.to_string());
+                panic!("error calling task callback {}", err);
             }
             Ok(())
         });

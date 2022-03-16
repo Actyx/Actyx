@@ -4,74 +4,76 @@ edition = "2018"
 name = "node"
 version = "0.1.0"
 
-[[bin]]
-name = "actyx-linux"
-path = "src/bin/linux.rs"
-
 [features]
 migration-v1 = ["crypto/legacy"]
 
 [build-dependencies]
-prost-build = "0.8.0"
+prost-build = "0.9.0"
+util = { path = "../util" }
 
 [dependencies]
 actyx_sdk = { path = "../../sdk" }
-anyhow = "1.0.42"
+anyhow = "1.0.52"
 api = { path = "../api" }
+atty = "0.2.14"
 ax-futures-util = { path = "../ax-futures-util" }
-backtrace = "0.3.60"
+backtrace = "0.3.63"
 base64 = "0.13.0"
-bytes = "1.0.1"
+bytes = "1.1.0"
+cbor-data = { version = "0.8.3", features = ["rfc3339"] }
 cfg-if = "1.0.0"
 chrono = { features = ["serde"], version = "0.4.19" }
 crossbeam = "0.8.1"
 crypto = { path = "../crypto/" }
-derive_more = "0.99.16"
-ffi-support = "0.4.3"
-flate2 = "1.0.20"
-fslock = "0.1.6"
-futures = { version = "0.3.15", features = ["compat"], package = "futures" }
+derive_more = "0.99.17"
+ffi-support = "0.4.4"
+flate2 = "1.0.22"
+fslock = "=0.1.6"
+futures = { version = "0.3.19", features = ["compat"], package = "futures" }
 hex = "0.4.3"
-ipfs-sqlite-block-store = "0.6.1"
+ipfs-embed = "0.23.0"
+ipfs-sqlite-block-store = "0.11.0"
+lazy_static = "1.4.0"
 libipld = "0.12.0"
-libp2p = { version = "0.39.1", default-features = false, features = ["gossipsub", "ping"] }
+libp2p = { version = "0.42.2", default-features = false, features = ["gossipsub", "ping"] }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
+log = { version = "0.4.14", features = ["std"] }
 maplit = "1.0.2"
 multihash = "0.14.0"
-parking_lot = "0.11.1"
-prost = "0.8.0"
-prost-derive = "0.8.0"
+parking_lot = "0.11.2"
+prost = "0.9.0"
+prost-derive = "0.9.0"
 regex = "1.5.4"
-rusqlite = { features = ["bundled", "backup", "hooks"], version = "0.25.3" }
-serde = { features = ["derive"], version = "1.0.126" }
-serde_cbor = "0.11.1"
-serde_json = "1.0.64"
+rusqlite = { features = ["bundled", "backup", "hooks"], version = "0.26.3" }
+serde = { features = ["derive"], version = "1.0.133" }
+serde_cbor = "0.11.2"
+serde_json = "1.0.74"
 serde_urlencoded = "0.7.0"
 settings = { path = "../settings" }
-signal-hook = "0.3.9"
-structopt = "0.3.22"
+signal-hook = "0.3.13"
+structopt = { version = "0.3.25", features = ["color", "wrap_help", "suggestions"] }
 swarm = { path = "../swarm" }
-tar = "0.4.35"
-tempfile = "3.2.0"
-thiserror = "1.0.26"
-tokio = { package = "tokio", version = "1.8.2" }
-tracing = { version = "0.1.26", features = ["release_max_level_trace"] }
-tracing-subscriber = "0.2.19"
+tar = "0.4.38"
+tempfile = "3.3.0"
+thiserror = "1.0.30"
+tokio = { package = "tokio", version = "1.15.0" }
+tracing = { version = "0.1.29", features = ["release_max_level_trace"] }
+tracing-core = "0.1.21"
+tracing-log = { version = "0.1.2", features = ["std"] }
+tracing-subscriber = { version = "0.3.5", features = ["json", "env-filter"] }
 trees = { path = "../trees" }
-unicode-width = "0.1.8"
+unicode-width = "0.1.9"
 util = { path = "../util" }
 uuid = "0.8.2"
 void = "1.0.2"
-warp = "0.3.1"
+zeroize = "1.2.0"
+zstd = "0.9.2"
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies]
 jemallocator = "0.3.2"
 
 [target.'cfg(target_os = "android")'.dependencies]
-tracing-android = "0.1.3"
-
-[target.'cfg(target_os = "windows")'.dependencies]
-tracing_win_event_log = { path = "../tracing_win_event_log" }
+tracing-android = "0.2.0"
 
 [lib]
 crate-type = ["lib"]
@@ -79,12 +81,12 @@ name = "node"
 
 [dev-dependencies]
 actyx_sdk = { path = "../../sdk", features = ["client"] }
-assert_cmd = "2.0.0"
-criterion = { version = "0.3.4", features = ["html_reports", "async_tokio" ] }
-escargot = "0.5.2"
+assert_cmd = "2.0.2"
+criterion = { version = "0.3.5", features = ["html_reports", "async_tokio" ] }
+escargot = "0.5.7"
 maplit = "1.0.2"
-predicates = "2.0.0"
-tracing-subscriber = "0.2.19"
+predicates = "2.1.0"
+tracing-subscriber = "0.3.5"
 url = "2.2.2"
 
 [[bench]]

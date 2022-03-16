@@ -1,10 +1,13 @@
+/**
+ * @jest-environment ./dist/integration/src/jest/environment
+ */
 import { assertOK } from '../../assertOK'
 import { CLI } from '../../cli'
 import { runOnEvery } from '../../infrastructure/hosts'
 import { currentAxBinary } from '../../infrastructure/settings'
 import { mkAxWithUnreachableNode } from '../../stubs'
-import { MyGlobal } from '../../../jest/setup'
-import execa from 'execa'
+import { MyGlobal } from '../../jest/setup'
+import { execaCommand } from 'execa'
 import { runActyx } from '../../util'
 
 describe('ax nodes', () => {
@@ -17,8 +20,12 @@ describe('ax nodes', () => {
         code: 'OK',
         result: [
           {
-            connection: 'unreachable',
+            connection: 'error',
             host: expect.any(String),
+            error: {
+              code: 'ERR_NODE_UNREACHABLE',
+              message: 'timeout',
+            },
           },
         ],
       })
@@ -29,7 +36,7 @@ describe('ax nodes', () => {
         const response = assertOK(await node.ax.nodes.ls())
         const axNodeSetup = (<MyGlobal>global).axNodeSetup
         let gitHash = axNodeSetup.gitHash
-        const dirty = await execa.command('git status --porcelain').then((x) => x.stdout)
+        const dirty = await execaCommand('git status --porcelain').then((x) => x.stdout)
         if (dirty !== '') {
           gitHash = `${gitHash}_dirty`
         }
@@ -85,7 +92,14 @@ describe('ax nodes', () => {
             host: expect.any(String),
           },
         ]
-        expect(response.result).toMatchObject(responseShape)
+        try {
+          expect(response.result).toMatchObject(responseShape)
+        } catch (e) {
+          if (e instanceof Error) {
+            e.message += '\n original was ' + JSON.stringify(response)
+          }
+          throw e
+        }
       })
     })
   })

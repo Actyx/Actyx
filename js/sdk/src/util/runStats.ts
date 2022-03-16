@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { none, Option, some } from 'fp-ts/lib/Option'
+import { none, Option, some, map as mapO } from 'fp-ts/lib/Option'
 import * as t from 'io-ts'
 import { Observable } from '../../node_modules/rxjs'
 
@@ -221,7 +221,9 @@ const createDurationStats = (): Durations => {
   const getAndClear = (): DurationMap => {
     const result: DurationMapMut = {}
     Object.entries(durations).forEach(([key, value]) => {
-      getDurationStats(value).map(stats => (result[key] = stats))
+      mapO<DurationStats, void>((stats) => {
+        result[key] = stats
+      })(getDurationStats(value))
       if (Object.keys(value.pending).length === 0) {
         // If nothing is pending then this object is now useless, remove it.
         // This metric may be repopulated in the next interval.
@@ -238,59 +240,62 @@ const createDurationStats = (): Durations => {
   }
 }
 
-const profileSync = <T>(durations: Durations) => (name: string) => (block: () => T): T => {
-  const t0 = Timestamp.now()
-  let result: T
-  try {
-    result = block()
-    durations.add(name, Timestamp.now() - t0)
-    return result
-  } catch (e) {
-    durations.add(name, Timestamp.now() - t0)
-    throw e
+const profileSync =
+  <T>(durations: Durations) =>
+  (name: string) =>
+  (block: () => T): T => {
+    const t0 = Timestamp.now()
+    let result: T
+    try {
+      result = block()
+      durations.add(name, Timestamp.now() - t0)
+      return result
+    } catch (e) {
+      durations.add(name, Timestamp.now() - t0)
+      throw e
+    }
   }
-}
 
-const profileObservable = <T>(durations: Durations, counters: Counters) => (
-  name: string,
-  n?: number,
-) => (inner: Observable<T>): Observable<T> => {
-  const maxCount = n || 1
-  return new Observable<T>(subscriber => {
-    let t0 = Timestamp.now()
-    let count = 0
-    durations.start(name, t0)
-    return inner.subscribe({
-      next: value => {
-        count++
-        if (count <= maxCount) {
-          const t1 = Timestamp.now()
-          durations.end(name, t0, t1)
-          t0 = t1
-        }
-        if (count < maxCount) {
-          durations.start(name, t0)
-        }
-        subscriber.next(value)
-      },
-      error: reason => {
-        counters.add(`errprof-${name}`)
-        count++
-        if (count <= maxCount) {
-          durations.end(name, t0, Timestamp.now())
-        }
-        subscriber.error(reason)
-      },
-      complete: () => {
-        count++
-        if (count <= maxCount) {
-          durations.end(name, t0, Timestamp.now())
-        }
-        subscriber.complete()
-      },
+const profileObservable =
+  <T>(durations: Durations, counters: Counters) =>
+  (name: string, n?: number) =>
+  (inner: Observable<T>): Observable<T> => {
+    const maxCount = n || 1
+    return new Observable<T>((subscriber) => {
+      let t0 = Timestamp.now()
+      let count = 0
+      durations.start(name, t0)
+      return inner.subscribe({
+        next: (value) => {
+          count++
+          if (count <= maxCount) {
+            const t1 = Timestamp.now()
+            durations.end(name, t0, t1)
+            t0 = t1
+          }
+          if (count < maxCount) {
+            durations.start(name, t0)
+          }
+          subscriber.next(value)
+        },
+        error: (reason) => {
+          counters.add(`errprof-${name}`)
+          count++
+          if (count <= maxCount) {
+            durations.end(name, t0, Timestamp.now())
+          }
+          subscriber.error(reason)
+        },
+        complete: () => {
+          count++
+          if (count <= maxCount) {
+            durations.end(name, t0, Timestamp.now())
+          }
+          subscriber.complete()
+        },
+      })
     })
-  })
-}
+  }
 
 const GaugeMapMut = t.record(
   t.string,
@@ -337,7 +342,7 @@ const createRunStats = (): RunStats => {
 /**
  * Methods to work with simple and rather cheap invocation counters
  */
-export type Counters = Readonly<{
+export type Counters = {
   /**
    * Increment a named counter value. Default increment is one.
    */
@@ -346,12 +351,12 @@ export type Counters = Readonly<{
    * Get all current counter values. Returns an immutable copy.
    */
   current: () => CounterMap
-}>
+}
 
 /**
  * Methods to work with duration statistics
  */
-export type Durations = Readonly<{
+export type Durations = {
   /**
    * Start a long-running operation for a metric name. The operation will be
    * ongoing until `end()` is called!
@@ -376,12 +381,12 @@ export type Durations = Readonly<{
    * Get all current duration statistics. Returns an immutable copy.
    */
   getAndClear: () => DurationMap
-}>
+}
 
 /**
  * Convenience methods for profiling synchronous and asynchronous operations
  */
-export type ProfileMethods = Readonly<{
+export type ProfileMethods = {
   /**
    * Profile a synchronous block of code. Will add the duration it took to execute
    * the block to the statistics, regardless of whether the block terminates normally
@@ -399,12 +404,12 @@ export type ProfileMethods = Readonly<{
    * This is meant to be used with the rxjs pipe operator.
    */
   profileObservable: <T>(name: string, n?: Integer) => (inner: Observable<T>) => Observable<T>
-}>
+}
 
 /**
  * Methods to work with simple gauges
  */
-export type Gauges = Readonly<{
+export type Gauges = {
   /**
    * Set a gauge value.
    */
@@ -414,7 +419,7 @@ export type Gauges = Readonly<{
    * Get all current gauge values. Returns an immutable copy.
    */
   current: () => GaugeMap
-}>
+}
 
 export interface RunStats {
   readonly counters: Counters

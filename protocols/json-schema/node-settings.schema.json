@@ -34,6 +34,11 @@
         "type": "string",
         "minLength": 1
       },
+      "Topic": {
+	"type": "string",
+	"minLength": 1,
+	"maxLength": 60
+      },
       "MultiAddr": {
           "type": "string",
           "format": "multiaddr-without-peer-id"
@@ -99,7 +104,7 @@
           "default": "MDAwMDAwMDAxMTExMTExMTIyMjIyMjIyMzMzMzMzMzM="
         },
         "topic": {
-          "$ref": "#/definitions/Basic/NonEmptyString",
+          "$ref": "#/definitions/Basic/Topic",
           "default": "default-topic"
         },
         "initialPeers": {
@@ -120,6 +125,42 @@
           "uniqueItems": true,
           "default": [],
           "description": "Manually configured addresses to announce. These must be multiaddresses without peer id, e.g. /ip4/1.2.3.4/tcp/4001"
+        },
+        "blockCacheCount": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 131072,
+          "description": "Maximum number of non-pinned blocks to cache"
+        },
+        "blockCacheSize": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 1073741824,
+          "description": "Maximum number of bytes of non-pinned blocks to cache"
+        },
+        "blockGcInterval": {
+          "type": "integer",
+          "minimum": 30,
+          "default": 300,
+          "description": "GC interval for the block store, in seconds"
+        },
+        "metricsInterval": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 1800,
+          "description": "Metrics event emission interval, in seconds"
+        },
+        "pingTimeout": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 5,
+          "description": "Timeout for one swarm-internal ping response"
+	      },
+        "bitswapTimeout": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 15,
+          "description": "Timeout for one swarm-internal data block response"
         }
       }
     },

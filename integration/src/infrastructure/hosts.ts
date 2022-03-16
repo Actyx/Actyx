@@ -1,5 +1,5 @@
 import { Pond } from '@actyx/pond'
-import { MyGlobal } from '../../jest/setup'
+import { MyGlobal } from '../jest/setup'
 import { trialManifest } from '../http-client'
 import { newProcess } from '../util'
 import { selectNodes } from './nodeselection'
@@ -66,7 +66,10 @@ export const withPond = async <T>(
     trialManifest,
     {
       actyxPort: node._private.apiPort,
-      onConnectionLost: () => console.error(node.name, 'Pond lost connection to the store'),
+      onConnectionLost: () =>
+        process.stdout.write(`${ts()} ${node.name}: Pond lost connection to the store\n`),
+      onConnectionEstablished: () =>
+        process.stdout.write(`${ts()} ${node.name}: Pond established connection to the store\n`),
     },
     {},
   )

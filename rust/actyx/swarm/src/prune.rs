@@ -155,7 +155,7 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
 
 #[cfg(test)]
 mod test {
-    use std::collections::BTreeMap;
+    use std::{collections::BTreeMap, sync::Arc};
 
     use actyx_sdk::{app_id, tags, AppId, Payload, StreamNr};
     use ax_futures_util::prelude::AxStreamExt;
@@ -164,6 +164,7 @@ mod test {
 
     use super::*;
     use crate::{BanyanConfig, SwarmConfig};
+    use parking_lot::Mutex;
 
     fn app_id() -> AppId {
         app_id!("test")
@@ -175,7 +176,7 @@ mod test {
             node_name: Some("ephemeral".to_owned()),
             topic: "topic".into(),
             enable_mdns: false,
-            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse().unwrap()],
+            listen_addresses: Arc::new(Mutex::new("127.0.0.1:0".parse().unwrap())),
             ephemeral_event_config: EphemeralEventsConfig {
                 // no-op config
                 interval: Duration::from_secs(300_000_000),

@@ -66,7 +66,7 @@ impl SqliteIndexStore {
      **/
     pub fn from_conn(conn: Arc<Mutex<Connection>>) -> Result<Self> {
         let locked = conn.lock();
-        initialize_db(&locked)?;
+        initialize_db(&locked).context("initializing DB")?;
         let lamport = locked
             .query_row("SELECT lamport FROM meta", [], |row| {
                 let lamport: i64 = row.get(0)?;
@@ -77,7 +77,8 @@ impl SqliteIndexStore {
             .or_else(|_| -> Result<u64> {
                 locked.execute("INSERT INTO meta VALUES (0)", [])?;
                 Ok(0)
-            })?;
+            })
+            .context("initializing lamport clock")?;
         drop(locked);
         Ok(Self {
             conn,
@@ -156,18 +157,21 @@ impl SqliteIndexStore {
 }
 
 pub fn initialize_db(conn: &Connection) -> Result<()> {
-    // `PRAGMA journal_mode = WAL;` https://www.sqlite.org/wal.html
+    // We use TRUNCATE to avoid an explosion of WAL file size (multiple GB were observed)
+    // DELETE (the default) needs one extra directory write op per transaction
     // This PRAGMA statement returns the new journal mode, so we need to see if it succeeded
-    conn.query_row("PRAGMA journal_mode = WAL;", [], |row| {
+    conn.query_row("PRAGMA journal_mode = TRUNCATE;", [], |row| {
         let res: String = row.get(0)?;
         match res.as_str() {
-            "wal" => Ok("wal"),
-            "memory" => Ok("memory"), // There is no WAL for memory databases
+            "truncate" => Ok(()),
+            "memory" => Ok(()), // There is no config choice for memory databases
             _other => Err(rusqlite::Error::InvalidQuery),
         }
-    })?;
+    })
+    .context("setting journal_mode")?;
     // `PRAGMA synchronous = NORMAL;` https://www.sqlite.org/pragma.html#pragma_synchronous
-    conn.execute("PRAGMA synchronous = NORMAL;", [])?;
+    conn.execute("PRAGMA synchronous = NORMAL;", [])
+        .context("setting sync mode")?;
     conn.execute_batch(
         "BEGIN;\n\
         CREATE TABLE IF NOT EXISTS streams \
@@ -175,7 +179,8 @@ pub fn initialize_db(conn: &Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS meta \
             (lamport INTEGER);\n\
         COMMIT;",
-    )?;
+    )
+    .context("creating tables")?;
     Ok(())
 }
 

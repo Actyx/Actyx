@@ -6,16 +6,16 @@
  * Copyright (C) 2021 Actyx AG
  */
 
-import fetch from 'node-fetch'
+import fetch from 'cross-fetch'
+import { OffsetsResponse } from '../internal_common'
 import { decorateEConnRefused } from '../internal_common/errors'
+import { log } from '../internal_common/log'
 import { ActyxOpts, AppManifest } from '../types'
 import { isNode } from '../util'
-import { MultiplexedWebsocket } from './multiplexedWebsocket'
-import { OffsetsResponse } from '../internal_common'
 
 const defaultApiLocation = (isNode && process.env.AX_STORE_URI) || 'localhost:4454/api/v2'
 
-const getApiLocation = (host?: string, port?: number) => {
+export const getApiLocation = (host?: string, port?: number) => {
   if (host || port) {
     return (host || 'localhost') + ':' + (port || 4454) + '/api/v2'
   }
@@ -52,21 +52,51 @@ export const getToken = async (opts: ActyxOpts, manifest: AppManifest): Promise<
   return (jsonContent as { token: string }).token
 }
 
+export const checkToken = async (opts: ActyxOpts, token: string): Promise<boolean> => {
+  log.actyx.debug('checking token')
+  const apiLocation = getApiLocation(opts.actyxHost, opts.actyxPort)
+  const url = 'http://' + apiLocation + '/events/offsets'
+
+  const res = await fetch(url, {
+    method: 'get',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (res.ok) {
+    await res.json()
+    return true
+  }
+  if (res.status === 401) {
+    const body = await res.json()
+    if (body.code === 'ERR_TOKEN_EXPIRED') return false
+  }
+  throw new Error(`token check inconclusive, status was ${res.status}`)
+}
+
 export const v2getNodeId = async (config: ActyxOpts): Promise<string | null> => {
   const path = `http://${getApiLocation(config.actyxHost, config.actyxPort)}/node/id`
   return await fetch(path)
-    .then(resp => {
+    .then((resp) => {
       // null indicates the endpoint was reachable but did not react with OK response -> probably V1.
       return resp.ok ? resp.text() : null
     })
-    .catch(err => {
-      if (err.message) {
+    .catch((err) => {
+      // ECONNREFUSED is probably not a CORS issue, at least...
+      if (err.message && err.message.includes('ECONNREFUSED')) {
         throw new Error(decorateEConnRefused(err.message, path))
-      } else {
-        throw new Error(
-          `Unknown error trying to contact Actyx node, please diagnose manually by trying to reach ${path} from where this process is running.`,
-        )
       }
+
+      log.actyx.info(
+        'Attempt to connect to V2 failed with unclear cause. Gonna try go connect to V1 now. Error was:',
+        err,
+      )
+      // HACK: V1 has broken CORS policy, this blocks our request if it reaches the WS port (4243) instead of the default port (4454).
+      // So if we got an error, but the error is (probably) not due to the port being closed, we assume: Probably V1.
+      // (Would be awesome if JS API gave a clear and proper indication of CORS block...)
+      return null
     })
 }
 type Uptime = {
@@ -79,7 +109,7 @@ type NodeInfo = {
   version: string
 }
 
-const mkHeaders = (token: string) => ({
+export const mkHeaders = (token: string) => ({
   Accept: 'application/json',
   'Content-Type': 'application/json',
   Authorization: `Bearer ${token}`,
@@ -109,16 +139,16 @@ export const v2WaitForSwarmSync = async (
       method: 'get',
       headers: mkHeaders(token),
     })
-      .then(resp => {
+      .then((resp) => {
         if (resp.status === 404) {
           throw new Error(
             'The targeted node seems not to support the `/api/v2/node/info` endpoint. Consider updating to the latest version.',
           )
         } else {
-          return resp.json()
+          return resp.json().then((i) => i as NodeInfo)
         }
       })
-      .catch(err => {
+      .catch((err) => {
         if (err.message) {
           throw new Error(decorateEConnRefused(err.message, uri))
         } else {
@@ -139,7 +169,7 @@ export const v2WaitForSwarmSync = async (
       case SyncStage.WaitingForPeers: {
         if (info.connectedNodes === 0) {
           // Wait a bit and retry.
-          await new Promise(res => setTimeout(res, 500))
+          await new Promise((res) => setTimeout(res, 500))
         } else {
           // First time there are some peers!
           firstNodeSeenAt = Date.now().valueOf()
@@ -156,9 +186,9 @@ export const v2WaitForSwarmSync = async (
         // distribution of the connected nodes', we can approximate how long to
         // avoid (+standard deviation):
         const waitForRootMap = 1e4 / info.connectedNodes + 2890
-        if (Date.now() - firstNodeSeenAt!! - waitForRootMap < 0) {
+        if (Date.now() - firstNodeSeenAt! - waitForRootMap < 0) {
           // Wait a bit and retry.
-          await new Promise(res => setTimeout(res, 250))
+          await new Promise((res) => setTimeout(res, 250))
         } else {
           // We should have seen at least one root map update by now.
           waitingForSyncSince = Date.now()
@@ -175,13 +205,13 @@ export const v2WaitForSwarmSync = async (
           return
         } else if (
           missingTargets < NODE_REPLICATION_TARGET_THRESHOLD &&
-          Date.now() - waitingForSyncSince!! > NODE_REPLICATION_WAIT_MS
+          Date.now() - waitingForSyncSince! > NODE_REPLICATION_WAIT_MS
         ) {
           // Don't let a few bad nodes draw us down
           return
         } else {
           // Wait a bit and retry
-          await new Promise(res => setTimeout(res, 250))
+          await new Promise((res) => setTimeout(res, 250))
           break
         }
       }
@@ -190,21 +220,4 @@ export const v2WaitForSwarmSync = async (
       }
     }
   }
-}
-
-export const mkMultiplexer = async (
-  config: ActyxOpts,
-  token: string,
-): Promise<MultiplexedWebsocket> => {
-  const apiLocation = getApiLocation(config.actyxHost, config.actyxPort)
-
-  const wsUrl = 'ws://' + apiLocation + '/events'
-  const cAdjusted = {
-    ...config,
-    url: wsUrl + '?' + token,
-  }
-
-  const ws = new MultiplexedWebsocket(cAdjusted)
-
-  return ws
 }

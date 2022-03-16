@@ -1,6 +1,6 @@
-import execa, { ExecaChildProcess } from 'execa'
+import { execa, ExecaChildProcess } from 'execa'
 import fs from 'fs'
-import { removeSync } from 'fs-extra'
+import fse from 'fs-extra'
 import path from 'path'
 import { getFreePort } from './checkPort'
 import { netString } from './mkProcessLogger'
@@ -25,7 +25,7 @@ export class Ssh {
     const tempDir = settings().tempDir
     const keyFile = path.resolve(tempDir, 'keyFile.pem')
     const knownHosts = path.resolve(tempDir, 'known_hosts')
-    removeSync(keyFile)
+    fse.removeSync(keyFile)
     fs.writeFileSync(keyFile, key, { mode: 0o400 })
     // it is important that user@host comes last, see scp
     return new Ssh([
@@ -41,7 +41,7 @@ export class Ssh {
     return new Ssh(['-oConnectTimeout=5', host])
   }
 
-  exec(command: string): execa.ExecaChildProcess<string> {
+  exec(command: string): ExecaChildProcess<string> {
     return execa('ssh', [...this.commonOpts, command])
   }
 
@@ -49,7 +49,7 @@ export class Ssh {
     file: string,
     params: string[],
     env?: { [_: string]: string },
-  ): execa.ExecaChildProcess<string> {
+  ): ExecaChildProcess<string> {
     const e = Object.entries(env || {}).reduce(
       (acc, [k, v]) => acc.concat([`${k}=${v}`]),
       [] as string[],

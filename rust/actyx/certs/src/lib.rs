@@ -6,7 +6,7 @@ mod signed_app_manifest;
 mod trial_app_manifest;
 
 pub use app_domain::AppDomain;
-pub use app_license::SignedAppLicense;
+pub use app_license::{AppLicense, AppLicenseType, Expiring, RequesterInfo, SignedAppLicense};
 pub use developer_certificate::{DeveloperCertificate, ManifestDeveloperCertificate};
 pub use signed_app_manifest::SignedAppManifest;
 pub use trial_app_manifest::TrialAppManifest;

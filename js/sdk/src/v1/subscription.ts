@@ -1,13 +1,13 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -19,7 +19,7 @@ const subscriptionToString = (subscription: Subscription): string => {
   }
   // TODO: escaping / and ,
   const parts = [subscription.semantics, subscription.name, subscription.sourceId].filter(
-    x => x !== '',
+    (x) => x !== '',
   )
   return parts.join('/')
 }
@@ -67,11 +67,11 @@ export type SubscriptionSet = t.TypeOf<typeof SubscriptionSetIO>
 export type SubscriptionSetCompanion = {
   empty: SubscriptionSet
   all: SubscriptionSet
-  or: (s: ReadonlyArray<Subscription>) => SubscriptionSet
+  or: (s: Subscription[]) => SubscriptionSet
 }
 
 export const SubscriptionSet: SubscriptionSetCompanion = {
   empty: { type: 'empty' },
   all: { type: 'all' },
-  or: (subscriptions: ReadonlyArray<Subscription>) => ({ type: 'or', subscriptions }),
+  or: (subscriptions: Subscription[]) => ({ type: 'or', subscriptions }),
 }

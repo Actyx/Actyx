@@ -18,14 +18,7 @@ module.exports = {
         id: 'GTM-5PXCMFH',
       },
     ],
-    [require.resolve('./src/plugins/analytics'), {}],
     [require.resolve('./src/plugins/cosmos-versions'), {}],
-    /*    [
-      require.resolve('./src/plugins/arm'),
-      {
-        releasesYml: './__auto-releases.yml',
-      },
-    ], */
     [
       'docusaurus-plugin-typedoc',
       {
@@ -33,22 +26,23 @@ module.exports = {
         entryPoints: ['../../js/pond/src/index.ts'],
         tsconfig: '../../js/pond/tsconfig.json',
         out: 'reference/pond',
-        disableSources: true,
-        sidebar: {
-          sidebarFile: '__pond-sidebar.js',
-          fullNames: false,
-        },
+        //disableSources: true,
+        //sidebar: {
+        //  categoryLabel: 'Actyx Pond (JS/TS)',
+        //  fullNames: false,
+        //  position: 0,
+        //},
       },
     ],
   ],
   themeConfig: {
-    announcementBar: {
-      id: '2.0.0-release',
-      content:
-        '🤩 We are incredibly excited to announce the release of Actyx 2.0! Read more about it in our release <a href="https://developer.actyx.com/blog/2021/06/23/actyx-2-0-0-release">blog post</a>. 🤩',
-      backgroundColor: '#373c40',
-      textColor: '#fff',
-    },
+    //announcementBar: {
+    //  id: '2.0.0-release',
+    //  content:
+    //    '🤩 We are incredibly excited to announce the release of Actyx 2.0! Read more about it in our release <a href="https://developer.actyx.com/blog/2021/06/23/actyx-2-0-0-release">blog post</a>. 🤩',
+    //  backgroundColor: '#373c40',
+    //  textColor: '#fff',
+    //},
     colorMode: {
       defaultMode: 'light',
       disableSwitch: true,
@@ -97,11 +91,6 @@ module.exports = {
           label: 'Forum',
           position: 'right',
           to: 'https://community.actyx.com/',
-        },
-        {
-          href: 'https://github.com/Actyx/Actyx',
-          position: 'right',
-          className: 'header-github-link',
         },
       ],
     },
@@ -244,9 +233,9 @@ module.exports = {
           showLastUpdateAuthor: true,
           showLastUpdateTime: true,
         },
-        theme: {
-          customCss: require.resolve('./src/css/custom.css'),
-        },
+        //theme: {
+        //  customCss: require.resolve('./src/css/custom.css'),
+        //},
         blog: {
           postsPerPage: 6,
           blogSidebarTitle: 'Our latest posts',

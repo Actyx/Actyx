@@ -57,7 +57,9 @@
 //! will commit individual responses sequentially to the underlying transport
 //! mechanism.
 
-use libp2p::swarm::{NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, OneShotHandler, PollParameters};
+use libp2p::swarm::{
+    IntoProtocolsHandler, NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, OneShotHandler, PollParameters,
+};
 use libp2p::{
     core::{connection::ConnectionId, ConnectedPoint},
     swarm::{OneShotHandlerConfig, SubstreamProtocol},
@@ -74,6 +76,7 @@ use thiserror::Error;
 mod protocol;
 
 pub use protocol::{Codec, SequenceNo, StreamingResponseConfig};
+use std::fmt::Debug;
 
 #[derive(Error, Debug)]
 pub enum StreamingResponseError {
@@ -152,10 +155,15 @@ pub enum StreamingResponseEvent<TCodec: Codec> {
 }
 
 #[derive(Default)]
-pub struct StreamingResponse<TCodec: Codec> {
+pub struct StreamingResponse<TCodec: Codec + Clone + Send + Debug + 'static> {
     config: StreamingResponseConfig<TCodec>,
     /// Internal queue for events to be emitted to `libp2p::Swarm`
-    events: VecDeque<NetworkBehaviourAction<StreamingResponseMessage<TCodec>, StreamingResponseEvent<TCodec>>>,
+    events: VecDeque<
+        NetworkBehaviourAction<
+            StreamingResponseEvent<TCodec>,
+            <StreamingResponse<TCodec> as NetworkBehaviour>::ProtocolsHandler,
+        >,
+    >,
     /// Request ID for the next outgoing request
     next_request_id: RequestId,
     /// Map from (PeerId, ConnectionId) tuple to a map from RequestId to the last
@@ -165,7 +173,7 @@ pub struct StreamingResponse<TCodec: Codec> {
 
 impl<TCodec> StreamingResponse<TCodec>
 where
-    TCodec: Codec,
+    TCodec: Codec + Clone + Send + Debug + 'static,
 {
     pub fn new(config: StreamingResponseConfig<TCodec>) -> Self {
         Self {
@@ -258,7 +266,7 @@ where
 
 impl<TCodec> NetworkBehaviour for StreamingResponse<TCodec>
 where
-    TCodec: Codec + Send + Clone + 'static,
+    TCodec: Codec + Send + Clone + std::fmt::Debug + 'static,
     TCodec::Request: Send + 'static,
     TCodec::Response: Send + 'static,
 {
@@ -284,10 +292,23 @@ where
     }
 
     // No bookkeeping done here.
-    fn inject_connection_established(&mut self, _: &PeerId, _: &ConnectionId, _: &ConnectedPoint) {}
+    fn inject_connection_established(
+        &mut self,
+        _: &PeerId,
+        _: &ConnectionId,
+        _: &ConnectedPoint,
+        _: Option<&Vec<Multiaddr>>,
+    ) {
+    }
     fn inject_connected(&mut self, _: &PeerId) {}
 
-    fn inject_connection_closed(&mut self, peer_id: &PeerId, con_id: &ConnectionId, _: &ConnectedPoint) {
+    fn inject_connection_closed(
+        &mut self,
+        peer_id: &PeerId,
+        con_id: &ConnectionId,
+        _: &ConnectedPoint,
+        _: <Self::ProtocolsHandler as IntoProtocolsHandler>::Handler,
+    ) {
         // remove any pending requests from the just disconnected (PeerId,
         // ConnectionId)
         if let Some(c) = self.open_channels.remove(&(*peer_id, *con_id)) {
@@ -372,7 +393,7 @@ where
         &mut self,
         _: &mut Context,
         _: &mut impl PollParameters,
-    ) -> Poll<NetworkBehaviourAction<StreamingResponseMessage<TCodec>, Self::OutEvent>> {
+    ) -> Poll<NetworkBehaviourAction<Self::OutEvent, Self::ProtocolsHandler>> {
         if let Some(event) = self.events.pop_front() {
             Poll::Ready(event)
         } else {
@@ -382,6 +403,7 @@ where
 }
 
 /// Transmission between the `OneShotHandler` and `StreamingResponse`.
+#[derive(Debug)]
 pub enum HandlerEvent<TCodec: Codec> {
     /// We received a `Message` from a remote.
     Rx(StreamingResponseMessage<TCodec>),
@@ -456,7 +478,15 @@ mod tests {
                         }
                     }
                     NetworkBehaviourAction::GenerateEvent(event) => events.push(event),
-                    m => panic!("Unexpected event {:?}", m),
+                    NetworkBehaviourAction::Dial { opts, handler: _ } => panic!("unexpected Dial({:?})", opts),
+                    NetworkBehaviourAction::ReportObservedAddr { address, score } => panic!(
+                        "unexpected ReportObservedAddr(address: {:?}, score: {:?})",
+                        address, score
+                    ),
+                    NetworkBehaviourAction::CloseConnection { peer_id, connection } => panic!(
+                        "unexpected CloseConnection(peer_id: {}, connection: {:?})",
+                        peer_id, connection
+                    ),
                 }
             }
             events

@@ -1,8 +1,9 @@
+/**
+ * @jest-environment ./dist/integration/src/jest/environment
+ */
 import { Pond } from '@actyx/pond'
-import execa from 'execa'
-import * as PondV1 from 'pondV1'
-import { MultiplexedWebsocket } from 'pondV1/lib/eventstore/multiplexedWebsocket'
-import { MyGlobal } from '../../../jest/setup'
+import { execaCommand } from 'execa'
+import { MyGlobal } from '../../jest/setup'
 import { assertOK } from '../../assertOK'
 import { runOnAll, runOnEach } from '../../infrastructure/hosts'
 
@@ -12,7 +13,7 @@ describe('the Infrastructure', () => {
       const response = assertOK(await node.ax.nodes.ls())
       const axNodeSetup = (<MyGlobal>global).axNodeSetup
       let gitHash = axNodeSetup.gitHash
-      const dirty = await execa.command('git status --porcelain').then((x) => x.stdout)
+      const dirty = await execaCommand('git status --porcelain').then((x) => x.stdout)
       if (dirty !== '') {
         gitHash = `${gitHash}_dirty`
       }
@@ -43,7 +44,7 @@ describe('the Infrastructure', () => {
         result: {
           admin: {
             logLevels: {
-              node: 'DEBUG',
+              node: 'INFO',
             },
           },
           licensing: {
@@ -62,17 +63,6 @@ describe('the Infrastructure', () => {
       },
     ])
     expect(settings).toHaveLength(1)
-  })
-
-  // FIXME: Pond V1 cannot talk to Event Service V2, this needs to test a V1-compat Pond eventually.
-  test.skip('must test Pond v1', async () => {
-    const result = await runOnAll([{}], async ([node]) => {
-      const url = `ws://${node._private.hostname}:${node._private.apiPort}/api/v2/events`
-      const pond = await PondV1.Pond.of(new MultiplexedWebsocket({ url }))
-      return pond.getNodeConnectivity().first().toPromise()
-    })
-    // cannot assert connected or not connected since we don’t know when this case is run
-    expect(typeof result.status).toBe('string')
   })
 
   test('must test Pond v2', async () => {

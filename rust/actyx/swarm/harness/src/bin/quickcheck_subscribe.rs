@@ -7,7 +7,7 @@ fn main() {
 
     use actyx_sdk::{
         service::{EventResponse, EventService, QueryRequest, QueryResponse},
-        OffsetMap, TagSet,
+        tag, OffsetMap, TagSet,
     };
     use anyhow::Context;
     use async_std::future::timeout;
@@ -105,13 +105,11 @@ fn main() {
                                     .query(request)
                                     .await?
                                     .filter_map(|resp| async move {
-                                        if let QueryResponse::Event(EventResponse {
-                                            tags, payload, stream, ..
-                                        }) = resp
-                                        {
-                                            Some((stream, (tags, payload)))
-                                        } else {
-                                            None
+                                        match resp {
+                                            QueryResponse::Event(EventResponse {
+                                                tags, payload, stream, ..
+                                            }) if !tags.contains(&tag!("files")) => Some((stream, (tags, payload))),
+                                            _ => None,
                                         }
                                     })
                                     .collect::<Vec<_>>(),

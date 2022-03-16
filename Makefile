@@ -51,7 +51,7 @@ endif
 ##### Configuration variables
 #############################
 architectures = aarch64 x86_64 armv7 arm
-unix-bins = actyx-linux ax
+unix-bins = actyx ax
 windows-bins = actyx.exe ax.exe actyx-x64.msi
 android-bins = actyx.apk actyx.aab
 
@@ -59,13 +59,13 @@ CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
 CARGO_BUILD_ARGS ?= --features migration-v1
 
-export BUILD_RUST_TOOLCHAIN ?= 1.54.0
+export BUILD_RUST_TOOLCHAIN ?= 1.59.0
 
 # The stable image version is the git commit hash inside `Actyx/Actyx`, with
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 0c6ed1ec7665d45d73bdcb974993175e4676542c
+export LATEST_STABLE_IMAGE_VERSION := f575d0c635a421309bd04f09b1b1338b2a3cf2bb
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -93,13 +93,13 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/osxbuilder:a042cc707998b83704f3cf5d3f0ededc7143d1c3
+image-darwin = actyx/util:osxbuilder-a5483d2105b145f5c3ceb23fd47adfffca3c94ef
 
 image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
 
 # list all os-arch and binary names
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 macos-aarch64
-binaries = ax ax.exe actyx-linux actyx.exe
+binaries = ax ax.exe actyx actyx.exe
 
 # targets for which we need a .so file for android
 android_so_targets = x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
@@ -111,23 +111,50 @@ CARGO := RUST_BACKTRACE=1  cargo +$(BUILD_RUST_TOOLCHAIN)
 #################################
 
 export GIT_COMMIT = $(shell git rev-parse HEAD)$(shell [ -n "$(shell git status --porcelain)" ] && echo _dirty)
-export ACTYX_VERSION ?= 0.0.0_dev-$(GIT_COMMIT)
-export ACTYX_VERSION_CLI ?= 0.0.0_dev-$(GIT_COMMIT)
-export ACTYX_VERSION_NODEMANAGER ?= 0.0.0-dev-$(GIT_COMMIT)
+export ACTYX_VERSION_NODEMANAGER ?= $(or $(shell git log --format=%H | while read hash; do grep node-manager-.*$$hash versions && exit; done | (IFS="- " read n1 n2 v r; echo $$v)), 0.0.0)_dev-$(GIT_COMMIT)
+
+$(shell env | sort >&2)
+
+ifeq ($(origin ACTYX_VERSION), undefined)
+  AXV :=
+  AXV_DOCKER :=
+  export ACTYX_VERSION_MSI := $(or $(shell git log --format=%H | while read hash; do grep actyx-.*$$hash versions && exit; done | (IFS="- " read n1 v r; echo $$v)), 0.0.0)_dev-$(GIT_COMMIT)
+else
+  AXV := -e "ACTYX_VERSION=$(ACTYX_VERSION)"
+  AXV_DOCKER := --build-arg "ACTYX_VERSION=$(ACTYX_VERSION)"
+  export ACTYX_VERSION_MSI := $(ACTYX_VERSION)
+endif
+
+ifeq ($(origin ACTYX_VERSION_CLI), undefined)
+  AXVC :=
+  AXVC_DOCKER :=
+else
+  AXVC := -e "ACTYX_VERSION_CLI=$(ACTYX_VERSION_CLI)"
+  AXVC_DOCKER := --build-arg "ACTYX_VERSION_CLI=$(ACTYX_VERSION_CLI)"
+endif
+
+ifeq ($(origin ACTYX_PUBLIC_KEY), undefined)
+  AXP :=
+  AXP_DOCKER :=
+else
+  AXP := -e AX_PUBLIC_KEY=$(ACTYX_PUBLIC_KEY)
+  AXP_DOCKER := --build-arg AX_PUBLIC_KEY=$(ACTYX_PUBLIC_KEY)
+  export AX_PUBLIC_KEY = $(ACTYX_PUBLIC_KEY)
+endif
 
 all-WINDOWS := $(foreach t,$(windows-bins),windows-x86_64/$t)
 all-ANDROID := $(android-bins)
 all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t macos-aarch64/$t)
 
 docker-platforms = $(foreach arch,$(architectures),$(docker-platform-$(arch)))
-docker-build-args = --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg CARGO_BUILD_ARGS="$(CARGO_BUILD_ARGS)"
+docker-build-args = ${AXP_DOCKER} ${AXV_DOCKER} --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg CARGO_BUILD_ARGS="$(CARGO_BUILD_ARGS)"
 docker-multiarch-build-args = $(docker-build-args) --platform $(shell echo $(docker-platforms) | sed 's/ /,/g')
 
 export CARGO_HOME ?= $(HOME)/.cargo
 export DOCKER_CLI_EXPERIMENTAL := enabled
 
 # Use docker run -ti only if the input device is a TTY (so that Ctrl+C works)
-export DOCKER_FLAGS ?= -e "ACTYX_VERSION=${ACTYX_VERSION}" -e "ACTYX_VERSION_CLI=${ACTYX_VERSION_CLI}" $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
+export DOCKER_FLAGS ?= ${AXP} ${AXV} ${AXVC} $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
 
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
@@ -150,7 +177,7 @@ endef
 
 $(foreach arch,$(architectures),$(eval $(call mkLinuxRule,$(arch))))
 
-current: dist/bin/current/ax dist/bin/current/actyx-linux
+current: dist/bin/current/ax dist/bin/current/actyx
 
 all-js: dist/js/pond dist/js/sdk
 
@@ -169,7 +196,7 @@ print-%:
 .PHONY: assert-clean
 assert-clean:
 	@if [ -n "$(shell git status --porcelain)" ]; then \
-		git status --porcelain; echo "Git directory not clean, exiting"; exit 3; \
+		git status --porcelain; echo "Git directory not clean, exiting"; git diff; exit 3; \
 	else echo "Git directory is clean";  fi
 
 # delete almost all generated artifacts
@@ -197,7 +224,7 @@ prepare-docker:
 	docker pull actyx/util:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/util:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
 	docker pull actyx/util:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
-	docker pull actyx/util:node-manager-win-builder
+	docker pull actyx/util:node-manager-win-builder-$(IMAGE_VERSION)
 
 prepare-docker-crosscompile:
 	./bin/check-docker-requirements.sh check_docker_version
@@ -279,7 +306,9 @@ validate-netsim: diagnostics
 	rust/actyx/target/release/quickcheck_interleaved
 	rust/actyx/target/release/quickcheck_stress_single_store
 	rust/actyx/target/release/quickcheck_ephemeral
-	rust/actyx/target/release/health
+	rust/actyx/target/release/versions
+        # https://github.com/Actyx/Actyx/issues/160
+	# rust/actyx/target/release/health
 	rust/actyx/target/release/read_only
 
 .PHONY: validate-os-android
@@ -299,27 +328,27 @@ validate-js: diagnostics validate-js-sdk validate-js-pond validate-js-integratio
 
 # validate js sdk
 validate-js-sdk:
-	cd js/sdk && source ~/.nvm/nvm.sh && nvm install && \
-		npm install && \
+	cd js/sdk && source ~/.nvm/nvm.sh --no-use && nvm install && \
+		npm ci && \
 		npm run test && \
-		npm run build
+		npm run build:prod
 
 # validate js pond
 validate-js-pond:
-	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
-		npm install && \
+	cd js/pond && source ~/.nvm/nvm.sh --no-use && nvm install && \
+		npm ci && \
 		npm run test && \
 		npm run build:prod
 
 # validate js integration suite (does it compile?)
 validate-js-integration:
-	cd integration && source ~/.nvm/nvm.sh && nvm install && npm install && npm run tsc
+	cd integration && source ~/.nvm/nvm.sh --no-use && nvm install && npm ci && npm run tsc
 
 # fix and test all js projects
 fix-js: diagnostics fix-js-sdk fix-js-pond
 
 fix-js-sdk:
-	cd js/sdk && source ~/.nvm/nvm.sh && nvm install && \
+	cd js/sdk && source ~/.nvm/nvm.sh --no-use && nvm install && \
 		npm install && \
 		npm run lint:fix && \
 		npm run test && \
@@ -328,7 +357,7 @@ fix-js-sdk:
 
 
 fix-js-pond:
-	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
+	cd js/pond && source ~/.nvm/nvm.sh --no-use && nvm install && \
 		npm install && \
 		npm run lint:fix && \
 		npm run test && \
@@ -339,8 +368,8 @@ fix-js-pond:
 # this is running directly on the host container, so it needs to have nvm installed
 dist/js/sdk: make-always
 	mkdir -p $@
-	cd js/sdk && source ~/.nvm/nvm.sh && nvm install && \
-		npm install && \
+	cd js/sdk && source ~/.nvm/nvm.sh --no-use && nvm install && \
+		npm ci && \
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
 
@@ -348,8 +377,8 @@ dist/js/sdk: make-always
 # this is running directly on the host container, so it needs to have nvm installed
 dist/js/pond: make-always
 	mkdir -p $@
-	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
-		npm install && \
+	cd js/pond && source ~/.nvm/nvm.sh --no-use && nvm install && \
+		npm ci && \
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
 
@@ -368,24 +397,23 @@ validate-dotnet-sdk:
 
 validate-node-manager-bindings:
 	cd rust/actyx/node-manager-bindings && \
-		source ~/.nvm/nvm.sh && \
-		nvm install && \
-		npm install && \
+		source ~/.nvm/nvm.sh --no-use && nvm install && \
+		npm ci && \
 		npm run build
 
 node-manager-win:
+	env | sort
 	docker run \
 	-v `pwd`:/src \
 	-w /src/js/node-manager \
 	--rm \
 	actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
-	bash -c "npm install && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
+	bash -c "source /root/.nvm/nvm.sh --no-use && nvm install && npm ci && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
 
 node-manager-mac-linux:
 	cd js/node-manager && \
-		source ~/.nvm/nvm.sh && \
-		nvm install && \
-		npm install && \
+		source ~/.nvm/nvm.sh --no-use && nvm install && \
+		npm ci && \
 		npm version $(ACTYX_VERSION_NODEMANAGER) && \
 		npm run build && \
 		npm run dist && \
@@ -540,7 +568,7 @@ dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/actyx.exe make-al
 	  -e WIN_CODESIGN_PASSWORD \
 	  --rm \
 	  actyx/util:actyx-win-installer-builder \
-	  bash /src/wix/actyx-installer/build.sh ${ACTYX_VERSION} "/src/dist/bin/windows-x86_64"
+	  bash /src/wix/actyx-installer/build.sh ${ACTYX_VERSION_MSI} "/src/dist/bin/windows-x86_64"
 
 define mkDockerRule =
 docker-$(1):

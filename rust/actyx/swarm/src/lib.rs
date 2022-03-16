@@ -9,6 +9,7 @@
 //! ## BanyanStoreGuard
 //! temporary struct that is created when acquiring mutable access to the state.
 //! inside this you have mutable access to the state - but if you lock again you will deadlock.
+pub mod blob_store;
 pub mod convert;
 mod discovery;
 pub mod event_store;
@@ -26,10 +27,18 @@ pub mod transport;
 #[cfg(test)]
 mod tests;
 
+pub use crate::sqlite::{StorageServiceStore, StorageServiceStoreWrite};
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
 use actyx_sdk::app_id;
+pub use banyan::{store::BlockWriter, Forest as BanyanForest, StreamBuilder, Transaction as BanyanTransaction};
+pub use ipfs_embed::{Executor as IpfsEmbedExecutor, StorageConfig, StorageService};
+pub use libipld::codec::Codec as IpldCodec;
 pub use prune::RetainConfig;
+pub use unixfs_v1::{
+    dir::builder::{BufferingTreeBuilder, TreeOptions},
+    FlatUnixFs, PBLink, UnixFsType,
+};
 
 use crate::gossip::Gossip;
 pub use crate::gossip_protocol::{GossipMessage, RootMap, RootUpdate};
@@ -45,17 +54,18 @@ use ax_futures_util::{
 };
 use banyan::{
     query::Query,
-    store::{BlockWriter, BranchCache, ReadOnlyStore},
-    FilteredChunk, Secrets, StreamBuilder,
+    store::{BranchCache, ReadOnlyStore},
+    FilteredChunk, Secrets,
 };
 use crypto::KeyPair;
 use fnv::FnvHashMap;
 use futures::{channel::mpsc, prelude::*};
+use ipfs_embed::identity::PublicKey::Ed25519;
 use ipfs_embed::{
-    BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId,
-    StorageConfig, SyncEvent, TempPin, ToLibp2p,
+    config::BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId,
+    SyncEvent, TempPin,
 };
-use libipld::{cbor::DagCborCodec, codec::Codec, error::BlockNotFound};
+use libipld::{cbor::DagCborCodec, error::BlockNotFound};
 use libp2p::{
     dns::ResolverConfig,
     gossipsub::{GossipsubConfigBuilder, ValidationMode},
@@ -71,7 +81,7 @@ use std::{
     collections::{BTreeMap, VecDeque},
     convert::TryFrom,
     fmt::{Debug, Display},
-    io::{BufRead, BufReader, BufWriter, Read, Write},
+    io::{BufRead, BufReader, Read},
     num::NonZeroU32,
     ops::{Deref, DerefMut, RangeInclusive},
     path::PathBuf,
@@ -84,29 +94,39 @@ use trees::{
     tags::{ScopedTag, ScopedTagSet},
     AxTree, AxTreeHeader,
 };
-use unixfs_v1::dir::MaybeResolved;
 use unixfs_v1::file::{adder::FileAdder, visit::IdleFileVisit};
+use unixfs_v1::{dir::MaybeResolved, file::visit::FileVisit};
 use util::{
     formats::NodeErrorContext,
     reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
 };
+use util::{to_multiaddr, to_socket_addr, SocketAddrHelper};
 
 #[allow(clippy::upper_case_acronyms)]
-type TT = AxTrees;
-type Key = AxKey;
-type Event = Payload;
-type Forest = banyan::Forest<TT, SqliteStore>;
-type Transaction = banyan::Transaction<TT, SqliteStore, SqliteStoreWrite>;
-type Tree = banyan::Tree<TT, Event>;
-type AxStreamBuilder = banyan::StreamBuilder<TT, Event>;
-type Link = Sha256Digest;
+pub type TT = AxTrees;
+pub type Key = AxKey;
+pub type Event = Payload;
+pub type Forest = banyan::Forest<TT, SqliteStore>;
+pub type Transaction = banyan::Transaction<TT, SqliteStore, SqliteStoreWrite>;
+pub type Tree = banyan::Tree<TT, Event>;
+pub type AxStreamBuilder = banyan::StreamBuilder<TT, Event>;
+pub type Link = Sha256Digest;
 
-pub type Block = libipld::Block<libipld::DefaultParams>;
-pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
+#[derive(Debug, Clone)]
+pub struct StoreParams;
+impl libipld::store::StoreParams for StoreParams {
+    type Hashes = libipld::multihash::Code;
+    type Codecs = libipld::IpldCodec;
+    const MAX_BLOCK_SIZE: usize = 2_000_000;
+}
+
+pub type Block = libipld::Block<StoreParams>;
+pub type Ipfs = ipfs_embed::Ipfs<StoreParams>;
 
 // TODO fix stream nr
 static DISCOVERY_STREAM_NR: u64 = 1;
 static METRICS_STREAM_NR: u64 = 2;
+static FILES_STREAM_NR: u64 = 3;
 const MAX_TREE_LEVEL: i32 = 512;
 
 fn internal_app_id() -> AppId {
@@ -135,7 +155,8 @@ impl Default for EphemeralEventsConfig {
             interval: Duration::from_secs(30 * 60),
             streams: btreemap! {
                 DISCOVERY_STREAM_NR.into() => RetainConfig::Events(1000),
-                METRICS_STREAM_NR.into() => RetainConfig::Events(1000)
+                METRICS_STREAM_NR.into() => RetainConfig::Events(1000),
+                FILES_STREAM_NR.into() => RetainConfig::Age(Duration::from_secs(60 * 60 * 24 * 14))
             },
         }
     }
@@ -144,13 +165,17 @@ impl Default for EphemeralEventsConfig {
 #[derive(Clone, Debug)]
 pub struct SwarmConfig {
     pub topic: String,
-    pub index_store: Option<Arc<Mutex<rusqlite::Connection>>>,
+    pub index_store: Option<PathBuf>,
+    pub blob_store: Option<PathBuf>,
     pub keypair: Option<KeyPair>,
     pub psk: Option<[u8; 32]>,
     pub node_name: Option<String>,
     pub db_path: Option<PathBuf>,
+    pub block_cache_size: u64,
+    pub block_cache_count: u64,
+    pub block_gc_interval: Duration,
     pub external_addresses: Vec<Multiaddr>,
-    pub listen_addresses: Vec<Multiaddr>,
+    pub listen_addresses: Arc<Mutex<SocketAddrHelper>>,
     pub bootstrap_addresses: Vec<Multiaddr>,
     pub ephemeral_event_config: EphemeralEventsConfig,
     pub enable_loopback: bool,
@@ -163,6 +188,9 @@ pub struct SwarmConfig {
     pub banyan_config: BanyanConfig,
     pub cadence_root_map: Duration,
     pub cadence_compact: Duration,
+    pub metrics_interval: Duration,
+    pub ping_timeout: Duration,
+    pub bitswap_timeout: Duration,
 }
 impl SwarmConfig {
     pub fn basic() -> Self {
@@ -170,12 +198,13 @@ impl SwarmConfig {
             enable_loopback: false,
             topic: String::from("default"),
             index_store: None,
+            blob_store: None,
             keypair: None,
             psk: None,
             node_name: None,
             db_path: None,
             external_addresses: vec![],
-            listen_addresses: vec![],
+            listen_addresses: Arc::new(Mutex::new(SocketAddrHelper::empty())),
             bootstrap_addresses: vec![],
             ephemeral_event_config: EphemeralEventsConfig::default(),
             enable_fast_path: true,
@@ -187,6 +216,12 @@ impl SwarmConfig {
             banyan_config: BanyanConfig::default(),
             cadence_compact: Duration::from_secs(60),
             cadence_root_map: Duration::from_secs(10),
+            block_cache_size: 1024 * 1024 * 1024,
+            block_cache_count: 1024 * 128,
+            block_gc_interval: Duration::from_secs(300),
+            metrics_interval: Duration::from_secs(60 * 30),
+            ping_timeout: Duration::from_secs(5),
+            bitswap_timeout: Duration::from_secs(15),
         }
     }
 }
@@ -198,9 +233,17 @@ pub struct BanyanConfig {
 }
 impl Default for BanyanConfig {
     fn default() -> Self {
+        // reasoning: up to 16384 events per leaf, makes up to 65536 event keys per level 1 block
+        // this permits up to 30 bytes (avg) of compressed per-event key data (2MiB max block size)
+        // target leaf size only guards against huge events
+        let tree = banyan::Config {
+            max_key_branches: 4,
+            max_leaf_count: 16384,
+            target_leaf_size: 1_000_000,
+            ..banyan::Config::debug_fast()
+        };
         Self {
-            // TODO: replace this with better defaults for our application
-            tree: banyan::Config::debug_fast(),
+            tree,
             secret: banyan::Secrets::default(),
         }
     }
@@ -213,7 +256,7 @@ impl SwarmConfig {
             topic: "topic".into(),
             enable_mdns: false,
             node_name: Some(node_name.into()),
-            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse().unwrap()],
+            listen_addresses: Arc::new(Mutex::new("127.0.0.1:0".parse().unwrap())),
             banyan_config: BanyanConfig {
                 tree: banyan::Config::debug(),
                 ..Default::default()
@@ -225,24 +268,34 @@ impl SwarmConfig {
 
 impl PartialEq for SwarmConfig {
     fn eq(&self, other: &Self) -> bool {
+        // can’t hold both locks because that would deadlock with another
+        // comparison on another thread
+        let me_listen = self.listen_addresses.lock().clone();
+        let they_listen = other.listen_addresses.lock().clone();
         self.topic == other.topic
-            && self.enable_mdns == other.enable_mdns
             && self.keypair == other.keypair
             && self.psk == other.psk
             && self.node_name == other.node_name
             && self.db_path == other.db_path
+            && self.block_cache_size == other.block_cache_size
+            && self.block_cache_count == other.block_cache_count
+            && self.block_gc_interval == other.block_gc_interval
             && self.external_addresses == other.external_addresses
-            && self.listen_addresses == other.listen_addresses
+            && me_listen == they_listen
             && self.bootstrap_addresses == other.bootstrap_addresses
             && self.ephemeral_event_config == other.ephemeral_event_config
             && self.enable_loopback == other.enable_loopback
             && self.enable_fast_path == other.enable_fast_path
             && self.enable_slow_path == other.enable_slow_path
+            && self.enable_mdns == other.enable_mdns
             && self.enable_root_map == other.enable_root_map
             && self.enable_discovery == other.enable_discovery
             && self.enable_metrics == other.enable_metrics
-            && self.cadence_compact == other.cadence_compact
             && self.cadence_root_map == other.cadence_root_map
+            && self.cadence_compact == other.cadence_compact
+            && self.metrics_interval == other.metrics_interval
+            && self.ping_timeout == other.ping_timeout
+            && self.bitswap_timeout == other.bitswap_timeout
     }
 }
 
@@ -418,7 +471,7 @@ impl<'a> BanyanStoreGuard<'a> {
                     self.banyan_config.tree.clone(),
                     header.root,
                 )
-                .context("unable to load banyan tree")?;
+                .with_context(|| format!("unable to load banyan tree for stream {}", stream_nr))?;
             let published = PublishedTree::new(root, header, builder.snapshot());
             (builder, Some(published))
         } else {
@@ -450,7 +503,7 @@ impl<'a> BanyanStoreGuard<'a> {
                 .data
                 .forest
                 .load_tree(Secrets::default(), header.root)
-                .context("unable to load banyan tree")?;
+                .with_context(|| format!("unable to load banyan tree for stream {}", stream_id))?;
             Some(PublishedTree::new(root, header, tree))
         } else {
             None
@@ -596,13 +649,23 @@ impl<'a> BanyanStoreGuard<'a> {
 
     fn load_known_streams(&mut self) -> Result<()> {
         let known_streams = self.index_store.get_observed_streams()?;
+        let mut max_lamport = None;
         for stream_id in known_streams {
             // just trigger loading of the stream from the alias
-            if self.is_local(stream_id) {
-                let _ = self.get_or_create_own_stream(stream_id.stream_nr());
+            let lamport = if self.is_local(stream_id) {
+                self.get_or_create_own_stream(stream_id.stream_nr())?
+                    .infos()
+                    .map(|x| x.2)
             } else {
-                let _ = self.get_or_create_replicated_stream(stream_id);
-            }
+                self.get_or_create_replicated_stream(stream_id)?.infos().map(|x| x.2)
+            };
+            max_lamport = max_lamport.max(lamport);
+        }
+        if let Some(lamport) = max_lamport {
+            // register our lower bound on lamport just in case the meta table wasn’t there
+            // (e.g. migrating from per-2.9)
+            tracing::info!("propagating Lamport timestamp {} from store", lamport);
+            self.received_lamport(lamport)?;
         }
         self.data.offsets.set(self.compute_swarm_offsets());
         Ok(())
@@ -617,8 +680,8 @@ impl BanyanStore {
 
         let keypair = cfg.keypair.unwrap_or_else(KeyPair::generate);
         let node_id = keypair.into();
-        let node_key: ipfs_embed::Keypair = keypair.into();
-        let public = node_key.to_public();
+        let node_key: ipfs_embed::identity::ed25519::Keypair = keypair.into();
+        let public = node_key.public();
         let node_name = cfg
             .node_name
             .unwrap_or_else(|| names::Generator::with_naming(names::Name::Numbered).next().unwrap());
@@ -626,11 +689,10 @@ impl BanyanStore {
         let ipfs = Ipfs::new(IpfsConfig {
             network: NetworkConfig {
                 enable_loopback: cfg.enable_loopback,
-                prune_addresses: false,
+                port_reuse: false,
                 node_key,
-                node_name,
+                node_name: node_name.clone(),
                 psk: cfg.psk,
-                quic: Default::default(),
                 mdns: if cfg.enable_mdns {
                     Some(Default::default())
                 } else {
@@ -640,21 +702,26 @@ impl BanyanStore {
                 dns: if cfg!(target_os = "android") {
                     // No official support for DNS on Android.
                     // see https://github.com/Actyx/Cosmos/issues/6582
-                    Some(DnsConfig {
+                    Some(DnsConfig::Custom {
                         config: ResolverConfig::cloudflare(),
                         opts: Default::default(),
                     })
                 } else {
-                    None
+                    Some(DnsConfig::SystemWithFallback {
+                        config: ResolverConfig::cloudflare(),
+                        opts: Default::default(),
+                    })
                 },
                 ping: Some(
                     PingConfig::new()
                         .with_interval(Duration::from_secs(20))
-                        .with_timeout(Duration::from_secs(3))
+                        .with_timeout(cfg.ping_timeout)
                         .with_keep_alive(true)
-                        .with_max_failures(NonZeroU32::new(2).unwrap()),
+                        .with_max_failures(NonZeroU32::new(3).unwrap()),
                 ),
-                identify: Some(IdentifyConfig::new("/actyx/2.0.0".to_string(), public)),
+                identify: Some(
+                    IdentifyConfig::new("/actyx/2.0.0".to_string(), Ed25519(public)).with_agent_version(node_name),
+                ),
                 gossipsub: Some(
                     GossipsubConfigBuilder::default()
                         .validation_mode(ValidationMode::Permissive)
@@ -663,18 +730,22 @@ impl BanyanStore {
                 ),
                 broadcast: Some(Default::default()),
                 bitswap: Some(BitswapConfig {
-                    request_timeout: Duration::from_secs(10),
-                    connection_keep_alive: Duration::from_secs(10),
+                    request_timeout: cfg.bitswap_timeout,
+                    connection_keep_alive: cfg.bitswap_timeout,
                 }),
-                streams: None,
             },
             storage: StorageConfig {
+                access_db_path: None, // in memory
                 path: cfg.db_path,
-                cache_size_blocks: u64::MAX,
-                cache_size_bytes: 1024 * 1024 * 1024 * 4,
-                gc_interval: Duration::from_secs(10),
-                gc_min_blocks: 1000,
-                gc_target_duration: Duration::from_millis(10),
+                cache_size_blocks: cfg.block_cache_count,
+                cache_size_bytes: cfg.block_cache_size,
+                gc_interval: cfg.block_gc_interval,
+                // with the duration below gc will keep running continuously
+                // if need be, so no need for an effective minimum here
+                gc_min_blocks: 1,
+                // gc is concurrent to normal operations, so could run forever,
+                // but we want to get stats now and then
+                gc_target_duration: cfg.block_gc_interval,
             },
         })
         .await?;
@@ -682,6 +753,7 @@ impl BanyanStore {
         let swarm_events = ipfs.swarm_events();
         let mut bootstrap: FnvHashMap<PeerId, Vec<Multiaddr>> = FnvHashMap::default();
         for mut addr in cfg.bootstrap_addresses {
+            tracing::debug!(addr = display(&addr), "adding initial peer");
             if let Some(Protocol::P2p(peer_id)) = addr.pop() {
                 let peer_id =
                     PeerId::from_multihash(peer_id).map_err(|_| anyhow::anyhow!("invalid bootstrap peer id"))?;
@@ -690,32 +762,28 @@ impl BanyanStore {
                 return Err(anyhow::anyhow!("invalid bootstrap address"));
             }
         }
-        for addr in cfg.listen_addresses {
-            let port = addr
-                .iter()
-                .find_map(|x| match x {
-                    Protocol::Tcp(p) => Some(p),
-                    Protocol::Udp(p) => Some(p),
-                    _ => None,
-                })
-                .unwrap_or_default();
-
+        let listen_addrs = cfg.listen_addresses.lock().iter().collect::<Vec<_>>();
+        for addr in listen_addrs {
+            let maddr = to_multiaddr(addr);
             let mut listener = ipfs
-                .listen_on(addr.clone())
+                .listen_on(maddr.clone())
                 .with_context(|| NodeErrorContext::BindFailed {
-                    port,
+                    addr: maddr.clone(),
                     component: "Swarm".into(),
                 })?;
 
             match listener.next().await {
                 Some(ListenerEvent::NewListenAddr(bound_addr)) => {
                     // we print only the first of the discovered addresses, but the others will also be found
-                    tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr)
+                    tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr);
+                    if let Some(bound_addr) = to_socket_addr(bound_addr) {
+                        cfg.listen_addresses.lock().inject_bound_addr(addr, bound_addr);
+                    }
                 }
                 e => {
                     return Err(anyhow::anyhow!("got unexpected event {:?}", e)).with_context(|| {
                         NodeErrorContext::BindFailed {
-                            port,
+                            addr: maddr,
                             component: "Swarm".into(),
                         }
                     })
@@ -740,14 +808,46 @@ impl BanyanStore {
         for addr in cfg.external_addresses {
             ipfs.add_external_address(addr);
         }
+
+        let peers = bootstrap.keys().cloned().collect::<Vec<_>>();
         for (peer, addrs) in bootstrap {
-            for addr in addrs {
-                ipfs.add_address(&peer, addr);
+            for mut addr in addrs {
+                ipfs.add_address(&peer, addr.clone());
+                let addr_dbg = tracing::field::debug(addr.clone());
+                if let Some(info) = ipfs.peer_info(&peer) {
+                    addr.push(Protocol::P2p(peer.into()));
+                    if !info.addresses().any(|(a, ..)| *a == addr) {
+                        tracing::warn!(id = display(peer), addr = addr_dbg, "failed to add initial peer");
+                    } else {
+                        tracing::info!(id = display(peer), addr = addr_dbg, "added initial peer");
+                    }
+                } else {
+                    tracing::warn!(id = display(peer), addr = addr_dbg, "failed to add initial peer");
+                }
             }
         }
 
         let index_store = if let Some(conn) = cfg.index_store {
-            SqliteIndexStore::from_conn(conn)?
+            let mut db = SqliteIndexStore::open(DbPath::File(conn))?;
+            if db.get_observed_streams()?.is_empty() {
+                // either a new store or migrating from pre-2.9
+                let aliases = ipfs.aliases()?;
+                if !aliases.is_empty() {
+                    tracing::info!("starting store migration from pre-2.9 or dump");
+                    let aliases = aliases.into_iter().filter_map(|(alias, _cid)| {
+                        let stream_alias = StreamAlias::try_from(alias.as_slice()).ok()?;
+                        StreamId::try_from(stream_alias).ok()
+                    });
+                    let mut count = 0;
+                    for stream in aliases {
+                        tracing::debug!("migrating stream {}", stream);
+                        db.add_stream(stream)?;
+                        count += 1;
+                    }
+                    tracing::info!("migrated {} streams", count);
+                }
+            }
+            db
         } else {
             SqliteIndexStore::open(DbPath::Memory)?
         };
@@ -807,12 +907,13 @@ impl BanyanStore {
                 DISCOVERY_STREAM_NR.into(),
                 external_addrs,
                 cfg.enable_discovery,
+                peers,
             )?,
         );
         if cfg.enable_metrics {
             banyan.spawn_task(
                 "metrics",
-                crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), Duration::from_secs(60 * 30))?,
+                crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), cfg.metrics_interval)?,
             );
         }
         banyan.spawn_task(
@@ -849,6 +950,62 @@ impl BanyanStore {
         &self.data.ipfs
     }
 
+    /// Resolves a [`Cid`] to a unixfs-v1 [`FileNode`] descriptor. Any needed intermediate blocks
+    /// are fetched automatically. The actual data is not resolved.
+    pub async fn unixfs_resolve(&self, cid: Cid, name: Option<String>) -> anyhow::Result<FileNode> {
+        let peers = self.ipfs().peers();
+        let mut tmp = self.ipfs().create_temp_pin()?;
+        self.ipfs().temp_pin(&mut tmp, &cid)?;
+        let block = self.ipfs().fetch(&cid, peers.clone()).await?;
+
+        match FlatUnixFs::try_parse(block.data()).map_err(|e| anyhow::anyhow!("Error parsing block (: {}", e))? {
+            flat if flat.data.Type == UnixFsType::Directory => {
+                let mut children = Vec::with_capacity(flat.links.len());
+                #[allow(non_snake_case)]
+                for PBLink { Hash, Name, Tsize } in flat.links {
+                    let cid = Cid::try_from(Hash.as_deref().unwrap_or_default())?;
+                    let name = Name.unwrap_or_default().to_string();
+                    let size = Tsize.unwrap_or_default();
+                    children.push(Child { cid, name, size });
+                }
+                Ok(FileNode::Directory {
+                    children,
+                    own_cid: cid,
+                    name: name.unwrap_or_else(|| "/".into()),
+                })
+            }
+            file if file.data.Type == UnixFsType::File => Ok(FileNode::File {
+                name: name.unwrap_or_default(),
+                cid,
+            }),
+            // Other file types are not supported
+            other => {
+                anyhow::bail!("Unsupported file type {:?}", other.data.Type);
+            }
+        }
+    }
+
+    /// Resolves a [`Cid`] and a relative path to a unixfs-v1 [`FileNode`] descriptor. Any needed
+    /// intermediate blocks are fetched automatically. The actual data is not resolved.
+    pub async fn unixfs_resolve_path(&self, cid: Cid, mut path: VecDeque<String>) -> anyhow::Result<FileNode> {
+        let mut n = self.unixfs_resolve(cid, None).await?;
+        while let Some(segment) = path.pop_front() {
+            match n {
+                FileNode::Directory { children, own_cid, .. } => {
+                    if let Some(x) = children.iter().find(|x| x.name == segment) {
+                        n = self.unixfs_resolve(x.cid, Some(segment)).await?;
+                    } else {
+                        anyhow::bail!("Path {} not found inside {}", segment, own_cid);
+                    }
+                }
+                FileNode::File { name, .. } => {
+                    anyhow::bail!("Found file {} while looking for directory {}", name, segment)
+                }
+            }
+        }
+        Ok(n)
+    }
+
     /// Traverse a path to a `Cid`. Used for traversing unixfsv1 directories. Make sure you pin
     /// the cid before traversing it.
     pub async fn traverse(&self, cid: &Cid, mut path: VecDeque<String>) -> Result<Option<Cid>> {
@@ -875,31 +1032,42 @@ impl BanyanStore {
         Ok(Some(block.into_inner().0))
     }
 
-    /// Retrieves a binary blob from the store. Make sure to sync the `Cid` first as this
-    /// doesn't do any networking.
-    pub fn cat(&self, cid: &Cid, writer: impl Write) -> Result<()> {
-        let mut writer = BufWriter::new(writer);
-        let block = self.ipfs().get(cid)?;
-        let (content, _, _metadata, mut step) = IdleFileVisit::default().start(block.data())?;
-        writer.write_all(content)?;
-        while let Some(visit) = step {
-            let (cid, _) = visit.pending_links();
-            let block = self.ipfs().get(cid)?;
-            let (content, next_step) = visit.continue_walk(block.data(), &mut None)?;
-            writer.write_all(content)?;
-            step = next_step;
-        }
-        writer.flush()?;
-        Ok(())
+    /// Retrieves the contents of a unixfs-v1 File from the store. If the `pre_sync` bool is set,
+    /// the cid will be synced at the beginning. If not, blocks will be fetched on demand.
+    pub fn cat(&self, cid: Cid, pre_sync: bool) -> impl Stream<Item = anyhow::Result<Vec<u8>>> {
+        stream::try_unfold(
+            (self.ipfs().clone(), None, true),
+            move |(ipfs, maybe_step, is_first): (Ipfs, Option<FileVisit>, bool)| async move {
+                if is_first {
+                    debug_assert!(maybe_step.is_none());
+                    if pre_sync {
+                        ipfs.sync(&cid, ipfs.peers()).await?;
+                    }
+
+                    let block = ipfs.fetch(&cid, ipfs.peers()).await?;
+                    let (content, _, _, step) = IdleFileVisit::default().start(block.data())?;
+                    Ok(Some((content.to_vec(), (ipfs, step, false))))
+                } else if let Some(visit) = maybe_step {
+                    let (cid, _) = visit.pending_links();
+                    let block = ipfs.fetch(cid, ipfs.peers()).await?;
+                    let (content, next_step) = visit.continue_walk(block.data(), &mut None)?;
+
+                    Ok(Some((content.to_vec(), (ipfs, next_step, false))))
+                } else {
+                    Ok(None)
+                }
+            },
+        )
     }
 
     /// Adds a binary blob to the store. Requires aliasing and flushing before dropping the
-    /// `TempPin`.
-    /// Blobs are encoded as [unixfs-v1](https://docs.ipfs.io/concepts/file-systems/#unix-file-system-unixfs)
-    /// files.
-    pub fn add(&self, tmp: &TempPin, reader: impl Read) -> Result<Cid> {
+    /// `TempPin`.  Blobs are encoded as [unixfs-v1] files.
+    ///
+    /// [unixfs-v1]: https://docs.ipfs.io/concepts/file-systems/#unix-file-system-unixfs
+    pub fn add(&self, tmp: &mut TempPin, reader: impl Read) -> Result<(Cid, usize)> {
         let mut adder = FileAdder::default();
         let mut reader = BufReader::with_capacity(adder.size_hint(), reader);
+        let mut bytes_read = 0usize;
         loop {
             match reader.fill_buf()? {
                 x if x.is_empty() => {
@@ -907,10 +1075,10 @@ impl BanyanStore {
                     for (cid, data) in adder.finish() {
                         let block = Block::new_unchecked(cid, data);
                         self.ipfs().temp_pin(tmp, block.cid())?;
-                        self.ipfs().insert(&block)?;
+                        self.ipfs().insert(block)?;
                         root = Some(cid)
                     }
-                    return Ok(root.expect("must return a root"));
+                    return Ok((root.expect("must return a root"), bytes_read));
                 }
                 x => {
                     let mut total = 0;
@@ -919,11 +1087,12 @@ impl BanyanStore {
                         for (cid, data) in blocks {
                             let block = Block::new_unchecked(cid, data);
                             self.ipfs().temp_pin(tmp, block.cid())?;
-                            self.ipfs().insert(&block)?;
+                            self.ipfs().insert(block)?;
                         }
                         total += consumed;
                     }
                     reader.consume(total);
+                    bytes_read += total;
                 }
             }
         }
@@ -935,7 +1104,7 @@ impl BanyanStore {
         self.append0(stream_nr, app_id, timestamp, events).await
     }
 
-    pub(crate) async fn append0(
+    pub async fn append0(
         &self,
         stream_nr: StreamNr,
         app_id: AppId,
@@ -994,7 +1163,7 @@ impl BanyanStore {
         r
     }
 
-    /// Returns a [`Stream`] of events in causal order filtered with a [`Query`].
+    /// Returns a [`Stream`] of events filtered with a [`Query`].
     pub fn stream_filtered_stream_ordered<Q: Query<TT> + Clone + 'static>(
         &self,
         query: Q,
@@ -1013,7 +1182,7 @@ impl BanyanStore {
         range: RangeInclusive<u64>,
         query: Q,
     ) -> impl Stream<Item = Result<FilteredChunk<(u64, AxKey, Payload), ()>>> {
-        tracing::debug!("stream_filtered_chunked {}", stream_id);
+        tracing::trace!("stream_filtered_chunked {}", stream_id);
         let trees = self.tree_stream(stream_id);
         self.data.forest.stream_trees_chunked(query, trees, range, &|_| {})
     }
@@ -1041,25 +1210,24 @@ impl BanyanStore {
     fn transform_stream<T>(
         &self,
         stream: &mut OwnStreamGuard,
-        f: impl FnOnce(&Transaction, &mut AxStreamBuilder) -> Result<T> + Send,
+        f: impl FnOnce(&mut Transaction, &mut AxStreamBuilder) -> Result<T> + Send,
     ) -> Result<T> {
         let writer = self.data.forest.store().write()?;
         let stream_nr = stream.stream_nr();
         let stream_id = self.node_id().stream(stream_nr);
         let prev = stream.snapshot();
         tracing::debug!("starting write transaction on stream {}", stream_nr);
-        let txn = Transaction::new(self.data.forest.clone(), writer);
+        let mut txn = Transaction::new(self.data.forest.clone(), writer);
         // take a snapshot of the initial state
         let mut guard = stream.transaction();
-        let res = f(&txn, &mut guard);
-        if res.is_err() {
-            // stream builder state will be reverted, except for the cipher offset
-            return res;
-        }
+
+        // in case of error: stream builder state will be reverted, except for the cipher offset
+        let res = f(&mut txn, &mut guard)?;
+
         let curr = guard.snapshot();
         if curr.link() == prev.link() {
             // nothing to do, return
-            return res;
+            return Ok(res);
         }
         // make sure we did not lose events. If we did, return a failure
         anyhow::ensure!(curr.count() >= prev.count(), "tree rejected because it lost events!");
@@ -1067,7 +1235,7 @@ impl BanyanStore {
         // grab the latest lamport
         let lamport = self.data.lamport.get();
         let header = AxTreeHeader::new(curr.link().unwrap(), lamport);
-        let root = txn.writer().put(DagCborCodec.encode(&header)?)?;
+        let root = txn.writer_mut().put(DagCborCodec.encode(&header)?)?;
         let cid = Cid::from(root);
         // update the permanent alias. If this fails, we will revert the builder.
         self.ipfs().alias(StreamAlias::from(stream_id), Some(&cid))?;
@@ -1085,7 +1253,7 @@ impl BanyanStore {
         // publish new blocks and root
         self.data.gossip.publish(stream_nr, root, blocks, lamport, offset)?;
         tracing::trace!("transform_stream successful");
-        res
+        Ok(res)
     }
 
     fn update_root(&self, stream_id: StreamId, root: Link, source: RootSource) {
@@ -1169,8 +1337,8 @@ impl BanyanStore {
         let (validated_header_lamport, validated_header_count) = stream.validated_tree_counters();
         // temporarily pin the new root
         tracing::trace!("assigning temp pin to {}", root);
-        let temp_pin = ipfs.create_temp_pin()?;
-        ipfs.temp_pin(&temp_pin, &cid)?;
+        let mut temp_pin = ipfs.create_temp_pin()?;
+        ipfs.temp_pin(&mut temp_pin, &cid)?;
         let peers = ipfs.peers();
         // attempt to sync. This may take a while and is likely to be interrupted
         tracing::trace!("starting to sync from {} peers", peers.len());
@@ -1191,7 +1359,7 @@ impl BanyanStore {
                     n += 1;
                 }
                 SyncEvent::Complete(Err(err)) => {
-                    tracing::debug!("{}", err);
+                    tracing::debug!(%stream_id, %err, "sync_one");
                     return Err(err);
                 }
                 SyncEvent::Complete(Ok(())) => {}
@@ -1362,4 +1530,26 @@ impl AxTreeExt for Tree {
             },
         }
     }
+}
+#[derive(Debug, Serialize)]
+pub struct Child {
+    pub name: String,
+    #[serde(with = "::util::serde_str")]
+    pub cid: Cid,
+    pub size: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub enum FileNode {
+    Directory {
+        children: Vec<Child>,
+        #[serde(with = "::util::serde_str")]
+        own_cid: Cid,
+        name: String,
+    },
+    File {
+        name: String,
+        #[serde(with = "::util::serde_str")]
+        cid: Cid,
+    },
 }

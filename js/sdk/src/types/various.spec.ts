@@ -1,13 +1,24 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
-import { Milliseconds, NodeId, Timestamp, toMetadata } from '.'
+import { gt, lt } from 'fp-ts/lib/Ord'
+import { Milliseconds, NodeId, Timestamp, toMetadata, ActyxEvent } from '.'
 
 describe('SourceId.random', () => {
   it('must create a random SourceID', () => expect(NodeId.random(42)).toHaveLength(42))
+})
+
+describe('ActyxEvent', () => {
+  it('compares correctly', () => {
+    const mkME = (eventId: string): ActyxEvent => ({ meta: { eventId } } as ActyxEvent)
+    expect(lt(ActyxEvent.ord)(mkME('a'), mkME('b'))).toBe(true)
+    expect(gt(ActyxEvent.ord)(mkME('a'), mkME('b'))).toBe(false)
+    expect(lt(ActyxEvent.ord)(mkME('b'), mkME('a'))).toBe(false)
+    expect(gt(ActyxEvent.ord)(mkME('b'), mkME('a'))).toBe(true)
+  })
 })
 
 describe('Timestamp', () => {

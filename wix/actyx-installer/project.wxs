@@ -14,14 +14,14 @@
         <Feature Id="Actyx" Title="Actyx ($(var.version))" Level="1" AllowAdvertise='no' Absent='disallow' InstallDefault='local' ConfigurableDirectory='INSTALLFOLDER'>
             <Component Id="DummyComponentToDisallowNetworkInstall" Location="local" Directory="INSTALLFOLDER" Guid="86849215-45EC-43C8-9313-D9CE37210811" />
             <Feature Id="Core" Title="Core" Description="Core functionality of Actyx" Level="1" AllowAdvertise='no' Absent='disallow' InstallDefault='local'>
-                <Component Id="Core" Guid="*" Directory="INSTALLFOLDER">
+                <Component Id="Core" Guid="974bc210-5eb2-11ec-bf63-0242ac130002" Directory="INSTALLFOLDER">
                     <File Id="Actyx" Name="actyx.exe" Source="$(var.actyxexepath)" />
                     <File Id="DeleteRuntimeFilesBatch" Name="delete_runtime_files.bat" Source="/src/wix/actyx-installer/delete_runtime_files.bat" />
                     <RemoveFolder Id="INSTALLFOLDER" On="uninstall" />
                 </Component>
             </Feature>
             <Feature Id="Service" Title="Run as Service" Description="Set Actyx up to run as a service using the LocalSystem account." Level="1" AllowAdvertise='no' Absent='disallow' InstallDefault='local'>
-                <Component Id="Service" Guid="*" Directory="INSTALLFOLDER">
+                <Component Id="Service" Guid="974bbf86-5eb2-11ec-bf63-0242ac130002" Directory="INSTALLFOLDER">
                     <File Id="ServiceWrapper" Name="actyx-service.exe" Source="/src/wix/actyx-installer/actyx-service.exe" />
                     <File Id="ServiceConfig" Name="actyx-service.xml" Source="/src/wix/actyx-installer/actyx-service.xml" />
                     <ServiceInstall Id="ServiceInstaller" Type="ownProcess" Name="Actyx" DisplayName="Actyx" Description="Actyx Service" Start="auto" ErrorControl="normal" />

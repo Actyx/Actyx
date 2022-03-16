@@ -2,7 +2,7 @@ use crate::cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt};
 use actyx_sdk::service::OffsetsResponse;
 use futures::{stream, FutureExt, Stream, StreamExt};
 use prettytable::{cell, row, Table};
-use std::{collections::BTreeSet, convert::TryInto};
+use std::collections::BTreeSet;
 use structopt::StructOpt;
 use util::formats::{
     events_protocol::{EventsRequest, EventsResponse},
@@ -22,12 +22,13 @@ impl AxCliCommand for EventsOffsets {
     type Opt = OffsetsOpts;
     type Output = OffsetsResponse;
 
-    fn run(mut opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
+    fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let fut = async move {
             let response = opts
                 .console_opt
-                .authority
-                .request_events(&opts.console_opt.identity.try_into()?, EventsRequest::Offsets)
+                .connect()
+                .await?
+                .request_events(EventsRequest::Offsets)
                 .await?
                 .next()
                 .await;

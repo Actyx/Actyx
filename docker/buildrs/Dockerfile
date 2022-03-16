@@ -2,10 +2,10 @@
 # Supported targets: i686-linux-android, x86_64-linux-android, i686-unknown-linux-gnu (e.g. all necessary dependencies should be there)
 # TODO: Build statically linked binaries
 # ref https://github.com/Actyx/Cosmos/blob/mca/actyxos-on-arm/docker/actyxos-on-linux/Dockerfile
-ARG BUILD_RUST_TOOLCHAIN=1.54.0
+ARG BUILD_RUST_TOOLCHAIN=1.59.0
 FROM rust:${BUILD_RUST_TOOLCHAIN}-buster
 
-ENV RUST_VERSION=1.54.0
+ENV RUST_VERSION=1.59.0
 
 ARG BUILD_RUST_TOOLCHAIN
 
@@ -19,6 +19,7 @@ RUN apt-get update && \
   add-apt-repository --yes https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/
 
 RUN apt-get update
+RUN apt-get install -y binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi binutils-arm-linux-gnueabihf binutils-i686-linux-gnu binutils-x86-64-linux-gnu
 RUN apt-get install --no-install-recommends -yq unzip wget cmake \
   # Install jre (adoptopenjdk-8-hotspot-jre) only, if you only need to cross compile for Android
   # We add the JDK here in order to be able to also build the Android app

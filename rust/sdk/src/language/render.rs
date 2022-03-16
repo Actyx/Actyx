@@ -195,7 +195,7 @@ fn render_timestamp(w: &mut impl Write, e: Timestamp) -> Result {
 
 fn render_tag_atom(w: &mut impl Write, e: &TagAtom) -> Result {
     match e {
-        TagAtom::Tag(t) => render_string(w, &t.to_string()),
+        TagAtom::Tag(t) => render_string(w, t.as_ref()),
         TagAtom::AllEvents => w.write_str("allEvents"),
         TagAtom::IsLocal => w.write_str("isLocal"),
         TagAtom::FromTime(ft) => {

@@ -75,9 +75,6 @@ macro_rules! mk_scalar {
             pub fn as_str(&self) -> &str {
                 &self.0
             }
-            pub fn as_arc(&self) -> &::std::sync::Arc<str> {
-                &self.0.as_arc()
-            }
         }
 
         impl ::std::convert::TryFrom<&str> for $id {

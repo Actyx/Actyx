@@ -3,9 +3,10 @@ RUN apt-get update && \
     apt-get install --no-install-recommends --assume-yes curl mingw-w64 && \
     apt-get clean
 
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
 
 
-ARG BUILD_RUST_TOOLCHAIN=1.54.0
+ARG BUILD_RUST_TOOLCHAIN=1.59.0
 ENV TARGET=x86_64-pc-windows-gnu
 ENV CARGO_BUILD_TARGET=x86_64-pc-windows-gnu
 

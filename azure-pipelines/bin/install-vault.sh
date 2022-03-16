@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -ex
 
 vault_version=1.0.3
 # From https://releases.hashicorp.com/vault/1.0.3/vault_1.0.3_SHA256SUMS

@@ -106,7 +106,7 @@ impl Features {
         let mut alpha = false;
         let mut enabled_features = BTreeSet::new();
         for s in enabled {
-            if s == "zøg" {
+            if s == "zøg" || s == "zoeg" {
                 alpha = true;
             } else if let Ok(f) = Feature::from_str(s) {
                 enabled_features.insert(f);
@@ -223,6 +223,8 @@ mod tests {
         );
         assert_eq!(f.validate(&[s("zøg"), s("multiEmission")], Endpoint::Query), Ok(()));
         assert_eq!(f.validate(&[s("multiEmission"), s("zøg")], Endpoint::Query), Ok(()));
+        assert_eq!(f.validate(&[s("zoeg"), s("multiEmission")], Endpoint::Query), Ok(()));
+        assert_eq!(f.validate(&[s("multiEmission"), s("zoeg")], Endpoint::Query), Ok(()));
     }
 
     #[test]

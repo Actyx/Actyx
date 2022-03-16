@@ -11,6 +11,7 @@ import { sleep } from '../common/util'
 const INITIAL_STORE_DATA: StoreData = {
   preferences: {
     favoriteNodeAddrs: [],
+    nodeTimeout: undefined,
   },
   analytics: {
     disabled: false,

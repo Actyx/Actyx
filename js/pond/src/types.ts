@@ -11,12 +11,16 @@ import {
   Milliseconds,
   NodeId,
   StateWithProvenance,
+  TaggedTypedEvent,
   Tags,
   Timestamp,
   Where,
 } from '@actyx/sdk'
-import { contramap, ordNumber } from 'fp-ts/lib/Ord'
+import { contramap } from 'fp-ts/lib/Ord'
+import { Ord as OrdNumber } from 'fp-ts/lib/number'
+import { map as mapE } from 'fp-ts/lib/Either'
 import * as t from 'io-ts'
+import { Pond } from '.'
 
 export type Semantics = string
 
@@ -39,8 +43,8 @@ export const Semantics = {
   FromString: new t.Type<Semantics, string>(
     'SemanticsFromString',
     (x): x is Semantics => isString(x),
-    (x, c) => t.string.validate(x, c).map(s => s as Semantics),
-    x => x,
+    (x, c) => mapE((s) => s as Semantics)(t.string.validate(x, c)),
+    (x) => x,
   ),
 }
 
@@ -51,8 +55,8 @@ export const FishName = {
   FromString: new t.Type<FishName, string>(
     'FishNameFromString',
     (x): x is FishName => isString(x),
-    (x, c) => t.string.validate(x, c).map(s => s as FishName),
-    x => x,
+    (x, c) => mapE((s) => s as FishName)(t.string.validate(x, c)),
+    (x) => x,
   ),
 }
 
@@ -60,11 +64,11 @@ export const FishName = {
  * The source of an event stream: a single localized fish instance
  * characterised by its semantic name, instance name, pond sourceId.
  */
-export type Source = Readonly<{
+export type Source = {
   semantics: Semantics
   name: FishName
   sourceId: NodeId
-}>
+}
 
 export type Envelope<E> = {
   readonly source: Source
@@ -119,8 +123,8 @@ export type SnapshotFormat<S, Serialized> = {
 export const SnapshotFormat = {
   identity: <S>(version: number): SnapshotFormat<S, S> => ({
     version,
-    serialize: x => x,
-    deserialize: x => x,
+    serialize: (x) => x,
+    deserialize: (x) => x,
   }),
 }
 
@@ -133,7 +137,7 @@ export type TaggedIndex = {
 }
 
 export const TaggedIndex = {
-  ord: contramap((ti: TaggedIndex) => ti.i, ordNumber),
+  ord: contramap((ti: TaggedIndex) => ti.i)(OrdNumber),
 }
 
 export type CachedState<S> = {
@@ -206,12 +210,12 @@ export const FishId = {
 }
 
 /** Indicate in-process (nonpersistent) Caching. @beta */
-export type InProcessCaching = Readonly<{
+export type InProcessCaching = {
   type: 'in-process'
 
   /* Cache key used to find previously stored values */
   key: string
-}>
+}
 
 /** Indicator for disabled caching of pond.observeAll(). @beta */
 export type NoCaching = { readonly type: 'none' }
@@ -259,7 +263,7 @@ export type ObserveAllOpts = Partial<{
  * from an earlier state, instead of passing that event to the Fish out of order.
  * @public
  */
-export type Fish<S, E> = Readonly<{
+export type Fish<S, E> = {
   /**
    * Selection of events to aggregate in this Fish.
    * You may specify plain strings inline: `where: Tags('my', 'tag', 'selection')` (which requires all three tags)
@@ -291,7 +295,7 @@ export type Fish<S, E> = Readonly<{
   // Serialisation is done via JSON. To enable custom serialisation, implement `toJSON` on your state.
   // To turn a custom-serialised state back into its proper type, set `deserializeState`.
   deserializeState?: (jsonState: unknown) => S
-}>
+}
 
 /**
  * Fish generic generator methods.
@@ -306,7 +310,7 @@ export const Fish = {
 
     onEvent: (_state: E | undefined, event: E) => event,
 
-    fishId: FishId.of('actyx.lib.latestEvent', JSON.stringify(where), 1),
+    fishId: FishId.of('actyx.lib.latestEvent', where.toString(), 1),
 
     isReset: () => true,
   }),
@@ -322,7 +326,7 @@ export const Fish = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    fishId: FishId.of('actyx.lib.eventsDescending', JSON.stringify(where), 1),
+    fishId: FishId.of('actyx.lib.eventsDescending', where.toString(), 1),
   }),
 
   // Observe latest `capacity` events matching given selection, in ascending order.
@@ -336,7 +340,7 @@ export const Fish = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    fishId: FishId.of('actyx.lib.eventsAscending', JSON.stringify(where), 1),
+    fishId: FishId.of('actyx.lib.eventsAscending', where.toString(), 1),
   }),
 }
 
@@ -344,7 +348,9 @@ export const Fish = {
  * Queue emission of an event whose type is covered by `EWrite`.
  * @public
  */
-export type AddEmission<EWrite> = <E extends EWrite>(tags: Tags<E>, event: E) => void
+export type AddEmission<EWrite> = <E extends EWrite>(
+  ...args: [Tags<E>, E] | [TaggedTypedEvent<E>]
+) => void
 
 /**
  * Enqueue event emissions based on currently known local state.
@@ -355,6 +361,8 @@ export type StateEffect<S, EWrite> = (
   state: S,
   // Queue an event for emission. Can be called any number of times.
   enqueue: AddEmission<EWrite>,
+  // access to the Pond running this effect, mainly for observing other fishes
+  pond: Pond,
 ) => void | Promise<void>
 
 /** Context for an error thrown by a Fish’s functions. @public */

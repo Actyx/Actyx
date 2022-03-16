@@ -70,6 +70,7 @@ stages:
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
+              ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
           - publish: $(System.DefaultWorkingDirectory)/dist/js
             artifact: js-packages
             condition: succeeded()
@@ -91,6 +92,7 @@ stages:
               BASH_ENV: "~/.bashrc"
               WIN_CODESIGN_CERTIFICATE: $(WIN_CODESIGN_CERTIFICATE)
               WIN_CODESIGN_PASSWORD: $(WIN_CODESIGN_PASSWORD)
+              ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: windows-binaries
             condition: succeeded()
@@ -109,6 +111,7 @@ stages:
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
+              ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: linux-binaries
             condition: succeeded()
@@ -127,6 +130,7 @@ stages:
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
+              ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: macos-binaries
             condition: succeeded()
@@ -149,13 +153,14 @@ stages:
               make assert-clean
             env:
               BASH_ENV: "~/.bashrc"
+              ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
       - job: makeAllAndroid
         displayName: all-android
         steps:
           - checkout: self
             clean: true
           - bash: |
-              set -e
+              set -ex
               azure-pipelines/bin/install-vault.sh
               chmod -R 777 .
               chmod -R 777 /root/.cargo
@@ -166,6 +171,7 @@ stages:
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
+              ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: android-binaries
             condition: succeeded()
@@ -214,6 +220,8 @@ stages:
 
   - stage: upload
     displayName: Upload to az blob store
+    pool:
+      vmImage: ubuntu-latest
     dependsOn:
       - makeArtifacts
     jobs:
@@ -242,32 +250,16 @@ stages:
                 az account show
                 az storage blob upload-batch -s $(System.DefaultWorkingDirectory)/pipeline-artifacts -d https://axartifacts.blob.core.windows.net/artifacts/ --destination-path $(Build.SourceVersion)/
 
-  - stage: notifyMakeSuccess
-    displayName: Notify Slack on successful make all
-    dependsOn:
-      - upload
-      - integration
-      - createReleaseCandidateIA
-    jobs:
-      - template: jobs-notify-success.yml
-
-  - stage: notifyMakeFailure
-    displayName: Notify Slack on failure
-    condition: failed()
-    dependsOn:
-      - makeArtifacts
-      - upload
-      - integration
-      - createReleaseCandidateIA
-    jobs:
-      - template: slack-notify-failure.yml
-
   - stage: integration
     displayName: Nightly integration test
+    variables:
+      - name: ACTYX_VERSION
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_actyx'] ]
     pool:
       name: Native
     dependsOn:
       - upload
+      - calculateActyxVersion
     jobs:
       - job: integrationTest
         displayName: Integration Test
@@ -296,12 +288,15 @@ stages:
               source ~/.nvm/nvm.sh
               nvm use
               npm install
-              npm test -- -w 4
+              npm run test:ci
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
+              AUTH_TEST_SIGNATURE: $(AUTH_TEST_SIGNATURE)
+              AUTH_TEST_LICENSE: $(AUTH_TEST_LICENSE)
+              AUTH_TEST_NODE_LICENSE: $(AUTH_TEST_NODE_LICENSE)
             displayName: npm test
           - publish: $(System.DefaultWorkingDirectory)/integration/logs
             condition: failed()

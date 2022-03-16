@@ -1,9 +1,11 @@
 import { ActyxNode, NodeSelection } from './types'
 
-const nodeMatches = (selection: NodeSelection) => (node: ActyxNode): boolean =>
-  (selection.os === node.target.os || selection.os === undefined) &&
-  (selection.arch === node.target.arch || selection.arch === undefined) &&
-  (selection.host === node.host || selection.host === undefined)
+const nodeMatches =
+  (selection: NodeSelection) =>
+  (node: ActyxNode): boolean =>
+    (selection.os === node.target.os || selection.os === undefined) &&
+    (selection.arch === node.target.arch || selection.arch === undefined) &&
+    (selection.host === node.host || selection.host === undefined)
 
 /**
  * Select nodes from the given array of nodes, yielding an array containing

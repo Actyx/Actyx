@@ -24,6 +24,8 @@ stages:
               SLACK_HOOK: $(SECRET_SLACK_HOOK)
               NETLIFY_AUTH_TOKEN: $(SECRET_NETLIFY_TOKEN)
               NETLIFY_SITE_ID: $(SECRET_NETLIFY_SITE)
+              AZ_STORAGE_CONNECTION_STRING: $(SECRET_AZ_STORAGE_CONNECTION_STRING)
+              AZ_STORAGE_SAS_TOKEN: $(SECRET_AZ_STORAGE_SAS_TOKEN)
             inputs:
               workingDirectory: rust/release
               azureSubscription: azure-ax-ci

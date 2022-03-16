@@ -1,4 +1,4 @@
-import execa from 'execa'
+import { execa, ExecaChildProcess } from 'execa'
 
-export const isDockerBuildxEnabled = async (): Promise<execa.ExecaChildProcess> =>
-  await execa.command('docker buildx inspect')
+export const isDockerBuildxEnabled = async (): Promise<ExecaChildProcess> =>
+  await execa('docker buildx inspect')

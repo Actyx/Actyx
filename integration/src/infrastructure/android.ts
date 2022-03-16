@@ -50,7 +50,7 @@ export const mkNodeSshAndroid = async (
   -e ADBKEY="$(cat ~/.android/adbkey)" \
   --device /dev/kvm \
   --publish 5555 \
-  actyx/util:androidemulator-google-x86-no-metrics-latest`
+  us-docker.pkg.dev/android-emulator-268719/images/28-playstore-x64-no-metrics:30.1.2`
 
   const container = await exec(cmd)
   log('Pulling and starting emulator')
@@ -69,6 +69,10 @@ export const mkNodeSshAndroid = async (
   await exec(`adb connect localhost:${adbPort}`)
   const execAdb = (command: string) => exec(`adb -s localhost:${adbPort} ${command}`)
   await execAdb('wait-for-device')
+
+  // wait a bit, Android seems to do lots of things at this point
+  log('device ready, waiting 60sec')
+  await new Promise((res) => setTimeout(res, 60_000))
 
   const [remotePort4001, remotePort4454, remotePort4458] = await Promise.all(
     [4001, 4454, 4458].map((x) => execAdb(`forward tcp:0 tcp:${x}`).then(Number)),
@@ -90,7 +94,7 @@ export const mkNodeSshAndroid = async (
       ssh,
       `docker logs -n 1 --follow ${container}`,
       ['NODE_STARTED_BY_HOST'],
-      10000,
+      60000,
     ).then((x) => {
       x.forEach((p) => p.kill('SIGTERM'))
     })

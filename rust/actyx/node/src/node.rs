@@ -10,12 +10,14 @@ use crate::{
     node_api::formats::NodesRequest,
     settings::{is_system_scope, system_scope, SettingsRequest},
     spawn_with_name,
+    util::trigger_shutdown,
 };
 use chrono::SecondsFormat;
 use crossbeam::{
     channel::{bounded, Receiver, Sender},
     select,
 };
+use ipfs_embed::Multiaddr;
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::*;
@@ -34,15 +36,15 @@ pub enum NodeError {
     ServicesStartup { component: String, err: Arc<anyhow::Error> },
     #[error("NODE_STOPPED_BY_NODE\nError: internal error. Please contact Actyx support. ({0:#})")]
     InternalError(Arc<anyhow::Error>),
-    #[error("ERR_PORT_COLLISION\nActyx shut down because it could not bind to port {port}. Please specify a different {component} port. Please refer to https://developer.actyx.com/docs/how-to/troubleshooting/installation-and-startup/#err_port_collision for more information.")]
-    PortCollision { component: String, port: u16 },
+    #[error("ERR_PORT_COLLISION\nActyx shut down because it could not bind to port {addr}. Please specify a different {component} port. Please refer to https://developer.actyx.com/docs/how-to/troubleshooting/installation-and-startup/#err_port_collision for more information.")]
+    PortCollision { component: String, addr: Multiaddr },
 }
 impl From<Arc<anyhow::Error>> for NodeError {
     fn from(err: Arc<anyhow::Error>) -> Self {
         if let Some(ctx) = err.downcast_ref::<NodeErrorContext>() {
             match ctx {
-                NodeErrorContext::BindFailed { port, component } => Self::PortCollision {
-                    port: *port,
+                NodeErrorContext::BindFailed { addr, component } => Self::PortCollision {
+                    addr: addr.clone(),
                     component: component.into(),
                 },
             }
@@ -159,7 +161,7 @@ impl Node {
             } => {
                 let res = self
                     .handle_set_settings_request(&scope, json, ignore_errors)
-                    .inspect_err(|e| debug!("Error handling set settings request: {}", e));
+                    .ax_inspect_err(|e| debug!("Error handling set settings request: {}", e));
                 if res.is_ok() {
                     info!(target: "NODE_SETTINGS_CHANGED", "Node settings at scope {} were changed.", scope);
                 }
@@ -168,7 +170,7 @@ impl Node {
             SettingsRequest::UnsetSettings { response, scope } => {
                 let res = self
                     .handle_unset_settings_request(&scope)
-                    .inspect_err(|e| debug!("Error handling unset settings request: {}", e));
+                    .ax_inspect_err(|e| debug!("Error handling unset settings request: {}", e));
                 let _ = response.send(res);
             }
             SettingsRequest::GetSettings {
@@ -223,9 +225,27 @@ impl Node {
             }
         }
     }
+    fn handle_restart_request(&self, component: ComponentType) {
+        let ret = match self.components.iter().find(|c| c.0 == component) {
+            Some((_, channel)) => match channel {
+                ComponentChannel::Store(s) => s.send(ComponentRequest::Restart).ok(),
+                ComponentChannel::NodeApi(s) => s.send(ComponentRequest::Restart).ok(),
+                ComponentChannel::Logging(s) => s.send(ComponentRequest::Restart).ok(),
+                ComponentChannel::Android(s) => s.send(ComponentRequest::Restart).ok(),
+                #[cfg(test)]
+                ComponentChannel::Test(s) => s.send(ComponentRequest::Restart).ok(),
+            },
+            None => {
+                tracing::error!("trying to restart to non-existant component `{}`", component);
+                return;
+            }
+        };
+        if ret.is_none() {
+            tracing::warn!("failed to send restart to component `{}`", component);
+        }
+    }
     fn update_node_state(&mut self) -> ActyxOSResult<()> {
         let node_settings = self.settings_repo().get_settings(&system_scope(), false)?;
-        eprintln!("node_settings {}", node_settings);
         let settings = serde_json::from_value(node_settings)
             .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error deserializing system settings")?;
         if settings != self.state.settings {
@@ -290,6 +310,7 @@ impl Node {
                     match event {
                         ExternalEvent::NodesRequest(req) => self.handle_nodes_request(req),
                         ExternalEvent::SettingsRequest(req) => self.handle_settings_request(req),
+                        ExternalEvent::RestartRequest(comp) => self.handle_restart_request(comp),
                         ExternalEvent::ShutdownRequested(r) => break r,
                     };
                 },
@@ -356,8 +377,6 @@ pub(crate) enum ComponentChannel {
 pub struct NodeWrapper {
     /// Cloneable sender to interact with the `Node`
     pub tx: Sender<ExternalEvent>,
-    /// One shot receiver; message indicating an exit of `Node`
-    pub rx_process: Option<Receiver<NodeProcessResult<()>>>,
 }
 
 impl NodeWrapper {
@@ -367,18 +386,14 @@ impl NodeWrapper {
         runtime_storage: Host,
     ) -> anyhow::Result<Self> {
         let node = Node::new(rx, components, runtime_storage)?;
-        let (tx_process, rx_process) = bounded(1);
         let _ = spawn_with_name("NodeLifecycle", move || {
             let r = node.run();
             if let Err(e) = &r {
-                eprintln!("Node exited with error {}", e);
+                eprintln!("Node exited with error {:?}", e);
             }
-            tx_process.send(r).expect("Error sending result from NodeLifecycle");
+            trigger_shutdown(false);
         });
-        Ok(Self {
-            tx,
-            rx_process: Some(rx_process),
-        })
+        Ok(Self { tx })
     }
 }
 
@@ -410,7 +425,13 @@ mod test {
               "swarmKey": "MDAwMDAwMDAxMTExMTExMTIyMjIyMjIyMzMzMzMzMzM=",
               "initialPeers": [ "/ip4/127.0.0.1/tcp/4001/p2p/QmaAxuktPMR3ESHe9Pru8kzzzSGvsUie7UFJPfCWqTzzzz" ],
               "announceAddresses": [],
-              "topic": "My Topic"
+              "topic": "My Topic",
+              "blockGcInterval": 300,
+              "blockCacheSize": 1073741824,
+              "blockCacheCount": 131072,
+              "metricsInterval": 1800,
+              "pingTimeout": 5,
+              "bitswapTimeout": 15,
             },
             "admin": {
               "displayName": "My Node",
@@ -574,17 +595,14 @@ mod test {
         let (node_tx, node_rx) = crossbeam::channel::bounded(512);
         let (component_tx, component_rx) = crossbeam::channel::bounded(512);
         let host = Host::new(std::env::current_dir()?)?;
-        let node = NodeWrapper::new(
+        let _node = NodeWrapper::new(
             (node_tx.clone(), node_rx),
             vec![("test".into(), ComponentChannel::Test(component_tx))],
             host,
         )?;
 
-        // should provide rx_process and not exit immediately
-        assert!(node.rx_process.as_ref().unwrap().try_recv().is_err());
-
         // should register with Component
-        let _component_state_tx = match component_rx.recv()? {
+        let component_state_tx = match component_rx.recv()? {
             ComponentRequest::RegisterSupervisor(snd) => snd,
             _ => panic!(),
         };
@@ -596,9 +614,26 @@ mod test {
         node_tx.send(ExternalEvent::ShutdownRequested(ShutdownReason::TriggeredByHost))?;
         // forward shutdown request to component
         assert!(matches!(component_rx.recv()?, ComponentRequest::Shutdown(_)));
-        // yield on `rx_process`
-        node.rx_process.unwrap().recv()??;
+        component_state_tx
+            .send_timeout(("test".into(), ComponentState::Stopped), Duration::from_secs(1))
+            .unwrap();
+
+        assert_node_shutdown(node_tx);
+
         Ok(())
+    }
+
+    #[track_caller]
+    fn assert_node_shutdown(node_tx: Sender<ExternalEvent>) {
+        let deadline = Instant::now() + Duration::from_secs(3);
+        loop {
+            if node_tx.try_send(ExternalEvent::RestartRequest("test".into())).is_err() {
+                break;
+            }
+            if Instant::now() > deadline {
+                panic!("node didn’t shut down");
+            }
+        }
     }
 
     #[test]
@@ -607,8 +642,8 @@ mod test {
         let (node_tx, node_rx) = crossbeam::channel::bounded(512);
         let (component_tx, component_rx) = crossbeam::channel::bounded(512);
         let host = Host::new(std::env::current_dir()?)?;
-        let node = NodeWrapper::new(
-            (node_tx, node_rx),
+        let _node = NodeWrapper::new(
+            (node_tx.clone(), node_rx),
             vec![("test".into(), ComponentChannel::Test(component_tx))],
             host,
         )?;
@@ -629,8 +664,8 @@ mod test {
 
         // send shutdown request to component
         assert!(matches!(component_rx.recv()?, ComponentRequest::Shutdown(_)));
-        // yield on `rx_process` and forward component's error
-        matches!(node.rx_process.unwrap().recv()?, Err(NodeError::ServicesStartup { .. }));
+        assert_node_shutdown(node_tx);
+
         Ok(())
     }
 
@@ -641,7 +676,7 @@ mod test {
         let (component_tx, component_rx) = crossbeam::channel::bounded(512);
         let host = Host::new(std::env::current_dir()?)?;
         let node = NodeWrapper::new(
-            (node_tx, node_rx),
+            (node_tx.clone(), node_rx),
             vec![("test".into(), ComponentChannel::Test(component_tx))],
             host,
         )?;
@@ -682,8 +717,8 @@ mod test {
             .send(ExternalEvent::ShutdownRequested(ShutdownReason::TriggeredByHost))?;
         // forward shutdown request to component
         assert!(matches!(component_rx.recv()?, ComponentRequest::Shutdown(_)));
-        // yield on `rx_process`
-        node.rx_process.unwrap().recv()??;
+        assert_node_shutdown(node_tx);
+
         Ok(())
     }
 }

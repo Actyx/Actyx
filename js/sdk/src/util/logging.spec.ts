@@ -16,8 +16,10 @@ describe('makeLogPattern', () => {
 
 describe('mkLogger', () => {
   // Thanks @ https://stackoverflow.com/questions/25245716/remove-all-ansi-colors-styles-from-strings
-  // eslint-disable-next-line no-control-regex
-  const allColorCodes = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g
+  /* eslint-disable no-control-regex */
+  const allColorCodes =
+    /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g
+  /* eslint-enable no-control-regex */
 
   const globalLeechBefore = LoggersInternal.globalLogLeech
 
@@ -79,7 +81,7 @@ describe('mkLogger', () => {
   it('should call both globalLogLeech and original log function', () => {
     LoggersInternal.globalLogLeech = leechToCapture
     const normalOutput: string[] = []
-    const l = mkLogger('foo', args => normalOutput.push(args))
+    const l = mkLogger('foo', (args) => normalOutput.push(args))
 
     l('hello log')
     assertEntry()

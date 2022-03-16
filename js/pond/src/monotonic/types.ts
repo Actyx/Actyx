@@ -5,11 +5,11 @@ import { Option } from 'fp-ts/lib/Option'
 export type SerializedStateSnap = LocalSnapshot<string>
 
 // A local snapshot pending persistence
-export type PendingSnapshot = Readonly<{
+export type PendingSnapshot = {
   snap: SerializedStateSnap
   tag: string
   timestamp: Timestamp
-}>
+}
 
 // A Reducer for the Events-Or-State message stream that
 // - is unaware of serialization
@@ -39,8 +39,5 @@ export type CachingReducer<S> = {
 
   // Get the latest state still valid according to the given arguments.
   // This method by itself does not invalidate anything inside the cache, it just filters.
-  latestKnownValidState: (
-    invalidateStatesAfter: EventKey,
-    highestTrigger: EventKey,
-  ) => Option<SerializedStateSnap>
+  latestKnownValidState: (invalidateStatesAfter: EventKey) => Option<SerializedStateSnap>
 }

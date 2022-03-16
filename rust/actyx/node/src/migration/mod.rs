@@ -5,7 +5,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{node_storage::NodeStorage, CURRENT_DB_VERSION};
+use crate::{node_storage::NodeStorage, node_storage::CURRENT_VERSION};
+use anyhow::Context;
 
 pub mod v1;
 
@@ -58,27 +59,48 @@ fn find_earlier_working_dir(base: impl AsRef<Path>) -> Option<(PathBuf, PathBuf)
 /// is a no-op.
 pub fn migrate_if_necessary(
     working_dir: impl AsRef<Path>,
-    additional_sources: BTreeSet<SourceId>,
+    emit_own_source: bool,
+    additional_sources: Option<BTreeSet<SourceId>>,
     dry_run: bool,
 ) -> anyhow::Result<()> {
     anyhow::ensure!(working_dir.as_ref().exists());
 
-    if let Some((earlier_working_dir, node_db)) = find_earlier_working_dir(&working_dir) {
+    let mut additional_sources = Some(additional_sources);
+    while let Some((earlier_working_dir, node_db)) = find_earlier_working_dir(&working_dir) {
         // check the db version
         let db_version = get_node_version(&node_db)?;
         match db_version {
             0 | 1 => {
                 tracing::info!(target:"MIGRATION",
-                    "Migrating data from an earlier version ({} to {}) ..",
-                    db_version, CURRENT_DB_VERSION
+                    "Migrating data from an earlier version ({} to 2) ..",
+                    db_version
                 );
-                v1::migrate(&earlier_working_dir, &working_dir, additional_sources, true, dry_run).map_err(|e| {
+                v1::migrate(
+                    &earlier_working_dir,
+                    &working_dir,
+                    additional_sources.take().unwrap(),
+                    emit_own_source,
+                    dry_run,
+                    db_version,
+                )
+                .map_err(|e| {
                     tracing::error!(target: "MIGRATION", "Error during migration: {:#}", e);
-                    e
+                    if db_version == 0 {
+                        e.context("migrating from storage version 0")
+                    } else {
+                        e.context("migrating from storage version 1")
+                    }
                 })?;
                 tracing::info!(target:"MIGRATION", "Migration succeeded.");
             }
-            CURRENT_DB_VERSION => {}
+            2 => {
+                tracing::info!(target:"MIGRATION", "Migrating data from an earlier version (2 to 3) ..");
+                tracing::debug!("Opening database {}", node_db.display());
+                let mut conn = rusqlite::Connection::open(&node_db)?;
+                NodeStorage::migrate(&mut conn, db_version).context("migrating from storage version 2")?;
+                tracing::info!(target:"MIGRATION", "Migration succeeded.");
+            }
+            CURRENT_VERSION => break,
             _ => anyhow::bail!("Detected future version {}", db_version),
         }
     }

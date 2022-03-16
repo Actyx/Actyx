@@ -29,7 +29,7 @@ Here are examples how to use AQL in each one:
 
 <Tabs
   groupId="method"
-  defaultValue={"CLI"}
+  defaultValue={"cli"}
   values={[
     { label: 'CLI', value: 'cli' },
     { label: 'Node Manager', value: 'node-manager' },
@@ -66,34 +66,31 @@ Install the Typescript/Javascript SDK using `npm install @actyx/sdk` and then ru
 ```ts
 import { Actyx } from '@actyx/sdk'
 
-(async () => {
-    // Connect to the local Actyx process
-    const actyx = await Actyx.of({
-        appId: 'com.example.app',
-        displayName: 'Example App',
-        version: '1.0.0'
-    })
+;(async () => {
+  // Connect to the local Actyx process
+  const actyx = await Actyx.of({
+    appId: 'com.example.app',
+    displayName: 'Example App',
+    version: '1.0.0',
+  })
 
-    // Run AQL query
-    const results = await actyx.queryAql("FROM 'discovery'")
+  // Run AQL query
+  const results = await actyx.queryAql("FROM 'discovery'")
 
-    // Do something with the results
-    results.forEach(result => {
-        if (result.type === 'event') {
-            console.log(JSON.stringify(result.payload))
-        }
-    })
+  // Do something with the results
+  results.forEach((result) => {
+    if (result.type === 'event') {
+      console.log(JSON.stringify(result.payload))
+    }
+  })
 })()
 ```
+
 </TabItem>
 
-<TabItem value="csharp-sdk">
-C# SDK
-</TabItem>
+<TabItem value="csharp-sdk">C# SDK</TabItem>
 
-<TabItem value="rust-sdk">
-Rust SDK
-</TabItem>
+<TabItem value="rust-sdk">Rust SDK</TabItem>
 
 </Tabs>
 
@@ -122,6 +119,13 @@ FROM from(2021-08-06T14:09:00Z) & to(2021-08-06T14:11:00Z)
 
 :::info Usage of tags
 When published, each event can be tagged with an arbitrary number of tags. Check out [conceptual guide on tags](../../conceptual/tags.mdx) or our [how-to guides for business logic](../actyx-pond/introduction.mdx) for more info.
+:::
+
+:::info Tags with IDs
+By convention, events corresponding to a specific instance of a domain entity are tagged with `<entity>:<id>`.
+When using [Actyx Pond](../../how-to/actyx-pond/introduction.mdx), you will have come across [the `Tag.withId()` helper](../../how-to/actyx-pond/guides/typed-tags.mdx).
+It uses this convention as well.
+So, e.g., you'd use `FROM 'machine:42'` to select events that have been tagged with `Tag<MachineEvent>('machine').withId(42)`.
 :::
 
 ## Query events by app ID
@@ -173,7 +177,6 @@ SELECT _["byUser"].name    <--- As the property is camelCase, you have to use a 
 ```
 
 The above query only returns the value of the property "name" within the property "byUser".
-
 
 If you have any questions, comments, or suggestions, we very much welcome you to our [forum](https://community.actyx.com/) or [discord chat](https://discord.gg/262yJhc)!
 

@@ -1,4 +1,4 @@
-import { Arch, Host, OS } from '../jest/types'
+import { Arch, Host, OS } from './jest/types'
 import { CLI } from './cli'
 import { currentAxBinary } from './infrastructure/settings'
 import { ActyxNode } from './infrastructure/types'

@@ -1,7 +1,7 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import { Fish, FishId, Pond, Reduce, StateEffect, Tag } from '.'
@@ -36,7 +36,7 @@ const agg: Fish<State, Payload> = {
   fishId: FishId.of('x', 'x', 0),
 }
 
-const setN: (n: number) => StateEffect<State, Payload> = n => (state, enQ) => {
+const setN: (n: number) => StateEffect<State, Payload> = (n) => (state, enQ) => {
   if (state.n !== n - 1) {
     throw new Error(`expected state to be ${n - 1}, but was ${state.n}`)
   }
@@ -45,7 +45,7 @@ const setN: (n: number) => StateEffect<State, Payload> = n => (state, enQ) => {
   return enQ(Tag<Payload>('self'), payload)
 }
 
-const checkN: (expected: number) => StateEffect<State, never> = expected => (state, _enQ) => {
+const checkN: (expected: number) => StateEffect<State, never> = (expected) => (state, _enQ) => {
   if (state.n !== expected) {
     throw new Error(`expected state to be ${expected}, but was ${state.n}`)
   }
@@ -54,7 +54,7 @@ const checkN: (expected: number) => StateEffect<State, never> = expected => (sta
 describe('application of commands in the pond v2', () => {
   const expectState = (pond: Pond, expected: number, aggr = agg): Promise<State> =>
     new Promise((resolve, _reject) =>
-      pond.observe(aggr, state => state.n === expected && resolve(state)),
+      pond.observe(aggr, (state) => state.n === expected && resolve(state)),
     )
 
   describe('raw state effects', () => {
@@ -107,7 +107,7 @@ describe('application of commands in the pond v2', () => {
     it('should be cached correctly, even if observe goes first', async () => {
       const pond = Pond.test()
 
-      const cancel = pond.observe(agg, _ => {
+      const cancel = pond.observe(agg, (_) => {
         /* just drop it */
       })
 
@@ -166,7 +166,7 @@ describe('application of commands in the pond v2', () => {
       pond.dispose()
     })
 
-    it('should wait for the actual effect’s events to be processed, ignore other events that may come in', async () => {
+    it("should wait for the actual effect's events to be processed, ignore other events that may come in", async () => {
       const pond = Pond.test()
 
       pond.keepRunning(agg, autoBump, (state: State) => state.n === 40)
@@ -254,15 +254,17 @@ describe('application of commands in the pond v2', () => {
 
       const stateIs15 = expectState(pond, 15)
 
-      const mk = (remainder: number): StateEffect<State, Payload> => (state, enQ) => {
-        if (state.n % 3 === remainder) {
-          enQ(tags, { type: 'set', n: state.n + 1 })
+      const mk =
+        (remainder: number): StateEffect<State, Payload> =>
+        (state, enQ) => {
+          if (state.n % 3 === remainder) {
+            enQ(tags, { type: 'set', n: state.n + 1 })
+          }
         }
-      }
 
-      pond.keepRunning(agg, mk(0), s => s.n === 20)
-      pond.keepRunning(agg, mk(1), s => s.n === 20)
-      pond.keepRunning(agg, mk(2), s => s.n === 20)
+      pond.keepRunning(agg, mk(0), (s) => s.n === 20)
+      pond.keepRunning(agg, mk(1), (s) => s.n === 20)
+      pond.keepRunning(agg, mk(2), (s) => s.n === 20)
 
       await stateIs15
       await expectState(pond, 20)
@@ -274,18 +276,20 @@ describe('application of commands in the pond v2', () => {
       const pond = Pond.test()
       const tags = Tag<Payload>('self')
 
-      const mk = (remainder: number): StateEffect<State, Payload> => (state, enQ) => {
-        if (state.n % 3 === remainder) {
-          enQ(tags, { type: 'set', n: state.n + 1 })
-        } else {
-          enQ(tags, { type: 'fill' })
-          enQ(tags, { type: 'fill' })
+      const mk =
+        (remainder: number): StateEffect<State, Payload> =>
+        (state, enQ) => {
+          if (state.n % 3 === remainder) {
+            enQ(tags, { type: 'set', n: state.n + 1 })
+          } else {
+            enQ(tags, { type: 'fill' })
+            enQ(tags, { type: 'fill' })
+          }
         }
-      }
 
-      pond.keepRunning(agg, mk(0), s => s.n === 10)
-      pond.keepRunning(agg, mk(1), s => s.n === 10)
-      pond.keepRunning(agg, mk(2), s => s.n === 10)
+      pond.keepRunning(agg, mk(0), (s) => s.n === 10)
+      pond.keepRunning(agg, mk(1), (s) => s.n === 10)
+      pond.keepRunning(agg, mk(2), (s) => s.n === 10)
 
       await expectState(pond, 10)
 
@@ -314,7 +318,7 @@ describe('application of commands in the pond v2', () => {
       const cancel = pond.keepRunning(agg, autoBump)
 
       // This is only really reliable as long as we debounce the automatic effect.
-      pond.observe(agg, state => state.n > 1000 && cancel())
+      pond.observe(agg, (state) => state.n > 1000 && cancel())
 
       await expectState(pond, 1001)
 

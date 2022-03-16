@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { ensureDirSync } from 'fs-extra'
-import { EC2 } from 'aws-sdk'
+import fse from 'fs-extra'
+import { EC2Client as EC2 } from '@aws-sdk/client-ec2'
 import { createInstance, instanceToTarget } from './aws'
 import { mkNodeSshDocker, mkNodeSshProcess } from './linux'
 import { ActyxNode, AwsKey, SshAble, Target, TargetKind } from './types'
-import { CreateEC2, currentArch, currentOS, HostConfig, UseSsh } from '../../jest/types'
+import { CreateEC2, currentArch, currentOS, HostConfig, UseSsh } from '../jest/types'
 import { mkNodeLocalDocker, mkNodeLocalProcess } from './local'
-import { LogEntry, MyGlobal } from '../../jest/setup'
+import { LogEntry, MyGlobal } from '../jest/setup'
 import fs, { readFileSync } from 'fs'
 import path from 'path'
 import { makeWindowsInstallScript, mkWindowsSsh } from './windows'
@@ -200,27 +200,27 @@ const mkTarget = (
   }
 }
 
-const mkActyxNode = (hostConfig: HostConfig, target: Target, gitHash: string) => (
-  logger: (line: string) => void,
-): Promise<ActyxNode> => {
-  const { install } = hostConfig
-  switch (install.type) {
-    case 'linux':
-    case 'windows': {
-      return installProcess(target, hostConfig, logger)
-    }
-    case 'docker': {
-      return installDocker(target, hostConfig, logger, gitHash)
-    }
-    case 'android': {
-      return installAndroidEmulator(target, hostConfig, logger)
-    }
+const mkActyxNode =
+  (hostConfig: HostConfig, target: Target, gitHash: string) =>
+  (logger: (line: string) => void): Promise<ActyxNode> => {
+    const { install } = hostConfig
+    switch (install.type) {
+      case 'linux':
+      case 'windows': {
+        return installProcess(target, hostConfig, logger)
+      }
+      case 'docker': {
+        return installDocker(target, hostConfig, logger, gitHash)
+      }
+      case 'android': {
+        return installAndroidEmulator(target, hostConfig, logger)
+      }
 
-    case 'just-use-a-running-actyx-node': {
-      throw new Error(`Not implemented ${install.type}`)
+      case 'just-use-a-running-actyx-node': {
+        throw new Error(`Not implemented ${install.type}`)
+      }
     }
   }
-}
 
 const logEntryToStr = (x: LogEntry): string => `${x.time.toISOString()} ${x.line}\n`
 
@@ -232,6 +232,9 @@ export const mkActyxNodeWithLogging = async (
 ): Promise<ActyxNode> => {
   const logs: LogEntry[] = []
   const logger = (line: string) => {
+    if (logs.length >= 20_000) {
+      logs.splice(0, 1000)
+    }
     logs.push({ time: new Date(), line })
   }
 
@@ -307,7 +310,7 @@ export const createNode = async (hostConfig: HostConfig): Promise<ActyxNode> => 
 // needed folders.
 const mkLogFilePath = (runId: string, filename: string) => {
   const folder = path.resolve('logs', runId)
-  ensureDirSync(folder)
+  fse.ensureDirSync(folder)
   return path.resolve(folder, filename)
 }
 

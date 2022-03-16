@@ -15,6 +15,8 @@ import {
 } from '../snapshotStore'
 import { EventKeyIO, OffsetMapIO } from '../types/wire'
 import { validateOrThrow } from '../util'
+import { lastValueFrom } from '../../node_modules/rxjs'
+import { map } from '../../node_modules/rxjs/operators'
 
 // TODO: generic io-ts mapping from undefined <-> null
 
@@ -85,60 +87,66 @@ export class WebsocketSnapshotStore implements SnapshotStore {
     tag,
     blob,
   ) =>
-    this.multiplexer
-      .request(
-        RequestTypes.StoreSnapshot,
-        StoreSnapshotRequest.encode({
-          semantics,
-          name,
-          key,
-          offsets,
-          horizon: horizon || null,
-          cycle,
-          version,
-          tag,
-          blob,
-        }),
-      )
-      .map(validateOrThrow(t.boolean))
-      .toPromise()
+    lastValueFrom(
+      this.multiplexer
+        .request(
+          RequestTypes.StoreSnapshot,
+          StoreSnapshotRequest.encode({
+            semantics,
+            name,
+            key,
+            offsets,
+            horizon: horizon || null,
+            cycle,
+            version,
+            tag,
+            blob,
+          }),
+        )
+        .pipe(map(validateOrThrow(t.boolean))),
+    )
   retrieveSnapshot: RetrieveSnapshot = (semantics, name, version) =>
-    this.multiplexer
-      .request(
-        RequestTypes.RetrieveSnapshot,
-        RetrieveSnapshotRequest.encode({
-          semantics,
-          name,
-          version,
-        }),
-      )
-      .map(validateOrThrow(RetrieveSnapshotResponseOrNull))
-      .map(
-        x =>
-          x === null
-            ? undefined
-            : {
-                state: x.state,
-                eventKey: x.eventKey,
-                offsets: x.offsets,
-                horizon: x.horizon || undefined,
-                cycle: x.cycle,
-              },
-      )
-      .toPromise()
+    lastValueFrom(
+      this.multiplexer
+        .request(
+          RequestTypes.RetrieveSnapshot,
+          RetrieveSnapshotRequest.encode({
+            semantics,
+            name,
+            version,
+          }),
+        )
+        .pipe(
+          map(validateOrThrow(RetrieveSnapshotResponseOrNull)),
+          map((x) =>
+            x === null
+              ? undefined
+              : {
+                  state: x.state,
+                  eventKey: x.eventKey,
+                  offsets: x.offsets,
+                  horizon: x.horizon || undefined,
+                  cycle: x.cycle,
+                },
+          ),
+        ),
+    )
   invalidateSnapshots: InvalidateSnapshots = (semantics, name, key) =>
-    this.multiplexer
-      .request(
-        RequestTypes.InvalidateSnapshots,
-        InvalidateSnapshotsRequest.encode({
-          semantics,
-          name,
-          key,
-        }),
-      )
-      .map(validateOrThrow(t.null))
-      .map(_ => undefined)
-      .toPromise()
+    lastValueFrom(
+      this.multiplexer
+        .request(
+          RequestTypes.InvalidateSnapshots,
+          InvalidateSnapshotsRequest.encode({
+            semantics,
+            name,
+            key,
+          }),
+        )
+        .pipe(
+          map(validateOrThrow(t.null)),
+          map((_) => undefined),
+        ),
+    )
 
   invalidateAllSnapshots: InvalidateAllSnapshots = () => Promise.resolve(undefined)
   constructor(private readonly multiplexer: Multiplexer) {}

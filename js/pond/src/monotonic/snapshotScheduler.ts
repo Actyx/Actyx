@@ -1,7 +1,7 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import { Timestamp } from '@actyx/sdk'
@@ -61,9 +61,9 @@ export const minSnapshotAge = 60 * 60 * 1000 * 1000
  *
  * Not taking whole events makes it easier to write tests
  */
-export type HasTimestamp = Readonly<{
+export type HasTimestamp = {
   timestamp: Timestamp
-}>
+}
 
 const multiplesBetween = (low: number, high: number) => (n: number) => {
   let m = Math.floor(high / n)
@@ -77,37 +77,39 @@ const multiplesBetween = (low: number, high: number) => (n: number) => {
   return res
 }
 
-const getSnapshotLevels = (minLevel: number) => (
-  initialCycle: number,
-  events: ReadonlyArray<HasTimestamp>,
-  from: number,
-): ReadonlyArray<TaggedIndex> => {
-  const result: RWPartialRecord<number, TaggedIndex> = {}
+const getSnapshotLevels =
+  (minLevel: number) =>
+  (
+    initialCycle: number,
+    events: ReadonlyArray<HasTimestamp>,
+    from: number,
+  ): ReadonlyArray<TaggedIndex> => {
+    const result: RWPartialRecord<number, TaggedIndex> = {}
 
-  const maxCycle = initialCycle + events.length - 1
-  const getIndices = multiplesBetween(initialCycle + from, maxCycle)
+    const maxCycle = initialCycle + events.length - 1
+    const getIndices = multiplesBetween(initialCycle + from, maxCycle)
 
-  const maxExpectedLevel = Math.floor(Math.log2(maxCycle))
+    const maxExpectedLevel = Math.floor(Math.log2(maxCycle))
 
-  let level = isEven(maxExpectedLevel) ? maxExpectedLevel : maxExpectedLevel - 1
-  for (; level >= minLevel; level -= 2) {
-    // E.g. level=10 means all multiples of 1024 qualify
-    const levelDivisor = Math.pow(2, level)
+    let level = isEven(maxExpectedLevel) ? maxExpectedLevel : maxExpectedLevel - 1
+    for (; level >= minLevel; level -= 2) {
+      // E.g. level=10 means all multiples of 1024 qualify
+      const levelDivisor = Math.pow(2, level)
 
-    // We try to find the highest applicable index not already taken by a higher level snapshot.
-    for (const index of getIndices(levelDivisor)) {
-      const i = index - initialCycle
-      // Don’t snapshot the same index twice.
-      if (result[i] === undefined) {
-        result[i] = { tag: `${level}`, i, persistAsLocalSnapshot: true }
-        break
+      // We try to find the highest applicable index not already taken by a higher level snapshot.
+      for (const index of getIndices(levelDivisor)) {
+        const i = index - initialCycle
+        // Don’t snapshot the same index twice.
+        if (result[i] === undefined) {
+          result[i] = { tag: `${level}`, i, persistAsLocalSnapshot: true }
+          break
+        }
       }
     }
-  }
 
-  const v: TaggedIndex[] = valuesOf(result)
-  return v.sort(TaggedIndex.ord.compare)
-}
+    const v: TaggedIndex[] = valuesOf(result)
+    return v.sort(TaggedIndex.ord.compare)
+  }
 
 export const isEligibleForStorage: IsEligibleForStorage = (snap, latest) => {
   const tMax = latest.timestamp

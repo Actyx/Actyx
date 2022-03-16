@@ -1,31 +1,43 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { EC2 } from 'aws-sdk'
-import execa from 'execa'
+import {
+  CreateKeyPairCommand,
+  DeleteKeyPairCommand,
+  DescribeInstancesCommand,
+  DescribeKeyPairsCommand,
+  EC2Client as EC2,
+  Instance,
+  RunInstancesCommand,
+  RunInstancesRequest,
+  Tag,
+  TagSpecification,
+  TerminateInstancesCommand,
+} from '@aws-sdk/client-ec2'
+import { execa } from 'execa'
 import { promises as fs, createWriteStream } from 'fs'
-import { remove } from 'fs-extra'
+import fse from 'fs-extra'
 import path from 'path'
 import { mkExecute } from '.'
-import { MyGlobal } from '../../jest/setup'
-import { Arch, Config, CreateEC2 } from '../../jest/types'
+import { MyGlobal } from '../jest/setup'
+import { Arch, Config, CreateEC2 } from '../jest/types'
 import { execSsh } from './linux'
 import { Ssh } from './ssh'
 import { AwsKey, SshAble, Target, TargetKind } from './types'
 
 // determines frequency of polling AWS APIs (e.g. waiting for instance start)
-const pollDelay = <T>(f: () => Promise<T>) => new Promise((res) => setTimeout(res, 2000)).then(f)
+const pollDelay = <T>(f: () => Promise<T>) => new Promise((res) => setTimeout(res, 2500)).then(f)
 
 export const myKey = (<MyGlobal>global)?.axNodeSetup?.key
 
 export const createKey = async (config: Config, ec2: EC2): Promise<AwsKey> => {
   const keyName = `cosmos-${Date.now()}`
-  const { KeyMaterial } = await ec2
-    .createKeyPair({
+  const { KeyMaterial } = await ec2.send(
+    new CreateKeyPairCommand({
       KeyName: keyName,
       TagSpecifications: [
         { ResourceType: 'key-pair', Tags: [{ Key: 'Customer', Value: 'Cosmos integration' }] },
       ],
-    })
-    .promise()
+    }),
+  )
   if (KeyMaterial === undefined) {
     throw new Error('cannot create key pair')
   }
@@ -33,12 +45,12 @@ export const createKey = async (config: Config, ec2: EC2): Promise<AwsKey> => {
 
   // obtain public key; this requires writing private key to a file because ssh-keygen says so
   const privateKeyPath = path.resolve(config.settings.tempDir, 'sshPrivateKey')
-  await remove(privateKeyPath)
+  await fse.remove(privateKeyPath)
   await fs.writeFile(privateKeyPath, KeyMaterial, {
     mode: 0o400,
   })
   const publicKeyPath = path.resolve(config.settings.tempDir, 'sshPublicKey')
-  await remove(publicKeyPath)
+  await fse.remove(publicKeyPath)
   await execa('ssh-keygen', ['-yf', privateKeyPath], {
     stdout: await new Promise((res, rej) => {
       const s = createWriteStream(publicKeyPath)
@@ -53,10 +65,10 @@ export const createKey = async (config: Config, ec2: EC2): Promise<AwsKey> => {
 
 export const deleteKey = async (ec2: EC2, KeyName: string): Promise<void> => {
   console.log('deleting key pair %s', KeyName)
-  await ec2.deleteKeyPair({ KeyName }).promise()
+  await ec2.send(new DeleteKeyPairCommand({ KeyName }))
 }
 
-const DEFAULT_PARAMS: EC2.RunInstancesRequest = {
+const DEFAULT_PARAMS: RunInstancesRequest = {
   MinCount: 1,
   MaxCount: 1,
   SecurityGroupIds: ['sg-0d942c552d4ff817c'],
@@ -64,20 +76,35 @@ const DEFAULT_PARAMS: EC2.RunInstancesRequest = {
   InstanceInitiatedShutdownBehavior: 'terminate',
 }
 
+const retry = async <T>(f: () => Promise<T>, retries: number): Promise<T> => {
+  try {
+    return await f()
+  } catch (e) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((e as any).code === 'RequestLimitExceeded' && retries > 0) {
+      console.log('request limit hit, waiting a bit ...')
+      await new Promise((res) => setTimeout(res, 5000))
+      return await retry(f, retries - 1)
+    } else {
+      throw e
+    }
+  }
+}
+
 export const createInstance = async (
   ec2: EC2,
-  params: Partial<EC2.RunInstancesRequest>,
-): Promise<EC2.Instance> => {
+  params: Partial<RunInstancesRequest>,
+): Promise<Instance> => {
   const ts = params.TagSpecifications
 
   // need to extract the 'instance' tags because each resource type can only be named once
-  let instanceTags: EC2.TagList = []
+  let instanceTags: Tag[] = []
   const instanceTagsIdx = ts?.findIndex((spec) => spec.ResourceType === 'instance')
   if (ts !== undefined && instanceTagsIdx !== undefined && instanceTagsIdx >= 0) {
     instanceTags = ts.splice(instanceTagsIdx, 1)[0].Tags || []
   }
 
-  const myTags: EC2.TagSpecification = {
+  const myTags: TagSpecification = {
     ResourceType: 'instance',
     Tags: [...instanceTags, { Key: 'Customer', Value: 'Cosmos integration' }],
   }
@@ -89,7 +116,7 @@ export const createInstance = async (
 
   // this is the main thing
   console.log('creating instance', withTags)
-  let instance = (await ec2.runInstances(withTags).promise()).Instances?.[0]
+  let instance = (await retry(() => ec2.send(new RunInstancesCommand(withTags)), 3)).Instances?.[0]
 
   if (instance === undefined) {
     console.error('cannot start instance')
@@ -100,7 +127,9 @@ export const createInstance = async (
   console.log('instance %s created', id)
 
   while (instance !== undefined && instance.State?.Name === 'pending') {
-    const update = await pollDelay(() => ec2.describeInstances({ InstanceIds: [id] }).promise())
+    const update = await pollDelay(() =>
+      ec2.send(new DescribeInstancesCommand({ InstanceIds: [id] })),
+    )
     instance = update.Reservations?.[0].Instances?.[0]
   }
 
@@ -113,7 +142,7 @@ export const createInstance = async (
   return instance
 }
 
-const decodeAwsArch = (instance: EC2.Instance, armv7: boolean): Arch => {
+const decodeAwsArch = (instance: Instance, armv7: boolean): Arch => {
   switch (instance.Architecture) {
     case 'x86_64':
       return 'x86_64'
@@ -125,7 +154,7 @@ const decodeAwsArch = (instance: EC2.Instance, armv7: boolean): Arch => {
 }
 
 export const instanceToTarget = (
-  instance: EC2.Instance,
+  instance: Instance,
   prepare: CreateEC2,
   key: AwsKey,
   ec2: EC2,
@@ -147,14 +176,14 @@ export const instanceToTarget = (
 
 export const cleanUpInstances = async (ec2: EC2, cutoff: number): Promise<void> => {
   const old = (
-    await ec2
-      .describeInstances({
+    await ec2.send(
+      new DescribeInstancesCommand({
         Filters: [
           { Name: 'tag:Customer', Values: ['Cosmos integration'] },
           { Name: 'instance-state-name', Values: ['pending', 'running', 'stopping', 'stopped'] },
         ],
-      })
-      .promise()
+      }),
+    )
   )?.Reservations
 
   if (old === undefined || old.length === 0) {
@@ -181,14 +210,16 @@ export const cleanUpInstances = async (ec2: EC2, cutoff: number): Promise<void> 
   }
 
   console.error('Terminating instances', idList)
-  await ec2.terminateInstances({ InstanceIds: idList }).promise()
+  await ec2.send(new TerminateInstancesCommand({ InstanceIds: idList }))
 }
 
 export const cleanUpKeys = async (ec2: EC2, cutoff: number): Promise<void> => {
   const keyPairs = (
-    await ec2
-      .describeKeyPairs({ Filters: [{ Name: 'tag:Customer', Values: ['Cosmos integration'] }] })
-      .promise()
+    await ec2.send(
+      new DescribeKeyPairsCommand({
+        Filters: [{ Name: 'tag:Customer', Values: ['Cosmos integration'] }],
+      }),
+    )
   )?.KeyPairs
 
   if (keyPairs === undefined || keyPairs.length === 0) {
@@ -223,13 +254,13 @@ export const cleanUpKeys = async (ec2: EC2, cutoff: number): Promise<void> => {
 
   for (const n of names) {
     console.error(`Deleting KeyPair: ${n}`)
-    await ec2.deleteKeyPair({ KeyName: n }).promise()
+    await ec2.send(new DeleteKeyPairCommand({ KeyName: n }))
   }
 }
 
 export const terminateInstance = async (ec2: EC2, instance: string): Promise<void> => {
   console.log('terminating instance %s', instance)
-  await ec2.terminateInstances({ InstanceIds: [instance] }).promise()
+  await ec2.send(new TerminateInstancesCommand({ InstanceIds: [instance] }))
 }
 
 // Turns out that cloud-init modifies `/etc/apt/sources.list` after the first

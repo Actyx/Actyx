@@ -5,6 +5,7 @@ import * as io from 'io-ts'
 export const StoreData = io.type({
   preferences: io.type({
     favoriteNodeAddrs: io.array(io.string),
+    nodeTimeout: io.union([io.undefined, io.number]),
   }),
   analytics: io.type({
     disabled: io.boolean,
@@ -58,7 +59,7 @@ export const ReachableNode = io.type({
   type: io.literal(NodeType.Reachable),
   addr: io.string,
   details: io.type({
-    addrs: io.string,
+    addrs: io.union([io.null, io.string]),
     nodeId: io.string,
     displayName: io.string,
     startedIso: io.string,
@@ -66,7 +67,7 @@ export const ReachableNode = io.type({
     version: io.string,
     settings: io.UnknownRecord,
     settingsSchema: io.UnknownRecord,
-    swarmState: NodeSwarmState,
+    swarmState: io.union([io.null, NodeSwarmState]),
     offsets: io.union([io.null, SwarmOffsets]),
   }),
 })
@@ -89,19 +90,24 @@ export type Node = io.TypeOf<typeof Node>
 
 // Helpers
 const RequestWithAddr = io.type({ addr: io.string })
-const RequestWithAddrs = io.type({ addrs: io.array(io.string) })
 const EmptyRequest = io.type({})
 const Void = io.void
 
 // Get node details
-export const GetNodeDetailsRequest = RequestWithAddr
+export const GetNodeDetailsRequest = io.type({
+  addr: io.string,
+  timeout: io.union([io.null, io.number]),
+})
 export type GetNodeDetailsRequest = io.TypeOf<typeof GetNodeDetailsRequest>
 
 export const GetNodeDetailsResponse = io.array(Node)
 export type GetNodeDetailsResponse = io.TypeOf<typeof GetNodeDetailsResponse>
 
 // Get nodes details
-export const GetNodesDetailsRequest = RequestWithAddrs
+export const GetNodesDetailsRequest = io.type({
+  addrs: io.array(io.string),
+  timeout: io.union([io.null, io.number]),
+})
 export type GetNodesDetailsRequest = io.TypeOf<typeof GetNodesDetailsRequest>
 
 export const GetNodesDetailsResponse = io.array(Node)

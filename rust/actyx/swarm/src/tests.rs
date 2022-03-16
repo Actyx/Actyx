@@ -6,11 +6,10 @@ use ax_futures_util::{
     stream::{interval, Drainer},
 };
 use banyan::query::AllQuery;
-use futures::{prelude::*, StreamExt};
+use futures::{pin_mut, prelude::*, StreamExt};
 use libipld::Cid;
 use maplit::btreemap;
-use parking_lot::Mutex;
-use std::{collections::BTreeMap, convert::TryFrom, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, convert::TryFrom, path::PathBuf, str::FromStr, time::Duration};
 use tokio::runtime::Runtime;
 use trees::query::TagExprQuery;
 
@@ -80,17 +79,18 @@ fn last_item<T: Clone>(drainer: &mut Drainer<T>) -> anyhow::Result<T> {
 }
 
 #[tokio::test]
-async fn should_compact_regularly() -> Result<()> {
+async fn should_compact() -> Result<()> {
     // this will take 1010 chunks, so it will hit the MAX_TREE_LEVEL limit once
     const EVENTS: usize = 10100;
     let mut config = SwarmConfig::test("compaction_interval");
-    config.cadence_compact = Duration::from_secs(10);
+    config.cadence_compact = Duration::from_secs(100000);
     let store = BanyanStore::new(config).await?;
 
     // Wait for the first compaction loop to pass.
     tokio::time::sleep(Duration::from_millis(500)).await;
 
-    let tree_stream = store.get_or_create_own_stream(0.into())?.tree_stream();
+    let stream = store.get_or_create_own_stream(0.into())?;
+    let tree_stream = stream.tree_stream();
     let mut tree_stream = Drainer::new(tree_stream);
     assert_eq!(last_item(&mut tree_stream)?.count(), 0);
 
@@ -99,7 +99,6 @@ async fn should_compact_regularly() -> Result<()> {
         .map(|_| (tags!("abc"), Payload::null()))
         .collect::<Vec<_>>()
         .chunks(10)
-        .into_iter()
     {
         store.append(0.into(), app_id(), chunk.to_vec()).await?;
     }
@@ -118,12 +117,16 @@ async fn should_compact_regularly() -> Result<()> {
         .flat_map(|c| c.data);
     assert_eq!(evs.count(), EVENTS);
     // Make sure the root didn't change
-    assert!(tree_stream.next().unwrap().is_empty());
+    let empty = tree_stream.next().unwrap();
+    assert!(empty.is_empty(), "{:?}", empty);
 
-    tokio::time::sleep(Duration::from_secs(11)).await;
+    // running compaction manually here to make the test deterministic
+    let mut guard = stream.lock().await;
+    store.transform_stream(&mut guard, |txn, tree| txn.pack(tree))?;
+    drop(guard);
 
     let tree_after_compaction = last_item(&mut tree_stream)?;
-    assert!(tree_after_append.root() != tree_after_compaction.root());
+    assert_ne!(tree_after_append.root(), tree_after_compaction.root());
     assert!(store.data.forest.is_packed(&tree_after_compaction)?);
     Ok(())
 }
@@ -208,9 +211,8 @@ fn config_in_temp_folder() -> anyhow::Result<(SwarmConfig, tempfile::TempDir)> {
     let dir = tempfile::tempdir()?;
     let db = PathBuf::from(dir.path().join("db").to_str().expect("illegal filename"));
     let index = PathBuf::from(dir.path().join("index").to_str().expect("illegal filename"));
-    let index_store = Arc::new(Mutex::new(rusqlite::Connection::open(index)?));
     let config = SwarmConfig {
-        index_store: Some(index_store),
+        index_store: Some(index),
         node_name: Some("must_report_proper_initial_offsets".to_owned()),
         db_path: Some(db),
         ..SwarmConfig::basic()
@@ -255,10 +257,15 @@ async fn test_add_cat() -> Result<()> {
     data.resize(data.capacity(), 0);
     let mut rng = rand::thread_rng();
     rng.fill_bytes(&mut data);
-    let tmp = store.ipfs().create_temp_pin()?;
-    let root = store.add(&tmp, &data[..])?;
+    let mut tmp = store.ipfs().create_temp_pin()?;
+    let (root, _) = store.add(&mut tmp, &data[..])?;
     let mut buf = Vec::with_capacity(16_000_000);
-    store.cat(&root, &mut buf)?;
+    let stream = store.cat(root, true);
+    pin_mut!(stream);
+    while let Some(res) = stream.next().await {
+        let mut bytes = res?;
+        buf.append(&mut bytes);
+    }
     assert_eq!(buf, data);
     Ok(())
 }
@@ -270,10 +277,10 @@ fn test_add_zero_bytes() -> Result<()> {
         util::setup_logger();
         let store = BanyanStore::test("local").await?;
         tracing::info!("store created");
-        let tmp = store.ipfs().create_temp_pin()?;
+        let mut tmp = store.ipfs().create_temp_pin()?;
         tracing::info!("temp pin created");
         let data: &[u8] = &[];
-        store.add(&tmp, data)?;
+        store.add(&mut tmp, data)?;
         tracing::info!("data added");
         drop(tmp);
         tracing::info!("temp pin dropped");

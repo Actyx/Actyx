@@ -1,13 +1,13 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import { Offset, OffsetMap } from '@actyx/sdk'
 import * as immutable from 'immutable'
-import { Observable } from 'rxjs'
-import * as rx from 'rxjs/operators'
+import { Observable, merge } from '../node_modules/rxjs'
+import { map, scan } from '../node_modules/rxjs/operators'
 
 /**
  * All the info we got for a single node
@@ -15,18 +15,18 @@ import * as rx from 'rxjs/operators'
  * This might grow in the future to include things like timestamps
  * @public
  */
-export type NodeInfoEntry = Readonly<{
+export type NodeInfoEntry = {
   own?: number
   swarm?: number
-}>
+}
 
 /**
  * All the info we got for our device in relation to the swarm
  * @public
  */
-export type SwarmInfo = Readonly<{
+export type SwarmInfo = {
   nodes: immutable.Map<string, NodeInfoEntry>
-}>
+}
 
 /**
  * Mutable swarm counters information.
@@ -57,11 +57,11 @@ export type Counters = Readonly<CountersMut>
  * Summary of swarm info
  * @public
  */
-export type SwarmSummary = Readonly<{
+export type SwarmSummary = {
   info: SwarmInfo
   sources: Counters
   events: Counters
-}>
+}
 
 const emptySwarmInfo: SwarmInfo = { nodes: immutable.Map() }
 
@@ -104,13 +104,13 @@ export const toSwarmSummary = (info: SwarmInfo): SwarmSummary => {
 }
 
 type From = 'own' | 'swarm'
-type SourcedOffsetMap = Readonly<{
+type SourcedOffsetMap = {
   from: From
   roots: OffsetMap
-}>
+}
 
 const addOrigin = (from: From) =>
-  rx.map<OffsetMap, SourcedOffsetMap>(roots => ({
+  map<OffsetMap, SourcedOffsetMap>((roots) => ({
     from,
     roots,
   }))
@@ -119,9 +119,8 @@ export const swarmState = (
   own: Observable<OffsetMap>,
   pubSub: Observable<OffsetMap>,
 ): Observable<SwarmInfo> =>
-  Observable.merge(own.pipe(addOrigin('own')), pubSub.pipe(addOrigin('swarm'))).scan(
-    addPsnMap,
-    emptySwarmInfo,
+  merge(own.pipe(addOrigin('own')), pubSub.pipe(addOrigin('swarm'))).pipe(
+    scan(addPsnMap, emptySwarmInfo),
   )
 const emptySwarmSummary = toSwarmSummary(emptySwarmInfo)
 

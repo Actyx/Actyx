@@ -2,8 +2,8 @@
   "compilerOptions": {
     "declaration": true,
     "outDir": "lib",
-    "sourceMap": false,
-    // TODO: temporary while RxJs fix their issues https://github.com/ReactiveX/rxjs/issues/3031
+    "sourceMap": true,
+    // TODO: currently broken by fp-ts (of all projects ...)
     "skipLibCheck": true,
     "module": "commonjs",
     "target": "es2019",

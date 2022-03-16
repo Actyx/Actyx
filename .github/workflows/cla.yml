@@ -19,5 +19,5 @@ jobs:
           path-to-signatures: 'cla.json'
           path-to-document: 'https://github.com/Actyx/Actyx/blob/master/ICLA.md'
           branch: 'master'
-          allowlist: user1,bot*
+          allowlist: github-actions
           remote-repository-name: CLA-list

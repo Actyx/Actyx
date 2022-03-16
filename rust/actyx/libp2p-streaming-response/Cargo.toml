@@ -5,9 +5,9 @@ authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
-derive_more = "0.99.16"
-futures = { version = "0.3.15", package = "futures" }
-libp2p = { version = "0.39.1", default-features = false }
-serde = { version = "1.0.126", features = ["derive"] }
-serde_cbor = "0.11.1"
-thiserror = "1.0.26"
+derive_more = "0.99.17"
+futures = { version = "0.3.19", package = "futures" }
+libp2p = { version = "0.42.2", default-features = false }
+serde = { version = "1.0.133", features = ["derive"] }
+serde_cbor = "0.11.2"
+thiserror = "1.0.30"

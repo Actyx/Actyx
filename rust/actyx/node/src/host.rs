@@ -3,8 +3,7 @@ use actyx_sdk::NodeId;
 use anyhow::{Context, Result};
 use crypto::KeyStoreRef;
 use derive_more::Display;
-use parking_lot::Mutex;
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 use util::formats::NodeCycleCount;
 
 #[derive(Debug, Clone, Display)]
@@ -71,10 +70,6 @@ impl Host {
 
     pub fn get_keystore(&self) -> KeyStoreRef {
         self.keystore.clone()
-    }
-
-    pub fn get_db_handle(&self) -> Arc<Mutex<rusqlite::Connection>> {
-        self.storage.connection.clone()
     }
 
     pub fn get_settings_repo(&self) -> &settings::Repository {
