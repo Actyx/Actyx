@@ -44,7 +44,7 @@ describe('ax settings', () => {
               authorizedUsers: expect.arrayContaining([]),
               displayName: expect.any(String),
               logLevels: {
-                node: 'DEBUG',
+                node: 'INFO',
               },
             },
             api: {

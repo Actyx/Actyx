@@ -28,7 +28,7 @@ describe('node service', () => {
           actyxPort: node._private.apiPort,
         })
         const info = await sdk.nodeInfo(0)
-        expect(info.longVersion()).toEqual(process.env.ACTYX_VERSION)
+        expect(info.longVersion()).toMatch(process.env.ACTYX_VERSION || 'ACTYX_VERSION not set')
       }))
   })
 })

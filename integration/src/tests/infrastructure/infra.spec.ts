@@ -44,7 +44,7 @@ describe('the Infrastructure', () => {
         result: {
           admin: {
             logLevels: {
-              node: 'DEBUG',
+              node: 'INFO',
             },
           },
           licensing: {
