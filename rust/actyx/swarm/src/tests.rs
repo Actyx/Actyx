@@ -79,17 +79,18 @@ fn last_item<T: Clone>(drainer: &mut Drainer<T>) -> anyhow::Result<T> {
 }
 
 #[tokio::test]
-async fn should_compact_regularly() -> Result<()> {
+async fn should_compact() -> Result<()> {
     // this will take 1010 chunks, so it will hit the MAX_TREE_LEVEL limit once
     const EVENTS: usize = 10100;
     let mut config = SwarmConfig::test("compaction_interval");
-    config.cadence_compact = Duration::from_secs(10);
+    config.cadence_compact = Duration::from_secs(100000);
     let store = BanyanStore::new(config).await?;
 
     // Wait for the first compaction loop to pass.
     tokio::time::sleep(Duration::from_millis(500)).await;
 
-    let tree_stream = store.get_or_create_own_stream(0.into())?.tree_stream();
+    let stream = store.get_or_create_own_stream(0.into())?;
+    let tree_stream = stream.tree_stream();
     let mut tree_stream = Drainer::new(tree_stream);
     assert_eq!(last_item(&mut tree_stream)?.count(), 0);
 
@@ -116,12 +117,16 @@ async fn should_compact_regularly() -> Result<()> {
         .flat_map(|c| c.data);
     assert_eq!(evs.count(), EVENTS);
     // Make sure the root didn't change
-    assert!(tree_stream.next().unwrap().is_empty());
+    let empty = tree_stream.next().unwrap();
+    assert!(empty.is_empty(), "{:?}", empty);
 
-    tokio::time::sleep(Duration::from_secs(11)).await;
+    // running compaction manually here to make the test deterministic
+    let mut guard = stream.lock().await;
+    store.transform_stream(&mut guard, |txn, tree| txn.pack(tree))?;
+    drop(guard);
 
     let tree_after_compaction = last_item(&mut tree_stream)?;
-    assert!(tree_after_append.root() != tree_after_compaction.root());
+    assert_ne!(tree_after_append.root(), tree_after_compaction.root());
     assert!(store.data.forest.is_packed(&tree_after_compaction)?);
     Ok(())
 }
