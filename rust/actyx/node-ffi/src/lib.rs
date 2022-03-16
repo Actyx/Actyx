@@ -3,7 +3,7 @@ use ffi_support::{ErrorCode, ExternError, FfiStr};
 use lazy_static::lazy_static;
 use node::{spawn_with_name, ApplicationState, BindTo, NodeError, Runtime, ShutdownReason};
 use parking_lot::Mutex;
-use std::{convert::TryFrom, os::raw::c_char, sync::Arc};
+use std::{collections::BTreeSet, convert::TryFrom, os::raw::c_char, sync::Arc};
 use tracing::*;
 
 lazy_static! {
@@ -32,7 +32,7 @@ pub extern "C" fn axnode_init(working_dir: FfiStr, callback: Callback, error: &m
                 BindTo::default(),
                 true,
                 false,
-                false,
+                Some(BTreeSet::new()),
             ) {
                 Ok(handle) => {
                     *state = Some(handle);

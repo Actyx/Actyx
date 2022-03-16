@@ -1,3 +1,4 @@
+use actyx_sdk::legacy::SourceId;
 use anyhow::Result;
 use anyhow::{anyhow, Context};
 use derive_more::{Display, Error};
@@ -100,6 +101,19 @@ struct Opts {
     )]
     /// Test facility for preparing a migration from ActyxOS v1, see --help.
     migrate_all_sources: bool,
+
+    #[structopt(
+        long,
+        long_help = "By default, each node converts its own event stream only, renaming it \
+            from its old SourceId to the new NodeId with stream number 0. With this option \
+            you can manually select a set of SourceIds to convert, e.g. to add some \
+            previously forgotten dead sources. If you want to convert no data at all, use \
+            this option with a non-existing source ID (e.g. `a`).\n\n\
+            Make sure to never convert a SourceId twice because this will lead to a \
+            duplication of all its events!"
+    )]
+    /// Migration tool from ActyxOS v1 (see --help)
+    migrate_specific_sources: Vec<SourceId>,
 }
 
 pub fn main() -> Result<()> {
@@ -112,6 +126,7 @@ pub fn main() -> Result<()> {
         log_color,
         log_json,
         migrate_all_sources,
+        migrate_specific_sources,
     } = Opts::from_args();
 
     let is_no_tty = atty::isnt(atty::Stream::Stderr);
@@ -160,13 +175,20 @@ pub fn main() -> Result<()> {
         let runtime: Runtime = Runtime::Windows;
         #[cfg(target_os = "android")]
         let runtime: Runtime = Runtime::Android;
+
+        let migrate_sources_filter = if migrate_all_sources {
+            None
+        } else {
+            Some(migrate_specific_sources.into_iter().collect())
+        };
+
         let app_handle = ApplicationState::spawn(
             working_dir,
             runtime,
             bind_to,
             log_no_color,
             log_as_json,
-            migrate_all_sources,
+            migrate_sources_filter,
         )?;
 
         shutdown_ceremony(app_handle)?;

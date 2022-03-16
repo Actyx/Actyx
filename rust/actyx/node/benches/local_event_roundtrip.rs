@@ -6,7 +6,7 @@ use actyx_sdk::{
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use futures::StreamExt;
 use node::{BindTo, Runtime};
-use std::time::Duration;
+use std::{collections::BTreeSet, time::Duration};
 use tempfile::tempdir;
 use url::Url;
 use util::SocketAddrHelper;
@@ -36,7 +36,7 @@ fn round_trip(c: &mut Criterion) {
         },
         false,
         false,
-        false,
+        Some(BTreeSet::new()),
     )
     .unwrap();
 

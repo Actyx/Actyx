@@ -59,6 +59,7 @@ fn find_earlier_working_dir(base: impl AsRef<Path>) -> Option<(PathBuf, PathBuf)
 /// is a no-op.
 pub fn migrate_if_necessary(
     working_dir: impl AsRef<Path>,
+    emit_own_source: bool,
     additional_sources: Option<BTreeSet<SourceId>>,
     dry_run: bool,
 ) -> anyhow::Result<()> {
@@ -78,7 +79,7 @@ pub fn migrate_if_necessary(
                     &earlier_working_dir,
                     &working_dir,
                     additional_sources.take().unwrap(),
-                    true,
+                    emit_own_source,
                     dry_run,
                     db_version,
                 )
