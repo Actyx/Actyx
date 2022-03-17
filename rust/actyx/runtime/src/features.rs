@@ -203,10 +203,15 @@ fn features_simple(feat: &mut Features, expr: &SimpleExpr) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use maplit::btreeset;
     use FeatureError::*;
 
     fn s(s: &str) -> String {
         String::from(s)
+    }
+    fn f(s: &str) -> Features {
+        let q = Query::from(s.parse::<actyx_sdk::language::Query>().unwrap());
+        Features::from_query(&q)
     }
     fn q(s: &str) -> Result<(), FeatureError> {
         let q = Query::from(s.parse::<actyx_sdk::language::Query>().unwrap());
@@ -266,7 +271,7 @@ mod tests {
     }
 
     #[test]
-    fn aggregate() {
+    fn aggr() {
         let mut f = Features::new();
         f.add(Feature::aggregate);
         assert_eq!(
@@ -275,6 +280,24 @@ mod tests {
                 features: s("aggregate"),
                 endpoint: s("Subscribe")
             })
+        );
+    }
+
+    #[test]
+    fn subquery() {
+        assert_eq!(f("FROM 'x' SELECT 1 + (FROM 'y' END)[0]").0, btreeset!(subQuery));
+        assert_eq!(f("FROM 'x' FILTER 1 + (FROM 'y' END)[0]").0, btreeset!(subQuery));
+        assert_eq!(
+            f("FROM 'x' AGGREGATE 1 + (FROM 'y' END)[0]").0,
+            btreeset!(aggregate, subQuery)
+        );
+        assert_eq!(
+            f("FROM 'x' SELECT 1 + (FROM 'y' AGGREGATE 42 END)[0]").0,
+            btreeset!(aggregate, subQuery)
+        );
+        assert_eq!(
+            f("FROM 'x' SELECT 1 + (FROM 'y' SELECT 1, 2 END)[0]").0,
+            btreeset!(multiEmission, subQuery)
         );
     }
 }
