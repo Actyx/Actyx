@@ -258,7 +258,7 @@ fn main() {
 
                         let id = machines[node % n_nodes];
                         let client = ApiClient::from_machine(sim.machine(id), app_manifest(), None).unwrap();
-                        let query = to_query(tags);
+                        let query = to_query(tags).to_string();
                         let request = SubscribeRequest {
                             lower_bound: None,
                             query,

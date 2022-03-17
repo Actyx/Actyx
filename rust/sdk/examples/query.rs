@@ -1,6 +1,5 @@
 use actyx_sdk::{
     app_id,
-    language::Query,
     service::{EventService, Order, QueryRequest, QueryResponse},
     AppManifest, HttpClient,
 };
@@ -27,7 +26,7 @@ pub async fn main() -> anyhow::Result<()> {
     let request = QueryRequest {
         lower_bound: None,
         upper_bound: None,
-        query: "FROM 'sensor:temp-sensor1'".parse::<Query>()?,
+        query: "FROM 'sensor:temp-sensor1'".to_owned(),
         order: Order::Desc,
     };
     let mut events = service.query(request).await?;

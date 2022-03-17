@@ -1,6 +1,5 @@
 use crate::cmd::{AxCliCommand, ConsoleOpt};
 use actyx_sdk::{
-    language::Query,
     service::{Diagnostic, EventResponse, Order, QueryRequest, Severity},
     Payload,
 };
@@ -22,7 +21,7 @@ pub struct QueryOpts {
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
     /// event API query
-    query: Query,
+    query: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

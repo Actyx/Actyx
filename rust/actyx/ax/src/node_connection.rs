@@ -1,5 +1,5 @@
 use crate::private_key::AxPrivateKey;
-use actyx_sdk::NodeId;
+use actyx_sdk::{language, NodeId};
 use crypto::PublicKey;
 use derive_more::From;
 use futures::{
@@ -20,14 +20,17 @@ use libp2p::{
 use libp2p_streaming_response::{StreamingResponse, StreamingResponseEvent};
 use std::{collections::BTreeSet, convert::TryFrom, fmt, num::NonZeroU16, str::FromStr, time::Duration};
 use tracing::*;
-use util::formats::{
-    admin_protocol::{AdminRequest, AdminResponse},
-    ax_err,
-    banyan_protocol::{BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse},
-    events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol,
+use util::{
+    formats::{
+        admin_protocol::{AdminRequest, AdminResponse},
+        ax_err,
+        banyan_protocol::{BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse},
+        events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
+        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol,
+    },
+    version::NodeVersion,
 };
-use util::SocketAddrHelper;
+use util::{version::Version, SocketAddrHelper};
 
 #[derive(Debug, Clone)]
 pub struct NodeConnection {
@@ -103,26 +106,32 @@ impl NodeConnection {
                 ));
             }
         }
-        let protocols = Self::await_identify(&mut swarm).await.into_iter().collect();
+        let info = Self::await_identify(&mut swarm).await;
+        let protocols = info.1.into_iter().collect();
 
         Ok(Connected {
             remote_peer_id,
             swarm,
             protocols,
+            version: info.0,
         })
     }
 
-    async fn await_identify(swarm: &mut Swarm<RequestBehaviour>) -> Vec<String> {
+    async fn await_identify(swarm: &mut Swarm<RequestBehaviour>) -> (Option<NodeVersion>, Vec<String>) {
         loop {
             let message = swarm.next().await.expect("swarm exited");
             tracing::debug!("waiting for identify: {:?}", message);
             match message {
                 SwarmEvent::Behaviour(OutEvent::Identify(IdentifyEvent::Error { .. })) => {
                     // Actyx v2.0.x didn’t have the identify protocol
-                    return vec!["/actyx/admin/1.0.0".to_owned()];
+                    return (None, vec!["/actyx/admin/1.0.0".to_owned()]);
                 }
                 SwarmEvent::Behaviour(OutEvent::Identify(IdentifyEvent::Received { info, .. })) => {
-                    return info.protocols
+                    let v = info
+                        .protocol_version
+                        .strip_prefix("Actyx-")
+                        .and_then(|s| s.parse::<NodeVersion>().ok());
+                    return (v, info.protocols);
                 }
                 _ => {}
             }
@@ -134,6 +143,7 @@ pub struct Connected {
     remote_peer_id: PeerId,
     swarm: Swarm<RequestBehaviour>,
     protocols: BTreeSet<String>,
+    version: Option<NodeVersion>,
 }
 
 impl From<&Connected> for NodeInfo {
@@ -225,6 +235,26 @@ impl Connected {
                 ActyxOSCode::ERR_UNSUPPORTED,
                 "Events API tunneling not supported by Actyx node, please update to a newer version of Actyx",
             ));
+        }
+        if !self.version.iter().any(|v| v.version() >= Some(Version::new(2, 13, 0))) {
+            match &request {
+                EventsRequest::Query(q) => {
+                    q.query
+                        .parse::<language::Query>()
+                        .map_err(|e| ActyxOSCode::ERR_INVALID_INPUT.with_message(e.to_string()))?;
+                }
+                EventsRequest::Subscribe(q) => {
+                    q.query
+                        .parse::<language::Query>()
+                        .map_err(|e| ActyxOSCode::ERR_INVALID_INPUT.with_message(e.to_string()))?;
+                }
+                EventsRequest::SubscribeMonotonic(q) => {
+                    q.query
+                        .parse::<language::Query>()
+                        .map_err(|e| ActyxOSCode::ERR_INVALID_INPUT.with_message(e.to_string()))?;
+                }
+                _ => {}
+            }
         }
         self.send(Either::Right(request));
         Ok(stream::unfold(&mut self.swarm, |s| {

@@ -1,6 +1,7 @@
+use crate::rejections::ApiError;
 use actyx_sdk::{
     app_id,
-    language::SortKey,
+    language::{self, SortKey},
     service::{
         Diagnostic, EventResponse, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest,
         PublishResponse, PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
@@ -83,15 +84,21 @@ impl EventService {
         _app_id: AppId,
         request: QueryRequest,
     ) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
-        let tag_expr = request.query.from.clone();
-        let tags = request.query.from.clone(); // for logging
+        let query = request
+            .query
+            .parse::<language::Query>()
+            .map_err(|e| ApiError::BadRequest {
+                cause: format!("{:#}", e),
+            })?;
+        let tag_expr = query.from.clone();
+        let tags = tag_expr.clone(); // for logging
         let upper_bound = match request.upper_bound {
             Some(offsets) => offsets,
             None => self.store.offsets().await?.present(),
         };
         let lower_bound = request.lower_bound.unwrap_or_default();
 
-        let query = Query::from(request.query);
+        let query = Query::from(query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Query)?;
         let mut query = query.make_feeder();
@@ -167,12 +174,18 @@ impl EventService {
         _app_id: AppId,
         request: SubscribeRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
+        let query = request
+            .query
+            .parse::<language::Query>()
+            .map_err(|e| ApiError::BadRequest {
+                cause: format!("{:#}", e),
+            })?;
         let present = self.store.offsets().await?.present();
         let lower_bound = request.lower_bound.unwrap_or_default();
 
-        let tag_expr = request.query.from.clone();
-        let tags = request.query.from.clone(); // for logging
-        let query = Query::from(request.query);
+        let tag_expr = query.from.clone();
+        let tags = tag_expr.clone(); // for logging
+        let query = Query::from(query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Subscribe)?;
         let mut query = query.make_feeder();
@@ -246,15 +259,21 @@ impl EventService {
         _app_id: AppId,
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
+        let query = request
+            .query
+            .parse::<language::Query>()
+            .map_err(|e| ApiError::BadRequest {
+                cause: format!("{:#}", e),
+            })?;
         let lower_bound = match &request.from {
             StartFrom::LowerBound(x) => x.clone(),
         };
         let mut present = self.store.offsets().await?.present();
         present.union_with(&lower_bound);
 
-        let tag_expr = request.query.from.clone();
-        let tags = request.query.from.clone(); // for logging
-        let query = Query::from(request.query);
+        let tag_expr = query.from.clone();
+        let tags = tag_expr.clone(); // for logging
+        let query = Query::from(query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::SubscribeMonotonic)?;
         let mut query = query.make_feeder();

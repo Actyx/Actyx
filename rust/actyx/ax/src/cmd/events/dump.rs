@@ -1,8 +1,5 @@
 use crate::cmd::{AxCliCommand, ConsoleOpt};
-use actyx_sdk::{
-    language::Query,
-    service::{Order, QueryRequest},
-};
+use actyx_sdk::service::{Order, QueryRequest};
 use cbor_data::{value::Precision, CborBuilder, Encoder, Writer};
 use chrono::{DateTime, Duration, Local, Utc};
 use console::{user_attended_stderr, Term};
@@ -138,11 +135,6 @@ impl AxCliCommand for EventsDump {
         Box::new(GenStream::new(move |_co| async move {
             let mut diag = Diag::new(opts.quiet);
 
-            let query = opts
-                .query
-                .parse::<Query>()
-                .map_err(|e| ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, format!("query invalid: {}", e)))?;
-
             let mut conn = opts.console_opt.connect().await?;
 
             let mut out = zstd::Encoder::<Box<dyn Write>>::new(
@@ -222,7 +214,7 @@ impl AxCliCommand for EventsDump {
                 .request_events(EventsRequest::Query(QueryRequest {
                     lower_bound: None,
                     upper_bound: None,
-                    query,
+                    query: opts.query,
                     order: Order::Asc,
                 }))
                 .await?;

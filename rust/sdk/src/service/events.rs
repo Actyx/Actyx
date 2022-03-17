@@ -6,7 +6,6 @@ use std::{collections::BTreeMap, fmt::Display, num::NonZeroU64};
 
 use crate::{
     event::{Event, EventKey, Metadata},
-    language::Query,
     scalars::StreamId,
     tags::TagSet,
     AppId, LamportTimestamp, Offset, OffsetMap, Payload, Timestamp,
@@ -43,7 +42,7 @@ pub struct QueryRequest {
     /// Upper bound offset per stream.
     pub upper_bound: Option<OffsetMap>,
     /// Query for which events should be returned.
-    pub query: Query,
+    pub query: String,
     /// Order in which events should be received.
     pub order: Order,
 }
@@ -55,7 +54,7 @@ pub struct SubscribeRequest {
     /// Optional lower bound offset per stream.
     pub lower_bound: Option<OffsetMap>,
     /// Query for which events should be returned.
-    pub query: Query,
+    pub query: String,
 }
 
 /// Event response
@@ -237,7 +236,7 @@ pub struct SubscribeMonotonicRequest {
     pub session: SessionId,
     /// Definition of the events to be received by this session, i.e. a selection of
     /// tags coupled with other flags like “isLocal”.
-    pub query: Query,
+    pub query: String,
     /// The consumer may already have kept state and know at which point to resume a
     /// previously interrupted stream. In this case, StartFrom::Offsets is used,
     /// otherwise StartFrom::Snapshot indicates that the PondService shall figure

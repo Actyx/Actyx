@@ -527,7 +527,7 @@ async fn bad_request_invalid_expression() {
         http::StatusCode::BAD_REQUEST,
         json!({
           "code": "ERR_BAD_REQUEST",
-          "message": "Invalid request.  --> 1:6\n  |\n1 | FROM x\n  |      ^---\n  |\n  = expected tag_expr at line 1 column 33"
+          "message": "Invalid request.  --> 1:6\n  |\n1 | FROM x\n  |      ^---\n  |\n  = expected tag_expr"
         }),
     );
 }
@@ -664,8 +664,8 @@ async fn ws_aql_feature() -> anyhow::Result<()> {
             "type": "error",
             "requestId": 1,
             "kind": {
-                "type": "badRequest",
-                "message": " --> 1:1\n  |\n1 | x\n  | ^---\n  |\n  = expected main_query"
+                "type": "serviceError",
+                "value": "Invalid request.  --> 1:1\n  |\n1 | x\n  | ^---\n  |\n  = expected main_query"
             }
         })
     );

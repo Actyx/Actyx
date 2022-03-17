@@ -57,7 +57,7 @@ enum FilePrefetchEvent {
 struct StandingQuery {
     created: Timestamp,
     duration: Duration,
-    query: Query,
+    query: String,
 }
 
 impl FilePinner {
@@ -184,7 +184,7 @@ async fn check_queries(event_svc: &EventService, ipfs: &Ipfs, standing_queries: 
         }
     }
     for (app_id, query) in standing_queries {
-        if let Err(error) = evaluate(event_svc, ipfs, app_id, query).await {
+        if let Err(error) = evaluate(event_svc, ipfs, app_id, query.query.clone()).await {
             tracing::error!(%error, %app_id, "Error updating standing query");
         }
     }
@@ -200,14 +200,14 @@ impl AsRef<[u8]> for AppPinAlias {
         self.0.as_ref()
     }
 }
-async fn evaluate(event_svc: &EventService, ipfs: &Ipfs, app_id: &AppId, query: &StandingQuery) -> anyhow::Result<()> {
+async fn evaluate(event_svc: &EventService, ipfs: &Ipfs, app_id: &AppId, query: String) -> anyhow::Result<()> {
     let s = event_svc
         .query(
             app_id!("com.actyx"),
             QueryRequest {
                 lower_bound: None,
                 upper_bound: None,
-                query: query.query.clone(),
+                query,
                 order: Order::Desc,
             },
         )
@@ -287,7 +287,7 @@ fn update_query(
             let q = StandingQuery {
                 created,
                 duration,
-                query,
+                query: query.to_string(),
             };
 
             if created + duration > now && standing_queries.get(&app_id) != Some(&q) {

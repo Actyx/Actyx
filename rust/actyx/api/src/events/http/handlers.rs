@@ -62,19 +62,22 @@ pub async fn subscribe_monotonic(
 fn reject(err: anyhow::Error) -> Rejection {
     if let Some(e) = err.downcast_ref::<event_store_ref::Error>() {
         let cause = e.to_string();
-        match e {
+        return match e {
             event_store_ref::Error::Aborted => reject::custom(ApiError::Shutdown { cause }),
             event_store_ref::Error::Overload => reject::custom(ApiError::Overloaded { cause }),
             event_store_ref::Error::InvalidUpperBounds => reject::custom(ApiError::BadRequest { cause }),
             event_store_ref::Error::TagExprError(_) => reject::custom(ApiError::BadRequest { cause }),
-        }
-    } else {
-        match err.downcast::<FeatureError>() {
-            Ok(e) => reject::custom(ApiError::from(e)),
-            Err(err) => {
-                tracing::warn!("internal error: {:?}", err);
-                util::reject(err)
-            }
+        };
+    }
+    let err = match err.downcast::<ApiError>() {
+        Ok(e) => return reject::custom(e),
+        Err(e) => e,
+    };
+    match err.downcast::<FeatureError>() {
+        Ok(e) => reject::custom(ApiError::from(e)),
+        Err(err) => {
+            tracing::warn!("internal error: {:?}", err);
+            util::reject(err)
         }
     }
 }
