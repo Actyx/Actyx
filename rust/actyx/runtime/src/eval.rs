@@ -582,8 +582,8 @@ mod tests {
     #[tokio::test]
     async fn alternative() {
         let mut cx = ctx();
-        assert_eq!(eval(&mut cx, "5 // 6").await.unwrap(), "5");
-        assert_eq!(eval(&mut cx, "(5).a // 6").await.unwrap(), "6");
+        assert_eq!(eval(&mut cx, "5 ?? 6").await.unwrap(), "5");
+        assert_eq!(eval(&mut cx, "(5).a ?? 6").await.unwrap(), "6");
     }
 
     #[tokio::test]
@@ -592,7 +592,7 @@ mod tests {
 
         assert_eq!(eval(&mut cx, "IsDefined(1)").await.unwrap(), "true");
         assert_eq!(eval(&mut cx, "IsDefined(1 + '')").await.unwrap(), "false");
-        assert_eq!(eval(&mut cx, "IsDefined(1 + '' // FALSE)").await.unwrap(), "true");
+        assert_eq!(eval(&mut cx, "IsDefined(1 + '' ?? FALSE)").await.unwrap(), "true");
         assert_that(&eval(&mut cx, "IsDefined()").await.unwrap_err().to_string()).contains("wrong number of arguments");
         assert_that(&eval(&mut cx, "IsDefined(1, 2)").await.unwrap_err().to_string())
             .contains("wrong number of arguments");

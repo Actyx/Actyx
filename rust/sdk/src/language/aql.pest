@@ -100,7 +100,7 @@ gt = { ">" }
 ge = { ">=" | "≥" }
 eq = { "=" }
 ne = { "!=" | "≠" }
-alternative = { "//" }
+alternative = { "??" }
 
 WHITESPACE = _{ WHITE_SPACE }
 COMMENT = _{ "--" ~ ( !("\n"|"\r") ~ ANY )* }
