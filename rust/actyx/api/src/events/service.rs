@@ -84,6 +84,7 @@ impl EventService {
         request: QueryRequest,
     ) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
         let tag_expr = request.query.from.clone();
+        let tags = request.query.from.clone(); // for logging
         let upper_bound = match request.upper_bound {
             Some(offsets) => offsets,
             None => self.store.offsets().await?.present(),
@@ -135,6 +136,14 @@ impl EventService {
 
         let gen = Gen::new(move |co: Co<QueryResponse>| async move {
             while let Some(ev) = stream.next().await {
+                let ev = match ev {
+                    Ok(ev) => ev,
+                    Err(e) => {
+                        tracing::error!("aborting query for tags {} due to {:#}", tags, e);
+                        y(&co, vec![Err(e.into())], None).await;
+                        return;
+                    }
+                };
                 let vs = query.feed(Some(to_value(&ev)), &cx).await;
                 y(&co, vs, Some(&ev)).await;
                 if query.is_done() {
@@ -161,17 +170,18 @@ impl EventService {
         let present = self.store.offsets().await?.present();
         let lower_bound = request.lower_bound.unwrap_or_default();
 
+        let tag_expr = request.query.from.clone();
+        let tags = request.query.from.clone(); // for logging
         let query = Query::from(request.query);
-        let tag_expr = query.from.clone();
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Subscribe)?;
-        // no sub-queries supported yet, so no OffsetMap needed
         let mut query = query.make_feeder();
 
         let cx = Context::owned(
             SortKey::default(),
             Order::StreamAsc,
             self.store.clone(),
+            // no sub-queries supported yet, so no OffsetMap needed
             OffsetMap::empty(),
             OffsetMap::empty(),
         );
@@ -199,6 +209,14 @@ impl EventService {
 
         let gen = Gen::new(move |co: Co<SubscribeResponse>| async move {
             while let Some(ev) = bounded.next().await {
+                let ev = match ev {
+                    Ok(ev) => ev,
+                    Err(e) => {
+                        tracing::error!("aborting subscribe catch-up for tags {} due to {:#}", tags, e);
+                        y(&co, vec![Err(e.into())], None).await;
+                        return;
+                    }
+                };
                 let vs = query.feed(Some(to_value(&ev)), &cx).await;
                 y(&co, vs, Some(&ev)).await;
             }
@@ -207,6 +225,14 @@ impl EventService {
                 .await;
 
             while let Some(ev) = unbounded.next().await {
+                let ev = match ev {
+                    Ok(ev) => ev,
+                    Err(e) => {
+                        tracing::error!("aborting subscribe for tags {} due to {:#}", tags, e);
+                        y(&co, vec![Err(e.into())], None).await;
+                        return;
+                    }
+                };
                 let vs = query.feed(Some(to_value(&ev)), &cx).await;
                 y(&co, vs, Some(&ev)).await;
             }
@@ -226,17 +252,18 @@ impl EventService {
         let mut present = self.store.offsets().await?.present();
         present.union_with(&lower_bound);
 
+        let tag_expr = request.query.from.clone();
+        let tags = request.query.from.clone(); // for logging
         let query = Query::from(request.query);
-        let tag_expr = query.from.clone();
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::SubscribeMonotonic)?;
-        // no sub-queries supported yet, so no OffsetMap needed
         let mut query = query.make_feeder();
 
         let cx = Context::owned(
             SortKey::default(),
             Order::Asc,
             self.store.clone(),
+            // no sub-queries supported yet, so no OffsetMap needed
             OffsetMap::empty(),
             OffsetMap::empty(),
         );
@@ -312,6 +339,15 @@ impl EventService {
 
         let gen = Gen::new(move |co: Co<SubscribeMonotonicResponse>| async move {
             while let Some(ev) = bounded.next().await {
+                let ev = match ev {
+                    Ok(ev) => ev,
+                    Err(e) => {
+                        tracing::error!("aborting subscribe_monotonic catch-up for tags {} due to {:#}", tags, e);
+                        co.yield_(SubscribeMonotonicResponse::Diagnostic(Diagnostic::error(e.to_string())))
+                            .await;
+                        return;
+                    }
+                };
                 if send_and_timetravel(&co, ev, &mut latest, false, &mut query, &cx).await {
                     break;
                 }
@@ -325,6 +361,15 @@ impl EventService {
             let mut event = unbounded.next().await;
             while let Some(ev) = event {
                 let next = poll_fn(|cx| Poll::Ready(unbounded.next().poll_unpin(cx))).await;
+                let ev = match ev {
+                    Ok(ev) => ev,
+                    Err(e) => {
+                        tracing::error!("aborting subscribe_monotonic for tags {} due to {:#}", tags, e);
+                        co.yield_(SubscribeMonotonicResponse::Diagnostic(Diagnostic::error(e.to_string())))
+                            .await;
+                        return;
+                    }
+                };
                 if send_and_timetravel(&co, ev, &mut latest, next.is_pending(), &mut query, &cx).await {
                     break;
                 }

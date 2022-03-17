@@ -46,6 +46,7 @@ impl Query {
 
         let mut results = vec![];
         while let Some(ev) = stream.next().await {
+            let ev = ev?;
             let value = Value::from((ev.key, ev.payload.clone()));
             let vs = feeder.feed(Some(value), &cx).await;
             results.reserve(vs.len());
