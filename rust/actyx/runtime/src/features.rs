@@ -299,5 +299,9 @@ mod tests {
             f("FROM 'x' SELECT 1 + (FROM 'y' SELECT 1, 2 END)[0]").0,
             btreeset!(multiEmission, subQuery)
         );
+        assert_eq!(
+            f("FROM 'x' SELECT 1 + (FROM 'y' SELECT 1, FROM 'a' AGGREGATE x)[0]").0,
+            btreeset!(multiEmission, aggregate, subQuery)
+        );
     }
 }

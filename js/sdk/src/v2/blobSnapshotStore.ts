@@ -1,7 +1,7 @@
 import crossFetch from 'cross-fetch'
 import * as t from 'io-ts'
 import * as E from 'fp-ts/Either'
-import { lt } from 'semver'
+import { lt, gte } from 'semver'
 import { EventKey, Milliseconds, OffsetMap } from '..'
 import {
   InvalidateAllSnapshots,
@@ -100,28 +100,23 @@ export class BlobSnapshotStore implements SnapshotStore {
     private currentActyxVersion: () => string,
     reservedStorage: number,
   ) {
-    const headers = mkHeaders(currentToken())
-    const cmd = SetElasticity.encode({
-      type: 'setElasticity',
-      definition: {
-        mode: 'elastic',
-        fixedAllowance: reservedStorage,
-        ceiling: undefined,
-        cleaningOrder: 'timeAsc',
-      },
-    })
-    fetch(`${api}/${ENDPOINT}/-/@pond/snap`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(cmd),
-    })
-      .then(async (resp) => {
-        if (!resp.ok) {
-          const msg = await resp.text()
-          log.actyx.warn(`cannot set Pond snapshot elasticity (code ${resp.status}):`, msg)
-        }
+    if (gte(currentActyxVersion(), '2.12.0')) {
+      const headers = mkHeaders(currentToken())
+      const cmd = SetElasticity.encode({
+        type: 'setElasticity',
+        definition: {
+          mode: 'elastic',
+          fixedAllowance: reservedStorage,
+          ceiling: undefined,
+          cleaningOrder: 'timeAsc',
+        },
       })
-      .catch((e) => log.actyx.warn('cannot set Pond snapshot elasticity', e))
+      fetch(`${api}/${ENDPOINT}/-/@pond/snap`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(cmd),
+      }).catch((e) => log.actyx.warn('cannot set Pond snapshot elasticity:', e))
+    }
   }
 
   storeSnapshot: StoreSnapshot = async (
