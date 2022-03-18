@@ -584,6 +584,7 @@ mod tests {
         let mut cx = ctx();
         assert_eq!(eval(&mut cx, "5 ?? 6").await.unwrap(), "5");
         assert_eq!(eval(&mut cx, "(5).a ?? 6").await.unwrap(), "6");
+        assert_eq!(eval(&mut cx, "NULL ?? 1").await.unwrap(), "null");
     }
 
     #[tokio::test]

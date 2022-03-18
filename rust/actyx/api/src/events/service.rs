@@ -181,7 +181,7 @@ impl EventService {
                 cause: format!("{:#}", e),
             })?;
         let present = self.store.offsets().await?.present();
-        let lower_bound = request.lower_bound.unwrap_or_default();
+        let mut lower_bound = request.lower_bound.unwrap_or_default();
 
         let tag_expr = query.from.clone();
         let tags = tag_expr.clone(); // for logging
@@ -201,12 +201,13 @@ impl EventService {
 
         let mut bounded = self
             .store
-            .bounded_forward(tag_expr.clone(), lower_bound, present.clone(), false)
+            .bounded_forward(tag_expr.clone(), lower_bound.clone(), present.clone(), false)
             .await?
             .stop_on_error();
+        lower_bound.union_with(&present);
         let mut unbounded = self
             .store
-            .unbounded_forward(tag_expr, present.clone())
+            .unbounded_forward(tag_expr, lower_bound)
             .await?
             .stop_on_error();
 
@@ -265,7 +266,7 @@ impl EventService {
             .map_err(|e| ApiError::BadRequest {
                 cause: format!("{:#}", e),
             })?;
-        let lower_bound = match &request.from {
+        let mut lower_bound = match &request.from {
             StartFrom::LowerBound(x) => x.clone(),
         };
         let mut present = self.store.offsets().await?.present();
@@ -289,12 +290,13 @@ impl EventService {
 
         let mut bounded = self
             .store
-            .bounded_forward(tag_expr.clone(), lower_bound, present.clone(), false)
+            .bounded_forward(tag_expr.clone(), lower_bound.clone(), present.clone(), false)
             .await?
             .stop_on_error();
+        lower_bound.union_with(&present);
         let mut unbounded = self
             .store
-            .unbounded_forward(tag_expr.clone(), present.clone())
+            .unbounded_forward(tag_expr.clone(), lower_bound)
             .await?
             .stop_on_error();
         let mut latest = match &request.from {
@@ -426,5 +428,109 @@ fn to_event(value: Value, event: Option<&Event<Payload>>) -> EventResponse<Paylo
             tags: Default::default(),
             payload: value.payload(),
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actyx_sdk::{tags, Offset, StreamId};
+    use std::{iter::FromIterator, time::Duration};
+    use swarm::{
+        event_store_ref::{self, EventStoreHandler},
+        BanyanStore,
+    };
+    use tokio::{
+        runtime::{Handle, Runtime},
+        sync::mpsc,
+        time::timeout,
+    };
+
+    fn setup(store: &BanyanStore) -> (NodeId, EventService) {
+        let event_store = {
+            let store2 = store.clone();
+            let (tx, mut rx) = mpsc::channel(100);
+            store.spawn_task("handler", async move {
+                let mut handler = EventStoreHandler::new(store2);
+                let runtime = Handle::current();
+                while let Some(request) = rx.recv().await {
+                    handler.handle(request, &runtime);
+                }
+            });
+            EventStoreRef::new(move |e| tx.try_send(e).map_err(event_store_ref::Error::from))
+        };
+        let node_id = store.node_id();
+        (node_id, EventService::new(event_store, node_id))
+    }
+    fn offset(node_id: NodeId, stream: u64, offset: u32) -> (StreamId, Offset) {
+        (node_id.stream(stream.into()), offset.into())
+    }
+    async fn publish(service: &EventService, stream: u64, data: u32) -> PublishResponseKey {
+        let d = service
+            .publish(app_id!("me"), stream.into(), PublishRequest { data: vec![evp(data)] })
+            .await
+            .unwrap()
+            .data;
+        assert_eq!(d.len(), 1);
+        d.into_iter().next().unwrap()
+    }
+    fn evp(n: u32) -> PublishEvent {
+        PublishEvent {
+            tags: tags!("a", "b", "c"),
+            payload: Payload::from_json_str(&*format!("{:?}", n)).unwrap(),
+        }
+    }
+    fn evr(publ: PublishResponseKey, n: u32) -> SubscribeResponse {
+        SubscribeResponse::Event(EventResponse {
+            lamport: publ.lamport,
+            stream: publ.stream,
+            offset: publ.offset,
+            timestamp: publ.timestamp,
+            tags: tags!("a", "b", "c"),
+            app_id: app_id!("me"),
+            payload: Payload::from_json_str(&*format!("{:?}", n)).unwrap(),
+        })
+    }
+    fn offsets(offsets: OffsetMap) -> SubscribeResponse {
+        SubscribeResponse::Offsets(OffsetMapResponse { offsets })
+    }
+
+    #[test]
+    fn lower_bound() {
+        Runtime::new()
+            .unwrap()
+            .block_on(async {
+                timeout(Duration::from_secs(1), async {
+                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let (node_id, service) = setup(&store);
+
+                    let _pub0 = publish(&service, 0, 0).await;
+
+                    let present = OffsetMap::from_iter(vec![offset(node_id, 0, 0)]);
+                    let lower_bound = OffsetMap::from_iter(vec![offset(node_id, 0, 0), offset(node_id, 1, 0)]);
+
+                    let mut stream = service
+                        .subscribe(
+                            app_id!("me"),
+                            SubscribeRequest {
+                                lower_bound: Some(lower_bound.clone()),
+                                query: "FROM allEvents".to_owned(),
+                            },
+                        )
+                        .await
+                        .unwrap();
+
+                    assert_eq!(stream.next().await, Some(offsets(present)));
+
+                    // this event shall not be delivered, even though it is “newer than present”
+                    // because lower_bound contains it
+                    let _pub1 = publish(&service, 1, 1).await;
+                    // but this is fine
+                    let pub2 = publish(&service, 1, 2).await;
+                    assert_eq!(stream.next().await, Some(evr(pub2, 2)));
+                })
+                .await
+            })
+            .unwrap();
     }
 }
