@@ -6,7 +6,7 @@ use std::{convert::TryInto, str::FromStr, sync::Arc};
 use super::{
     non_empty::NonEmptyVec, AggrOp, Arr, FuncCall, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, TagAtom, TagExpr,
 };
-use crate::{language::SortKey, tags::Tag, Timestamp};
+use crate::{language::SortKey, service::Order, tags::Tag, Timestamp};
 use anyhow::{bail, ensure, Result};
 use chrono::{TimeZone, Utc};
 use once_cell::sync::Lazy;
@@ -113,6 +113,19 @@ fn r_tag_expr(p: P) -> Result<TagExpr> {
             })
         },
     )
+}
+
+fn r_order(p: P) -> Result<Order> {
+    let p = p.single()?;
+    match p.as_rule() {
+        Rule::order => match p.as_str() {
+            "ASC" => Ok(Order::Asc),
+            "DESC" => Ok(Order::Desc),
+            "STREAM" => Ok(Order::StreamAsc),
+            x => bail!("unexpected order: {:?}", x),
+        },
+        x => bail!("unexpected token: {:?}", x),
+    }
 }
 
 fn r_string(p: P) -> Result<String> {
@@ -359,12 +372,19 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
 }
 
 fn r_query(features: Vec<String>, p: P) -> Result<Query> {
-    let mut p = p.inner()?;
+    let mut p = p.inner()?.peekable();
     let mut q = Query {
         features,
         from: r_tag_expr(p.next().ok_or(NoVal("tag expression"))?)?,
+        order: None,
         ops: vec![],
     };
+    if let Some(o) = p.peek() {
+        if o.as_rule() == Rule::query_order {
+            let o = p.next().unwrap();
+            q.order = Some(r_order(o)?);
+        }
+    }
     for o in p {
         match o.as_rule() {
             Rule::filter => q
@@ -380,6 +400,7 @@ fn r_query(features: Vec<String>, p: P) -> Result<Query> {
             Rule::aggregate => q
                 .ops
                 .push(Operation::Aggregate(r_simple_expr(o.single()?, Context::Aggregate)?)),
+            Rule::limit => q.ops.push(Operation::Limit(o.single()?.natural()?.try_into()?)),
             x => bail!("unexpected token: {:?}", x),
         }
     }
@@ -454,6 +475,19 @@ mod tests {
             )
                 .into())
         );
+        Ok(())
+    }
+
+    #[test]
+    fn order() -> Result<()> {
+        let q = "FROM 'x'".parse::<Query>().unwrap();
+        assert_eq!(q.order, None);
+        let q = "FROM 'x' ORDER ASC".parse::<Query>().unwrap();
+        assert_eq!(q.order, Some(Order::Asc));
+        let q = "FROM 'x' ORDER DESC".parse::<Query>().unwrap();
+        assert_eq!(q.order, Some(Order::Desc));
+        let q = "FROM 'x' ORDER STREAM".parse::<Query>().unwrap();
+        assert_eq!(q.order, Some(Order::StreamAsc));
         Ok(())
     }
 
@@ -564,7 +598,7 @@ mod tests {
             parser: Aql,
             input: "FROM 'x' ELECT 'x'",
             rule: Rule::main_query,
-            positives: vec![Rule::EOI, Rule::filter, Rule::select, Rule::aggregate, Rule::and, Rule::or],
+            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::aggregate, Rule::limit, Rule::and, Rule::or],
             negatives: vec![],
             pos: 9
         };
@@ -572,7 +606,7 @@ mod tests {
             parser: Aql,
             input: "FROM 'x' FITTER 'x'",
             rule: Rule::main_query,
-            positives: vec![Rule::EOI, Rule::filter, Rule::select, Rule::aggregate, Rule::and, Rule::or],
+            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::aggregate, Rule::limit, Rule::and, Rule::or],
             negatives: vec![],
             pos: 9
         };
@@ -709,6 +743,12 @@ mod tests {
             "FROM 'x' AGGREGATE { a: LAST(_ + 1) b: FIRST(_.a.b) c: MIN(1 / _) d: MAX([_]) e: SUM(1.3 * _) }",
             None,
         );
+    }
+
+    #[test]
+    fn limit() {
+        let q = "FROM 'x' LIMIT 10".parse::<Query>().unwrap();
+        assert_eq!(&q.ops[0], &Operation::Limit(10.try_into().unwrap()));
     }
 
     #[test]

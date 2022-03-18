@@ -4,8 +4,8 @@ mod render;
 
 pub use self::non_empty::NonEmptyVec;
 use self::render::render_tag_expr;
-use crate::{tags::Tag, AppId, EventKey, LamportTimestamp, StreamId, Timestamp};
-use std::{convert::TryInto, sync::Arc};
+use crate::{service::Order, tags::Tag, AppId, EventKey, LamportTimestamp, StreamId, Timestamp};
+use std::{convert::TryInto, num::NonZeroU64, sync::Arc};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 /// A [`Query`] can be constructed using the Actyx Query Language (AQL). For an in-depth overview
@@ -23,6 +23,7 @@ use std::{convert::TryInto, sync::Arc};
 pub struct Query {
     pub features: Vec<String>,
     pub from: TagExpr,
+    pub order: Option<Order>,
     pub ops: Vec<Operation>,
 }
 mod query_impl;
@@ -32,6 +33,7 @@ pub enum Operation {
     Filter(SimpleExpr),
     Select(NonEmptyVec<SimpleExpr>),
     Aggregate(SimpleExpr),
+    Limit(NonZeroU64),
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -301,6 +303,7 @@ impl SimpleExpr {
                                 }
                             }
                             Operation::Aggregate(e) => e.traverse(f),
+                            Operation::Limit(_) => {}
                         }
                     }
                 }
@@ -376,6 +379,7 @@ impl SimpleExpr {
             SimpleExpr::SubQuery(q) => {
                 let features = q.features.clone();
                 let from = q.from.clone();
+                let order = q.order;
                 let ops = q
                     .ops
                     .iter()
@@ -385,9 +389,15 @@ impl SimpleExpr {
                             Operation::Select(e.iter().map(|e| e.rewrite(f)).collect::<Vec<_>>().try_into().unwrap())
                         }
                         Operation::Aggregate(a) => Operation::Aggregate(a.rewrite(f)),
+                        Operation::Limit(l) => Operation::Limit(*l),
                     })
                     .collect();
-                SimpleExpr::SubQuery(Query { features, from, ops })
+                SimpleExpr::SubQuery(Query {
+                    features,
+                    from,
+                    order,
+                    ops,
+                })
             }
         }
     }
@@ -463,6 +473,7 @@ mod for_tests {
             Self {
                 features: vec![],
                 from,
+                order: None,
                 ops: vec![],
             }
         }
@@ -739,10 +750,10 @@ mod for_tests {
 
     impl Arbitrary for Operation {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(Operation: g => Filter Select Aggregate{ Context::Aggregate },,,)
+            arb!(Operation: g => Filter Select Aggregate{ Context::Aggregate } Limit,,,)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            shrink!(Operation: self => Filter Select Aggregate,,)
+            shrink!(Operation: self => Filter Select Aggregate Limit,,)
         }
     }
 
@@ -755,9 +766,11 @@ mod for_tests {
                 (0..len).map(|_| g.choose(choices).unwrap()).collect()
             }
             let prev = CTX.with(|c| c.replace(Context::Simple));
+            let order = bool::arbitrary(g).then(|| *g.choose(&[Order::Asc, Order::Desc, Order::StreamAsc]).unwrap());
             let ret = Self {
                 features: Vec::<bool>::arbitrary(g).into_iter().map(|_| word(g)).collect(),
                 from: TagExpr::arbitrary(g),
+                order,
                 ops: Arbitrary::arbitrary(g),
             };
             CTX.with(|c| c.replace(prev));
@@ -768,6 +781,7 @@ mod for_tests {
             let features = self.features.clone();
             let features2 = self.features.clone();
             let from = self.from.clone();
+            let order = self.order;
             let ops = self.ops.clone();
             Box::new(
                 self.ops
@@ -775,11 +789,13 @@ mod for_tests {
                     .map(move |ops| Self {
                         features: features.clone(),
                         from: from.clone(),
+                        order,
                         ops,
                     })
                     .chain(self.from.shrink().map(move |from| Self {
                         features: features2.clone(),
                         from,
+                        order,
                         ops: ops.clone(),
                     })),
             )

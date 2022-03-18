@@ -1,18 +1,23 @@
-use crate::{eval::Context, value::Value};
+use crate::{
+    eval::{Context, NotBound},
+    value::Value,
+};
 use actyx_sdk::{
     language::{self, NonEmptyVec, SimpleExpr},
     service::Order,
 };
+use anyhow::anyhow;
 
 mod aggregate;
 use futures::{future::BoxFuture, FutureExt};
-use std::future::ready;
+use std::{future::ready, num::NonZeroU64};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Operation {
     Filter(SimpleExpr),
     Select(NonEmptyVec<SimpleExpr>),
     Aggregate(SimpleExpr),
+    Limit(NonZeroU64),
 }
 
 #[allow(unused_variables)]
@@ -44,6 +49,7 @@ impl Operation {
             Operation::Filter(f) => Box::new(Filter(f.clone())),
             Operation::Select(s) => Box::new(Select(s.clone())),
             Operation::Aggregate(a) => aggregate::aggregate(a),
+            Operation::Limit(l) => Box::new(Limit((*l).into())),
         }
     }
 }
@@ -54,6 +60,7 @@ impl From<language::Operation> for Operation {
             language::Operation::Filter(f) => Self::Filter(f),
             language::Operation::Select(s) => Self::Select(s),
             language::Operation::Aggregate(a) => Self::Aggregate(a),
+            language::Operation::Limit(l) => Self::Limit(l),
         }
     }
 }
@@ -90,6 +97,27 @@ impl Processor for Select {
             v
         }
         .boxed()
+    }
+}
+
+struct Limit(u64);
+impl Processor for Limit {
+    fn apply<'a, 'b: 'a>(&'a mut self, cx: &'a Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
+        async move {
+            if self.0 > 0 {
+                self.0 -= 1;
+                vec![cx.lookup("_").map_or(Err(NotBound("_".to_owned()).into()), |x| {
+                    x.as_ref().map(|v| v.clone()).map_err(|e| anyhow!("{}", e))
+                })]
+            } else {
+                vec![]
+            }
+        }
+        .boxed()
+    }
+
+    fn is_done(&self, _order: Order) -> bool {
+        self.0 == 0
     }
 }
 

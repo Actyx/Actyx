@@ -159,6 +159,9 @@ fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
             w.write_str("AGGREGATE ")?;
             render_simple_expr(w, a)
         }
+        Operation::Limit(l) => {
+            write!(w, "LIMIT {}", l)
+        }
     }
 }
 
@@ -235,6 +238,15 @@ pub fn render_query(w: &mut impl Write, e: &Query) -> Result {
     }
     w.write_str("FROM ")?;
     render_tag_expr(w, &e.from, None)?;
+
+    if let Some(o) = e.order {
+        match o {
+            Order::Asc => w.write_str(" ORDER ASC")?,
+            Order::Desc => w.write_str(" ORDER DESC")?,
+            Order::StreamAsc => w.write_str(" ORDER STREAM")?,
+        }
+    }
+
     for op in &e.ops {
         w.write_char(' ')?;
         render_operation(w, op)?;

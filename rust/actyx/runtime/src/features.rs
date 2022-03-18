@@ -69,6 +69,7 @@ features! {
     multiEmission: Alpha [Subscribe SubscribeMonotonic],
     aggregate: Alpha [Subscribe SubscribeMonotonic],
     subQuery: Alpha [Subscribe SubscribeMonotonic],
+    limit: Beta [Subscribe SubscribeMonotonic],
 }
 
 #[derive(Debug, Clone, Copy, derive_more::Display)]
@@ -159,6 +160,9 @@ fn features_op(feat: &mut Features, op: &Operation) {
         Operation::Aggregate(a) => {
             feat.add(aggregate);
             features_simple(feat, a);
+        }
+        Operation::Limit(_) => {
+            feat.add(limit);
         }
     }
 }

@@ -47,6 +47,7 @@ fn main() {
         Query {
             features: vec![],
             from,
+            order: None,
             ops: vec![],
         }
     }

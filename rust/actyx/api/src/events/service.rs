@@ -97,12 +97,13 @@ impl EventService {
             None => self.store.offsets().await?.present(),
         };
         let lower_bound = request.lower_bound.unwrap_or_default();
+        let order = query.order;
 
         let query = Query::from(query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Query)?;
         let mut query = query.make_feeder();
-        let order = query.preferred_order().unwrap_or(request.order);
+        let order = order.or_else(|| query.preferred_order()).unwrap_or(request.order);
 
         let cx = Context::owned(
             SortKey::default(),
@@ -494,6 +495,28 @@ mod tests {
     fn offsets(offsets: OffsetMap) -> SubscribeResponse {
         SubscribeResponse::Offsets(OffsetMapResponse { offsets })
     }
+    async fn query(service: &EventService, q: &str) -> Vec<String> {
+        service
+            .query(
+                app_id!("me"),
+                QueryRequest {
+                    lower_bound: None,
+                    upper_bound: None,
+                    query: q.to_owned(),
+                    order: Order::StreamAsc,
+                },
+            )
+            .await
+            .unwrap()
+            .map(|x| match x {
+                QueryResponse::Event(e) => e.payload.json_string(),
+                QueryResponse::Offsets(_) => "offsets".to_owned(),
+                QueryResponse::Diagnostic(d) => d.message,
+                QueryResponse::FutureCompat => todo!(),
+            })
+            .collect()
+            .await
+    }
 
     #[test]
     fn lower_bound() {
@@ -528,6 +551,75 @@ mod tests {
                     // but this is fine
                     let pub2 = publish(&service, 1, 2).await;
                     assert_eq!(stream.next().await, Some(evr(pub2, 2)));
+                })
+                .await
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn limit() {
+        Runtime::new()
+            .unwrap()
+            .block_on(async {
+                timeout(Duration::from_secs(1), async {
+                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let (_node_id, service) = setup(&store);
+
+                    publish(&service, 0, 1).await;
+                    publish(&service, 0, 2).await;
+                    publish(&service, 0, 3).await;
+
+                    assert_eq!(
+                        query(
+                            &service,
+                            "FEATURES(limit zøg aggregate) FROM allEvents LIMIT 2 AGGREGATE FIRST(
+                                CASE _ = 2 => _ ENDCASE
+                            )"
+                        )
+                        .await,
+                        vec!["no case matched", "2", "offsets"]
+                    );
+                    assert_eq!(
+                        query(
+                            &service,
+                            "FEATURES(limit zøg aggregate) FROM allEvents LIMIT 2 AGGREGATE FIRST(
+                                CASE _ = 3 => _ ENDCASE
+                            )"
+                        )
+                        .await,
+                        vec!["no case matched", "no case matched", "no value added", "offsets"]
+                    );
+                    assert_eq!(
+                        query(
+                            &service,
+                            "FEATURES(limit zøg aggregate) FROM allEvents LIMIT 2 AGGREGATE LAST(
+                                CASE _ = 1 => _ ENDCASE
+                            )"
+                        )
+                        .await,
+                        vec!["no case matched", "no case matched", "no value added", "offsets"]
+                    );
+                    assert_eq!(
+                        query(
+                            &service,
+                            "FEATURES(limit zøg aggregate) FROM allEvents ORDER DESC LIMIT 2 AGGREGATE FIRST(
+                                CASE _ = 3 => _ ENDCASE
+                            )"
+                        )
+                        .await,
+                        vec!["no case matched", "3", "offsets"]
+                    );
+                    assert_eq!(
+                        query(
+                            &service,
+                            "FEATURES(limit zøg aggregate) FROM allEvents ORDER ASC LIMIT 2 AGGREGATE LAST(
+                                CASE _ = 1 => _ ENDCASE
+                            )"
+                        )
+                        .await,
+                        vec!["no case matched", "1", "offsets"]
+                    );
                 })
                 .await
             })

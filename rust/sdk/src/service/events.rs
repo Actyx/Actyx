@@ -19,7 +19,7 @@ use crate::{
 ///  - in strict ascending order
 ///  - in strict descending order
 ///  - ordered in ascending order per stream, but not across streams
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
 #[serde(rename_all = "kebab-case")]
 pub enum Order {
     /// Events are sorted by ascending Lamport timestamp and stream ID, which defines a

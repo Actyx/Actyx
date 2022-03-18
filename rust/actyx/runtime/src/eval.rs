@@ -9,9 +9,14 @@ use actyx_sdk::{
 };
 use anyhow::{anyhow, bail, ensure};
 use cbor_data::{CborBuilder, CborOwned, Encoder, WithOutput, Writer};
+use derive_more::{Display, Error};
 use futures::{future::BoxFuture, FutureExt};
 use std::{borrow::Cow, cmp::Ordering, collections::BTreeMap};
 use swarm::event_store_ref::EventStoreRef;
+
+#[derive(Debug, Display, Error)]
+#[display(fmt = "variable {} is not bound", _0)]
+pub struct NotBound(#[error(ignore)] pub String);
 
 pub struct Context<'a> {
     pub sort_key: SortKey,
@@ -120,7 +125,7 @@ impl<'a> Context<'a> {
                 SimpleExpr::Variable(v) => {
                     let v = self
                         .lookup(v)
-                        .ok_or_else(|| anyhow!("variable '{}' is not bound", v))?
+                        .ok_or_else(|| NotBound(format!("{}", v)))?
                         .as_ref()
                         .map_err(|e| anyhow!("{}", e))?;
                     Ok(self.value(|b| b.write_trusting(v.as_slice())))
