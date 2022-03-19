@@ -43,15 +43,70 @@ pub enum ContextError {
     CurrentValueInAggregate,
 }
 
-fn r_tag(p: P) -> Result<Tag> {
-    let quoted = p.single()?.single()?;
-    let s = quoted.as_str();
-    let s = &s[1..s.len() - 1];
-    match quoted.as_rule() {
-        Rule::single_quoted => Ok(Tag::from_str(s.replace("''", "'").as_ref())?),
-        Rule::double_quoted => Ok(Tag::from_str(s.replace("\"\"", "\"").as_ref())?),
+fn r_tag(p: P, ctx: Context) -> Result<TagExpr> {
+    let tag = p.single()?;
+    match tag.as_rule() {
+        Rule::nonempty_string => {
+            let quoted = tag.single()?;
+            let s = quoted.as_str();
+            let s = &s[1..s.len() - 1];
+            match quoted.as_rule() {
+                Rule::single_quoted => Ok(TagExpr::Atom(TagAtom::Tag(Tag::from_str(
+                    s.replace("''", "'").as_ref(),
+                )?))),
+                Rule::double_quoted => Ok(TagExpr::Atom(TagAtom::Tag(Tag::from_str(
+                    s.replace("\"\"", "\"").as_ref(),
+                )?))),
+                x => bail!("unexpected token: {:?}", x),
+            }
+        }
+        Rule::interpolation => {
+            let expr = r_interpolation(tag, ctx)?;
+            Ok(TagExpr::Atom(TagAtom::Interpolation(expr)))
+        }
         x => bail!("unexpected token: {:?}", x),
     }
+}
+
+fn r_interpolation(p: P, ctx: Context) -> Result<Vec<SimpleExpr>> {
+    let all = p.as_str();
+    let mut e = p.inner()?;
+    let mut pos = 1;
+    let mut expr = Vec::new();
+    let mut buffer = String::new();
+    let end = all.len() - 1;
+    while pos < end {
+        if let Some(e) = e.next() {
+            let brace = all[pos..].find('{').unwrap() + pos;
+            buffer.push_str(&all[pos..brace]);
+            let expr_len = e.as_str().len();
+            match e.as_rule() {
+                Rule::simple_expr => {
+                    if !buffer.is_empty() {
+                        expr.push(SimpleExpr::String(buffer));
+                        buffer = String::new();
+                    }
+                    expr.push(r_simple_expr(e, ctx)?);
+                }
+                Rule::unicode => {
+                    let c = char::from_u32(u32::from_str_radix(&e.as_str()[2..], 16)?)
+                        .ok_or_else(|| anyhow::anyhow!("invalid unicode scalar value `{}`", e.as_str()))?;
+                    buffer.push(c);
+                }
+                x => bail!("unexpected token: {:?}", x),
+            }
+            pos = brace + 1 + expr_len + 1;
+        } else {
+            buffer.push_str(&all[pos..end]);
+            expr.push(SimpleExpr::String(buffer));
+            buffer = String::new();
+            break;
+        }
+    }
+    if !buffer.is_empty() {
+        expr.push(SimpleExpr::String(buffer));
+    }
+    Ok(expr)
 }
 
 enum FromTo {
@@ -81,7 +136,7 @@ fn r_tag_from_to(p: P, f: FromTo) -> Result<TagExpr> {
     })
 }
 
-fn r_tag_expr(p: P) -> Result<TagExpr> {
+fn r_tag_expr(p: P, ctx: Context) -> Result<TagExpr> {
     use TagAtom::*;
     use TagExpr::Atom;
 
@@ -95,8 +150,8 @@ fn r_tag_expr(p: P) -> Result<TagExpr> {
         p.inner()?,
         |p| {
             Ok(match p.as_rule() {
-                Rule::tag => Atom(Tag(r_tag(p)?)),
-                Rule::tag_expr => r_tag_expr(p)?,
+                Rule::tag => r_tag(p, ctx)?,
+                Rule::tag_expr => r_tag_expr(p, ctx)?,
                 Rule::all_events => Atom(AllEvents),
                 Rule::is_local => Atom(IsLocal),
                 Rule::tag_from => r_tag_from_to(p, FromTo::From)?,
@@ -332,6 +387,7 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
             Rule::simple_expr => r_simple_expr(p, ctx)?,
             Rule::simple_not => SimpleExpr::Not(primary(r_not(p)?, ctx)?.into()),
             Rule::string => SimpleExpr::String(r_string(p)?),
+            Rule::interpolation => SimpleExpr::Interpolation(r_interpolation(p, ctx)?),
             Rule::object => SimpleExpr::Object(r_object(p, ctx)?),
             Rule::array => SimpleExpr::Array(r_array(p, ctx)?),
             Rule::null => SimpleExpr::Null,
@@ -375,7 +431,7 @@ fn r_query(features: Vec<String>, p: P) -> Result<Query> {
     let mut p = p.inner()?.peekable();
     let mut q = Query {
         features,
-        from: r_tag_expr(p.next().ok_or(NoVal("tag expression"))?)?,
+        from: r_tag_expr(p.next().ok_or(NoVal("tag expression"))?, Context::Simple)?,
         order: None,
         ops: vec![],
     };
@@ -427,7 +483,7 @@ impl FromStr for TagExpr {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let p = Aql::parse(Rule::main_tag_expr, s)?.single()?.single()?;
-        r_tag_expr(p)
+        r_tag_expr(p, Context::Simple)
     }
 }
 
@@ -460,12 +516,22 @@ mod tests {
     use pest::{fails_with, Parser};
     use std::convert::TryFrom;
 
+    fn s(s: &str) -> SimpleExpr {
+        SimpleExpr::String(s.to_owned())
+    }
+
     #[test]
     fn tag() -> Result<()> {
         let p = Aql::parse(Rule::tag, "'hello''s revenge'")?;
-        assert_eq!(r_tag(p.single()?)?, tag!("hello's revenge"));
+        assert_eq!(
+            r_tag(p.single()?, Context::Simple)?,
+            TagExpr::Atom(TagAtom::Tag(tag!("hello's revenge")))
+        );
         let p = Aql::parse(Rule::tag, "\"hello\"\"s revenge\"")?;
-        assert_eq!(r_tag(p.single()?)?, tag!("hello\"s revenge"));
+        assert_eq!(
+            r_tag(p.single()?, Context::Simple)?,
+            TagExpr::Atom(TagAtom::Tag(tag!("hello\"s revenge")))
+        );
         Ok(())
     }
 
@@ -798,5 +864,29 @@ mod tests {
                 .into()
             })])
         );
+    }
+
+    #[test]
+    fn interpolation() {
+        use TagAtom::*;
+        use TagExpr::*;
+
+        let q = "FROM `a{U+1e}b`".parse::<Query>().unwrap();
+        assert_eq!(q.from, Atom(Interpolation(vec![s("a\x1eb")])));
+
+        let q = "FROM `a{U+1e}`".parse::<Query>().unwrap();
+        assert_eq!(q.from, Atom(Interpolation(vec![s("a\x1e")])));
+
+        let q = "FROM `{U+1e}b`".parse::<Query>().unwrap();
+        assert_eq!(q.from, Atom(Interpolation(vec![s("\x1eb")])));
+
+        let q = "FROM `a{U+1e}b{U+1f}`".parse::<Query>().unwrap();
+        assert_eq!(q.from, Atom(Interpolation(vec![s("a\x1eb\x1f")])));
+
+        let q = "FROM `a{U+1e}{U+1f}b`".parse::<Query>().unwrap();
+        assert_eq!(q.from, Atom(Interpolation(vec![s("a\x1e\x1fb")])));
+
+        let q = "FROM `a{U+110000}`".parse::<Query>().unwrap_err();
+        assert_eq!(q.to_string(), "invalid unicode scalar value `U+110000`");
     }
 }

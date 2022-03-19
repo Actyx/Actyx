@@ -22,6 +22,7 @@ single_quoted = @{ "'" ~ ( !"'" ~ ANY | "''" )+ ~ "'" }
 double_quoted = @{ "\"" ~ ( !"\"" ~ ANY | "\"\"" )+ ~ "\"" }
 nonempty_string = { single_quoted | double_quoted }
 empty_string = { "\"\"" | "''" }
+interpolation = ${ "`" ~ ( !("`"|"{") ~ ANY | "{" ~ ( unicode | simple_expr ) ~ "}" )* ~ "`" }
 string = { nonempty_string | empty_string }
 
 // literals
@@ -31,6 +32,8 @@ decimal = @{ "-"? ~ digit+ ~ ( "." ~ digit+ )? }
 natural = @{ digit+ }
 positive = @{ '1'..'9' ~ digit* }
 digit = { '0'..'9' }
+hexdigit = { '0'..'9' | 'a'..'f' | 'A'..'F' }
+unicode = @{ "U+" ~ hexdigit{1,6} }
 // This currently permits { a:1 b:2 }, which I’d like to try; comma is available for disambiguation
 object = { "{" ~ ( ( ident | "[" ~ natural ~ "]" | "[" ~ string ~ "]" | "[" ~ simple_expr ~ "]" ) ~ ":" ~ simple_expr ~ ","? )* ~ "}" }
 array = { "[" ~ "]" | "[" ~ simple_expr ~ ( "," ~ simple_expr )* ~ "]" }
@@ -61,7 +64,7 @@ isodate = ${ year ~ "-" ~ month ~ "-" ~ day ~ ("T" ~ hour ~ ":" ~ minute ~ (":" 
 tag_expr = { tag_atom ~ ( tag_op ~ tag_atom )* }
 tag_atom = _{ tag | "(" ~ tag_expr ~ ")" | all_events | is_local | tag_from | tag_to | tag_app }
 tag_op = _{ and | or }
-tag = { nonempty_string }
+tag = { nonempty_string | interpolation }
 all_events = { "allEvents" }
 is_local = { "isLocal" }
 tag_from = { "from(" ~ ( isodate | natural ~ ( "/" ~ stream_id )? ) ~ ")" }
@@ -69,12 +72,12 @@ tag_to = { "to(" ~ ( isodate | natural ~ ( "/" ~ stream_id )? ) ~ ")" }
 tag_app = ${ "appId(" ~ app_id ~ ")" }
 
 // expressions
-simple_expr = { simple_atom ~ ( binary_op ~ simple_atom )* }
+simple_expr = !{ simple_atom ~ ( binary_op ~ simple_atom )* }
 binary_op = _{ alternative | add | sub | mul | div | modulo | pow | and | or | xor | le | lt | ge | gt | eq | ne }
 var_index = { var ~ index* }
 expr_index = { "(" ~ simple_expr ~ ")" ~ index* }
 func_call = { func_name ~ "(" ~ ( simple_expr ~ ("," ~ simple_expr)* )? ~ ")" }
-simple_atom = _{ decimal | func_call | var_index | string | expr_index | simple_not | object | array | null | bool | simple_cases | aggr_op | sub_query }
+simple_atom = _{ decimal | func_call | var_index | string | interpolation | expr_index | simple_not | object | array | null | bool | simple_cases | aggr_op | sub_query }
 sub_query = { features? ~ query }
 simple_not = { not ~ simple_atom }
 simple_cases = { ( "CASE" ~ simple_expr ~ "=>" ~ simple_expr )+ ~ "ENDCASE" }

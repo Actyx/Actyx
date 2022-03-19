@@ -127,6 +127,18 @@ impl Value {
         self.value().as_str().ok_or_else(|| anyhow!("{} is not a string", self))
     }
 
+    pub fn print(&self) -> String {
+        match self.kind() {
+            ValueKind::Null => "NULL".to_owned(),
+            ValueKind::Bool => if self.as_bool().unwrap() { "TRUE" } else { "FALSE" }.to_owned(),
+            ValueKind::Number => self.as_number().unwrap().to_string(),
+            ValueKind::String => self.as_str().unwrap().to_owned(),
+            ValueKind::Object => "OBJECT".to_owned(),
+            ValueKind::Array => "ARRAY".to_owned(),
+            ValueKind::Other => "OTHER".to_owned(),
+        }
+    }
+
     fn number(&self, n: Num) -> Value {
         match n {
             Num::Decimal(d) => Value::new(self.sort_key, |b| b.encode_f64(d)),

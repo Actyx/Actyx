@@ -97,6 +97,7 @@ impl From<EventKey> for SortKey {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum TagAtom {
     Tag(Tag),
+    Interpolation(Vec<SimpleExpr>),
     AllEvents,
     IsLocal,
     FromTime(Timestamp),
@@ -224,6 +225,7 @@ pub enum SimpleExpr {
     Indexing(Ind),
     Number(Num),
     String(String),
+    Interpolation(Vec<SimpleExpr>),
     Object(Obj),
     Array(Arr),
     Null,
@@ -260,6 +262,11 @@ impl SimpleExpr {
                 }
                 SimpleExpr::Number(_) => {}
                 SimpleExpr::String(_) => {}
+                SimpleExpr::Interpolation(e) => {
+                    for expr in e.iter() {
+                        expr.traverse(f);
+                    }
+                }
                 SimpleExpr::Object(Obj { props }) => {
                     for (idx, expr) in props.iter() {
                         match idx {
@@ -338,6 +345,10 @@ impl SimpleExpr {
             }
             SimpleExpr::Number(_n) => self.clone(),
             SimpleExpr::String(_s) => self.clone(),
+            SimpleExpr::Interpolation(s) => {
+                let s = s.iter().map(|e| e.rewrite(f)).collect();
+                SimpleExpr::Interpolation(s)
+            }
             SimpleExpr::Object(Obj { props }) => {
                 let props = props
                     .iter()
@@ -714,7 +725,7 @@ mod for_tests {
         fn arbitrary(g: &mut Gen) -> Self {
             arb!(SimpleExpr: g =>
                 Variable Number String Bool,
-                Indexing Object Array Cases BinOp Not FuncCall SubQuery,
+                Indexing Object Array Cases BinOp Not FuncCall SubQuery Interpolation,
                 AggrOp{ Context::Simple },
                 Null
             )
@@ -722,6 +733,7 @@ mod for_tests {
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             shrink!(SimpleExpr: self => Variable Number String Bool,
                 Indexing(x, (*x.head).clone())
+                Interpolation(x,)
                 Object(x, x.props.first().map(|p| p.1.clone()).unwrap_or(SimpleExpr::Null))
                 Array(x, x.items.first().cloned().unwrap_or(SimpleExpr::Null))
                 Cases(x, x.first().map(|p| p.1.clone()).unwrap_or(SimpleExpr::Null))
@@ -736,10 +748,10 @@ mod for_tests {
 
     impl Arbitrary for TagAtom {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(TagAtom: g => Tag FromTime ToTime FromLamport ToLamport AppId, , , AllEvents IsLocal)
+            arb!(TagAtom: g => Tag FromTime ToTime FromLamport ToLamport AppId, Interpolation, , AllEvents IsLocal)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            shrink!(TagAtom: self => Tag FromTime ToTime FromLamport ToLamport AppId, , AllEvents IsLocal)
+            shrink!(TagAtom: self => Tag FromTime ToTime FromLamport ToLamport AppId, Interpolation(x,), AllEvents IsLocal)
         }
     }
 

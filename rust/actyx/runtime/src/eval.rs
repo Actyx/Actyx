@@ -4,14 +4,14 @@ use crate::{
     value::{Value, ValueKind},
 };
 use actyx_sdk::{
-    language::{BinOp, Ind, Index, Num, SimpleExpr, SortKey},
+    language::{BinOp, Ind, Index, Num, SimpleExpr, SortKey, TagAtom, TagExpr},
     service::Order,
-    OffsetMap,
+    OffsetMap, Tag,
 };
 use anyhow::{anyhow, bail, ensure};
 use cbor_data::{CborBuilder, CborOwned, Encoder, WithOutput, Writer};
 use futures::{future::BoxFuture, FutureExt};
-use std::{borrow::Cow, cmp::Ordering, collections::BTreeMap};
+use std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, convert::TryFrom, sync::Arc};
 use swarm::event_store_ref::EventStoreRef;
 
 pub struct Context<'a> {
@@ -131,6 +131,48 @@ impl<'a> Context<'a> {
             .unwrap_or_else(|| Err(RuntimeError::NotBound(name.to_owned()).into()))
     }
 
+    pub fn eval_from<'b, 'c: 'b>(&'b self, expr: &'c TagExpr) -> BoxFuture<'b, anyhow::Result<Cow<'c, TagExpr>>> {
+        async move {
+            match expr {
+                TagExpr::Or(x) => {
+                    let left = self.eval_from(&x.0).await?;
+                    let right = self.eval_from(&x.1).await?;
+                    if let (Cow::Borrowed(_), Cow::Borrowed(_)) = (&left, &right) {
+                        Ok(Cow::Borrowed(expr))
+                    } else {
+                        Ok(Cow::Owned(TagExpr::Or(Arc::new((
+                            left.into_owned(),
+                            right.into_owned(),
+                        )))))
+                    }
+                }
+                TagExpr::And(x) => {
+                    let left = self.eval_from(&x.0).await?;
+                    let right = self.eval_from(&x.1).await?;
+                    if let (Cow::Borrowed(_), Cow::Borrowed(_)) = (&left, &right) {
+                        Ok(Cow::Borrowed(expr))
+                    } else {
+                        Ok(Cow::Owned(TagExpr::And(Arc::new((
+                            left.into_owned(),
+                            right.into_owned(),
+                        )))))
+                    }
+                }
+                TagExpr::Atom(a) => match a {
+                    TagAtom::Interpolation(s) => {
+                        let mut buf = String::new();
+                        for e in s {
+                            buf.push_str(&*self.eval(e).await?.print());
+                        }
+                        Ok(Cow::Owned(TagExpr::Atom(TagAtom::Tag(Tag::try_from(&*buf)?))))
+                    }
+                    _ => Ok(Cow::Borrowed(expr)),
+                },
+            }
+        }
+        .boxed()
+    }
+
     pub fn eval<'c>(&'c self, expr: &'c SimpleExpr) -> BoxFuture<'c, anyhow::Result<Value>> {
         async move {
             match expr {
@@ -161,6 +203,13 @@ impl<'a> Context<'a> {
                     Num::Natural(n) => Ok(self.value(|b| b.encode_u64(*n))),
                 },
                 SimpleExpr::String(s) => Ok(self.value(|b| b.encode_str(s))),
+                SimpleExpr::Interpolation(s) => {
+                    let mut buf = String::new();
+                    for e in s {
+                        buf.push_str(&*self.eval(e).await?.print());
+                    }
+                    Ok(self.value(|b| b.encode_str(buf)))
+                }
                 SimpleExpr::Object(a) => {
                     let mut v = BTreeMap::new();
                     for (n, e) in a.props.iter() {

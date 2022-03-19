@@ -18,12 +18,14 @@ pub struct Query {
 impl Query {
     /// run a query in the given evaluation context and collect all results
     pub async fn eval(query: &language::Query, cx: &Context<'_>) -> Result<Value, anyhow::Error> {
+        let tag_expr = cx.eval_from(&query.from).await?.into_owned();
+
         let mut feeder = Query::feeder_from(&query.ops);
         let (mut stream, cx) = if feeder.preferred_order() == Some(Order::Desc) {
             let stream = cx
                 .store
                 .bounded_backward(
-                    query.from.clone(),
+                    tag_expr,
                     cx.from_offsets_excluding.as_ref().clone(),
                     cx.to_offsets_including.as_ref().clone(),
                 )
@@ -34,7 +36,7 @@ impl Query {
             let stream = cx
                 .store
                 .bounded_forward(
-                    query.from.clone(),
+                    tag_expr,
                     cx.from_offsets_excluding.as_ref().clone(),
                     cx.to_offsets_including.as_ref().clone(),
                     false, // must keep order because some stage may have demanded it

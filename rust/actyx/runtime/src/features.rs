@@ -66,11 +66,15 @@ macro_rules! features {
 features! {
     timeRange: Beta [],
     eventKeyRange: Beta [],
+    // unclear: metadata for results
     multiEmission: Alpha [Subscribe SubscribeMonotonic],
+    // unclear: metadata for results, group-by semantics
     aggregate: Alpha [Subscribe SubscribeMonotonic],
     subQuery: Alpha [Subscribe SubscribeMonotonic],
     limit: Beta [Subscribe SubscribeMonotonic],
     binding: Beta [],
+    // unclear: canonical string representation of all value kinds
+    interpolation: Beta [],
 }
 
 #[derive(Debug, Clone, Copy, derive_more::Display)]
@@ -191,6 +195,12 @@ fn features_tag(feat: &mut Features, expr: &TagExpr) {
             TagAtom::FromLamport(_) => feat.add(eventKeyRange),
             TagAtom::ToLamport(_) => feat.add(eventKeyRange),
             TagAtom::AppId(_) => {}
+            TagAtom::Interpolation(e) => {
+                feat.add(interpolation);
+                for e in e {
+                    features_simple(feat, e);
+                }
+            }
         },
     }
 }
@@ -203,6 +213,10 @@ fn features_simple(feat: &mut Features, expr: &SimpleExpr) {
                 features_op(feat, &Operation::from(op.clone()));
             }
             feat.add(subQuery);
+            Traverse::Stop
+        }
+        SimpleExpr::Interpolation(_) => {
+            feat.add(interpolation);
             Traverse::Descend
         }
         _ => Traverse::Descend,
@@ -326,5 +340,12 @@ mod tests {
     #[test]
     fn bind() {
         assert_eq!(f("FROM 'x' LET a := 1").0, btreeset!(binding));
+    }
+
+    #[test]
+    fn interp() {
+        assert_eq!(f("FROM 'a' & `1+2`").0, btreeset!(interpolation));
+        assert_eq!(f("FROM 'a' FILTER `{_} + 3` = '7'").0, btreeset!(interpolation));
+        assert_eq!(f("FROM 'a' SELECT FROM `_`").0, btreeset!(interpolation, subQuery));
     }
 }

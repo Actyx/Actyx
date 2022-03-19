@@ -91,7 +91,6 @@ impl EventService {
                 cause: format!("{:#}", e),
             })?;
         let tag_expr = query.from.clone();
-        let tags = tag_expr.clone(); // for logging
         let upper_bound = match request.upper_bound {
             Some(offsets) => offsets,
             None => self.store.offsets().await?.present(),
@@ -112,6 +111,9 @@ impl EventService {
             lower_bound.clone(),
             upper_bound.clone(),
         );
+
+        let tag_expr = cx.eval_from(&tag_expr).await?.into_owned();
+        let tags = tag_expr.clone(); // for logging
 
         let mut stream = match order {
             Order::Asc => {
@@ -185,7 +187,6 @@ impl EventService {
         let mut lower_bound = request.lower_bound.unwrap_or_default();
 
         let tag_expr = query.from.clone();
-        let tags = tag_expr.clone(); // for logging
         let query = Query::from(query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Subscribe)?;
@@ -199,6 +200,9 @@ impl EventService {
             OffsetMap::empty(),
             OffsetMap::empty(),
         );
+
+        let tag_expr = cx.eval_from(&tag_expr).await?.into_owned();
+        let tags = tag_expr.clone(); // for logging
 
         let mut bounded = self
             .store
@@ -274,7 +278,6 @@ impl EventService {
         present.union_with(&lower_bound);
 
         let tag_expr = query.from.clone();
-        let tags = tag_expr.clone(); // for logging
         let query = Query::from(query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::SubscribeMonotonic)?;
@@ -288,6 +291,9 @@ impl EventService {
             OffsetMap::empty(),
             OffsetMap::empty(),
         );
+
+        let tag_expr = cx.eval_from(&tag_expr).await?.into_owned();
+        let tags = tag_expr.clone(); // for logging
 
         let mut bounded = self
             .store
@@ -435,7 +441,7 @@ fn to_event(value: Value, event: Option<&Event<Payload>>) -> EventResponse<Paylo
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyx_sdk::{tags, Offset, StreamId};
+    use actyx_sdk::{tags, Offset, StreamId, TagSet};
     use std::{iter::FromIterator, time::Duration};
     use swarm::{
         event_store_ref::{self, EventStoreHandler},
@@ -466,28 +472,34 @@ mod tests {
     fn offset(node_id: NodeId, stream: u64, offset: u32) -> (StreamId, Offset) {
         (node_id.stream(stream.into()), offset.into())
     }
-    async fn publish(service: &EventService, stream: u64, data: u32) -> PublishResponseKey {
+    async fn publish(service: &EventService, stream: u64, tags: TagSet, data: u32) -> PublishResponseKey {
         let d = service
-            .publish(app_id!("me"), stream.into(), PublishRequest { data: vec![evp(data)] })
+            .publish(
+                app_id!("me"),
+                stream.into(),
+                PublishRequest {
+                    data: vec![evp(tags, data)],
+                },
+            )
             .await
             .unwrap()
             .data;
         assert_eq!(d.len(), 1);
         d.into_iter().next().unwrap()
     }
-    fn evp(n: u32) -> PublishEvent {
+    fn evp(tags: TagSet, n: u32) -> PublishEvent {
         PublishEvent {
-            tags: tags!("a", "b", "c"),
+            tags,
             payload: Payload::from_json_str(&*format!("{:?}", n)).unwrap(),
         }
     }
-    fn evr(publ: PublishResponseKey, n: u32) -> SubscribeResponse {
+    fn evr(publ: PublishResponseKey, tags: TagSet, n: u32) -> SubscribeResponse {
         SubscribeResponse::Event(EventResponse {
             lamport: publ.lamport,
             stream: publ.stream,
             offset: publ.offset,
             timestamp: publ.timestamp,
-            tags: tags!("a", "b", "c"),
+            tags,
             app_id: app_id!("me"),
             payload: Payload::from_json_str(&*format!("{:?}", n)).unwrap(),
         })
@@ -527,7 +539,7 @@ mod tests {
                     let store = BanyanStore::test("lower_bound").await.unwrap();
                     let (node_id, service) = setup(&store);
 
-                    let _pub0 = publish(&service, 0, 0).await;
+                    let _pub0 = publish(&service, 0, tags!("a"), 0).await;
 
                     let present = OffsetMap::from_iter(vec![offset(node_id, 0, 0)]);
                     let lower_bound = OffsetMap::from_iter(vec![offset(node_id, 0, 0), offset(node_id, 1, 0)]);
@@ -547,10 +559,10 @@ mod tests {
 
                     // this event shall not be delivered, even though it is “newer than present”
                     // because lower_bound contains it
-                    let _pub1 = publish(&service, 1, 1).await;
+                    let _pub1 = publish(&service, 1, tags!("a"), 1).await;
                     // but this is fine
-                    let pub2 = publish(&service, 1, 2).await;
-                    assert_eq!(stream.next().await, Some(evr(pub2, 2)));
+                    let pub2 = publish(&service, 1, tags!("a"), 2).await;
+                    assert_eq!(stream.next().await, Some(evr(pub2, tags!("a"), 2)));
                 })
                 .await
             })
@@ -566,9 +578,9 @@ mod tests {
                     let store = BanyanStore::test("lower_bound").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
-                    publish(&service, 0, 1).await;
-                    publish(&service, 0, 2).await;
-                    publish(&service, 0, 3).await;
+                    publish(&service, 0, tags!("a"), 1).await;
+                    publish(&service, 0, tags!("a"), 2).await;
+                    publish(&service, 0, tags!("a"), 3).await;
 
                     assert_eq!(
                         query(
@@ -635,9 +647,9 @@ mod tests {
                     let store = BanyanStore::test("lower_bound").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
-                    publish(&service, 0, 1).await;
-                    publish(&service, 0, 2).await;
-                    publish(&service, 0, 3).await;
+                    publish(&service, 0, tags!("a", "b"), 1).await;
+                    publish(&service, 0, tags!("a", "b"), 2).await;
+                    publish(&service, 0, tags!("a", "b"), 3).await;
 
                     assert_eq!(
                         query(
@@ -648,6 +660,36 @@ mod tests {
                         )
                         .await,
                         vec!["[2,3]", "[3]", "[]", "offsets"]
+                    );
+                })
+                .await
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn interpolation() {
+        Runtime::new()
+            .unwrap()
+            .block_on(async {
+                timeout(Duration::from_secs(1), async {
+                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let (_node_id, service) = setup(&store);
+
+                    publish(&service, 0, tags!("a1"), 2).await;
+                    publish(&service, 0, tags!("a2"), 3).await;
+                    publish(&service, 0, tags!("a3"), 1).await;
+
+                    assert_eq!(
+                        query(
+                            &service,
+                            "FEATURES(zøg subQuery interpolation binding) \
+                            FROM 'a1' LET x := _ SELECT \
+                                FROM `a{_}` SELECT \
+                                    FROM `a{_}` SELECT `x = {x} y = {_}`"
+                        )
+                        .await,
+                        vec!["[[\"x = 2 y = 1\"]]", "offsets"]
                     );
                 })
                 .await
