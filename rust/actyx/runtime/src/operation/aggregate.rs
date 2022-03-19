@@ -1,9 +1,9 @@
-use crate::{eval::Context, value::Value};
+use crate::{error::RuntimeError, eval::Context, value::Value};
 use actyx_sdk::{
     language::{AggrOp, Num, SimpleExpr, Var},
     service::Order,
 };
-use anyhow::{anyhow, bail};
+use anyhow::anyhow;
 use cbor_data::Encoder;
 use futures::{future::BoxFuture, FutureExt};
 use std::{cmp::Ordering, marker::PhantomData, ops::AddAssign, sync::Arc};
@@ -90,7 +90,7 @@ impl<T: SumOp> Aggregator for Sum<T> {
 
     fn flush(&mut self, cx: &Context) -> anyhow::Result<Value> {
         match &self.0 {
-            Summable::Empty(_) => bail!("no value added"),
+            Summable::Empty(_) => Err(RuntimeError::NoValueYet.into()),
             Summable::Bool(n) => Ok(cx.value(|b| b.encode_bool(*n))),
             Summable::Num(n) => Ok(cx.number(n)),
             Summable::Error(e) => Err(anyhow!("incompatible types in sum: {}", e)),
@@ -116,7 +116,7 @@ impl Aggregator for First {
     }
 
     fn flush(&mut self, _cx: &Context) -> anyhow::Result<Value> {
-        self.0.clone().ok_or_else(|| anyhow!("no value added"))
+        self.0.clone().ok_or_else(|| RuntimeError::NoValueYet.into())
     }
 
     fn has_value(&self) -> bool {
@@ -138,7 +138,7 @@ impl Aggregator for Last {
     }
 
     fn flush(&mut self, _cx: &Context) -> anyhow::Result<Value> {
-        self.0.clone().ok_or_else(|| anyhow!("no value added"))
+        self.0.clone().ok_or_else(|| RuntimeError::NoValueYet.into())
     }
 
     fn has_value(&self) -> bool {
@@ -163,7 +163,7 @@ impl Aggregator for Min {
     fn flush(&mut self, _cx: &Context) -> anyhow::Result<Value> {
         self.0
             .as_ref()
-            .ok_or_else(|| anyhow!("no value added"))
+            .ok_or_else(|| RuntimeError::NoValueYet.into())
             .and_then(|r| match r {
                 Ok(v) => Ok(v.clone()),
                 Err(e) => Err(anyhow!("incompatible types in min: {}", e)),
@@ -192,7 +192,7 @@ impl Aggregator for Max {
     fn flush(&mut self, _cx: &Context) -> anyhow::Result<Value> {
         self.0
             .as_ref()
-            .ok_or_else(|| anyhow!("no value added"))
+            .ok_or_else(|| RuntimeError::NoValueYet.into())
             .and_then(|r| match r {
                 Ok(v) => Ok(v.clone()),
                 Err(e) => Err(anyhow!("incompatible types in max: {}", e)),
@@ -216,7 +216,7 @@ struct Aggregate {
     order: Option<Order>,
 }
 impl super::Processor for Aggregate {
-    fn apply<'a, 'b: 'a>(&'a mut self, cx: &'a Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
+    fn apply<'a, 'b: 'a>(&'a mut self, cx: &'a mut Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
         async move {
             let mut errors = vec![];
             for aggr in self.state.iter_mut() {
@@ -234,7 +234,7 @@ impl super::Processor for Aggregate {
         .boxed()
     }
 
-    fn flush<'a, 'b: 'a>(&'a mut self, cx: &'a Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
+    fn flush<'a, 'b: 'a>(&'a mut self, cx: &'a mut Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
         async move {
             let mut cx = cx.child();
             for aggr in self.state.iter_mut() {
@@ -360,7 +360,7 @@ mod tests {
         cx.bind("_", cx.value(|b| b.encode_u64(v)));
         a.apply(cx).await.into_iter().collect::<anyhow::Result<_>>().unwrap()
     }
-    async fn flush<'a, 'b: 'a>(a: &'a mut dyn Processor, cx: &'a Context<'b>) -> String {
+    async fn flush<'a, 'b: 'a>(a: &'a mut dyn Processor, cx: &'a mut Context<'b>) -> String {
         a.flush(cx)
             .await
             .into_iter()
@@ -378,14 +378,14 @@ mod tests {
 
         assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
         assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
-        assert_eq!(flush(&mut *s, &cx).await, "36");
+        assert_eq!(flush(&mut *s, &mut cx).await, "36");
 
         let mut s = a("CASE SUM(_ ≥ 2) => 11 CASE TRUE => 12 ENDCASE");
 
         assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
-        assert_eq!(flush(&mut *s, &cx).await, "12");
+        assert_eq!(flush(&mut *s, &mut cx).await, "12");
         assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
-        assert_eq!(flush(&mut *s, &cx).await, "11");
+        assert_eq!(flush(&mut *s, &mut cx).await, "11");
     }
 
     #[tokio::test]
@@ -395,14 +395,14 @@ mod tests {
 
         assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
         assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
-        assert_eq!(flush(&mut *s, &cx).await, "34");
+        assert_eq!(flush(&mut *s, &mut cx).await, "34");
 
         let mut s = a("CASE PRODUCT(_ ≥ 2) => 11 CASE TRUE => 12 ENDCASE");
 
         assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
-        assert_eq!(flush(&mut *s, &cx).await, "11");
+        assert_eq!(flush(&mut *s, &mut cx).await, "11");
         assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
-        assert_eq!(flush(&mut *s, &cx).await, "12");
+        assert_eq!(flush(&mut *s, &mut cx).await, "12");
     }
 
     #[tokio::test]
@@ -411,12 +411,12 @@ mod tests {
         let mut cx = ctx();
 
         assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
-        assert_eq!(flush(&mut *s, &cx).await, "[2, 2, 2, 2]");
+        assert_eq!(flush(&mut *s, &mut cx).await, "[2, 2, 2, 2]");
         assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
-        assert_eq!(flush(&mut *s, &cx).await, "[2, 1, 1, 2]");
+        assert_eq!(flush(&mut *s, &mut cx).await, "[2, 1, 1, 2]");
         assert_eq!(apply(&mut *s, &mut cx, 4).await, vec![]);
-        assert_eq!(flush(&mut *s, &cx).await, "[2, 4, 1, 4]");
+        assert_eq!(flush(&mut *s, &mut cx).await, "[2, 4, 1, 4]");
         assert_eq!(apply(&mut *s, &mut cx, 3).await, vec![]);
-        assert_eq!(flush(&mut *s, &cx).await, "[2, 3, 1, 4]");
+        assert_eq!(flush(&mut *s, &mut cx).await, "[2, 3, 1, 4]");
     }
 }

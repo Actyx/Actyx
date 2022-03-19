@@ -1,4 +1,5 @@
 use crate::{
+    error::RuntimeError,
     query::Query,
     value::{Value, ValueKind},
 };
@@ -9,14 +10,9 @@ use actyx_sdk::{
 };
 use anyhow::{anyhow, bail, ensure};
 use cbor_data::{CborBuilder, CborOwned, Encoder, WithOutput, Writer};
-use derive_more::{Display, Error};
 use futures::{future::BoxFuture, FutureExt};
 use std::{borrow::Cow, cmp::Ordering, collections::BTreeMap};
 use swarm::event_store_ref::EventStoreRef;
-
-#[derive(Debug, Display, Error)]
-#[display(fmt = "variable {} is not bound", _0)]
-pub struct NotBound(#[error(ignore)] pub String);
 
 pub struct Context<'a> {
     pub sort_key: SortKey,
@@ -113,21 +109,33 @@ impl<'a> Context<'a> {
         self.bindings.insert(name, value);
     }
 
-    pub fn lookup(&self, name: &str) -> Option<&anyhow::Result<Value>> {
+    pub fn lookup_opt(&self, name: &str) -> Option<&anyhow::Result<Value>> {
         self.bindings
             .get(name)
-            .or_else(|| self.parent.and_then(|c| c.lookup(name)))
+            .or_else(|| self.parent.and_then(|c| c.lookup_opt(name)))
+    }
+
+    pub fn lookup(&self, name: &str) -> anyhow::Result<Value> {
+        self.lookup_opt(name).map_or_else(
+            || Err(RuntimeError::NotBound(name.to_owned()).into()),
+            |v| match v {
+                Ok(v) => Ok(v.clone()),
+                Err(e) => Err(anyhow!("{}", e)),
+            },
+        )
+    }
+
+    pub fn remove(&mut self, name: &str) -> anyhow::Result<Value> {
+        self.bindings
+            .remove(name)
+            .unwrap_or_else(|| Err(RuntimeError::NotBound(name.to_owned()).into()))
     }
 
     pub fn eval<'c>(&'c self, expr: &'c SimpleExpr) -> BoxFuture<'c, anyhow::Result<Value>> {
         async move {
             match expr {
                 SimpleExpr::Variable(v) => {
-                    let v = self
-                        .lookup(v)
-                        .ok_or_else(|| NotBound(format!("{}", v)))?
-                        .as_ref()
-                        .map_err(|e| anyhow!("{}", e))?;
+                    let v = self.lookup(v)?;
                     Ok(self.value(|b| b.write_trusting(v.as_slice())))
                 }
                 SimpleExpr::Indexing(Ind { head, tail }) => {
@@ -141,7 +149,7 @@ impl<'a> Context<'a> {
                                 match idx.kind() {
                                     ValueKind::Number => v.index(&format!("{}", idx.value()))?,
                                     ValueKind::String => v.index(idx.as_str()?)?,
-                                    _ => bail!("cannot index by {}", idx.value()),
+                                    _ => return Err(RuntimeError::NotAnIndex(idx.value().to_string()).into()),
                                 }
                             }
                         };
@@ -205,7 +213,7 @@ impl<'a> Context<'a> {
                     Ok(self.value(|b| b.encode_bool(v)))
                 }
                 SimpleExpr::BinOp(b) => self.bin_op(&b.1, b.0, &b.2).await,
-                SimpleExpr::AggrOp(a) => bail!("unreplaced AGGREGATION operator: {}", a.0.as_str()),
+                SimpleExpr::AggrOp(a) => bail!("internal error, unreplaced AGGREGATION operator: {}", a.0.as_str()),
                 SimpleExpr::FuncCall(f) => match f.name.as_str() {
                     "IsDefined" => {
                         ensure!(
@@ -247,9 +255,13 @@ impl<'a> Context<'a> {
             BinOp::Lt => {
                 let left = self.eval(l).await?;
                 let right = self.eval(r).await?;
-                let v = (left.partial_cmp(&right))
-                    .map(|o| o == Ordering::Less)
-                    .ok_or_else(|| anyhow!("cannot compare {} < {}", left, right))?;
+                let v = (left.partial_cmp(&right)).map(|o| o == Ordering::Less).ok_or_else(|| {
+                    RuntimeError::TypeErrorBinOp {
+                        op: BinOp::Lt,
+                        left: left.kind(),
+                        right: right.kind(),
+                    }
+                })?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Le => {
@@ -257,7 +269,11 @@ impl<'a> Context<'a> {
                 let right = self.eval(r).await?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o != Ordering::Greater)
-                    .ok_or_else(|| anyhow!("cannot compare {} ≤ {}", left, right))?;
+                    .ok_or_else(|| RuntimeError::TypeErrorBinOp {
+                        op: BinOp::Le,
+                        left: left.kind(),
+                        right: right.kind(),
+                    })?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Gt => {
@@ -265,15 +281,23 @@ impl<'a> Context<'a> {
                 let right = self.eval(r).await?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o == Ordering::Greater)
-                    .ok_or_else(|| anyhow!("cannot compare {} > {}", left, right))?;
+                    .ok_or_else(|| RuntimeError::TypeErrorBinOp {
+                        op: BinOp::Gt,
+                        left: left.kind(),
+                        right: right.kind(),
+                    })?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Ge => {
                 let left = self.eval(l).await?;
                 let right = self.eval(r).await?;
-                let v = (left.partial_cmp(&right))
-                    .map(|o| o != Ordering::Less)
-                    .ok_or_else(|| anyhow!("cannot compare {} ≥ {}", left, right))?;
+                let v = (left.partial_cmp(&right)).map(|o| o != Ordering::Less).ok_or_else(|| {
+                    RuntimeError::TypeErrorBinOp {
+                        op: BinOp::Ge,
+                        left: left.kind(),
+                        right: right.kind(),
+                    }
+                })?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Eq => {
@@ -281,7 +305,11 @@ impl<'a> Context<'a> {
                 let right = self.eval(r).await?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o == Ordering::Equal)
-                    .ok_or_else(|| anyhow!("cannot compare {} = {}", left, right))?;
+                    .ok_or_else(|| RuntimeError::TypeErrorBinOp {
+                        op: BinOp::Eq,
+                        left: left.kind(),
+                        right: right.kind(),
+                    })?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Ne => {
@@ -289,7 +317,11 @@ impl<'a> Context<'a> {
                 let right = self.eval(r).await?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o != Ordering::Equal)
-                    .ok_or_else(|| anyhow!("cannot compare {} ≠ {}", left, right))?;
+                    .ok_or_else(|| RuntimeError::TypeErrorBinOp {
+                        op: BinOp::Ne,
+                        left: left.kind(),
+                        right: right.kind(),
+                    })?;
                 Ok(self.value(|b| b.encode_bool(v)))
             }
             BinOp::Alt => match self.eval(l).await {
