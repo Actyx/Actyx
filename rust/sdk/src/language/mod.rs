@@ -34,6 +34,7 @@ pub enum Operation {
     Select(NonEmptyVec<SimpleExpr>),
     Aggregate(SimpleExpr),
     Limit(NonZeroU64),
+    Binding(String, SimpleExpr),
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -304,6 +305,7 @@ impl SimpleExpr {
                             }
                             Operation::Aggregate(e) => e.traverse(f),
                             Operation::Limit(_) => {}
+                            Operation::Binding(_, e) => e.traverse(f),
                         }
                     }
                 }
@@ -390,6 +392,7 @@ impl SimpleExpr {
                         }
                         Operation::Aggregate(a) => Operation::Aggregate(a.rewrite(f)),
                         Operation::Limit(l) => Operation::Limit(*l),
+                        Operation::Binding(n, e) => Operation::Binding(n.clone(), e.rewrite(f)),
                     })
                     .collect();
                 SimpleExpr::SubQuery(Query {
@@ -516,7 +519,7 @@ mod for_tests {
     }
 
     macro_rules! arb {
-        ($T:ident: $g:ident => $($n:ident$({$extra:expr})?)*, $($rec:ident)*, $($rec2:ident$({$extra2:expr})?)*, $($e:ident)*) => {{
+        ($T:ident: $g:ident => $($n:ident$({$extra:expr})?)*, $($rec:ident)*, $($rec2:ident$({$extra2:expr})?)*, $($e:ident)* $(, $($names:ident)+)?) => {{
             $(
                 #[allow(non_snake_case)]
                 fn $n(g: &mut Gen) -> $T {
@@ -550,11 +553,11 @@ mod for_tests {
             let depth = DEPTH.with(|d| *d.borrow());
             let ctx = CTX.with(|c| *c.borrow());
             let choices = if depth > 5 {
-                &[$($n as fn(&mut Gen) -> $T,)* $($e,)*][..]
+                &[$($n as fn(&mut Gen) -> $T,)* $($e,)* $($($names,)*)?][..]
             } else if ctx == Context::Aggregate {
-                &[$($n,)* $($rec,)* $($rec2,)* $($e,)*][..]
+                &[$($n,)* $($rec,)* $($rec2,)* $($e,)* $($($names,)*)?][..]
             } else {
-                &[$($n,)* $($rec,)* $($e,)*][..]
+                &[$($n,)* $($rec,)* $($e,)* $($($names,)*)?][..]
             };
             DEPTH.with(|d| *d.borrow_mut() += 1);
             let ret = ($g.choose(choices).unwrap())($g);
@@ -570,11 +573,12 @@ mod for_tests {
                 $($T::$rec(x) => Box::new(x.shrink().map($T::$rec)),)*
             }
         };
-        ($T:ident: $s:ident => $($n:ident)*, $($rec:ident($m:ident,$($ex:expr),*))*, $($e:ident)*) => {
+        ($T:ident: $s:ident => $($n:ident)*, $($rec:ident($m:ident,$($ex:expr),*))*, $($e:ident)* $(, $pat:pat => $patex:expr )*) => {
             match $s {
                 $($T::$n(x) => Box::new(x.shrink().map($T::$n)),)*
                 $($T::$rec($m) => Box::new(vec![$($ex,)*].into_iter().chain($m.shrink().map($T::$rec))),)*
                 $($T::$e => quickcheck::empty_shrinker(),)*
+                $($pat => $patex,)*
             }
         };
     }
@@ -750,10 +754,19 @@ mod for_tests {
 
     impl Arbitrary for Operation {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(Operation: g => Filter Select Aggregate{ Context::Aggregate } Limit,,,)
+            #[allow(non_snake_case)]
+            fn Binding(g: &mut Gen) -> Operation {
+                Operation::Binding(Var::arbitrary(g).0, SimpleExpr::arbitrary(g))
+            }
+            arb!(Operation: g => Filter Select Aggregate{ Context::Aggregate } Limit,,,, Binding)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            shrink!(Operation: self => Filter Select Aggregate Limit,,)
+            shrink!(Operation: self => Filter Select Aggregate Limit,,,
+                Operation::Binding(n, e) => {
+                    let n = n.clone();
+                    Box::new(e.shrink().map(move |e| Operation::Binding(n.clone(), e)))
+                }
+            )
         }
     }
 

@@ -70,6 +70,7 @@ features! {
     aggregate: Alpha [Subscribe SubscribeMonotonic],
     subQuery: Alpha [Subscribe SubscribeMonotonic],
     limit: Beta [Subscribe SubscribeMonotonic],
+    binding: Beta [],
 }
 
 #[derive(Debug, Clone, Copy, derive_more::Display)]
@@ -163,6 +164,10 @@ fn features_op(feat: &mut Features, op: &Operation) {
         }
         Operation::Limit(_) => {
             feat.add(limit);
+        }
+        Operation::Binding(_, e) => {
+            feat.add(binding);
+            features_simple(feat, e);
         }
     }
 }
@@ -307,5 +312,19 @@ mod tests {
             f("FROM 'x' SELECT 1 + (FROM 'y' SELECT 1, FROM 'a' AGGREGATE x)[0]").0,
             btreeset!(multiEmission, aggregate, subQuery)
         );
+    }
+
+    #[test]
+    fn lim() {
+        assert_eq!(f("FROM 'x' LIMIT 1").0, btreeset!(limit));
+        assert_eq!(
+            f("FROM 'x' AGGREGATE FROM 'y' LIMIT 1").0,
+            btreeset!(aggregate, subQuery, limit)
+        );
+    }
+
+    #[test]
+    fn bind() {
+        assert_eq!(f("FROM 'x' LET a := 1").0, btreeset!(binding));
     }
 }

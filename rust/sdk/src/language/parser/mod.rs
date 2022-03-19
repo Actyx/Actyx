@@ -401,6 +401,12 @@ fn r_query(features: Vec<String>, p: P) -> Result<Query> {
                 .ops
                 .push(Operation::Aggregate(r_simple_expr(o.single()?, Context::Aggregate)?)),
             Rule::limit => q.ops.push(Operation::Limit(o.single()?.natural()?.try_into()?)),
+            Rule::binding => {
+                let mut p = o.inner()?;
+                let ident = p.string()?;
+                let expr = r_simple_expr(p.single()?, Context::Simple)?;
+                q.ops.push(Operation::Binding(ident, expr));
+            }
             x => bail!("unexpected token: {:?}", x),
         }
     }
@@ -598,7 +604,7 @@ mod tests {
             parser: Aql,
             input: "FROM 'x' ELECT 'x'",
             rule: Rule::main_query,
-            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::aggregate, Rule::limit, Rule::and, Rule::or],
+            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::aggregate, Rule::limit, Rule::binding, Rule::and, Rule::or],
             negatives: vec![],
             pos: 9
         };
@@ -606,7 +612,7 @@ mod tests {
             parser: Aql,
             input: "FROM 'x' FITTER 'x'",
             rule: Rule::main_query,
-            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::aggregate, Rule::limit, Rule::and, Rule::or],
+            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::aggregate, Rule::limit, Rule::binding, Rule::and, Rule::or],
             negatives: vec![],
             pos: 9
         };

@@ -625,4 +625,33 @@ mod tests {
             })
             .unwrap();
     }
+
+    #[test]
+    fn binding() {
+        Runtime::new()
+            .unwrap()
+            .block_on(async {
+                timeout(Duration::from_secs(1), async {
+                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let (_node_id, service) = setup(&store);
+
+                    publish(&service, 0, 1).await;
+                    publish(&service, 0, 2).await;
+                    publish(&service, 0, 3).await;
+
+                    assert_eq!(
+                        query(
+                            &service,
+                            "FEATURES(zøg subQuery binding) \
+                            FROM 'a' LET a := _ SELECT \
+                                FROM 'b' LET b := _ FILTER b > a LET a := b SELECT b"
+                        )
+                        .await,
+                        vec!["[2,3]", "[3]", "[]", "offsets"]
+                    );
+                })
+                .await
+            })
+            .unwrap();
+    }
 }

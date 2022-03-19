@@ -8,11 +8,12 @@ main_func_name = @{ SOI ~ func_name ~ EOI }
 query = { "FROM" ~ tag_expr ~ query_order? ~ query_op* ~ "END"? }
 query_order = { "ORDER" ~ order }
 order = { "ASC" | "DESC" | "STREAM" }
-query_op = _{ filter | select | aggregate | limit }
+query_op = _{ filter | select | aggregate | limit | binding }
 filter = { "FILTER" ~ simple_expr }
 select = { "SELECT" ~ simple_expr ~ ( "," ~ simple_expr )* }
 aggregate = { "AGGREGATE" ~ simple_expr }
 limit = { "LIMIT" ~ positive }
+binding = { "LET" ~ ident ~ ":=" ~ simple_expr }
 features = { "FEATURES(" ~ feature_word* ~ ")" }
 feature_word = @{ ( ASCII_ALPHANUMERIC | "ø" )+ }
 

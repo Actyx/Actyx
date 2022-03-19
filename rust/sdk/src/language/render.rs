@@ -162,6 +162,10 @@ fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
         Operation::Limit(l) => {
             write!(w, "LIMIT {}", l)
         }
+        Operation::Binding(n, e) => {
+            write!(w, "LET {} := ", n)?;
+            render_simple_expr(w, e)
+        }
     }
 }
 

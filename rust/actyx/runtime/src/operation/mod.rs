@@ -14,6 +14,7 @@ pub enum Operation {
     Select(NonEmptyVec<SimpleExpr>),
     Aggregate(SimpleExpr),
     Limit(NonZeroU64),
+    Binding(String, SimpleExpr),
 }
 
 #[allow(unused_variables)]
@@ -46,6 +47,7 @@ impl Operation {
             Operation::Select(s) => Box::new(Select(s.clone())),
             Operation::Aggregate(a) => aggregate::aggregate(a),
             Operation::Limit(l) => Box::new(Limit((*l).into())),
+            Operation::Binding(n, e) => Box::new(Binding(n.clone(), e.clone())),
         }
     }
 }
@@ -57,6 +59,7 @@ impl From<language::Operation> for Operation {
             language::Operation::Select(s) => Self::Select(s),
             language::Operation::Aggregate(a) => Self::Aggregate(a),
             language::Operation::Limit(l) => Self::Limit(l),
+            language::Operation::Binding(n, e) => Self::Binding(n, e),
         }
     }
 }
@@ -112,6 +115,22 @@ impl Processor for Limit {
 
     fn is_done(&self, _order: Order) -> bool {
         self.0 == 0
+    }
+}
+
+struct Binding(String, SimpleExpr);
+impl Processor for Binding {
+    fn apply<'a, 'b: 'a>(&'a mut self, cx: &'a mut Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
+        async move {
+            match cx.eval(&self.1).await {
+                Ok(v) => {
+                    cx.bind(self.0.as_str(), v);
+                    vec![cx.remove("_")]
+                }
+                Err(e) => vec![Err(e)],
+            }
+        }
+        .boxed()
     }
 }
 

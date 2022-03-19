@@ -187,13 +187,15 @@ mod tests {
     fn store() -> EventStoreRef {
         EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
     }
-
+    fn ctx(order: Order) -> Context<'static> {
+        Context::owned(key(), order, store(), OffsetMap::empty(), OffsetMap::empty())
+    }
     fn feeder(q: &str) -> Feeder {
         Query::from(q.parse::<language::Query>().unwrap()).make_feeder()
     }
 
     async fn feed(q: &str, v: &str) -> Vec<String> {
-        let cx = Context::owned(key(), Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let cx = ctx(Order::Asc);
         let v = cx.eval(&v.parse().unwrap()).await.unwrap();
         feeder(q)
             .feed(Some(v), &cx)
@@ -248,39 +250,47 @@ mod tests {
     #[tokio::test]
     async fn done() {
         let mut f = feeder("FROM 'x' AGGREGATE x");
-        let cx = Context::owned(key(), Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let cx = ctx(Order::Asc);
         let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
         f.feed(Some(v), &cx).await;
         assert!(f.is_done());
 
         let mut f = feeder("FROM 'x' AGGREGATE x");
-        let cx = Context::owned(key(), Order::Desc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let cx = ctx(Order::Desc);
         let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
         f.feed(Some(v), &cx).await;
         assert!(f.is_done());
 
         let mut f = feeder("FROM 'x' AGGREGATE LAST(_)");
-        let cx = Context::owned(key(), Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let cx = ctx(Order::Asc);
         let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
         f.feed(Some(v), &cx).await;
         assert!(!f.is_done());
 
         let mut f = feeder("FROM 'x' AGGREGATE LAST(_)");
-        let cx = Context::owned(key(), Order::Desc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let cx = ctx(Order::Desc);
         let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
         f.feed(Some(v), &cx).await;
         assert!(f.is_done());
 
         let mut f = feeder("FROM 'x' AGGREGATE FIRST(_)");
-        let cx = Context::owned(key(), Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let cx = ctx(Order::Asc);
         let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
         f.feed(Some(v), &cx).await;
         assert!(f.is_done());
 
         let mut f = feeder("FROM 'x' AGGREGATE FIRST(_)");
-        let cx = Context::owned(key(), Order::Desc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let cx = ctx(Order::Desc);
         let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
         f.feed(Some(v), &cx).await;
         assert!(!f.is_done());
+    }
+
+    #[tokio::test]
+    async fn binding() {
+        assert_eq!(
+            feed("FROM 'x' LET x := _.a SELECT [_.b, x]", "{a:1 b:2 c:3}").await,
+            vec!["[2, 1]"]
+        );
     }
 }
