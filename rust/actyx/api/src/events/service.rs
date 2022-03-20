@@ -1,24 +1,24 @@
 use crate::rejections::ApiError;
 use actyx_sdk::{
     app_id,
-    language::{self, SortKey},
+    language::{self, Arr, SortKey},
     service::{
         Diagnostic, EventResponse, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest,
         PublishResponse, PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    AppId, Event, EventKey, NodeId, OffsetMap, OffsetOrMin, Payload, StreamNr,
+    tags, AppId, Event, EventKey, Metadata, NodeId, OffsetMap, OffsetOrMin, Payload, StreamNr, Timestamp,
 };
 use ax_futures_util::ReceiverExt;
 use futures::{
     future::poll_fn,
-    stream::{BoxStream, StreamExt},
-    FutureExt,
+    stream::{self, BoxStream, StreamExt},
+    FutureExt, TryStreamExt,
 };
 use genawaiter::sync::{Co, Gen};
 use runtime::{
     eval::Context,
-    features::{Endpoint, Features},
+    features::{Endpoint, Feature, FeatureError, Features},
     query::{Feeder, Query},
     value::Value,
 };
@@ -90,51 +90,19 @@ impl EventService {
             .map_err(|e| ApiError::BadRequest {
                 cause: format!("{:#}", e),
             })?;
-        let tag_expr = query.from.clone();
+
         let upper_bound = match request.upper_bound {
             Some(offsets) => offsets,
             None => self.store.offsets().await?.present(),
         };
         let lower_bound = request.lower_bound.unwrap_or_default();
-        let order = query.order;
 
         let query = Query::from(query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Query)?;
-        let mut query = query.make_feeder();
-        let order = order.or_else(|| query.preferred_order()).unwrap_or(request.order);
+        let mut feeder = query.make_feeder();
 
-        let cx = Context::owned(
-            SortKey::default(),
-            order,
-            self.store.clone(),
-            lower_bound.clone(),
-            upper_bound.clone(),
-        );
-
-        let tag_expr = cx.eval_from(&tag_expr).await?.into_owned();
-        let tags = tag_expr.clone(); // for logging
-
-        let mut stream = match order {
-            Order::Asc => {
-                self.store
-                    .bounded_forward(tag_expr, lower_bound, upper_bound.clone(), false)
-                    .await?
-            }
-            Order::Desc => {
-                self.store
-                    .bounded_backward(tag_expr, lower_bound, upper_bound.clone())
-                    .await?
-            }
-            Order::StreamAsc => {
-                self.store
-                    .bounded_forward(tag_expr, lower_bound, upper_bound.clone(), true)
-                    .await?
-            }
-        }
-        .stop_on_error();
-
-        async fn y(co: &Co<QueryResponse>, vs: Vec<anyhow::Result<Value>>, event: Option<&Event<Payload>>) {
+        async fn y(co: &Co<QueryResponse>, vs: Vec<anyhow::Result<Value>>, event: Option<(&EventKey, &Metadata)>) {
             for v in vs {
                 co.yield_(match v {
                     Ok(v) => QueryResponse::Event(to_event(v, event)),
@@ -144,25 +112,95 @@ impl EventService {
             }
         }
 
+        let store = self.store.clone();
+        let request_order = request.order;
         let gen = Gen::new(move |co: Co<QueryResponse>| async move {
+            let mut cx = Context::owned(
+                SortKey::default(),
+                Order::StreamAsc,
+                store.clone(),
+                lower_bound.clone(),
+                upper_bound.clone(),
+            );
+            let mut stream = match &query.source {
+                language::Source::Events { from, order } => {
+                    let order = order.or_else(|| feeder.preferred_order()).unwrap_or(request_order);
+                    cx.order = order;
+                    let tag_expr = match cx.eval_from(from).await {
+                        Ok(t) => t.into_owned(),
+                        Err(e) => {
+                            return co
+                                .yield_(QueryResponse::Diagnostic(Diagnostic::error(e.to_string())))
+                                .await
+                        }
+                    };
+                    let stream = match order {
+                        Order::Asc => {
+                            store
+                                .bounded_forward(tag_expr, lower_bound, upper_bound.clone(), false)
+                                .await
+                        }
+                        Order::Desc => store.bounded_backward(tag_expr, lower_bound, upper_bound.clone()).await,
+                        Order::StreamAsc => {
+                            store
+                                .bounded_forward(tag_expr, lower_bound, upper_bound.clone(), true)
+                                .await
+                        }
+                    };
+                    let stream = match stream {
+                        Ok(s) => s,
+                        Err(e) => {
+                            return co
+                                .yield_(QueryResponse::Diagnostic(Diagnostic::error(e.to_string())))
+                                .await
+                        }
+                    };
+                    stream
+                        .stop_on_error()
+                        .map(|ev| match ev {
+                            Ok(ev) => Ok((Value::from((ev.key, ev.payload)), ev.key, ev.meta)),
+                            Err(e) => Err(e.into()),
+                        })
+                        .left_stream()
+                }
+                language::Source::Array(Arr { items }) => stream::iter(items.iter())
+                    .then(|expr| cx.eval(expr))
+                    .map_ok(|v| {
+                        (
+                            v,
+                            EventKey {
+                                lamport: Default::default(),
+                                stream: Default::default(),
+                                offset: Default::default(),
+                            },
+                            Metadata {
+                                timestamp: Timestamp::now(),
+                                tags: tags!(),
+                                app_id: app_id!("none"),
+                            },
+                        )
+                    })
+                    .right_stream(),
+            };
+
             while let Some(ev) = stream.next().await {
-                let ev = match ev {
+                let (ev, key, meta) = match ev {
                     Ok(ev) => ev,
                     Err(e) => {
-                        tracing::error!("aborting query for tags {} due to {:#}", tags, e);
-                        y(&co, vec![Err(e.into())], None).await;
+                        tracing::error!("aborting query due to {:#}", e);
+                        y(&co, vec![Err(e)], None).await;
                         return;
                     }
                 };
-                let vs = query.feed(Some(to_value(&ev)), &cx).await;
-                y(&co, vs, Some(&ev)).await;
-                if query.is_done() {
+                let vs = feeder.feed(Some(ev), &cx).await;
+                y(&co, vs, Some((&key, &meta))).await;
+                if feeder.is_done() {
                     break;
                 }
             }
             drop(stream);
 
-            let vs = query.feed(None, &cx).await;
+            let vs = feeder.feed(None, &cx).await;
             y(&co, vs, None).await;
 
             co.yield_(QueryResponse::Offsets(OffsetMapResponse { offsets: upper_bound }))
@@ -183,10 +221,19 @@ impl EventService {
             .map_err(|e| ApiError::BadRequest {
                 cause: format!("{:#}", e),
             })?;
+        let tag_expr = match &query.source {
+            language::Source::Events { from, .. } => from.clone(),
+            language::Source::Array(_) => {
+                return Err(FeatureError::Unsupported {
+                    features: Feature::fromArray.to_string(),
+                    endpoint: Endpoint::Subscribe.to_string(),
+                }
+                .into())
+            }
+        };
         let present = self.store.offsets().await?.present();
         let mut lower_bound = request.lower_bound.unwrap_or_default();
 
-        let tag_expr = query.from.clone();
         let query = Query::from(query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Subscribe)?;
@@ -216,7 +263,7 @@ impl EventService {
             .await?
             .stop_on_error();
 
-        async fn y(co: &Co<SubscribeResponse>, vs: Vec<anyhow::Result<Value>>, event: Option<&Event<Payload>>) {
+        async fn y(co: &Co<SubscribeResponse>, vs: Vec<anyhow::Result<Value>>, event: Option<(&EventKey, &Metadata)>) {
             for v in vs {
                 co.yield_(match v {
                     Ok(v) => SubscribeResponse::Event(to_event(v, event)),
@@ -237,7 +284,7 @@ impl EventService {
                     }
                 };
                 let vs = query.feed(Some(to_value(&ev)), &cx).await;
-                y(&co, vs, Some(&ev)).await;
+                y(&co, vs, Some((&ev.key, &ev.meta))).await;
             }
 
             co.yield_(SubscribeResponse::Offsets(OffsetMapResponse { offsets: present }))
@@ -253,7 +300,7 @@ impl EventService {
                     }
                 };
                 let vs = query.feed(Some(to_value(&ev)), &cx).await;
-                y(&co, vs, Some(&ev)).await;
+                y(&co, vs, Some((&ev.key, &ev.meta))).await;
             }
         });
 
@@ -271,13 +318,22 @@ impl EventService {
             .map_err(|e| ApiError::BadRequest {
                 cause: format!("{:#}", e),
             })?;
+        let tag_expr = match &query.source {
+            language::Source::Events { from, .. } => from.clone(),
+            language::Source::Array(_) => {
+                return Err(FeatureError::Unsupported {
+                    features: Feature::fromArray.to_string(),
+                    endpoint: Endpoint::Subscribe.to_string(),
+                }
+                .into())
+            }
+        };
         let mut lower_bound = match &request.from {
             StartFrom::LowerBound(x) => x.clone(),
         };
         let mut present = self.store.offsets().await?.present();
         present.union_with(&lower_bound);
 
-        let tag_expr = query.from.clone();
         let query = Query::from(query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::SubscribeMonotonic)?;
@@ -349,7 +405,7 @@ impl EventService {
                         let caught_up = Some(idx) == last && caught_up;
                         co.yield_(match v {
                             Ok(v) => SubscribeMonotonicResponse::Event {
-                                event: to_event(v, Some(&event)),
+                                event: to_event(v, Some((&event.key, &event.meta))),
                                 caught_up,
                             },
                             Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e.to_string())),
@@ -415,15 +471,15 @@ impl EventService {
 fn to_value(event: &Event<Payload>) -> Value {
     Value::from((event.key, event.payload.clone()))
 }
-fn to_event(value: Value, event: Option<&Event<Payload>>) -> EventResponse<Payload> {
+fn to_event(value: Value, event: Option<(&EventKey, &Metadata)>) -> EventResponse<Payload> {
     match event {
-        Some(event) => EventResponse {
-            lamport: event.key.lamport,
-            stream: event.key.stream,
-            offset: event.key.offset,
-            app_id: event.meta.app_id.clone(),
-            timestamp: event.meta.timestamp,
-            tags: event.meta.tags.clone(),
+        Some((key, meta)) => EventResponse {
+            lamport: key.lamport,
+            stream: key.stream,
+            offset: key.offset,
+            app_id: meta.app_id.clone(),
+            timestamp: meta.timestamp,
+            tags: meta.tags.clone(),
             payload: value.payload(),
         },
         None => EventResponse {
@@ -639,6 +695,33 @@ mod tests {
     }
 
     #[test]
+    fn order() {
+        Runtime::new()
+            .unwrap()
+            .block_on(async {
+                timeout(Duration::from_secs(1), async {
+                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let (_node_id, service) = setup(&store);
+
+                    publish(&service, 0, tags!("a"), 1).await;
+                    publish(&service, 0, tags!("a"), 2).await;
+                    publish(&service, 0, tags!("a"), 3).await;
+
+                    assert_eq!(
+                        query(
+                            &service,
+                            "FEATURES(zøg subQuery) FROM 'a' FILTER _ = 2 SELECT FROM 'a' ORDER DESC"
+                        )
+                        .await,
+                        vec!["[3,2,1]", "offsets"]
+                    );
+                })
+                .await
+            })
+            .unwrap();
+    }
+
+    #[test]
     fn binding() {
         Runtime::new()
             .unwrap()
@@ -690,6 +773,44 @@ mod tests {
                         )
                         .await,
                         vec!["[[\"x = 2 y = 1\"]]", "offsets"]
+                    );
+                })
+                .await
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn from_array() {
+        Runtime::new()
+            .unwrap()
+            .block_on(async {
+                timeout(Duration::from_secs(1), async {
+                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let (_node_id, service) = setup(&store);
+
+                    publish(&service, 0, tags!("a1"), 2).await;
+                    publish(&service, 0, tags!("a2"), 3).await;
+                    publish(&service, 0, tags!("a3"), 1).await;
+
+                    assert_eq!(
+                        query(
+                            &service,
+                            "FEATURES(zøg subQuery interpolation binding fromArray) \
+                            FROM [1, 2, 3] FILTER _ < 3 LET x := 10 + _ SELECT \
+                                FROM `a{_}` SELECT { [`{_}={x}`]: _ * 11 }"
+                        )
+                        .await,
+                        vec!["[{\"2=11\":22}]", "[{\"3=12\":33}]", "offsets"]
+                    );
+                    assert_eq!(
+                        query(
+                            &service,
+                            "FEATURES(zøg subQuery interpolation fromArray) \
+                            FROM allEvents FILTER _ < 3 SELECT FROM [`a{_}`, 'b']"
+                        )
+                        .await,
+                        vec!["[\"a2\",\"b\"]", "[\"a1\",\"b\"]", "offsets"]
                     );
                 })
                 .await

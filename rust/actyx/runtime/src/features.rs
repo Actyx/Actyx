@@ -1,5 +1,5 @@
 use crate::{operation::Operation, query::Query};
-use actyx_sdk::language::{SimpleExpr, TagAtom, TagExpr, Traverse};
+use actyx_sdk::language::{Arr, SimpleExpr, TagAtom, TagExpr, Traverse};
 use std::{collections::BTreeSet, str::FromStr};
 
 #[derive(Debug, Clone, derive_more::Display, PartialEq)]
@@ -70,11 +70,14 @@ features! {
     multiEmission: Alpha [Subscribe SubscribeMonotonic],
     // unclear: metadata for results, group-by semantics
     aggregate: Alpha [Subscribe SubscribeMonotonic],
+    // unclear: metadata for results
     subQuery: Alpha [Subscribe SubscribeMonotonic],
     limit: Beta [Subscribe SubscribeMonotonic],
     binding: Beta [],
     // unclear: canonical string representation of all value kinds
     interpolation: Beta [],
+    // unclear: metadata of injected values
+    fromArray: Beta [Subscribe SubscribeMonotonic],
 }
 
 #[derive(Debug, Clone, Copy, derive_more::Display)]
@@ -97,7 +100,15 @@ impl Features {
 
     pub fn from_query(q: &Query) -> Self {
         let mut features = Self::new();
-        features_tag(&mut features, &q.from);
+        match { &q.source } {
+            actyx_sdk::language::Source::Events { from, .. } => features_tag(&mut features, from),
+            actyx_sdk::language::Source::Array(Arr { items }) => {
+                features.add(fromArray);
+                for e in items.iter() {
+                    features_simple(&mut features, e);
+                }
+            }
+        }
         for op in q.stages.iter() {
             features_op(&mut features, op);
         }
@@ -208,7 +219,15 @@ fn features_tag(feat: &mut Features, expr: &TagExpr) {
 fn features_simple(feat: &mut Features, expr: &SimpleExpr) {
     expr.traverse(&mut |e| match e {
         SimpleExpr::SubQuery(q) => {
-            features_tag(feat, &q.from);
+            match { &q.source } {
+                actyx_sdk::language::Source::Events { from, .. } => features_tag(feat, from),
+                actyx_sdk::language::Source::Array(Arr { items }) => {
+                    feat.add(fromArray);
+                    for e in items.iter() {
+                        features_simple(feat, e);
+                    }
+                }
+            }
             for op in q.ops.iter() {
                 features_op(feat, &Operation::from(op.clone()));
             }
@@ -347,5 +366,19 @@ mod tests {
         assert_eq!(f("FROM 'a' & `1+2`").0, btreeset!(interpolation));
         assert_eq!(f("FROM 'a' FILTER `{_} + 3` = '7'").0, btreeset!(interpolation));
         assert_eq!(f("FROM 'a' SELECT FROM `_`").0, btreeset!(interpolation, subQuery));
+    }
+
+    #[test]
+    fn from_array() {
+        assert_eq!(f("FROM [1, 2, 3]").0, btreeset!(fromArray));
+        assert_eq!(
+            f("FROM `{FROM [1, 2, 3]}`").0,
+            btreeset!(fromArray, interpolation, subQuery)
+        );
+        assert_eq!(f("FROM '`' SELECT FROM [1, 2, 3]").0, btreeset!(fromArray, subQuery));
+        assert_eq!(
+            f("FROM '`' SELECT { [FROM [1, 2, 3]]: 42 }").0,
+            btreeset!(fromArray, subQuery)
+        );
     }
 }

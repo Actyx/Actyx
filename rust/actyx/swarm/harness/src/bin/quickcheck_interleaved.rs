@@ -3,7 +3,7 @@ fn main() {
     use std::{collections::BTreeMap, str::FromStr, time::Duration};
 
     use actyx_sdk::{
-        language::{Query, TagAtom, TagExpr},
+        language::{Query, Source, TagAtom, TagExpr},
         service::{EventService, SubscribeRequest},
         Tag, TagSet,
     };
@@ -46,8 +46,7 @@ fn main() {
             .unwrap_or(TagExpr::Atom(TagAtom::AllEvents));
         Query {
             features: vec![],
-            from,
-            order: None,
+            source: Source::Events { from, order: None },
             ops: vec![],
         }
     }

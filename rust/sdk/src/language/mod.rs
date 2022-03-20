@@ -7,6 +7,12 @@ use self::render::render_tag_expr;
 use crate::{service::Order, tags::Tag, AppId, EventKey, LamportTimestamp, StreamId, Timestamp};
 use std::{convert::TryInto, num::NonZeroU64, sync::Arc};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Source {
+    Events { from: TagExpr, order: Option<Order> },
+    Array(Arr),
+}
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 /// A [`Query`] can be constructed using the Actyx Query Language (AQL). For an in-depth overview
 /// see the [docs](https://developer.actyx.com/docs/reference/aql).
@@ -22,8 +28,7 @@ use std::{convert::TryInto, num::NonZeroU64, sync::Arc};
 /// ```
 pub struct Query {
     pub features: Vec<String>,
-    pub from: TagExpr,
-    pub order: Option<Order>,
+    pub source: Source,
     pub ops: Vec<Operation>,
 }
 mod query_impl;
@@ -302,6 +307,14 @@ impl SimpleExpr {
                     }
                 }
                 SimpleExpr::SubQuery(q) => {
+                    match &q.source {
+                        Source::Events { .. } => {}
+                        Source::Array(Arr { items }) => {
+                            for e in items.iter() {
+                                e.traverse(f);
+                            }
+                        }
+                    }
                     for op in q.ops.iter() {
                         match op {
                             Operation::Filter(e) => e.traverse(f),
@@ -391,8 +404,15 @@ impl SimpleExpr {
             }
             SimpleExpr::SubQuery(q) => {
                 let features = q.features.clone();
-                let from = q.from.clone();
-                let order = q.order;
+                let source = match &q.source {
+                    Source::Events { from, order } => Source::Events {
+                        from: from.clone(),
+                        order: *order,
+                    },
+                    Source::Array(Arr { items }) => Source::Array(Arr {
+                        items: items.iter().map(|e| e.rewrite(f)).collect::<Vec<_>>().into(),
+                    }),
+                };
                 let ops = q
                     .ops
                     .iter()
@@ -406,12 +426,7 @@ impl SimpleExpr {
                         Operation::Binding(n, e) => Operation::Binding(n.clone(), e.rewrite(f)),
                     })
                     .collect();
-                SimpleExpr::SubQuery(Query {
-                    features,
-                    from,
-                    order,
-                    ops,
-                })
+                SimpleExpr::SubQuery(Query { features, source, ops })
             }
         }
     }
@@ -486,8 +501,7 @@ mod for_tests {
         pub fn new(from: TagExpr) -> Self {
             Self {
                 features: vec![],
-                from,
-                order: None,
+                source: Source::Events { from, order: None },
                 ops: vec![],
             }
         }
@@ -782,6 +796,35 @@ mod for_tests {
         }
     }
 
+    impl Arbitrary for Order {
+        fn arbitrary(g: &mut Gen) -> Self {
+            *g.choose(&[Order::Asc, Order::Desc, Order::StreamAsc]).unwrap()
+        }
+    }
+
+    impl Arbitrary for Source {
+        fn arbitrary(g: &mut Gen) -> Self {
+            if bool::arbitrary(g) {
+                Self::Events {
+                    from: TagExpr::arbitrary(g),
+                    order: Arbitrary::arbitrary(g),
+                }
+            } else {
+                Self::Array(Arr::arbitrary(g))
+            }
+        }
+
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            match self {
+                Source::Events { from, order } => {
+                    let order = *order;
+                    Box::new(from.shrink().map(move |from| Source::Events { from, order }))
+                }
+                Source::Array(arr) => Box::new(arr.shrink().map(Source::Array)),
+            }
+        }
+    }
+
     impl Arbitrary for Query {
         fn arbitrary(g: &mut Gen) -> Self {
             fn word(g: &mut Gen) -> String {
@@ -791,11 +834,10 @@ mod for_tests {
                 (0..len).map(|_| g.choose(choices).unwrap()).collect()
             }
             let prev = CTX.with(|c| c.replace(Context::Simple));
-            let order = bool::arbitrary(g).then(|| *g.choose(&[Order::Asc, Order::Desc, Order::StreamAsc]).unwrap());
+            let source = Source::arbitrary(g);
             let ret = Self {
                 features: Vec::<bool>::arbitrary(g).into_iter().map(|_| word(g)).collect(),
-                from: TagExpr::arbitrary(g),
-                order,
+                source,
                 ops: Arbitrary::arbitrary(g),
             };
             CTX.with(|c| c.replace(prev));
@@ -805,22 +847,19 @@ mod for_tests {
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             let features = self.features.clone();
             let features2 = self.features.clone();
-            let from = self.from.clone();
-            let order = self.order;
+            let source = self.source.clone();
             let ops = self.ops.clone();
             Box::new(
                 self.ops
                     .shrink()
                     .map(move |ops| Self {
                         features: features.clone(),
-                        from: from.clone(),
-                        order,
+                        source: source.clone(),
                         ops,
                     })
-                    .chain(self.from.shrink().map(move |from| Self {
+                    .chain(self.source.shrink().map(move |source| Self {
                         features: features2.clone(),
-                        from,
-                        order,
+                        source,
                         ops: ops.clone(),
                     })),
             )

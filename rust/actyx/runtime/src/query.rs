@@ -3,53 +3,70 @@ use crate::{
     operation::{Operation, Processor},
     value::Value,
 };
-use actyx_sdk::{language, service::Order};
+use actyx_sdk::{
+    language::{self, Arr},
+    service::Order,
+};
 use ax_futures_util::ReceiverExt;
 use cbor_data::{Encoder, Writer};
-use futures::StreamExt;
+use futures::{stream, StreamExt};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Query {
     pub features: Vec<String>,
-    pub from: language::TagExpr,
+    pub source: language::Source,
     pub stages: Vec<Operation>,
 }
 
 impl Query {
     /// run a query in the given evaluation context and collect all results
     pub async fn eval(query: &language::Query, cx: &Context<'_>) -> Result<Value, anyhow::Error> {
-        let tag_expr = cx.eval_from(&query.from).await?.into_owned();
-
         let mut feeder = Query::feeder_from(&query.ops);
-        let (mut stream, cx) = if feeder.preferred_order() == Some(Order::Desc) {
-            let stream = cx
-                .store
-                .bounded_backward(
-                    tag_expr,
-                    cx.from_offsets_excluding.as_ref().clone(),
-                    cx.to_offsets_including.as_ref().clone(),
-                )
-                .await?
-                .stop_on_error();
-            (stream, cx.child_with_order(Order::Desc))
-        } else {
-            let stream = cx
-                .store
-                .bounded_forward(
-                    tag_expr,
-                    cx.from_offsets_excluding.as_ref().clone(),
-                    cx.to_offsets_including.as_ref().clone(),
-                    false, // must keep order because some stage may have demanded it
-                )
-                .await?
-                .stop_on_error();
-            (stream, cx.child_with_order(Order::Asc))
+
+        let (mut stream, cx) = match &query.source {
+            language::Source::Events { from, order } => {
+                let tag_expr = cx.eval_from(from).await?.into_owned();
+                let (stream, cx) = if order.or_else(|| feeder.preferred_order()) == Some(Order::Desc) {
+                    let stream = cx
+                        .store
+                        .bounded_backward(
+                            tag_expr,
+                            cx.from_offsets_excluding.as_ref().clone(),
+                            cx.to_offsets_including.as_ref().clone(),
+                        )
+                        .await?
+                        .stop_on_error();
+                    (stream, cx.child_with_order(Order::Desc))
+                } else {
+                    let stream = cx
+                        .store
+                        .bounded_forward(
+                            tag_expr,
+                            cx.from_offsets_excluding.as_ref().clone(),
+                            cx.to_offsets_including.as_ref().clone(),
+                            false, // must keep order because some stage may have demanded it
+                        )
+                        .await?
+                        .stop_on_error();
+                    (stream, cx.child_with_order(Order::Asc))
+                };
+                let stream = stream
+                    .map(|ev| match ev {
+                        Ok(ev) => Ok(Value::from((ev.key, ev.payload))),
+                        Err(e) => Err(e.into()),
+                    })
+                    .left_stream();
+                (stream, cx)
+            }
+            language::Source::Array(Arr { items }) => (
+                stream::iter(items.iter()).then(|expr| cx.eval(expr)).right_stream(),
+                cx.child(),
+            ),
         };
 
         let mut results = vec![];
         while let Some(ev) = stream.next().await {
-            let ev = ev?;
-            let value = Value::from((ev.key, ev.payload.clone()));
+            let value = ev?;
             let vs = feeder.feed(Some(value), &cx).await;
             results.reserve(vs.len());
             for v in vs {
@@ -168,9 +185,13 @@ impl Feeder {
 impl From<language::Query> for Query {
     fn from(q: language::Query) -> Self {
         let stages = q.ops.into_iter().map(Operation::from).collect();
-        let from = q.from;
+        let source = q.source;
         let features = q.features;
-        Self { features, from, stages }
+        Self {
+            features,
+            source,
+            stages,
+        }
     }
 }
 

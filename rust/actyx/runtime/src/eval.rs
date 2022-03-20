@@ -49,8 +49,8 @@ impl<'a> Context<'a> {
         store: EventStoreRef,
         from_offsets_excluding: OffsetMap,
         to_offsets_including: OffsetMap,
-    ) -> Self {
-        Self {
+    ) -> Context<'static> {
+        Context {
             sort_key,
             bindings: BTreeMap::new(),
             parent: None,

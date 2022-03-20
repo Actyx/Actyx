@@ -5,7 +5,7 @@ main_ident = @{ SOI ~ ident ~ EOI }
 main_func_name = @{ SOI ~ func_name ~ EOI }
 
 // queries
-query = { "FROM" ~ tag_expr ~ query_order? ~ query_op* ~ "END"? }
+query = { "FROM" ~ ( tag_expr ~ query_order? | array ) ~ query_op* ~ "END"? }
 query_order = { "ORDER" ~ order }
 order = { "ASC" | "DESC" | "STREAM" }
 query_op = _{ filter | select | aggregate | limit | binding }

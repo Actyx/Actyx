@@ -4,7 +4,8 @@
 use std::{convert::TryInto, str::FromStr, sync::Arc};
 
 use super::{
-    non_empty::NonEmptyVec, AggrOp, Arr, FuncCall, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, TagAtom, TagExpr,
+    non_empty::NonEmptyVec, AggrOp, Arr, FuncCall, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, Source, TagAtom,
+    TagExpr,
 };
 use crate::{language::SortKey, service::Order, tags::Tag, Timestamp};
 use anyhow::{bail, ensure, Result};
@@ -348,7 +349,7 @@ fn r_func_call(p: P, ctx: Context) -> Result<FuncCall> {
     })
 }
 
-fn r_sub_query(p: P, _ctx: Context) -> Result<Query> {
+fn r_sub_query(p: P, ctx: Context) -> Result<Query> {
     let mut p = p.inner()?;
     let mut f = p.next().ok_or(NoVal("main query"))?;
     let features = if f.as_rule() == Rule::features {
@@ -358,7 +359,7 @@ fn r_sub_query(p: P, _ctx: Context) -> Result<Query> {
     } else {
         vec![]
     };
-    r_query(features, f)
+    r_query(features, f, ctx)
 }
 
 fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
@@ -427,20 +428,28 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
     )
 }
 
-fn r_query(features: Vec<String>, p: P) -> Result<Query> {
-    let mut p = p.inner()?.peekable();
+fn r_query(features: Vec<String>, p: P, ctx: Context) -> Result<Query> {
+    let mut p = p.inner()?;
+    let source = match p.peek().unwrap().as_rule() {
+        Rule::tag_expr => {
+            let from = r_tag_expr(p.next().ok_or(NoVal("tag expression"))?, Context::Simple)?;
+            let mut order = None;
+            if let Some(o) = p.peek() {
+                if o.as_rule() == Rule::query_order {
+                    let o = p.next().unwrap();
+                    order = Some(r_order(o)?);
+                }
+            }
+            Source::Events { from, order }
+        }
+        Rule::array => Source::Array(r_array(p.next().unwrap(), ctx)?),
+        x => bail!("unexpected token: {:?}", x),
+    };
     let mut q = Query {
         features,
-        from: r_tag_expr(p.next().ok_or(NoVal("tag expression"))?, Context::Simple)?,
-        order: None,
+        source,
         ops: vec![],
     };
-    if let Some(o) = p.peek() {
-        if o.as_rule() == Rule::query_order {
-            let o = p.next().unwrap();
-            q.order = Some(r_order(o)?);
-        }
-    }
     for o in p {
         match o.as_rule() {
             Rule::filter => q
@@ -519,6 +528,24 @@ mod tests {
     fn s(s: &str) -> SimpleExpr {
         SimpleExpr::String(s.to_owned())
     }
+    fn o(q: Query) -> Option<Order> {
+        match q.source {
+            Source::Events { order, .. } => order,
+            Source::Array(_) => panic!("expected Source::Events"),
+        }
+    }
+    fn from(q: Query) -> TagExpr {
+        match q.source {
+            Source::Events { from, .. } => from,
+            Source::Array(_) => panic!("expected Source::Events"),
+        }
+    }
+    fn arr(q: Query) -> Vec<String> {
+        match q.source {
+            Source::Events { .. } => panic!("expected Source::Array"),
+            Source::Array(Arr { items }) => items.iter().map(|x| x.to_string()).collect(),
+        }
+    }
 
     #[test]
     fn tag() -> Result<()> {
@@ -553,13 +580,13 @@ mod tests {
     #[test]
     fn order() -> Result<()> {
         let q = "FROM 'x'".parse::<Query>().unwrap();
-        assert_eq!(q.order, None);
+        assert_eq!(o(q), None);
         let q = "FROM 'x' ORDER ASC".parse::<Query>().unwrap();
-        assert_eq!(q.order, Some(Order::Asc));
+        assert_eq!(o(q), Some(Order::Asc));
         let q = "FROM 'x' ORDER DESC".parse::<Query>().unwrap();
-        assert_eq!(q.order, Some(Order::Desc));
+        assert_eq!(o(q), Some(Order::Desc));
         let q = "FROM 'x' ORDER STREAM".parse::<Query>().unwrap();
-        assert_eq!(q.order, Some(Order::StreamAsc));
+        assert_eq!(o(q), Some(Order::StreamAsc));
         Ok(())
     }
 
@@ -662,7 +689,7 @@ mod tests {
             parser: Aql,
             input: "FROM x",
             rule: Rule::main_query,
-            positives: vec![Rule::tag_expr],
+            positives: vec![Rule::array, Rule::tag_expr],
             negatives: vec![],
             pos: 5
         };
@@ -872,21 +899,27 @@ mod tests {
         use TagExpr::*;
 
         let q = "FROM `a{U+1e}b`".parse::<Query>().unwrap();
-        assert_eq!(q.from, Atom(Interpolation(vec![s("a\x1eb")])));
+        assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1eb")])));
 
         let q = "FROM `a{U+1e}`".parse::<Query>().unwrap();
-        assert_eq!(q.from, Atom(Interpolation(vec![s("a\x1e")])));
+        assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1e")])));
 
         let q = "FROM `{U+1e}b`".parse::<Query>().unwrap();
-        assert_eq!(q.from, Atom(Interpolation(vec![s("\x1eb")])));
+        assert_eq!(from(q), Atom(Interpolation(vec![s("\x1eb")])));
 
         let q = "FROM `a{U+1e}b{U+1f}`".parse::<Query>().unwrap();
-        assert_eq!(q.from, Atom(Interpolation(vec![s("a\x1eb\x1f")])));
+        assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1eb\x1f")])));
 
         let q = "FROM `a{U+1e}{U+1f}b`".parse::<Query>().unwrap();
-        assert_eq!(q.from, Atom(Interpolation(vec![s("a\x1e\x1fb")])));
+        assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1e\x1fb")])));
 
         let q = "FROM `a{U+110000}`".parse::<Query>().unwrap_err();
         assert_eq!(q.to_string(), "invalid unicode scalar value `U+110000`");
+    }
+
+    #[test]
+    fn from_arr() {
+        let q = "FROM [1, 2, 3]".parse::<Query>().unwrap();
+        assert_eq!(arr(q), vec!["1", "2", "3"]);
     }
 }

@@ -253,14 +253,18 @@ pub fn render_query(w: &mut impl Write, e: &Query) -> Result {
         w.write_str(") ")?;
     }
     w.write_str("FROM ")?;
-    render_tag_expr(w, &e.from, None)?;
-
-    if let Some(o) = e.order {
-        match o {
-            Order::Asc => w.write_str(" ORDER ASC")?,
-            Order::Desc => w.write_str(" ORDER DESC")?,
-            Order::StreamAsc => w.write_str(" ORDER STREAM")?,
+    match &e.source {
+        Source::Events { from, order } => {
+            render_tag_expr(w, from, None)?;
+            if let Some(o) = *order {
+                match o {
+                    Order::Asc => w.write_str(" ORDER ASC")?,
+                    Order::Desc => w.write_str(" ORDER DESC")?,
+                    Order::StreamAsc => w.write_str(" ORDER STREAM")?,
+                }
+            }
         }
+        Source::Array(arr) => render_array(w, arr)?,
     }
 
     for op in &e.ops {
