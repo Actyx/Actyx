@@ -1,6 +1,6 @@
-use crate::{eval::Context, value::Value};
+use crate::{error::RuntimeError, eval::Context, value::Value};
 use actyx_sdk::{
-    language::{self, NonEmptyVec, SimpleExpr},
+    language::{self, NonEmptyVec, SimpleExpr, SpreadExpr},
     service::Order,
 };
 
@@ -11,7 +11,7 @@ use std::{future::ready, num::NonZeroU64};
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Operation {
     Filter(SimpleExpr),
-    Select(NonEmptyVec<SimpleExpr>),
+    Select(NonEmptyVec<SpreadExpr>),
     Aggregate(SimpleExpr),
     Limit(NonZeroU64),
     Binding(String, SimpleExpr),
@@ -85,13 +85,26 @@ impl Processor for Filter {
     }
 }
 
-struct Select(NonEmptyVec<SimpleExpr>);
+struct Select(NonEmptyVec<SpreadExpr>);
 impl Processor for Select {
     fn apply<'a, 'b: 'a>(&'a mut self, cx: &'a mut Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
         async move {
             let mut v = vec![];
             for expr in self.0.iter() {
-                v.push(cx.eval(expr).await)
+                match cx.eval(expr).await {
+                    Ok(val) => {
+                        if expr.spread {
+                            if let Ok(items) = val.as_array(cx) {
+                                v.extend(items.into_iter().map(Ok));
+                            } else {
+                                v.push(Err(RuntimeError::TypeErrorSpread(val.kind()).into()))
+                            }
+                        } else {
+                            v.push(Ok(val));
+                        }
+                    }
+                    Err(e) => v.push(Err(e)),
+                }
             }
             v
         }
@@ -173,7 +186,7 @@ mod tests {
 
     #[tokio::test]
     async fn select() {
-        let mut s = Select(vec![simple_expr("_.x + a")].try_into().unwrap());
+        let mut s = Select(vec![simple_expr("_.x + a").with_spread(false)].try_into().unwrap());
         let mut cx = Context::owned(key(), Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
         cx.bind("a", cx.value(|b| b.encode_f64(0.5)));
 

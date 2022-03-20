@@ -78,6 +78,8 @@ features! {
     interpolation: Beta [],
     // unclear: metadata of injected values
     fromArray: Beta [Subscribe SubscribeMonotonic],
+    // unclear: metadata for multiEmission results
+    spread: Beta [],
 }
 
 #[derive(Debug, Clone, Copy, derive_more::Display)]
@@ -105,6 +107,9 @@ impl Features {
             actyx_sdk::language::Source::Array(Arr { items }) => {
                 features.add(fromArray);
                 for e in items.iter() {
+                    if e.spread {
+                        features.add(spread);
+                    }
                     features_simple(&mut features, e);
                 }
             }
@@ -170,6 +175,9 @@ fn features_op(feat: &mut Features, op: &Operation) {
                 feat.add(multiEmission);
             }
             for expr in s.iter() {
+                if expr.spread {
+                    feat.add(spread);
+                }
                 features_simple(feat, expr);
             }
         }
@@ -236,6 +244,12 @@ fn features_simple(feat: &mut Features, expr: &SimpleExpr) {
         }
         SimpleExpr::Interpolation(_) => {
             feat.add(interpolation);
+            Traverse::Descend
+        }
+        SimpleExpr::Array(e) => {
+            if e.items.iter().any(|e| e.spread) {
+                feat.add(spread);
+            }
             Traverse::Descend
         }
         _ => Traverse::Descend,
@@ -380,5 +394,12 @@ mod tests {
             f("FROM '`' SELECT { [FROM [1, 2, 3]]: 42 }").0,
             btreeset!(fromArray, subQuery)
         );
+    }
+
+    #[test]
+    fn spread_() {
+        assert_eq!(f("FROM [...x]").0, btreeset!(fromArray, spread));
+        assert_eq!(f("FROM 'x' SELECT [..._]").0, btreeset!(spread));
+        assert_eq!(f("FROM 'x' SELECT ..._").0, btreeset!(spread));
     }
 }

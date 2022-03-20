@@ -453,7 +453,7 @@ dependencies = [
  "banyan-utils",
  "base64",
  "bytes",
- "cbor-data 0.8.3",
+ "cbor-data",
  "certs",
  "chrono",
  "console",
@@ -801,16 +801,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4c24dab4283a142afa2fdca129b80ad2c6284e073930f964c3a1293c225ee39a"
 dependencies = [
  "rustc_version 0.4.0",
-]
-
-[[package]]
-name = "cbor-data"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ed404e8ba3565255037e6f60dc079bb99586c39e2e23e47a6fbdaf5f62b2eef"
-dependencies = [
- "base64",
- "half",
 ]
 
 [[package]]
@@ -3709,7 +3699,7 @@ dependencies = [
  "backtrace",
  "base64",
  "bytes",
- "cbor-data 0.8.3",
+ "cbor-data",
  "cfg-if 1.0.0",
  "chrono",
  "criterion",
@@ -5014,7 +5004,8 @@ dependencies = [
  "actyx_sdk",
  "anyhow",
  "ax-futures-util",
- "cbor-data 0.5.0",
+ "cbor-data",
+ "chrono",
  "criterion",
  "derive_more",
  "futures 0.3.19",
@@ -6407,7 +6398,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64",
- "cbor-data 0.8.3",
+ "cbor-data",
  "chrono",
  "crossbeam",
  "derive_more",

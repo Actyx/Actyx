@@ -1,15 +1,18 @@
+use crate::{error::RuntimeError, eval::Context};
 use actyx_sdk::{
     language::{Num, SortKey},
     EventKey, Payload,
 };
 use anyhow::{anyhow, Result};
-use cbor_data::{Cbor, CborBuilder, CborOwned, CborValue, Encoder, WithOutput};
+use cbor_data::{Cbor, CborBuilder, CborOwned, CborValue, Encoder, WithOutput, Writer};
+use chrono::{DateTime, SecondsFormat};
 use derive_more::Display;
 use std::{
+    borrow::{Borrow, Cow},
     cell::RefCell,
     cmp::Ordering,
+    convert::{TryFrom, TryInto},
     fmt::{self, Display, Formatter},
-    iter::once,
 };
 
 thread_local! {
@@ -20,11 +23,37 @@ thread_local! {
 pub enum ValueKind {
     Null,
     Bool,
+    Timestamp,
     Number,
     String,
+    Bytes,
     Object,
     Array,
     Other,
+}
+
+impl<'a> From<&CborValue<'a>> for ValueKind {
+    fn from(v: &CborValue<'a>) -> Self {
+        match v {
+            CborValue::Array(_) => ValueKind::Array,
+            CborValue::Dict(_) => ValueKind::Object,
+            CborValue::Undefined => ValueKind::Object,
+            CborValue::Null => ValueKind::Null,
+            CborValue::Bool(_) => ValueKind::Bool,
+            CborValue::Number(_) => ValueKind::Number,
+            CborValue::Timestamp(_) => ValueKind::Timestamp,
+            CborValue::Str(_) => ValueKind::String,
+            CborValue::Bytes(_) => ValueKind::Bytes,
+            CborValue::Invalid => ValueKind::Other,
+            CborValue::Unknown => ValueKind::Other,
+        }
+    }
+}
+
+impl<'a> From<CborValue<'a>> for ValueKind {
+    fn from(v: CborValue<'a>) -> Self {
+        (&v).into()
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -38,7 +67,7 @@ impl From<(EventKey, Payload)> for Value {
         let (key, payload) = event;
         Self {
             sort_key: key.into(),
-            value: CborOwned::trusting(payload.as_bytes()),
+            value: CborOwned::unchecked(payload.as_bytes()),
         }
     }
 }
@@ -72,37 +101,15 @@ impl Value {
     }
 
     pub fn value(&self) -> CborValue<'_> {
-        self.value.value().unwrap()
-    }
-
-    pub fn cbor(&self) -> Cbor<'_> {
-        self.value.borrow()
-    }
-
-    pub fn index(&self, s: &str) -> anyhow::Result<Self> {
-        self.value
-            .index_iter(once(s))
-            .map(|cbor| Self {
-                sort_key: self.sort_key,
-                value: CborOwned::trusting(cbor.bytes),
-            })
-            .ok_or_else(|| anyhow!("path .{} does not exist in value {}", s, self.value()))
+        self.value.decode()
     }
 
     pub fn kind(&self) -> ValueKind {
-        match self.value().kind {
-            cbor_data::ValueKind::Pos(_) => ValueKind::Number,
-            cbor_data::ValueKind::Neg(_) => ValueKind::Number,
-            cbor_data::ValueKind::Float(_) => ValueKind::Number,
-            cbor_data::ValueKind::Str(_) => ValueKind::String,
-            cbor_data::ValueKind::Bytes(_) => ValueKind::Other,
-            cbor_data::ValueKind::Bool(_) => ValueKind::Bool,
-            cbor_data::ValueKind::Null => ValueKind::Null,
-            cbor_data::ValueKind::Undefined => ValueKind::Other,
-            cbor_data::ValueKind::Simple(_) => ValueKind::Other,
-            cbor_data::ValueKind::Array => ValueKind::Array,
-            cbor_data::ValueKind::Dict => ValueKind::Object,
-        }
+        self.value.decode().into()
+    }
+
+    pub fn cbor(&self) -> &Cbor {
+        self.value.borrow()
     }
 
     pub fn payload(&self) -> Payload {
@@ -110,12 +117,18 @@ impl Value {
     }
 
     pub fn as_number(&self) -> Result<Num> {
-        if let Some(b) = self.value().as_u64() {
-            Ok(Num::Natural(b))
-        } else if let Some(f) = self.value().as_f64() {
-            Ok(Num::Decimal(f))
-        } else {
-            Err(anyhow!("{} is not a number", self))
+        match self.value() {
+            CborValue::Number(n) => match n {
+                cbor_data::value::Number::Int(i) => Ok(Num::Natural(i.try_into()?)),
+                cbor_data::value::Number::IEEE754(f) => Ok(Num::Decimal(f)),
+                cbor_data::value::Number::Decimal(_) => Err(RuntimeError::NotSupported("BigDecimal".to_owned()).into()),
+                cbor_data::value::Number::Float(_) => Err(RuntimeError::NotSupported("BigFloat".to_owned()).into()),
+            },
+            _ => Err(RuntimeError::TypeError {
+                value: self.print(),
+                expected: ValueKind::Number,
+            }
+            .into()),
         }
     }
 
@@ -123,19 +136,38 @@ impl Value {
         self.value().as_bool().ok_or_else(|| anyhow!("{} is not a bool", self))
     }
 
-    pub fn as_str(&self) -> Result<&str> {
-        self.value().as_str().ok_or_else(|| anyhow!("{} is not a string", self))
+    pub fn as_str(&self) -> Result<Cow<'_, str>> {
+        self.value().to_str().ok_or_else(|| anyhow!("{} is not a string", self))
+    }
+
+    pub fn as_array(&self, cx: &Context) -> Result<Vec<Value>> {
+        Ok(self
+            .value()
+            .to_array()
+            .ok_or_else(|| RuntimeError::TypeError {
+                value: self.print(),
+                expected: ValueKind::Array,
+            })?
+            .into_iter()
+            .map(|cbor| cx.value(|b| b.write_trusting(cbor.as_slice())))
+            .collect())
     }
 
     pub fn print(&self) -> String {
-        match self.kind() {
-            ValueKind::Null => "NULL".to_owned(),
-            ValueKind::Bool => if self.as_bool().unwrap() { "TRUE" } else { "FALSE" }.to_owned(),
-            ValueKind::Number => self.as_number().unwrap().to_string(),
-            ValueKind::String => self.as_str().unwrap().to_owned(),
-            ValueKind::Object => "OBJECT".to_owned(),
-            ValueKind::Array => "ARRAY".to_owned(),
-            ValueKind::Other => "OTHER".to_owned(),
+        match self.value() {
+            CborValue::Array(_) => "ARRAY".to_owned(),
+            CborValue::Dict(_) => "OBJECT".to_owned(),
+            CborValue::Undefined => "UNDEFINED".to_owned(),
+            CborValue::Null => "NULL".to_owned(),
+            CborValue::Bool(b) => if b { "TRUE" } else { "FALSE" }.to_owned(),
+            CborValue::Number(_) => self.cbor().to_string(),
+            CborValue::Timestamp(t) => DateTime::try_from(t)
+                .map(|dt| dt.to_rfc3339_opts(SecondsFormat::Micros, true))
+                .unwrap_or_else(|_| "INVALID_TIMESTAMP".to_owned()),
+            CborValue::Str(s) => s.into_owned(),
+            CborValue::Bytes(_) => self.cbor().to_string(),
+            CborValue::Invalid => "INVALID".to_owned(),
+            CborValue::Unknown => "UNKNWON".to_owned(),
         }
     }
 
@@ -194,7 +226,7 @@ impl PartialOrd for Value {
             ValueKind::Null => Some(Ordering::Equal),
             ValueKind::Bool => self.as_bool().ok()?.partial_cmp(&other.as_bool().ok()?),
             ValueKind::Number => self.as_number().ok()?.partial_cmp(&other.as_number().ok()?),
-            ValueKind::String => self.as_str().ok()?.partial_cmp(other.as_str().ok()?),
+            ValueKind::String => self.as_str().ok()?.as_ref().partial_cmp(other.as_str().ok()?.as_ref()),
             _ => None,
         }
     }

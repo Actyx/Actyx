@@ -78,6 +78,9 @@ fn render_array(w: &mut impl Write, e: &Arr) -> Result {
         if i > 0 {
             w.write_str(", ")?;
         }
+        if x.spread {
+            w.write_str("...")?;
+        }
         render_simple_expr(w, x)?;
     }
     w.write_char(']')
@@ -161,6 +164,9 @@ fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
                     first = false;
                 } else {
                     w.write_str(", ")?;
+                }
+                if e.spread {
+                    w.write_str("...")?;
                 }
                 render_simple_expr(w, e)?;
             }

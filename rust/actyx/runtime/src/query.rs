@@ -224,7 +224,7 @@ mod tests {
             .feed(Some(v), &cx)
             .await
             .into_iter()
-            .map(|v| v.map(|v| v.value().to_string()).unwrap_or_else(|e| e.to_string()))
+            .map(|v| v.map(|v| v.cbor().to_string()).unwrap_or_else(|e| e.to_string()))
             .collect()
     }
 
@@ -249,7 +249,7 @@ mod tests {
                 "{x:'a' y:'b'}"
             )
             .await,
-            vec!["\"a\"", "42", r#"path .z does not exist in value {"x": "a", "y": "b"}"#]
+            vec!["\"a\"", "42", r#"property `z` not found in Object"#]
         );
     }
 

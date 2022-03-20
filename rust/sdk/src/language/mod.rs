@@ -5,7 +5,7 @@ mod render;
 pub use self::non_empty::NonEmptyVec;
 use self::render::render_tag_expr;
 use crate::{service::Order, tags::Tag, AppId, EventKey, LamportTimestamp, StreamId, Timestamp};
-use std::{convert::TryInto, num::NonZeroU64, sync::Arc};
+use std::{convert::TryInto, fmt::Display, num::NonZeroU64, ops::Deref, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Source {
@@ -36,10 +36,31 @@ mod query_impl;
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Operation {
     Filter(SimpleExpr),
-    Select(NonEmptyVec<SimpleExpr>),
+    Select(NonEmptyVec<SpreadExpr>),
     Aggregate(SimpleExpr),
     Limit(NonZeroU64),
     Binding(String, SimpleExpr),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct SpreadExpr {
+    pub expr: SimpleExpr,
+    pub spread: bool,
+}
+impl Deref for SpreadExpr {
+    type Target = SimpleExpr;
+    fn deref(&self) -> &Self::Target {
+        &self.expr
+    }
+}
+impl Display for SpreadExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.spread {
+            write!(f, "...{}", self.expr)
+        } else {
+            self.expr.fmt(f)
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -161,7 +182,7 @@ pub struct Obj {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Arr {
-    pub items: Arc<[SimpleExpr]>,
+    pub items: Arc<[SpreadExpr]>,
 }
 
 macro_rules! decl_op {
@@ -250,6 +271,10 @@ pub enum Traverse {
 }
 
 impl SimpleExpr {
+    pub fn with_spread(self, spread: bool) -> SpreadExpr {
+        SpreadExpr { expr: self, spread }
+    }
+
     /// Traverse all parts of the expression, including expressions in sub-queries
     pub fn traverse(&self, f: &mut impl FnMut(&SimpleExpr) -> Traverse) {
         if f(self) == Traverse::Descend {
@@ -378,7 +403,13 @@ impl SimpleExpr {
                 SimpleExpr::Object(Obj { props })
             }
             SimpleExpr::Array(Arr { items }) => {
-                let items = items.iter().map(|e| e.rewrite(f)).collect::<Vec<_>>();
+                let items = items
+                    .iter()
+                    .map(|e| SpreadExpr {
+                        expr: e.rewrite(f),
+                        spread: e.spread,
+                    })
+                    .collect::<Vec<_>>();
                 SimpleExpr::Array(Arr { items: items.into() })
             }
             SimpleExpr::Null => self.clone(),
@@ -410,7 +441,14 @@ impl SimpleExpr {
                         order: *order,
                     },
                     Source::Array(Arr { items }) => Source::Array(Arr {
-                        items: items.iter().map(|e| e.rewrite(f)).collect::<Vec<_>>().into(),
+                        items: items
+                            .iter()
+                            .map(|e| SpreadExpr {
+                                expr: e.rewrite(f),
+                                spread: e.spread,
+                            })
+                            .collect::<Vec<_>>()
+                            .into(),
                     }),
                 };
                 let ops = q
@@ -418,9 +456,16 @@ impl SimpleExpr {
                     .iter()
                     .map(|op| match op {
                         Operation::Filter(e) => Operation::Filter(e.rewrite(f)),
-                        Operation::Select(e) => {
-                            Operation::Select(e.iter().map(|e| e.rewrite(f)).collect::<Vec<_>>().try_into().unwrap())
-                        }
+                        Operation::Select(e) => Operation::Select(
+                            e.iter()
+                                .map(|e| SpreadExpr {
+                                    expr: e.rewrite(f),
+                                    spread: e.spread,
+                                })
+                                .collect::<Vec<_>>()
+                                .try_into()
+                                .unwrap(),
+                        ),
                         Operation::Aggregate(a) => Operation::Aggregate(a.rewrite(f)),
                         Operation::Limit(l) => Operation::Limit(*l),
                         Operation::Binding(n, e) => Operation::Binding(n.clone(), e.rewrite(f)),
@@ -630,7 +675,16 @@ mod for_tests {
 
     impl Arr {
         pub fn with(items: &[SimpleExpr]) -> SimpleExpr {
-            SimpleExpr::Array(Arr { items: items.into() })
+            SimpleExpr::Array(Arr {
+                items: items
+                    .iter()
+                    .map(|expr| SpreadExpr {
+                        expr: expr.clone(),
+                        spread: false,
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
+            })
         }
     }
 
@@ -749,7 +803,7 @@ mod for_tests {
                 Indexing(x, (*x.head).clone())
                 Interpolation(x,)
                 Object(x, x.props.first().map(|p| p.1.clone()).unwrap_or(SimpleExpr::Null))
-                Array(x, x.items.first().cloned().unwrap_or(SimpleExpr::Null))
+                Array(x, x.items.first().map(|i| i.expr.clone()).unwrap_or(SimpleExpr::Null))
                 Cases(x, x.first().map(|p| p.1.clone()).unwrap_or(SimpleExpr::Null))
                 BinOp(x,)
                 Not(x, (**x).clone())
@@ -757,6 +811,20 @@ mod for_tests {
                 FuncCall(x,)
                 SubQuery(x,)
                 , Null)
+        }
+    }
+
+    impl Arbitrary for SpreadExpr {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                expr: SimpleExpr::arbitrary(g),
+                spread: bool::arbitrary(g),
+            }
+        }
+
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            let spread = self.spread;
+            Box::new(self.expr.shrink().map(move |expr| SpreadExpr { expr, spread }))
         }
     }
 

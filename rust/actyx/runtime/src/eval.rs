@@ -1,17 +1,19 @@
-use crate::{
-    error::RuntimeError,
-    query::Query,
-    value::{Value, ValueKind},
-};
+use crate::{error::RuntimeError, query::Query, value::Value};
 use actyx_sdk::{
     language::{BinOp, Ind, Index, Num, SimpleExpr, SortKey, TagAtom, TagExpr},
     service::Order,
     OffsetMap, Tag,
 };
 use anyhow::{anyhow, bail, ensure};
-use cbor_data::{CborBuilder, CborOwned, Encoder, WithOutput, Writer};
+use cbor_data::{value as cbor_value, CborBuilder, CborOwned, CborValue, Encoder, PathElement, WithOutput, Writer};
 use futures::{future::BoxFuture, FutureExt};
-use std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, convert::TryFrom, sync::Arc};
+use std::{
+    borrow::Cow,
+    cmp::Ordering,
+    collections::BTreeMap,
+    convert::{TryFrom, TryInto},
+    sync::Arc,
+};
 use swarm::event_store_ref::EventStoreRef;
 
 pub struct Context<'a> {
@@ -181,17 +183,39 @@ impl<'a> Context<'a> {
                     Ok(self.value(|b| b.write_trusting(v.as_slice())))
                 }
                 SimpleExpr::Indexing(Ind { head, tail }) => {
-                    let mut v = self.eval(head).await?;
+                    let v = self.eval(head).await?;
+                    let mut v = v.cbor();
                     for i in tail.iter() {
                         v = match i {
-                            Index::String(s) => v.index(s)?,
-                            Index::Number(n) => v.index(&format!("{}", n))?,
+                            Index::String(s) => v
+                                .index_borrowed([PathElement::String(Cow::Borrowed(&*s))])
+                                .ok_or_else(|| RuntimeError::NotFound {
+                                    index: s.clone(),
+                                    in_value: (&v.decode()).into(),
+                                })?,
+                            Index::Number(n) => {
+                                v.index_borrowed([PathElement::Number(*n)])
+                                    .ok_or_else(|| RuntimeError::NotFound {
+                                        index: format!("{:?}", n),
+                                        in_value: (&v.decode()).into(),
+                                    })?
+                            }
                             Index::Expr(e) => {
                                 let idx = self.eval(e).await?;
-                                match idx.kind() {
-                                    ValueKind::Number => v.index(&format!("{}", idx.value()))?,
-                                    ValueKind::String => v.index(idx.as_str()?)?,
-                                    _ => return Err(RuntimeError::NotAnIndex(idx.value().to_string()).into()),
+                                match idx.value() {
+                                    CborValue::Number(cbor_value::Number::Int(i)) => v
+                                        .index_borrowed([PathElement::Number(i.try_into()?)])
+                                        .ok_or_else(|| RuntimeError::NotFound {
+                                            index: format!("{:?}", i),
+                                            in_value: (&v.decode()).into(),
+                                        })?,
+                                    CborValue::Str(s) => v
+                                        .index_borrowed([PathElement::String(s.clone())])
+                                        .ok_or_else(|| RuntimeError::NotFound {
+                                            index: s.into_owned(),
+                                            in_value: (&v.decode()).into(),
+                                        })?,
+                                    _ => return Err(RuntimeError::NotAnIndex(idx.to_string()).into()),
                                 }
                             }
                         };
@@ -214,21 +238,19 @@ impl<'a> Context<'a> {
                     let mut v = BTreeMap::new();
                     for (n, e) in a.props.iter() {
                         let key = match n {
-                            Index::String(s) => s.clone(),
-                            Index::Number(n) => n.to_string(),
-                            Index::Expr(e) => {
-                                let k = self.eval(e).await?;
-                                k.as_str()
-                                    .map(|s| s.to_owned())
-                                    .or_else(|_| k.as_number().map(|n| n.to_string()))?
-                            }
+                            Index::String(s) => CborBuilder::new().encode_str(s),
+                            Index::Number(n) => CborBuilder::new().encode_u64(*n),
+                            Index::Expr(e) => self.eval(e).await?.cbor().to_owned(),
                         };
                         v.insert(key, self.eval(e).await?);
                     }
                     Ok(self.value(|b| {
                         b.encode_dict(|b| {
                             for (name, item) in v.iter() {
-                                b.with_key(name, |b| b.write_trusting(item.as_slice()));
+                                b.with_cbor_key(
+                                    |b| b.write_trusting(name.as_slice()),
+                                    |b| b.write_trusting(item.as_slice()),
+                                );
                             }
                         })
                     }))
@@ -236,7 +258,16 @@ impl<'a> Context<'a> {
                 SimpleExpr::Array(a) => {
                     let mut v = vec![];
                     for e in a.items.iter() {
-                        v.push(self.eval(e).await?)
+                        let val = self.eval(e).await?;
+                        if e.spread {
+                            if let Ok(items) = val.as_array(self) {
+                                v.extend(items);
+                            } else {
+                                return Err(RuntimeError::TypeErrorSpread(val.kind()).into());
+                            }
+                        } else {
+                            v.push(val);
+                        }
                     }
                     Ok(self.value(|b| {
                         b.encode_array(|b| {
@@ -391,7 +422,7 @@ mod tests {
     use spectral::{assert_that, string::StrAssertions};
 
     async fn eval(cx: &mut Context<'_>, s: &str) -> anyhow::Result<String> {
-        cx.eval(&s.parse()?).await.map(|x| x.value().to_string())
+        cx.eval(&s.parse()?).await.map(|x| x.cbor().to_string())
     }
 
     fn eval_bool(cx: &mut Context<'_>, s: &str) -> bool {
@@ -431,14 +462,14 @@ mod tests {
         assert_eq!(eval(&mut cx, "x").await.unwrap(), "{\"y\": 42}");
 
         let err = eval(&mut cx, "5+x").await.unwrap_err().to_string();
-        assert!(err.contains("{\"y\": 42} is not a number"), "didn’t match: {}", err);
+        assert!(err.contains("`OBJECT` is not of type Number"), "didn’t match: {}", err);
 
         let err = eval(&mut cx, "y").await.unwrap_err().to_string();
-        assert!(err.contains("variable 'y' is not bound"), "didn’t match: {}", err);
+        assert!(err.contains("variable `y` is not bound"), "didn’t match: {}", err);
 
         let err = eval(&mut cx, "x.a").await.unwrap_err().to_string();
         assert!(
-            err.contains("path .a does not exist in value {\"y\": 42}"),
+            err.contains("property `a` not found in Object"),
             "didn’t match: {}",
             err
         );
@@ -568,7 +599,10 @@ mod tests {
         }
         quickcheck(prop_str as fn(String, String) -> bool);
 
-        assert_that(&eval(&mut cx, "NULL > 12").await.unwrap_err().to_string()).contains("cannot compare");
+        assert_eq!(
+            &eval(&mut cx, "NULL > 12").await.unwrap_err().to_string(),
+            "binary operation > cannot be applied to Null and Number"
+        );
     }
 
     #[tokio::test]

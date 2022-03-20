@@ -4,8 +4,8 @@
 use std::{convert::TryInto, str::FromStr, sync::Arc};
 
 use super::{
-    non_empty::NonEmptyVec, AggrOp, Arr, FuncCall, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, Source, TagAtom,
-    TagExpr,
+    non_empty::NonEmptyVec, AggrOp, Arr, FuncCall, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, Source,
+    SpreadExpr, TagAtom, TagExpr,
 };
 use crate::{language::SortKey, service::Order, tags::Tag, Timestamp};
 use anyhow::{bail, ensure, Result};
@@ -298,9 +298,22 @@ fn r_object(p: P, ctx: Context) -> Result<Obj> {
 }
 
 fn r_array(p: P, ctx: Context) -> Result<Arr> {
-    Ok(Arr {
-        items: p.inner()?.map(|p| r_simple_expr(p, ctx)).collect::<Result<_>>()?,
-    })
+    let mut p = p.inner()?;
+    let mut items = Vec::new();
+    while let Some(candidate) = p.next() {
+        match candidate.as_rule() {
+            Rule::spread => items.push(SpreadExpr {
+                expr: r_simple_expr(p.next().unwrap(), ctx)?,
+                spread: true,
+            }),
+            Rule::simple_expr => items.push(SpreadExpr {
+                expr: r_simple_expr(candidate, ctx)?,
+                spread: false,
+            }),
+            x => bail!("unexpected token: {:?}", x),
+        }
+    }
+    Ok(Arr { items: items.into() })
 }
 
 fn r_bool(p: P) -> bool {
@@ -456,10 +469,7 @@ fn r_query(features: Vec<String>, p: P, ctx: Context) -> Result<Query> {
                 .ops
                 .push(Operation::Filter(r_simple_expr(o.single()?, Context::Simple)?)),
             Rule::select => {
-                let v = o
-                    .inner()?
-                    .map(|p| r_simple_expr(p, Context::Simple))
-                    .collect::<Result<Vec<_>>>()?;
+                let v = r_array(o, Context::Simple)?.items.to_vec();
                 q.ops.push(Operation::Select(v.try_into()?))
             }
             Rule::aggregate => q
@@ -660,7 +670,8 @@ mod tests {
                     ("x", Not(String("hello".to_owned()).into())),
                     ("y", Number(Natural(42))),
                     ("z", Arr::with(&[Number(Decimal(1.3)), Ind::with("_", &[&"x"])]))
-                ])]
+                ])
+                .with_spread(false)]
                 .try_into()?
             ))
         );
@@ -724,7 +735,7 @@ mod tests {
         assert_eq!(
             p("[1,TRUE]"),
             Array(Arr {
-                items: vec![Number(Natural(1)), Bool(true)].into()
+                items: vec![Number(Natural(1)).with_spread(false), Bool(true).with_spread(false)].into()
             })
         );
         assert_eq!(
@@ -761,10 +772,11 @@ mod tests {
                 head: Arc::new(SimpleExpr::Variable(Var::try_from("_").unwrap())),
                 tail: NonEmptyVec::try_from(vec![Index::String(s.to_owned())]).unwrap(),
             })
+            .with_spread(false)
         };
         let s = |s: &str| Index::String(s.to_owned());
         let n = |n: u64| SimpleExpr::Number(Num::Natural(n));
-        let v = |s: &str| SimpleExpr::Variable(Var::try_from(s).unwrap());
+        let v = |s: &str| SimpleExpr::Variable(Var::try_from(s).unwrap()).with_spread(false);
 
         p("FROM 'x' SELECT _.H", Some("expected ident"));
         p("FROM 'x' SELECT _.HE", Some("expected ident"));
@@ -780,7 +792,8 @@ mod tests {
             p("FROM 'x' SELECT { i: 1 iIö: 2 PσΔ: 3 }", None),
             Some(vec![SimpleExpr::Object(Obj {
                 props: Arc::from(vec![(s("i"), n(1)), (s("iIö"), n(2)), (s("PσΔ"), n(3))].as_slice())
-            })])
+            })
+            .with_spread(false)])
         )
     }
 
@@ -871,14 +884,16 @@ mod tests {
             Some(vec![SimpleExpr::FuncCall(FuncCall {
                 name: "Func".to_owned(),
                 args: vec![].into()
-            })])
+            })
+            .with_spread(false)])
         );
         assert_eq!(
             p("FROM 'x' SELECT Fÿnc('x')", None),
             Some(vec![SimpleExpr::FuncCall(FuncCall {
                 name: "Fÿnc".to_owned(),
                 args: vec![SimpleExpr::String("x".to_owned())].into()
-            })])
+            })
+            .with_spread(false)])
         );
         assert_eq!(
             p("FROM 'x' SELECT Func(x, 'x')", None),
@@ -889,7 +904,8 @@ mod tests {
                     SimpleExpr::String("x".to_owned())
                 ]
                 .into()
-            })])
+            })
+            .with_spread(false)])
         );
     }
 
@@ -921,5 +937,18 @@ mod tests {
     fn from_arr() {
         let q = "FROM [1, 2, 3]".parse::<Query>().unwrap();
         assert_eq!(arr(q), vec!["1", "2", "3"]);
+    }
+
+    #[test]
+    fn spread() {
+        let q = "FROM [1, ...2, ...(x + 3)]".parse::<Query>().unwrap();
+        assert_eq!(arr(q), vec!["1", "...2", "...(x + 3)"]);
+
+        let q = "FROM 'x' SELECT ...a, b, ...c".parse::<Query>().unwrap();
+        let v = match q.ops.into_iter().next() {
+            Some(Operation::Select(v)) => v.iter().map(|e| e.spread).collect::<Vec<_>>(),
+            x => panic!("unexpected: {:?}", x),
+        };
+        assert_eq!(v, vec![true, false, true]);
     }
 }

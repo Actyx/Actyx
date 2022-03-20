@@ -10,7 +10,7 @@ query_order = { "ORDER" ~ order }
 order = { "ASC" | "DESC" | "STREAM" }
 query_op = _{ filter | select | aggregate | limit | binding }
 filter = { "FILTER" ~ simple_expr }
-select = { "SELECT" ~ simple_expr ~ ( "," ~ simple_expr )* }
+select = { "SELECT" ~ spread? ~ simple_expr ~ ( "," ~ spread? ~ simple_expr )* }
 aggregate = { "AGGREGATE" ~ simple_expr }
 limit = { "LIMIT" ~ positive }
 binding = { "LET" ~ ident ~ ":=" ~ simple_expr }
@@ -36,7 +36,7 @@ hexdigit = { '0'..'9' | 'a'..'f' | 'A'..'F' }
 unicode = @{ "U+" ~ hexdigit{1,6} }
 // This currently permits { a:1 b:2 }, which I’d like to try; comma is available for disambiguation
 object = { "{" ~ ( ( ident | "[" ~ natural ~ "]" | "[" ~ string ~ "]" | "[" ~ simple_expr ~ "]" ) ~ ":" ~ simple_expr ~ ","? )* ~ "}" }
-array = { "[" ~ "]" | "[" ~ simple_expr ~ ( "," ~ simple_expr )* ~ "]" }
+array = { "[" ~ "]" | "[" ~ spread? ~ simple_expr ~ ( "," ~ spread? ~ simple_expr )* ~ "]" }
 app_id = @{ app_id_char+ ~ ( "." ~ app_id_char+ )* }
 app_id_char = { "-" | '0'..'9' | 'a'..'z' }
 stream_id = @{ crypt_char{43} ~ "-" ~ natural }
@@ -109,6 +109,7 @@ ge = { ">=" | "≥" }
 eq = { "=" }
 ne = { "!=" | "≠" }
 alternative = { "??" }
+spread = { "..." }
 
 WHITESPACE = _{ WHITE_SPACE }
 COMMENT = _{ "--" ~ ( !("\n"|"\r") ~ ANY )* }

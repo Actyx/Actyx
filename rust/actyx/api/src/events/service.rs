@@ -11,12 +11,14 @@ use actyx_sdk::{
 };
 use ax_futures_util::ReceiverExt;
 use futures::{
-    future::poll_fn,
+    future::{poll_fn, ready},
+    pin_mut,
     stream::{self, BoxStream, StreamExt},
     FutureExt, TryStreamExt,
 };
 use genawaiter::sync::{Co, Gen};
 use runtime::{
+    error::RuntimeError,
     eval::Context,
     features::{Endpoint, Feature, FeatureError, Features},
     query::{Feeder, Query},
@@ -122,7 +124,7 @@ impl EventService {
                 lower_bound.clone(),
                 upper_bound.clone(),
             );
-            let mut stream = match &query.source {
+            let stream = match &query.source {
                 language::Source::Events { from, order } => {
                     let order = order.or_else(|| feeder.preferred_order()).unwrap_or(request_order);
                     cx.order = order;
@@ -164,7 +166,27 @@ impl EventService {
                         .left_stream()
                 }
                 language::Source::Array(Arr { items }) => stream::iter(items.iter())
-                    .then(|expr| cx.eval(expr))
+                    .flat_map(|expr| {
+                        let cx = &cx;
+                        async move {
+                            match cx.eval(expr).await {
+                                Ok(val) => {
+                                    if expr.spread {
+                                        if let Ok(items) = val.as_array(cx) {
+                                            stream::iter(items.into_iter().map(Ok)).boxed()
+                                        } else {
+                                            stream::once(ready(Err(RuntimeError::TypeErrorSpread(val.kind()).into())))
+                                                .boxed()
+                                        }
+                                    } else {
+                                        stream::once(ready(Ok(val))).boxed()
+                                    }
+                                }
+                                Err(e) => stream::once(ready(Err(e))).boxed(),
+                            }
+                        }
+                        .flatten_stream()
+                    })
                     .map_ok(|v| {
                         (
                             v,
@@ -182,6 +204,7 @@ impl EventService {
                     })
                     .right_stream(),
             };
+            pin_mut!(stream);
 
             while let Some(ev) = stream.next().await {
                 let (ev, key, meta) = match ev {
@@ -811,6 +834,58 @@ mod tests {
                         )
                         .await,
                         vec!["[\"a2\",\"b\"]", "[\"a1\",\"b\"]", "offsets"]
+                    );
+                })
+                .await
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn spread() {
+        Runtime::new()
+            .unwrap()
+            .block_on(async {
+                timeout(Duration::from_secs(1), async {
+                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let (_node_id, service) = setup(&store);
+
+                    assert_eq!(
+                        query(
+                            &service,
+                            "FEATURES(zøg subQuery interpolation fromArray multiEmission spread) \
+                            FROM [1, ...FROM ['r', 'd'] SELECT [NULL, `{_}2`] END, [3]] \
+                            SELECT \
+                                'hello','world',
+                                ...
+                                CASE IsDefined(_[0]) => _
+                                CASE TRUE => ['not an array']
+                                ENDCASE,
+                                'EPIC' -- no more faith
+                            "
+                        )
+                        .await,
+                        vec![
+                            "\"hello\"",
+                            "\"world\"",
+                            "\"not an array\"",
+                            "\"EPIC\"",
+                            "\"hello\"",
+                            "\"world\"",
+                            "null",
+                            "\"r2\"",
+                            "\"EPIC\"",
+                            "\"hello\"",
+                            "\"world\"",
+                            "null",
+                            "\"d2\"",
+                            "\"EPIC\"",
+                            "\"hello\"",
+                            "\"world\"",
+                            "3",
+                            "\"EPIC\"",
+                            "offsets",
+                        ]
                     );
                 })
                 .await
