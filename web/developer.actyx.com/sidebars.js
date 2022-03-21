@@ -279,5 +279,6 @@ module.exports = {
         'tutorials/advanced-tutorial/next-steps',
       ],
     },
+    { type: 'doc', id: 'tutorials/aql' },
   ],
 }
