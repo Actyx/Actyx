@@ -38,6 +38,7 @@ dependencies = [
  "futures-timer",
  "hex",
  "intern-arc",
+ "lazy_static",
  "libipld",
  "maplit",
  "multibase",

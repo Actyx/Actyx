@@ -260,7 +260,7 @@ impl Default for TagSet {
 }
 
 impl TagSet {
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self(Vec::new())
     }
 

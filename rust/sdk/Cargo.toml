@@ -58,6 +58,7 @@ tracing = "0.1.29"
 typenum = "1.15.0"
 unicode-normalization = "0.1.19"
 url = { version = "2.2.2", optional = true }
+lazy_static = "1.4.0"
 
 [dev-dependencies]
 asynchronous-codec = "0.6.0"

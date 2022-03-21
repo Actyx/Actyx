@@ -5,11 +5,13 @@ use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt::Display, num::NonZeroU64};
 
 use crate::{
+    app_id,
     event::{Event, EventKey, Metadata},
     scalars::StreamId,
     tags::TagSet,
-    AppId, LamportTimestamp, Offset, OffsetMap, Payload, Timestamp,
+    LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamNr, Timestamp,
 };
+use lazy_static::lazy_static;
 
 /// The order in which you want to receive events for a query
 ///
@@ -57,45 +59,118 @@ pub struct SubscribeRequest {
     pub query: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(from = "EventMetaIo", into = "EventMetaIo")]
+pub enum EventMeta {
+    Range {
+        from_key: EventKey,
+        to_key: EventKey,
+        from_time: Timestamp,
+        to_time: Timestamp,
+    },
+    Synthetic,
+    Event {
+        key: EventKey,
+        meta: Metadata,
+    },
+}
+#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum EventMetaIo {
+    #[serde(rename_all = "camelCase")]
+    Range {
+        from_key: EventKey,
+        to_key: EventKey,
+        from_time: Timestamp,
+        to_time: Timestamp,
+        #[serde(flatten)]
+        key: EventKey,
+        #[serde(flatten)]
+        meta: Metadata,
+    },
+    Event {
+        #[serde(flatten)]
+        key: EventKey,
+        #[serde(flatten)]
+        meta: Metadata,
+    },
+}
+const EVENT_KEY: EventKey = EventKey {
+    lamport: LamportTimestamp::new(0),
+    stream: NodeId::new([0; 32]).stream(StreamNr::new(0)),
+    offset: Offset::new(0),
+};
+lazy_static! {
+    static ref METADATA: Metadata = Metadata {
+        timestamp: Timestamp::new(0),
+        tags: TagSet::empty(),
+        app_id: app_id!("none"),
+    };
+}
+impl From<EventMeta> for EventMetaIo {
+    fn from(em: EventMeta) -> Self {
+        match em {
+            EventMeta::Range {
+                from_key,
+                to_key,
+                from_time,
+                to_time,
+            } => Self::Range {
+                from_key,
+                to_key,
+                from_time,
+                to_time,
+                key: EVENT_KEY,
+                meta: METADATA.clone(),
+            },
+            EventMeta::Synthetic => Self::Event {
+                key: EVENT_KEY,
+                meta: METADATA.clone(),
+            },
+            EventMeta::Event { key, meta } => Self::Event { key, meta },
+        }
+    }
+}
+impl From<EventMetaIo> for EventMeta {
+    fn from(em: EventMetaIo) -> Self {
+        match em {
+            EventMetaIo::Range {
+                from_key,
+                to_key,
+                from_time,
+                to_time,
+                ..
+            } => Self::Range {
+                from_key,
+                to_key,
+                from_time,
+                to_time,
+            },
+            EventMetaIo::Event { key, meta } => {
+                if meta.timestamp.as_i64() == 0 {
+                    Self::Synthetic
+                } else {
+                    Self::Event { key, meta }
+                }
+            }
+        }
+    }
+}
+
 /// Event response
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EventResponse<T> {
-    /// Lamport timestamp
-    pub lamport: LamportTimestamp,
-    /// ID of the stream this event belongs to
-    pub stream: StreamId,
-    /// The event offset within the stream
-    pub offset: Offset,
-    /// Timestamp at which the event was emitted
-    pub timestamp: Timestamp,
-    /// Tag attached to the event
-    pub tags: TagSet,
-    /// Associated app ID
-    pub app_id: AppId,
+    #[serde(flatten)]
+    pub meta: EventMeta,
     /// The actual, app-specific event payload
     pub payload: T,
 }
 impl<T> From<Event<T>> for EventResponse<T> {
     fn from(env: Event<T>) -> Self {
-        let EventKey {
-            lamport,
-            stream,
-            offset,
-        } = env.key;
-        let Metadata {
-            timestamp,
-            tags,
-            app_id,
-        } = env.meta;
-        let payload = env.payload;
+        let Event { key, meta, payload } = env;
         EventResponse {
-            lamport,
-            stream,
-            offset,
-            timestamp,
-            tags,
-            app_id,
+            meta: EventMeta::Event { key, meta },
             payload,
         }
     }
@@ -111,12 +186,7 @@ impl EventResponse<Payload> {
         T: Deserialize<'a> + Clone,
     {
         Ok(EventResponse {
-            stream: self.stream,
-            lamport: self.lamport,
-            offset: self.offset,
-            timestamp: self.timestamp,
-            tags: self.tags.clone(),
-            app_id: self.app_id.clone(),
+            meta: self.meta.clone(),
             payload: self.payload.extract::<T>()?,
         })
     }
@@ -125,14 +195,22 @@ impl EventResponse<Payload> {
 impl<T> std::fmt::Display for EventResponse<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use chrono::TimeZone;
-        let time = chrono::Local.timestamp_millis(self.timestamp.as_i64() / 1000);
-        write!(
-            f,
-            "Event at {} ({}, stream ID {})",
-            time.to_rfc3339_opts(chrono::SecondsFormat::Millis, false),
-            self.lamport,
-            self.stream,
-        )
+        match &self.meta {
+            EventMeta::Range { .. } => {
+                write!(f, "composite event")
+            }
+            EventMeta::Event { key, meta } => {
+                let time = chrono::Local.timestamp_millis(meta.timestamp.as_i64() / 1000);
+                write!(
+                    f,
+                    "event at {} ({}, stream ID {})",
+                    time.to_rfc3339_opts(chrono::SecondsFormat::Millis, false),
+                    key.lamport,
+                    key.stream,
+                )
+            }
+            EventMeta::Synthetic => f.write_str("synthetic event"),
+        }
     }
 }
 
@@ -374,6 +452,26 @@ pub trait EventService: Clone + Send {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{app_id, tags, AppId, NodeId};
+
+    #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    struct EventResponseV1<T> {
+        /// Lamport timestamp
+        lamport: LamportTimestamp,
+        /// ID of the stream this event belongs to
+        stream: StreamId,
+        /// The event offset within the stream
+        offset: Offset,
+        /// Timestamp at which the event was emitted
+        timestamp: Timestamp,
+        /// Tag attached to the event
+        tags: TagSet,
+        /// Associated app ID
+        app_id: AppId,
+        /// The actual, app-specific event payload
+        payload: T,
+    }
 
     #[test]
     fn future_compat() {
@@ -388,6 +486,144 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<SubscribeMonotonicResponse>(r#"{"type":"fromTheFuture","x":42}"#).unwrap(),
             SubscribeMonotonicResponse::FutureCompat
+        );
+    }
+
+    #[test]
+    fn event_response_compat() {
+        let stream = NodeId::from_bytes(b"abcdefghijklmnopqrstuvwxyz123456")
+            .unwrap()
+            .stream(12.into());
+        let lamport = LamportTimestamp::from(42);
+        let offset = Offset::from(43);
+        let timestamp = Timestamp::from(44);
+        let tags = tags!("a1", "b2");
+        let app_id = app_id!("tester");
+        let payload = Payload::from_json_str("100").unwrap();
+
+        let old = serde_json::to_string(&EventResponseV1 {
+            lamport,
+            stream,
+            offset,
+            timestamp,
+            tags: tags.clone(),
+            app_id: app_id.clone(),
+            payload: payload.clone(),
+        })
+        .unwrap();
+        assert_eq!(
+            serde_json::from_str::<EventResponse<Payload>>(&*old).unwrap(),
+            EventResponse {
+                meta: EventMeta::Event {
+                    key: EventKey {
+                        lamport,
+                        stream,
+                        offset,
+                    },
+                    meta: Metadata {
+                        timestamp,
+                        tags: tags.clone(),
+                        app_id: app_id.clone(),
+                    }
+                },
+                payload: payload.clone(),
+            }
+        );
+
+        let old_synthetic = serde_json::to_string(&EventResponseV1 {
+            lamport,
+            stream,
+            offset,
+            timestamp: 0.into(),
+            tags: tags.clone(),
+            app_id: app_id.clone(),
+            payload: payload.clone(),
+        })
+        .unwrap();
+        assert_eq!(
+            serde_json::from_str::<EventResponse<Payload>>(&*old_synthetic).unwrap(),
+            EventResponse {
+                meta: EventMeta::Synthetic,
+                payload: payload.clone(),
+            }
+        );
+
+        let new_synthetic = serde_json::to_string(&EventResponse {
+            meta: EventMeta::Synthetic,
+            payload: payload.clone(),
+        })
+        .unwrap();
+        assert_eq!(
+            serde_json::from_str::<EventResponseV1<Payload>>(&*new_synthetic).unwrap(),
+            EventResponseV1 {
+                lamport: 0.into(),
+                stream: NodeId::default().stream(0.into()),
+                offset: 0.into(),
+                timestamp: 0.into(),
+                tags: tags!(),
+                app_id: app_id!("none"),
+                payload: payload.clone(),
+            }
+        );
+
+        let new_event = serde_json::to_string(&EventResponse {
+            meta: EventMeta::Event {
+                key: EventKey {
+                    lamport,
+                    stream,
+                    offset,
+                },
+                meta: Metadata {
+                    timestamp,
+                    tags: tags.clone(),
+                    app_id: app_id.clone(),
+                },
+            },
+            payload: payload.clone(),
+        })
+        .unwrap();
+        assert_eq!(
+            serde_json::from_str::<EventResponseV1<Payload>>(&*new_event).unwrap(),
+            EventResponseV1 {
+                lamport,
+                stream,
+                offset,
+                timestamp,
+                tags,
+                app_id,
+                payload: payload.clone(),
+            }
+        );
+
+        let new_range = serde_json::to_string(&EventResponse {
+            meta: EventMeta::Range {
+                from_key: EventKey {
+                    lamport,
+                    stream,
+                    offset,
+                },
+                to_key: EventKey {
+                    lamport,
+                    stream,
+                    offset,
+                },
+                from_time: timestamp,
+                to_time: timestamp,
+            },
+            payload: payload.clone(),
+        })
+        .unwrap();
+        assert_eq!(
+            serde_json::from_str::<EventResponseV1<Payload>>(&*new_range).unwrap(),
+            EventResponseV1 {
+                lamport: 0.into(),
+                stream: NodeId::default().stream(0.into()),
+                offset: 0.into(),
+                timestamp: 0.into(),
+                tags: tags!(),
+                app_id: app_id!("none"),
+                payload,
+            }
         );
     }
 }

@@ -31,7 +31,7 @@ use serde::{Deserialize, Serialize};
 pub struct Timestamp(u64);
 
 impl Timestamp {
-    pub fn new(value: u64) -> Self {
+    pub const fn new(value: u64) -> Self {
         Self(value)
     }
     pub fn now() -> Timestamp {
@@ -115,7 +115,7 @@ impl Add<std::time::Duration> for Timestamp {
 pub struct LamportTimestamp(u64);
 
 impl LamportTimestamp {
-    pub fn new(value: u64) -> Self {
+    pub const fn new(value: u64) -> Self {
         Self(value)
     }
     pub fn incr(self) -> Self {
