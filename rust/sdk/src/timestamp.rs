@@ -5,7 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, FixedOffset, TimeZone, Utc};
 use derive_more::{From, Into};
 use libipld::DagCbor;
 use serde::{Deserialize, Serialize};
@@ -63,6 +63,12 @@ impl From<DateTime<Utc>> for Timestamp {
         let seconds = dt.timestamp() as u64;
         let micros = seconds * 1_000_000 + dt.timestamp_subsec_micros() as u64;
         Self(micros)
+    }
+}
+
+impl From<DateTime<FixedOffset>> for Timestamp {
+    fn from(dt: DateTime<FixedOffset>) -> Self {
+        dt.with_timezone(&Utc).into()
     }
 }
 

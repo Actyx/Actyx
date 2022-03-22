@@ -974,7 +974,11 @@ mod tests {
                         vec![ev([&meta1], 2), ev([&meta2], 3), ev([&meta3], 1)]
                     );
                     assert_eq!(
-                        values(&service, "FEATURES(zøg fromArray subQuery) FROM [FROM 'a1', FROM 'a3'] SELECT _[0]").await,
+                        values(
+                            &service,
+                            "FEATURES(zøg fromArray subQuery) FROM [FROM 'a1', FROM 'a3'] SELECT _[0]"
+                        )
+                        .await,
                         vec![ev([&meta1], 2), ev([&meta3], 1)]
                     );
                 })

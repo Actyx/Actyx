@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{language::SortKey, service::Order, tags::Tag, Timestamp};
 use anyhow::{bail, ensure, Result};
-use chrono::{TimeZone, Utc};
+use chrono::{FixedOffset, TimeZone, Utc};
 use once_cell::sync::Lazy;
 use pest::{prec_climber::PrecClimber, Parser};
 use unicode_normalization::UnicodeNormalization;
@@ -261,20 +261,38 @@ fn r_timestamp(p: P) -> Result<Timestamp> {
     let year: i32 = p.string()?.parse()?;
     let month: u32 = p.string()?.parse()?;
     let day: u32 = p.string()?.parse()?;
-    let hour: u32 = p.parse_or_default()?;
-    let min: u32 = p.parse_or_default()?;
-    let sec: u32 = p.parse_or_default()?;
-    let nano: u32 = if let Some(p) = p.next() {
-        match p.as_rule() {
-            Rule::millisecond => p.as_str().parse::<u32>()? * 1_000_000,
-            Rule::microsecond => p.as_str().parse::<u32>()? * 1_000,
-            Rule::nanosecond => p.as_str().parse::<u32>()?,
+    let mut hour = 0u32;
+    let mut min = 0u32;
+    let mut sec = 0u32;
+    let mut nano = 0u32;
+    if p.peek().map(|r| r.as_rule()) == Some(Rule::hour) {
+        hour = p.parse_or_default()?;
+        min = p.parse_or_default()?;
+        if p.peek().map(|p| p.as_rule()) == Some(Rule::second) {
+            sec = p.parse_or_default()?;
+        }
+        nano = match p.peek().map(|p| p.as_rule()) {
+            Some(Rule::millisecond) => p.parse_or_default::<u32>()? * 1_000_000,
+            Some(Rule::microsecond) => p.parse_or_default::<u32>()? * 1_000,
+            Some(Rule::nanosecond) => p.parse_or_default::<u32>()?,
+            Some(Rule::sign) | None => 0,
             x => bail!("unexpected token: {:?}", x),
         }
+    }
+    if let Some(sign) = p.next() {
+        let offset_hour: u32 = p.parse_or_default()?;
+        let offset_min: u32 = p.parse_or_default()?;
+        let mut seconds = offset_hour as i32 * 3600 + offset_min as i32 * 60;
+        if sign.as_str() == "-" {
+            seconds = -seconds;
+        }
+        Ok(FixedOffset::east(seconds)
+            .ymd(year, month, day)
+            .and_hms_nano(hour, min, sec, nano)
+            .into())
     } else {
-        0
-    };
-    Ok(Utc.ymd(year, month, day).and_hms_nano(hour, min, sec, nano).into())
+        Ok(Utc.ymd(year, month, day).and_hms_nano(hour, min, sec, nano).into())
+    }
 }
 
 fn r_object(p: P, ctx: Context) -> Result<Obj> {
@@ -950,5 +968,35 @@ mod tests {
             x => panic!("unexpected: {:?}", x),
         };
         assert_eq!(v, vec![true, false, true]);
+    }
+
+    #[test]
+    fn timestamp() {
+        let t = |t| r_timestamp(Aql::parse(Rule::isodate, t).unwrap().single().unwrap()).unwrap();
+
+        assert_eq!(t("2022-01-02Z"), Timestamp::new(1641081600000000));
+        assert_eq!(t("2022-01-02+00:00"), Timestamp::new(1641081600000000));
+        assert_eq!(t("2022-01-02+01:00"), Timestamp::new(1641078000000000));
+        assert_eq!(t("2022-01-02T00:00Z"), Timestamp::new(1641081600000000));
+        assert_eq!(t("2022-01-02T00:00+00:00"), Timestamp::new(1641081600000000));
+        assert_eq!(t("2022-01-02T00:00+01:00"), Timestamp::new(1641078000000000));
+        assert_eq!(t("2022-01-02T00:00:00Z"), Timestamp::new(1641081600000000));
+        assert_eq!(t("2022-01-02T00:00:00+00:00"), Timestamp::new(1641081600000000));
+        assert_eq!(t("2022-01-02T00:00:00+01:00"), Timestamp::new(1641078000000000));
+        assert_eq!(t("2022-01-02T00:00:00.001Z"), Timestamp::new(1641081600001000));
+        assert_eq!(t("2022-01-02T00:00:00.001+00:00"), Timestamp::new(1641081600001000));
+        assert_eq!(t("2022-01-02T00:00:00.001+01:00"), Timestamp::new(1641078000001000));
+        assert_eq!(t("2022-01-02T00:00:00.000002Z"), Timestamp::new(1641081600000002));
+        assert_eq!(t("2022-01-02T00:00:00.000002+00:00"), Timestamp::new(1641081600000002));
+        assert_eq!(t("2022-01-02T00:00:00.000002-01:00"), Timestamp::new(1641085200000002));
+        assert_eq!(t("2022-01-02T00:00:00.000003000Z"), Timestamp::new(1641081600000003));
+        assert_eq!(
+            t("2022-01-02T00:00:00.000003000+00:00"),
+            Timestamp::new(1641081600000003)
+        );
+        assert_eq!(
+            t("2022-01-02T00:00:00.000003000+01:00"),
+            Timestamp::new(1641078000000003)
+        );
     }
 }
