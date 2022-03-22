@@ -1,7 +1,7 @@
 use crate::{error::RuntimeError, query::Query, value::Value};
 use actyx_sdk::{
-    language::{BinOp, Ind, Index, Num, SimpleExpr, SortKey, TagAtom, TagExpr},
-    service::Order,
+    language::{BinOp, Ind, Index, Num, SimpleExpr, TagAtom, TagExpr},
+    service::{EventMeta, Order},
     OffsetMap, Tag,
 };
 use anyhow::{anyhow, bail, ensure};
@@ -17,7 +17,6 @@ use std::{
 use swarm::event_store_ref::EventStoreRef;
 
 pub struct Context<'a> {
-    pub sort_key: SortKey,
     bindings: BTreeMap<String, anyhow::Result<Value>>,
     pub parent: Option<&'a Context<'a>>,
     pub store: Cow<'a, EventStoreRef>,
@@ -28,14 +27,12 @@ pub struct Context<'a> {
 
 impl<'a> Context<'a> {
     pub fn new(
-        sort_key: SortKey,
         order: Order,
         store: &'a EventStoreRef,
         from_offsets_excluding: &'a OffsetMap,
         to_offsets_including: &'a OffsetMap,
     ) -> Self {
         Self {
-            sort_key,
             bindings: BTreeMap::new(),
             parent: None,
             order,
@@ -46,14 +43,12 @@ impl<'a> Context<'a> {
     }
 
     pub fn owned(
-        sort_key: SortKey,
         order: Order,
         store: EventStoreRef,
         from_offsets_excluding: OffsetMap,
         to_offsets_including: OffsetMap,
     ) -> Context<'static> {
         Context {
-            sort_key,
             bindings: BTreeMap::new(),
             parent: None,
             order,
@@ -65,7 +60,6 @@ impl<'a> Context<'a> {
 
     pub fn child(&'a self) -> Self {
         Self {
-            sort_key: self.sort_key,
             bindings: BTreeMap::new(),
             parent: Some(self),
             order: self.order,
@@ -77,29 +71,12 @@ impl<'a> Context<'a> {
 
     pub fn child_with_order(&'a self, order: Order) -> Self {
         Self {
-            sort_key: self.sort_key,
             bindings: BTreeMap::new(),
             parent: Some(self),
             order,
             store: Cow::Borrowed(self.store.as_ref()),
             from_offsets_excluding: Cow::Borrowed(self.from_offsets_excluding.as_ref()),
             to_offsets_including: Cow::Borrowed(self.to_offsets_including.as_ref()),
-        }
-    }
-
-    #[cfg(test)]
-    pub fn incr(&mut self) {
-        self.sort_key.lamport = self.sort_key.lamport.incr();
-    }
-
-    pub fn value(&self, f: impl FnOnce(CborBuilder<WithOutput>) -> CborOwned) -> Value {
-        Value::new(self.sort_key, f)
-    }
-
-    pub fn number(&self, n: &Num) -> Value {
-        match n {
-            Num::Decimal(d) => Value::new(self.sort_key, |b| b.encode_f64(*d)),
-            Num::Natural(n) => Value::new(self.sort_key, |b| b.encode_u64(*n)),
         }
     }
 
@@ -131,6 +108,17 @@ impl<'a> Context<'a> {
         self.bindings
             .remove(name)
             .unwrap_or_else(|| Err(RuntimeError::NotBound(name.to_owned()).into()))
+    }
+
+    pub fn mk_cbor(&self, f: impl FnOnce(CborBuilder<WithOutput>) -> CborOwned) -> CborOwned {
+        f(CborBuilder::new())
+    }
+
+    pub fn number(&self, n: &Num) -> CborOwned {
+        match n {
+            Num::Decimal(d) => self.mk_cbor(|b| b.encode_f64(*d)),
+            Num::Natural(n) => self.mk_cbor(|b| b.encode_u64(*n)),
+        }
     }
 
     pub fn eval_from<'b, 'c: 'b>(&'b self, expr: &'c TagExpr) -> BoxFuture<'b, anyhow::Result<Cow<'c, TagExpr>>> {
@@ -178,12 +166,10 @@ impl<'a> Context<'a> {
     pub fn eval<'c>(&'c self, expr: &'c SimpleExpr) -> BoxFuture<'c, anyhow::Result<Value>> {
         async move {
             match expr {
-                SimpleExpr::Variable(v) => {
-                    let v = self.lookup(v)?;
-                    Ok(self.value(|b| b.write_trusting(v.as_slice())))
-                }
+                SimpleExpr::Variable(v) => self.lookup(v),
                 SimpleExpr::Indexing(Ind { head, tail }) => {
                     let v = self.eval(head).await?;
+                    let meta = v.meta().clone();
                     let mut v = v.cbor();
                     for i in tail.iter() {
                         v = match i {
@@ -220,47 +206,59 @@ impl<'a> Context<'a> {
                             }
                         };
                     }
-                    Ok(self.value(|b| b.write_trusting(v.as_slice())))
+                    Ok(Value::new_meta(v.to_owned(), meta))
                 }
-                SimpleExpr::Number(n) => match n {
-                    Num::Decimal(d) => Ok(self.value(|b| b.encode_f64(*d))),
-                    Num::Natural(n) => Ok(self.value(|b| b.encode_u64(*n))),
-                },
-                SimpleExpr::String(s) => Ok(self.value(|b| b.encode_str(s))),
+                SimpleExpr::Number(n) => Ok(Value::synthetic(self.number(n))),
+                SimpleExpr::String(s) => Ok(Value::synthetic(self.mk_cbor(|b| b.encode_str(s)))),
                 SimpleExpr::Interpolation(s) => {
                     let mut buf = String::new();
+                    let mut meta = EventMeta::Synthetic;
                     for e in s {
-                        buf.push_str(&*self.eval(e).await?.print());
+                        let v = self.eval(e).await?;
+                        meta += v.meta();
+                        buf.push_str(&*v.print());
                     }
-                    Ok(self.value(|b| b.encode_str(buf)))
+                    Ok(Value::new_meta(self.mk_cbor(|b| b.encode_str(buf)), meta))
                 }
                 SimpleExpr::Object(a) => {
                     let mut v = BTreeMap::new();
+                    let mut meta = EventMeta::Synthetic;
                     for (n, e) in a.props.iter() {
                         let key = match n {
-                            Index::String(s) => CborBuilder::new().encode_str(s),
-                            Index::Number(n) => CborBuilder::new().encode_u64(*n),
-                            Index::Expr(e) => self.eval(e).await?.cbor().to_owned(),
-                        };
-                        v.insert(key, self.eval(e).await?);
-                    }
-                    Ok(self.value(|b| {
-                        b.encode_dict(|b| {
-                            for (name, item) in v.iter() {
-                                b.with_cbor_key(
-                                    |b| b.write_trusting(name.as_slice()),
-                                    |b| b.write_trusting(item.as_slice()),
-                                );
+                            Index::String(s) => self.mk_cbor(|b| b.encode_str(s)),
+                            Index::Number(n) => self.mk_cbor(|b| b.encode_u64(*n)),
+                            Index::Expr(e) => {
+                                let v = self.eval(e).await?;
+                                meta += v.meta();
+                                v.cbor().to_owned()
                             }
-                        })
-                    }))
+                        };
+                        let val = self.eval(e).await?;
+                        meta += val.meta();
+                        v.insert(key, val);
+                    }
+                    Ok(Value::new_meta(
+                        self.mk_cbor(|b| {
+                            b.encode_dict(|b| {
+                                for (name, item) in v.iter() {
+                                    b.with_cbor_key(
+                                        |b| b.write_trusting(name.as_slice()),
+                                        |b| b.write_trusting(item.as_slice()),
+                                    );
+                                }
+                            })
+                        }),
+                        meta,
+                    ))
                 }
                 SimpleExpr::Array(a) => {
                     let mut v = vec![];
+                    let mut meta = EventMeta::Synthetic;
                     for e in a.items.iter() {
                         let val = self.eval(e).await?;
+                        meta += val.meta();
                         if e.spread {
-                            if let Ok(items) = val.as_array(self) {
+                            if let Ok(items) = val.as_array() {
                                 v.extend(items);
                             } else {
                                 return Err(RuntimeError::TypeErrorSpread(val.kind()).into());
@@ -269,16 +267,19 @@ impl<'a> Context<'a> {
                             v.push(val);
                         }
                     }
-                    Ok(self.value(|b| {
-                        b.encode_array(|b| {
-                            for item in v.iter() {
-                                b.write_trusting(item.as_slice());
-                            }
-                        })
-                    }))
+                    Ok(Value::new_meta(
+                        self.mk_cbor(|b| {
+                            b.encode_array(|b| {
+                                for item in v.iter() {
+                                    b.write_trusting(item.as_slice());
+                                }
+                            })
+                        }),
+                        meta,
+                    ))
                 }
-                SimpleExpr::Null => Ok(self.value(|b| b.write_null(None))),
-                SimpleExpr::Bool(f) => Ok(self.value(|b| b.write_bool(*f, None))),
+                SimpleExpr::Null => Ok(Value::synthetic(self.mk_cbor(|b| b.write_null(None)))),
+                SimpleExpr::Bool(f) => Ok(Value::synthetic(self.mk_cbor(|b| b.write_bool(*f, None)))),
                 SimpleExpr::Cases(v) => {
                     for (pred, expr) in v.iter() {
                         let pred = self.eval(pred).await.and_then(|v| v.as_bool());
@@ -289,11 +290,13 @@ impl<'a> Context<'a> {
                     Err(anyhow!("no case matched"))
                 }
                 SimpleExpr::Not(a) => {
-                    let v = !self.eval(a).await?.as_bool()?;
-                    Ok(self.value(|b| b.encode_bool(v)))
+                    let v = self.eval(a).await?;
+                    let meta = v.meta().clone();
+                    let v = !v.as_bool()?;
+                    Ok(Value::new_meta(self.mk_cbor(|b| b.encode_bool(v)), meta))
                 }
                 SimpleExpr::BinOp(b) => self.bin_op(&b.1, b.0, &b.2).await,
-                SimpleExpr::AggrOp(a) => bail!("internal error, unreplaced AGGREGATION operator: {}", a.0.as_str()),
+                SimpleExpr::AggrOp(a) => bail!("internal error, unreplaced AGGREGATE operator: {}", a.0.as_str()),
                 SimpleExpr::FuncCall(f) => match f.name.as_str() {
                     "IsDefined" => {
                         ensure!(
@@ -302,39 +305,79 @@ impl<'a> Context<'a> {
                             f.args.len()
                         );
                         let defined = self.eval(&f.args[0]).await.is_ok();
-                        Ok(self.value(|b| b.encode_bool(defined)))
+                        Ok(Value::synthetic(self.mk_cbor(|b| b.encode_bool(defined))))
                     }
                     _ => Err(anyhow!("undefined function '{}'", f.name)),
                 },
-                SimpleExpr::SubQuery(q) => Query::eval(q, self).await,
+                SimpleExpr::SubQuery(q) => {
+                    let arr = Query::eval(q, self).await?;
+                    let meta = arr.iter().fold(EventMeta::Synthetic, |mut meta, v| {
+                        meta += v.meta();
+                        meta
+                    });
+                    Ok(Value::new_meta(
+                        self.mk_cbor(|b| {
+                            b.encode_array(|b| {
+                                for v in arr {
+                                    b.write_trusting(v.as_slice());
+                                }
+                            })
+                        }),
+                        meta,
+                    ))
+                }
             }
         }
         .boxed()
     }
 
     async fn bin_op<'c>(&'c self, l: &'c SimpleExpr, op: BinOp, r: &'c SimpleExpr) -> anyhow::Result<Value> {
-        match op {
-            BinOp::Add => self.eval(l).await?.add(&self.eval(r).await?),
-            BinOp::Sub => self.eval(l).await?.sub(&self.eval(r).await?),
-            BinOp::Mul => self.eval(l).await?.mul(&self.eval(r).await?),
-            BinOp::Div => self.eval(l).await?.div(&self.eval(r).await?),
-            BinOp::Mod => self.eval(l).await?.modulo(&self.eval(r).await?),
-            BinOp::Pow => self.eval(l).await?.pow(&self.eval(r).await?),
+        if op == BinOp::Alt {
+            return match self.eval(l).await {
+                Ok(v) => Ok(v),
+                Err(_) => self.eval(r).await,
+            };
+        }
+        let left = self.eval(l).await?;
+        let right = self.eval(r).await?;
+        let value = match op {
+            BinOp::Add => {
+                let n = left.as_number()?.add(&right.as_number()?)?;
+                self.number(&n)
+            }
+            BinOp::Sub => {
+                let n = left.as_number()?.sub(&right.as_number()?)?;
+                self.number(&n)
+            }
+            BinOp::Mul => {
+                let n = left.as_number()?.mul(&right.as_number()?)?;
+                self.number(&n)
+            }
+            BinOp::Div => {
+                let n = left.as_number()?.div(&right.as_number()?)?;
+                self.number(&n)
+            }
+            BinOp::Mod => {
+                let n = left.as_number()?.modulo(&right.as_number()?)?;
+                self.number(&n)
+            }
+            BinOp::Pow => {
+                let n = left.as_number()?.pow(&right.as_number()?)?;
+                self.number(&n)
+            }
             BinOp::And => {
-                let v = self.eval(l).await?.as_bool()? && self.eval(r).await?.as_bool()?;
-                Ok(self.value(|b| b.encode_bool(v)))
+                let v = left.as_bool()? && right.as_bool()?;
+                self.mk_cbor(|b| b.encode_bool(v))
             }
             BinOp::Or => {
-                let v = self.eval(l).await?.as_bool()? || self.eval(r).await?.as_bool()?;
-                Ok(self.value(|b| b.encode_bool(v)))
+                let v = left.as_bool()? || right.as_bool()?;
+                self.mk_cbor(|b| b.encode_bool(v))
             }
             BinOp::Xor => {
-                let v = self.eval(l).await?.as_bool()? ^ self.eval(r).await?.as_bool()?;
-                Ok(self.value(|b| b.encode_bool(v)))
+                let v = left.as_bool()? ^ right.as_bool()?;
+                self.mk_cbor(|b| b.encode_bool(v))
             }
             BinOp::Lt => {
-                let left = self.eval(l).await?;
-                let right = self.eval(r).await?;
                 let v = (left.partial_cmp(&right)).map(|o| o == Ordering::Less).ok_or_else(|| {
                     RuntimeError::TypeErrorBinOp {
                         op: BinOp::Lt,
@@ -342,11 +385,9 @@ impl<'a> Context<'a> {
                         right: right.kind(),
                     }
                 })?;
-                Ok(self.value(|b| b.encode_bool(v)))
+                self.mk_cbor(|b| b.encode_bool(v))
             }
             BinOp::Le => {
-                let left = self.eval(l).await?;
-                let right = self.eval(r).await?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o != Ordering::Greater)
                     .ok_or_else(|| RuntimeError::TypeErrorBinOp {
@@ -354,11 +395,9 @@ impl<'a> Context<'a> {
                         left: left.kind(),
                         right: right.kind(),
                     })?;
-                Ok(self.value(|b| b.encode_bool(v)))
+                self.mk_cbor(|b| b.encode_bool(v))
             }
             BinOp::Gt => {
-                let left = self.eval(l).await?;
-                let right = self.eval(r).await?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o == Ordering::Greater)
                     .ok_or_else(|| RuntimeError::TypeErrorBinOp {
@@ -366,11 +405,9 @@ impl<'a> Context<'a> {
                         left: left.kind(),
                         right: right.kind(),
                     })?;
-                Ok(self.value(|b| b.encode_bool(v)))
+                self.mk_cbor(|b| b.encode_bool(v))
             }
             BinOp::Ge => {
-                let left = self.eval(l).await?;
-                let right = self.eval(r).await?;
                 let v = (left.partial_cmp(&right)).map(|o| o != Ordering::Less).ok_or_else(|| {
                     RuntimeError::TypeErrorBinOp {
                         op: BinOp::Ge,
@@ -378,11 +415,9 @@ impl<'a> Context<'a> {
                         right: right.kind(),
                     }
                 })?;
-                Ok(self.value(|b| b.encode_bool(v)))
+                self.mk_cbor(|b| b.encode_bool(v))
             }
             BinOp::Eq => {
-                let left = self.eval(l).await?;
-                let right = self.eval(r).await?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o == Ordering::Equal)
                     .ok_or_else(|| RuntimeError::TypeErrorBinOp {
@@ -390,11 +425,9 @@ impl<'a> Context<'a> {
                         left: left.kind(),
                         right: right.kind(),
                     })?;
-                Ok(self.value(|b| b.encode_bool(v)))
+                self.mk_cbor(|b| b.encode_bool(v))
             }
             BinOp::Ne => {
-                let left = self.eval(l).await?;
-                let right = self.eval(r).await?;
                 let v = (left.partial_cmp(&right))
                     .map(|o| o != Ordering::Equal)
                     .ok_or_else(|| RuntimeError::TypeErrorBinOp {
@@ -402,20 +435,18 @@ impl<'a> Context<'a> {
                         left: left.kind(),
                         right: right.kind(),
                     })?;
-                Ok(self.value(|b| b.encode_bool(v)))
+                self.mk_cbor(|b| b.encode_bool(v))
             }
-            BinOp::Alt => match self.eval(l).await {
-                Ok(v) => Ok(v),
-                Err(_) => self.eval(r).await,
-            },
-        }
+            BinOp::Alt => unreachable!(),
+        };
+        let mut meta = left.meta().clone();
+        meta += right.meta();
+        Ok(Value::new_meta(value, meta))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use actyx_sdk::NodeId;
-
     use super::*;
     use futures::executor::block_on;
     use quickcheck::{quickcheck, TestResult};
@@ -433,16 +464,7 @@ mod tests {
         EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
     }
     fn ctx() -> Context<'static> {
-        Context::owned(
-            SortKey {
-                lamport: Default::default(),
-                stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
-            },
-            Order::Asc,
-            mk_store(),
-            OffsetMap::empty(),
-            OffsetMap::empty(),
-        )
+        Context::owned(Order::Asc, mk_store(), OffsetMap::empty(), OffsetMap::empty())
     }
 
     #[tokio::test]
@@ -450,11 +472,11 @@ mod tests {
         let mut cx = ctx();
         cx.bind(
             "x",
-            Value::new(cx.sort_key, |b| {
+            Value::synthetic(cx.mk_cbor(|b| {
                 b.encode_dict(|b| {
                     b.with_key("y", |b| b.encode_u64(42));
                 })
-            }),
+            })),
         );
 
         assert_eq!(eval(&mut cx, "5+2.1+x.y").await.unwrap(), "49.1");
@@ -541,8 +563,8 @@ mod tests {
         #[allow(clippy::bool_comparison)]
         fn prop_bool(left: bool, right: bool) -> bool {
             let mut cx = ctx();
-            cx.bind("a", cx.value(|b| b.encode_bool(left)));
-            cx.bind("b", cx.value(|b| b.encode_bool(right)));
+            cx.bind("a", Value::synthetic(cx.mk_cbor(|b| b.encode_bool(left))));
+            cx.bind("b", Value::synthetic(cx.mk_cbor(|b| b.encode_bool(right))));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
             assert_eq!(eval_bool(&mut cx, "a ≤ b"), left <= right);
             assert_eq!(eval_bool(&mut cx, "a > b"), left > right);
@@ -555,8 +577,8 @@ mod tests {
 
         fn prop_u64(left: u64, right: u64) -> bool {
             let mut cx = ctx();
-            cx.bind("a", cx.value(|b| b.encode_u64(left)));
-            cx.bind("b", cx.value(|b| b.encode_u64(right)));
+            cx.bind("a", Value::synthetic(cx.mk_cbor(|b| b.encode_u64(left))));
+            cx.bind("b", Value::synthetic(cx.mk_cbor(|b| b.encode_u64(right))));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
             assert_eq!(eval_bool(&mut cx, "a ≤ b"), left <= right);
             assert_eq!(eval_bool(&mut cx, "a > b"), left > right);
@@ -573,8 +595,8 @@ mod tests {
                 return TestResult::discard();
             }
             let mut cx = ctx();
-            cx.bind("a", cx.value(|b| b.encode_f64(left)));
-            cx.bind("b", cx.value(|b| b.encode_f64(right)));
+            cx.bind("a", Value::synthetic(cx.mk_cbor(|b| b.encode_f64(left))));
+            cx.bind("b", Value::synthetic(cx.mk_cbor(|b| b.encode_f64(right))));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
             assert_eq!(eval_bool(&mut cx, "a ≤ b"), left <= right);
             assert_eq!(eval_bool(&mut cx, "a > b"), left > right);
@@ -587,8 +609,8 @@ mod tests {
 
         fn prop_str(left: String, right: String) -> bool {
             let mut cx = ctx();
-            cx.bind("a", cx.value(|b| b.encode_str(left.as_str())));
-            cx.bind("b", cx.value(|b| b.encode_str(right.as_str())));
+            cx.bind("a", Value::synthetic(cx.mk_cbor(|b| b.encode_str(left.as_str()))));
+            cx.bind("b", Value::synthetic(cx.mk_cbor(|b| b.encode_str(right.as_str()))));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
             assert_eq!(eval_bool(&mut cx, "a ≤ b"), left <= right);
             assert_eq!(eval_bool(&mut cx, "a > b"), left > right);

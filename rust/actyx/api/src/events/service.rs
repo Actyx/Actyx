@@ -1,20 +1,19 @@
 use crate::rejections::ApiError;
 use actyx_sdk::{
-    app_id,
-    language::{self, Arr, SortKey},
+    language::{self, Arr, SimpleExpr},
     service::{
-        Diagnostic, EventResponse, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest,
-        PublishResponse, PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
+        Diagnostic, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse,
+        PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    tags, AppId, Event, EventKey, Metadata, NodeId, OffsetMap, OffsetOrMin, Payload, StreamNr, Timestamp,
+    AppId, Event, EventKey, NodeId, OffsetMap, OffsetOrMin, Payload, StreamNr,
 };
 use ax_futures_util::ReceiverExt;
 use futures::{
     future::{poll_fn, ready},
     pin_mut,
     stream::{self, BoxStream, StreamExt},
-    FutureExt, TryStreamExt,
+    FutureExt,
 };
 use genawaiter::sync::{Co, Gen};
 use runtime::{
@@ -104,10 +103,10 @@ impl EventService {
         features.validate(&query.features, Endpoint::Query)?;
         let mut feeder = query.make_feeder();
 
-        async fn y(co: &Co<QueryResponse>, vs: Vec<anyhow::Result<Value>>, event: Option<(&EventKey, &Metadata)>) {
+        async fn y(co: &Co<QueryResponse>, vs: Vec<anyhow::Result<Value>>) {
             for v in vs {
                 co.yield_(match v {
-                    Ok(v) => QueryResponse::Event(to_event(v, event)),
+                    Ok(v) => QueryResponse::Event(v.into()),
                     Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e.to_string())),
                 })
                 .await;
@@ -118,7 +117,6 @@ impl EventService {
         let request_order = request.order;
         let gen = Gen::new(move |co: Co<QueryResponse>| async move {
             let mut cx = Context::owned(
-                SortKey::default(),
                 Order::StreamAsc,
                 store.clone(),
                 lower_bound.clone(),
@@ -160,7 +158,7 @@ impl EventService {
                     stream
                         .stop_on_error()
                         .map(|ev| match ev {
-                            Ok(ev) => Ok((Value::from((ev.key, ev.payload)), ev.key, ev.meta)),
+                            Ok(ev) => Ok(Value::from(ev)),
                             Err(e) => Err(e.into()),
                         })
                         .left_stream()
@@ -169,54 +167,48 @@ impl EventService {
                     .flat_map(|expr| {
                         let cx = &cx;
                         async move {
-                            match cx.eval(expr).await {
-                                Ok(val) => {
-                                    if expr.spread {
-                                        if let Ok(items) = val.as_array(cx) {
-                                            stream::iter(items.into_iter().map(Ok)).boxed()
-                                        } else {
-                                            stream::once(ready(Err(RuntimeError::TypeErrorSpread(val.kind()).into())))
-                                                .boxed()
-                                        }
-                                    } else {
-                                        stream::once(ready(Ok(val))).boxed()
-                                    }
+                            if let (SimpleExpr::SubQuery(e), true) = (&expr.expr, expr.spread) {
+                                match Query::eval(e, cx).await {
+                                    Ok(arr) => stream::iter(arr.into_iter().map(Ok)).boxed(),
+                                    Err(e) => stream::once(ready(Err(e))).boxed(),
                                 }
-                                Err(e) => stream::once(ready(Err(e))).boxed(),
+                            } else {
+                                match cx.eval(expr).await {
+                                    Ok(val) => {
+                                        if expr.spread {
+                                            if let Ok(items) = val.as_array() {
+                                                stream::iter(items.into_iter().map(Ok)).boxed()
+                                            } else {
+                                                stream::once(ready(Err(
+                                                    RuntimeError::TypeErrorSpread(val.kind()).into()
+                                                )))
+                                                .boxed()
+                                            }
+                                        } else {
+                                            stream::once(ready(Ok(val))).boxed()
+                                        }
+                                    }
+                                    Err(e) => stream::once(ready(Err(e))).boxed(),
+                                }
                             }
                         }
                         .flatten_stream()
-                    })
-                    .map_ok(|v| {
-                        (
-                            v,
-                            EventKey {
-                                lamport: Default::default(),
-                                stream: Default::default(),
-                                offset: Default::default(),
-                            },
-                            Metadata {
-                                timestamp: Timestamp::now(),
-                                tags: tags!(),
-                                app_id: app_id!("none"),
-                            },
-                        )
                     })
                     .right_stream(),
             };
             pin_mut!(stream);
 
             while let Some(ev) = stream.next().await {
-                let (ev, key, meta) = match ev {
+                let ev = match ev {
                     Ok(ev) => ev,
                     Err(e) => {
                         tracing::error!("aborting query due to {:#}", e);
-                        y(&co, vec![Err(e)], None).await;
+                        y(&co, vec![Err(e)]).await;
                         return;
                     }
                 };
                 let vs = feeder.feed(Some(ev), &cx).await;
-                y(&co, vs, Some((&key, &meta))).await;
+                y(&co, vs).await;
                 if feeder.is_done() {
                     break;
                 }
@@ -224,7 +216,7 @@ impl EventService {
             drop(stream);
 
             let vs = feeder.feed(None, &cx).await;
-            y(&co, vs, None).await;
+            y(&co, vs).await;
 
             co.yield_(QueryResponse::Offsets(OffsetMapResponse { offsets: upper_bound }))
                 .await;
@@ -263,7 +255,6 @@ impl EventService {
         let mut query = query.make_feeder();
 
         let cx = Context::owned(
-            SortKey::default(),
             Order::StreamAsc,
             self.store.clone(),
             // no sub-queries supported yet, so no OffsetMap needed
@@ -286,10 +277,10 @@ impl EventService {
             .await?
             .stop_on_error();
 
-        async fn y(co: &Co<SubscribeResponse>, vs: Vec<anyhow::Result<Value>>, event: Option<(&EventKey, &Metadata)>) {
+        async fn y(co: &Co<SubscribeResponse>, vs: Vec<anyhow::Result<Value>>) {
             for v in vs {
                 co.yield_(match v {
-                    Ok(v) => SubscribeResponse::Event(to_event(v, event)),
+                    Ok(v) => SubscribeResponse::Event(v.into()),
                     Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e.to_string())),
                 })
                 .await;
@@ -302,12 +293,12 @@ impl EventService {
                     Ok(ev) => ev,
                     Err(e) => {
                         tracing::error!("aborting subscribe catch-up for tags {} due to {:#}", tags, e);
-                        y(&co, vec![Err(e.into())], None).await;
+                        y(&co, vec![Err(e.into())]).await;
                         return;
                     }
                 };
-                let vs = query.feed(Some(to_value(&ev)), &cx).await;
-                y(&co, vs, Some((&ev.key, &ev.meta))).await;
+                let vs = query.feed(Some(ev.into()), &cx).await;
+                y(&co, vs).await;
             }
 
             co.yield_(SubscribeResponse::Offsets(OffsetMapResponse { offsets: present }))
@@ -318,12 +309,12 @@ impl EventService {
                     Ok(ev) => ev,
                     Err(e) => {
                         tracing::error!("aborting subscribe for tags {} due to {:#}", tags, e);
-                        y(&co, vec![Err(e.into())], None).await;
+                        y(&co, vec![Err(e.into())]).await;
                         return;
                     }
                 };
-                let vs = query.feed(Some(to_value(&ev)), &cx).await;
-                y(&co, vs, Some((&ev.key, &ev.meta))).await;
+                let vs = query.feed(Some(ev.into()), &cx).await;
+                y(&co, vs).await;
             }
         });
 
@@ -363,7 +354,6 @@ impl EventService {
         let mut query = query.make_feeder();
 
         let cx = Context::owned(
-            SortKey::default(),
             Order::Asc,
             self.store.clone(),
             // no sub-queries supported yet, so no OffsetMap needed
@@ -412,7 +402,7 @@ impl EventService {
             let key = event.key;
             if key > *latest {
                 *latest = key;
-                let vs = query.feed(Some(to_value(&event)), cx).await;
+                let vs = query.feed(Some(event.into()), cx).await;
                 if !vs.is_empty() {
                     let last = {
                         let mut l = None;
@@ -428,7 +418,7 @@ impl EventService {
                         let caught_up = Some(idx) == last && caught_up;
                         co.yield_(match v {
                             Ok(v) => SubscribeMonotonicResponse::Event {
-                                event: to_event(v, Some((&event.key, &event.meta))),
+                                event: v.into(),
                                 caught_up,
                             },
                             Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e.to_string())),
@@ -491,37 +481,15 @@ impl EventService {
     }
 }
 
-fn to_value(event: &Event<Payload>) -> Value {
-    Value::from((event.key, event.payload.clone()))
-}
-fn to_event(value: Value, event: Option<(&EventKey, &Metadata)>) -> EventResponse<Payload> {
-    match event {
-        Some((key, meta)) => EventResponse {
-            lamport: key.lamport,
-            stream: key.stream,
-            offset: key.offset,
-            app_id: meta.app_id.clone(),
-            timestamp: meta.timestamp,
-            tags: meta.tags.clone(),
-            payload: value.payload(),
-        },
-        None => EventResponse {
-            lamport: Default::default(),
-            stream: Default::default(),
-            offset: Default::default(),
-            app_id: app_id!("none"),
-            timestamp: Default::default(),
-            tags: Default::default(),
-            payload: value.payload(),
-        },
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyx_sdk::{tags, Offset, StreamId, TagSet};
-    use std::{iter::FromIterator, time::Duration};
+    use actyx_sdk::{
+        app_id,
+        service::{EventMeta, EventResponse},
+        tags, Metadata, Offset, StreamId, TagSet,
+    };
+    use std::{convert::TryInto, iter::FromIterator, time::Duration};
     use swarm::{
         event_store_ref::{self, EventStoreHandler},
         BanyanStore,
@@ -574,12 +542,18 @@ mod tests {
     }
     fn evr(publ: PublishResponseKey, tags: TagSet, n: u32) -> SubscribeResponse {
         SubscribeResponse::Event(EventResponse {
-            lamport: publ.lamport,
-            stream: publ.stream,
-            offset: publ.offset,
-            timestamp: publ.timestamp,
-            tags,
-            app_id: app_id!("me"),
+            meta: EventMeta::Event {
+                key: EventKey {
+                    lamport: publ.lamport,
+                    stream: publ.stream,
+                    offset: publ.offset,
+                },
+                meta: Metadata {
+                    timestamp: publ.timestamp,
+                    tags,
+                    app_id: app_id!("me"),
+                },
+            },
             payload: Payload::from_json_str(&*format!("{:?}", n)).unwrap(),
         })
     }
@@ -604,6 +578,26 @@ mod tests {
                 QueryResponse::Offsets(_) => "offsets".to_owned(),
                 QueryResponse::Diagnostic(d) => d.message,
                 QueryResponse::FutureCompat => todo!(),
+            })
+            .collect()
+            .await
+    }
+    async fn values(service: &EventService, q: &str) -> Vec<EventResponse<u64>> {
+        service
+            .query(
+                app_id!("me"),
+                QueryRequest {
+                    lower_bound: None,
+                    upper_bound: None,
+                    query: q.to_owned(),
+                    order: Order::StreamAsc,
+                },
+            )
+            .await
+            .unwrap()
+            .flat_map(|x| match x {
+                QueryResponse::Event(e) => stream::once(ready(e.extract().unwrap())).left_stream(),
+                _ => stream::empty().right_stream(),
             })
             .collect()
             .await
@@ -886,6 +880,102 @@ mod tests {
                             "\"EPIC\"",
                             "offsets",
                         ]
+                    );
+                })
+                .await
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn metadata() {
+        Runtime::new()
+            .unwrap()
+            .block_on(async {
+                timeout(Duration::from_secs(1), async {
+                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let (_node_id, service) = setup(&store);
+
+                    fn meta(publ: PublishResponseKey, t: &str) -> EventMeta {
+                        EventMeta::Event {
+                            key: EventKey {
+                                lamport: publ.lamport,
+                                stream: publ.stream,
+                                offset: publ.offset,
+                            },
+                            meta: Metadata {
+                                timestamp: publ.timestamp,
+                                tags: TagSet::from([t.try_into().unwrap()].as_slice()),
+                                app_id: app_id!("me"),
+                            },
+                        }
+                    }
+                    let pub1 = publish(&service, 0, tags!("a1"), 2).await;
+                    let meta1 = meta(pub1, "a1");
+                    let pub2 = publish(&service, 0, tags!("a2"), 3).await;
+                    let meta2 = meta(pub2, "a2");
+                    let pub3 = publish(&service, 0, tags!("a3"), 1).await;
+                    let meta3 = meta(pub3, "a3");
+
+                    fn ev<'a>(m: impl IntoIterator<Item = &'a EventMeta>, payload: u64) -> EventResponse<u64> {
+                        let mut meta = EventMeta::Synthetic;
+                        for m in m {
+                            meta += m;
+                        }
+                        EventResponse { meta, payload }
+                    }
+
+                    assert_eq!(
+                        values(&service, "FROM allEvents SELECT _ * 2").await,
+                        vec![ev([&meta1], 4), ev([&meta2], 6), ev([&meta3], 2)]
+                    );
+                    assert_eq!(
+                        values(&service, "FEATURES(zøg aggregate) FROM allEvents AGGREGATE LAST(_)").await,
+                        vec![ev([&meta3], 1)]
+                    );
+                    assert_eq!(
+                        values(&service, "FEATURES(zøg aggregate) FROM allEvents AGGREGATE FIRST(_)").await,
+                        vec![ev([&meta1], 2)]
+                    );
+                    assert_eq!(
+                        values(&service, "FEATURES(zøg aggregate) FROM allEvents AGGREGATE MIN(_)").await,
+                        vec![ev([&meta3], 1)]
+                    );
+                    assert_eq!(
+                        values(&service, "FEATURES(zøg aggregate) FROM allEvents AGGREGATE MAX(_)").await,
+                        vec![ev([&meta2], 3)]
+                    );
+                    assert_eq!(
+                        values(&service, "FEATURES(zøg aggregate) FROM allEvents AGGREGATE SUM(_)").await,
+                        vec![ev([&meta1, &meta3], 6)]
+                    );
+                    assert_eq!(
+                        values(&service, "FEATURES(zøg aggregate) FROM allEvents AGGREGATE PRODUCT(_)").await,
+                        vec![ev([&meta1, &meta3], 6)]
+                    );
+                    assert_eq!(
+                        values(
+                            &service,
+                            "FEATURES(zøg aggregate) FROM allEvents AGGREGATE PRODUCT(CASE _ > 1 => _ ENDCASE)"
+                        )
+                        .await,
+                        vec![ev([&meta1, &meta2], 6)]
+                    );
+                    assert_eq!(
+                        values(&service, "FEATURES(zøg fromArray) FROM [42]").await,
+                        vec![ev([], 42)]
+                    );
+                    assert_eq!(
+                        values(
+                            &service,
+                            "FEATURES(zøg fromArray subQuery spread) FROM [42] SELECT ...FROM allEvents"
+                        )
+                        .await,
+                        vec![ev([&meta1], 2), ev([&meta2], 3), ev([&meta3], 1)]
+                    );
+                    assert_eq!(
+                        values(&service, "FEATURES(zøg fromArray subQuery) FROM [FROM 'a1', FROM 'a3'] SELECT _[0]").await,
+                        vec![ev([&meta1], 2), ev([&meta3], 1)]
                     );
                 })
                 .await

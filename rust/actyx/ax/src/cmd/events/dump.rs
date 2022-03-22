@@ -1,5 +1,5 @@
 use crate::cmd::{AxCliCommand, ConsoleOpt};
-use actyx_sdk::service::{Order, QueryRequest};
+use actyx_sdk::service::{EventMeta, EventResponse, Order, QueryRequest};
 use cbor_data::{value::Precision, CborBuilder, Encoder, Writer};
 use chrono::{DateTime, Duration, Local, Utc};
 use console::{user_attended_stderr, Term};
@@ -226,26 +226,29 @@ impl AxCliCommand for EventsDump {
             while let Some(ev) = events.next().await {
                 match ev {
                     EventsResponse::Error { message } => diag.log(format!("AQL error: {}", message))?,
-                    EventsResponse::Event(ev) => {
+                    EventsResponse::Event(EventResponse {
+                        meta: EventMeta::Event { key, meta },
+                        payload,
+                    }) => {
                         let cbor = CborBuilder::with_scratch_space(&mut scratch).encode_dict(|b| {
-                            b.with_key("lamport", |b| b.encode_u64(ev.lamport.into()));
+                            b.with_key("lamport", |b| b.encode_u64(key.lamport.into()));
                             b.with_key("stream", |b| {
                                 b.encode_array(|b| {
-                                    b.write_bytes(ev.stream.node_id.as_ref(), []);
-                                    b.encode_u64(ev.stream.stream_nr.into());
+                                    b.write_bytes(key.stream.node_id.as_ref(), []);
+                                    b.encode_u64(key.stream.stream_nr.into());
                                 })
                             });
-                            b.with_key("offset", |b| b.encode_u64(ev.offset.into()));
-                            b.with_key("timestamp", |b| b.encode_u64(ev.timestamp.into()));
+                            b.with_key("offset", |b| b.encode_u64(key.offset.into()));
+                            b.with_key("timestamp", |b| b.encode_u64(meta.timestamp.into()));
                             b.with_key("tags", |b| {
                                 b.encode_array(|b| {
-                                    for tag in ev.tags.iter() {
+                                    for tag in meta.tags.iter() {
                                         b.encode_str(tag.as_ref());
                                     }
                                 })
                             });
-                            b.with_key("appId", |b| b.encode_str(&*ev.app_id));
-                            b.with_key("payload", |b| b.write_trusting(ev.payload.as_slice()));
+                            b.with_key("appId", |b| b.encode_str(&*meta.app_id));
+                            b.with_key("payload", |b| b.write_trusting(payload.as_slice()));
                         });
                         out.write_all(cbor.as_slice()).map_err(|e| {
                             ActyxOSError::new(ActyxOSCode::ERR_IO, format!("error writing dump: {}", e))
@@ -256,7 +259,7 @@ impl AxCliCommand for EventsDump {
                         let now = Local::now();
                         if now - last_printed > Duration::milliseconds(100) {
                             last_printed = now;
-                            diag.status(format!("event {} ({})", count, DateTime::<Utc>::from(ev.timestamp)))?;
+                            diag.status(format!("event {} ({})", count, DateTime::<Utc>::from(meta.timestamp)))?;
                         }
                     }
                     EventsResponse::Diagnostic(d) => diag.log(format!("diagnostic {:?}: {}", d.severity, d.message))?,

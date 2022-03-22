@@ -39,6 +39,7 @@ libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 maplit = "1.0.2"
 prettytable-rs = "0.8.0"
 rand = "0.8.4"
+runtime = { path = "../runtime" }
 serde = "1.0.133"
 serde_json = "1.0.74"
 serde_yaml = "0.8.23"

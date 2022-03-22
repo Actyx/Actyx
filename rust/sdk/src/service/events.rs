@@ -9,7 +9,7 @@ use crate::{
     event::{Event, EventKey, Metadata},
     scalars::StreamId,
     tags::TagSet,
-    LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamNr, Timestamp,
+    LamportTimestamp, Offset, OffsetMap, Payload, Timestamp,
 };
 use lazy_static::lazy_static;
 
@@ -95,11 +95,6 @@ pub enum EventMetaIo {
         meta: Metadata,
     },
 }
-const EVENT_KEY: EventKey = EventKey {
-    lamport: LamportTimestamp::new(0),
-    stream: NodeId::new([0; 32]).stream(StreamNr::new(0)),
-    offset: Offset::new(0),
-};
 lazy_static! {
     static ref METADATA: Metadata = Metadata {
         timestamp: Timestamp::new(0),
@@ -120,11 +115,11 @@ impl From<EventMeta> for EventMetaIo {
                 to_key,
                 from_time,
                 to_time,
-                key: EVENT_KEY,
+                key: EventKey::ZERO,
                 meta: METADATA.clone(),
             },
             EventMeta::Synthetic => Self::Event {
-                key: EVENT_KEY,
+                key: EventKey::ZERO,
                 meta: METADATA.clone(),
             },
             EventMeta::Event { key, meta } => Self::Event { key, meta },
@@ -162,21 +157,21 @@ impl EventMeta {
             EventMeta::Range {
                 from_key, from_time, ..
             } => (*from_key, *from_time),
-            EventMeta::Synthetic => (EVENT_KEY, 0.into()),
+            EventMeta::Synthetic => (EventKey::ZERO, 0.into()),
             EventMeta::Event { key, meta } => (*key, meta.timestamp),
         }
     }
     fn right(&self) -> (EventKey, Timestamp) {
         match self {
             EventMeta::Range { to_key, to_time, .. } => (*to_key, *to_time),
-            EventMeta::Synthetic => (EVENT_KEY, 0.into()),
+            EventMeta::Synthetic => (EventKey::ZERO, 0.into()),
             EventMeta::Event { key, meta } => (*key, meta.timestamp),
         }
     }
 }
-impl AddAssign for EventMeta {
-    fn add_assign(&mut self, rhs: Self) {
-        if rhs == EventMeta::Synthetic {
+impl AddAssign<&Self> for EventMeta {
+    fn add_assign(&mut self, rhs: &Self) {
+        if *rhs == EventMeta::Synthetic {
             return;
         }
         match self {
@@ -202,7 +197,7 @@ impl AddAssign for EventMeta {
                     *to_time = max_time;
                 }
             }
-            EventMeta::Synthetic => *self = rhs,
+            EventMeta::Synthetic => *self = rhs.clone(),
             EventMeta::Event { key, meta } => match rhs {
                 EventMeta::Range {
                     from_key: min_key,
@@ -211,10 +206,10 @@ impl AddAssign for EventMeta {
                     to_time: max_time,
                 } => {
                     *self = EventMeta::Range {
-                        from_key: (*key).min(min_key),
-                        to_key: (*key).max(max_key),
-                        from_time: (meta.timestamp).min(min_time),
-                        to_time: (meta.timestamp).max(max_time),
+                        from_key: (*key).min(*min_key),
+                        to_key: (*key).max(*max_key),
+                        from_time: (meta.timestamp).min(*min_time),
+                        to_time: (meta.timestamp).max(*max_time),
                     };
                 }
                 EventMeta::Synthetic => {}
@@ -222,14 +217,14 @@ impl AddAssign for EventMeta {
                     key: rkey,
                     meta: Metadata { timestamp: rtime, .. },
                 } => {
-                    if rkey == *key && rtime == meta.timestamp {
+                    if rkey == key && *rtime == meta.timestamp {
                         return;
                     }
                     *self = EventMeta::Range {
-                        from_key: rkey.min(*key),
-                        to_key: rkey.max(*key),
-                        from_time: rtime.min(meta.timestamp),
-                        to_time: rtime.max(meta.timestamp),
+                        from_key: (*rkey).min(*key),
+                        to_key: (*rkey).max(*key),
+                        from_time: (*rtime).min(meta.timestamp),
+                        to_time: (*rtime).max(meta.timestamp),
                     };
                 }
             },
@@ -724,7 +719,7 @@ mod tests {
                     min_time = min_time.map(|k: Timestamp| k.min(min.1)).or(Some(min.1));
                     max_time = max_time.map(|k: Timestamp| k.max(max.1)).or(Some(max.1));
                 }
-                em += m;
+                em += &m;
             }
             let (from_key, from_time) = em.left();
             let (to_key, to_time) = em.right();

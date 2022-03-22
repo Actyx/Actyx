@@ -1,4 +1,4 @@
-use crate::{error::RuntimeError, eval::Context, value::Value};
+use crate::{error::RuntimeError, eval::Context, query::Query, value::Value};
 use actyx_sdk::{
     language::{self, NonEmptyVec, SimpleExpr, SpreadExpr},
     service::Order,
@@ -91,19 +91,26 @@ impl Processor for Select {
         async move {
             let mut v = vec![];
             for expr in self.0.iter() {
-                match cx.eval(expr).await {
-                    Ok(val) => {
-                        if expr.spread {
-                            if let Ok(items) = val.as_array(cx) {
-                                v.extend(items.into_iter().map(Ok));
-                            } else {
-                                v.push(Err(RuntimeError::TypeErrorSpread(val.kind()).into()))
-                            }
-                        } else {
-                            v.push(Ok(val));
-                        }
+                if let (SimpleExpr::SubQuery(e), true) = (&expr.expr, expr.spread) {
+                    match Query::eval(e, cx).await {
+                        Ok(arr) => v.extend(arr.into_iter().map(Ok)),
+                        Err(e) => v.push(Err(e)),
                     }
-                    Err(e) => v.push(Err(e)),
+                } else {
+                    match cx.eval(expr).await {
+                        Ok(val) => {
+                            if expr.spread {
+                                if let Ok(items) = val.as_array() {
+                                    v.extend(items.into_iter().map(Ok));
+                                } else {
+                                    v.push(Err(RuntimeError::TypeErrorSpread(val.kind()).into()))
+                                }
+                            } else {
+                                v.push(Ok(val));
+                            }
+                        }
+                        Err(e) => v.push(Err(e)),
+                    }
                 }
             }
             v
@@ -149,7 +156,7 @@ impl Processor for Binding {
 
 #[cfg(test)]
 mod tests {
-    use actyx_sdk::{language::SortKey, NodeId, OffsetMap};
+    use actyx_sdk::OffsetMap;
     use cbor_data::Encoder;
 
     use super::*;
@@ -160,12 +167,6 @@ mod tests {
         s.parse::<SimpleExpr>().unwrap()
     }
 
-    fn key() -> SortKey {
-        SortKey {
-            lamport: Default::default(),
-            stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
-        }
-    }
     fn store() -> EventStoreRef {
         EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
     }
@@ -173,13 +174,13 @@ mod tests {
     #[tokio::test]
     async fn filter() {
         let mut f = Filter(simple_expr("_ > 5 + a"));
-        let mut cx = Context::owned(key(), Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
-        cx.bind("a", cx.value(|b| b.encode_f64(3.0)));
+        let mut cx = Context::owned(Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
+        cx.bind("a", Value::synthetic(cx.mk_cbor(|b| b.encode_f64(3.0))));
 
-        cx.bind("_", cx.value(|b| b.encode_i64(8)));
+        cx.bind("_", Value::synthetic(cx.mk_cbor(|b| b.encode_i64(8))));
         assert_eq!(f.apply(&mut cx).await.len(), 0);
 
-        let v = cx.value(|b| b.encode_i64(9));
+        let v = Value::synthetic(cx.mk_cbor(|b| b.encode_i64(9)));
         cx.bind("_", v.clone());
         assert_eq!(f.apply(&mut cx).await.into_iter().next().unwrap().unwrap(), v);
     }
@@ -187,20 +188,20 @@ mod tests {
     #[tokio::test]
     async fn select() {
         let mut s = Select(vec![simple_expr("_.x + a").with_spread(false)].try_into().unwrap());
-        let mut cx = Context::owned(key(), Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
-        cx.bind("a", cx.value(|b| b.encode_f64(0.5)));
+        let mut cx = Context::owned(Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
+        cx.bind("a", Value::synthetic(cx.mk_cbor(|b| b.encode_f64(0.5))));
 
         cx.bind(
             "_",
-            cx.value(|b| {
+            Value::synthetic(cx.mk_cbor(|b| {
                 b.encode_dict(|b| {
                     b.with_key("x", |b| b.encode_u64(2));
                 })
-            }),
+            })),
         );
         assert_eq!(
             s.apply(&mut cx).await.into_iter().next().unwrap().unwrap(),
-            cx.value(|b| b.encode_f64(2.5))
+            Value::synthetic(cx.mk_cbor(|b| b.encode_f64(2.5)))
         );
     }
 }

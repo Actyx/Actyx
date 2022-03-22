@@ -9,10 +9,10 @@ use actyx_sdk::{
     app_id,
     language::Query,
     service::{
-        EventResponse, Order, PublishEvent, PublishRequest, QueryRequest, QueryResponse, SubscribeRequest,
+        EventMeta, EventResponse, Order, PublishEvent, PublishRequest, QueryRequest, QueryResponse, SubscribeRequest,
         SubscribeResponse,
     },
-    tags, AppId, Payload, Timestamp,
+    tags, AppId, Metadata, Payload, Timestamp,
 };
 use anyhow::Context;
 use chrono::Utc;
@@ -272,9 +272,11 @@ fn update_query(
     event: SubscribeResponse,
 ) -> anyhow::Result<bool> {
     if let SubscribeResponse::Event(EventResponse {
-        timestamp: created,
+        meta: EventMeta::Event {
+            meta: Metadata { timestamp: created, .. },
+            ..
+        },
         payload,
-        ..
     }) = event
     {
         if let FilePrefetchEvent::PinAdded {

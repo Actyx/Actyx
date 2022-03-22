@@ -1,7 +1,7 @@
 use crate::{error::RuntimeError, eval::Context, value::Value};
 use actyx_sdk::{
     language::{AggrOp, Num, SimpleExpr, Var},
-    service::Order,
+    service::{EventMeta, Order},
 };
 use anyhow::anyhow;
 use cbor_data::Encoder;
@@ -41,8 +41,8 @@ impl SumOp for MulOp {
 
 enum Summable<T: SumOp> {
     Empty(PhantomData<T>),
-    Bool(bool),
-    Num(Num),
+    Bool(EventMeta, bool),
+    Num(EventMeta, Num),
     Error(anyhow::Error),
 }
 
@@ -53,20 +53,27 @@ impl<T: SumOp> AddAssign<&Value> for Summable<T> {
             Summable::Empty(_) => {
                 *self = rhs
                     .as_bool()
-                    .map(Self::Bool)
-                    .or_else(|_| rhs.as_number().map(Self::Num))
+                    .map(|b| Self::Bool(rhs.meta().clone(), b))
+                    .or_else(|_| rhs.as_number().map(|n| Self::Num(rhs.meta().clone(), n)))
                     .unwrap_or_else(Self::Error)
             }
-            Summable::Bool(b) => {
+            Summable::Bool(mut meta, b) => {
                 *self = rhs
                     .as_bool()
-                    .map(|o| Self::Bool(T::bool(b, o)))
+                    .map(|o| {
+                        meta += rhs.meta();
+                        Self::Bool(meta, T::bool(b, o))
+                    })
                     .unwrap_or_else(Self::Error)
             }
-            Summable::Num(n) => {
+            Summable::Num(mut meta, n) => {
                 *self = rhs
                     .as_number()
-                    .and_then(|o| Ok(Self::Num(T::num(n, o)?)))
+                    .and_then(|o| {
+                        let result = T::num(n, o)?;
+                        meta += rhs.meta();
+                        Ok(Self::Num(meta, result))
+                    })
                     .unwrap_or_else(Self::Error)
             }
             Summable::Error(e) => *self = Self::Error(e),
@@ -91,8 +98,8 @@ impl<T: SumOp> Aggregator for Sum<T> {
     fn flush(&mut self, cx: &Context) -> anyhow::Result<Value> {
         match &self.0 {
             Summable::Empty(_) => Err(RuntimeError::NoValueYet.into()),
-            Summable::Bool(n) => Ok(cx.value(|b| b.encode_bool(*n))),
-            Summable::Num(n) => Ok(cx.number(n)),
+            Summable::Bool(meta, n) => Ok(Value::new_meta(cx.mk_cbor(|b| b.encode_bool(*n)), meta.clone())),
+            Summable::Num(meta, n) => Ok(Value::new_meta(cx.number(n), meta.clone())),
             Summable::Error(e) => Err(anyhow!("incompatible types in sum: {}", e)),
         }
     }
@@ -106,7 +113,7 @@ struct First(Option<Value>);
 impl Aggregator for First {
     fn feed(&mut self, input: Value) -> anyhow::Result<()> {
         if let Some(v) = &mut self.0 {
-            if input.key() < v.key() {
+            if input.min_key() < v.min_key() || input.min_key() == v.min_key() && input.max_key() < v.max_key() {
                 *v = input;
             }
         } else {
@@ -128,7 +135,7 @@ struct Last(Option<Value>);
 impl Aggregator for Last {
     fn feed(&mut self, input: Value) -> anyhow::Result<()> {
         if let Some(v) = &mut self.0 {
-            if input.key() > v.key() {
+            if input.max_key() > v.max_key() || input.max_key() == v.max_key() && input.min_key() > v.min_key() {
                 *v = input;
             }
         } else {
@@ -326,10 +333,7 @@ mod tests {
         operation::{Operation, Processor},
         query::Query,
     };
-    use actyx_sdk::{
-        language::{self, SortKey},
-        NodeId, OffsetMap,
-    };
+    use actyx_sdk::{app_id, language, tags, EventKey, Metadata, NodeId, OffsetMap};
     use swarm::event_store_ref::EventStoreRef;
 
     fn a(s: &str) -> Box<dyn Processor> {
@@ -344,20 +348,27 @@ mod tests {
         EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
     }
     fn ctx() -> Context<'static> {
-        Context::owned(
-            SortKey {
-                lamport: Default::default(),
-                stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
-            },
-            Order::Asc,
-            store(),
-            OffsetMap::empty(),
-            OffsetMap::empty(),
-        )
+        Context::owned(Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty())
     }
-    async fn apply<'a, 'b: 'a>(a: &'a mut dyn Processor, cx: &'a mut Context<'b>, v: u64) -> Vec<Value> {
-        cx.incr();
-        cx.bind("_", cx.value(|b| b.encode_u64(v)));
+    async fn apply<'a, 'b: 'a>(a: &'a mut dyn Processor, cx: &'a mut Context<'b>, v: u64, t: u64) -> Vec<Value> {
+        cx.bind(
+            "_",
+            Value::new_meta(
+                cx.mk_cbor(|b| b.encode_u64(v)),
+                EventMeta::Event {
+                    key: EventKey {
+                        lamport: t.into(),
+                        stream: NodeId::default().stream(0.into()),
+                        offset: 0.into(),
+                    },
+                    meta: Metadata {
+                        timestamp: 0.into(),
+                        tags: tags!(),
+                        app_id: app_id!("x"),
+                    },
+                },
+            ),
+        );
         a.apply(cx).await.into_iter().collect::<anyhow::Result<_>>().unwrap()
     }
     async fn flush<'a, 'b: 'a>(a: &'a mut dyn Processor, cx: &'a mut Context<'b>) -> String {
@@ -376,15 +387,15 @@ mod tests {
         let mut s = a("42 - SUM(_ * 2)");
         let mut cx = ctx();
 
-        assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
-        assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 1, 1).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 2, 2).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "36");
 
         let mut s = a("CASE SUM(_ ≥ 2) => 11 CASE TRUE => 12 ENDCASE");
 
-        assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 1, 3).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "12");
-        assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 2, 4).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "11");
     }
 
@@ -393,15 +404,15 @@ mod tests {
         let mut s = a("42 - PRODUCT(_ * 2)");
         let mut cx = ctx();
 
-        assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
-        assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 1, 1).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 2, 2).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "34");
 
         let mut s = a("CASE PRODUCT(_ ≥ 2) => 11 CASE TRUE => 12 ENDCASE");
 
-        assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 2, 3).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "11");
-        assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 1, 4).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "12");
     }
 
@@ -410,13 +421,13 @@ mod tests {
         let mut s = a("[FIRST(_), LAST(_), MIN(_), MAX(_)]");
         let mut cx = ctx();
 
-        assert_eq!(apply(&mut *s, &mut cx, 2).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 2, 1).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "[2, 2, 2, 2]");
-        assert_eq!(apply(&mut *s, &mut cx, 1).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 1, 2).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "[2, 1, 1, 2]");
-        assert_eq!(apply(&mut *s, &mut cx, 4).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 4, 3).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "[2, 4, 1, 4]");
-        assert_eq!(apply(&mut *s, &mut cx, 3).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 3, 4).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "[2, 3, 1, 4]");
     }
 }

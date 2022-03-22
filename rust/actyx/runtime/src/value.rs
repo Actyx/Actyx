@@ -1,11 +1,12 @@
-use crate::{error::RuntimeError, eval::Context};
+use crate::error::RuntimeError;
 use actyx_sdk::{
-    language::{Num, SortKey},
-    EventKey, Payload,
+    language::Num,
+    service::{EventMeta, EventResponse},
+    Event, EventKey, Payload,
 };
 use anyhow::{anyhow, Result};
-use cbor_data::{Cbor, CborBuilder, CborOwned, CborValue, Encoder, WithOutput, Writer};
-use chrono::{DateTime, SecondsFormat};
+use cbor_data::{Cbor, CborOwned, CborValue};
+use chrono::{DateTime, Local, SecondsFormat};
 use derive_more::Display;
 use std::{
     borrow::{Borrow, Cow},
@@ -58,46 +59,102 @@ impl<'a> From<CborValue<'a>> for ValueKind {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Value {
-    sort_key: SortKey,
+    meta: EventMeta,
     value: CborOwned, // should later become InternedHash<[u8]>
 }
 
-impl From<(EventKey, Payload)> for Value {
-    fn from(event: (EventKey, Payload)) -> Self {
-        let (key, payload) = event;
+impl From<Event<Payload>> for Value {
+    fn from(event: Event<Payload>) -> Self {
         Self {
-            sort_key: key.into(),
-            value: CborOwned::unchecked(payload.as_bytes()),
+            meta: EventMeta::Event {
+                key: event.key,
+                meta: event.meta,
+            },
+            value: CborOwned::unchecked(event.payload.as_bytes()),
         }
+    }
+}
+impl From<EventResponse<Payload>> for Value {
+    fn from(ev: EventResponse<Payload>) -> Self {
+        Self {
+            meta: ev.meta,
+            value: CborOwned::unchecked(ev.payload.as_bytes()),
+        }
+    }
+}
+impl From<Value> for EventResponse<Payload> {
+    fn from(ev: Value) -> Self {
+        let payload = ev.payload();
+        Self { meta: ev.meta, payload }
     }
 }
 
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}/{}: {}",
-            u64::from(self.sort_key.lamport),
-            self.sort_key.stream,
-            self.value
-        )
+        match self.meta {
+            EventMeta::Range {
+                from_key,
+                to_key,
+                from_time,
+                to_time,
+            } => write!(
+                f,
+                "{}/{}@{} - {}/{}@{}: {}",
+                u64::from(from_key.lamport),
+                from_key.stream.abbreviate(),
+                DateTime::from(from_time).with_timezone(&Local).to_rfc3339(),
+                u64::from(to_key.lamport),
+                to_key.stream.abbreviate(),
+                DateTime::from(to_time).with_timezone(&Local).to_rfc3339(),
+                self.value
+            ),
+            EventMeta::Synthetic => write!(f, "synthetic: {}", self.value),
+            EventMeta::Event { key, ref meta } => write!(
+                f,
+                "{}/{}@{}: {}",
+                u64::from(key.lamport),
+                key.stream.abbreviate(),
+                DateTime::from(meta.timestamp).with_timezone(&Local).to_rfc3339(),
+                self.value
+            ),
+        }
     }
 }
 
 impl Value {
-    pub fn new(sort_key: SortKey, f: impl FnOnce(CborBuilder<WithOutput>) -> CborOwned) -> Self {
+    pub fn synthetic(value: CborOwned) -> Self {
         Self {
-            sort_key,
-            value: SCRATCH.with(|v| f(CborBuilder::with_scratch_space(&mut (*v).borrow_mut()))),
+            meta: EventMeta::Synthetic,
+            value,
+        }
+    }
+
+    pub fn new_meta(value: CborOwned, meta: EventMeta) -> Self {
+        Self { value, meta }
+    }
+
+    pub fn meta(&self) -> &EventMeta {
+        &self.meta
+    }
+
+    pub fn min_key(&self) -> EventKey {
+        match self.meta {
+            EventMeta::Range { from_key, .. } => from_key,
+            EventMeta::Synthetic => EventKey::ZERO,
+            EventMeta::Event { key, .. } => key,
+        }
+    }
+
+    pub fn max_key(&self) -> EventKey {
+        match self.meta {
+            EventMeta::Range { to_key, .. } => to_key,
+            EventMeta::Synthetic => EventKey::ZERO,
+            EventMeta::Event { key, .. } => key,
         }
     }
 
     pub fn as_slice(&self) -> &[u8] {
         self.value.as_slice()
-    }
-
-    pub fn key(&self) -> SortKey {
-        self.sort_key
     }
 
     pub fn value(&self) -> CborValue<'_> {
@@ -140,7 +197,7 @@ impl Value {
         self.value().to_str().ok_or_else(|| anyhow!("{} is not a string", self))
     }
 
-    pub fn as_array(&self, cx: &Context) -> Result<Vec<Value>> {
+    pub fn as_array(&self) -> Result<Vec<Value>> {
         Ok(self
             .value()
             .to_array()
@@ -149,7 +206,10 @@ impl Value {
                 expected: ValueKind::Array,
             })?
             .into_iter()
-            .map(|cbor| cx.value(|b| b.write_trusting(cbor.as_slice())))
+            .map(|cbor| Self {
+                meta: self.meta().clone(),
+                value: cbor.into_owned(),
+            })
             .collect())
     }
 
@@ -169,49 +229,6 @@ impl Value {
             CborValue::Invalid => "INVALID".to_owned(),
             CborValue::Unknown => "UNKNWON".to_owned(),
         }
-    }
-
-    fn number(&self, n: Num) -> Value {
-        match n {
-            Num::Decimal(d) => Value::new(self.sort_key, |b| b.encode_f64(d)),
-            Num::Natural(n) => Value::new(self.sort_key, |b| b.encode_u64(n)),
-        }
-    }
-
-    pub fn add(&self, other: &Value) -> Result<Value> {
-        let lhs = self.as_number()?;
-        let rhs = other.as_number()?;
-        Ok(self.number(lhs.add(&rhs)?))
-    }
-
-    pub fn sub(&self, other: &Value) -> Result<Value> {
-        let lhs = self.as_number()?;
-        let rhs = other.as_number()?;
-        Ok(self.number(lhs.sub(&rhs)?))
-    }
-
-    pub fn mul(&self, other: &Value) -> Result<Value> {
-        let lhs = self.as_number()?;
-        let rhs = other.as_number()?;
-        Ok(self.number(lhs.mul(&rhs)?))
-    }
-
-    pub fn div(&self, other: &Value) -> Result<Value> {
-        let lhs = self.as_number()?;
-        let rhs = other.as_number()?;
-        Ok(self.number(lhs.div(&rhs)?))
-    }
-
-    pub fn modulo(&self, other: &Value) -> Result<Value> {
-        let lhs = self.as_number()?;
-        let rhs = other.as_number()?;
-        Ok(self.number(lhs.modulo(&rhs)?))
-    }
-
-    pub fn pow(&self, other: &Value) -> Result<Value> {
-        let lhs = self.as_number()?;
-        let rhs = other.as_number()?;
-        Ok(self.number(lhs.pow(&rhs)?))
     }
 }
 

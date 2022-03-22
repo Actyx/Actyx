@@ -8,7 +8,6 @@ use actyx_sdk::{
     service::Order,
 };
 use ax_futures_util::ReceiverExt;
-use cbor_data::{Encoder, Writer};
 use futures::{stream, StreamExt};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -20,7 +19,7 @@ pub struct Query {
 
 impl Query {
     /// run a query in the given evaluation context and collect all results
-    pub async fn eval(query: &language::Query, cx: &Context<'_>) -> Result<Value, anyhow::Error> {
+    pub async fn eval(query: &language::Query, cx: &Context<'_>) -> Result<Vec<Value>, anyhow::Error> {
         let mut feeder = Query::feeder_from(&query.ops);
 
         let (mut stream, cx) = match &query.source {
@@ -52,7 +51,7 @@ impl Query {
                 };
                 let stream = stream
                     .map(|ev| match ev {
-                        Ok(ev) => Ok(Value::from((ev.key, ev.payload))),
+                        Ok(ev) => Ok(Value::from(ev)),
                         Err(e) => Err(e.into()),
                     })
                     .left_stream();
@@ -83,13 +82,7 @@ impl Query {
         for v in vs {
             results.push(v?);
         }
-        Ok(cx.value(move |b| {
-            b.encode_array(move |b| {
-                for v in results.drain(..) {
-                    b.write_trusting(v.as_slice());
-                }
-            })
-        }))
+        Ok(results)
     }
 
     pub fn make_feeder(&self) -> Feeder {
@@ -139,9 +132,6 @@ impl Feeder {
 
         // create the outermost context, stored on the stack
         let mut cx = cx.child();
-        if let Some(ref v) = input {
-            cx.sort_key = v.key();
-        }
 
         // set up per-iteration state
         let mut cx = &mut cx; // reference to the current context
@@ -198,20 +188,14 @@ impl From<language::Query> for Query {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyx_sdk::{language::SortKey, NodeId, OffsetMap};
+    use actyx_sdk::OffsetMap;
     use swarm::event_store_ref::EventStoreRef;
 
-    fn key() -> SortKey {
-        SortKey {
-            lamport: Default::default(),
-            stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
-        }
-    }
     fn store() -> EventStoreRef {
         EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
     }
     fn ctx(order: Order) -> Context<'static> {
-        Context::owned(key(), order, store(), OffsetMap::empty(), OffsetMap::empty())
+        Context::owned(order, store(), OffsetMap::empty(), OffsetMap::empty())
     }
     fn feeder(q: &str) -> Feeder {
         Query::from(q.parse::<language::Query>().unwrap()).make_feeder()

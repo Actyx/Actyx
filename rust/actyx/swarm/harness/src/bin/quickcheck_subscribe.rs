@@ -6,7 +6,7 @@ fn main() {
     };
 
     use actyx_sdk::{
-        service::{EventResponse, EventService, QueryRequest, QueryResponse},
+        service::{EventMeta, EventResponse, EventService, QueryRequest, QueryResponse},
         tag, OffsetMap, TagSet,
     };
     use anyhow::Context;
@@ -107,8 +107,11 @@ fn main() {
                                     .filter_map(|resp| async move {
                                         match resp {
                                             QueryResponse::Event(EventResponse {
-                                                tags, payload, stream, ..
-                                            }) if !tags.contains(&tag!("files")) => Some((stream, (tags, payload))),
+                                                meta: EventMeta::Event { key, meta },
+                                                payload,
+                                            }) if !meta.tags.contains(&tag!("files")) => {
+                                                Some((key.stream, (meta.tags, payload)))
+                                            }
                                             _ => None,
                                         }
                                     })

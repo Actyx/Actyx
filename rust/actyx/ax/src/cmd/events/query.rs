@@ -4,6 +4,7 @@ use actyx_sdk::{
     Payload,
 };
 use futures::{future::ready, Stream, StreamExt};
+use runtime::value::Value;
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 use util::{
@@ -73,6 +74,9 @@ impl AxCliCommand for EventsQuery {
     }
 
     fn pretty(result: Self::Output) -> String {
-        serde_json::to_string(&result).unwrap()
+        match result {
+            EventDiagnostic::Event(e) => Value::from(e).to_string(),
+            EventDiagnostic::Diagnostic(d) => format!("{:?}: {}", d.severity, d.message),
+        }
     }
 }

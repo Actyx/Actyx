@@ -125,6 +125,11 @@ impl NodeId {
         let config = base64::Config::new(base64::CharacterSet::Crypt, false);
         base64::encode_config(self.0, config)
     }
+
+    pub fn abbreviate(&self) -> String {
+        let config = base64::Config::new(base64::CharacterSet::Crypt, false);
+        base64::encode_config(&self.0[..3], config)
+    }
 }
 
 impl AsRef<[u8]> for NodeId {
@@ -234,6 +239,10 @@ impl StreamId {
             .context("parsing StreamId stream number")?
             .into();
         Ok(Self { node_id, stream_nr })
+    }
+
+    pub fn abbreviate(&self) -> String {
+        format!("{}-{}", self.node_id.abbreviate(), self.stream_nr)
     }
 }
 

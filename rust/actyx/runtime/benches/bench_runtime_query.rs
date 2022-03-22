@@ -10,20 +10,14 @@ fn store() -> EventStoreRef {
 }
 
 fn v() -> (Value, Context<'static>) {
-    let cx = Context::owned(
-        Default::default(),
-        Order::Asc,
-        store(),
-        OffsetMap::empty(),
-        OffsetMap::empty(),
-    );
-    let v = cx.value(|b| {
+    let cx = Context::owned(Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
+    let v = Value::synthetic(cx.mk_cbor(|b| {
         b.encode_dict(|b| {
             b.with_key("x", |b| b.encode_u64(5));
             b.with_key("y", |b| b.encode_str("hello"));
             b.with_key("z", |b| b.encode_f64(12.34));
         })
-    });
+    }));
     (v, cx)
 }
 
