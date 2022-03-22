@@ -2,7 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use futures::stream::BoxStream;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, fmt::Display, num::NonZeroU64};
+use std::{collections::BTreeMap, fmt::Display, num::NonZeroU64, ops::AddAssign};
 
 use crate::{
     app_id,
@@ -153,6 +153,86 @@ impl From<EventMetaIo> for EventMeta {
                     Self::Event { key, meta }
                 }
             }
+        }
+    }
+}
+impl EventMeta {
+    fn left(&self) -> (EventKey, Timestamp) {
+        match self {
+            EventMeta::Range {
+                from_key, from_time, ..
+            } => (*from_key, *from_time),
+            EventMeta::Synthetic => (EVENT_KEY, 0.into()),
+            EventMeta::Event { key, meta } => (*key, meta.timestamp),
+        }
+    }
+    fn right(&self) -> (EventKey, Timestamp) {
+        match self {
+            EventMeta::Range { to_key, to_time, .. } => (*to_key, *to_time),
+            EventMeta::Synthetic => (EVENT_KEY, 0.into()),
+            EventMeta::Event { key, meta } => (*key, meta.timestamp),
+        }
+    }
+}
+impl AddAssign for EventMeta {
+    fn add_assign(&mut self, rhs: Self) {
+        if rhs == EventMeta::Synthetic {
+            return;
+        }
+        match self {
+            EventMeta::Range {
+                from_key,
+                to_key,
+                from_time,
+                to_time,
+            } => {
+                // this only works because we excluded rhs == Synthetic above
+                let (min_key, min_time) = rhs.left();
+                let (max_key, max_time) = rhs.right();
+                if min_key < *from_key {
+                    *from_key = min_key;
+                }
+                if max_key > *to_key {
+                    *to_key = max_key;
+                }
+                if min_time < *from_time {
+                    *from_time = min_time;
+                }
+                if max_time > *to_time {
+                    *to_time = max_time;
+                }
+            }
+            EventMeta::Synthetic => *self = rhs,
+            EventMeta::Event { key, meta } => match rhs {
+                EventMeta::Range {
+                    from_key: min_key,
+                    to_key: max_key,
+                    from_time: min_time,
+                    to_time: max_time,
+                } => {
+                    *self = EventMeta::Range {
+                        from_key: (*key).min(min_key),
+                        to_key: (*key).max(max_key),
+                        from_time: (meta.timestamp).min(min_time),
+                        to_time: (meta.timestamp).max(max_time),
+                    };
+                }
+                EventMeta::Synthetic => {}
+                EventMeta::Event {
+                    key: rkey,
+                    meta: Metadata { timestamp: rtime, .. },
+                } => {
+                    if rkey == *key && rtime == meta.timestamp {
+                        return;
+                    }
+                    *self = EventMeta::Range {
+                        from_key: rkey.min(*key),
+                        to_key: rkey.max(*key),
+                        from_time: rtime.min(meta.timestamp),
+                        to_time: rtime.max(meta.timestamp),
+                    };
+                }
+            },
         }
     }
 }
@@ -453,6 +533,7 @@ pub trait EventService: Clone + Send {
 mod tests {
     use super::*;
     use crate::{app_id, tags, AppId, NodeId};
+    use quickcheck::quickcheck;
 
     #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
     #[serde(rename_all = "camelCase")]
@@ -625,5 +706,33 @@ mod tests {
                 payload,
             }
         );
+    }
+
+    quickcheck! {
+        fn event_meta_merge(m: Vec<EventMeta>) -> bool {
+            let mut em = EventMeta::Synthetic;
+            let mut min_key = None;
+            let mut max_key = None;
+            let mut min_time = None;
+            let mut max_time = None;
+            for m in m {
+                if m != EventMeta::Synthetic {
+                    let min = m.left();
+                    let max = m.right();
+                    min_key = min_key.map(|k: EventKey| k.min(min.0)).or(Some(min.0));
+                    max_key = max_key.map(|k: EventKey| k.max(max.0)).or(Some(max.0));
+                    min_time = min_time.map(|k: Timestamp| k.min(min.1)).or(Some(min.1));
+                    max_time = max_time.map(|k: Timestamp| k.max(max.1)).or(Some(max.1));
+                }
+                em += m;
+            }
+            let (from_key, from_time) = em.left();
+            let (to_key, to_time) = em.right();
+            em == EventMeta::Synthetic && min_key.is_none() ||
+            min_key == max_key && min_time == max_time
+                && matches!(em, EventMeta::Event { key, meta: Metadata { timestamp, .. }}
+                    if key == min_key.unwrap() && timestamp == min_time.unwrap()) ||
+            em == EventMeta::Range { from_key, to_key, from_time, to_time }
+        }
     }
 }

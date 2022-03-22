@@ -4,7 +4,8 @@ use crate::{
     language::SortKey,
     offset::{Offset, OffsetMap, OffsetOrMin},
     scalars::{NodeId, StreamId, StreamNr},
-    LamportTimestamp, Tag, TagSet, Timestamp,
+    service::EventMeta,
+    EventKey, LamportTimestamp, Metadata, Tag, TagSet, Timestamp,
 };
 use quickcheck::{Arbitrary, Gen};
 
@@ -50,6 +51,49 @@ impl Arbitrary for SortKey {
         Self {
             lamport: Arbitrary::arbitrary(g),
             stream: Arbitrary::arbitrary(g),
+        }
+    }
+}
+
+impl Arbitrary for EventKey {
+    fn arbitrary(g: &mut Gen) -> Self {
+        Self {
+            lamport: Arbitrary::arbitrary(g),
+            stream: Arbitrary::arbitrary(g),
+            offset: Arbitrary::arbitrary(g),
+        }
+    }
+}
+
+impl Arbitrary for EventMeta {
+    fn arbitrary(g: &mut Gen) -> Self {
+        enum Kind {
+            S,
+            E,
+            R,
+        }
+        match g.choose(&[Kind::S, Kind::E, Kind::R]).unwrap() {
+            Kind::S => EventMeta::Synthetic,
+            Kind::E => EventMeta::Event {
+                key: Arbitrary::arbitrary(g),
+                meta: Arbitrary::arbitrary(g),
+            },
+            Kind::R => EventMeta::Range {
+                from_key: Arbitrary::arbitrary(g),
+                to_key: Arbitrary::arbitrary(g),
+                from_time: Arbitrary::arbitrary(g),
+                to_time: Arbitrary::arbitrary(g),
+            },
+        }
+    }
+}
+
+impl Arbitrary for Metadata {
+    fn arbitrary(g: &mut Gen) -> Self {
+        Self {
+            timestamp: Arbitrary::arbitrary(g),
+            tags: Arbitrary::arbitrary(g),
+            app_id: Arbitrary::arbitrary(g),
         }
     }
 }
