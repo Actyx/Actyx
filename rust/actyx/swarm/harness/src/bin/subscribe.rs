@@ -7,6 +7,7 @@ fn main() -> anyhow::Result<()> {
 
     use actyx_sdk::{
         app_id,
+        language::Query,
         service::{EventService, PublishEvent, PublishRequest},
         tags, AppManifest, Payload, Timestamp,
     };
@@ -59,7 +60,7 @@ fn main() -> anyhow::Result<()> {
         fully_meshed(&mut sim, Duration::from_secs(60)).await?;
 
         for machine in sim.machines_mut() {
-            machine.send(Command::SubscribeQuery("FROM 'a'".parse()?));
+            machine.send(Command::SubscribeQuery(Query::parse("FROM 'a'")?));
         }
 
         for machine in sim.machines_mut() {

@@ -380,17 +380,15 @@ fn r_func_call(p: P, ctx: Context) -> Result<FuncCall> {
     })
 }
 
-fn r_sub_query(p: P, ctx: Context) -> Result<Query> {
+fn r_pragma(p: P) -> Result<(&str, &str)> {
     let mut p = p.inner()?;
-    let mut f = p.next().ok_or(NoVal("main query"))?;
-    let features = if f.as_rule() == Rule::features {
-        let features = f.inner()?.map(|mut ff| ff.string()).collect::<Result<_>>()?;
-        f = p.next().ok_or(NoVal("FROM"))?;
-        features
-    } else {
-        vec![]
-    };
-    r_query(features, f, ctx)
+    let name = p.next().unwrap().as_str();
+    let value = p.next().unwrap().as_str();
+    Ok((name, value))
+}
+
+fn r_sub_query(p: P, ctx: Context) -> Result<Query<'static>> {
+    r_query(Vec::new(), Vec::new(), p.single()?, ctx)
 }
 
 fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
@@ -459,7 +457,7 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
     )
 }
 
-fn r_query(features: Vec<String>, p: P, ctx: Context) -> Result<Query> {
+fn r_query<'a>(pragmas: Vec<(&'a str, &'a str)>, features: Vec<String>, p: P, ctx: Context) -> Result<Query<'a>> {
     let mut p = p.inner()?;
     let source = match p.peek().unwrap().as_rule() {
         Rule::tag_expr => {
@@ -477,6 +475,7 @@ fn r_query(features: Vec<String>, p: P, ctx: Context) -> Result<Query> {
         x => bail!("unexpected token: {:?}", x),
     };
     let mut q = Query {
+        pragmas,
         features,
         source,
         ops: vec![],
@@ -506,13 +505,22 @@ fn r_query(features: Vec<String>, p: P, ctx: Context) -> Result<Query> {
     Ok(q)
 }
 
-impl FromStr for Query {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let p = Aql::parse(Rule::main_query, s)?.single()?;
-        r_sub_query(p, Context::Simple)
+pub(crate) fn query_from_str(s: &str) -> Result<Query<'_>> {
+    let p = Aql::parse(Rule::main_query, s)?.single()?;
+    let mut p = p.inner()?;
+    let mut pragmas = Vec::new();
+    while p.peek().map(|p| p.as_rule()) == Some(Rule::pragma) {
+        pragmas.push(r_pragma(p.next().unwrap())?);
     }
+    let mut f = p.next().ok_or(NoVal("main query"))?;
+    let features = if f.as_rule() == Rule::features {
+        let features = f.inner()?.map(|mut ff| ff.string()).collect::<Result<_>>()?;
+        f = p.next().ok_or(NoVal("FROM"))?;
+        features
+    } else {
+        vec![]
+    };
+    r_query(pragmas, features, f, Context::Simple)
 }
 
 impl FromStr for TagExpr {
@@ -607,13 +615,13 @@ mod tests {
 
     #[test]
     fn order() -> Result<()> {
-        let q = "FROM 'x'".parse::<Query>().unwrap();
+        let q = Query::parse("FROM 'x'").unwrap();
         assert_eq!(o(q), None);
-        let q = "FROM 'x' ORDER ASC".parse::<Query>().unwrap();
+        let q = Query::parse("FROM 'x' ORDER ASC").unwrap();
         assert_eq!(o(q), Some(Order::Asc));
-        let q = "FROM 'x' ORDER DESC".parse::<Query>().unwrap();
+        let q = Query::parse("FROM 'x' ORDER DESC").unwrap();
         assert_eq!(o(q), Some(Order::Desc));
-        let q = "FROM 'x' ORDER STREAM".parse::<Query>().unwrap();
+        let q = Query::parse("FROM 'x' ORDER STREAM").unwrap();
         assert_eq!(o(q), Some(Order::StreamAsc));
         Ok(())
     }
@@ -653,16 +661,17 @@ mod tests {
         use TagExpr::Atom;
 
         assert_eq!(
-            "FROM 'machine' | 'user' END".parse::<Query>()?,
+            Query::parse("FROM 'machine' | 'user' END")?,
             Query::new(Tag(tag!("machine")).or(Tag(tag!("user"))))
         );
         assert_eq!(
-            "FROM 'machine' |
+            Query::parse(
+                "FROM 'machine' |
                 -- or the other
                   'user' & isLocal & from(2012-12-31Z) & to(12345678901234567) & \
                   from(10/1234567890123456789012345678901234567890122-4312) & appId(hello-5.-x-) & allEvents
                   FILTER _.x[42] > 5 SELECT { x: ! 'hello' y: 42 z: [1.3,_.x] } END --"
-                .parse::<Query>()?,
+            )?,
             Query::new(
                 Atom(Tag(tag!("machine"))).or(Tag(tag!("user"))
                     .and(IsLocal)
@@ -698,7 +707,7 @@ mod tests {
 
     #[test]
     fn positive() {
-        let p = |str: &'static str| str.parse::<Query>().unwrap();
+        let p = |str: &'static str| Query::parse(str).unwrap();
         p("FROM 'machine' | 'user' & isLocal & from(2012-12-31Z) & to(12345678901234567) & appId(hello-5.-x-) & allEvents FILTER _.x[42] > 5 SELECT { x: !'hello', y: 42, z: [1.3, _.x] } END");
         p("FROM from(2012-12-31T09:30:32.007Z) END");
         p("FROM from(2012-12-31T09:30:32Z) END");
@@ -773,7 +782,7 @@ mod tests {
     #[test]
     fn ident() {
         let p = |s: &str, e: Option<&str>| {
-            let q = s.parse::<Query>();
+            let q = Query::parse(s);
             if let Some(err) = e {
                 let e = q.unwrap_err().to_string();
                 assert!(e.contains(err), "received: {}", e);
@@ -846,7 +855,7 @@ mod tests {
     #[test]
     fn aggregate() {
         let p = |s: &str, e: Option<&str>| {
-            let q = s.parse::<Query>();
+            let q = Query::parse(s);
             if let Some(err) = e {
                 let e = q.unwrap_err().to_string();
                 assert!(e.contains(err), "received: {}", e);
@@ -877,14 +886,14 @@ mod tests {
 
     #[test]
     fn limit() {
-        let q = "FROM 'x' LIMIT 10".parse::<Query>().unwrap();
+        let q = Query::parse("FROM 'x' LIMIT 10").unwrap();
         assert_eq!(&q.ops[0], &Operation::Limit(10.try_into().unwrap()));
     }
 
     #[test]
     fn func_call() {
         let p = |s: &str, e: Option<&str>| {
-            let q = s.parse::<Query>();
+            let q = Query::parse(s);
             if let Some(err) = e {
                 let e = q.unwrap_err().to_string();
                 assert!(e.contains(err), "received: {}", e);
@@ -932,37 +941,37 @@ mod tests {
         use TagAtom::*;
         use TagExpr::*;
 
-        let q = "FROM `a{U+1e}b`".parse::<Query>().unwrap();
+        let q = Query::parse("FROM `a{U+1e}b`").unwrap();
         assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1eb")])));
 
-        let q = "FROM `a{U+1e}`".parse::<Query>().unwrap();
+        let q = Query::parse("FROM `a{U+1e}`").unwrap();
         assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1e")])));
 
-        let q = "FROM `{U+1e}b`".parse::<Query>().unwrap();
+        let q = Query::parse("FROM `{U+1e}b`").unwrap();
         assert_eq!(from(q), Atom(Interpolation(vec![s("\x1eb")])));
 
-        let q = "FROM `a{U+1e}b{U+1f}`".parse::<Query>().unwrap();
+        let q = Query::parse("FROM `a{U+1e}b{U+1f}`").unwrap();
         assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1eb\x1f")])));
 
-        let q = "FROM `a{U+1e}{U+1f}b`".parse::<Query>().unwrap();
+        let q = Query::parse("FROM `a{U+1e}{U+1f}b`").unwrap();
         assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1e\x1fb")])));
 
-        let q = "FROM `a{U+110000}`".parse::<Query>().unwrap_err();
+        let q = Query::parse("FROM `a{U+110000}`").unwrap_err();
         assert_eq!(q.to_string(), "invalid unicode scalar value `U+110000`");
     }
 
     #[test]
     fn from_arr() {
-        let q = "FROM [1, 2, 3]".parse::<Query>().unwrap();
+        let q = Query::parse("FROM [1, 2, 3]").unwrap();
         assert_eq!(arr(q), vec!["1", "2", "3"]);
     }
 
     #[test]
     fn spread() {
-        let q = "FROM [1, ...2, ...(x + 3)]".parse::<Query>().unwrap();
+        let q = Query::parse("FROM [1, ...2, ...(x + 3)]").unwrap();
         assert_eq!(arr(q), vec!["1", "...2", "...(x + 3)"]);
 
-        let q = "FROM 'x' SELECT ...a, b, ...c".parse::<Query>().unwrap();
+        let q = Query::parse("FROM 'x' SELECT ...a, b, ...c").unwrap();
         let v = match q.ops.into_iter().next() {
             Some(Operation::Select(v)) => v.iter().map(|e| e.spread).collect::<Vec<_>>(),
             x => panic!("unexpected: {:?}", x),
@@ -998,5 +1007,27 @@ mod tests {
             t("2022-01-02T00:00:00.000003000+01:00"),
             Timestamp::new(1641078000000003)
         );
+    }
+
+    #[test]
+    fn pragma() {
+        let s = "PRAGMA x := y \nFROM 'x'".to_owned();
+        let q = Query::parse(&*s).unwrap();
+        assert_eq!(q.pragmas, vec![("x", "y ")]);
+        assert!(std::ptr::eq(q.pragmas[0].0, &s[7..8]));
+        assert!(std::ptr::eq(q.pragmas[0].1, &s[12..14]));
+
+        let s = "PRAGMA x \ny \nENDPRAGMA\nFROM 'x'".to_owned();
+        let q = Query::parse(&*s).unwrap();
+        assert_eq!(q.pragmas, vec![("x", "y ")]);
+        assert!(std::ptr::eq(q.pragmas[0].0, &s[7..8]));
+        assert!(std::ptr::eq(q.pragmas[0].1, &s[10..12]));
+
+        let s = "PRAGMA x \ny \nENDPRAGMA\n
+            PRAGMA a :=hello
+            FROM 'x'"
+            .to_owned();
+        let q = Query::parse(&*s).unwrap();
+        assert_eq!(q.pragmas, vec![("x", "y "), ("a", "hello")]);
     }
 }

@@ -1,8 +1,15 @@
-main_query = { SOI ~ features? ~ query ~ EOI }
+main_query = { SOI ~ pragma* ~ features? ~ query ~ EOI }
 main_tag_expr = { SOI ~ tag_expr ~ EOI }
 main_simple_expr = { SOI ~ simple_expr ~ EOI }
 main_ident = @{ SOI ~ ident ~ EOI }
 main_func_name = @{ SOI ~ func_name ~ EOI }
+
+// pragmas
+pragma = ${ "PRAGMA" ~ WHITE_SPACE+ ~ feature_word ~ ( !NEWLINE ~ WHITE_SPACE )* ~ ( pragma_multi | pragma_single ) }
+pragma_multi = _{ NEWLINE ~ pragma_multi_text ~ NEWLINE ~ "ENDPRAGMA" ~ NEWLINE }
+pragma_multi_text = ${ ( !( NEWLINE ~ "ENDPRAGMA" ~ NEWLINE ) ~ ANY )* }
+pragma_single = _{ ":=" ~ ( !NEWLINE ~ WHITE_SPACE )* ~ pragma_single_text ~ NEWLINE }
+pragma_single_text = ${ ( !NEWLINE ~ ANY )* }
 
 // queries
 query = { "FROM" ~ ( tag_expr ~ query_order? | array ) ~ query_op* ~ "END"? }
@@ -79,7 +86,7 @@ var_index = { var ~ index* }
 expr_index = { "(" ~ simple_expr ~ ")" ~ index* }
 func_call = { func_name ~ "(" ~ ( simple_expr ~ ("," ~ simple_expr)* )? ~ ")" }
 simple_atom = _{ decimal | func_call | var_index | string | interpolation | expr_index | simple_not | object | array | null | bool | simple_cases | aggr_op | sub_query }
-sub_query = { features? ~ query }
+sub_query = { query }
 simple_not = { not ~ simple_atom }
 simple_cases = { ( "CASE" ~ simple_expr ~ "=>" ~ simple_expr )+ ~ "ENDCASE" }
 

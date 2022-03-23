@@ -102,10 +102,14 @@ impl Display for Value {
                 "{}/{}@{} - {}/{}@{}: {}",
                 u64::from(from_key.lamport),
                 from_key.stream.abbreviate(),
-                DateTime::from(from_time).with_timezone(&Local).to_rfc3339(),
+                DateTime::from(from_time)
+                    .with_timezone(&Local)
+                    .to_rfc3339_opts(SecondsFormat::Micros, false),
                 u64::from(to_key.lamport),
                 to_key.stream.abbreviate(),
-                DateTime::from(to_time).with_timezone(&Local).to_rfc3339(),
+                DateTime::from(to_time)
+                    .with_timezone(&Local)
+                    .to_rfc3339_opts(SecondsFormat::Micros, false),
                 self.value
             ),
             EventMeta::Synthetic => write!(f, "synthetic: {}", self.value),
@@ -114,7 +118,9 @@ impl Display for Value {
                 "{}/{}@{}: {}",
                 u64::from(key.lamport),
                 key.stream.abbreviate(),
-                DateTime::from(meta.timestamp).with_timezone(&Local).to_rfc3339(),
+                DateTime::from(meta.timestamp)
+                    .with_timezone(&Local)
+                    .to_rfc3339_opts(SecondsFormat::Micros, false),
                 self.value
             ),
         }

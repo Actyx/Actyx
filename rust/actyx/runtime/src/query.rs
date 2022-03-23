@@ -18,8 +18,23 @@ pub struct Query {
 }
 
 impl Query {
+    pub fn from(q: language::Query<'_>) -> (Self, Vec<(&str, &str)>) {
+        let pragmas = q.pragmas;
+        let stages = q.ops.into_iter().map(Operation::from).collect();
+        let source = q.source;
+        let features = q.features;
+        (
+            Self {
+                features,
+                source,
+                stages,
+            },
+            pragmas,
+        )
+    }
+
     /// run a query in the given evaluation context and collect all results
-    pub async fn eval(query: &language::Query, cx: &Context<'_>) -> Result<Vec<Value>, anyhow::Error> {
+    pub async fn eval(query: &language::Query<'static>, cx: &Context<'_>) -> Result<Vec<Value>, anyhow::Error> {
         let mut feeder = Query::feeder_from(&query.ops);
 
         let (mut stream, cx) = match &query.source {
@@ -172,19 +187,6 @@ impl Feeder {
     }
 }
 
-impl From<language::Query> for Query {
-    fn from(q: language::Query) -> Self {
-        let stages = q.ops.into_iter().map(Operation::from).collect();
-        let source = q.source;
-        let features = q.features;
-        Self {
-            features,
-            source,
-            stages,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,7 +200,7 @@ mod tests {
         Context::owned(order, store(), OffsetMap::empty(), OffsetMap::empty())
     }
     fn feeder(q: &str) -> Feeder {
-        Query::from(q.parse::<language::Query>().unwrap()).make_feeder()
+        Query::from(language::Query::parse(q).unwrap()).0.make_feeder()
     }
 
     async fn feed(q: &str, v: &str) -> Vec<String> {

@@ -1,14 +1,16 @@
 use crate::rejections::ApiError;
 use actyx_sdk::{
+    app_id,
     language::{self, Arr, SimpleExpr},
     service::{
         Diagnostic, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse,
         PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    AppId, Event, EventKey, NodeId, OffsetMap, OffsetOrMin, Payload, StreamNr,
+    AppId, Event, EventKey, NodeId, OffsetMap, OffsetOrMin, Payload, StreamNr, TagSet, Timestamp,
 };
 use ax_futures_util::ReceiverExt;
+use chrono::DateTime;
 use futures::{
     future::{poll_fn, ready},
     pin_mut,
@@ -23,8 +25,13 @@ use runtime::{
     query::{Feeder, Query},
     value::Value,
 };
+use serde::Deserialize;
 use std::{convert::TryFrom, num::NonZeroU64, task::Poll};
-use swarm::event_store_ref::EventStoreRef;
+use swarm::{
+    event_store_ref::{EventStoreHandler, EventStoreRef},
+    BanyanStore,
+};
+use tokio::sync::mpsc;
 
 #[derive(Clone)]
 pub struct EventService {
@@ -85,20 +92,11 @@ impl EventService {
         _app_id: AppId,
         request: QueryRequest,
     ) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
-        let query = request
-            .query
-            .parse::<language::Query>()
-            .map_err(|e| ApiError::BadRequest {
-                cause: format!("{:#}", e),
-            })?;
+        let query = language::Query::parse(&*request.query).map_err(|e| ApiError::BadRequest {
+            cause: format!("{:#}", e),
+        })?;
 
-        let upper_bound = match request.upper_bound {
-            Some(offsets) => offsets,
-            None => self.store.offsets().await?.present(),
-        };
-        let lower_bound = request.lower_bound.unwrap_or_default();
-
-        let query = Query::from(query);
+        let (query, pragmas) = Query::from(query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Query)?;
         let mut feeder = query.make_feeder();
@@ -113,7 +111,38 @@ impl EventService {
             }
         }
 
-        let store = self.store.clone();
+        let store = {
+            let mut store = None;
+            for (pragma, value) in pragmas {
+                if pragma == "eventStore" {
+                    let banyan = BanyanStore::test("query").await.unwrap();
+                    for line in value.lines() {
+                        store_line(&banyan, line).await?;
+                    }
+                    let event_store = {
+                        let store2 = banyan.clone();
+                        let (tx, mut rx) = mpsc::channel(100);
+                        banyan.spawn_task("handler", async move {
+                            let mut handler = EventStoreHandler::new(store2);
+                            let runtime = tokio::runtime::Handle::current();
+                            while let Some(request) = rx.recv().await {
+                                handler.handle(request, &runtime);
+                            }
+                        });
+                        EventStoreRef::new(move |e| tx.try_send(e).map_err(swarm::event_store_ref::Error::from))
+                    };
+                    store = Some(event_store);
+                }
+            }
+            store.unwrap_or_else(|| self.store.clone())
+        };
+
+        let upper_bound = match request.upper_bound {
+            Some(offsets) => offsets,
+            None => store.offsets().await?.present(),
+        };
+        let lower_bound = request.lower_bound.unwrap_or_default();
+
         let request_order = request.order;
         let gen = Gen::new(move |co: Co<QueryResponse>| async move {
             let mut cx = Context::owned(
@@ -230,12 +259,9 @@ impl EventService {
         _app_id: AppId,
         request: SubscribeRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
-        let query = request
-            .query
-            .parse::<language::Query>()
-            .map_err(|e| ApiError::BadRequest {
-                cause: format!("{:#}", e),
-            })?;
+        let query = language::Query::parse(&*request.query).map_err(|e| ApiError::BadRequest {
+            cause: format!("{:#}", e),
+        })?;
         let tag_expr = match &query.source {
             language::Source::Events { from, .. } => from.clone(),
             language::Source::Array(_) => {
@@ -249,7 +275,7 @@ impl EventService {
         let present = self.store.offsets().await?.present();
         let mut lower_bound = request.lower_bound.unwrap_or_default();
 
-        let query = Query::from(query);
+        let (query, _pragmas) = Query::from(query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::Subscribe)?;
         let mut query = query.make_feeder();
@@ -326,12 +352,9 @@ impl EventService {
         _app_id: AppId,
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        let query = request
-            .query
-            .parse::<language::Query>()
-            .map_err(|e| ApiError::BadRequest {
-                cause: format!("{:#}", e),
-            })?;
+        let query = language::Query::parse(&*request.query).map_err(|e| ApiError::BadRequest {
+            cause: format!("{:#}", e),
+        })?;
         let tag_expr = match &query.source {
             language::Source::Events { from, .. } => from.clone(),
             language::Source::Array(_) => {
@@ -348,7 +371,7 @@ impl EventService {
         let mut present = self.store.offsets().await?.present();
         present.union_with(&lower_bound);
 
-        let query = Query::from(query);
+        let (query, _pragmas) = Query::from(query);
         let features = Features::from_query(&query);
         features.validate(&query.features, Endpoint::SubscribeMonotonic)?;
         let mut query = query.make_feeder();
@@ -479,6 +502,30 @@ impl EventService {
 
         Ok(gen.boxed())
     }
+}
+
+async fn store_line(store: &BanyanStore, line: &str) -> anyhow::Result<()> {
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Line<'a> {
+        timestamp: Option<Timestamp>,
+        time: Option<&'a str>,
+        tags: Option<TagSet>,
+        app_id: Option<AppId>,
+        payload: Payload,
+    }
+    let line: Line = serde_json::from_str(line)?;
+    let timestamp = line
+        .timestamp
+        .or_else(|| {
+            line.time
+                .and_then(|t| Some(DateTime::parse_from_rfc3339(t).ok()?.into()))
+        })
+        .unwrap_or_else(Timestamp::now);
+    let app_id = line.app_id.unwrap_or_else(|| app_id!("com.actyx.test"));
+    let events = vec![(line.tags.unwrap_or_default(), line.payload)];
+    store.append0(0.into(), app_id, timestamp, events).await?;
+    Ok(())
 }
 
 #[cfg(test)]

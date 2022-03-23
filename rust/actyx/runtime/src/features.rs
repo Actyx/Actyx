@@ -259,6 +259,7 @@ fn features_simple(feat: &mut Features, expr: &SimpleExpr) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use actyx_sdk::language;
     use maplit::btreeset;
     use FeatureError::*;
 
@@ -266,11 +267,11 @@ mod tests {
         String::from(s)
     }
     fn f(s: &str) -> Features {
-        let q = Query::from(s.parse::<actyx_sdk::language::Query>().unwrap());
+        let q = Query::from(language::Query::parse(s).unwrap()).0;
         Features::from_query(&q)
     }
     fn q(s: &str) -> Result<(), FeatureError> {
-        let q = Query::from(s.parse::<actyx_sdk::language::Query>().unwrap());
+        let q = Query::from(language::Query::parse(s).unwrap()).0;
         Features::from_query(&q).validate(&q.features, Endpoint::Query)
     }
 

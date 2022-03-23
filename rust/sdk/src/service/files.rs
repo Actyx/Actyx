@@ -4,9 +4,9 @@
 use std::time::Duration;
 
 pub use libipld::Cid;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::language::Query;
+use crate::language::{Query, StaticQuery};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -36,10 +36,14 @@ use crate::language::Query;
 /// };
 /// ```
 pub struct PrefetchRequest {
+    #[serde(deserialize_with = "deser_prefetch")]
     /// AQL Query. Must evaluate to a single array of hashes.
-    pub query: Query,
+    pub query: Query<'static>,
     /// How long the files should be pinned (until = now + duration)
     pub duration: Duration,
+}
+fn deser_prefetch<'de, D: Deserializer<'de>>(d: D) -> Result<Query<'static>, D::Error> {
+    Ok(StaticQuery::deserialize(d)?.0)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]

@@ -37,7 +37,7 @@ fn main() {
         commands: Vec<TestCommand>,
         cnt_per_tagset: BTreeMap<TagSet, usize>,
     }
-    fn to_query(tags: TagSet) -> Query {
+    fn to_query(tags: TagSet) -> Query<'static> {
         let from = tags
             .iter()
             .map(TagAtom::Tag)
@@ -45,6 +45,7 @@ fn main() {
             .reduce(|a, b| a.and(b))
             .unwrap_or(TagExpr::Atom(TagAtom::AllEvents));
         Query {
+            pragmas: vec![],
             features: vec![],
             source: Source::Events { from, order: None },
             ops: vec![],

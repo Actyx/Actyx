@@ -6,11 +6,12 @@ use actyx_sdk::{
 use futures::{future::ready, Stream, StreamExt};
 use runtime::value::Value;
 use serde::{Deserialize, Serialize};
+use std::{fs::File, io::Read};
 use structopt::StructOpt;
 use util::{
     formats::{
         events_protocol::{EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult,
+        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
     },
     gen_stream::GenStream,
 };
@@ -36,15 +37,28 @@ pub struct EventsQuery;
 impl AxCliCommand for EventsQuery {
     type Opt = QueryOpts;
     type Output = EventDiagnostic;
+    const WRAP: bool = false;
 
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let ret = GenStream::new(move |co| async move {
+            let query = if opts.query.starts_with('@') {
+                let mut f = if opts.query == "@-" {
+                    Box::new(std::io::stdin()) as Box<dyn Read>
+                } else {
+                    Box::new(File::open(&opts.query[1..]).ax_err(ActyxOSCode::ERR_IO)?)
+                };
+                let mut s = String::new();
+                f.read_to_string(&mut s).ax_err(ActyxOSCode::ERR_IO)?;
+                s
+            } else {
+                opts.query
+            };
             let mut conn = opts.console_opt.connect().await?;
             let mut s = conn
                 .request_events(EventsRequest::Query(QueryRequest {
                     lower_bound: None,
                     upper_bound: None,
-                    query: opts.query,
+                    query,
                     order: Order::Asc,
                 }))
                 .await?;

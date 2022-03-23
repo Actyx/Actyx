@@ -1,5 +1,6 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
+    use actyx_sdk::language::Query;
     use actyx_sdk::{tags, Payload};
     use async_std::future::timeout;
     use netsim_embed::{Ipv4Range, MachineId, Netsim, NetworkId};
@@ -55,7 +56,7 @@ fn main() -> anyhow::Result<()> {
 
         for machine in sim.machines_mut() {
             machine.send(Command::GossipSubscribe("swarm-cli".into()));
-            machine.send(Command::SubscribeQuery("FROM 'a'".parse().unwrap()));
+            machine.send(Command::SubscribeQuery(Query::parse("FROM 'a'").unwrap()));
         }
 
         for machine in sim.machines_mut() {

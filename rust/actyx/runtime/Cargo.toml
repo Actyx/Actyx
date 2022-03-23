@@ -16,6 +16,7 @@ tracing = "0.1.29"
 swarm = { path = "../swarm" }
 parking_lot = "0.11.1"
 chrono = "0.4.19"
+num-bigint = "0.4.3"
 
 [dev-dependencies]
 criterion = "0.3.5"

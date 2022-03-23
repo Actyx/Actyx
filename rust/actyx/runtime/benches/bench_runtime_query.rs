@@ -25,12 +25,14 @@ const QUERY: &str = "FROM allEvents FILTER _.x > 3 | _.y = 'hello' SELECT [_.x +
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("nnop", |b| {
-        let mut query = Query::from("FROM allEvents".parse::<language::Query>().unwrap()).make_feeder();
+        let mut query = Query::from(language::Query::parse("FROM allEvents").unwrap())
+            .0
+            .make_feeder();
         let (value, cx) = v();
         b.iter(|| black_box(block_on(query.feed(Some(value.clone()), &cx))));
     });
     c.bench_function("feed value", |b| {
-        let mut query = Query::from(QUERY.parse::<language::Query>().unwrap()).make_feeder();
+        let mut query = Query::from(language::Query::parse(QUERY).unwrap()).0.make_feeder();
         let (value, cx) = v();
         b.iter(|| black_box(block_on(query.feed(Some(value.clone()), &cx))));
     });

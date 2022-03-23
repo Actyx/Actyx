@@ -113,16 +113,25 @@ pub(crate) mod consts {
 pub trait AxCliCommand {
     type Opt: StructOpt;
     type Output: Serialize + 'static;
+    const WRAP: bool = true;
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin>;
     fn pretty(result: Self::Output) -> String;
     fn output(opts: Self::Opt, json: bool) -> Box<dyn Future<Output = ()> + Unpin> {
         Box::new(Self::run(opts).for_each(move |item| {
             let exit = if item.is_ok() { 0 } else { 1 };
             if json {
-                println!(
-                    "{}",
-                    serde_json::to_string(&ActyxCliResult::<Self::Output>::from(item)).unwrap()
-                );
+                if Self::WRAP {
+                    println!(
+                        "{}",
+                        serde_json::to_string(&ActyxCliResult::<Self::Output>::from(item)).unwrap()
+                    );
+                } else {
+                    let item = match item {
+                        Ok(item) => serde_json::to_string(&item).unwrap(),
+                        Err(e) => serde_json::to_string(&ActyxCliResult::<Self::Output>::from(Err(e))).unwrap(),
+                    };
+                    println!("{}", item);
+                }
             } else {
                 match item {
                     Ok(r) => println!("{}", Self::pretty(r)),

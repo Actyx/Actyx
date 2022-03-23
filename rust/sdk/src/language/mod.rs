@@ -13,6 +13,8 @@ pub enum Source {
     Array(Arr),
 }
 
+pub struct StaticQuery(pub Query<'static>);
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 /// A [`Query`] can be constructed using the Actyx Query Language (AQL). For an in-depth overview
 /// see the [docs](https://developer.actyx.com/docs/reference/aql).
@@ -26,7 +28,8 @@ pub enum Source {
 /// SELECT _.value           -- optional list of transformations
 /// END                      -- optional"#.parse().unwrap();
 /// ```
-pub struct Query {
+pub struct Query<'a> {
+    pub pragmas: Vec<(&'a str, &'a str)>,
     pub features: Vec<String>,
     pub source: Source,
     pub ops: Vec<Operation>,
@@ -261,7 +264,7 @@ pub enum SimpleExpr {
     Not(Arc<SimpleExpr>),
     AggrOp(Arc<(AggrOp, SimpleExpr)>),
     FuncCall(FuncCall),
-    SubQuery(Query),
+    SubQuery(Query<'static>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -471,7 +474,12 @@ impl SimpleExpr {
                         Operation::Binding(n, e) => Operation::Binding(n.clone(), e.rewrite(f)),
                     })
                     .collect();
-                SimpleExpr::SubQuery(Query { features, source, ops })
+                SimpleExpr::SubQuery(Query {
+                    pragmas: q.pragmas.clone(),
+                    features,
+                    source,
+                    ops,
+                })
             }
         }
     }
@@ -540,11 +548,12 @@ mod for_tests {
     use super::{parser::Context, *};
     use once_cell::sync::OnceCell;
     use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
-    use std::{cell::RefCell, convert::TryInto, str::FromStr};
+    use std::{cell::RefCell, convert::TryInto};
 
-    impl Query {
+    impl<'a> Query<'a> {
         pub fn new(from: TagExpr) -> Self {
             Self {
+                pragmas: Vec::new(),
                 features: vec![],
                 source: Source::Events { from, order: None },
                 ops: vec![],
@@ -893,7 +902,7 @@ mod for_tests {
         }
     }
 
-    impl Arbitrary for Query {
+    impl Arbitrary for Query<'static> {
         fn arbitrary(g: &mut Gen) -> Self {
             fn word(g: &mut Gen) -> String {
                 static CHOICES: OnceCell<Vec<char>> = OnceCell::new();
@@ -904,6 +913,7 @@ mod for_tests {
             let prev = CTX.with(|c| c.replace(Context::Simple));
             let source = Source::arbitrary(g);
             let ret = Self {
+                pragmas: Vec::new(),
                 features: Vec::<bool>::arbitrary(g).into_iter().map(|_| word(g)).collect(),
                 source,
                 ops: Arbitrary::arbitrary(g),
@@ -913,6 +923,8 @@ mod for_tests {
         }
 
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            let pragmas = self.pragmas.clone();
+            let pragmas2 = self.pragmas.clone();
             let features = self.features.clone();
             let features2 = self.features.clone();
             let source = self.source.clone();
@@ -921,11 +933,13 @@ mod for_tests {
                 self.ops
                     .shrink()
                     .map(move |ops| Self {
+                        pragmas: pragmas.clone(),
                         features: features.clone(),
                         source: source.clone(),
                         ops,
                     })
                     .chain(self.source.shrink().map(move |source| Self {
+                        pragmas: pragmas2.clone(),
                         features: features2.clone(),
                         source,
                         ops: ops.clone(),
@@ -936,7 +950,7 @@ mod for_tests {
 
     #[test]
     fn qc_roundtrip() {
-        fn roundtrip_aql(q: Query) -> TestResult {
+        fn roundtrip_aql(q: Query<'static>) -> TestResult {
             // What this test currently ascertains is that our rendered string is isomorphic
             // to the internal representation of the parse tree, hence there are many “unnecessary”
             // parentheses in the output. If we want to remove those parentheses, we need to
@@ -944,7 +958,7 @@ mod for_tests {
             // as during parsing. Luckily, this test will then prove that our canonicalisation
             // actually works.
             let s = q.to_string();
-            let p = match Query::from_str(&s) {
+            let p = match Query::parse(&*s) {
                 Ok(p) => p,
                 Err(e) => return TestResult::error(e.to_string()),
             };
@@ -960,6 +974,6 @@ mod for_tests {
         }
         q.max_tests(1_000_000)
             .gen(Gen::new(10))
-            .quickcheck(roundtrip_aql as fn(Query) -> TestResult)
+            .quickcheck(roundtrip_aql as fn(Query<'static>) -> TestResult)
     }
 }
