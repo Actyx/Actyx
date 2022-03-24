@@ -26,7 +26,7 @@ use runtime::{
     value::Value,
 };
 use serde::Deserialize;
-use std::{convert::TryFrom, num::NonZeroU64, task::Poll};
+use std::{convert::TryFrom, num::NonZeroU64, ops::Deref, task::Poll};
 use swarm::{
     event_store_ref::{EventStoreHandler, EventStoreRef},
     BanyanStore,
@@ -98,7 +98,8 @@ impl EventService {
 
         let (query, pragmas) = Query::from(query);
         let features = Features::from_query(&query);
-        features.validate(&query.features, Endpoint::Query)?;
+        let enabled = query.enabled_features(&pragmas);
+        features.validate(&*enabled, Endpoint::Query)?;
         let mut feeder = query.make_feeder();
 
         async fn y(co: &Co<QueryResponse>, vs: Vec<anyhow::Result<Value>>) {
@@ -113,28 +114,10 @@ impl EventService {
 
         let store = {
             let mut store = None;
-            for (pragma, value) in pragmas {
-                if pragma == "eventStore" {
-                    let banyan = BanyanStore::test("query").await.unwrap();
-                    for line in value.lines() {
-                        store_line(&banyan, line).await?;
-                    }
-                    let event_store = {
-                        let store2 = banyan.clone();
-                        let (tx, mut rx) = mpsc::channel(100);
-                        banyan.spawn_task("handler", async move {
-                            let mut handler = EventStoreHandler::new(store2);
-                            let runtime = tokio::runtime::Handle::current();
-                            while let Some(request) = rx.recv().await {
-                                handler.handle(request, &runtime);
-                            }
-                        });
-                        EventStoreRef::new(move |e| tx.try_send(e).map_err(swarm::event_store_ref::Error::from))
-                    };
-                    store = Some(event_store);
-                }
+            if let Some(value) = pragmas.pragma("events") {
+                store = Some(store_ephemeral(value).await?);
             }
-            store.unwrap_or_else(|| self.store.clone())
+            store.unwrap_or_else(|| EphemeralStore(self.store.clone(), None))
         };
 
         let upper_bound = match request.upper_bound {
@@ -275,9 +258,10 @@ impl EventService {
         let present = self.store.offsets().await?.present();
         let mut lower_bound = request.lower_bound.unwrap_or_default();
 
-        let (query, _pragmas) = Query::from(query);
+        let (query, pragmas) = Query::from(query);
         let features = Features::from_query(&query);
-        features.validate(&query.features, Endpoint::Subscribe)?;
+        let enabled = query.enabled_features(&pragmas);
+        features.validate(&*enabled, Endpoint::Subscribe)?;
         let mut query = query.make_feeder();
 
         let cx = Context::owned(
@@ -371,9 +355,10 @@ impl EventService {
         let mut present = self.store.offsets().await?.present();
         present.union_with(&lower_bound);
 
-        let (query, _pragmas) = Query::from(query);
+        let (query, pragmas) = Query::from(query);
         let features = Features::from_query(&query);
-        features.validate(&query.features, Endpoint::SubscribeMonotonic)?;
+        let enabled = query.enabled_features(&pragmas);
+        features.validate(&*enabled, Endpoint::SubscribeMonotonic)?;
         let mut query = query.make_feeder();
 
         let cx = Context::owned(
@@ -502,6 +487,41 @@ impl EventService {
 
         Ok(gen.boxed())
     }
+}
+
+struct EphemeralStore(EventStoreRef, Option<BanyanStore>);
+impl Drop for EphemeralStore {
+    fn drop(&mut self) {
+        if let Some(store) = &self.1 {
+            store.abort_task("handler");
+        }
+    }
+}
+impl Deref for EphemeralStore {
+    type Target = EventStoreRef;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+async fn store_ephemeral(value: &str) -> anyhow::Result<EphemeralStore> {
+    let banyan = BanyanStore::test("query").await.unwrap();
+    for line in value.lines() {
+        store_line(&banyan, line).await?;
+    }
+    let event_store = {
+        let store2 = banyan.clone();
+        let (tx, mut rx) = mpsc::channel(100);
+        banyan.spawn_task("handler", async move {
+            let mut handler = EventStoreHandler::new(store2);
+            let runtime = tokio::runtime::Handle::current();
+            while let Some(request) = rx.recv().await {
+                handler.handle(request, &runtime);
+            }
+        });
+        EventStoreRef::new(move |e| tx.try_send(e).map_err(swarm::event_store_ref::Error::from))
+    };
+    Ok(EphemeralStore(event_store, Some(banyan)))
 }
 
 async fn store_line(store: &BanyanStore, line: &str) -> anyhow::Result<()> {

@@ -10,6 +10,19 @@ use actyx_sdk::{
 use ax_futures_util::ReceiverExt;
 use futures::{stream, StreamExt};
 
+pub struct Pragmas<'a>(Vec<(&'a str, &'a str)>);
+
+impl<'a> Pragmas<'a> {
+    pub fn pragma(&self, name: &str) -> Option<&'a str> {
+        for (n, v) in self.0.iter() {
+            if *n == name {
+                return Some(*v);
+            }
+        }
+        None
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Query {
     pub features: Vec<String>,
@@ -18,8 +31,8 @@ pub struct Query {
 }
 
 impl Query {
-    pub fn from(q: language::Query<'_>) -> (Self, Vec<(&str, &str)>) {
-        let pragmas = q.pragmas;
+    pub fn from(q: language::Query<'_>) -> (Self, Pragmas<'_>) {
+        let pragmas = Pragmas(q.pragmas);
         let stages = q.ops.into_iter().map(Operation::from).collect();
         let source = q.source;
         let features = q.features;
@@ -31,6 +44,14 @@ impl Query {
             },
             pragmas,
         )
+    }
+
+    pub fn enabled_features(&self, pragmas: &Pragmas) -> Vec<String> {
+        let mut ret = self.features.clone();
+        if let Some(s) = pragmas.pragma("features") {
+            ret.extend(s.split_whitespace().map(ToOwned::to_owned));
+        }
+        ret
     }
 
     /// run a query in the given evaluation context and collect all results

@@ -1,6 +1,7 @@
-PRAGMA eventStore
+PRAGMA events
 {"payload":42}
-{"time":"2021-11-23T06:17:00.2002Z","app_id":"me","payload":{"hello":"world"}}
+{"time":"2021-11-23T06:17:00.2002-08:00","appId":"me","payload":{"hello":"world"}}
 ENDPRAGMA
+PRAGMA features := spread
 
-FROM allEvents
+FROM allEvents SELECT ...5
