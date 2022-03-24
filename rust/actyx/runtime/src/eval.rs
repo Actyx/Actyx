@@ -2,10 +2,13 @@ use crate::{error::RuntimeError, query::Query, value::Value};
 use actyx_sdk::{
     language::{BinOp, Ind, Index, Num, SimpleExpr, TagAtom, TagExpr},
     service::{EventMeta, Order},
-    OffsetMap, Tag,
+    OffsetMap, Tag, Timestamp,
 };
 use anyhow::{anyhow, bail, ensure};
-use cbor_data::{value as cbor_value, CborBuilder, CborOwned, CborValue, Encoder, PathElement, WithOutput, Writer};
+use cbor_data::{
+    value::{self as cbor_value, Precision},
+    CborBuilder, CborOwned, CborValue, Encoder, PathElement, WithOutput, Writer,
+};
 use futures::{future::BoxFuture, FutureExt};
 use std::{
     borrow::Cow,
@@ -326,6 +329,159 @@ impl<'a> Context<'a> {
                         meta,
                     ))
                 }
+                SimpleExpr::KeyVar(var) => {
+                    let v = self
+                        .lookup_opt(var.as_ref())
+                        .ok_or_else(|| RuntimeError::NotBound(var.to_string()))?;
+                    match v {
+                        Ok(v) => {
+                            let meta = v.meta().clone();
+                            match &meta {
+                                EventMeta::Range { from_key, to_key, .. } => Ok(Value::new_meta(
+                                    self.mk_cbor(|b| {
+                                        b.encode_array(|b| {
+                                            b.encode_array(|b| {
+                                                b.encode_u64(from_key.lamport.into());
+                                                b.encode_bytes(from_key.stream.node_id.as_ref());
+                                                b.encode_u64(from_key.stream.stream_nr.into());
+                                            });
+                                            b.encode_array(|b| {
+                                                b.encode_u64(to_key.lamport.into());
+                                                b.encode_bytes(to_key.stream.node_id.as_ref());
+                                                b.encode_u64(to_key.stream.stream_nr.into());
+                                            });
+                                        })
+                                    }),
+                                    meta,
+                                )),
+                                EventMeta::Synthetic => {
+                                    Ok(Value::new_meta(self.mk_cbor(|b| b.encode_array(|_| {})), meta))
+                                }
+                                EventMeta::Event { key, .. } => Ok(Value::new_meta(
+                                    self.mk_cbor(|b| {
+                                        b.encode_array(|b| {
+                                            b.encode_array(|b| {
+                                                b.encode_u64(key.lamport.into());
+                                                b.encode_bytes(key.stream.node_id.as_ref());
+                                                b.encode_u64(key.stream.stream_nr.into());
+                                            });
+                                        })
+                                    }),
+                                    meta,
+                                )),
+                            }
+                        }
+                        Err(_) => Err(RuntimeError::NotBound(var.to_string()).into()),
+                    }
+                }
+                SimpleExpr::KeyLiteral(key) => Ok(Value::synthetic(self.mk_cbor(|b| {
+                    b.encode_array(|b| {
+                        b.encode_array(|b| {
+                            b.encode_u64(key.lamport.into());
+                            b.encode_bytes(key.stream.node_id.as_ref());
+                            b.encode_u64(key.stream.stream_nr.into());
+                        });
+                    })
+                }))),
+                SimpleExpr::TimeVar(var) => {
+                    let v = self
+                        .lookup_opt(var.as_ref())
+                        .ok_or_else(|| RuntimeError::NotBound(var.to_string()))?;
+                    match v {
+                        Ok(v) => {
+                            let m = v.meta().clone();
+                            match &m {
+                                EventMeta::Range { from_time, to_time, .. } => {
+                                    let from = time_to_cbor(*from_time);
+                                    let to = time_to_cbor(*to_time);
+                                    Ok(Value::new_meta(
+                                        self.mk_cbor(|b| {
+                                            b.encode_array(|b| {
+                                                b.encode_timestamp(from, Precision::Micros);
+                                                b.encode_timestamp(to, Precision::Micros);
+                                            })
+                                        }),
+                                        m,
+                                    ))
+                                }
+                                EventMeta::Synthetic => {
+                                    Ok(Value::new_meta(self.mk_cbor(|b| b.encode_array(|_| {})), m))
+                                }
+                                EventMeta::Event { meta, .. } => {
+                                    let timestamp = time_to_cbor(meta.timestamp);
+                                    Ok(Value::new_meta(
+                                        self.mk_cbor(|b| {
+                                            b.encode_array(|b| {
+                                                b.encode_timestamp(timestamp, Precision::Micros);
+                                            })
+                                        }),
+                                        m,
+                                    ))
+                                }
+                            }
+                        }
+                        Err(_) => Err(RuntimeError::NotBound(var.to_string()).into()),
+                    }
+                }
+                SimpleExpr::TimeLiteral(t) => Ok(Value::synthetic(
+                    self.mk_cbor(|b| b.encode_timestamp(time_to_cbor(*t), Precision::Micros)),
+                )),
+                SimpleExpr::Tags(var) => {
+                    let v = self
+                        .lookup_opt(var.as_ref())
+                        .ok_or_else(|| RuntimeError::NotBound(var.to_string()))?;
+                    match v {
+                        Ok(v) => {
+                            let m = v.meta().clone();
+                            match &m {
+                                EventMeta::Range { .. } => {
+                                    Ok(Value::new_meta(self.mk_cbor(|b| b.encode_array(|_| {})), m))
+                                }
+                                EventMeta::Synthetic => {
+                                    Ok(Value::new_meta(self.mk_cbor(|b| b.encode_array(|_| {})), m))
+                                }
+                                EventMeta::Event { meta, .. } => Ok(Value::new_meta(
+                                    self.mk_cbor(|b| {
+                                        b.encode_array(|b| {
+                                            for t in &meta.tags {
+                                                b.encode_str(t.as_ref());
+                                            }
+                                        })
+                                    }),
+                                    m,
+                                )),
+                            }
+                        }
+                        Err(_) => Err(RuntimeError::NotBound(var.to_string()).into()),
+                    }
+                }
+                SimpleExpr::App(var) => {
+                    let v = self
+                        .lookup_opt(var.as_ref())
+                        .ok_or_else(|| RuntimeError::NotBound(var.to_string()))?;
+                    match v {
+                        Ok(v) => {
+                            let m = v.meta().clone();
+                            match &m {
+                                EventMeta::Range { .. } => {
+                                    Ok(Value::new_meta(self.mk_cbor(|b| b.encode_array(|_| {})), m))
+                                }
+                                EventMeta::Synthetic => {
+                                    Ok(Value::new_meta(self.mk_cbor(|b| b.encode_array(|_| {})), m))
+                                }
+                                EventMeta::Event { meta, .. } => Ok(Value::new_meta(
+                                    self.mk_cbor(|b| {
+                                        b.encode_array(|b| {
+                                            b.encode_str(meta.app_id.as_str());
+                                        })
+                                    }),
+                                    m,
+                                )),
+                            }
+                        }
+                        Err(_) => Err(RuntimeError::NotBound(var.to_string()).into()),
+                    }
+                }
             }
         }
         .boxed()
@@ -443,6 +599,14 @@ impl<'a> Context<'a> {
         meta += right.meta();
         Ok(Value::new_meta(value, meta))
     }
+}
+
+fn time_to_cbor(t: Timestamp) -> cbor_value::Timestamp {
+    let mut micros = t.as_i64() % 1_000_000;
+    if micros < 0 {
+        micros += 1_000_000
+    }
+    cbor_value::Timestamp::new(t.as_i64() / 1_000_000, micros as u32 * 1000, 0)
 }
 
 #[cfg(test)]

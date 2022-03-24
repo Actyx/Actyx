@@ -108,6 +108,12 @@ pub struct SortKey {
     pub stream: StreamId,
 }
 
+impl Display for SortKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/{}", u64::from(self.lamport), self.stream)
+    }
+}
+
 impl SortKey {
     pub fn new(lamport: LamportTimestamp, stream: StreamId) -> Self {
         Self { lamport, stream }
@@ -265,6 +271,12 @@ pub enum SimpleExpr {
     AggrOp(Arc<(AggrOp, SimpleExpr)>),
     FuncCall(FuncCall),
     SubQuery(Query<'static>),
+    KeyVar(Var),
+    KeyLiteral(SortKey),
+    TimeVar(Var),
+    TimeLiteral(Timestamp),
+    Tags(Var),
+    App(Var),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -357,6 +369,12 @@ impl SimpleExpr {
                         }
                     }
                 }
+                SimpleExpr::KeyVar(_) => {}
+                SimpleExpr::KeyLiteral(_) => {}
+                SimpleExpr::TimeVar(_) => {}
+                SimpleExpr::TimeLiteral(_) => {}
+                SimpleExpr::Tags(_) => {}
+                SimpleExpr::App(_) => {}
             }
         }
     }
@@ -481,6 +499,12 @@ impl SimpleExpr {
                     ops,
                 })
             }
+            SimpleExpr::KeyVar(_) => self.clone(),
+            SimpleExpr::KeyLiteral(_) => self.clone(),
+            SimpleExpr::TimeVar(_) => self.clone(),
+            SimpleExpr::TimeLiteral(_) => self.clone(),
+            SimpleExpr::Tags(_) => self.clone(),
+            SimpleExpr::App(_) => self.clone(),
         }
     }
 }
@@ -800,15 +824,22 @@ mod for_tests {
 
     impl Arbitrary for SimpleExpr {
         fn arbitrary(g: &mut Gen) -> Self {
+            #[allow(non_snake_case)]
+            fn SubQuery(g: &mut Gen) -> SimpleExpr {
+                let mut query = Query::arbitrary(g);
+                query.features.clear();
+                SimpleExpr::SubQuery(query)
+            }
             arb!(SimpleExpr: g =>
-                Variable Number String Bool,
-                Indexing Object Array Cases BinOp Not FuncCall SubQuery Interpolation,
+                Variable Number String Bool KeyLiteral KeyVar TimeLiteral TimeVar Tags App,
+                Indexing Object Array Cases BinOp Not FuncCall Interpolation,
                 AggrOp{ Context::Simple },
-                Null
+                Null,
+                SubQuery
             )
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            shrink!(SimpleExpr: self => Variable Number String Bool,
+            shrink!(SimpleExpr: self => Variable Number String Bool KeyLiteral KeyVar TimeLiteral TimeVar Tags App,
                 Indexing(x, (*x.head).clone())
                 Interpolation(x,)
                 Object(x, x.props.first().map(|p| p.1.clone()).unwrap_or(SimpleExpr::Null))

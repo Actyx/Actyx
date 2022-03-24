@@ -118,10 +118,11 @@ fn r_tag_from_to(p: P, f: FromTo) -> Result<TagExpr> {
     use TagAtom::*;
     use TagExpr::Atom;
     let mut p = p.inner()?;
-    let mut first = p.next().ok_or(NoVal("r_tag_from_to first"))?;
+    let first = p.next().ok_or(NoVal("r_tag_from_to first"))?;
     Ok(match first.as_rule() {
-        Rule::natural => {
-            let lamport = first.natural()?.into();
+        Rule::event_key => {
+            let mut p = first.inner()?;
+            let lamport = p.natural()?.into();
             // if no streamId was given, use the first one (just like assuming 00:00:00 for a date)
             let stream = p.parse_or_default()?;
             match f {
@@ -202,7 +203,15 @@ fn r_string(p: P) -> Result<String> {
     })
 }
 
-fn r_var(p: P, ctx: Context) -> Result<SimpleExpr> {
+fn r_var(p: P, ctx: Context) -> Result<super::var::Var> {
+    let s = p.as_str();
+    if s == "_" {
+        ensure!(ctx != Context::Aggregate, ContextError::CurrentValueInAggregate);
+    }
+    Ok(super::var::Var(s.nfc().collect()))
+}
+
+fn r_var_index(p: P, ctx: Context) -> Result<SimpleExpr> {
     let mut p = p.inner()?;
     let s = p.next().ok_or(NoVal("no var"))?.as_str();
     if s == "_" {
@@ -387,6 +396,29 @@ fn r_pragma(p: P) -> Result<(&str, &str)> {
     Ok((name, value))
 }
 
+fn r_meta_key(p: P, ctx: Context) -> Result<SimpleExpr> {
+    let p = p.single()?;
+    match p.as_rule() {
+        Rule::ident => Ok(SimpleExpr::KeyVar(r_var(p, ctx)?)),
+        Rule::event_key => {
+            let mut p = p.inner()?;
+            let lamport = p.natural()?.into();
+            let stream = p.parse_or_default()?;
+            Ok(SimpleExpr::KeyLiteral(SortKey { lamport, stream }))
+        }
+        x => bail!("unexpected token: {:?}", x),
+    }
+}
+
+fn r_meta_time(p: P, ctx: Context) -> Result<SimpleExpr> {
+    let p = p.single()?;
+    match p.as_rule() {
+        Rule::ident => Ok(SimpleExpr::TimeVar(r_var(p, ctx)?)),
+        Rule::isodate => Ok(SimpleExpr::TimeLiteral(r_timestamp(p)?)),
+        x => bail!("unexpected token: {:?}", x),
+    }
+}
+
 fn r_sub_query(p: P, ctx: Context) -> Result<Query<'static>> {
     r_query(Vec::new(), Vec::new(), p.single()?, ctx)
 }
@@ -412,7 +444,7 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
     fn primary(p: P, ctx: Context) -> Result<SimpleExpr> {
         Ok(match p.as_rule() {
             Rule::decimal => SimpleExpr::Number(r_number(p)?),
-            Rule::var_index => r_var(p, ctx)?,
+            Rule::var_index => r_var_index(p, ctx)?,
             Rule::expr_index => r_expr_index(p, ctx)?,
             Rule::simple_expr => r_simple_expr(p, ctx)?,
             Rule::simple_not => SimpleExpr::Not(primary(r_not(p)?, ctx)?.into()),
@@ -426,6 +458,10 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
             Rule::aggr_op => r_aggr(p, ctx)?,
             Rule::func_call => SimpleExpr::FuncCall(r_func_call(p, ctx)?),
             Rule::sub_query => SimpleExpr::SubQuery(r_sub_query(p, ctx)?),
+            Rule::meta_key => r_meta_key(p, ctx)?,
+            Rule::meta_time => r_meta_time(p, ctx)?,
+            Rule::meta_tags => SimpleExpr::Tags(r_var(p.single()?, ctx)?),
+            Rule::meta_app => SimpleExpr::App(r_var(p.single()?, ctx)?),
             x => bail!("unexpected token: {:?}", x),
         })
     }
@@ -538,6 +574,15 @@ impl FromStr for SimpleExpr {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let p = Aql::parse(Rule::main_simple_expr, s)?.single()?.single()?;
         r_simple_expr(p, Context::Simple)
+    }
+}
+
+impl FromStr for Timestamp {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let p = Aql::parse(Rule::main_timestamp, s)?.single()?.single()?;
+        r_timestamp(p)
     }
 }
 

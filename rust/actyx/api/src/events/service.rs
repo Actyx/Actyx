@@ -10,7 +10,6 @@ use actyx_sdk::{
     AppId, Event, EventKey, NodeId, OffsetMap, OffsetOrMin, Payload, StreamNr, TagSet, Timestamp,
 };
 use ax_futures_util::ReceiverExt;
-use chrono::DateTime;
 use futures::{
     future::{poll_fn, ready},
     pin_mut,
@@ -537,10 +536,7 @@ async fn store_line(store: &BanyanStore, line: &str) -> anyhow::Result<()> {
     let line: Line = serde_json::from_str(line)?;
     let timestamp = line
         .timestamp
-        .or_else(|| {
-            line.time
-                .and_then(|t| Some(DateTime::parse_from_rfc3339(t).ok()?.into()))
-        })
+        .or_else(|| line.time.and_then(|t| t.parse().ok()))
         .unwrap_or_else(Timestamp::now);
     let app_id = line.app_id.unwrap_or_else(|| app_id!("com.actyx.test"));
     let events = vec![(line.tags.unwrap_or_default(), line.payload)];
@@ -556,6 +552,7 @@ mod tests {
         service::{EventMeta, EventResponse},
         tags, Metadata, Offset, StreamId, TagSet,
     };
+    use itertools::Itertools;
     use std::{convert::TryInto, iter::FromIterator, time::Duration};
     use swarm::{
         event_store_ref::{self, EventStoreHandler},
@@ -858,6 +855,20 @@ mod tests {
                         .await,
                         vec!["[[\"x = 2 y = 1\"]]", "offsets"]
                     );
+
+                    assert_eq!(
+                        query(
+                            &service,
+                            r#"PRAGMA features := interpolation
+PRAGMA events
+{"time":"2011-06-17T18:30+02:00","payload":null}
+ENDPRAGMA
+                            FROM allEvents SELECT `{(TIME(_))[0]}`
+                            "#
+                        )
+                        .await,
+                        vec!["\"2011-06-17T16:30:00.000000Z\"", "offsets"]
+                    )
                 })
                 .await
             })
@@ -1047,6 +1058,129 @@ mod tests {
                         )
                         .await,
                         vec![ev([&meta1], 2), ev([&meta3], 1)]
+                    );
+                })
+                .await
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn events() {
+        Runtime::new()
+            .unwrap()
+            .block_on(async {
+                timeout(Duration::from_secs(1), async {
+                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let (_node_id, service) = setup(&store);
+
+                    assert_eq!(
+                        query(
+                            &service,
+                            r#"PRAGMA features := zøg subQuery interpolation binding fromArray
+                            PRAGMA events
+                            {"tags":["a1"],"payload":2}
+                            {"tags":["a2"],"payload":3}
+                            {"tags":["a3"],"payload":1}
+ENDPRAGMA
+                            FROM [1, 2, 3] FILTER _ < 3 LET x := 10 + _ SELECT
+                                FROM `a{_}` SELECT { [`{_}={x}`]: _ * 11 }
+                            "#
+                        )
+                        .await,
+                        vec!["[{\"2=11\":22}]", "[{\"3=12\":33}]", "offsets"]
+                    );
+                })
+                .await
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn metadata_access() {
+        Runtime::new()
+            .unwrap()
+            .block_on(async {
+                timeout(Duration::from_secs(1), async {
+                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let (_node_id, service) = setup(&store);
+
+                    fn meta(publ: PublishResponseKey, t: &str) -> (EventKey, Metadata) {
+                        (
+                            EventKey {
+                                lamport: publ.lamport,
+                                stream: publ.stream,
+                                offset: publ.offset,
+                            },
+                            Metadata {
+                                timestamp: publ.timestamp,
+                                tags: TagSet::from([t.try_into().unwrap()].as_slice()),
+                                app_id: app_id!("me"),
+                            },
+                        )
+                    }
+
+                    let pub1 = publish(&service, 0, tags!("a1", "b"), 2).await;
+                    let meta1 = meta(pub1, "a1");
+                    let pub2 = publish(&service, 0, tags!("a2"), 3).await;
+                    let meta2 = meta(pub2, "a2");
+                    let pub3 = publish(&service, 0, tags!("a3"), 1).await;
+                    let meta3 = meta(pub3, "a3");
+
+                    let mut node_bytes = String::from("[");
+                    node_bytes.push_str(
+                        &*meta1
+                            .0
+                            .stream
+                            .node_id
+                            .as_ref()
+                            .iter()
+                            .map(ToString::to_string)
+                            .join(","),
+                    );
+                    node_bytes.push(']');
+
+                    assert_eq!(
+                        query(
+                            &service,
+                            r#"PRAGMA features :=
+                            FROM 'a1' | 'a2' SELECT [KEY(_), TIME(_), TAGS(_), APP(_)]
+                            "#
+                        )
+                        .await,
+                        vec![
+                            format!(
+                                "[[[0,{},0]],[{:?}],[\"a1\",\"b\"],[\"me\"]]",
+                                node_bytes,
+                                meta1.1.timestamp.as_i64() as f64 / 1e6
+                            ),
+                            format!(
+                                "[[[1,{},0]],[{:?}],[\"a2\"],[\"me\"]]",
+                                node_bytes,
+                                meta2.1.timestamp.as_i64() as f64 / 1e6
+                            ),
+                            "offsets".to_owned()
+                        ]
+                    );
+
+                    assert_eq!(
+                        query(
+                            &service,
+                            r#"PRAGMA features := zøg subQuery interpolation fromArray aggregate
+                            FROM 'a1' | 'a3' AGGREGATE SUM(_) SELECT [KEY(_), TIME(_), TAGS(_), APP(_)]
+                            "#
+                        )
+                        .await,
+                        vec![
+                            format!(
+                                "[[[0,{},0],[2,{},0]],[{:?},{:?}],[],[]]",
+                                node_bytes,
+                                node_bytes,
+                                meta1.1.timestamp.as_i64() as f64 / 1e6,
+                                meta3.1.timestamp.as_i64() as f64 / 1e6
+                            ),
+                            "offsets".to_owned()
+                        ]
                     );
                 })
                 .await

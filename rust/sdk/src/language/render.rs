@@ -1,6 +1,7 @@
 use std::fmt::{Result, Write};
 
 use super::*;
+use chrono::{DateTime, Local, SecondsFormat, Utc};
 
 fn render_simple_pair(w: &mut impl Write, l: &SimpleExpr, op: &'static str, r: &SimpleExpr) -> Result {
     w.write_char('(')?;
@@ -112,41 +113,59 @@ pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
         SimpleExpr::Object(o) => render_object(w, o),
         SimpleExpr::Array(a) => render_array(w, a),
         SimpleExpr::Null => w.write_str("NULL"),
-        SimpleExpr::Bool(b) => {
-            if *b {
-                w.write_str("TRUE")
-            } else {
-                w.write_str("FALSE")
-            }
-        }
+        SimpleExpr::Bool(b) => render_bool(b, w),
         SimpleExpr::Not(e) => {
             w.write_char('!')?;
             render_simple_expr(w, e)
         }
-        SimpleExpr::Cases(v) => {
-            for (pred, expr) in v.iter() {
-                w.write_str("CASE ")?;
-                render_simple_expr(w, pred)?;
-                w.write_str(" => ")?;
-                render_simple_expr(w, expr)?;
-                w.write_char(' ')?;
-            }
-            w.write_str("ENDCASE")
-        }
+        SimpleExpr::Cases(v) => render_cases(v, w),
         SimpleExpr::BinOp(e) => render_simple_pair(w, &e.1, e.0.as_str(), &e.2),
         SimpleExpr::AggrOp(e) => render_unary_function(w, e.0.as_str(), &e.1),
-        SimpleExpr::FuncCall(f) => {
-            w.write_str(&f.name)?;
-            w.write_char('(')?;
-            for (idx, expr) in f.args.iter().enumerate() {
-                if idx > 0 {
-                    w.write_str(", ")?;
-                }
-                render_simple_expr(w, expr)?;
-            }
-            w.write_char(')')
-        }
+        SimpleExpr::FuncCall(f) => render_func_call(w, f),
         SimpleExpr::SubQuery(q) => render_query(w, q),
+        SimpleExpr::KeyVar(v) => write!(w, "KEY({})", v),
+        SimpleExpr::KeyLiteral(k) => write!(w, "KEY({})", k),
+        SimpleExpr::TimeVar(v) => write!(w, "TIME({})", v),
+        SimpleExpr::TimeLiteral(t) => write!(
+            w,
+            "TIME({})",
+            DateTime::<Utc>::from(*t)
+                .with_timezone(&Local)
+                .to_rfc3339_opts(SecondsFormat::Micros, true)
+        ),
+        SimpleExpr::Tags(t) => write!(w, "TAGS({})", t),
+        SimpleExpr::App(a) => write!(w, "APP({})", a),
+    }
+}
+
+fn render_func_call(w: &mut impl Write, f: &FuncCall) -> Result {
+    w.write_str(&f.name)?;
+    w.write_char('(')?;
+    for (idx, expr) in f.args.iter().enumerate() {
+        if idx > 0 {
+            w.write_str(", ")?;
+        }
+        render_simple_expr(w, expr)?;
+    }
+    w.write_char(')')
+}
+
+fn render_cases(v: &NonEmptyVec<(SimpleExpr, SimpleExpr)>, w: &mut impl Write) -> Result {
+    for (pred, expr) in v.iter() {
+        w.write_str("CASE ")?;
+        render_simple_expr(w, pred)?;
+        w.write_str(" => ")?;
+        render_simple_expr(w, expr)?;
+        w.write_char(' ')?;
+    }
+    w.write_str("ENDCASE")
+}
+
+fn render_bool(b: &bool, w: &mut impl Write) -> Result {
+    if *b {
+        w.write_str("TRUE")
+    } else {
+        w.write_str("FALSE")
     }
 }
 
