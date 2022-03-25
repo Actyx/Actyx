@@ -31,11 +31,11 @@ flate2 = "1.0.22"
 fslock = "=0.1.6"
 futures = { version = "0.3.19", features = ["compat"], package = "futures" }
 hex = "0.4.3"
-ipfs-embed = "0.23.0"
+ipfs-embed = { version = "0.23.0", default-features = false, features = ["tokio"] }
 ipfs-sqlite-block-store = "0.11.0"
 lazy_static = "1.4.0"
 libipld = "0.12.0"
-libp2p = { version = "0.42.2", default-features = false, features = ["gossipsub", "ping"] }
+libp2p = { version = "0.42.2", default-features = false, features = ["gossipsub", "ping", "tcp-tokio", "dns-tokio"] }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 log = { version = "0.4.14", features = ["std"] }
 maplit = "1.0.2"
