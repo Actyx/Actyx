@@ -499,7 +499,7 @@ impl ApiBehaviour {
         &mut self,
         cx: &mut task::Context,
         _: &mut impl PollParameters,
-    ) -> Poll<NetworkBehaviourAction<NoEvent, <Self as NetworkBehaviour>::ProtocolsHandler>> {
+    ) -> Poll<NetworkBehaviourAction<NoEvent, <Self as NetworkBehaviour>::ConnectionHandler>> {
         let mut wake_me_up = false;
         let span = tracing::trace_span!("poll");
         let _enter = span.enter();
@@ -1008,10 +1008,10 @@ type TConnErr = libp2p::core::either::EitherError<
     libp2p::core::either::EitherError<
         libp2p::core::either::EitherError<
             libp2p::core::either::EitherError<
-                libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
-                libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
+                libp2p::swarm::handler::ConnectionHandlerUpgrErr<std::io::Error>,
+                libp2p::swarm::handler::ConnectionHandlerUpgrErr<std::io::Error>,
             >,
-            libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
+            libp2p::swarm::handler::ConnectionHandlerUpgrErr<std::io::Error>,
         >,
         libp2p::ping::PingFailure,
     >,

@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0.52"
 log = "0.4.14"
-multiaddr = "0.13.0"
+multiaddr = "0.14.0"
 parking_lot = "0.11.2"
 rusqlite = { version = "0.26.3", features = ["bundled", "backup"] }
 serde = { version = "1.0.133", features = ["derive"] }

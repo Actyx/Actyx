@@ -19,9 +19,9 @@ ipfs-embed = { version = "0.23.0", default-features = false, features = ["tokio"
 ipfs-sqlite-block-store = "0.11.0"
 itertools = "0.10.3"
 libipld = { version = "0.12.0", default-features = false }
-libp2p = { version = "0.42.2", default-features = false, features = ["tcp-tokio", "plaintext", "noise", "dns-tokio"] }
+libp2p = { version = "0.43.0", default-features = false, features = ["tcp-tokio", "plaintext", "noise", "dns-tokio"] }
 maplit = "1.0.2"
-names = "0.12.0"
+names = "0.13.0"
 num-traits = "0.2.14"
 parking_lot = "0.11.2"
 prometheus = "0.13.0"
