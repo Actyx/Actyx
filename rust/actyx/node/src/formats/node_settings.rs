@@ -32,6 +32,7 @@ pub struct Swarm {
     pub metrics_interval: u64,
     pub ping_timeout: u64,
     pub bitswap_timeout: u64,
+    pub mdns: bool,
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -77,6 +78,7 @@ impl Settings {
                 metrics_interval: 1800,
                 ping_timeout: 5,
                 bitswap_timeout: 15,
+                mdns: true,
             },
             admin: Admin {
                 display_name: "some name".into(),

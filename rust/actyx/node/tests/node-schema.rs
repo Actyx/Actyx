@@ -19,6 +19,7 @@ fn node_schema_in_sync() {
             metrics_interval: 1800,
             ping_timeout: 5,
             bitswap_timeout: 15,
+            mdns: true,
         },
         admin: Admin {
             display_name: "some name".into(),

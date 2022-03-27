@@ -252,6 +252,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             enable_fast_path: !read_only,
             enable_slow_path: !read_only,
             enable_root_map: !read_only,
+            enable_mdns: s.swarm.mdns,
             block_cache_count: s.swarm.block_cache_count,
             block_cache_size: s.swarm.block_cache_size,
             block_gc_interval: Duration::from_secs(s.swarm.block_gc_interval),

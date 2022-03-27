@@ -432,6 +432,7 @@ mod test {
               "metricsInterval": 1800,
               "pingTimeout": 5,
               "bitswapTimeout": 15,
+              "mdns": true,
             },
             "admin": {
               "displayName": "My Node",
