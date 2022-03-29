@@ -241,7 +241,7 @@ stages:
             # Luckily, the `az` cli offers a legacy command `storage  blob upload-batch`.
             displayName: Upload
             inputs:
-              azureSubscription: azure-ax-ci
+              azureSubscription: azure-ax-ci-2
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
