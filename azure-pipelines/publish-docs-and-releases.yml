@@ -28,7 +28,7 @@ stages:
               AZ_STORAGE_SAS_TOKEN: $(SECRET_AZ_STORAGE_SAS_TOKEN)
             inputs:
               workingDirectory: rust/release
-              azureSubscription: azure-ax-ci
+              azureSubscription: azure-ax-ci-2
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
