@@ -12,6 +12,7 @@ import { ActyxOpts } from '../types'
 import { mkConfig, MultiplexedWebsocket } from './multiplexedWebsocket'
 import { getSourceId, WebsocketEventStore } from './websocketEventStore'
 import { WebsocketSnapshotStore } from './websocketSnapshotStore'
+import * as O from 'fp-ts/lib/Option'
 
 export type Ret = {
   eventStore: EventStore
@@ -28,7 +29,7 @@ export const mkV1eventStore = async (axOpts: ActyxOpts): Promise<Ret> => {
   const url = 'ws://' + host + ':' + port + '/store_api'
   log.actyx.debug('Trying V1 connection to', url)
 
-  const wsConfig = mkConfig(url)
+  const wsConfig = mkConfig(url, O.fromNullable(axOpts.maxConcurrentRequests))
 
   const closeSubject = new Subject()
   wsConfig.closeObserver = closeSubject

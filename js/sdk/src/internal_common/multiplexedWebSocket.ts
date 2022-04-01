@@ -18,6 +18,8 @@ import { unreachable } from '../util'
 import * as WebSocket from 'isomorphic-ws'
 import log from './log'
 import { massageError } from '../util/error'
+import * as O from 'fp-ts/lib/Option'
+import { pipe } from 'fp-ts/lib/function'
 
 /**
  * Unique request id to be chosen by the client. 53 bit integer. Reusing existing request id will cancel the current
@@ -80,22 +82,51 @@ const summariseEvent = (e: unknown, level: number = 0): string => {
   return `${e}`
 }
 
+export type ConfigT = {
+  maxConcurrentRequests: O.Option<number>
+}
+
+type QueuingReason = 'throttling' | 'disconnected'
+
 export class MultiplexedWebsocket<Res extends { requestId: number; type: ResponseMessageType }> {
   private subject: WebSocketSubject<RequestMessage | Res> | null
   private requestId = 0
   private lastDial = 0
   readonly errors = new Subject<unknown>()
   private disconnected = true
-  private queue: [Date, string, unknown, Subject<Res & { type: ResponseMessageType.Next }>][] = []
+  private queue: [
+    Date,
+    string,
+    QueuingReason,
+    unknown,
+    Subject<Res & { type: ResponseMessageType.Next }>,
+  ][] = []
+  private maxNumConcurrentRequests: number
 
   constructor(
-    private config: WebSocketSubjectConfig<RequestMessage | Res>,
+    private config: ConfigT & WebSocketSubjectConfig<RequestMessage | Res>,
     private redialAfter: number,
   ) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     config.WebSocketCtor || (config.WebSocketCtor = <any>WebSocket)
     this.subject = webSocket(config)
     this.keepAlive()
+
+    this.maxNumConcurrentRequests = pipe(
+      config.maxConcurrentRequests,
+      O.fold(
+        () => Number.POSITIVE_INFINITY,
+        (num) => {
+          if (num <= 0) {
+            log.ws.warn(
+              `invalid maximum number of concurrent requests '${num}' configured; using default value of 24`,
+            )
+            return 24
+          }
+          return num
+        },
+      ),
+    )
   }
 
   private keepAlive() {
@@ -128,15 +159,15 @@ export class MultiplexedWebsocket<Res extends { requestId: number; type: Respons
     const s = this.subject
     this.subject = null
     s?.complete()
-    this.queue.forEach(([_d, _s, _p, subject]) =>
+    this.queue.forEach(([_d, _s, _r, _p, subject]) =>
       throwError(() => new Error('disconnected from Actyx')).subscribe(subject),
     )
     this.queue.length = 0
   }
 
-  private enqueue(serviceId: string, payload: unknown) {
+  private enqueue(serviceId: string, reason: QueuingReason, payload: unknown) {
     const s = new Subject<Res & { type: ResponseMessageType.Next }>()
-    this.queue.push([new Date(), serviceId, payload, s])
+    this.queue.push([new Date(), serviceId, reason, payload, s])
     setTimeout(() => this.prune(), this.redialAfter * 1.5)
     return s
   }
@@ -146,7 +177,7 @@ export class MultiplexedWebsocket<Res extends { requestId: number; type: Respons
       return
     }
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const [_date, _serviceId, _payload, subject] = this.queue.shift()!
+    const [_date, _serviceId, _reason, _payload, subject] = this.queue.shift()!
     throwError(() => new Error('currently disconnected from Actyx')).subscribe(subject)
   }
 

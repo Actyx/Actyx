@@ -13,6 +13,7 @@ import {
   map as mapO,
   filter as filterO,
   getOrElse as getOrElseO,
+  none,
 } from 'fp-ts/lib/Option'
 import { pipe } from 'fp-ts/lib/function'
 import { range, takeWhile } from 'ramda'
@@ -76,6 +77,7 @@ describe('multiplexedWebsocket', () => {
         openObserver,
         closeObserver,
         WebSocketCtor: MockWebSocketConstructor,
+        maxConcurrentRequests: none,
       },
       100,
     )
@@ -117,6 +119,7 @@ describe('multiplexedWebsocket', () => {
     const multiplexer = new MultiplexedWebsocket({
       url: 'ws://socket',
       WebSocketCtor: MockWebSocketConstructor,
+      maxConcurrentRequests: none,
     })
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const socket = MockWebSocket.lastSocket!
