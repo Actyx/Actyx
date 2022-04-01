@@ -362,6 +362,13 @@ export type ActyxOpts = {
    * Hook, when the connection to the store has been established.
    */
   onConnectionEstablished?: () => void
+
+  /**
+   * Throttle the maximum number of concurrent requests to the
+   * Actyx node.
+   *  @beta
+   */
+  maxConcurrentRequests?: number
 }
 
 /**

@@ -27,6 +27,7 @@ import { gt, lt } from 'fp-ts/lib/Ord'
 import { MultiplexedWebsocket } from '../v2/multiplexedWebsocket'
 import { MockWebSocket, MockWebSocketConstructor } from '../v2/multiplexedWebsocket.spec'
 import { WebsocketEventStoreV2 } from '../v2'
+import { none } from 'fp-ts/lib/Option'
 
 const assertPayloadsEqual = (actual: ActyxEvent[], expected: Events) =>
   expect(actual.map((x) => x.payload)).toEqual(expected.map((x) => x.payload))
@@ -583,6 +584,7 @@ describe('EventFns', () => {
       const multiplexer = new MultiplexedWebsocket({
         url: 'ws://socket',
         WebSocketCtor: MockWebSocketConstructor,
+        maxConcurrentRequests: none,
       })
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const socket = MockWebSocket.lastSocket!
@@ -604,6 +606,7 @@ describe('EventFns', () => {
       const multiplexer = new MultiplexedWebsocket({
         url: 'ws://socket',
         WebSocketCtor: MockWebSocketConstructor,
+        maxConcurrentRequests: none,
       })
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const socket = MockWebSocket.lastSocket!

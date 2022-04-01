@@ -11,10 +11,12 @@ import {
   RequestId,
   RequestMessage,
   ResponseMessageType,
+  ConfigT as WSConfigT,
 } from '../internal_common/multiplexedWebSocket'
 import { validateOrThrow } from '../util'
 import { WebSocketSubjectConfig } from '../../node_modules/rxjs/webSocket'
 import { map, Observable, catchError, throwError } from '../../node_modules/rxjs'
+import { Option } from 'fp-ts/lib/Option'
 
 const NextMessage = t.readonly(
   t.type({
@@ -51,7 +53,7 @@ export type ResponseMessage = t.TypeOf<typeof ResponseMessage>
 export class MultiplexedWebsocket {
   ws: WS<ResponseMessage>
   constructor(
-    config: WebSocketSubjectConfig<RequestMessage | ResponseMessage>,
+    config: WSConfigT & WebSocketSubjectConfig<RequestMessage | ResponseMessage>,
     redialAfter: number = 2000,
   ) {
     this.ws = new WS(config, redialAfter)
@@ -81,8 +83,10 @@ const deserializer = (msg: MessageEvent): ResponseMessage =>
 
 export const mkConfig = (
   url: string,
-): WebSocketSubjectConfig<RequestMessage | ResponseMessage> => ({
+  maxConcurrentRequests: Option<number>,
+): WSConfigT & WebSocketSubjectConfig<RequestMessage | ResponseMessage> => ({
   url,
   serializer,
   deserializer,
+  maxConcurrentRequests,
 })

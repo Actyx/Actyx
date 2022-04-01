@@ -14,6 +14,8 @@ import { ActyxOpts, AppManifest } from '../types'
 import { massageError } from '../util/error'
 import { mkConfig, MultiplexedWebsocket } from './multiplexedWebsocket'
 import { checkToken, getToken, getApiLocation } from './utils'
+import * as O from 'fp-ts/lib/Option'
+import { pipe } from 'fp-ts/lib/function'
 
 export const makeWsMultiplexerV2 = async (
   config: ActyxOpts,
@@ -22,7 +24,7 @@ export const makeWsMultiplexerV2 = async (
 ): Promise<[MultiplexedWebsocket, [string, string]]> => {
   const apiLocation = getApiLocation(config.actyxHost, config.actyxPort)
   const wsUrl = (tok: string) => `ws://${apiLocation}/events?${tok}`
-  const wsConfig = mkConfig(wsUrl(token))
+  const wsConfig = mkConfig(wsUrl(token), O.fromNullable(config.maxConcurrentRequests))
   const getVersion = async (token: string) => (await getInfo(config)(token, -1)).semVer()
   const version = await getVersion(token)
   const tokVer: [string, string] = [token, version]
