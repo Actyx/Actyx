@@ -242,19 +242,21 @@ export const EventFnsFromEventStoreV2 = (
       // Function is bound again when the real query starts
     }
 
-    present().then((present) => {
-      if (canceled) {
-        return
-      }
+    present()
+      .then((present) => {
+        if (canceled) {
+          return
+        }
 
-      const rangeQuery = {
-        ...query,
-        upperBound: present,
-      }
+        const rangeQuery = {
+          ...query,
+          upperBound: present,
+        }
 
-      // this is safe because queryKnownRangeChunked doesn’t invoke callbacks synchronously
-      cancelUpstream = queryKnownRangeChunked(rangeQuery, chunkSize, onChunk, onComplete)
-    })
+        // this is safe because queryKnownRangeChunked doesn’t invoke callbacks synchronously
+        cancelUpstream = queryKnownRangeChunked(rangeQuery, chunkSize, onChunk, onComplete)
+      })
+      .catch((e) => onComplete && onComplete(e))
 
     return () => {
       canceled = true
@@ -448,24 +450,26 @@ export const EventFnsFromEventStoreV2 = (
       query,
       (e0, e1) => (!e0 || shouldReplace(e1, e0) ? e1 : e0),
       undefined,
-    ).then(([initial, offsets]) => {
-      if (cancelled) {
-        return
-      }
+    )
+      .then(([initial, offsets]) => {
+        if (cancelled) {
+          return
+        }
 
-      cancelSubscription = callbackWhenReplaced(
-        query,
-        offsets,
-        initial,
-        onReplaced,
-        shouldReplace,
-        onError,
-      )
+        cancelSubscription = callbackWhenReplaced(
+          query,
+          offsets,
+          initial,
+          onReplaced,
+          shouldReplace,
+          onError,
+        )
 
-      if (cancelled) {
-        cancelSubscription()
-      }
-    })
+        if (cancelled) {
+          cancelSubscription()
+        }
+      })
+      .catch((e) => onError && onError(e))
 
     return () => {
       cancelled = true
@@ -488,24 +492,26 @@ export const EventFnsFromEventStoreV2 = (
     let cancelSubscription: CancelSubscription = () => (cancelled = true)
 
     /** If lamport order is desired, we can use store-support to speed up the query. */
-    findFirstKnown(query, EventsSortOrder.Ascending).then(([earliest, offsets]) => {
-      if (cancelled) {
-        return
-      }
+    findFirstKnown(query, EventsSortOrder.Ascending)
+      .then(([earliest, offsets]) => {
+        if (cancelled) {
+          return
+        }
 
-      cancelSubscription = callbackWhenReplaced(
-        query,
-        offsets,
-        earliest,
-        onEvent,
-        lt(_ordByKey),
-        onError,
-      )
+        cancelSubscription = callbackWhenReplaced(
+          query,
+          offsets,
+          earliest,
+          onEvent,
+          lt(_ordByKey),
+          onError,
+        )
 
-      if (cancelled) {
-        cancelSubscription()
-      }
-    })
+        if (cancelled) {
+          cancelSubscription()
+        }
+      })
+      .catch((e) => onError && onError(e))
 
     return () => {
       cancelled = true
@@ -528,24 +534,26 @@ export const EventFnsFromEventStoreV2 = (
     let cancelSubscription: CancelSubscription = () => (cancelled = true)
 
     /** If lamport order is desired, we can use store-support to speed up the query. */
-    findFirstKnown(query, EventsSortOrder.Descending).then(([latest, offsets]) => {
-      if (cancelled) {
-        return
-      }
+    findFirstKnown(query, EventsSortOrder.Descending)
+      .then(([latest, offsets]) => {
+        if (cancelled) {
+          return
+        }
 
-      cancelSubscription = callbackWhenReplaced(
-        query,
-        offsets,
-        latest,
-        onEvent,
-        gt(_ordByKey),
-        onError,
-      )
+        cancelSubscription = callbackWhenReplaced(
+          query,
+          offsets,
+          latest,
+          onEvent,
+          gt(_ordByKey),
+          onError,
+        )
 
-      if (cancelled) {
-        cancelSubscription()
-      }
-    })
+        if (cancelled) {
+          cancelSubscription()
+        }
+      })
+      .catch((e) => onError && onError(e))
 
     return () => {
       cancelled = true
@@ -565,29 +573,31 @@ export const EventFnsFromEventStoreV2 = (
 
     const reduceDirect = (r: R, evt: ActyxEvent) => reduce(r, evt.payload as E, evt.meta)
 
-    reduceUpToPresent<R>(query, reduceDirect, initialVal).then(([initial, offsets]) => {
-      if (cancelled) {
-        return
-      }
-
-      let cur = initial
-      onUpdate(cur)
-
-      const cb = async (chunk: EventChunk) => {
-        if (chunk.events.length === 0) {
+    reduceUpToPresent<R>(query, reduceDirect, initialVal)
+      .then(([initial, offsets]) => {
+        if (cancelled) {
           return
         }
 
-        cur = chunk.events.reduce(reduceDirect, cur)
+        let cur = initial
         onUpdate(cur)
-      }
 
-      cancelSubscription = subscribeChunked({ query, lowerBound: offsets }, {}, cb, onError)
+        const cb = async (chunk: EventChunk) => {
+          if (chunk.events.length === 0) {
+            return
+          }
 
-      if (cancelled) {
-        cancelSubscription()
-      }
-    })
+          cur = chunk.events.reduce(reduceDirect, cur)
+          onUpdate(cur)
+        }
+
+        cancelSubscription = subscribeChunked({ query, lowerBound: offsets }, {}, cb, onError)
+
+        if (cancelled) {
+          cancelSubscription()
+        }
+      })
+      .catch((e) => onError && onError(e))
 
     return () => {
       cancelled = true

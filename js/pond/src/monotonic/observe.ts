@@ -321,17 +321,26 @@ const makeEndless = <E>(
     let latestTimeTravelMsg: TimeTravelMsg<E> | undefined = undefined
 
     const onError = async (err: any) => {
-      log.pond.error(err)
+      log.pond.error('observe stream error', err)
 
       // On error, just try starting from scratch completely
       // (Should happen very rarely.)
-      const resetMsg = await startingStateMsg()
-      endlessUpdates.next(resetMsg)
+      for (;;) {
+        try {
+          log.pond.debug('getting startingStateMsg')
+          const resetMsg = await startingStateMsg()
+          log.pond.debug('got startingStateMsg')
+          endlessUpdates.next(resetMsg)
 
-      // This is the error handler, so we know that the old subscription has completed.
-      currentSubscription = monotonicUpdates(snapshotToFixedStart(resetMsg.snapshot)).subscribe(
-        autoRestartSubscriber,
-      )
+          // This is the error handler, so we know that the old subscription has completed.
+          currentSubscription = monotonicUpdates(snapshotToFixedStart(resetMsg.snapshot)).subscribe(
+            autoRestartSubscriber,
+          )
+          break
+        } catch (e) {
+          log.pond.error('error computing starting state message', e)
+        }
+      }
     }
 
     const autoRestartSubscriber = {
