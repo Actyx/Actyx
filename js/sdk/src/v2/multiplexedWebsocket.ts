@@ -16,6 +16,7 @@ import { validateOrThrow } from '../util'
 import { WebSocketSubjectConfig } from '../../node_modules/rxjs/webSocket'
 import { concatMap, Observable, catchError, throwError } from '../../node_modules/rxjs'
 import { isRight } from 'fp-ts/lib/Either'
+import { stringifyError } from '../util/error'
 
 const NextMessage = t.readonly(
   t.type({
@@ -63,7 +64,7 @@ export class MultiplexedWebsocket {
       catchError((err: unknown) => {
         const e = ErrorMessage.decode(err)
         return isRight(e)
-          ? throwError(() => new Error(JSON.stringify(e.right.kind)))
+          ? throwError(() => new Error(stringifyError(e.right.kind)))
           : throwError(() => err)
       }),
     )

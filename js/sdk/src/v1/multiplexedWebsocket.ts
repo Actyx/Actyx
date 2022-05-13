@@ -15,6 +15,7 @@ import {
 import { validateOrThrow } from '../util'
 import { WebSocketSubjectConfig } from '../../node_modules/rxjs/webSocket'
 import { map, Observable, catchError, throwError } from '../../node_modules/rxjs'
+import { stringifyError } from '../util/error'
 
 const NextMessage = t.readonly(
   t.type({
@@ -60,7 +61,7 @@ export class MultiplexedWebsocket {
     return this.ws.request(serviceId, payload).pipe(
       map((msg) => msg.payload),
       catchError((err: ErrorMessage) =>
-        throwError(() => new Error(JSON.stringify(err.kind || err))),
+        throwError(() => new Error(stringifyError(err.kind || err))),
       ),
     )
   }

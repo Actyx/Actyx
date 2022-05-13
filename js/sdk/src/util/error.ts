@@ -15,7 +15,15 @@ export const massageError = (err: any): any => {
       Object.getOwnPropertySymbols(err).map((n) => [n.toString(), massageError(err[n])]),
     ),
   )
-  const e = new Error(JSON.stringify(err))
+  const e = new Error(stringifyError(err))
   delete e.stack
   return e
+}
+
+export const stringifyError = (err: any) => {
+  try {
+    return JSON.stringify(err)
+  } catch (_e) {
+    return `${err}`
+  }
 }
