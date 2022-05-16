@@ -152,7 +152,7 @@ const hydrate: Run = (fish) => async (sourceId, events, snapshotScheduler) => {
   return finalState
 }
 
-const delayBy10ms = <T>(val: T) => new Promise((res) => setTimeout(res, 100)).then(() => val)
+const delayBy10ms = <T>(val: T) => new Promise((res) => setTimeout(res, 500)).then(() => val)
 
 const live: (intermediateStates: boolean) => Run =
   (intermediates) => (fish) => async (sourceId, events, snapshotScheduler) => {
