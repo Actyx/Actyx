@@ -518,7 +518,7 @@ dependencies = [
 [[package]]
 name = "banyan"
 version = "0.17.1"
-source = "git+https://github.com/Actyx/banyan?branch=rku/logging#e11210ce9203ec60201a3488c404c6aceca155e0"
+source = "git+https://github.com/Actyx/banyan?branch=rku/logging#d8ad842c8f447fd3257dbcc4cdc986c05b504f1b"
 dependencies = [
  "anyhow",
  "chacha20",

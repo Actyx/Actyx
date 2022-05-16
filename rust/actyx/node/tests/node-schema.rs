@@ -20,6 +20,7 @@ fn node_schema_in_sync() {
             ping_timeout: 5,
             bitswap_timeout: 15,
             mdns: true,
+            branch_cache_size: 67108864,
         },
         admin: Admin {
             display_name: "some name".into(),

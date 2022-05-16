@@ -260,6 +260,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             metrics_interval: Duration::from_secs(s.swarm.metrics_interval),
             ping_timeout: Duration::from_secs(s.swarm.ping_timeout),
             bitswap_timeout: Duration::from_secs(s.swarm.bitswap_timeout),
+            branch_cache_size: s.swarm.branch_cache_size,
             ..SwarmConfig::basic()
         };
         Ok(StoreConfig {

@@ -166,6 +166,11 @@
           "type": "boolean",
           "default": true,
           "description": "Enable mDNS discovery of peers within the same IP broadcast domain"
+        },
+        "branchCacheSize": {
+          "type": "integer",
+          "default": 67108864,
+          "description": "Maximum number of index bytes cached in memory"
         }
       }
     },

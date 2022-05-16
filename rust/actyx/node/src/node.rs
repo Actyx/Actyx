@@ -433,6 +433,7 @@ mod test {
               "pingTimeout": 5,
               "bitswapTimeout": 15,
               "mdns": true,
+              "branchCacheSize": 67108864,
             },
             "admin": {
               "displayName": "My Node",

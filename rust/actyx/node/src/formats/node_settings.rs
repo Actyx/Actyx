@@ -33,6 +33,7 @@ pub struct Swarm {
     pub ping_timeout: u64,
     pub bitswap_timeout: u64,
     pub mdns: bool,
+    pub branch_cache_size: u64,
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -79,6 +80,7 @@ impl Settings {
                 ping_timeout: 5,
                 bitswap_timeout: 15,
                 mdns: true,
+                branch_cache_size: 67108864,
             },
             admin: Admin {
                 display_name: "some name".into(),
