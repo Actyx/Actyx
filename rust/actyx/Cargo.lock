@@ -2188,7 +2188,8 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.23.0"
-source = "git+https://github.com/Actyx/ipfs-embed?branch=sim-open#5cf7b8b8be410453e0acb1d3a76dc4ee16261c4b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b832762a8132120cbd0c80f38efe46e33d35654986d5953956c7f639f713b3fe"
 dependencies = [
  "anyhow",
  "async-executor",

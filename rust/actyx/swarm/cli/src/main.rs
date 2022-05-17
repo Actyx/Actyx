@@ -101,6 +101,7 @@ async fn run() -> Result<()> {
     }
     tokio::spawn(async move {
         while let Some(event) = stream.next().await {
+            tracing::debug!("got event {:?}", event);
             let event = match event {
                 ipfs_embed::Event::NewListenAddr(_, addr) => Some(Event::NewListenAddr(addr)),
                 ipfs_embed::Event::ExpiredListenAddr(_, addr) => Some(Event::ExpiredListenAddr(addr)),

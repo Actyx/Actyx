@@ -305,16 +305,26 @@ where
             .copied()
             .collect::<BTreeSet<_>>();
         while !peers.is_empty() {
-            let f = machine.select(|ev| m!(ev.borrow(), Event::Connected(p) => *p));
-            // same as for deadline
-            futures::pin_mut!(f);
-            match select(deadline.as_mut(), f).await {
-                Either::Left(_) => bail!(
-                    "fully_meshed timed out after {:.1}sec ({}, {:?})",
-                    timeout.as_secs_f64(),
-                    idx,
-                    peers
-                ),
+            let res = {
+                let f = machine.select(|ev| m!(ev.borrow(), Event::Connected(p) => *p));
+                futures::pin_mut!(f);
+                match select(deadline.as_mut(), f).await {
+                    Either::Left(_) => Either::Left(()),
+                    Either::Right(r) => Either::Right(r),
+                }
+            };
+            match res {
+                Either::Left(_) => {
+                    for e in machine.drain() {
+                        tracing::error!("got event {}", e);
+                    }
+                    bail!(
+                        "fully_meshed timed out after {:.1}sec ({}, {:?})",
+                        timeout.as_secs_f64(),
+                        idx,
+                        peers
+                    )
+                }
                 Either::Right((None, _)) => bail!("got not peer"),
                 Either::Right((Some(p), _)) => {
                     peers.remove(&p);
