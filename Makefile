@@ -110,10 +110,10 @@ CARGO := RUST_BACKTRACE=1  cargo +$(BUILD_RUST_TOOLCHAIN)
 ##### END Configuration variables
 #################################
 
-export GIT_COMMIT = $(shell git rev-parse HEAD)$(shell [ -n "$(shell git status --porcelain)" ] && echo _dirty)
+export GIT_COMMIT := $(shell git rev-parse HEAD)$(shell [ `git status --porcelain | wc -l` -gt 0 ] && echo _dirty)
 export ACTYX_VERSION_NODEMANAGER ?= $(or $(shell git log --format=%H | while read hash; do grep node-manager-.*$$hash versions && exit; done | (IFS="- " read n1 n2 v r; echo $$v)), 0.0.0)_dev-$(GIT_COMMIT)
 
-$(shell env | sort >&2)
+$(shell env GIT_COMMIT=$(GIT_COMMIT) | sort >&2)
 
 ifeq ($(origin ACTYX_VERSION), undefined)
   AXV :=
@@ -195,7 +195,7 @@ print-%:
 
 .PHONY: assert-clean
 assert-clean:
-	@if [ -n "$(shell git status --porcelain)" ]; then \
+	@if [ `git status --porcelain | wc -l` -gt 0 ]; then \
 		git status --porcelain; echo "Git directory not clean, exiting"; git diff; exit 3; \
 	else echo "Git directory is clean";  fi
 
@@ -423,11 +423,17 @@ node-manager-mac-linux:
 # combines all the .so files to build actyxos on android
 android-libaxosnodeffi: \
 	jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so \
+	jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi6.so \
 	jvm/os-android/app/src/main/jniLibs/x86_64/libaxosnodeffi.so \
 	jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so \
-	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so
+	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so \
+	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi6.so
 
 jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so: rust/actyx/target/i686-linux-android/release/libaxosnodeffi.so
+	mkdir -p $(dir $@)
+	cp $< $@
+
+jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi6.so: rust/actyx/target/i686-linux-android/release/libaxosnodeffi.so6
 	mkdir -p $(dir $@)
 	cp $< $@
 
@@ -440,6 +446,10 @@ jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so: rust/actyx/targ
 	cp $< $@
 
 jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so: rust/actyx/target/armv7-linux-androideabi/release/libaxosnodeffi.so
+	mkdir -p $(dir $@)
+	cp $< $@
+
+jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi6.so: rust/actyx/target/armv7-linux-androideabi/release/libaxosnodeffi.so6
 	mkdir -p $(dir $@)
 	cp $< $@
 
@@ -502,10 +512,10 @@ $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 
 # make a list of pattern rules (with %) for all possible .so files needed for android
 soTargetPatterns = $(foreach t,$(android_so_targets),rust/actyx/target/$(t)/release/libaxosnodeffi.so)
+soTargetPatterns6 = $(foreach t,$(android_so_targets),rust/actyx/target/$(t)/release/libaxosnodeffi.so6)
 
 # same principle as above for targetPatterns
 $(soTargetPatterns): TARGET = $(word 4,$(subst /, ,$@))
-$(soTargetPatterns): OS = $(word 4,$(subst -, ,$(TARGET)))
 $(soTargetPatterns): cargo-init make-always
 	docker run \
 	  -u builder \
@@ -518,6 +528,22 @@ $(soTargetPatterns): cargo-init make-always
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
 	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --target $(TARGET)
+
+$(soTargetPatterns6): TARGET = $(word 4,$(subst /, ,$@))
+$(soTargetPatterns6): cargo-init make-always
+	docker run \
+	  -u builder \
+	  -w /src/rust/actyx \
+	  -e HOME=/home/builder \
+	  -e ANDROID6=yes \
+	  -v `pwd`:/src \
+	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
+	  --rm \
+	  $(DOCKER_FLAGS) \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
+	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --target $(TARGET)
+	mv $(patsubst %6,%,$@) $@
 
 # create these so that they belong to the current user (Docker would create as root)
 # (formulating as rule dependencies only runs mkdir when they are missing)

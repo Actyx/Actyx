@@ -125,7 +125,6 @@ stages:
             path: "s"
           - bash: |
               set -e
-              chmod -R 777 .
               make validate-os-android assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
