@@ -157,7 +157,7 @@ stages:
             clean: true
             path: "s"
           - bash: |
-              set -e
+              set -ex
               echo "Building cosmos-release"
               cd rust/release
               cargo build --release -vv
