@@ -157,7 +157,7 @@ stages:
               set -e
               echo "Building cosmos-release"
               cd rust/release
-              cargo build --release
+              cargo build --release -vv
               echo "Building docs"
               cd ../../web/developer.actyx.com/
               source ~/.nvm/nvm.sh
@@ -174,4 +174,3 @@ stages:
               NETLIFY_SITE_ID: $(SECRET_NETLIFY_SITE)
               NETLIFY_ACCESS_TOKEN: $(SECRET_NETLIFY_TOKEN)
               NETLIFY_AUTH_TOKEN: $(SECRET_NETLIFY_TOKEN)
-
