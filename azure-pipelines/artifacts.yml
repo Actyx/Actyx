@@ -82,8 +82,8 @@ stages:
           - bash: |
               set -e
               mkdir -p dist/bin/windows-x86_64/
-              chmod -R 777 .
-              chmod -R 777 /root/.cargo
+              chmod -R o+w .
+              chmod -R o+w /root/.cargo
               make all-windows assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
@@ -103,8 +103,8 @@ stages:
             clean: true
           - bash: |
               set -e
-              chmod -R 777 .
-              chmod -R 777 /root/.cargo
+              chmod -R o+w .
+              chmod -R o+w /root/.cargo
               make all-linux assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
@@ -122,8 +122,8 @@ stages:
             clean: true
           - bash: |
               set -e
-              chmod -R 777 .
-              chmod -R 777 /root/.cargo
+              chmod -R o+w .
+              chmod -R o+w /root/.cargo
               make all-macos assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
@@ -162,8 +162,8 @@ stages:
           - bash: |
               set -ex
               azure-pipelines/bin/install-vault.sh
-              chmod -R 777 .
-              chmod -R 777 /root/.cargo
+              chmod -R o+w .
+              chmod -R o+w /root/.cargo
               ./jvm/os-android/bin/get-keystore.sh
               make all-android assert-clean
             env:
