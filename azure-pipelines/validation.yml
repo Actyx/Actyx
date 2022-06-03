@@ -125,7 +125,9 @@ stages:
             path: "s"
           - bash: |
               set -e
+              azure-pipelines/bin/install-vault.sh
               chmod -R o+w .
+              ./jvm/os-android/bin/get-keystore.sh
               make validate-os-android assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
