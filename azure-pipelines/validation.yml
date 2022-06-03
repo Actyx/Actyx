@@ -128,6 +128,7 @@ stages:
               azure-pipelines/bin/install-vault.sh
               chmod -R o+w .
               ./jvm/os-android/bin/get-keystore.sh
+              cat jvm/os-android/actyx-local/actyx.properties
               make validate-os-android assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
