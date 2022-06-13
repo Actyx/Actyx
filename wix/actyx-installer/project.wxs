@@ -28,12 +28,12 @@
                     <ServiceControl Id="StartService" Start="install" Stop="both" Remove="uninstall" Name="Actyx" Wait="yes" />
                 </Component>
             </Feature>
-            <Feature Id="Firewall" Title="Firewall Rules" Description="Setup firewall rules to allow Actyx to work correctly." Level="1" AllowAdvertise='no' Absent='allow' InstallDefault='local'>
+            <Feature Id="Firewall" Title="Firewall Rules" Description="Setup firewall rules to allow Actyx to work correctly (on all profiles)." Level="1" AllowAdvertise='no' Absent='allow' InstallDefault='local'>
                 <Component Id="FirewallException" Guid="77BD2DEC-BC70-11EB-8529-0242AC130003" Directory="INSTALLFOLDER">
                     <Condition>Privileged</Condition>
-                    <fire:FirewallException Id="Actyx_Swarm_Port" Description="Allow Actyx Swarm connections" Name="Actyx (Swarm)" Program="[#Actyx]" Port="4001" Protocol="tcp" Scope="any" Profile="private" />
-                    <fire:FirewallException Id="Actyx_API_Port" Description="Allow Actyx API connections" Name="Actyx (API)" Program="[#Actyx]" Port="4458" Protocol="tcp" Scope="any" Profile="private" />
-                    <fire:FirewallException Id="Actyx_Admin_Port" Description="Allow Actyx Admin connections" Name="Actyx (Admin)" Program="[#Actyx]" Port="4454" Protocol="tcp" Scope="any" Profile="private" />
+                    <fire:FirewallException Id="Actyx_Swarm_Port" Description="Allow Actyx Swarm connections" Name="Actyx (Swarm)" Program="[#Actyx]" Port="4001" Protocol="tcp" Scope="any" Profile="all" />
+                    <fire:FirewallException Id="Actyx_API_Port" Description="Allow Actyx Admin connections" Name="Actyx (Admin)" Program="[#Actyx]" Port="4458" Protocol="tcp" Scope="any" Profile="all" />
+                    <fire:FirewallException Id="Actyx_Admin_Port" Description="Allow Actyx API connections" Name="Actyx (API)" Program="[#Actyx]" Port="4454" Protocol="tcp" Scope="any" Profile="all" />
                 </Component>
             </Feature>
         </Feature>
