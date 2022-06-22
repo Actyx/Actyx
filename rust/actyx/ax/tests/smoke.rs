@@ -168,7 +168,7 @@ fn with_api(
 }
 
 fn get(json: &Value, ptr: &str) -> anyhow::Result<Value> {
-    json.pointer(ptr).cloned().ok_or_else(|| anyhow!("not found"))
+    json.pointer(ptr).cloned().ok_or_else(|| anyhow!("{} not found", ptr))
 }
 fn o(s: &str) -> &OsStr {
     OsStr::new(s)
@@ -255,13 +255,9 @@ fn query() -> anyhow::Result<()> {
             if line.is_empty() {
                 continue;
             }
-            let json = serde_json::from_str::<Value>(line)?;
-            ensure!(
-                get(&json, "/appId")? == json!("com.actyx"),
-                "line {} was: {}",
-                line!(),
-                json
-            );
+            let start = line.find(": ").ok_or_else(|| anyhow!("cannot parse"))? + 2;
+            let json = serde_json::from_str::<Value>(&line[start..])?;
+            get(&json, "/NewListenAddr").or_else(|_| get(&json, "/NewObservedAddr"))?;
             found = true;
         }
         ensure!(found, "no events with text output");
@@ -289,9 +285,8 @@ fn query() -> anyhow::Result<()> {
                 continue;
             }
             let json = serde_json::from_str::<Value>(line)?;
-            ensure!(get(&json, "/code")? == json!("OK"), "line {} was: {}", line!(), json);
             ensure!(
-                get(&json, "/result/appId")? == json!("com.actyx"),
+                get(&json, "/appId")? == json!("com.actyx"),
                 "line {} was: {}",
                 line!(),
                 json
@@ -422,7 +417,7 @@ fn diagnostics() -> anyhow::Result<()> {
         );
         ensure!(out.status.success());
         let out = String::from_utf8(out.stdout)?;
-        ensure!(out.contains("is not a number"), "{}", out);
+        ensure!(out.contains("is not of type Number"), "{}", out);
         Ok(())
     });
     if result.is_err() {
@@ -452,11 +447,10 @@ fn aggregate() -> anyhow::Result<()> {
         );
         ensure!(out.status.success());
         let json = serde_json::from_slice::<Value>(&out.stdout)?;
-        ensure!(get(&json, "/code")? == json!("OK"), "{}", get(&json, "/code")?);
         ensure!(
-            get(&json, "/result/payload")?.as_u64() > Some(0),
+            get(&json, "/payload")?.as_u64() > Some(0),
             "{:?}",
-            get(&json, "/result/payload")?.as_u64()
+            get(&json, "/payload")?.as_u64()
         );
         Ok(())
     });

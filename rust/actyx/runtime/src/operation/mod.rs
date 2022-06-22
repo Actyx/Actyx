@@ -156,10 +156,8 @@ impl Processor for Binding {
 
 #[cfg(test)]
 mod tests {
-    use actyx_sdk::OffsetMap;
-    use cbor_data::Encoder;
-
     use super::*;
+    use cbor_data::Encoder;
     use std::convert::TryInto;
     use swarm::event_store_ref::EventStoreRef;
 
@@ -174,7 +172,8 @@ mod tests {
     #[tokio::test]
     async fn filter() {
         let mut f = Filter(simple_expr("_ > 5 + a"));
-        let mut cx = Context::owned(Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let cx = Context::new(store());
+        let mut cx = cx.child();
         cx.bind("a", Value::synthetic(cx.mk_cbor(|b| b.encode_f64(3.0))));
 
         cx.bind("_", Value::synthetic(cx.mk_cbor(|b| b.encode_i64(8))));
@@ -188,7 +187,8 @@ mod tests {
     #[tokio::test]
     async fn select() {
         let mut s = Select(vec![simple_expr("_.x + a").with_spread(false)].try_into().unwrap());
-        let mut cx = Context::owned(Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
+        let cx = Context::new(store());
+        let mut cx = cx.child();
         cx.bind("a", Value::synthetic(cx.mk_cbor(|b| b.encode_f64(0.5))));
 
         cx.bind(

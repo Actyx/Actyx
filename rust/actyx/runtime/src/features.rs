@@ -67,9 +67,9 @@ features! {
     timeRange: Beta [],
     eventKeyRange: Beta [],
     // unclear: metadata for results
-    multiEmission: Alpha [Subscribe SubscribeMonotonic],
+    multiEmission: Beta [Subscribe SubscribeMonotonic],
     // unclear: metadata for results, group-by semantics
-    aggregate: Alpha [Subscribe SubscribeMonotonic],
+    aggregate: Beta [Subscribe SubscribeMonotonic],
     // unclear: metadata for results
     subQuery: Alpha [Subscribe SubscribeMonotonic],
     limit: Beta [Subscribe SubscribeMonotonic],
@@ -279,10 +279,7 @@ mod tests {
     fn alpha() {
         let f = Features::new();
 
-        assert_eq!(
-            f.validate(&[s("multiEmission")], Endpoint::Query),
-            Err(Alpha(s("multiEmission")))
-        );
+        assert_eq!(f.validate(&[s("subQuery")], Endpoint::Query), Err(Alpha(s("subQuery"))));
         assert_eq!(f.validate(&[s("zøg"), s("multiEmission")], Endpoint::Query), Ok(()));
         assert_eq!(f.validate(&[s("multiEmission"), s("zøg")], Endpoint::Query), Ok(()));
         assert_eq!(f.validate(&[s("zoeg"), s("multiEmission")], Endpoint::Query), Ok(()));
@@ -309,12 +306,8 @@ mod tests {
 
     #[test]
     fn multi_emission() {
-        assert_eq!(q("FROM allEvents SELECT _, _"), Err(Alpha(s("multiEmission"))));
-        assert_eq!(
-            q("FEATURES(multiEmission) FROM allEvents SELECT _, _"),
-            Err(Alpha(s("multiEmission")))
-        );
-        assert_eq!(q("FEATURES(multiEmission zøg) FROM allEvents SELECT _, _"), Ok(()));
+        assert_eq!(q("FROM allEvents SELECT _, _"), Err(Beta(s("multiEmission"))));
+        assert_eq!(q("FEATURES(multiEmission) FROM allEvents SELECT _, _"), Ok(()));
 
         let mut f = Features::new();
         f.add(Feature::multiEmission);

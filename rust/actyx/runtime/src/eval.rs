@@ -10,6 +10,7 @@ use cbor_data::{
     CborBuilder, CborOwned, CborValue, Encoder, PathElement, WithOutput, Writer,
 };
 use futures::{future::BoxFuture, FutureExt};
+use parking_lot::Mutex;
 use std::{
     borrow::Cow,
     cmp::Ordering,
@@ -19,68 +20,81 @@ use std::{
 };
 use swarm::event_store_ref::EventStoreRef;
 
+pub struct RootContext {
+    scratch: Mutex<Vec<u8>>,
+    store: EventStoreRef,
+    from_offsets_excluding: OffsetMap,
+    to_offsets_including: OffsetMap,
+    order: Order,
+}
+
+impl RootContext {
+    pub fn child(&self) -> Context<'_> {
+        Context {
+            root: self,
+            parent: None,
+            bindings: BTreeMap::new(),
+            order: self.order,
+        }
+    }
+}
+
 pub struct Context<'a> {
+    root: &'a RootContext,
+    parent: Option<&'a Context<'a>>,
     bindings: BTreeMap<String, anyhow::Result<Value>>,
-    pub parent: Option<&'a Context<'a>>,
-    pub store: Cow<'a, EventStoreRef>,
     pub order: Order,
-    pub from_offsets_excluding: Cow<'a, OffsetMap>,
-    pub to_offsets_including: Cow<'a, OffsetMap>,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(
-        order: Order,
-        store: &'a EventStoreRef,
-        from_offsets_excluding: &'a OffsetMap,
-        to_offsets_including: &'a OffsetMap,
-    ) -> Self {
-        Self {
-            bindings: BTreeMap::new(),
-            parent: None,
-            order,
-            store: Cow::Borrowed(store),
-            from_offsets_excluding: Cow::Borrowed(from_offsets_excluding),
-            to_offsets_including: Cow::Borrowed(to_offsets_including),
-        }
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new(store: EventStoreRef) -> RootContext {
+        Self::root(Order::Asc, store, OffsetMap::empty(), OffsetMap::empty())
     }
 
-    pub fn owned(
+    pub fn root(
         order: Order,
         store: EventStoreRef,
         from_offsets_excluding: OffsetMap,
         to_offsets_including: OffsetMap,
-    ) -> Context<'static> {
-        Context {
-            bindings: BTreeMap::new(),
-            parent: None,
+    ) -> RootContext {
+        RootContext {
+            scratch: Mutex::new(Vec::new()),
+            store,
+            from_offsets_excluding,
+            to_offsets_including,
             order,
-            store: Cow::Owned(store),
-            from_offsets_excluding: Cow::Owned(from_offsets_excluding),
-            to_offsets_including: Cow::Owned(to_offsets_including),
         }
     }
 
     pub fn child(&'a self) -> Self {
         Self {
-            bindings: BTreeMap::new(),
+            root: self.root,
             parent: Some(self),
+            bindings: BTreeMap::new(),
             order: self.order,
-            store: Cow::Borrowed(self.store.as_ref()),
-            from_offsets_excluding: Cow::Borrowed(self.from_offsets_excluding.as_ref()),
-            to_offsets_including: Cow::Borrowed(self.to_offsets_including.as_ref()),
         }
     }
 
     pub fn child_with_order(&'a self, order: Order) -> Self {
         Self {
-            bindings: BTreeMap::new(),
+            root: self.root,
             parent: Some(self),
+            bindings: BTreeMap::new(),
             order,
-            store: Cow::Borrowed(self.store.as_ref()),
-            from_offsets_excluding: Cow::Borrowed(self.from_offsets_excluding.as_ref()),
-            to_offsets_including: Cow::Borrowed(self.to_offsets_including.as_ref()),
         }
+    }
+
+    pub fn store(&self) -> &EventStoreRef {
+        &self.root.store
+    }
+
+    pub fn from_offsets_excluding(&self) -> &OffsetMap {
+        &self.root.from_offsets_excluding
+    }
+
+    pub fn to_offsets_including(&self) -> &OffsetMap {
+        &self.root.to_offsets_including
     }
 
     pub fn bind(&mut self, name: impl Into<String>, value: Value) {
@@ -114,7 +128,10 @@ impl<'a> Context<'a> {
     }
 
     pub fn mk_cbor(&self, f: impl FnOnce(CborBuilder<WithOutput>) -> CborOwned) -> CborOwned {
-        f(CborBuilder::new())
+        let mut buf = self.root.scratch.try_lock();
+        let mut fallback = Vec::new();
+        let buf = buf.as_mut().map(|b| b.as_mut()).unwrap_or(&mut fallback);
+        f(CborBuilder::with_scratch_space(buf))
     }
 
     pub fn number(&self, n: &Num) -> CborOwned {
@@ -627,13 +644,14 @@ mod tests {
     fn mk_store() -> EventStoreRef {
         EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
     }
-    fn ctx() -> Context<'static> {
-        Context::owned(Order::Asc, mk_store(), OffsetMap::empty(), OffsetMap::empty())
+    fn ctx() -> RootContext {
+        Context::new(mk_store())
     }
 
     #[tokio::test]
     async fn simple() {
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
         cx.bind(
             "x",
             Value::synthetic(cx.mk_cbor(|b| {
@@ -663,7 +681,8 @@ mod tests {
 
     #[tokio::test]
     async fn primitives() {
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
         assert_eq!(eval(&mut cx, "NULL").await.unwrap(), "null");
         assert_eq!(eval(&mut cx, "TRUE").await.unwrap(), "true");
         assert_eq!(eval(&mut cx, "FALSE").await.unwrap(), "false");
@@ -682,7 +701,8 @@ mod tests {
 
     #[tokio::test]
     async fn boolean() {
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
 
         assert_eq!(eval(&mut cx, "FALSE ∧ FALSE").await.unwrap(), "false");
         assert_eq!(eval(&mut cx, "FALSE ∧ TRUE").await.unwrap(), "false");
@@ -706,14 +726,15 @@ mod tests {
         assert_eq!(eval(&mut cx, "FALSE & 12").await.unwrap(), "false");
         assert_eq!(eval(&mut cx, "TRUE | 12").await.unwrap(), "true");
 
-        assert_that(&eval(&mut cx, "NULL & x").await.unwrap_err().to_string()).contains("null is not a bool");
+        assert_that(&eval(&mut cx, "NULL & 'x'").await.unwrap_err().to_string()).contains("null is not a bool");
         assert_that(&eval(&mut cx, "FALSE | 12").await.unwrap_err().to_string()).contains("12 is not a bool");
         assert_that(&eval(&mut cx, "!'a'").await.unwrap_err().to_string()).contains("\"a\" is not a bool");
     }
 
     #[tokio::test]
     async fn compare() {
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
 
         assert_eq!(
             eval(&mut cx, "NULL = NULL ∧ NULL ≥ NULL ∧ NULL ≤ NULL").await.unwrap(),
@@ -726,7 +747,8 @@ mod tests {
 
         #[allow(clippy::bool_comparison)]
         fn prop_bool(left: bool, right: bool) -> bool {
-            let mut cx = ctx();
+            let cx = ctx();
+            let mut cx = cx.child();
             cx.bind("a", Value::synthetic(cx.mk_cbor(|b| b.encode_bool(left))));
             cx.bind("b", Value::synthetic(cx.mk_cbor(|b| b.encode_bool(right))));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
@@ -740,7 +762,8 @@ mod tests {
         quickcheck(prop_bool as fn(bool, bool) -> bool);
 
         fn prop_u64(left: u64, right: u64) -> bool {
-            let mut cx = ctx();
+            let cx = ctx();
+            let mut cx = cx.child();
             cx.bind("a", Value::synthetic(cx.mk_cbor(|b| b.encode_u64(left))));
             cx.bind("b", Value::synthetic(cx.mk_cbor(|b| b.encode_u64(right))));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
@@ -758,7 +781,8 @@ mod tests {
             if left.is_nan() || right.is_nan() {
                 return TestResult::discard();
             }
-            let mut cx = ctx();
+            let cx = ctx();
+            let mut cx = cx.child();
             cx.bind("a", Value::synthetic(cx.mk_cbor(|b| b.encode_f64(left))));
             cx.bind("b", Value::synthetic(cx.mk_cbor(|b| b.encode_f64(right))));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
@@ -772,7 +796,8 @@ mod tests {
         quickcheck(prop_f64 as fn(f64, f64) -> TestResult);
 
         fn prop_str(left: String, right: String) -> bool {
-            let mut cx = ctx();
+            let cx = ctx();
+            let mut cx = cx.child();
             cx.bind("a", Value::synthetic(cx.mk_cbor(|b| b.encode_str(left.as_str()))));
             cx.bind("b", Value::synthetic(cx.mk_cbor(|b| b.encode_str(right.as_str()))));
             assert_eq!(eval_bool(&mut cx, "a < b"), left < right);
@@ -793,7 +818,8 @@ mod tests {
 
     #[tokio::test]
     async fn constructors() {
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
         assert_eq!(eval(&mut cx, "([1,'x',NULL])[0]").await.unwrap(), "1");
         assert_eq!(eval(&mut cx, "([1,'x',NULL])[1]").await.unwrap(), "\"x\"");
         assert_eq!(eval(&mut cx, "([1,'x',NULL])[2]").await.unwrap(), "null");
@@ -830,7 +856,8 @@ mod tests {
 
     #[tokio::test]
     async fn arithmetic() {
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
         assert_eq!(eval(&mut cx, "1+2").await.unwrap(), "3");
         assert_eq!(eval(&mut cx, "1+2*3^2%5").await.unwrap(), "4");
         assert_eq!(eval(&mut cx, "1.0+2.0*3.0^2.0%5.0").await.unwrap(), "4.0");
@@ -849,7 +876,8 @@ mod tests {
 
     #[tokio::test]
     async fn indexing() {
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
         assert_eq!(eval(&mut cx, "([42])[0]").await.unwrap(), "42");
         assert_eq!(eval(&mut cx, "([42])[1-1]").await.unwrap(), "42");
         assert_eq!(eval(&mut cx, "({x:12}).x").await.unwrap(), "12");
@@ -859,7 +887,8 @@ mod tests {
 
     #[tokio::test]
     async fn cases() {
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
         assert_eq!(
             eval(&mut cx, "CASE 5 ≤ 5 => 42 CASE TRUE => NULL ENDCASE")
                 .await
@@ -887,7 +916,8 @@ mod tests {
 
     #[tokio::test]
     async fn alternative() {
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
         assert_eq!(eval(&mut cx, "5 ?? 6").await.unwrap(), "5");
         assert_eq!(eval(&mut cx, "(5).a ?? 6").await.unwrap(), "6");
         assert_eq!(eval(&mut cx, "NULL ?? 1").await.unwrap(), "null");
@@ -895,7 +925,8 @@ mod tests {
 
     #[tokio::test]
     async fn builtin_functions() {
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
 
         assert_eq!(eval(&mut cx, "IsDefined(1)").await.unwrap(), "true");
         assert_eq!(eval(&mut cx, "IsDefined(1 + '')").await.unwrap(), "false");

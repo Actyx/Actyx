@@ -59,6 +59,7 @@ CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
 CARGO_BUILD_ARGS ?= --features migration-v1
 
+# CAUTION: wait for https://github.com/rust-lang/cc-rs/pull/671 before switching to 1.61+
 export BUILD_RUST_TOOLCHAIN ?= 1.59.0
 
 # The stable image version is the git commit hash inside `Actyx/Actyx`, with

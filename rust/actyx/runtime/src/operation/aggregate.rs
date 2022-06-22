@@ -330,10 +330,11 @@ pub(super) fn aggregate(expr: &SimpleExpr) -> Box<dyn super::Processor> {
 mod tests {
     use super::*;
     use crate::{
+        eval::RootContext,
         operation::{Operation, Processor},
         query::Query,
     };
-    use actyx_sdk::{app_id, language, tags, EventKey, Metadata, NodeId, OffsetMap};
+    use actyx_sdk::{app_id, language, tags, EventKey, Metadata, NodeId};
     use swarm::event_store_ref::EventStoreRef;
 
     fn a(s: &str) -> Box<dyn Processor> {
@@ -347,8 +348,8 @@ mod tests {
     fn store() -> EventStoreRef {
         EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
     }
-    fn ctx() -> Context<'static> {
-        Context::owned(Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty())
+    fn ctx() -> RootContext {
+        Context::new(store())
     }
     async fn apply<'a, 'b: 'a>(a: &'a mut dyn Processor, cx: &'a mut Context<'b>, v: u64, t: u64) -> Vec<Value> {
         cx.bind(
@@ -385,7 +386,8 @@ mod tests {
     #[tokio::test]
     async fn sum() {
         let mut s = a("42 - SUM(_ * 2)");
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
 
         assert_eq!(apply(&mut *s, &mut cx, 1, 1).await, vec![]);
         assert_eq!(apply(&mut *s, &mut cx, 2, 2).await, vec![]);
@@ -402,7 +404,8 @@ mod tests {
     #[tokio::test]
     async fn product() {
         let mut s = a("42 - PRODUCT(_ * 2)");
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
 
         assert_eq!(apply(&mut *s, &mut cx, 1, 1).await, vec![]);
         assert_eq!(apply(&mut *s, &mut cx, 2, 2).await, vec![]);
@@ -419,7 +422,8 @@ mod tests {
     #[tokio::test]
     async fn min_max() {
         let mut s = a("[FIRST(_), LAST(_), MIN(_), MAX(_)]");
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
 
         assert_eq!(apply(&mut *s, &mut cx, 2, 1).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "[2, 2, 2, 2]");

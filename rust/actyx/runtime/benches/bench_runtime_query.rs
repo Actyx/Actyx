@@ -1,17 +1,21 @@
-use actyx_sdk::{language, service::Order, OffsetMap};
+use actyx_sdk::language;
 use cbor_data::Encoder;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use futures::executor::block_on;
-use runtime::{eval::Context, query::Query, value::Value};
+use runtime::{
+    eval::{Context, RootContext},
+    query::Query,
+    value::Value,
+};
 use swarm::event_store_ref::EventStoreRef;
 
 fn store() -> EventStoreRef {
     EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
 }
 
-fn v() -> (Value, Context<'static>) {
-    let cx = Context::owned(Order::Asc, store(), OffsetMap::empty(), OffsetMap::empty());
-    let v = Value::synthetic(cx.mk_cbor(|b| {
+fn v() -> (Value, RootContext) {
+    let cx = Context::new(store());
+    let v = Value::synthetic(cx.child().mk_cbor(|b| {
         b.encode_dict(|b| {
             b.with_key("x", |b| b.encode_u64(5));
             b.with_key("y", |b| b.encode_str("hello"));
@@ -29,11 +33,13 @@ fn criterion_benchmark(c: &mut Criterion) {
             .0
             .make_feeder();
         let (value, cx) = v();
+        let cx = cx.child();
         b.iter(|| black_box(block_on(query.feed(Some(value.clone()), &cx))));
     });
     c.bench_function("feed value", |b| {
         let mut query = Query::from(language::Query::parse(QUERY).unwrap()).0.make_feeder();
         let (value, cx) = v();
+        let cx = cx.child();
         b.iter(|| black_box(block_on(query.feed(Some(value.clone()), &cx))));
     });
 }

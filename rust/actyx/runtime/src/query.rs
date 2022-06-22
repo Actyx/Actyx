@@ -63,22 +63,22 @@ impl Query {
                 let tag_expr = cx.eval_from(from).await?.into_owned();
                 let (stream, cx) = if order.or_else(|| feeder.preferred_order()) == Some(Order::Desc) {
                     let stream = cx
-                        .store
+                        .store()
                         .bounded_backward(
                             tag_expr,
-                            cx.from_offsets_excluding.as_ref().clone(),
-                            cx.to_offsets_including.as_ref().clone(),
+                            cx.from_offsets_excluding().clone(),
+                            cx.to_offsets_including().clone(),
                         )
                         .await?
                         .stop_on_error();
                     (stream, cx.child_with_order(Order::Desc))
                 } else {
                     let stream = cx
-                        .store
+                        .store()
                         .bounded_forward(
                             tag_expr,
-                            cx.from_offsets_excluding.as_ref().clone(),
-                            cx.to_offsets_including.as_ref().clone(),
+                            cx.from_offsets_excluding().clone(),
+                            cx.to_offsets_including().clone(),
                             false, // must keep order because some stage may have demanded it
                         )
                         .await?
@@ -166,19 +166,16 @@ impl Feeder {
         ctx.resize_with(self.processors.len(), || None);
         let mut ctx = &mut ctx[..];
 
-        // create the outermost context, stored on the stack
-        let mut cx = cx.child();
-
         // set up per-iteration state
-        let mut cx = &mut cx; // reference to the current context
+        let mut parent = cx;
         let mut input = vec![Ok(input).transpose()]; // inputs to be delivered to the current stage
 
         for op in self.processors.iter_mut() {
             // create fresh child context, stored in the ctx slice
             let (curr_ctx, rest) = ctx.split_first_mut().unwrap();
             ctx = rest;
-            *curr_ctx = Some(cx.child());
-            cx = curr_ctx.as_mut().unwrap();
+            *curr_ctx = Some(parent.child());
+            let cx = curr_ctx.as_mut().unwrap();
             // then feed all inputs
             let mut output = vec![];
             for input in input {
@@ -201,6 +198,7 @@ impl Feeder {
             if input.is_empty() {
                 break;
             }
+            parent = curr_ctx.as_ref().unwrap();
         }
 
         // get rid of the Option wrapper and the possibly trailing None
@@ -211,14 +209,15 @@ impl Feeder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::eval::RootContext;
     use actyx_sdk::OffsetMap;
     use swarm::event_store_ref::EventStoreRef;
 
     fn store() -> EventStoreRef {
         EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
     }
-    fn ctx(order: Order) -> Context<'static> {
-        Context::owned(order, store(), OffsetMap::empty(), OffsetMap::empty())
+    fn ctx(order: Order) -> RootContext {
+        Context::root(order, store(), OffsetMap::empty(), OffsetMap::empty())
     }
     fn feeder(q: &str) -> Feeder {
         Query::from(language::Query::parse(q).unwrap()).0.make_feeder()
@@ -226,6 +225,7 @@ mod tests {
 
     async fn feed(q: &str, v: &str) -> Vec<String> {
         let cx = ctx(Order::Asc);
+        let cx = cx.child();
         let v = cx.eval(&v.parse().unwrap()).await.unwrap();
         feeder(q)
             .feed(Some(v), &cx)
@@ -281,36 +281,42 @@ mod tests {
     async fn done() {
         let mut f = feeder("FROM 'x' AGGREGATE x");
         let cx = ctx(Order::Asc);
+        let cx = cx.child();
         let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
         f.feed(Some(v), &cx).await;
         assert!(f.is_done());
 
         let mut f = feeder("FROM 'x' AGGREGATE x");
         let cx = ctx(Order::Desc);
+        let cx = cx.child();
         let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
         f.feed(Some(v), &cx).await;
         assert!(f.is_done());
 
         let mut f = feeder("FROM 'x' AGGREGATE LAST(_)");
         let cx = ctx(Order::Asc);
+        let cx = cx.child();
         let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
         f.feed(Some(v), &cx).await;
         assert!(!f.is_done());
 
         let mut f = feeder("FROM 'x' AGGREGATE LAST(_)");
         let cx = ctx(Order::Desc);
+        let cx = cx.child();
         let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
         f.feed(Some(v), &cx).await;
         assert!(f.is_done());
 
         let mut f = feeder("FROM 'x' AGGREGATE FIRST(_)");
         let cx = ctx(Order::Asc);
+        let cx = cx.child();
         let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
         f.feed(Some(v), &cx).await;
         assert!(f.is_done());
 
         let mut f = feeder("FROM 'x' AGGREGATE FIRST(_)");
         let cx = ctx(Order::Desc);
+        let cx = cx.child();
         let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
         f.feed(Some(v), &cx).await;
         assert!(!f.is_done());

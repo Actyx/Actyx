@@ -1,7 +1,7 @@
 use crate::rejections::ApiError;
 use actyx_sdk::{
     app_id,
-    language::{self, Arr, SimpleExpr},
+    language::{self, Arr, SimpleExpr, SpreadExpr},
     service::{
         Diagnostic, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse,
         PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
@@ -12,7 +12,6 @@ use actyx_sdk::{
 use ax_futures_util::ReceiverExt;
 use futures::{
     future::{poll_fn, ready},
-    pin_mut,
     stream::{self, BoxStream, StreamExt},
     FutureExt,
 };
@@ -127,13 +126,14 @@ impl EventService {
 
         let request_order = request.order;
         let gen = Gen::new(move |co: Co<QueryResponse>| async move {
-            let mut cx = Context::owned(
+            let cx = Context::root(
                 Order::StreamAsc,
                 store.clone(),
                 lower_bound.clone(),
                 upper_bound.clone(),
             );
-            let stream = match &query.source {
+            let mut cx = cx.child();
+            let mut stream = match &query.source {
                 language::Source::Events { from, order } => {
                     let order = order.or_else(|| feeder.preferred_order()).unwrap_or(request_order);
                     cx.order = order;
@@ -175,10 +175,10 @@ impl EventService {
                         .left_stream()
                 }
                 language::Source::Array(Arr { items }) => stream::iter(items.iter())
-                    .flat_map(|expr| {
+                    .flat_map(|SpreadExpr { expr, spread }| {
                         let cx = &cx;
                         async move {
-                            if let (SimpleExpr::SubQuery(e), true) = (&expr.expr, expr.spread) {
+                            if let (SimpleExpr::SubQuery(e), true) = (expr, *spread) {
                                 match Query::eval(e, cx).await {
                                     Ok(arr) => stream::iter(arr.into_iter().map(Ok)).boxed(),
                                     Err(e) => stream::once(ready(Err(e))).boxed(),
@@ -186,7 +186,7 @@ impl EventService {
                             } else {
                                 match cx.eval(expr).await {
                                     Ok(val) => {
-                                        if expr.spread {
+                                        if *spread {
                                             if let Ok(items) = val.as_array() {
                                                 stream::iter(items.into_iter().map(Ok)).boxed()
                                             } else {
@@ -203,11 +203,11 @@ impl EventService {
                                 }
                             }
                         }
+                        .boxed()
                         .flatten_stream()
                     })
                     .right_stream(),
             };
-            pin_mut!(stream);
 
             while let Some(ev) = stream.next().await {
                 let ev = match ev {
@@ -263,7 +263,7 @@ impl EventService {
         features.validate(&*enabled, Endpoint::Subscribe)?;
         let mut query = query.make_feeder();
 
-        let cx = Context::owned(
+        let cx = Context::root(
             Order::StreamAsc,
             self.store.clone(),
             // no sub-queries supported yet, so no OffsetMap needed
@@ -271,7 +271,7 @@ impl EventService {
             OffsetMap::empty(),
         );
 
-        let tag_expr = cx.eval_from(&tag_expr).await?.into_owned();
+        let tag_expr = cx.child().eval_from(&tag_expr).await?.into_owned();
         let tags = tag_expr.clone(); // for logging
 
         let mut bounded = self
@@ -297,6 +297,7 @@ impl EventService {
         }
 
         let gen = Gen::new(move |co: Co<SubscribeResponse>| async move {
+            let cx = cx.child();
             while let Some(ev) = bounded.next().await {
                 let ev = match ev {
                     Ok(ev) => ev,
@@ -360,7 +361,7 @@ impl EventService {
         features.validate(&*enabled, Endpoint::SubscribeMonotonic)?;
         let mut query = query.make_feeder();
 
-        let cx = Context::owned(
+        let cx = Context::root(
             Order::Asc,
             self.store.clone(),
             // no sub-queries supported yet, so no OffsetMap needed
@@ -368,7 +369,7 @@ impl EventService {
             OffsetMap::empty(),
         );
 
-        let tag_expr = cx.eval_from(&tag_expr).await?.into_owned();
+        let tag_expr = cx.child().eval_from(&tag_expr).await?.into_owned();
         let tags = tag_expr.clone(); // for logging
 
         let mut bounded = self
@@ -442,6 +443,7 @@ impl EventService {
         }
 
         let gen = Gen::new(move |co: Co<SubscribeMonotonicResponse>| async move {
+            let cx = cx.child();
             while let Some(ev) = bounded.next().await {
                 let ev = match ev {
                     Ok(ev) => ev,
