@@ -53,7 +53,7 @@ freeline_project_description.json
 app/src/main/assets/config*.json
 
 # Local files that should not be saved in GitHub
-actyx-local
+/actyx-local
 
 # created stuff
 app/release

@@ -77,6 +77,7 @@ use maplit::btreemap;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use sqlite_index_store::SqliteIndexStore;
+use std::convert::TryInto;
 use std::{
     collections::{BTreeMap, VecDeque},
     convert::TryFrom,
@@ -191,6 +192,7 @@ pub struct SwarmConfig {
     pub metrics_interval: Duration,
     pub ping_timeout: Duration,
     pub bitswap_timeout: Duration,
+    pub branch_cache_size: u64,
 }
 impl SwarmConfig {
     pub fn basic() -> Self {
@@ -222,6 +224,7 @@ impl SwarmConfig {
             metrics_interval: Duration::from_secs(60 * 30),
             ping_timeout: Duration::from_secs(5),
             bitswap_timeout: Duration::from_secs(15),
+            branch_cache_size: 67108864,
         }
     }
 }
@@ -296,6 +299,7 @@ impl PartialEq for SwarmConfig {
             && self.metrics_interval == other.metrics_interval
             && self.ping_timeout == other.ping_timeout
             && self.bitswap_timeout == other.bitswap_timeout
+            && self.branch_cache_size == other.branch_cache_size
     }
 }
 
@@ -851,7 +855,8 @@ impl BanyanStore {
         } else {
             SqliteIndexStore::open(DbPath::Memory)?
         };
-        let forest = Forest::new(SqliteStore::wrap(ipfs.clone()), BranchCache::<TT>::new(64 << 20));
+        let branch_cache = BranchCache::<TT>::new(cfg.branch_cache_size.try_into().unwrap());
+        let forest = Forest::new(SqliteStore::wrap(ipfs.clone()), branch_cache.clone());
         let gossip = Gossip::new(
             ipfs.clone(),
             node_id,
@@ -877,9 +882,18 @@ impl BanyanStore {
                 banyan_config: cfg.banyan_config,
             })),
         };
+        tracing::info!("loading event streams");
         banyan.lock().load_known_streams()?;
         // check that all known streams are indeed completely present
+        tracing::info!("validating event streams");
         banyan.validate_known_streams().await?;
+        tracing::info!("starting maintenance tasks");
+        banyan.spawn_task("cache_debug", async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(60)).await;
+                tracing::debug!(c = %branch_cache.debug());
+            }
+        });
         banyan.spawn_task(
             "gossip_ingest",
             banyan.data.gossip.ingest(banyan.clone(), cfg.topic.clone())?,

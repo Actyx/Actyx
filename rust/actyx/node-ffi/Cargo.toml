@@ -26,3 +26,6 @@ zeroize = "1.2.0"
 crate-type = ["cdylib"]
 name = "axosnodeffi"
 
+[build-dependencies]
+cc = "1.0.73"
+

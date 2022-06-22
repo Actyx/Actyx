@@ -265,9 +265,9 @@ export const snapshotTestSetup = async <S>(
     // were relevant (might be before semantic snapshot or duplicates)
     const pubProm = lastValueFrom(
       observe.pipe(
-        observeOn(asyncScheduler),
         skip(1),
-        mergeWith(timer(100).pipe(mapTo(state))),
+        observeOn(asyncScheduler),
+        mergeWith(timer(500).pipe(mapTo(state))),
         first(),
       ),
     )

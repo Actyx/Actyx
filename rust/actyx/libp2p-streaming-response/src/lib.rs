@@ -58,7 +58,7 @@
 //! mechanism.
 
 use libp2p::swarm::{
-    IntoProtocolsHandler, NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, OneShotHandler, PollParameters,
+    IntoConnectionHandler, NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, OneShotHandler, PollParameters,
 };
 use libp2p::{
     core::{connection::ConnectionId, ConnectedPoint},
@@ -161,7 +161,7 @@ pub struct StreamingResponse<TCodec: Codec + Clone + Send + Debug + 'static> {
     events: VecDeque<
         NetworkBehaviourAction<
             StreamingResponseEvent<TCodec>,
-            <StreamingResponse<TCodec> as NetworkBehaviour>::ProtocolsHandler,
+            <StreamingResponse<TCodec> as NetworkBehaviour>::ConnectionHandler,
         >,
     >,
     /// Request ID for the next outgoing request
@@ -270,11 +270,11 @@ where
     TCodec::Request: Send + 'static,
     TCodec::Response: Send + 'static,
 {
-    type ProtocolsHandler =
+    type ConnectionHandler =
         OneShotHandler<StreamingResponseConfig<TCodec>, StreamingResponseMessage<TCodec>, HandlerEvent<TCodec>>;
     type OutEvent = StreamingResponseEvent<TCodec>;
 
-    fn new_handler(&mut self) -> Self::ProtocolsHandler {
+    fn new_handler(&mut self) -> Self::ConnectionHandler {
         // This effectively serializes all requests per handler (thus
         // per response stream)
         let max_dial_negotiated = if self.config.ordered_outgoing { 1 } else { 8 };
@@ -291,23 +291,13 @@ where
         Vec::new()
     }
 
-    // No bookkeeping done here.
-    fn inject_connection_established(
-        &mut self,
-        _: &PeerId,
-        _: &ConnectionId,
-        _: &ConnectedPoint,
-        _: Option<&Vec<Multiaddr>>,
-    ) {
-    }
-    fn inject_connected(&mut self, _: &PeerId) {}
-
     fn inject_connection_closed(
         &mut self,
         peer_id: &PeerId,
         con_id: &ConnectionId,
         _: &ConnectedPoint,
-        _: <Self::ProtocolsHandler as IntoProtocolsHandler>::Handler,
+        _: <Self::ConnectionHandler as IntoConnectionHandler>::Handler,
+        _remaining_established: usize,
     ) {
         // remove any pending requests from the just disconnected (PeerId,
         // ConnectionId)
@@ -323,10 +313,6 @@ where
                 ));
             }
         }
-    }
-
-    fn inject_disconnected(&mut self, _: &PeerId) {
-        // Handled by `inject_connection_closed`
     }
 
     fn inject_event(&mut self, peer: PeerId, con_id: ConnectionId, msg: HandlerEvent<TCodec>) {
@@ -393,7 +379,7 @@ where
         &mut self,
         _: &mut Context,
         _: &mut impl PollParameters,
-    ) -> Poll<NetworkBehaviourAction<Self::OutEvent, Self::ProtocolsHandler>> {
+    ) -> Poll<NetworkBehaviourAction<Self::OutEvent, Self::ConnectionHandler>> {
         if let Some(event) = self.events.pop_front() {
             Poll::Ready(event)
         } else {

@@ -10,7 +10,7 @@ use std::{
     process::{Command, Stdio},
     sync::{mpsc::channel, Arc, Once},
     thread::spawn,
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tempfile::tempdir;
 
@@ -155,8 +155,28 @@ fn with_api(
         }
     });
 
-    // let things settle - should perhaps wait for discovery events to be emitted
-    std::thread::sleep(Duration::from_millis(300));
+    let started = Instant::now();
+    loop {
+        let offsets = match get_offsets(api, identity.as_ref()) {
+            Ok(o) => o,
+            Err(e) => {
+                if started.elapsed() > Duration::from_secs(5) {
+                    return Err(e);
+                } else {
+                    continue;
+                }
+            }
+        };
+        if get(&offsets, "/code")? == json!("OK")
+            && !get(&offsets, "/result/present")?
+                .as_object()
+                .v("result map")?
+                .is_empty()
+        {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
 
     // run the test
     let result = f(api, identity.as_ref());
@@ -165,6 +185,22 @@ fn with_api(
     let _ = tx.send(());
     let _ = handle.join();
     result
+}
+
+fn get_offsets(api: u16, identity: &Path) -> anyhow::Result<Value> {
+    let out = run("ax")?
+        .args(&[
+            o("events"),
+            o("offsets"),
+            o("-ji"),
+            identity.as_os_str(),
+            o(&format!("localhost:{}", api)),
+        ])
+        .output()?;
+    ensure!(out.status.success());
+    let v = serde_json::from_slice::<Value>(&out.stdout)?;
+    ensure!(v.pointer("/code").is_some());
+    Ok(v)
 }
 
 fn get(json: &Value, ptr: &str) -> anyhow::Result<Value> {

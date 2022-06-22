@@ -252,6 +252,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             enable_fast_path: !read_only,
             enable_slow_path: !read_only,
             enable_root_map: !read_only,
+            enable_mdns: s.swarm.mdns,
             block_cache_count: s.swarm.block_cache_count,
             block_cache_size: s.swarm.block_cache_size,
             block_gc_interval: Duration::from_secs(s.swarm.block_gc_interval),
@@ -259,6 +260,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             metrics_interval: Duration::from_secs(s.swarm.metrics_interval),
             ping_timeout: Duration::from_secs(s.swarm.ping_timeout),
             bitswap_timeout: Duration::from_secs(s.swarm.bitswap_timeout),
+            branch_cache_size: s.swarm.branch_cache_size,
             ..SwarmConfig::basic()
         };
         Ok(StoreConfig {
