@@ -22,7 +22,7 @@ use util::{
 pub struct QueryOpts {
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
-    /// event API query
+    /// event API query (read from file if the argument starts with @)
     query: String,
 }
 
