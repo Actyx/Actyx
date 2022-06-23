@@ -136,7 +136,7 @@ The first thing to notice is that the third line lists multiple timestamps, more
 This is due to the fact that the item text for the third TODO item has been changed after creation, as we can see from the JSON value:
 first it was created as “TODO 3” and then the text was changed to “TODO 1”.
 This information was found by the _sub-query_ `FROM 'item:someUUID3' ...` that is dynamically constructed in the definition of the `texts` property.
-Since sub-queries are used to obtain more information about a given subject, their query is usually not hardcoded; the tags with which we want to select events depend on what we are looking for.
+Since sub-queries are used to obtain more information about a given subject, their query is usually not hard-coded; the tags with which we want to select events depend on what we are looking for.
 Here, we make use of the string interpolation feature of AQL to construct the desired tag name.
 “Backticks” enable this mechanism, where everything apart from `{...}` is taken as verbatim, and you can add dynamic information by placing expressions inside the braces.
 

@@ -167,10 +167,10 @@ The given expression can only refer to variables (including the current input `_
 
 - `LAST(<expr>)` yields the input with the latest event key
 - `FIRST(<expr>)` yields the input with the earliest event key
-- `MIN(<expr>)` yields the minimum value encountered among the inputs (works only for booleans and numbers)
-- `MAX(<expr>)` yields the maximum value encountered among the inputs (works only for booleans and numbers)
-- `SUM(<expr>)` yields the sum of all encountered inputs (works only for booleans and numbers)
-- `PRODUCT(<expr>)` yields the product of all encountered inputs (works only for booleans and numbers)
+- `MIN(<expr>)` yields the minimum value encountered among the inputs (works only for boolean and numbers)
+- `MAX(<expr>)` yields the maximum value encountered among the inputs (works only for boolean and numbers)
+- `SUM(<expr>)` yields the sum of all encountered inputs (works only for boolean and numbers)
+- `PRODUCT(<expr>)` yields the product of all encountered inputs (works only for boolean and numbers)
 
 The result yielded by these operators are then assembled into the final result using the rules for [simple expressions](simple-expression).
 Usage of only `LAST` operators indicates that descending event key order is desired; in this case processing will stop immediately when the first value is found.
@@ -189,7 +189,7 @@ It is significant where you place this stage: if you place `LIMIT 3` before a `F
 
 ### _[binding]_ Variable bindings
 
-Like in your favourite programming language you can bind a computed value to a name so that you can later refer to it, e.g. to reuse it in multiple places or to build up your final result in a nicely structured fashion.
+Like in your favorite programming language you can bind a computed value to a name so that you can later refer to it, e.g. to reuse it in multiple places or to build up your final result in a nicely structured fashion.
 
 ```text
 LET <ident> := <expr>

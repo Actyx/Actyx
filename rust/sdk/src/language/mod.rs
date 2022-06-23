@@ -22,11 +22,11 @@ pub struct StaticQuery(pub Query<'static>);
 /// ```
 /// use actyx_sdk::language::Query;
 ///
-/// let query: Query = r#"
+/// let query = Query::parse(r#"
 /// FEATURES(some features)  -- this is optional
 /// FROM 'mytag1' & 'mytag2' -- the only mandatory part
 /// SELECT _.value           -- optional list of transformations
-/// END                      -- optional"#.parse().unwrap();
+/// END                      -- optional"#).unwrap();
 /// ```
 pub struct Query<'a> {
     pub pragmas: Vec<(&'a str, &'a str)>,

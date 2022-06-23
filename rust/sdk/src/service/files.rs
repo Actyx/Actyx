@@ -14,7 +14,7 @@ use crate::language::{Query, StaticQuery};
 /// must evaluate to a single hash. This collected set of hashes is pinned on the local node for
 /// the given [`Duration`].
 /// ```
-/// use actyx_sdk::service::PrefetchRequest;
+/// use actyx_sdk::{service::PrefetchRequest, language::Query};
 /// use std::time::Duration;
 ///
 /// let now = chrono::Utc::now();
@@ -27,11 +27,9 @@ use crate::language::{Query, StaticQuery};
 ///      from({})
 /// SELECT _.cid"#,
 ///     now.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
-/// )
-/// .parse()
-/// .unwrap();
+/// );
 /// let request = PrefetchRequest {
-///     query,
+///     query: Query::parse(&*query).unwrap().forget_pragmas(),
 ///     duration: Duration::from_secs(60 * 60 * 12),
 /// };
 /// ```
