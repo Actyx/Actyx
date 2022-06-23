@@ -28,9 +28,16 @@ pub fn apply_impact(current: &Version, impact: &VersionImpact) -> Version {
     let mut new = current.clone();
     match impact {
         VersionImpact::None => (),
-        VersionImpact::BumpPatch => new.increment_patch(),
-        VersionImpact::BumpMinor => new.increment_minor(),
-        VersionImpact::BumpMajor => new.increment_major(),
+        VersionImpact::BumpPatch => new.patch += 1,
+        VersionImpact::BumpMinor => {
+            new.patch = 0;
+            new.minor += 1;
+        }
+        VersionImpact::BumpMajor => {
+            new.patch = 0;
+            new.minor = 0;
+            new.major += 1;
+        }
     };
     new
 }
