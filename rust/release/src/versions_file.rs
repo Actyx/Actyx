@@ -205,7 +205,7 @@ impl VersionsFile {
             .into_iter()
             .tuple_windows()
             .find(|w: &(VersionLine, VersionLine)| &w.0.release.version == version)
-            .ok_or(anyhow!(format!("did not find version {} for {}", version, product)))?;
+            .ok_or_else(|| anyhow!(format!("did not find version {} for {}", version, product)))?;
 
         let repo = Repository::open_from_env()?;
         eprintln!(

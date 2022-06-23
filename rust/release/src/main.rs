@@ -1,6 +1,6 @@
 use anyhow::{Context, Error};
 use chrono::{TimeZone, Utc};
-use clap::Clap;
+use clap::Parser;
 use repo::RepoWrapper;
 use semver::Version;
 use std::{fmt::Write, path::PathBuf};
@@ -26,7 +26,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 #[cfg(not(windows))]
 use tempfile::tempdir;
 
-#[derive(Clap)]
+#[derive(Parser)]
 struct Opts {
     /// Path to persisted version file. Defaults to <repo_root/versions>
     #[clap(short, long, global = true)]
@@ -37,7 +37,7 @@ struct Opts {
     #[clap(subcommand)]
     cmd: Command,
 }
-#[derive(Clap)]
+#[derive(Parser)]
 #[clap(version = "1.0", author = "Actyx AG", about = "Releases from Cosmos")]
 enum Command {
     /// Computes current version
