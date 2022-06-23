@@ -25,7 +25,7 @@
   const cargoBuild = async (cwd) => {
     console.log(`cargo:[${cwd}] build`)
     try {
-      await execa('cargo', ['build', '--release'], { cwd })
+      await execa('cargo', ['build', '--locked', '--release'], { cwd })
     } catch (error) {
       console.log(`cargo:[${cwd}] error build (errors below)`)
       console.log(error)

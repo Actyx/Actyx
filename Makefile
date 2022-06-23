@@ -289,7 +289,6 @@ validate-release: diagnostics
 	cd rust/release && $(CARGO) fmt --all -- --check
 	cd rust/release && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
 	cd rust/release && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
-	cd rust/release && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
 
 validate-netsim: diagnostics
 	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release -j $(CARGO_BUILD_JOBS)
