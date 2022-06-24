@@ -15,15 +15,16 @@ In these cases we very much welcome your questions, comments, and suggestions in
 
 ## General structure
 
-AQL is not whitespace sensitive, you can add any amount of whitespace in almost all places (the exceptions are documented below).
+AQL is not whitespace sensitive, you can add any amount of whitespace or comments in almost all places (the exceptions are documented below).
 Comments begin with `--` and extend to the end of the line.
 The overall structure of a query is the following:
 
 ```text
-PRAGMA features := some features  -- this is optional
-FROM 'mytag1' & 'mytag2'          -- the only mandatory part
-...                               -- optional list of transformations
-END                               -- optional
+PRAGMA features := some features
+  -- the above is optional
+FROM 'mytag1' & 'mytag2'  -- the only mandatory part
+…                         -- optional list of transformations
+END                       -- optional
 ```
 
 ### Language features
@@ -33,7 +34,7 @@ In Actyx versions before 2.13.0 features are enabled using a different syntax:
 
 ```text
 FEATURES(some features)
-FROM ...
+FROM …
 ```
 
 :::
@@ -103,14 +104,42 @@ All these can be overridden by appending an `ORDER` clause directly after the ta
 
 ```text
 FROM 'myTag' ORDER DESC  -- the other direction is ASC
-...
+…
 ```
+
+### _[interpolation]_ String interpolation
+
+The tags given in a tag expression can also be computed using _string interpolation_; this is done most commonly in [sub-queries](#subquery-sub-queries).
+Interpolation is enabled by enclosing the tag in backticks instead of single or double quotes.
+Within the string use `{<expr>}` to insert the string representation of the result of `expr` at this location.
+
+```text
+FROM `machine:{_.machineId}` …
+```
+
+If you want to insert a literal backtick or opening brace, you’ll need to emit it via an expression:
+
+```text
+`x{'`'}y` -- yields the string 'x`y'
+```
+
+### _[fromArray]_ Iterating over arrays
+
+Besides streaming events from the event store, a (sub)query can also start from inputs given as an array:
+
+```text
+FROM ['a', 1, ...someArray] …
+```
+
+This will feed the items in their given order to the following transformation stages.
+While events have an event key, logical & physical timestamps, and tags the values `'a'` and `1` in the above example have no such metadata.
+If `someArray` is a sub-query expression then the sub-query’s results are passed to the following transformation stages one by one, i.e. without first merging their metadata.
 
 ## Data transformations
 
 Following the `FROM <tag_expr>` clause you may optionally specify a sequence of transformation steps.
-The first step will receive the events selected by the event query as input and compute outputs from them.
-Each of the outputs is fed into the following step, where the same principle applies, etc.
+The first step will receive the events selected by the event query as input — bound to the variable `_` — and compute outputs from them.
+Each of the outputs is fed into the following step — again bound to the variable `_` — where the same principle applies, etc.
 This allows you to write down the transformation from events into query results in an incremental fashion, doing one step at a time.
 
 ### Discarding inputs with FILTER
@@ -209,9 +238,9 @@ One noteworthy difference to Javascript is that AQL does not know subtyping, and
 - `NULL` is the single value of the _unit_ type
 - `TRUE` and `FALSE` are both values of the _boolean_ type
 - `42` and `-12.34` are examples of the _number_ type, which currently contains either a 64bit unsigned integer or a double-precision finite floating point number
-- `'hello'` or `"world"` are examples of the _string_ type (with quoting rules like for tags)
+- `'hello'`, `"world"`, or `` `x{1+2}y` `` are examples of the _string_ type (with quoting rules and interpolation like for tags)
 - `TIME(2021-08-13T07:45:03.418-06:00)` is an example of the _timestamp_ type
-- `[1, 2, 3]` is an example of the _array_ type
+- `` [1, 2, 3, 'a', "b", `c`] `` is an example of the _array_ type
 - `{ one:1 two:2 }` is an example of the _object_ type
 
 ## Simple expressions
@@ -254,6 +283,16 @@ Whenever the description says that an error is generated, the evaluation of the 
 
 Precedence of the binary operators in increasing order is: or, xor, and, equality, ordering, additive, multiplicative, exponential.
 Indexing binds more strongly than negation.
+
+## _[subQuery]_ Sub-Queries
+
+Wherever you can write a simple value (as per the [data model](#the-aql-data-model)) you can also write a complete query `FROM … END`.
+The result of such a sub-query is always an array that contains one item per result returned from the query.
+If you use a sub-query in _array building context_ (i.e. when constructing an array or for [multi-emission](#multiemission-emitting-multiple-results)) then you can use _[spread]_ syntax to pass on the individual results instead of a single array:
+
+```text
+SELECT 42, ...FROM … END, 'the end'
+```
 
 ## Evaluation context
 

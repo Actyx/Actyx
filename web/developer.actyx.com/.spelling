@@ -239,6 +239,8 @@ bitswap
 pragma
 pragmas
 backticks
+backtick
+dataset
  - blog/2020-06-09-building-docker-apps-for-arm64v8.md
 arm64
 ActyxOS
@@ -585,6 +587,8 @@ uptime
 Pre-Pragma
 featureName
 multiEmission
+fromArray
+subQuery
 - ./docs/reference/files-api.mdx
 Uploader
 inlining

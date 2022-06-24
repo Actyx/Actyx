@@ -71,7 +71,7 @@ features! {
     // unclear: metadata for results, group-by semantics
     aggregate: Beta [Subscribe SubscribeMonotonic],
     // unclear: metadata for results
-    subQuery: Alpha [Subscribe SubscribeMonotonic],
+    subQuery: Beta [Subscribe SubscribeMonotonic],
     limit: Beta [Subscribe SubscribeMonotonic],
     binding: Beta [],
     // unclear: canonical string representation of all value kinds
@@ -279,7 +279,7 @@ mod tests {
     fn alpha() {
         let f = Features::new();
 
-        assert_eq!(f.validate(&[s("subQuery")], Endpoint::Query), Err(Alpha(s("subQuery"))));
+        // assert_eq!(f.validate(&[s("subQuery")], Endpoint::Query), Err(Alpha(s("subQuery"))));
         assert_eq!(f.validate(&[s("zøg"), s("multiEmission")], Endpoint::Query), Ok(()));
         assert_eq!(f.validate(&[s("multiEmission"), s("zøg")], Endpoint::Query), Ok(()));
         assert_eq!(f.validate(&[s("zoeg"), s("multiEmission")], Endpoint::Query), Ok(()));

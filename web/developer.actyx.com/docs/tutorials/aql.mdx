@@ -6,15 +6,26 @@ sidebar_label: AQL Tutorial
 image: /images/defaults/default.svg
 ---
 
-Actyx’s main function is that you can persist streams of events on one node and access them on all nodes of a swarm.
+Actyx’s main function is to persist streams of events on one node and access them on all nodes of a swarm.
 The _Actyx Query Language_ (AQL) lets you formulate which events you want to see and what information you want to extract from them.
-So before we dive in, we first need some events that we can play with.
 
-```bash
-curl $DUMP_FILE_URL | ax events restore localhost
+In the following we use the Node Manager’s QUERY pane to try out some code.
+Note that you’ll need at least Actyx version 2.13.0 and Node Manager 2.8.0.
+We prime a per-query ephemeral event store by using the following preamble atop all queries shown below (this is a testing feature, [see reference](../reference/aql.mdx#pragma-events)):
+
+```text
+PRAGMA features := limit interpolation subQuery aggregate binding
+PRAGMA events
+{"time":"2020-03-12T16:33:05Z","tags":["item","item:someUUID1","itemCreated"],"payload":{"id":"someUUID1","text":"TODO 1","type":"created"}}
+{"time":"2022-03-12T16:33:15Z","tags":["item","item:someUUID2","itemCreated"],"payload":{"id":"someUUID2","text":"TODO 2","type":"created"}}
+{"time":"2022-03-12T16:34:14Z","tags":["item","item:someUUID3","itemCreated"],"payload":{"id":"someUUID3","text":"TODO 3","type":"created"}}
+{"time":"2022-03-12T16:48:05Z","tags":["item","item:someUUID3"],"payload":{"id":"someUUID3","text":"TODO 1","type":"textChanged"}}
+{"time":"2022-03-12T16:53:15Z","tags":["item","item:someUUID4","itemCreated"],"payload":{"id":"someUUID4","text":"TODO 1","type":"created"}}
+{"time":"2022-03-12T16:54:14Z","tags":["item","item:someUUID4"],"payload":{"id":"someUUID4","text":"TODO 4","type":"textChanged"}}
+ENDPRAGMA
 ```
 
-The dump file contains an event history from a TODO list app, with events like “item created” or “item text changed” or “item done”.
+This dump contains an event history from a TODO list app, with events like “item created” or “item text changed”.
 Each TODO item has a unique ID and all events pertaining to that item are tagged with `item:<id>`.
 Events of type “item created” are additionally tagged with `itemCreated`.
 
@@ -23,6 +34,9 @@ Events of type “item created” are additionally tagged with `itemCreated`.
 As a first exploration, we obtain a list of all items every created:
 
 ```text
+…
+ENDPRAGMA
+
 FROM 'itemCreated'
 ```
 
@@ -37,7 +51,7 @@ rgepwerk-0 6123488 2022-03-12T16:34:14Z {"id":"someUUID3","text":"TODO 3","type"
 ```
 
 The first column shows the stream ID, i.e. on which node the event was written and in which stream it has been placed
-(the node ID is actually much longer, but like git hashes it usually suffices to show the first few characters).
+(the node ID is actually much longer and will be different for you, but like git hashes it usually suffices to show the first few characters).
 The second and third column show the logical and physical timestamp, respectively.
 The fourth column is the most interesting one as it contains the event payload data in JSON form.
 
@@ -75,10 +89,11 @@ SELECT { id: _.id, type: _.type } -- we can construct result objects as well
 This will return the IDs of all items that were created with the desired text.
 Each “item created” event first enters the `FILTER` step, and those where the given expression evaluates to `TRUE` are handed also to the `SELECT` step.
 
-:::info hot tip
+:::info Accessing non-existing properties
 If you access a non-existing property (like `_.wat`) or perform an otherwise invalid operation (like comparing a string and a number), then the result is nothing at all.
 This means that the filter test would not pass, because nothing at all is not the same as `TRUE`.
 Similarly, if you `SELECT _.whatever` you won’t see any results, but you’ll get diagnostic hints.
+See also the [`??` operator](../reference/aql.mdx#simple-expressions)
 :::
 
 But the above query does not correctly answer our question: what about items whose text was changed to “TODO 1” after their creation?
@@ -96,9 +111,9 @@ LIMIT 3
 The result looks like the following:
 
 ```text
-rgepwerk-0 6124136 2022-03-12T16:54:14Z {"id":"someUUID4","text":"TODO 1","type":"textChanged"}
 rgepwerk-0 6124076 2022-03-12T16:53:15Z {"id":"someUUID4","text":"TODO 1","type":"created"}
 rgepwerk-0 6123972 2022-03-12T16:48:05Z {"id":"someUUID3","text":"TODO 1","type":"textChanged"}
+rgepwerk-0 6123972 2022-03-12T16:33:05Z {"id":"someUUID1","text":"TODO 1","type":"created"}
 ```
 
 The first thing to notice is that results are delivered with decreasing timestamps, which we caused by adding the `ORDER DESC` clause — this can only be done before the first processing step.
@@ -185,8 +200,11 @@ rgepwerk-0 6123488 2022-03-12T16:34:14Z - rgepwerk-0 6123972 2022-03-12T16:48:05
 
 As before, the result from the sub-query is wrapped in a array because sub-queries can have any number of results.
 In all cases, `AGGREGATE` computes a single result, which is an object containing both the last value encountered for the `text` property on any event as well as the number of `textChanged` events seen throughout the sub-query.
+
+:::tip exercise
 If you are curious — which you should be — then you may remove the second `CASE` line to see what happens
 (hint: if `SUM` doesn’t get any input at all, it can’t produce an output, since it doesn’t know what type of value should have been summed up).
+:::
 
 If we wanted to get rid of the array wrapping and write the query down a bit more nicely, we could do the following:
 
@@ -196,13 +214,14 @@ LET itemId := _.id
 LET latest :=
     FROM `item:{itemId}`
     AGGREGATE {
-        latest: LAST(_.text),
+        text: LAST(_.text),
         changes: SUM(
             CASE _.type = 'textChanged' => 1
             CASE _.type = 'created' => 0
             ENDCASE -- if neither case matches, don’t create a value to sum up
         )
     }
+    END -- this is needed here because otherwise the next LET would be applied to the sub-query
 LET latest := latest[0] -- only the latest definition of a variable is seen below
 SELECT {
     id: itemId,
@@ -223,3 +242,5 @@ The key points to take away are:
 - if no value is computed, nothing is passed on but you get a diagnostic message
 - you can bind interesting values to variable names for ease of reference
 - expression syntax is mostly similar to Javascript, but if-then-else is done with `CASE ... ENDCASE`
+
+For all the gory details please refer to [the language reference](../reference/aql.mdx).
