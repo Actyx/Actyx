@@ -1,6 +1,6 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
-    use actyx_sdk::{tags, Payload};
+    use actyx_sdk::{language::Query, tags, Payload};
     use async_std::future::timeout;
     use std::time::Duration;
     use structopt::StructOpt;
@@ -45,7 +45,7 @@ fn main() -> anyhow::Result<()> {
             }
         }
         for machine in r.iter_mut() {
-            machine.send(Command::SubscribeQuery("FROM 'a'".parse().unwrap()));
+            machine.send(Command::SubscribeQuery(Query::parse("FROM 'a'").unwrap()));
         }
         s.send(Command::Append(
             0.into(),

@@ -16,6 +16,7 @@ dependencies = [
  "fixed",
  "futures 0.3.21",
  "intern-arc",
+ "lazy_static",
  "libipld",
  "maplit",
  "multibase",
@@ -439,7 +440,7 @@ dependencies = [
  "banyan-utils",
  "base64",
  "bytes",
- "cbor-data 0.8.3",
+ "cbor-data",
  "certs",
  "chrono",
  "console",
@@ -463,6 +464,7 @@ dependencies = [
  "prettytable-rs",
  "rand 0.8.5",
  "regex",
+ "runtime",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -491,6 +493,7 @@ dependencies = [
  "pin-project-lite",
  "rand 0.8.5",
  "tokio",
+ "tokio-stream",
  "tracing",
 ]
 
@@ -778,16 +781,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4c24dab4283a142afa2fdca129b80ad2c6284e073930f964c3a1293c225ee39a"
 dependencies = [
  "rustc_version",
-]
-
-[[package]]
-name = "cbor-data"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ed404e8ba3565255037e6f60dc079bb99586c39e2e23e47a6fbdaf5f62b2eef"
-dependencies = [
- "base64",
- "half",
 ]
 
 [[package]]
@@ -3456,7 +3449,7 @@ dependencies = [
  "backtrace",
  "base64",
  "bytes",
- "cbor-data 0.8.3",
+ "cbor-data",
  "cfg-if 1.0.0",
  "chrono",
  "criterion",
@@ -3586,7 +3579,7 @@ version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4703ad64153382334aa8db57c637364c322d3372e097840c72000dabdcf6156e"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.1.44",
  "num-complex",
  "num-integer",
  "num-iter",
@@ -3604,6 +3597,17 @@ dependencies = [
  "num-traits",
  "rand 0.4.6",
  "rustc-serialize",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f93ab6289c7b344a8a9f60f88d80aa20032336fe78da341afc91c8a2341fc75f"
+dependencies = [
+ "autocfg",
+ "num-integer",
+ "num-traits",
 ]
 
 [[package]]
@@ -3643,7 +3647,7 @@ version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee314c74bd753fc86b4780aa9475da469155f3848473a261d2d18e35245a784e"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.1.44",
  "num-integer",
  "num-traits",
  "rustc-serialize",
@@ -4754,11 +4758,20 @@ version = "0.1.0"
 dependencies = [
  "actyx_sdk",
  "anyhow",
- "cbor-data 0.5.0",
+ "ax-futures-util",
+ "cbor-data",
+ "chrono",
+ "criterion",
  "derive_more",
+ "futures 0.3.21",
  "itertools 0.10.3",
+ "maplit",
+ "num-bigint 0.4.3",
+ "parking_lot 0.11.2",
  "quickcheck",
  "spectral",
+ "swarm",
+ "tokio",
  "tracing",
 ]
 
@@ -6096,7 +6109,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64",
- "cbor-data 0.8.3",
+ "cbor-data",
  "chrono",
  "crossbeam",
  "derive_more",

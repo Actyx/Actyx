@@ -3,7 +3,7 @@ fn main() {
     use std::{convert::TryFrom, time::Duration};
 
     use actyx_sdk::{
-        service::{EventResponse, EventService, SubscribeRequest, SubscribeResponse},
+        service::{EventMeta, EventResponse, EventService, SubscribeRequest, SubscribeResponse},
         tags, Offset, Url,
     };
     use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
@@ -142,9 +142,13 @@ fn main() {
                         let mut req = req?;
                         tracing::info!("subscriber {} started", id);
                         while let Some(x) = tokio::time::timeout(Duration::from_secs(30), req.next()).await? {
-                            if let SubscribeResponse::Event(EventResponse { offset, .. }) = x {
-                                tracing::debug!("subscriber {} got offsets {}", id, offset);
-                                if offset >= max_offset {
+                            if let SubscribeResponse::Event(EventResponse {
+                                meta: EventMeta::Event { key, .. },
+                                ..
+                            }) = x
+                            {
+                                tracing::debug!("subscriber {} got offsets {}", id, key.offset);
+                                if key.offset >= max_offset {
                                     tracing::info!("subscriber {} ended", id);
                                     return Ok(());
                                 }

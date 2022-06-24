@@ -1,6 +1,5 @@
 use crate::util::{default_private_key, node_connection, run_ft, run_task};
 use actyx_sdk::{
-    language::Query,
     service::{Diagnostic, EventResponse, Order, QueryRequest},
     Payload,
 };
@@ -36,7 +35,7 @@ struct Res {
     events: Option<Vec<EventDiagnostic>>,
 }
 
-async fn do_query(key: &AxPrivateKey, node: NodeConnection, query: Query) -> ActyxOSResult<Res> {
+async fn do_query(key: &AxPrivateKey, node: NodeConnection, query: String) -> ActyxOSResult<Res> {
     let mut conn = node.connect(key).await?;
     let r = conn
         .request_events(EventsRequest::Query(QueryRequest {
@@ -81,17 +80,9 @@ pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     run_task::<Args, Res>(
         cx,
         Arc::new(|Args { addr, query }| {
-            let parsed_query = match query.parse::<Query>() {
-                Ok(q) => Ok(q),
-                Err(err) => ax_err(
-                    ActyxOSCode::ERR_INVALID_INPUT,
-                    format!("unable to parse query: {}", err),
-                ),
-            }?;
-
             let key = default_private_key().map_err(|e| anyhow!("error getting default key: {}", e))?;
             let node = node_connection(&addr).map_err(|e| anyhow!("error connecting to node {}: {}", addr, e))?;
-            let res = run_ft(do_query(&key, node, parsed_query));
+            let res = run_ft(do_query(&key, node, query));
             match res {
                 Err(e) if e.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => {
                     eprintln!("unable to reach node {}", addr);

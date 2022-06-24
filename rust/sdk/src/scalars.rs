@@ -89,6 +89,10 @@ impl quickcheck::Arbitrary for AppId {
 pub struct NodeId(pub(crate) [u8; 32]);
 
 impl NodeId {
+    pub const fn new(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+
     #[inline]
     pub fn from_bytes(bytes: &[u8]) -> Result<NodeId> {
         if bytes.len() == 32 {
@@ -102,7 +106,7 @@ impl NodeId {
     }
 
     /// Creates a [`StreamId`](struct.StreamId.html) belonging to this node ID with the given stream number
-    pub fn stream(&self, stream_nr: StreamNr) -> StreamId {
+    pub const fn stream(&self, stream_nr: StreamNr) -> StreamId {
         StreamId {
             node_id: *self,
             stream_nr,
@@ -120,6 +124,11 @@ impl NodeId {
     fn format(&self) -> String {
         let config = base64::Config::new(base64::CharacterSet::Crypt, false);
         base64::encode_config(self.0, config)
+    }
+
+    pub fn abbreviate(&self) -> String {
+        let config = base64::Config::new(base64::CharacterSet::Crypt, false);
+        base64::encode_config(&self.0[..3], config)
     }
 }
 
@@ -231,6 +240,10 @@ impl StreamId {
             .into();
         Ok(Self { node_id, stream_nr })
     }
+
+    pub fn abbreviate(&self) -> String {
+        format!("{}-{}", self.node_id.abbreviate(), self.stream_nr)
+    }
 }
 
 impl Display for StreamId {
@@ -306,6 +319,12 @@ mod sqlite {
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[ipld(repr = "value")]
 pub struct StreamNr(u64);
+
+impl StreamNr {
+    pub const fn new(s: u64) -> Self {
+        Self(s)
+    }
+}
 
 impl From<u64> for StreamNr {
     fn from(value: u64) -> Self {

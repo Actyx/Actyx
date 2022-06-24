@@ -7,25 +7,25 @@ use std::{
 
 use actyx_sdk::{
     app_id,
-    language::Query,
+    language::{Query, StaticQuery},
     service::{
-        EventResponse, Order, PublishEvent, PublishRequest, QueryRequest, QueryResponse, SubscribeRequest,
+        EventMeta, EventResponse, Order, PublishEvent, PublishRequest, QueryRequest, QueryResponse, SubscribeRequest,
         SubscribeResponse,
     },
-    tags, AppId, Payload, Timestamp,
+    tags, AppId, Metadata, Payload, Timestamp,
 };
 use anyhow::Context;
 use chrono::Utc;
 use futures::{pin_mut, stream, Future, StreamExt};
 use libipld::{cbor::DagCborCodec, multihash::Code, Cid, DagCbor};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use swarm::{Block, Ipfs};
 use tokio::{sync::mpsc, task::JoinHandle, time::MissedTickBehavior};
 use tokio_stream::wrappers::{IntervalStream, ReceiverStream};
 
 use crate::EventService;
 
-type UpdatePrefetch = (AppId, Query);
+type UpdatePrefetch = (AppId, Query<'static>);
 
 #[derive(Clone)]
 pub struct FilePinner {
@@ -47,17 +47,21 @@ struct RootLinkNode(Vec<Cid>);
 enum FilePrefetchEvent {
     PinAdded {
         app_id: AppId,
-        query: Query,
+        #[serde(deserialize_with = "deser_query")]
+        query: Query<'static>,
         duration: Duration,
     },
     FutureCompact,
+}
+fn deser_query<'de, D: Deserializer<'de>>(d: D) -> Result<Query<'static>, D::Error> {
+    Ok(StaticQuery::deserialize(d)?.0)
 }
 
 #[derive(PartialEq)]
 struct StandingQuery {
     created: Timestamp,
     duration: Duration,
-    query: Query,
+    query: String,
 }
 
 impl FilePinner {
@@ -135,7 +139,7 @@ impl FilePinner {
                 if let Err(error) = tx
                     .send((
                         app_id!("com.actyx"),
-                        format!(
+                        Query::parse(&*format!(
                             r#"
 FEATURES(zøg aggregate timeRange)
 FROM isLocal &
@@ -144,9 +148,9 @@ FROM isLocal &
      from({})
 SELECT _.cid"#,
                             now.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
-                        )
-                        .parse()
-                        .expect("valid query"),
+                        ))
+                        .expect("valid query")
+                        .forget_pragmas(),
                     ))
                     .await
                 {
@@ -157,7 +161,7 @@ SELECT _.cid"#,
         }
     }
 
-    pub fn update(&self, app_id: AppId, query: Query) -> impl Future<Output = anyhow::Result<()>> + 'static {
+    pub fn update(&self, app_id: AppId, query: Query<'static>) -> impl Future<Output = anyhow::Result<()>> + 'static {
         let tx = self.tx.clone();
         async move {
             tx.send((app_id, query)).await?;
@@ -184,7 +188,7 @@ async fn check_queries(event_svc: &EventService, ipfs: &Ipfs, standing_queries: 
         }
     }
     for (app_id, query) in standing_queries {
-        if let Err(error) = evaluate(event_svc, ipfs, app_id, query).await {
+        if let Err(error) = evaluate(event_svc, ipfs, app_id, query.query.clone()).await {
             tracing::error!(%error, %app_id, "Error updating standing query");
         }
     }
@@ -200,14 +204,14 @@ impl AsRef<[u8]> for AppPinAlias {
         self.0.as_ref()
     }
 }
-async fn evaluate(event_svc: &EventService, ipfs: &Ipfs, app_id: &AppId, query: &StandingQuery) -> anyhow::Result<()> {
+async fn evaluate(event_svc: &EventService, ipfs: &Ipfs, app_id: &AppId, query: String) -> anyhow::Result<()> {
     let s = event_svc
         .query(
             app_id!("com.actyx"),
             QueryRequest {
                 lower_bound: None,
                 upper_bound: None,
-                query: query.query.clone(),
+                query,
                 order: Order::Desc,
             },
         )
@@ -245,7 +249,7 @@ async fn evaluate(event_svc: &EventService, ipfs: &Ipfs, app_id: &AppId, query: 
 async fn publish_update(
     event_svc: &EventService,
     app_id: AppId,
-    query: Query,
+    query: Query<'static>,
     duration: Duration,
 ) -> anyhow::Result<()> {
     event_svc
@@ -272,9 +276,11 @@ fn update_query(
     event: SubscribeResponse,
 ) -> anyhow::Result<bool> {
     if let SubscribeResponse::Event(EventResponse {
-        timestamp: created,
+        meta: EventMeta::Event {
+            meta: Metadata { timestamp: created, .. },
+            ..
+        },
         payload,
-        ..
     }) = event
     {
         if let FilePrefetchEvent::PinAdded {
@@ -287,7 +293,7 @@ fn update_query(
             let q = StandingQuery {
                 created,
                 duration,
-                query,
+                query: query.to_string(),
             };
 
             if created + duration > now && standing_queries.get(&app_id) != Some(&q) {

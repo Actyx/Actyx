@@ -1,7 +1,9 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
     use actyx_sdk::{
-        service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest, QueryResponse},
+        service::{
+            EventMeta, EventResponse, EventService, Order, PublishEvent, PublishRequest, QueryRequest, QueryResponse,
+        },
         tags, Payload,
     };
     use anyhow::Context;
@@ -164,7 +166,10 @@ fn main() -> anyhow::Result<()> {
                     .filter_map(|r| {
                         tracing::info!("{} query response {:?}", i, r);
                         match r {
-                            QueryResponse::Event(e) => ready(streams.get(&e.stream)),
+                            QueryResponse::Event(EventResponse {
+                                meta: EventMeta::Event { key, .. },
+                                ..
+                            }) => ready(streams.get(&key.stream)),
                             _ => ready(None),
                         }
                     })
@@ -217,7 +222,10 @@ fn main() -> anyhow::Result<()> {
                     .filter_map(|r| {
                         tracing::info!("{} query response {:?}", i, r);
                         match r {
-                            QueryResponse::Event(e) => ready(streams.get(&e.stream)),
+                            QueryResponse::Event(EventResponse {
+                                meta: EventMeta::Event { key, .. },
+                                ..
+                            }) => ready(streams.get(&key.stream)),
                             _ => ready(None),
                         }
                     })

@@ -59,6 +59,7 @@ CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
 CARGO_BUILD_ARGS ?= --features migration-v1
 
+# CAUTION: wait for https://github.com/rust-lang/cc-rs/pull/671 before switching to 1.61+
 export BUILD_RUST_TOOLCHAIN ?= 1.59.0
 
 # The stable image version is the git commit hash inside `Actyx/Actyx`, with
@@ -288,7 +289,6 @@ validate-release: diagnostics
 	cd rust/release && $(CARGO) fmt --all -- --check
 	cd rust/release && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
 	cd rust/release && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
-	cd rust/release && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
 
 validate-netsim: diagnostics
 	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release -j $(CARGO_BUILD_JOBS)

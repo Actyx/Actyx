@@ -15,6 +15,7 @@ itertools = "0.10.3"
 parking_lot = "0.11.2"
 pin-project-lite = "0.2.8"
 tokio = { version = "1.15.0", features = [ "time" ], optional = true, package = "tokio" }
+tokio-stream = "0.1.7"
 tracing = { version = "0.1.29", features = ["max_level_trace", "release_max_level_trace"] }
 
 [dev-dependencies]

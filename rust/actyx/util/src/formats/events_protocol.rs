@@ -75,14 +75,14 @@ mod tests {
                 query: "FROM allEvents".parse().unwrap(),
                 order: actyx_sdk::service::Order::Asc
             })),
-            r#"{"type":"query","lowerBound":null,"upperBound":null,"query":"FROM allEvents END","order":"asc"}"#
+            r#"{"type":"query","lowerBound":null,"upperBound":null,"query":"FROM allEvents","order":"asc"}"#
         );
         assert_eq!(
             req(EventsRequest::Subscribe(SubscribeRequest {
                 lower_bound: None,
                 query: "FROM allEvents".parse().unwrap(),
             })),
-            r#"{"type":"subscribe","lowerBound":null,"query":"FROM allEvents END"}"#
+            r#"{"type":"subscribe","lowerBound":null,"query":"FROM allEvents"}"#
         );
         assert_eq!(
             req(EventsRequest::SubscribeMonotonic(SubscribeMonotonicRequest {
@@ -90,7 +90,7 @@ mod tests {
                 from: StartFrom::LowerBound(OffsetMap::default()),
                 query: "FROM allEvents".parse().unwrap(),
             })),
-            r#"{"type":"subscribeMonotonic","session":"","query":"FROM allEvents END","lowerBound":{}}"#
+            r#"{"type":"subscribeMonotonic","session":"","query":"FROM allEvents","lowerBound":{}}"#
         );
     }
 

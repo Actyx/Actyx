@@ -72,19 +72,22 @@ where
         if this.pending_item.is_none() {
             let item = match ready!(this.stream.poll_next(cx)) {
                 Some(e) => e,
-                None => return Poll::Ready(None),
+                None => {
+                    *this.done_taking = true;
+                    return Poll::Ready(None);
+                }
             };
             let fut = (this.f)(&item);
             this.pending_fut.set(Some(fut));
             *this.pending_item = Some(item);
         }
 
-        let take = ready!(this.pending_fut.as_mut().as_pin_mut().unwrap().poll(cx));
+        let done_taking = ready!(this.pending_fut.as_mut().as_pin_mut().unwrap().poll(cx));
         this.pending_fut.set(None);
         let item = this.pending_item.take().unwrap();
 
         // This is the only change: next poll returns None if condition was false
-        *this.done_taking = take;
+        *this.done_taking = done_taking;
         Poll::Ready(Some(item))
     }
 
@@ -105,12 +108,12 @@ where
 
 impl<St, Fut, F> FusedStream for TakeUntilCondition<St, Fut, F>
 where
-    St: FusedStream,
+    St: Stream,
     F: FnMut(&St::Item) -> Fut,
     Fut: Future<Output = bool>,
 {
     fn is_terminated(&self) -> bool {
-        self.done_taking || self.pending_item.is_none() && self.stream.is_terminated()
+        self.done_taking
     }
 }
 

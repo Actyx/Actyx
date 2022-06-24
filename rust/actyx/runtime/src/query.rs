@@ -1,109 +1,332 @@
 use crate::{
     eval::Context,
-    operation::{Aggregate, Filter, Operation, Select},
+    operation::{Operation, Processor},
     value::Value,
 };
-use actyx_sdk::language;
+use actyx_sdk::{
+    language::{self, Arr},
+    service::Order,
+};
+use ax_futures_util::ReceiverExt;
+use futures::{stream, StreamExt};
 
-#[derive(Debug, PartialEq)]
+pub struct Pragmas<'a>(Vec<(&'a str, &'a str)>);
+
+impl<'a> Pragmas<'a> {
+    pub fn pragma(&self, name: &str) -> Option<&'a str> {
+        for (n, v) in self.0.iter() {
+            if *n == name {
+                return Some(*v);
+            }
+        }
+        None
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Query {
     pub features: Vec<String>,
-    pub from: language::TagExpr,
+    pub source: language::Source,
     pub stages: Vec<Operation>,
 }
 
 impl Query {
-    /// Feed a new value into this processing pipeline, or feed None to flush aggregations.
-    pub fn feed(&mut self, input: Option<Value>) -> Vec<Result<Value, String>> {
-        fn rec(
-            stages: &mut Vec<Operation>,
-            current: usize,
-            cx: &Context,
-            input: Option<Value>,
-        ) -> Vec<Result<Value, String>> {
-            if let Some(op) = stages.get_mut(current) {
-                let flush = input.is_none();
-                let vs = if let Some(v) = input {
-                    op.apply(cx, v)
+    pub fn from(q: language::Query<'_>) -> (Self, Pragmas<'_>) {
+        let pragmas = Pragmas(q.pragmas);
+        let stages = q.ops.into_iter().map(Operation::from).collect();
+        let source = q.source;
+        let features = q.features;
+        (
+            Self {
+                features,
+                source,
+                stages,
+            },
+            pragmas,
+        )
+    }
+
+    pub fn enabled_features(&self, pragmas: &Pragmas) -> Vec<String> {
+        let mut ret = self.features.clone();
+        if let Some(s) = pragmas.pragma("features") {
+            ret.extend(s.split_whitespace().map(ToOwned::to_owned));
+        }
+        ret
+    }
+
+    /// run a query in the given evaluation context and collect all results
+    pub async fn eval(query: &language::Query<'static>, cx: &Context<'_>) -> Result<Vec<Value>, anyhow::Error> {
+        let mut feeder = Query::feeder_from(&query.ops);
+
+        let (mut stream, cx) = match &query.source {
+            language::Source::Events { from, order } => {
+                let tag_expr = cx.eval_from(from).await?.into_owned();
+                let (stream, cx) = if order.or_else(|| feeder.preferred_order()) == Some(Order::Desc) {
+                    let stream = cx
+                        .store()
+                        .bounded_backward(
+                            tag_expr,
+                            cx.from_offsets_excluding().clone(),
+                            cx.to_offsets_including().clone(),
+                        )
+                        .await?
+                        .stop_on_error();
+                    (stream, cx.child_with_order(Order::Desc))
                 } else {
-                    op.flush(cx)
+                    let stream = cx
+                        .store()
+                        .bounded_forward(
+                            tag_expr,
+                            cx.from_offsets_excluding().clone(),
+                            cx.to_offsets_including().clone(),
+                            false, // must keep order because some stage may have demanded it
+                        )
+                        .await?
+                        .stop_on_error();
+                    (stream, cx.child_with_order(Order::Asc))
                 };
-                vs.into_iter()
-                    .map(|r| Some(r).transpose())
-                    .chain(if flush { vec![None.transpose()] } else { vec![] })
-                    .flat_map(|v| match v {
-                        Ok(v) => rec(stages, current + 1, cx, v),
-                        Err(e) => vec![Err(e.to_string())],
+                let stream = stream
+                    .map(|ev| match ev {
+                        Ok(ev) => Ok(Value::from(ev)),
+                        Err(e) => Err(e.into()),
                     })
-                    .collect()
-            } else {
-                input.into_iter().map(Ok).collect()
+                    .left_stream();
+                (stream, cx)
+            }
+            language::Source::Array(Arr { items }) => (
+                stream::iter(items.iter()).then(|expr| cx.eval(expr)).right_stream(),
+                cx.child(),
+            ),
+        };
+
+        let mut results = vec![];
+        while let Some(ev) = stream.next().await {
+            let value = ev?;
+            let vs = feeder.feed(Some(value), &cx).await;
+            results.reserve(vs.len());
+            for v in vs {
+                results.push(v?);
+            }
+            if feeder.is_done() {
+                break;
             }
         }
-        rec(
-            &mut self.stages,
-            0,
-            &Context::new(input.as_ref().map(|x| x.key()).unwrap_or_default()),
-            input,
-        )
+        drop(stream);
+
+        let vs = feeder.feed(None, &cx).await;
+        results.reserve(vs.len());
+        for v in vs {
+            results.push(v?);
+        }
+        Ok(results)
+    }
+
+    pub fn make_feeder(&self) -> Feeder {
+        let processors = self.stages.iter().map(|op| op.make_processor()).collect();
+        Feeder::new(processors)
+    }
+
+    pub fn feeder_from(stages: &[language::Operation]) -> Feeder {
+        let processors = stages
+            .iter()
+            .map(|s| Operation::from(s.clone()).make_processor())
+            .collect();
+        Feeder::new(processors)
     }
 }
 
-impl From<language::Query> for Query {
-    fn from(q: language::Query) -> Self {
-        let mut stages = vec![];
-        let from = q.from;
-        let features = q.features;
-        for op in q.ops {
-            match op {
-                language::Operation::Filter(f) => stages.push(Operation::Filter(Filter::new(f))),
-                language::Operation::Select(s) => stages.push(Operation::Select(Select::new(s))),
-                language::Operation::Aggregate(a) => stages.push(Operation::Aggregate(Aggregate::new(a))),
+pub struct Feeder {
+    is_done: bool,
+    processors: Vec<Box<dyn Processor>>,
+}
+impl Feeder {
+    fn new(processors: Vec<Box<dyn Processor>>) -> Self {
+        Self {
+            is_done: false,
+            processors,
+        }
+    }
+
+    pub fn preferred_order(&self) -> Option<Order> {
+        for op in &self.processors {
+            if let Some(order) = op.preferred_order() {
+                return Some(order);
             }
         }
-        Self { features, from, stages }
+        None
+    }
+
+    pub fn is_done(&self) -> bool {
+        self.is_done
+    }
+
+    pub async fn feed(&mut self, input: Option<Value>, cx: &Context<'_>) -> Vec<Result<Value, anyhow::Error>> {
+        // create storage space for one context per stage
+        let mut ctx = Vec::<Option<Context<'_>>>::new();
+        ctx.resize_with(self.processors.len(), || None);
+        let mut ctx = &mut ctx[..];
+
+        // set up per-iteration state
+        let mut parent = cx;
+        let mut input = vec![Ok(input).transpose()]; // inputs to be delivered to the current stage
+
+        for op in self.processors.iter_mut() {
+            // create fresh child context, stored in the ctx slice
+            let (curr_ctx, rest) = ctx.split_first_mut().unwrap();
+            ctx = rest;
+            *curr_ctx = Some(parent.child());
+            let cx = curr_ctx.as_mut().unwrap();
+            // then feed all inputs
+            let mut output = vec![];
+            for input in input {
+                match input {
+                    Some(Ok(v)) => {
+                        cx.bind("_", v);
+                        output.extend(op.apply(cx).await.into_iter().map(Some));
+                    }
+                    None => {
+                        output.extend(op.flush(cx).await.into_iter().map(Some));
+                        output.push(None);
+                    }
+                    Some(Err(e)) => output.push(Some(Err(e))),
+                }
+            }
+            if op.is_done(cx.order) {
+                self.is_done = true;
+            }
+            input = output;
+            if input.is_empty() {
+                break;
+            }
+            parent = curr_ctx.as_ref().unwrap();
+        }
+
+        // get rid of the Option wrapper and the possibly trailing None
+        input.into_iter().flatten().collect()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyx_sdk::{language::SortKey, NodeId};
+    use crate::eval::RootContext;
+    use actyx_sdk::OffsetMap;
+    use swarm::event_store_ref::EventStoreRef;
 
-    fn key() -> SortKey {
-        SortKey {
-            lamport: Default::default(),
-            stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
-        }
+    fn store() -> EventStoreRef {
+        EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
+    }
+    fn ctx(order: Order) -> RootContext {
+        Context::root(order, store(), OffsetMap::empty(), OffsetMap::empty())
+    }
+    fn feeder(q: &str) -> Feeder {
+        Query::from(language::Query::parse(q).unwrap()).0.make_feeder()
     }
 
-    fn feed(q: &str, v: &str) -> Vec<String> {
-        let mut q = Query::from(q.parse::<language::Query>().unwrap());
-        let v = Context::new(key()).eval(&v.parse().unwrap()).unwrap();
-        q.feed(Some(v))
+    async fn feed(q: &str, v: &str) -> Vec<String> {
+        let cx = ctx(Order::Asc);
+        let cx = cx.child();
+        let v = cx.eval(&v.parse().unwrap()).await.unwrap();
+        feeder(q)
+            .feed(Some(v), &cx)
+            .await
             .into_iter()
-            .map(|v| v.map(|v| v.value().to_string()).unwrap_or_else(|e| e))
+            .map(|v| v.map(|v| v.cbor().to_string()).unwrap_or_else(|e| e.to_string()))
             .collect()
     }
 
-    #[test]
-    fn query() {
+    #[tokio::test]
+    async fn query() {
         assert_eq!(
-            feed("FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2", "3"),
+            feed("FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2", "3").await,
             Vec::<String>::new()
         );
-        assert_eq!(feed("FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2", "2"), vec!["4"]);
+        assert_eq!(
+            feed("FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2", "2").await,
+            vec!["4"]
+        );
     }
 
-    #[test]
-    fn select_multi() {
-        assert_eq!(feed("FROM allEvents SELECT _, _ * 1.5", "42"), vec!["42", "63.0"]);
+    #[tokio::test]
+    async fn select_multi() {
+        assert_eq!(feed("FROM allEvents SELECT _, _ * 1.5", "42").await, vec!["42", "63.0"]);
         assert_eq!(
             feed(
                 "FROM allEvents SELECT _.x, _.y, _.z FILTER _ = 'a' SELECT _, 42",
                 "{x:'a' y:'b'}"
-            ),
-            vec!["\"a\"", "42", r#"path .z does not exist in value {"x": "a", "y": "b"}"#]
+            )
+            .await,
+            vec!["\"a\"", "42", r#"property `z` not found in Object"#]
+        );
+    }
+
+    #[test]
+    fn order() {
+        assert_eq!(feeder("FROM 'x' SELECT y").preferred_order(), None);
+        assert_eq!(feeder("FROM 'x' FILTER x").preferred_order(), None);
+        assert_eq!(feeder("FROM 'x' AGGREGATE x").preferred_order(), None);
+        assert_eq!(
+            feeder("FROM 'x' AGGREGATE LAST(_)").preferred_order(),
+            Some(Order::Desc)
+        );
+        assert_eq!(
+            feeder("FROM 'x' AGGREGATE FIRST(_)").preferred_order(),
+            Some(Order::Asc)
+        );
+        assert_eq!(feeder("FROM 'x' AGGREGATE [FIRST(_), LAST(_)]").preferred_order(), None);
+        assert_eq!(feeder("FROM 'x' AGGREGATE SUM(_)").preferred_order(), None);
+    }
+
+    #[tokio::test]
+    async fn done() {
+        let mut f = feeder("FROM 'x' AGGREGATE x");
+        let cx = ctx(Order::Asc);
+        let cx = cx.child();
+        let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
+        f.feed(Some(v), &cx).await;
+        assert!(f.is_done());
+
+        let mut f = feeder("FROM 'x' AGGREGATE x");
+        let cx = ctx(Order::Desc);
+        let cx = cx.child();
+        let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
+        f.feed(Some(v), &cx).await;
+        assert!(f.is_done());
+
+        let mut f = feeder("FROM 'x' AGGREGATE LAST(_)");
+        let cx = ctx(Order::Asc);
+        let cx = cx.child();
+        let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
+        f.feed(Some(v), &cx).await;
+        assert!(!f.is_done());
+
+        let mut f = feeder("FROM 'x' AGGREGATE LAST(_)");
+        let cx = ctx(Order::Desc);
+        let cx = cx.child();
+        let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
+        f.feed(Some(v), &cx).await;
+        assert!(f.is_done());
+
+        let mut f = feeder("FROM 'x' AGGREGATE FIRST(_)");
+        let cx = ctx(Order::Asc);
+        let cx = cx.child();
+        let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
+        f.feed(Some(v), &cx).await;
+        assert!(f.is_done());
+
+        let mut f = feeder("FROM 'x' AGGREGATE FIRST(_)");
+        let cx = ctx(Order::Desc);
+        let cx = cx.child();
+        let v = cx.eval(&"42".parse().unwrap()).await.unwrap();
+        f.feed(Some(v), &cx).await;
+        assert!(!f.is_done());
+    }
+
+    #[tokio::test]
+    async fn binding() {
+        assert_eq!(
+            feed("FROM 'x' LET x := _.a SELECT [_.b, x]", "{a:1 b:2 c:3}").await,
+            vec!["[2, 1]"]
         );
     }
 }

@@ -67,7 +67,6 @@ use trees::{
     tags::{ScopedTag, ScopedTagSet, TagScope},
     AxKey, AxTreeHeader,
 };
-use util::SocketAddrHelper;
 use util::{
     formats::{
         admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
@@ -79,6 +78,7 @@ use util::{
     },
     trace_poll::TracePoll,
 };
+use util::{version::NodeVersion, SocketAddrHelper};
 use zstd::stream::write::Decoder;
 
 pub mod formats;
@@ -211,7 +211,10 @@ impl ApiBehaviour {
                 request_response_config,
             ),
             events: StreamingResponse::new(StreamingResponseConfig::default()),
-            identify: Identify::new(IdentifyConfig::new("Actyx".to_owned(), local_public_key)),
+            identify: Identify::new(IdentifyConfig::new(
+                format!("Actyx-{}", NodeVersion::get()),
+                local_public_key,
+            )),
             state,
         }
     }
@@ -590,10 +593,11 @@ impl NetworkBehaviourEventProcess<StreamingResponseEvent<EventsProtocol>> for Ap
                 let peer = channel_id.peer();
                 if !self.is_authorized(&peer) {
                     tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
-                    let _ = self.admin.respond_final(
+                    let _ = self.events.respond_final(
                         channel_id,
-                        Err(ActyxOSCode::ERR_UNAUTHORIZED
-                            .with_message("Provided key is not authorized to access the API.")),
+                        EventsResponse::Error {
+                            message: "Provided key is not authorized to access the API.".to_owned(),
+                        },
                     );
                     return;
                 }

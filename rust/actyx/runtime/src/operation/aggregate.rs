@@ -1,22 +1,17 @@
-use crate::{eval::Context, value::Value};
-use actyx_sdk::language::{AggrOp, Num, SimpleExpr, Traverse};
-use anyhow::{anyhow, bail};
+use crate::{error::RuntimeError, eval::Context, value::Value};
+use actyx_sdk::{
+    language::{AggrOp, Num, SimpleExpr, Var},
+    service::{EventMeta, Order},
+};
+use anyhow::anyhow;
 use cbor_data::Encoder;
-use std::{cmp::Ordering, collections::BTreeMap, marker::PhantomData, ops::AddAssign};
+use futures::{future::BoxFuture, FutureExt};
+use std::{cmp::Ordering, marker::PhantomData, ops::AddAssign, sync::Arc};
 
 pub trait Aggregator {
     fn feed(&mut self, input: Value) -> anyhow::Result<()>;
     fn flush(&mut self, cx: &Context) -> anyhow::Result<Value>;
-}
-
-impl Aggregator for () {
-    fn feed(&mut self, _input: Value) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    fn flush(&mut self, cx: &Context) -> anyhow::Result<Value> {
-        Ok(cx.value(|b| b.encode_u64(42)))
-    }
+    fn has_value(&self) -> bool;
 }
 
 trait SumOp {
@@ -46,8 +41,8 @@ impl SumOp for MulOp {
 
 enum Summable<T: SumOp> {
     Empty(PhantomData<T>),
-    Bool(bool),
-    Num(Num),
+    Bool(EventMeta, bool),
+    Num(EventMeta, Num),
     Error(anyhow::Error),
 }
 
@@ -58,20 +53,27 @@ impl<T: SumOp> AddAssign<&Value> for Summable<T> {
             Summable::Empty(_) => {
                 *self = rhs
                     .as_bool()
-                    .map(Self::Bool)
-                    .or_else(|_| rhs.as_number().map(Self::Num))
+                    .map(|b| Self::Bool(rhs.meta().clone(), b))
+                    .or_else(|_| rhs.as_number().map(|n| Self::Num(rhs.meta().clone(), n)))
                     .unwrap_or_else(Self::Error)
             }
-            Summable::Bool(b) => {
+            Summable::Bool(mut meta, b) => {
                 *self = rhs
                     .as_bool()
-                    .map(|o| Self::Bool(T::bool(b, o)))
+                    .map(|o| {
+                        meta += rhs.meta();
+                        Self::Bool(meta, T::bool(b, o))
+                    })
                     .unwrap_or_else(Self::Error)
             }
-            Summable::Num(n) => {
+            Summable::Num(mut meta, n) => {
                 *self = rhs
                     .as_number()
-                    .and_then(|o| Ok(Self::Num(T::num(n, o)?)))
+                    .and_then(|o| {
+                        let result = T::num(n, o)?;
+                        meta += rhs.meta();
+                        Ok(Self::Num(meta, result))
+                    })
                     .unwrap_or_else(Self::Error)
             }
             Summable::Error(e) => *self = Self::Error(e),
@@ -95,11 +97,15 @@ impl<T: SumOp> Aggregator for Sum<T> {
 
     fn flush(&mut self, cx: &Context) -> anyhow::Result<Value> {
         match &self.0 {
-            Summable::Empty(_) => bail!("no value added"),
-            Summable::Bool(n) => Ok(cx.value(|b| b.encode_bool(*n))),
-            Summable::Num(n) => Ok(cx.number(n)),
+            Summable::Empty(_) => Err(RuntimeError::NoValueYet.into()),
+            Summable::Bool(meta, n) => Ok(Value::new_meta(cx.mk_cbor(|b| b.encode_bool(*n)), meta.clone())),
+            Summable::Num(meta, n) => Ok(Value::new_meta(cx.number(n), meta.clone())),
             Summable::Error(e) => Err(anyhow!("incompatible types in sum: {}", e)),
         }
+    }
+
+    fn has_value(&self) -> bool {
+        true
     }
 }
 
@@ -107,7 +113,7 @@ struct First(Option<Value>);
 impl Aggregator for First {
     fn feed(&mut self, input: Value) -> anyhow::Result<()> {
         if let Some(v) = &mut self.0 {
-            if input.key() < v.key() {
+            if input.min_key() < v.min_key() || input.min_key() == v.min_key() && input.max_key() < v.max_key() {
                 *v = input;
             }
         } else {
@@ -117,7 +123,11 @@ impl Aggregator for First {
     }
 
     fn flush(&mut self, _cx: &Context) -> anyhow::Result<Value> {
-        self.0.clone().ok_or_else(|| anyhow!("no value added"))
+        self.0.clone().ok_or_else(|| RuntimeError::NoValueYet.into())
+    }
+
+    fn has_value(&self) -> bool {
+        self.0.is_some()
     }
 }
 
@@ -125,7 +135,7 @@ struct Last(Option<Value>);
 impl Aggregator for Last {
     fn feed(&mut self, input: Value) -> anyhow::Result<()> {
         if let Some(v) = &mut self.0 {
-            if input.key() > v.key() {
+            if input.max_key() > v.max_key() || input.max_key() == v.max_key() && input.min_key() > v.min_key() {
                 *v = input;
             }
         } else {
@@ -135,7 +145,11 @@ impl Aggregator for Last {
     }
 
     fn flush(&mut self, _cx: &Context) -> anyhow::Result<Value> {
-        self.0.clone().ok_or_else(|| anyhow!("no value added"))
+        self.0.clone().ok_or_else(|| RuntimeError::NoValueYet.into())
+    }
+
+    fn has_value(&self) -> bool {
+        self.0.is_some()
     }
 }
 
@@ -156,11 +170,15 @@ impl Aggregator for Min {
     fn flush(&mut self, _cx: &Context) -> anyhow::Result<Value> {
         self.0
             .as_ref()
-            .ok_or_else(|| anyhow!("no value added"))
+            .ok_or_else(|| RuntimeError::NoValueYet.into())
             .and_then(|r| match r {
                 Ok(v) => Ok(v.clone()),
                 Err(e) => Err(anyhow!("incompatible types in min: {}", e)),
             })
+    }
+
+    fn has_value(&self) -> bool {
+        self.0.is_some()
     }
 }
 
@@ -181,163 +199,239 @@ impl Aggregator for Max {
     fn flush(&mut self, _cx: &Context) -> anyhow::Result<Value> {
         self.0
             .as_ref()
-            .ok_or_else(|| anyhow!("no value added"))
+            .ok_or_else(|| RuntimeError::NoValueYet.into())
             .and_then(|r| match r {
                 Ok(v) => Ok(v.clone()),
                 Err(e) => Err(anyhow!("incompatible types in max: {}", e)),
             })
     }
-}
 
-pub type AggrState = BTreeMap<(AggrOp, SimpleExpr), Box<dyn Aggregator + Send>>;
-
-pub struct Aggregate {
-    pub expr: SimpleExpr,
-    state: AggrState,
-}
-
-impl PartialEq for Aggregate {
-    fn eq(&self, other: &Self) -> bool {
-        self.expr == other.expr
+    fn has_value(&self) -> bool {
+        self.0.is_some()
     }
 }
 
-impl std::fmt::Debug for Aggregate {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Aggregate({:?})", self.expr)
-    }
+struct AggrState {
+    key: Arc<(AggrOp, SimpleExpr)>,
+    aggregator: Box<dyn Aggregator + Send + Sync + 'static>,
+    variable: u32,
 }
 
-impl Aggregate {
-    pub fn new(expr: SimpleExpr) -> Self {
-        let mut state: AggrState = BTreeMap::new();
-        expr.traverse(&mut |e| match e {
-            SimpleExpr::AggrOp(a) => {
-                let op: Box<dyn Aggregator + Send> = match a.0 {
-                    AggrOp::Sum => Box::new(Sum::<AddOp>::default()),
-                    AggrOp::Prod => Box::new(Sum::<MulOp>::default()),
-                    AggrOp::Min => Box::new(Min(None)),
-                    AggrOp::Max => Box::new(Max(None)),
-                    AggrOp::First => Box::new(First(None)),
-                    AggrOp::Last => Box::new(Last(None)),
-                };
-                state.insert((a.0, a.1.clone()), op);
-                Traverse::Stop
+struct Aggregate {
+    expr: SimpleExpr,
+    state: Vec<AggrState>,
+    order: Option<Order>,
+}
+impl super::Processor for Aggregate {
+    fn apply<'a, 'b: 'a>(&'a mut self, cx: &'a mut Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
+        async move {
+            let mut errors = vec![];
+            for aggr in self.state.iter_mut() {
+                match cx.eval(&aggr.key.1).await {
+                    Ok(v) => {
+                        if let Err(e) = aggr.aggregator.feed(v) {
+                            errors.push(Err(e))
+                        }
+                    }
+                    Err(e) => errors.push(Err(e)),
+                }
             }
-            _ => Traverse::Descend,
-        });
-        Self { expr, state }
+            errors
+        }
+        .boxed()
     }
 
-    pub fn apply(&mut self, cx: &Context, input: Value) -> Vec<anyhow::Result<Value>> {
-        let mut cx = cx.child();
-        cx.bind("_", input);
+    fn flush<'a, 'b: 'a>(&'a mut self, cx: &'a mut Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
+        async move {
+            let mut cx = cx.child();
+            for aggr in self.state.iter_mut() {
+                cx.bind_placeholder(format!("!{}", aggr.variable), aggr.aggregator.flush(&cx));
+            }
+            vec![cx.eval(&self.expr).await]
+        }
+        .boxed()
+    }
 
-        let mut errors = vec![];
-        fn log_error(errors: &mut Vec<anyhow::Result<Value>>, f: impl FnOnce() -> anyhow::Result<()>) {
-            match f() {
-                Ok(_) => {}
-                Err(e) => errors.push(Err(e)),
+    fn preferred_order(&self) -> Option<Order> {
+        self.order
+    }
+
+    fn is_done(&self, order: Order) -> bool {
+        Some(order) == self.order && self.state.iter().all(|a| a.aggregator.has_value()) || self.state.is_empty()
+    }
+}
+
+pub(super) fn aggregate(expr: &SimpleExpr) -> Box<dyn super::Processor> {
+    let mut state = Vec::<AggrState>::new();
+    let mut counter: u32 = 0;
+    let expr = expr.rewrite(&mut |e| match e {
+        SimpleExpr::AggrOp(a) => {
+            let name = match state.binary_search_by_key(&a, |x| &x.key) {
+                Ok(found) => state[found].variable,
+                Err(idx) => {
+                    let aggregator: Box<dyn Aggregator + Send + Sync> = match a.0 {
+                        AggrOp::Sum => Box::new(Sum::<AddOp>::default()),
+                        AggrOp::Prod => Box::new(Sum::<MulOp>::default()),
+                        AggrOp::Min => Box::new(Min(None)),
+                        AggrOp::Max => Box::new(Max(None)),
+                        AggrOp::First => Box::new(First(None)),
+                        AggrOp::Last => Box::new(Last(None)),
+                    };
+                    counter += 1;
+                    state.insert(
+                        idx,
+                        AggrState {
+                            key: a.clone(),
+                            aggregator,
+                            variable: counter,
+                        },
+                    );
+                    counter
+                }
+            };
+            // it is important that these internal variables are not legal in user queries,
+            // hence the exclamation mark
+            Some(SimpleExpr::Variable(Var::internal(format!("!{}", name))))
+        }
+        // leave sub-queries alone
+        SimpleExpr::SubQuery(_) => Some(e.clone()),
+        _ => None,
+    });
+
+    let order = {
+        let mut first = false;
+        let mut last = false;
+        let mut other = false;
+        for s in &state {
+            match s.key.0 {
+                AggrOp::Sum => other = true,
+                AggrOp::Prod => other = true,
+                AggrOp::Min => other = true,
+                AggrOp::Max => other = true,
+                AggrOp::First => first = true,
+                AggrOp::Last => last = true,
             }
         }
-
-        for ((_op, expr), agg) in &mut self.state {
-            log_error(&mut errors, || {
-                let v = cx.eval(expr)?;
-                agg.feed(v)?;
-                Ok(())
-            });
+        if other || first && last {
+            None
+        } else if first {
+            Some(Order::Asc)
+        } else if last {
+            Some(Order::Desc)
+        } else {
+            None
         }
-        errors
-    }
+    };
 
-    pub fn flush(&mut self, cx: &Context) -> anyhow::Result<Value> {
-        let mut cx = cx.child();
-        cx.bind_aggregation(&mut self.state);
-        cx.eval(&self.expr)
-    }
+    Box::new(Aggregate { expr, state, order })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{operation::Operation, query::Query};
-    use actyx_sdk::{
-        language::{self, SortKey},
-        NodeId,
+    use crate::{
+        eval::RootContext,
+        operation::{Operation, Processor},
+        query::Query,
     };
+    use actyx_sdk::{app_id, language, tags, EventKey, Metadata, NodeId};
+    use swarm::event_store_ref::EventStoreRef;
 
-    fn a(s: &str) -> Aggregate {
+    fn a(s: &str) -> Box<dyn Processor> {
         let s = format!("FROM 'x' AGGREGATE {}", s);
-        let q = Query::from(s.parse::<language::Query>().unwrap());
+        let q = Query::from(language::Query::parse(&*s).unwrap()).0;
         match q.stages.into_iter().next().unwrap() {
-            Operation::Aggregate(a) => a,
+            Operation::Aggregate(a) => aggregate(&a),
             _ => panic!(),
         }
     }
-    fn ctx() -> Context<'static> {
-        Context::new(SortKey {
-            lamport: Default::default(),
-            stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
-        })
+    fn store() -> EventStoreRef {
+        EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))
     }
-    fn apply(a: &mut Aggregate, cx: &mut Context, v: u64) -> Vec<Value> {
-        cx.incr();
-        a.apply(cx, cx.value(|b| b.encode_u64(v)))
+    fn ctx() -> RootContext {
+        Context::new(store())
+    }
+    async fn apply<'a, 'b: 'a>(a: &'a mut dyn Processor, cx: &'a mut Context<'b>, v: u64, t: u64) -> Vec<Value> {
+        cx.bind(
+            "_",
+            Value::new_meta(
+                cx.mk_cbor(|b| b.encode_u64(v)),
+                EventMeta::Event {
+                    key: EventKey {
+                        lamport: t.into(),
+                        stream: NodeId::default().stream(0.into()),
+                        offset: 0.into(),
+                    },
+                    meta: Metadata {
+                        timestamp: 0.into(),
+                        tags: tags!(),
+                        app_id: app_id!("x"),
+                    },
+                },
+            ),
+        );
+        a.apply(cx).await.into_iter().collect::<anyhow::Result<_>>().unwrap()
+    }
+    async fn flush<'a, 'b: 'a>(a: &'a mut dyn Processor, cx: &'a mut Context<'b>) -> String {
+        a.flush(cx)
+            .await
             .into_iter()
-            .collect::<anyhow::Result<_>>()
+            .next()
             .unwrap()
-    }
-    fn flush(a: &mut Aggregate, cx: &Context) -> String {
-        a.flush(cx).unwrap().cbor().to_string()
+            .unwrap()
+            .cbor()
+            .to_string()
     }
 
-    #[test]
-    fn sum() {
+    #[tokio::test]
+    async fn sum() {
         let mut s = a("42 - SUM(_ * 2)");
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
 
-        assert_eq!(apply(&mut s, &mut cx, 1), vec![]);
-        assert_eq!(apply(&mut s, &mut cx, 2), vec![]);
-        assert_eq!(flush(&mut s, &cx), "36");
+        assert_eq!(apply(&mut *s, &mut cx, 1, 1).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 2, 2).await, vec![]);
+        assert_eq!(flush(&mut *s, &mut cx).await, "36");
 
         let mut s = a("CASE SUM(_ ≥ 2) => 11 CASE TRUE => 12 ENDCASE");
 
-        assert_eq!(apply(&mut s, &mut cx, 1), vec![]);
-        assert_eq!(flush(&mut s, &cx), "12");
-        assert_eq!(apply(&mut s, &mut cx, 2), vec![]);
-        assert_eq!(flush(&mut s, &cx), "11");
+        assert_eq!(apply(&mut *s, &mut cx, 1, 3).await, vec![]);
+        assert_eq!(flush(&mut *s, &mut cx).await, "12");
+        assert_eq!(apply(&mut *s, &mut cx, 2, 4).await, vec![]);
+        assert_eq!(flush(&mut *s, &mut cx).await, "11");
     }
 
-    #[test]
-    fn product() {
+    #[tokio::test]
+    async fn product() {
         let mut s = a("42 - PRODUCT(_ * 2)");
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
 
-        assert_eq!(apply(&mut s, &mut cx, 1), vec![]);
-        assert_eq!(apply(&mut s, &mut cx, 2), vec![]);
-        assert_eq!(flush(&mut s, &cx), "34");
+        assert_eq!(apply(&mut *s, &mut cx, 1, 1).await, vec![]);
+        assert_eq!(apply(&mut *s, &mut cx, 2, 2).await, vec![]);
+        assert_eq!(flush(&mut *s, &mut cx).await, "34");
 
         let mut s = a("CASE PRODUCT(_ ≥ 2) => 11 CASE TRUE => 12 ENDCASE");
 
-        assert_eq!(apply(&mut s, &mut cx, 2), vec![]);
-        assert_eq!(flush(&mut s, &cx), "11");
-        assert_eq!(apply(&mut s, &mut cx, 1), vec![]);
-        assert_eq!(flush(&mut s, &cx), "12");
+        assert_eq!(apply(&mut *s, &mut cx, 2, 3).await, vec![]);
+        assert_eq!(flush(&mut *s, &mut cx).await, "11");
+        assert_eq!(apply(&mut *s, &mut cx, 1, 4).await, vec![]);
+        assert_eq!(flush(&mut *s, &mut cx).await, "12");
     }
 
-    #[test]
-    fn min_max() {
+    #[tokio::test]
+    async fn min_max() {
         let mut s = a("[FIRST(_), LAST(_), MIN(_), MAX(_)]");
-        let mut cx = ctx();
+        let cx = ctx();
+        let mut cx = cx.child();
 
-        assert_eq!(apply(&mut s, &mut cx, 2), vec![]);
-        assert_eq!(flush(&mut s, &cx), "[2, 2, 2, 2]");
-        assert_eq!(apply(&mut s, &mut cx, 1), vec![]);
-        assert_eq!(flush(&mut s, &cx), "[2, 1, 1, 2]");
-        assert_eq!(apply(&mut s, &mut cx, 4), vec![]);
-        assert_eq!(flush(&mut s, &cx), "[2, 4, 1, 4]");
-        assert_eq!(apply(&mut s, &mut cx, 3), vec![]);
-        assert_eq!(flush(&mut s, &cx), "[2, 3, 1, 4]");
+        assert_eq!(apply(&mut *s, &mut cx, 2, 1).await, vec![]);
+        assert_eq!(flush(&mut *s, &mut cx).await, "[2, 2, 2, 2]");
+        assert_eq!(apply(&mut *s, &mut cx, 1, 2).await, vec![]);
+        assert_eq!(flush(&mut *s, &mut cx).await, "[2, 1, 1, 2]");
+        assert_eq!(apply(&mut *s, &mut cx, 4, 3).await, vec![]);
+        assert_eq!(flush(&mut *s, &mut cx).await, "[2, 4, 1, 4]");
+        assert_eq!(apply(&mut *s, &mut cx, 3, 4).await, vec![]);
+        assert_eq!(flush(&mut *s, &mut cx).await, "[2, 3, 1, 4]");
     }
 }

@@ -113,6 +113,7 @@ fn spawn(
         "yamux",
         "libp2p_gossipsub",
         "multistream_select",
+        "netlink_proto",
     ])))
     // this may be called more than once on Android, so don’t complain
     .ok();

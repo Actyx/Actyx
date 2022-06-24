@@ -79,6 +79,7 @@ async fn test_routes() -> (
     (route, token.to_string(), node_key, key_store)
 }
 
+#[track_caller]
 fn assert_err_response(resp: Response<Bytes>, status: http::StatusCode, json: serde_json::Value) {
     assert_eq!(resp.status(), status);
     assert_eq!(serde_json::from_slice::<serde_json::Value>(resp.body()).unwrap(), json);
@@ -527,7 +528,7 @@ async fn bad_request_invalid_expression() {
         http::StatusCode::BAD_REQUEST,
         json!({
           "code": "ERR_BAD_REQUEST",
-          "message": "Invalid request.  --> 1:6\n  |\n1 | FROM x\n  |      ^---\n  |\n  = expected tag_expr at line 1 column 33"
+          "message": "Invalid request.  --> 1:6\n  |\n1 | FROM x\n  |      ^---\n  |\n  = expected array or tag_expr"
         }),
     );
 }
@@ -546,13 +547,11 @@ async fn bad_request_unknown_stream() {
         }))
         .reply(&route)
         .await;
-    assert_err_response(
-        resp,
-        http::StatusCode::BAD_REQUEST,
-        json!({
-          "code": "ERR_BAD_REQUEST",
-          "message": "Invalid request. Query bounds out of range: upper bound must be within the known present."
-        }),
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    let js = serde_json::from_slice::<serde_json::Value>(&*resp.body()).unwrap();
+    assert_eq!(
+        js,
+        json!({ "type": "diagnostic", "severity": "error", "message": "Query bounds out of range: upper bound must be within the known present."})
     );
 }
 
@@ -571,13 +570,11 @@ async fn bad_request_invalid_upper_bounds() {
         }))
         .reply(&route)
         .await;
-    assert_err_response(
-        resp,
-        http::StatusCode::BAD_REQUEST,
-        json!({
-          "code": "ERR_BAD_REQUEST",
-          "message": "Invalid request. Query bounds out of range: upper bound must be within the known present."
-        }),
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    let js = serde_json::from_slice::<serde_json::Value>(&*resp.body()).unwrap();
+    assert_eq!(
+        js,
+        json!({ "type": "diagnostic", "severity": "error", "message": "Query bounds out of range: upper bound must be within the known present."})
     );
 }
 
@@ -664,8 +661,8 @@ async fn ws_aql_feature() -> anyhow::Result<()> {
             "type": "error",
             "requestId": 1,
             "kind": {
-                "type": "badRequest",
-                "message": " --> 1:1\n  |\n1 | x\n  | ^---\n  |\n  = expected main_query"
+                "type": "serviceError",
+                "value": "Invalid request.  --> 1:1\n  |\n1 | x\n  | ^---\n  |\n  = expected main_query"
             }
         })
     );

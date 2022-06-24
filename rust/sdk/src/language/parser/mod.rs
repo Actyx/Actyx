@@ -4,11 +4,12 @@
 use std::{convert::TryInto, str::FromStr, sync::Arc};
 
 use super::{
-    non_empty::NonEmptyVec, AggrOp, Arr, FuncCall, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, TagAtom, TagExpr,
+    non_empty::NonEmptyVec, AggrOp, Arr, FuncCall, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, Source,
+    SpreadExpr, TagAtom, TagExpr,
 };
-use crate::{language::SortKey, tags::Tag, Timestamp};
+use crate::{language::SortKey, service::Order, tags::Tag, Timestamp};
 use anyhow::{bail, ensure, Result};
-use chrono::{TimeZone, Utc};
+use chrono::{FixedOffset, TimeZone, Utc};
 use once_cell::sync::Lazy;
 use pest::{prec_climber::PrecClimber, Parser};
 use unicode_normalization::UnicodeNormalization;
@@ -43,15 +44,70 @@ pub enum ContextError {
     CurrentValueInAggregate,
 }
 
-fn r_tag(p: P) -> Result<Tag> {
-    let quoted = p.single()?.single()?;
-    let s = quoted.as_str();
-    let s = &s[1..s.len() - 1];
-    match quoted.as_rule() {
-        Rule::single_quoted => Ok(Tag::from_str(s.replace("''", "'").as_ref())?),
-        Rule::double_quoted => Ok(Tag::from_str(s.replace("\"\"", "\"").as_ref())?),
+fn r_tag(p: P, ctx: Context) -> Result<TagExpr> {
+    let tag = p.single()?;
+    match tag.as_rule() {
+        Rule::nonempty_string => {
+            let quoted = tag.single()?;
+            let s = quoted.as_str();
+            let s = &s[1..s.len() - 1];
+            match quoted.as_rule() {
+                Rule::single_quoted => Ok(TagExpr::Atom(TagAtom::Tag(Tag::from_str(
+                    s.replace("''", "'").as_ref(),
+                )?))),
+                Rule::double_quoted => Ok(TagExpr::Atom(TagAtom::Tag(Tag::from_str(
+                    s.replace("\"\"", "\"").as_ref(),
+                )?))),
+                x => bail!("unexpected token: {:?}", x),
+            }
+        }
+        Rule::interpolation => {
+            let expr = r_interpolation(tag, ctx)?;
+            Ok(TagExpr::Atom(TagAtom::Interpolation(expr)))
+        }
         x => bail!("unexpected token: {:?}", x),
     }
+}
+
+fn r_interpolation(p: P, ctx: Context) -> Result<Vec<SimpleExpr>> {
+    let all = p.as_str();
+    let mut e = p.inner()?;
+    let mut pos = 1;
+    let mut expr = Vec::new();
+    let mut buffer = String::new();
+    let end = all.len() - 1;
+    while pos < end {
+        if let Some(e) = e.next() {
+            let brace = all[pos..].find('{').unwrap() + pos;
+            buffer.push_str(&all[pos..brace]);
+            let expr_len = e.as_str().len();
+            match e.as_rule() {
+                Rule::simple_expr => {
+                    if !buffer.is_empty() {
+                        expr.push(SimpleExpr::String(buffer));
+                        buffer = String::new();
+                    }
+                    expr.push(r_simple_expr(e, ctx)?);
+                }
+                Rule::unicode => {
+                    let c = char::from_u32(u32::from_str_radix(&e.as_str()[2..], 16)?)
+                        .ok_or_else(|| anyhow::anyhow!("invalid unicode scalar value `{}`", e.as_str()))?;
+                    buffer.push(c);
+                }
+                x => bail!("unexpected token: {:?}", x),
+            }
+            pos = brace + 1 + expr_len + 1;
+        } else {
+            buffer.push_str(&all[pos..end]);
+            expr.push(SimpleExpr::String(buffer));
+            buffer = String::new();
+            break;
+        }
+    }
+    if !buffer.is_empty() {
+        expr.push(SimpleExpr::String(buffer));
+    }
+    Ok(expr)
 }
 
 enum FromTo {
@@ -62,10 +118,11 @@ fn r_tag_from_to(p: P, f: FromTo) -> Result<TagExpr> {
     use TagAtom::*;
     use TagExpr::Atom;
     let mut p = p.inner()?;
-    let mut first = p.next().ok_or(NoVal("r_tag_from_to first"))?;
+    let first = p.next().ok_or(NoVal("r_tag_from_to first"))?;
     Ok(match first.as_rule() {
-        Rule::natural => {
-            let lamport = first.natural()?.into();
+        Rule::event_key => {
+            let mut p = first.inner()?;
+            let lamport = p.natural()?.into();
             // if no streamId was given, use the first one (just like assuming 00:00:00 for a date)
             let stream = p.parse_or_default()?;
             match f {
@@ -81,7 +138,7 @@ fn r_tag_from_to(p: P, f: FromTo) -> Result<TagExpr> {
     })
 }
 
-fn r_tag_expr(p: P) -> Result<TagExpr> {
+fn r_tag_expr(p: P, ctx: Context) -> Result<TagExpr> {
     use TagAtom::*;
     use TagExpr::Atom;
 
@@ -95,8 +152,8 @@ fn r_tag_expr(p: P) -> Result<TagExpr> {
         p.inner()?,
         |p| {
             Ok(match p.as_rule() {
-                Rule::tag => Atom(Tag(r_tag(p)?)),
-                Rule::tag_expr => r_tag_expr(p)?,
+                Rule::tag => r_tag(p, ctx)?,
+                Rule::tag_expr => r_tag_expr(p, ctx)?,
                 Rule::all_events => Atom(AllEvents),
                 Rule::is_local => Atom(IsLocal),
                 Rule::tag_from => r_tag_from_to(p, FromTo::From)?,
@@ -113,6 +170,19 @@ fn r_tag_expr(p: P) -> Result<TagExpr> {
             })
         },
     )
+}
+
+fn r_order(p: P) -> Result<Order> {
+    let p = p.single()?;
+    match p.as_rule() {
+        Rule::order => match p.as_str() {
+            "ASC" => Ok(Order::Asc),
+            "DESC" => Ok(Order::Desc),
+            "STREAM" => Ok(Order::StreamAsc),
+            x => bail!("unexpected order: {:?}", x),
+        },
+        x => bail!("unexpected token: {:?}", x),
+    }
 }
 
 fn r_string(p: P) -> Result<String> {
@@ -133,7 +203,15 @@ fn r_string(p: P) -> Result<String> {
     })
 }
 
-fn r_var(p: P, ctx: Context) -> Result<SimpleExpr> {
+fn r_var(p: P, ctx: Context) -> Result<super::var::Var> {
+    let s = p.as_str();
+    if s == "_" {
+        ensure!(ctx != Context::Aggregate, ContextError::CurrentValueInAggregate);
+    }
+    Ok(super::var::Var(s.nfc().collect()))
+}
+
+fn r_var_index(p: P, ctx: Context) -> Result<SimpleExpr> {
     let mut p = p.inner()?;
     let s = p.next().ok_or(NoVal("no var"))?.as_str();
     if s == "_" {
@@ -192,20 +270,38 @@ fn r_timestamp(p: P) -> Result<Timestamp> {
     let year: i32 = p.string()?.parse()?;
     let month: u32 = p.string()?.parse()?;
     let day: u32 = p.string()?.parse()?;
-    let hour: u32 = p.parse_or_default()?;
-    let min: u32 = p.parse_or_default()?;
-    let sec: u32 = p.parse_or_default()?;
-    let nano: u32 = if let Some(p) = p.next() {
-        match p.as_rule() {
-            Rule::millisecond => p.as_str().parse::<u32>()? * 1_000_000,
-            Rule::microsecond => p.as_str().parse::<u32>()? * 1_000,
-            Rule::nanosecond => p.as_str().parse::<u32>()?,
+    let mut hour = 0u32;
+    let mut min = 0u32;
+    let mut sec = 0u32;
+    let mut nano = 0u32;
+    if p.peek().map(|r| r.as_rule()) == Some(Rule::hour) {
+        hour = p.parse_or_default()?;
+        min = p.parse_or_default()?;
+        if p.peek().map(|p| p.as_rule()) == Some(Rule::second) {
+            sec = p.parse_or_default()?;
+        }
+        nano = match p.peek().map(|p| p.as_rule()) {
+            Some(Rule::millisecond) => p.parse_or_default::<u32>()? * 1_000_000,
+            Some(Rule::microsecond) => p.parse_or_default::<u32>()? * 1_000,
+            Some(Rule::nanosecond) => p.parse_or_default::<u32>()?,
+            Some(Rule::sign) | None => 0,
             x => bail!("unexpected token: {:?}", x),
         }
+    }
+    if let Some(sign) = p.next() {
+        let offset_hour: u32 = p.parse_or_default()?;
+        let offset_min: u32 = p.parse_or_default()?;
+        let mut seconds = offset_hour as i32 * 3600 + offset_min as i32 * 60;
+        if sign.as_str() == "-" {
+            seconds = -seconds;
+        }
+        Ok(FixedOffset::east(seconds)
+            .ymd(year, month, day)
+            .and_hms_nano(hour, min, sec, nano)
+            .into())
     } else {
-        0
-    };
-    Ok(Utc.ymd(year, month, day).and_hms_nano(hour, min, sec, nano).into())
+        Ok(Utc.ymd(year, month, day).and_hms_nano(hour, min, sec, nano).into())
+    }
 }
 
 fn r_object(p: P, ctx: Context) -> Result<Obj> {
@@ -229,9 +325,22 @@ fn r_object(p: P, ctx: Context) -> Result<Obj> {
 }
 
 fn r_array(p: P, ctx: Context) -> Result<Arr> {
-    Ok(Arr {
-        items: p.inner()?.map(|p| r_simple_expr(p, ctx)).collect::<Result<_>>()?,
-    })
+    let mut p = p.inner()?;
+    let mut items = Vec::new();
+    while let Some(candidate) = p.next() {
+        match candidate.as_rule() {
+            Rule::spread => items.push(SpreadExpr {
+                expr: r_simple_expr(p.next().unwrap(), ctx)?,
+                spread: true,
+            }),
+            Rule::simple_expr => items.push(SpreadExpr {
+                expr: r_simple_expr(candidate, ctx)?,
+                spread: false,
+            }),
+            x => bail!("unexpected token: {:?}", x),
+        }
+    }
+    Ok(Arr { items: items.into() })
 }
 
 fn r_bool(p: P) -> bool {
@@ -280,6 +389,40 @@ fn r_func_call(p: P, ctx: Context) -> Result<FuncCall> {
     })
 }
 
+fn r_pragma(p: P) -> Result<(&str, &str)> {
+    let mut p = p.inner()?;
+    let name = p.next().unwrap().as_str();
+    let value = p.next().unwrap().as_str();
+    Ok((name, value))
+}
+
+fn r_meta_key(p: P, ctx: Context) -> Result<SimpleExpr> {
+    let p = p.single()?;
+    match p.as_rule() {
+        Rule::ident => Ok(SimpleExpr::KeyVar(r_var(p, ctx)?)),
+        Rule::event_key => {
+            let mut p = p.inner()?;
+            let lamport = p.natural()?.into();
+            let stream = p.parse_or_default()?;
+            Ok(SimpleExpr::KeyLiteral(SortKey { lamport, stream }))
+        }
+        x => bail!("unexpected token: {:?}", x),
+    }
+}
+
+fn r_meta_time(p: P, ctx: Context) -> Result<SimpleExpr> {
+    let p = p.single()?;
+    match p.as_rule() {
+        Rule::ident => Ok(SimpleExpr::TimeVar(r_var(p, ctx)?)),
+        Rule::isodate => Ok(SimpleExpr::TimeLiteral(r_timestamp(p)?)),
+        x => bail!("unexpected token: {:?}", x),
+    }
+}
+
+fn r_sub_query(p: P, ctx: Context) -> Result<Query<'static>> {
+    r_query(Vec::new(), Vec::new(), p.single()?, ctx)
+}
+
 fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
     static CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
         use pest::prec_climber::{Assoc::*, Operator};
@@ -301,11 +444,12 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
     fn primary(p: P, ctx: Context) -> Result<SimpleExpr> {
         Ok(match p.as_rule() {
             Rule::decimal => SimpleExpr::Number(r_number(p)?),
-            Rule::var_index => r_var(p, ctx)?,
+            Rule::var_index => r_var_index(p, ctx)?,
             Rule::expr_index => r_expr_index(p, ctx)?,
             Rule::simple_expr => r_simple_expr(p, ctx)?,
             Rule::simple_not => SimpleExpr::Not(primary(r_not(p)?, ctx)?.into()),
             Rule::string => SimpleExpr::String(r_string(p)?),
+            Rule::interpolation => SimpleExpr::Interpolation(r_interpolation(p, ctx)?),
             Rule::object => SimpleExpr::Object(r_object(p, ctx)?),
             Rule::array => SimpleExpr::Array(r_array(p, ctx)?),
             Rule::null => SimpleExpr::Null,
@@ -313,6 +457,11 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
             Rule::simple_cases => SimpleExpr::Cases(r_cases(p, ctx)?),
             Rule::aggr_op => r_aggr(p, ctx)?,
             Rule::func_call => SimpleExpr::FuncCall(r_func_call(p, ctx)?),
+            Rule::sub_query => SimpleExpr::SubQuery(r_sub_query(p, ctx)?),
+            Rule::meta_key => r_meta_key(p, ctx)?,
+            Rule::meta_time => r_meta_time(p, ctx)?,
+            Rule::meta_tags => SimpleExpr::Tags(r_var(p.single()?, ctx)?),
+            Rule::meta_app => SimpleExpr::App(r_var(p.single()?, ctx)?),
             x => bail!("unexpected token: {:?}", x),
         })
     }
@@ -344,11 +493,27 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
     )
 }
 
-fn r_query(features: Vec<String>, p: P) -> Result<Query> {
+fn r_query<'a>(pragmas: Vec<(&'a str, &'a str)>, features: Vec<String>, p: P, ctx: Context) -> Result<Query<'a>> {
     let mut p = p.inner()?;
+    let source = match p.peek().unwrap().as_rule() {
+        Rule::tag_expr => {
+            let from = r_tag_expr(p.next().ok_or(NoVal("tag expression"))?, Context::Simple)?;
+            let mut order = None;
+            if let Some(o) = p.peek() {
+                if o.as_rule() == Rule::query_order {
+                    let o = p.next().unwrap();
+                    order = Some(r_order(o)?);
+                }
+            }
+            Source::Events { from, order }
+        }
+        Rule::array => Source::Array(r_array(p.next().unwrap(), ctx)?),
+        x => bail!("unexpected token: {:?}", x),
+    };
     let mut q = Query {
+        pragmas,
         features,
-        from: r_tag_expr(p.next().ok_or(NoVal("tag expression"))?)?,
+        source,
         ops: vec![],
     };
     for o in p {
@@ -357,36 +522,41 @@ fn r_query(features: Vec<String>, p: P) -> Result<Query> {
                 .ops
                 .push(Operation::Filter(r_simple_expr(o.single()?, Context::Simple)?)),
             Rule::select => {
-                let v = o
-                    .inner()?
-                    .map(|p| r_simple_expr(p, Context::Simple))
-                    .collect::<Result<Vec<_>>>()?;
+                let v = r_array(o, Context::Simple)?.items.to_vec();
                 q.ops.push(Operation::Select(v.try_into()?))
             }
             Rule::aggregate => q
                 .ops
                 .push(Operation::Aggregate(r_simple_expr(o.single()?, Context::Aggregate)?)),
+            Rule::limit => q.ops.push(Operation::Limit(o.single()?.natural()?.try_into()?)),
+            Rule::binding => {
+                let mut p = o.inner()?;
+                let ident = p.string()?;
+                let expr = r_simple_expr(p.single()?, Context::Simple)?;
+                q.ops.push(Operation::Binding(ident, expr));
+            }
             x => bail!("unexpected token: {:?}", x),
         }
     }
     Ok(q)
 }
 
-impl FromStr for Query {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut p = Aql::parse(Rule::main_query, s)?.single()?.inner()?;
-        let mut f = p.next().ok_or(NoVal("main query"))?;
-        let features = if f.as_rule() == Rule::features {
-            let features = f.inner()?.map(|mut ff| ff.string()).collect::<Result<_>>()?;
-            f = p.next().ok_or(NoVal("FROM"))?;
-            features
-        } else {
-            vec![]
-        };
-        r_query(features, f)
+pub(crate) fn query_from_str(s: &str) -> Result<Query<'_>> {
+    let p = Aql::parse(Rule::main_query, s)?.single()?;
+    let mut p = p.inner()?;
+    let mut pragmas = Vec::new();
+    while p.peek().map(|p| p.as_rule()) == Some(Rule::pragma) {
+        pragmas.push(r_pragma(p.next().unwrap())?);
     }
+    let mut f = p.next().ok_or(NoVal("main query"))?;
+    let features = if f.as_rule() == Rule::features {
+        let features = f.inner()?.map(|mut ff| ff.string()).collect::<Result<_>>()?;
+        f = p.next().ok_or(NoVal("FROM"))?;
+        features
+    } else {
+        vec![]
+    };
+    r_query(pragmas, features, f, Context::Simple)
 }
 
 impl FromStr for TagExpr {
@@ -394,7 +564,7 @@ impl FromStr for TagExpr {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let p = Aql::parse(Rule::main_tag_expr, s)?.single()?.single()?;
-        r_tag_expr(p)
+        r_tag_expr(p, Context::Simple)
     }
 }
 
@@ -404,6 +574,15 @@ impl FromStr for SimpleExpr {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let p = Aql::parse(Rule::main_simple_expr, s)?.single()?.single()?;
         r_simple_expr(p, Context::Simple)
+    }
+}
+
+impl FromStr for Timestamp {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let p = Aql::parse(Rule::main_timestamp, s)?.single()?.single()?;
+        r_timestamp(p)
     }
 }
 
@@ -427,12 +606,40 @@ mod tests {
     use pest::{fails_with, Parser};
     use std::convert::TryFrom;
 
+    fn s(s: &str) -> SimpleExpr {
+        SimpleExpr::String(s.to_owned())
+    }
+    fn o(q: Query) -> Option<Order> {
+        match q.source {
+            Source::Events { order, .. } => order,
+            Source::Array(_) => panic!("expected Source::Events"),
+        }
+    }
+    fn from(q: Query) -> TagExpr {
+        match q.source {
+            Source::Events { from, .. } => from,
+            Source::Array(_) => panic!("expected Source::Events"),
+        }
+    }
+    fn arr(q: Query) -> Vec<String> {
+        match q.source {
+            Source::Events { .. } => panic!("expected Source::Array"),
+            Source::Array(Arr { items }) => items.iter().map(|x| x.to_string()).collect(),
+        }
+    }
+
     #[test]
     fn tag() -> Result<()> {
         let p = Aql::parse(Rule::tag, "'hello''s revenge'")?;
-        assert_eq!(r_tag(p.single()?)?, tag!("hello's revenge"));
+        assert_eq!(
+            r_tag(p.single()?, Context::Simple)?,
+            TagExpr::Atom(TagAtom::Tag(tag!("hello's revenge")))
+        );
         let p = Aql::parse(Rule::tag, "\"hello\"\"s revenge\"")?;
-        assert_eq!(r_tag(p.single()?)?, tag!("hello\"s revenge"));
+        assert_eq!(
+            r_tag(p.single()?, Context::Simple)?,
+            TagExpr::Atom(TagAtom::Tag(tag!("hello\"s revenge")))
+        );
         Ok(())
     }
 
@@ -448,6 +655,19 @@ mod tests {
             )
                 .into())
         );
+        Ok(())
+    }
+
+    #[test]
+    fn order() -> Result<()> {
+        let q = Query::parse("FROM 'x'").unwrap();
+        assert_eq!(o(q), None);
+        let q = Query::parse("FROM 'x' ORDER ASC").unwrap();
+        assert_eq!(o(q), Some(Order::Asc));
+        let q = Query::parse("FROM 'x' ORDER DESC").unwrap();
+        assert_eq!(o(q), Some(Order::Desc));
+        let q = Query::parse("FROM 'x' ORDER STREAM").unwrap();
+        assert_eq!(o(q), Some(Order::StreamAsc));
         Ok(())
     }
 
@@ -486,16 +706,17 @@ mod tests {
         use TagExpr::Atom;
 
         assert_eq!(
-            "FROM 'machine' | 'user' END".parse::<Query>()?,
+            Query::parse("FROM 'machine' | 'user' END")?,
             Query::new(Tag(tag!("machine")).or(Tag(tag!("user"))))
         );
         assert_eq!(
-            "FROM 'machine' |
+            Query::parse(
+                "FROM 'machine' |
                 -- or the other
                   'user' & isLocal & from(2012-12-31Z) & to(12345678901234567) & \
                   from(10/1234567890123456789012345678901234567890122-4312) & appId(hello-5.-x-) & allEvents
                   FILTER _.x[42] > 5 SELECT { x: ! 'hello' y: 42 z: [1.3,_.x] } END --"
-                .parse::<Query>()?,
+            )?,
             Query::new(
                 Atom(Tag(tag!("machine"))).or(Tag(tag!("user"))
                     .and(IsLocal)
@@ -521,7 +742,8 @@ mod tests {
                     ("x", Not(String("hello".to_owned()).into())),
                     ("y", Number(Natural(42))),
                     ("z", Arr::with(&[Number(Decimal(1.3)), Ind::with("_", &[&"x"])]))
-                ])]
+                ])
+                .with_spread(false)]
                 .try_into()?
             ))
         );
@@ -530,7 +752,7 @@ mod tests {
 
     #[test]
     fn positive() {
-        let p = |str: &'static str| str.parse::<Query>().unwrap();
+        let p = |str: &'static str| Query::parse(str).unwrap();
         p("FROM 'machine' | 'user' & isLocal & from(2012-12-31Z) & to(12345678901234567) & appId(hello-5.-x-) & allEvents FILTER _.x[42] > 5 SELECT { x: !'hello', y: 42, z: [1.3, _.x] } END");
         p("FROM from(2012-12-31T09:30:32.007Z) END");
         p("FROM from(2012-12-31T09:30:32Z) END");
@@ -550,7 +772,7 @@ mod tests {
             parser: Aql,
             input: "FROM x",
             rule: Rule::main_query,
-            positives: vec![Rule::tag_expr],
+            positives: vec![Rule::array, Rule::tag_expr],
             negatives: vec![],
             pos: 5
         };
@@ -558,7 +780,7 @@ mod tests {
             parser: Aql,
             input: "FROM 'x' ELECT 'x'",
             rule: Rule::main_query,
-            positives: vec![Rule::EOI, Rule::filter, Rule::select, Rule::aggregate, Rule::and, Rule::or],
+            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::aggregate, Rule::limit, Rule::binding, Rule::and, Rule::or],
             negatives: vec![],
             pos: 9
         };
@@ -566,7 +788,7 @@ mod tests {
             parser: Aql,
             input: "FROM 'x' FITTER 'x'",
             rule: Rule::main_query,
-            positives: vec![Rule::EOI, Rule::filter, Rule::select, Rule::aggregate, Rule::and, Rule::or],
+            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::aggregate, Rule::limit, Rule::binding, Rule::and, Rule::or],
             negatives: vec![],
             pos: 9
         };
@@ -585,7 +807,7 @@ mod tests {
         assert_eq!(
             p("[1,TRUE]"),
             Array(Arr {
-                items: vec![Number(Natural(1)), Bool(true)].into()
+                items: vec![Number(Natural(1)).with_spread(false), Bool(true).with_spread(false)].into()
             })
         );
         assert_eq!(
@@ -605,7 +827,7 @@ mod tests {
     #[test]
     fn ident() {
         let p = |s: &str, e: Option<&str>| {
-            let q = s.parse::<Query>();
+            let q = Query::parse(s);
             if let Some(err) = e {
                 let e = q.unwrap_err().to_string();
                 assert!(e.contains(err), "received: {}", e);
@@ -622,10 +844,11 @@ mod tests {
                 head: Arc::new(SimpleExpr::Variable(Var::try_from("_").unwrap())),
                 tail: NonEmptyVec::try_from(vec![Index::String(s.to_owned())]).unwrap(),
             })
+            .with_spread(false)
         };
         let s = |s: &str| Index::String(s.to_owned());
         let n = |n: u64| SimpleExpr::Number(Num::Natural(n));
-        let v = |s: &str| SimpleExpr::Variable(Var::try_from(s).unwrap());
+        let v = |s: &str| SimpleExpr::Variable(Var::try_from(s).unwrap()).with_spread(false);
 
         p("FROM 'x' SELECT _.H", Some("expected ident"));
         p("FROM 'x' SELECT _.HE", Some("expected ident"));
@@ -641,7 +864,8 @@ mod tests {
             p("FROM 'x' SELECT { i: 1 iIö: 2 PσΔ: 3 }", None),
             Some(vec![SimpleExpr::Object(Obj {
                 props: Arc::from(vec![(s("i"), n(1)), (s("iIö"), n(2)), (s("PσΔ"), n(3))].as_slice())
-            })])
+            })
+            .with_spread(false)])
         )
     }
 
@@ -676,7 +900,7 @@ mod tests {
     #[test]
     fn aggregate() {
         let p = |s: &str, e: Option<&str>| {
-            let q = s.parse::<Query>();
+            let q = Query::parse(s);
             if let Some(err) = e {
                 let e = q.unwrap_err().to_string();
                 assert!(e.contains(err), "received: {}", e);
@@ -706,9 +930,15 @@ mod tests {
     }
 
     #[test]
+    fn limit() {
+        let q = Query::parse("FROM 'x' LIMIT 10").unwrap();
+        assert_eq!(&q.ops[0], &Operation::Limit(10.try_into().unwrap()));
+    }
+
+    #[test]
     fn func_call() {
         let p = |s: &str, e: Option<&str>| {
-            let q = s.parse::<Query>();
+            let q = Query::parse(s);
             if let Some(err) = e {
                 let e = q.unwrap_err().to_string();
                 assert!(e.contains(err), "received: {}", e);
@@ -726,14 +956,16 @@ mod tests {
             Some(vec![SimpleExpr::FuncCall(FuncCall {
                 name: "Func".to_owned(),
                 args: vec![].into()
-            })])
+            })
+            .with_spread(false)])
         );
         assert_eq!(
             p("FROM 'x' SELECT Fÿnc('x')", None),
             Some(vec![SimpleExpr::FuncCall(FuncCall {
                 name: "Fÿnc".to_owned(),
                 args: vec![SimpleExpr::String("x".to_owned())].into()
-            })])
+            })
+            .with_spread(false)])
         );
         assert_eq!(
             p("FROM 'x' SELECT Func(x, 'x')", None),
@@ -744,7 +976,103 @@ mod tests {
                     SimpleExpr::String("x".to_owned())
                 ]
                 .into()
-            })])
+            })
+            .with_spread(false)])
         );
+    }
+
+    #[test]
+    fn interpolation() {
+        use TagAtom::*;
+        use TagExpr::*;
+
+        let q = Query::parse("FROM `a{U+1e}b`").unwrap();
+        assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1eb")])));
+
+        let q = Query::parse("FROM `a{U+1e}`").unwrap();
+        assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1e")])));
+
+        let q = Query::parse("FROM `{U+1e}b`").unwrap();
+        assert_eq!(from(q), Atom(Interpolation(vec![s("\x1eb")])));
+
+        let q = Query::parse("FROM `a{U+1e}b{U+1f}`").unwrap();
+        assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1eb\x1f")])));
+
+        let q = Query::parse("FROM `a{U+1e}{U+1f}b`").unwrap();
+        assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1e\x1fb")])));
+
+        let q = Query::parse("FROM `a{U+110000}`").unwrap_err();
+        assert_eq!(q.to_string(), "invalid unicode scalar value `U+110000`");
+    }
+
+    #[test]
+    fn from_arr() {
+        let q = Query::parse("FROM [1, 2, 3]").unwrap();
+        assert_eq!(arr(q), vec!["1", "2", "3"]);
+    }
+
+    #[test]
+    fn spread() {
+        let q = Query::parse("FROM [1, ...2, ...(x + 3)]").unwrap();
+        assert_eq!(arr(q), vec!["1", "...2", "...(x + 3)"]);
+
+        let q = Query::parse("FROM 'x' SELECT ...a, b, ...c").unwrap();
+        let v = match q.ops.into_iter().next() {
+            Some(Operation::Select(v)) => v.iter().map(|e| e.spread).collect::<Vec<_>>(),
+            x => panic!("unexpected: {:?}", x),
+        };
+        assert_eq!(v, vec![true, false, true]);
+    }
+
+    #[test]
+    fn timestamp() {
+        let t = |t| r_timestamp(Aql::parse(Rule::isodate, t).unwrap().single().unwrap()).unwrap();
+
+        assert_eq!(t("2022-01-02Z"), Timestamp::new(1641081600000000));
+        assert_eq!(t("2022-01-02+00:00"), Timestamp::new(1641081600000000));
+        assert_eq!(t("2022-01-02+01:00"), Timestamp::new(1641078000000000));
+        assert_eq!(t("2022-01-02T00:00Z"), Timestamp::new(1641081600000000));
+        assert_eq!(t("2022-01-02T00:00+00:00"), Timestamp::new(1641081600000000));
+        assert_eq!(t("2022-01-02T00:00+01:00"), Timestamp::new(1641078000000000));
+        assert_eq!(t("2022-01-02T00:00:00Z"), Timestamp::new(1641081600000000));
+        assert_eq!(t("2022-01-02T00:00:00+00:00"), Timestamp::new(1641081600000000));
+        assert_eq!(t("2022-01-02T00:00:00+01:00"), Timestamp::new(1641078000000000));
+        assert_eq!(t("2022-01-02T00:00:00.001Z"), Timestamp::new(1641081600001000));
+        assert_eq!(t("2022-01-02T00:00:00.001+00:00"), Timestamp::new(1641081600001000));
+        assert_eq!(t("2022-01-02T00:00:00.001+01:00"), Timestamp::new(1641078000001000));
+        assert_eq!(t("2022-01-02T00:00:00.000002Z"), Timestamp::new(1641081600000002));
+        assert_eq!(t("2022-01-02T00:00:00.000002+00:00"), Timestamp::new(1641081600000002));
+        assert_eq!(t("2022-01-02T00:00:00.000002-01:00"), Timestamp::new(1641085200000002));
+        assert_eq!(t("2022-01-02T00:00:00.000003000Z"), Timestamp::new(1641081600000003));
+        assert_eq!(
+            t("2022-01-02T00:00:00.000003000+00:00"),
+            Timestamp::new(1641081600000003)
+        );
+        assert_eq!(
+            t("2022-01-02T00:00:00.000003000+01:00"),
+            Timestamp::new(1641078000000003)
+        );
+    }
+
+    #[test]
+    fn pragma() {
+        let s = "PRAGMA x := y \nFROM 'x'".to_owned();
+        let q = Query::parse(&*s).unwrap();
+        assert_eq!(q.pragmas, vec![("x", "y ")]);
+        assert!(std::ptr::eq(q.pragmas[0].0, &s[7..8]));
+        assert!(std::ptr::eq(q.pragmas[0].1, &s[12..14]));
+
+        let s = "PRAGMA x \ny \nENDPRAGMA\nFROM 'x'".to_owned();
+        let q = Query::parse(&*s).unwrap();
+        assert_eq!(q.pragmas, vec![("x", "y ")]);
+        assert!(std::ptr::eq(q.pragmas[0].0, &s[7..8]));
+        assert!(std::ptr::eq(q.pragmas[0].1, &s[10..12]));
+
+        let s = "PRAGMA x \ny \nENDPRAGMA\n
+            PRAGMA a :=hello
+            FROM 'x'"
+            .to_owned();
+        let q = Query::parse(&*s).unwrap();
+        assert_eq!(q.pragmas, vec![("x", "y "), ("a", "hello")]);
     }
 }

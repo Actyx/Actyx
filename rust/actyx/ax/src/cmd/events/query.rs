@@ -1,16 +1,17 @@
 use crate::cmd::{AxCliCommand, ConsoleOpt};
 use actyx_sdk::{
-    language::Query,
     service::{Diagnostic, EventResponse, Order, QueryRequest, Severity},
     Payload,
 };
 use futures::{future::ready, Stream, StreamExt};
+use runtime::value::Value;
 use serde::{Deserialize, Serialize};
+use std::{fs::File, io::Read};
 use structopt::StructOpt;
 use util::{
     formats::{
         events_protocol::{EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult,
+        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
     },
     gen_stream::GenStream,
 };
@@ -21,8 +22,8 @@ use util::{
 pub struct QueryOpts {
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
-    /// event API query
-    query: Query,
+    /// event API query (read from file if the argument starts with @)
+    query: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -36,15 +37,28 @@ pub struct EventsQuery;
 impl AxCliCommand for EventsQuery {
     type Opt = QueryOpts;
     type Output = EventDiagnostic;
+    const WRAP: bool = false;
 
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let ret = GenStream::new(move |co| async move {
+            let query = if opts.query.starts_with('@') {
+                let mut f = if opts.query == "@-" {
+                    Box::new(std::io::stdin()) as Box<dyn Read>
+                } else {
+                    Box::new(File::open(&opts.query[1..]).ax_err(ActyxOSCode::ERR_IO)?)
+                };
+                let mut s = String::new();
+                f.read_to_string(&mut s).ax_err(ActyxOSCode::ERR_IO)?;
+                s
+            } else {
+                opts.query
+            };
             let mut conn = opts.console_opt.connect().await?;
             let mut s = conn
                 .request_events(EventsRequest::Query(QueryRequest {
                     lower_bound: None,
                     upper_bound: None,
-                    query: opts.query,
+                    query,
                     order: Order::Asc,
                 }))
                 .await?;
@@ -74,6 +88,9 @@ impl AxCliCommand for EventsQuery {
     }
 
     fn pretty(result: Self::Output) -> String {
-        serde_json::to_string(&result).unwrap()
+        match result {
+            EventDiagnostic::Event(e) => Value::from(e).to_string(),
+            EventDiagnostic::Diagnostic(d) => format!("{:?}: {}", d.severity, d.message),
+        }
     }
 }

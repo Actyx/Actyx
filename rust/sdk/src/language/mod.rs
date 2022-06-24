@@ -4,8 +4,16 @@ mod render;
 
 pub use self::non_empty::NonEmptyVec;
 use self::render::render_tag_expr;
-use crate::{tags::Tag, AppId, EventKey, LamportTimestamp, StreamId, Timestamp};
-use std::sync::Arc;
+use crate::{service::Order, tags::Tag, AppId, EventKey, LamportTimestamp, StreamId, Timestamp};
+use std::{convert::TryInto, fmt::Display, num::NonZeroU64, ops::Deref, sync::Arc};
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Source {
+    Events { from: TagExpr, order: Option<Order> },
+    Array(Arr),
+}
+
+pub struct StaticQuery(pub Query<'static>);
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 /// A [`Query`] can be constructed using the Actyx Query Language (AQL). For an in-depth overview
@@ -14,15 +22,16 @@ use std::sync::Arc;
 /// ```
 /// use actyx_sdk::language::Query;
 ///
-/// let query: Query = r#"
+/// let query = Query::parse(r#"
 /// FEATURES(some features)  -- this is optional
 /// FROM 'mytag1' & 'mytag2' -- the only mandatory part
 /// SELECT _.value           -- optional list of transformations
-/// END                      -- optional"#.parse().unwrap();
+/// END                      -- optional"#).unwrap();
 /// ```
-pub struct Query {
+pub struct Query<'a> {
+    pub pragmas: Vec<(&'a str, &'a str)>,
     pub features: Vec<String>,
-    pub from: TagExpr,
+    pub source: Source,
     pub ops: Vec<Operation>,
 }
 mod query_impl;
@@ -30,8 +39,31 @@ mod query_impl;
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Operation {
     Filter(SimpleExpr),
-    Select(NonEmptyVec<SimpleExpr>),
+    Select(NonEmptyVec<SpreadExpr>),
     Aggregate(SimpleExpr),
+    Limit(NonZeroU64),
+    Binding(String, SimpleExpr),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct SpreadExpr {
+    pub expr: SimpleExpr,
+    pub spread: bool,
+}
+impl Deref for SpreadExpr {
+    type Target = SimpleExpr;
+    fn deref(&self) -> &Self::Target {
+        &self.expr
+    }
+}
+impl Display for SpreadExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.spread {
+            write!(f, "...{}", self.expr)
+        } else {
+            self.expr.fmt(f)
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -76,6 +108,12 @@ pub struct SortKey {
     pub stream: StreamId,
 }
 
+impl Display for SortKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/{}", u64::from(self.lamport), self.stream)
+    }
+}
+
 impl SortKey {
     pub fn new(lamport: LamportTimestamp, stream: StreamId) -> Self {
         Self { lamport, stream }
@@ -94,6 +132,7 @@ impl From<EventKey> for SortKey {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum TagAtom {
     Tag(Tag),
+    Interpolation(Vec<SimpleExpr>),
     AllEvents,
     IsLocal,
     FromTime(Timestamp),
@@ -152,7 +191,7 @@ pub struct Obj {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Arr {
-    pub items: Arc<[SimpleExpr]>,
+    pub items: Arc<[SpreadExpr]>,
 }
 
 macro_rules! decl_op {
@@ -196,7 +235,7 @@ decl_op! {
         Ge -> ">=",
         Eq -> "=",
         Ne -> "!=",
-        Alt -> "//",
+        Alt -> "??",
     }
 }
 
@@ -213,13 +252,15 @@ decl_op! {
 }
 
 mod var;
+pub use var::Var;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum SimpleExpr {
-    Variable(var::Var),
+    Variable(Var),
     Indexing(Ind),
     Number(Num),
     String(String),
+    Interpolation(Vec<SimpleExpr>),
     Object(Obj),
     Array(Arr),
     Null,
@@ -229,6 +270,13 @@ pub enum SimpleExpr {
     Not(Arc<SimpleExpr>),
     AggrOp(Arc<(AggrOp, SimpleExpr)>),
     FuncCall(FuncCall),
+    SubQuery(Query<'static>),
+    KeyVar(Var),
+    KeyLiteral(SortKey),
+    TimeVar(Var),
+    TimeLiteral(Timestamp),
+    Tags(Var),
+    App(Var),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -238,6 +286,11 @@ pub enum Traverse {
 }
 
 impl SimpleExpr {
+    pub fn with_spread(self, spread: bool) -> SpreadExpr {
+        SpreadExpr { expr: self, spread }
+    }
+
+    /// Traverse all parts of the expression, including expressions in sub-queries
     pub fn traverse(&self, f: &mut impl FnMut(&SimpleExpr) -> Traverse) {
         if f(self) == Traverse::Descend {
             match self {
@@ -254,6 +307,11 @@ impl SimpleExpr {
                 }
                 SimpleExpr::Number(_) => {}
                 SimpleExpr::String(_) => {}
+                SimpleExpr::Interpolation(e) => {
+                    for expr in e.iter() {
+                        expr.traverse(f);
+                    }
+                }
                 SimpleExpr::Object(Obj { props }) => {
                     for (idx, expr) in props.iter() {
                         match idx {
@@ -288,7 +346,165 @@ impl SimpleExpr {
                         expr.traverse(f);
                     }
                 }
+                SimpleExpr::SubQuery(q) => {
+                    match &q.source {
+                        Source::Events { .. } => {}
+                        Source::Array(Arr { items }) => {
+                            for e in items.iter() {
+                                e.traverse(f);
+                            }
+                        }
+                    }
+                    for op in q.ops.iter() {
+                        match op {
+                            Operation::Filter(e) => e.traverse(f),
+                            Operation::Select(e) => {
+                                for expr in e.iter() {
+                                    expr.traverse(f);
+                                }
+                            }
+                            Operation::Aggregate(e) => e.traverse(f),
+                            Operation::Limit(_) => {}
+                            Operation::Binding(_, e) => e.traverse(f),
+                        }
+                    }
+                }
+                SimpleExpr::KeyVar(_) => {}
+                SimpleExpr::KeyLiteral(_) => {}
+                SimpleExpr::TimeVar(_) => {}
+                SimpleExpr::TimeLiteral(_) => {}
+                SimpleExpr::Tags(_) => {}
+                SimpleExpr::App(_) => {}
             }
+        }
+    }
+
+    /// Rewrite parts of the expression tree where the provided function returns Some
+    ///
+    /// Also traverses into the expressions contained in sub-queries.
+    pub fn rewrite(&self, f: &mut impl FnMut(&SimpleExpr) -> Option<SimpleExpr>) -> Self {
+        if let Some(expr) = f(self) {
+            return expr;
+        }
+        match self {
+            SimpleExpr::Variable(_v) => self.clone(),
+            SimpleExpr::Indexing(Ind { head, tail }) => {
+                let head = Arc::new(head.rewrite(f));
+                let tail = tail
+                    .iter()
+                    .map(|i| match i {
+                        Index::String(_) => i.clone(),
+                        Index::Number(_) => i.clone(),
+                        Index::Expr(e) => Index::Expr(e.rewrite(f)),
+                    })
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                SimpleExpr::Indexing(Ind { head, tail })
+            }
+            SimpleExpr::Number(_n) => self.clone(),
+            SimpleExpr::String(_s) => self.clone(),
+            SimpleExpr::Interpolation(s) => {
+                let s = s.iter().map(|e| e.rewrite(f)).collect();
+                SimpleExpr::Interpolation(s)
+            }
+            SimpleExpr::Object(Obj { props }) => {
+                let props = props
+                    .iter()
+                    .map(|(i, e)| {
+                        let i = match i {
+                            Index::String(_s) => i.clone(),
+                            Index::Number(_n) => i.clone(),
+                            Index::Expr(e) => Index::Expr(e.rewrite(f)),
+                        };
+                        let e = e.rewrite(f);
+                        (i, e)
+                    })
+                    .collect();
+                SimpleExpr::Object(Obj { props })
+            }
+            SimpleExpr::Array(Arr { items }) => {
+                let items = items
+                    .iter()
+                    .map(|e| SpreadExpr {
+                        expr: e.rewrite(f),
+                        spread: e.spread,
+                    })
+                    .collect::<Vec<_>>();
+                SimpleExpr::Array(Arr { items: items.into() })
+            }
+            SimpleExpr::Null => self.clone(),
+            SimpleExpr::Bool(_) => self.clone(),
+            SimpleExpr::Cases(c) => {
+                let c = c
+                    .iter()
+                    .map(|(cond, expr)| (cond.rewrite(f), expr.rewrite(f)))
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                SimpleExpr::Cases(c)
+            }
+            SimpleExpr::BinOp(o) => SimpleExpr::BinOp(Arc::new((o.0, o.1.rewrite(f), o.2.rewrite(f)))),
+            SimpleExpr::Not(e) => SimpleExpr::Not(Arc::new(e.rewrite(f))),
+            SimpleExpr::AggrOp(a) => SimpleExpr::AggrOp(Arc::new((a.0, a.1.rewrite(f)))),
+            SimpleExpr::FuncCall(FuncCall { name, args }) => {
+                let args = args.iter().map(|e| e.rewrite(f)).collect();
+                SimpleExpr::FuncCall(FuncCall {
+                    name: name.clone(),
+                    args,
+                })
+            }
+            SimpleExpr::SubQuery(q) => {
+                let features = q.features.clone();
+                let source = match &q.source {
+                    Source::Events { from, order } => Source::Events {
+                        from: from.clone(),
+                        order: *order,
+                    },
+                    Source::Array(Arr { items }) => Source::Array(Arr {
+                        items: items
+                            .iter()
+                            .map(|e| SpreadExpr {
+                                expr: e.rewrite(f),
+                                spread: e.spread,
+                            })
+                            .collect::<Vec<_>>()
+                            .into(),
+                    }),
+                };
+                let ops = q
+                    .ops
+                    .iter()
+                    .map(|op| match op {
+                        Operation::Filter(e) => Operation::Filter(e.rewrite(f)),
+                        Operation::Select(e) => Operation::Select(
+                            e.iter()
+                                .map(|e| SpreadExpr {
+                                    expr: e.rewrite(f),
+                                    spread: e.spread,
+                                })
+                                .collect::<Vec<_>>()
+                                .try_into()
+                                .unwrap(),
+                        ),
+                        Operation::Aggregate(a) => Operation::Aggregate(a.rewrite(f)),
+                        Operation::Limit(l) => Operation::Limit(*l),
+                        Operation::Binding(n, e) => Operation::Binding(n.clone(), e.rewrite(f)),
+                    })
+                    .collect();
+                SimpleExpr::SubQuery(Query {
+                    pragmas: q.pragmas.clone(),
+                    features,
+                    source,
+                    ops,
+                })
+            }
+            SimpleExpr::KeyVar(_) => self.clone(),
+            SimpleExpr::KeyLiteral(_) => self.clone(),
+            SimpleExpr::TimeVar(_) => self.clone(),
+            SimpleExpr::TimeLiteral(_) => self.clone(),
+            SimpleExpr::Tags(_) => self.clone(),
+            SimpleExpr::App(_) => self.clone(),
         }
     }
 }
@@ -356,13 +572,14 @@ mod for_tests {
     use super::{parser::Context, *};
     use once_cell::sync::OnceCell;
     use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
-    use std::{cell::RefCell, convert::TryInto, str::FromStr};
+    use std::{cell::RefCell, convert::TryInto};
 
-    impl Query {
+    impl<'a> Query<'a> {
         pub fn new(from: TagExpr) -> Self {
             Self {
+                pragmas: Vec::new(),
                 features: vec![],
-                from,
+                source: Source::Events { from, order: None },
                 ops: vec![],
             }
         }
@@ -405,7 +622,7 @@ mod for_tests {
     }
 
     macro_rules! arb {
-        ($T:ident: $g:ident => $($n:ident$({$extra:expr})?)*, $($rec:ident)*, $($rec2:ident$({$extra2:expr})?)*, $($e:ident)*) => {{
+        ($T:ident: $g:ident => $($n:ident$({$extra:expr})?)*, $($rec:ident)*, $($rec2:ident$({$extra2:expr})?)*, $($e:ident)* $(, $($names:ident)+)?) => {{
             $(
                 #[allow(non_snake_case)]
                 fn $n(g: &mut Gen) -> $T {
@@ -439,11 +656,11 @@ mod for_tests {
             let depth = DEPTH.with(|d| *d.borrow());
             let ctx = CTX.with(|c| *c.borrow());
             let choices = if depth > 5 {
-                &[$($n as fn(&mut Gen) -> $T,)* $($e,)*][..]
+                &[$($n as fn(&mut Gen) -> $T,)* $($e,)* $($($names,)*)?][..]
             } else if ctx == Context::Aggregate {
-                &[$($n,)* $($rec,)* $($rec2,)* $($e,)*][..]
+                &[$($n,)* $($rec,)* $($rec2,)* $($e,)* $($($names,)*)?][..]
             } else {
-                &[$($n,)* $($rec,)* $($e,)*][..]
+                &[$($n,)* $($rec,)* $($e,)* $($($names,)*)?][..]
             };
             DEPTH.with(|d| *d.borrow_mut() += 1);
             let ret = ($g.choose(choices).unwrap())($g);
@@ -459,11 +676,12 @@ mod for_tests {
                 $($T::$rec(x) => Box::new(x.shrink().map($T::$rec)),)*
             }
         };
-        ($T:ident: $s:ident => $($n:ident)*, $($rec:ident($m:ident,$($ex:expr),*))*, $($e:ident)*) => {
+        ($T:ident: $s:ident => $($n:ident)*, $($rec:ident($m:ident,$($ex:expr),*))*, $($e:ident)* $(, $pat:pat => $patex:expr )*) => {
             match $s {
                 $($T::$n(x) => Box::new(x.shrink().map($T::$n)),)*
                 $($T::$rec($m) => Box::new(vec![$($ex,)*].into_iter().chain($m.shrink().map($T::$rec))),)*
                 $($T::$e => quickcheck::empty_shrinker(),)*
+                $($pat => $patex,)*
             }
         };
     }
@@ -490,7 +708,16 @@ mod for_tests {
 
     impl Arr {
         pub fn with(items: &[SimpleExpr]) -> SimpleExpr {
-            SimpleExpr::Array(Arr { items: items.into() })
+            SimpleExpr::Array(Arr {
+                items: items
+                    .iter()
+                    .map(|expr| SpreadExpr {
+                        expr: expr.clone(),
+                        spread: false,
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
+            })
         }
     }
 
@@ -597,33 +824,56 @@ mod for_tests {
 
     impl Arbitrary for SimpleExpr {
         fn arbitrary(g: &mut Gen) -> Self {
+            #[allow(non_snake_case)]
+            fn SubQuery(g: &mut Gen) -> SimpleExpr {
+                let mut query = Query::arbitrary(g);
+                query.features.clear();
+                SimpleExpr::SubQuery(query)
+            }
             arb!(SimpleExpr: g =>
-                Variable Number String Bool,
-                Indexing Object Array Cases BinOp Not FuncCall,
+                Variable Number String Bool KeyLiteral KeyVar TimeLiteral TimeVar Tags App,
+                Indexing Object Array Cases BinOp Not FuncCall Interpolation,
                 AggrOp{ Context::Simple },
-                Null
+                Null,
+                SubQuery
             )
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            shrink!(SimpleExpr: self => Variable Number String Bool,
+            shrink!(SimpleExpr: self => Variable Number String Bool KeyLiteral KeyVar TimeLiteral TimeVar Tags App,
                 Indexing(x, (*x.head).clone())
+                Interpolation(x,)
                 Object(x, x.props.first().map(|p| p.1.clone()).unwrap_or(SimpleExpr::Null))
-                Array(x, x.items.first().cloned().unwrap_or(SimpleExpr::Null))
+                Array(x, x.items.first().map(|i| i.expr.clone()).unwrap_or(SimpleExpr::Null))
                 Cases(x, x.first().map(|p| p.1.clone()).unwrap_or(SimpleExpr::Null))
                 BinOp(x,)
                 Not(x, (**x).clone())
                 AggrOp(x,)
                 FuncCall(x,)
+                SubQuery(x,)
                 , Null)
+        }
+    }
+
+    impl Arbitrary for SpreadExpr {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                expr: SimpleExpr::arbitrary(g),
+                spread: bool::arbitrary(g),
+            }
+        }
+
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            let spread = self.spread;
+            Box::new(self.expr.shrink().map(move |expr| SpreadExpr { expr, spread }))
         }
     }
 
     impl Arbitrary for TagAtom {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(TagAtom: g => Tag FromTime ToTime FromLamport ToLamport AppId, , , AllEvents IsLocal)
+            arb!(TagAtom: g => Tag FromTime ToTime FromLamport ToLamport AppId, Interpolation, , AllEvents IsLocal)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            shrink!(TagAtom: self => Tag FromTime ToTime FromLamport ToLamport AppId, , AllEvents IsLocal)
+            shrink!(TagAtom: self => Tag FromTime ToTime FromLamport ToLamport AppId, Interpolation(x,), AllEvents IsLocal)
         }
     }
 
@@ -638,14 +888,52 @@ mod for_tests {
 
     impl Arbitrary for Operation {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(Operation: g => Filter Select Aggregate{ Context::Aggregate },,,)
+            #[allow(non_snake_case)]
+            fn Binding(g: &mut Gen) -> Operation {
+                Operation::Binding(Var::arbitrary(g).0, SimpleExpr::arbitrary(g))
+            }
+            arb!(Operation: g => Filter Select Aggregate{ Context::Aggregate } Limit,,,, Binding)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            shrink!(Operation: self => Filter Select Aggregate,,)
+            shrink!(Operation: self => Filter Select Aggregate Limit,,,
+                Operation::Binding(n, e) => {
+                    let n = n.clone();
+                    Box::new(e.shrink().map(move |e| Operation::Binding(n.clone(), e)))
+                }
+            )
         }
     }
 
-    impl Arbitrary for Query {
+    impl Arbitrary for Order {
+        fn arbitrary(g: &mut Gen) -> Self {
+            *g.choose(&[Order::Asc, Order::Desc, Order::StreamAsc]).unwrap()
+        }
+    }
+
+    impl Arbitrary for Source {
+        fn arbitrary(g: &mut Gen) -> Self {
+            if bool::arbitrary(g) {
+                Self::Events {
+                    from: TagExpr::arbitrary(g),
+                    order: Arbitrary::arbitrary(g),
+                }
+            } else {
+                Self::Array(Arr::arbitrary(g))
+            }
+        }
+
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            match self {
+                Source::Events { from, order } => {
+                    let order = *order;
+                    Box::new(from.shrink().map(move |from| Source::Events { from, order }))
+                }
+                Source::Array(arr) => Box::new(arr.shrink().map(Source::Array)),
+            }
+        }
+    }
+
+    impl Arbitrary for Query<'static> {
         fn arbitrary(g: &mut Gen) -> Self {
             fn word(g: &mut Gen) -> String {
                 static CHOICES: OnceCell<Vec<char>> = OnceCell::new();
@@ -654,9 +942,11 @@ mod for_tests {
                 (0..len).map(|_| g.choose(choices).unwrap()).collect()
             }
             let prev = CTX.with(|c| c.replace(Context::Simple));
+            let source = Source::arbitrary(g);
             let ret = Self {
+                pragmas: Vec::new(),
                 features: Vec::<bool>::arbitrary(g).into_iter().map(|_| word(g)).collect(),
-                from: TagExpr::arbitrary(g),
+                source,
                 ops: Arbitrary::arbitrary(g),
             };
             CTX.with(|c| c.replace(prev));
@@ -664,21 +954,25 @@ mod for_tests {
         }
 
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            let pragmas = self.pragmas.clone();
+            let pragmas2 = self.pragmas.clone();
             let features = self.features.clone();
             let features2 = self.features.clone();
-            let from = self.from.clone();
+            let source = self.source.clone();
             let ops = self.ops.clone();
             Box::new(
                 self.ops
                     .shrink()
                     .map(move |ops| Self {
+                        pragmas: pragmas.clone(),
                         features: features.clone(),
-                        from: from.clone(),
+                        source: source.clone(),
                         ops,
                     })
-                    .chain(self.from.shrink().map(move |from| Self {
+                    .chain(self.source.shrink().map(move |source| Self {
+                        pragmas: pragmas2.clone(),
                         features: features2.clone(),
-                        from,
+                        source,
                         ops: ops.clone(),
                     })),
             )
@@ -687,7 +981,7 @@ mod for_tests {
 
     #[test]
     fn qc_roundtrip() {
-        fn roundtrip_aql(q: Query) -> TestResult {
+        fn roundtrip_aql(q: Query<'static>) -> TestResult {
             // What this test currently ascertains is that our rendered string is isomorphic
             // to the internal representation of the parse tree, hence there are many “unnecessary”
             // parentheses in the output. If we want to remove those parentheses, we need to
@@ -695,7 +989,7 @@ mod for_tests {
             // as during parsing. Luckily, this test will then prove that our canonicalisation
             // actually works.
             let s = q.to_string();
-            let p = match Query::from_str(&s) {
+            let p = match Query::parse(&*s) {
                 Ok(p) => p,
                 Err(e) => return TestResult::error(e.to_string()),
             };
@@ -711,6 +1005,6 @@ mod for_tests {
         }
         q.max_tests(1_000_000)
             .gen(Gen::new(10))
-            .quickcheck(roundtrip_aql as fn(Query) -> TestResult)
+            .quickcheck(roundtrip_aql as fn(Query<'static>) -> TestResult)
     }
 }

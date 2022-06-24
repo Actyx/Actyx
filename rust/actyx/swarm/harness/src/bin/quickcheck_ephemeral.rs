@@ -1,7 +1,7 @@
 #[cfg(target_os = "linux")]
 fn main() {
     use actyx_sdk::{
-        service::{EventResponse, EventService, QueryRequest, QueryResponse},
+        service::{EventMeta, EventResponse, EventService, QueryRequest, QueryResponse},
         service::{PublishEvent, PublishRequest},
         tags, OffsetMap, Payload,
     };
@@ -188,10 +188,11 @@ fn main() {
                                     .await?
                                     .filter_map(|resp| async move {
                                         if let QueryResponse::Event(EventResponse {
-                                            tags, payload, stream, ..
+                                            meta: EventMeta::Event { key, meta },
+                                            payload,
                                         }) = resp
                                         {
-                                            Some((stream, (tags, payload)))
+                                            Some((key.stream, (meta.tags, payload)))
                                         } else {
                                             None
                                         }

@@ -229,6 +229,12 @@ impl Decode<DagCborCodec> for OffsetOrMin {
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct Offset(#[serde(deserialize_with = "offset_i64")] i64);
 
+impl Offset {
+    pub const fn new(o: u32) -> Self {
+        Self(o as i64)
+    }
+}
+
 impl From<Offset> for u64 {
     fn from(value: Offset) -> Self {
         // offset is guaranteed to be positive

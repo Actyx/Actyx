@@ -3,7 +3,7 @@ fn main() {
     use std::{collections::BTreeMap, str::FromStr, time::Duration};
 
     use actyx_sdk::{
-        language::{Query, TagAtom, TagExpr},
+        language::{Query, Source, TagAtom, TagExpr},
         service::{EventService, SubscribeRequest},
         Tag, TagSet,
     };
@@ -37,7 +37,7 @@ fn main() {
         commands: Vec<TestCommand>,
         cnt_per_tagset: BTreeMap<TagSet, usize>,
     }
-    fn to_query(tags: TagSet) -> Query {
+    fn to_query(tags: TagSet) -> Query<'static> {
         let from = tags
             .iter()
             .map(TagAtom::Tag)
@@ -45,8 +45,9 @@ fn main() {
             .reduce(|a, b| a.and(b))
             .unwrap_or(TagExpr::Atom(TagAtom::AllEvents));
         Query {
+            pragmas: vec![],
             features: vec![],
-            from,
+            source: Source::Events { from, order: None },
             ops: vec![],
         }
     }
@@ -258,7 +259,7 @@ fn main() {
 
                         let id = machines[node % n_nodes];
                         let client = ApiClient::from_machine(sim.machine(id), app_manifest(), None).unwrap();
-                        let query = to_query(tags);
+                        let query = to_query(tags).to_string();
                         let request = SubscribeRequest {
                             lower_bound: None,
                             query,

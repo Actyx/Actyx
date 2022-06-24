@@ -1,5 +1,5 @@
 use crate::{operation::Operation, query::Query};
-use actyx_sdk::language::{SimpleExpr, TagAtom, TagExpr, Traverse};
+use actyx_sdk::language::{Arr, SimpleExpr, TagAtom, TagExpr, Traverse};
 use std::{collections::BTreeSet, str::FromStr};
 
 #[derive(Debug, Clone, derive_more::Display, PartialEq)]
@@ -66,8 +66,20 @@ macro_rules! features {
 features! {
     timeRange: Beta [],
     eventKeyRange: Beta [],
-    multiEmission: Alpha [Subscribe SubscribeMonotonic],
-    aggregate: Alpha [Subscribe SubscribeMonotonic],
+    // unclear: metadata for results
+    multiEmission: Beta [Subscribe SubscribeMonotonic],
+    // unclear: metadata for results, group-by semantics
+    aggregate: Beta [Subscribe SubscribeMonotonic],
+    // unclear: metadata for results
+    subQuery: Beta [Subscribe SubscribeMonotonic],
+    limit: Beta [Subscribe SubscribeMonotonic],
+    binding: Beta [],
+    // unclear: canonical string representation of all value kinds
+    interpolation: Beta [],
+    // unclear: metadata of injected values
+    fromArray: Beta [Subscribe SubscribeMonotonic],
+    // unclear: metadata for multiEmission results
+    spread: Beta [],
 }
 
 #[derive(Debug, Clone, Copy, derive_more::Display)]
@@ -90,7 +102,18 @@ impl Features {
 
     pub fn from_query(q: &Query) -> Self {
         let mut features = Self::new();
-        features_tag(&mut features, &q.from);
+        match { &q.source } {
+            actyx_sdk::language::Source::Events { from, .. } => features_tag(&mut features, from),
+            actyx_sdk::language::Source::Array(Arr { items }) => {
+                features.add(fromArray);
+                for e in items.iter() {
+                    if e.spread {
+                        features.add(spread);
+                    }
+                    features_simple(&mut features, e);
+                }
+            }
+        }
         for op in q.stages.iter() {
             features_op(&mut features, op);
         }
@@ -146,18 +169,28 @@ impl Features {
 
 fn features_op(feat: &mut Features, op: &Operation) {
     match op {
-        Operation::Filter(f) => features_simple(feat, &f.expr),
+        Operation::Filter(f) => features_simple(feat, f),
         Operation::Select(s) => {
-            if s.exprs.len() > 1 {
+            if s.len() > 1 {
                 feat.add(multiEmission);
             }
-            for expr in s.exprs.iter() {
+            for expr in s.iter() {
+                if expr.spread {
+                    feat.add(spread);
+                }
                 features_simple(feat, expr);
             }
         }
         Operation::Aggregate(a) => {
             feat.add(aggregate);
-            features_simple(feat, &a.expr);
+            features_simple(feat, a);
+        }
+        Operation::Limit(_) => {
+            feat.add(limit);
+        }
+        Operation::Binding(_, e) => {
+            feat.add(binding);
+            features_simple(feat, e);
         }
     }
 }
@@ -181,25 +214,64 @@ fn features_tag(feat: &mut Features, expr: &TagExpr) {
             TagAtom::FromLamport(_) => feat.add(eventKeyRange),
             TagAtom::ToLamport(_) => feat.add(eventKeyRange),
             TagAtom::AppId(_) => {}
+            TagAtom::Interpolation(e) => {
+                feat.add(interpolation);
+                for e in e {
+                    features_simple(feat, e);
+                }
+            }
         },
     }
 }
 
-fn features_simple(_feat: &mut Features, expr: &SimpleExpr) {
-    // currently there are no features to be found
-    expr.traverse(&mut |_| Traverse::Stop);
+fn features_simple(feat: &mut Features, expr: &SimpleExpr) {
+    expr.traverse(&mut |e| match e {
+        SimpleExpr::SubQuery(q) => {
+            match { &q.source } {
+                actyx_sdk::language::Source::Events { from, .. } => features_tag(feat, from),
+                actyx_sdk::language::Source::Array(Arr { items }) => {
+                    feat.add(fromArray);
+                    for e in items.iter() {
+                        features_simple(feat, e);
+                    }
+                }
+            }
+            for op in q.ops.iter() {
+                features_op(feat, &Operation::from(op.clone()));
+            }
+            feat.add(subQuery);
+            Traverse::Stop
+        }
+        SimpleExpr::Interpolation(_) => {
+            feat.add(interpolation);
+            Traverse::Descend
+        }
+        SimpleExpr::Array(e) => {
+            if e.items.iter().any(|e| e.spread) {
+                feat.add(spread);
+            }
+            Traverse::Descend
+        }
+        _ => Traverse::Descend,
+    });
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use actyx_sdk::language;
+    use maplit::btreeset;
     use FeatureError::*;
 
     fn s(s: &str) -> String {
         String::from(s)
     }
+    fn f(s: &str) -> Features {
+        let q = Query::from(language::Query::parse(s).unwrap()).0;
+        Features::from_query(&q)
+    }
     fn q(s: &str) -> Result<(), FeatureError> {
-        let q = Query::from(s.parse::<actyx_sdk::language::Query>().unwrap());
+        let q = Query::from(language::Query::parse(s).unwrap()).0;
         Features::from_query(&q).validate(&q.features, Endpoint::Query)
     }
 
@@ -207,10 +279,7 @@ mod tests {
     fn alpha() {
         let f = Features::new();
 
-        assert_eq!(
-            f.validate(&[s("multiEmission")], Endpoint::Query),
-            Err(Alpha(s("multiEmission")))
-        );
+        // assert_eq!(f.validate(&[s("subQuery")], Endpoint::Query), Err(Alpha(s("subQuery"))));
         assert_eq!(f.validate(&[s("zøg"), s("multiEmission")], Endpoint::Query), Ok(()));
         assert_eq!(f.validate(&[s("multiEmission"), s("zøg")], Endpoint::Query), Ok(()));
         assert_eq!(f.validate(&[s("zoeg"), s("multiEmission")], Endpoint::Query), Ok(()));
@@ -237,12 +306,8 @@ mod tests {
 
     #[test]
     fn multi_emission() {
-        assert_eq!(q("FROM allEvents SELECT _, _"), Err(Alpha(s("multiEmission"))));
-        assert_eq!(
-            q("FEATURES(multiEmission) FROM allEvents SELECT _, _"),
-            Err(Alpha(s("multiEmission")))
-        );
-        assert_eq!(q("FEATURES(multiEmission zøg) FROM allEvents SELECT _, _"), Ok(()));
+        assert_eq!(q("FROM allEvents SELECT _, _"), Err(Beta(s("multiEmission"))));
+        assert_eq!(q("FEATURES(multiEmission) FROM allEvents SELECT _, _"), Ok(()));
 
         let mut f = Features::new();
         f.add(Feature::multiEmission);
@@ -256,7 +321,7 @@ mod tests {
     }
 
     #[test]
-    fn aggregate() {
+    fn aggr() {
         let mut f = Features::new();
         f.add(Feature::aggregate);
         assert_eq!(
@@ -266,5 +331,69 @@ mod tests {
                 endpoint: s("Subscribe")
             })
         );
+    }
+
+    #[test]
+    fn subquery() {
+        assert_eq!(f("FROM 'x' SELECT 1 + (FROM 'y' END)[0]").0, btreeset!(subQuery));
+        assert_eq!(f("FROM 'x' FILTER 1 + (FROM 'y' END)[0]").0, btreeset!(subQuery));
+        assert_eq!(
+            f("FROM 'x' AGGREGATE 1 + (FROM 'y' END)[0]").0,
+            btreeset!(aggregate, subQuery)
+        );
+        assert_eq!(
+            f("FROM 'x' SELECT 1 + (FROM 'y' AGGREGATE 42 END)[0]").0,
+            btreeset!(aggregate, subQuery)
+        );
+        assert_eq!(
+            f("FROM 'x' SELECT 1 + (FROM 'y' SELECT 1, 2 END)[0]").0,
+            btreeset!(multiEmission, subQuery)
+        );
+        assert_eq!(
+            f("FROM 'x' SELECT 1 + (FROM 'y' SELECT 1, FROM 'a' AGGREGATE x)[0]").0,
+            btreeset!(multiEmission, aggregate, subQuery)
+        );
+    }
+
+    #[test]
+    fn lim() {
+        assert_eq!(f("FROM 'x' LIMIT 1").0, btreeset!(limit));
+        assert_eq!(
+            f("FROM 'x' AGGREGATE FROM 'y' LIMIT 1").0,
+            btreeset!(aggregate, subQuery, limit)
+        );
+    }
+
+    #[test]
+    fn bind() {
+        assert_eq!(f("FROM 'x' LET a := 1").0, btreeset!(binding));
+    }
+
+    #[test]
+    fn interp() {
+        assert_eq!(f("FROM 'a' & `1+2`").0, btreeset!(interpolation));
+        assert_eq!(f("FROM 'a' FILTER `{_} + 3` = '7'").0, btreeset!(interpolation));
+        assert_eq!(f("FROM 'a' SELECT FROM `_`").0, btreeset!(interpolation, subQuery));
+    }
+
+    #[test]
+    fn from_array() {
+        assert_eq!(f("FROM [1, 2, 3]").0, btreeset!(fromArray));
+        assert_eq!(
+            f("FROM `{FROM [1, 2, 3]}`").0,
+            btreeset!(fromArray, interpolation, subQuery)
+        );
+        assert_eq!(f("FROM '`' SELECT FROM [1, 2, 3]").0, btreeset!(fromArray, subQuery));
+        assert_eq!(
+            f("FROM '`' SELECT { [FROM [1, 2, 3]]: 42 }").0,
+            btreeset!(fromArray, subQuery)
+        );
+    }
+
+    #[test]
+    fn spread_() {
+        assert_eq!(f("FROM [...x]").0, btreeset!(fromArray, spread));
+        assert_eq!(f("FROM 'x' SELECT [..._]").0, btreeset!(spread));
+        assert_eq!(f("FROM 'x' SELECT ..._").0, btreeset!(spread));
     }
 }

@@ -7,7 +7,7 @@ use crate::{
     scalars::StreamId,
     tags::TagSet,
     timestamp::{LamportTimestamp, Timestamp},
-    AppId,
+    AppId, NodeId, StreamNr,
 };
 
 mod opaque;
@@ -134,4 +134,12 @@ pub struct EventKey {
     pub lamport: LamportTimestamp,
     pub stream: StreamId,
     pub offset: Offset,
+}
+
+impl EventKey {
+    pub const ZERO: Self = Self {
+        lamport: LamportTimestamp::new(0),
+        stream: NodeId::new([0; 32]).stream(StreamNr::new(0)),
+        offset: Offset::new(0),
+    };
 }

@@ -1,6 +1,5 @@
 use crate::cmd::{AxCliCommand, ConsoleOpt};
 use actyx_sdk::{
-    language::Query,
     service::{EventResponse, SubscribeRequest},
     Payload,
 };
@@ -21,7 +20,7 @@ pub struct SubscribeOpts {
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
     /// event API query
-    query: Query,
+    query: String,
 }
 
 pub struct EventsSubscribe;

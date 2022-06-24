@@ -4,9 +4,9 @@
 use std::time::Duration;
 
 pub use libipld::Cid;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::language::Query;
+use crate::language::{Query, StaticQuery};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -14,7 +14,7 @@ use crate::language::Query;
 /// must evaluate to a single hash. This collected set of hashes is pinned on the local node for
 /// the given [`Duration`].
 /// ```
-/// use actyx_sdk::service::PrefetchRequest;
+/// use actyx_sdk::{service::PrefetchRequest, language::Query};
 /// use std::time::Duration;
 ///
 /// let now = chrono::Utc::now();
@@ -27,19 +27,21 @@ use crate::language::Query;
 ///      from({})
 /// SELECT _.cid"#,
 ///     now.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
-/// )
-/// .parse()
-/// .unwrap();
+/// );
 /// let request = PrefetchRequest {
-///     query,
+///     query: Query::parse(&*query).unwrap().forget_pragmas(),
 ///     duration: Duration::from_secs(60 * 60 * 12),
 /// };
 /// ```
 pub struct PrefetchRequest {
+    #[serde(deserialize_with = "deser_prefetch")]
     /// AQL Query. Must evaluate to a single array of hashes.
-    pub query: Query,
+    pub query: Query<'static>,
     /// How long the files should be pinned (until = now + duration)
     pub duration: Duration,
+}
+fn deser_prefetch<'de, D: Deserializer<'de>>(d: D) -> Result<Query<'static>, D::Error> {
+    Ok(StaticQuery::deserialize(d)?.0)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]

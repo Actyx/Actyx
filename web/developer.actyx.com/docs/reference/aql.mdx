@@ -15,18 +15,29 @@ In these cases we very much welcome your questions, comments, and suggestions in
 
 ## General structure
 
-AQL is not whitespace sensitive, you can add any amount of whitespace in almost all places (the exceptions are documented below).
+AQL is not whitespace sensitive, you can add any amount of whitespace or comments in almost all places (the exceptions are documented below).
 Comments begin with `--` and extend to the end of the line.
 The overall structure of a query is the following:
 
 ```text
-FEATURES(some features)  -- this is optional
-FROM 'mytag1' & 'mytag2' -- the only mandatory part
-...                      -- optional list of transformations
-END                      -- optional
+PRAGMA features := some features
+  -- the above is optional
+FROM 'mytag1' & 'mytag2'  -- the only mandatory part
+…                         -- optional list of transformations
+END                       -- optional
 ```
 
 ### Language features
+
+:::info Pre-Pragma syntax
+In Actyx versions before 2.13.0 features are enabled using a different syntax:
+
+```text
+FEATURES(some features)
+FROM …
+```
+
+:::
 
 The language is growing and will continue to do so.
 Our intention is to keep it backward compatible for as long as we can so that you can keep running your apps also on future Actyx versions of the 2.x series.
@@ -38,11 +49,10 @@ If you have questions or ideas, you are always welcome to let us know, perhaps i
 Beta features are documented and are expected to be more stable, although we reserve the right to change them at any time even during the Actyx 2.x series.
 You are very welcome to try them out and discuss about them, for example in the [forum](https://community.actyx.com/).
 
-If your query uses a feature that is not yet released, you’ll have to enable this feature using the `FEATURES()` syntax.
-Each feature’s name is a single word and you can put any number of words between the parentheses, separated by whitespace.
-Leaving out the `FEATURES()` syntax is the same as enabling no alpha or beta features, meaning that your query can use only released features.
+If your query uses a feature that is not yet released, you’ll have to enable this feature using the `PRAGMA features := <words>` syntax.
+Each feature’s name is a single word and you can put any number of words after the equals sign, separated by whitespace.
 
-Each feature is described below with its required feature names, if any.
+The names of required features are shown below in the form _[featureName]_.
 
 ## Event queries
 
@@ -52,26 +62,26 @@ Hereby, `<tag_expr>` is a boolean expression composed from the following basic a
 - `'mytag'` or `"mytag"` matches all events that carry this tag.
   Tags are arbitrary non-empty Unicode strings.
   Quoting is only needed for the used delimiter: if your tag is enclosed in single quotes, single quotes within the tag need to be repeated, e.g. `'o''clock'`.
-  The analogue goes for double quotes. 
+  The analogue goes for double quotes.
   Tags containing IDs that where created using an Actyx SDK can be queried as `mytag:myid`.
 
 - `isLocal` matches all events that were emitted by the local Actyx node.
 
 - `allEvents` matches all events.
 
-- *FEATURES(timeRange):* `from(<time>)` matches all events whose timestamp is greater or equal to the provided one.
-  Timestamps are given in UTC and always end with `Z` — this will allow future extension towards supporting timezones.
+- _[timeRange]_ `from(<time>)` matches all events whose timestamp is greater or equal to the provided one.
+  Timestamps can be given in UTC using the suffix `+00:00` or `Z`, or they can use a numeric time zone offset (like `+02:00` for CEST).
   Valid formats are `2021-07-20T09:53:07.462Z`, or without milliseconds, seconds, or just the date.
-  Omitted components are treated as zero, so `2021-07-20Z` marks the beginning of that day in UTC.
+  Omitted components are treated as zero, so `2021-07-20+04:30` marks the beginning of that day in Afghanistan.
 
-- *FEATURES(timeRange):* `to(<time>)` matches all events whose timestamp is less than the provided one, i.e. `to(<x>)` and `from(<x>)` seamlessly cover the timeline around time _x_ without overlap.
+- _[timeRange]_ `to(<time>)` matches all events whose timestamp is less than the provided one, i.e. `to(<x>)` and `from(<x>)` seamlessly cover the timeline around time _x_ without overlap.
   The time formats are exactly the same as for `from(<time>)`.
 
-- *FEATURES(eventKeyRange):* `from(<event ID>)` matches all events whose event ID is greater or equal to the provided one.
+- _[eventKeyRange]_ `from(<event ID>)` matches all events whose event ID is greater or equal to the provided one.
   An event ID consists of `<lamport timestamp>/<node ID>-<stream nr>` and has the same sort order as the corresponding event.
   You may specify only the lamport timestamp, in which case node ID and stream number are treated as zero.
 
-- *FEATURES(eventKeyRange):* `to(<event ID>)` matches all events whose event ID is less than the provided one.
+- _[eventKeyRange]_ `to(<event ID>)` matches all events whose event ID is less than the provided one.
   The syntax rules are the same as for `from(<event ID>)`.
 
 - `appId(<app ID>)` matches all events from the given app ID.
@@ -86,11 +96,50 @@ Larger expressions are constructed using the _and_ and _or_ combinators:
 
 As usual, `&` takes precedence over `|`. You can use parentheses to override this: `'a' & ('b' | 'c')` is the same as `'a' & 'b' | 'a' & 'c'`.
 
+### Controlling the order of events
+
+When using the `query` endpoint (as opposed to `subscribe` and `subscribeMonotonic`), the events matching the tag expression are delivered in ascending event key order unless indicated otherwise.
+One way to indicate this is the `order` property when making the API call, another can be implied by the `AGGREGATE` keyword ([see below](#aggregate-aggregating-inputs)).
+All these can be overridden by appending an `ORDER` clause directly after the tag expression:
+
+```text
+FROM 'myTag' ORDER DESC  -- the other direction is ASC
+…
+```
+
+### _[interpolation]_ String interpolation
+
+The tags given in a tag expression can also be computed using _string interpolation_; this is done most commonly in [sub-queries](#subquery-sub-queries).
+Interpolation is enabled by enclosing the tag in backticks instead of single or double quotes.
+Within the string use `{<expr>}` to insert the string representation of the result of `expr` at this location.
+
+```text
+FROM `machine:{_.machineId}` …
+```
+
+If you want to insert a literal backtick or opening brace, you’ll need to emit it via an expression:
+
+```text
+`x{'`'}y` -- yields the string 'x`y'
+```
+
+### _[fromArray]_ Iterating over arrays
+
+Besides streaming events from the event store, a (sub)query can also start from inputs given as an array:
+
+```text
+FROM ['a', 1, ...someArray] …
+```
+
+This will feed the items in their given order to the following transformation stages.
+While events have an event key, logical & physical timestamps, and tags the values `'a'` and `1` in the above example have no such metadata.
+If `someArray` is a sub-query expression then the sub-query’s results are passed to the following transformation stages one by one, i.e. without first merging their metadata.
+
 ## Data transformations
 
 Following the `FROM <tag_expr>` clause you may optionally specify a sequence of transformation steps.
-The first step will receive the events selected by the event query as input and compute outputs from them.
-Each of the outputs is fed into the following step, where the same principle applies, etc.
+The first step will receive the events selected by the event query as input — bound to the variable `_` — and compute outputs from them.
+Each of the outputs is fed into the following step — again bound to the variable `_` — where the same principle applies, etc.
 This allows you to write down the transformation from events into query results in an incremental fashion, doing one step at a time.
 
 ### Discarding inputs with FILTER
@@ -120,35 +169,98 @@ Whatever the given expression ([see below](#simple-expressions)) evaluates to wi
 However, it is possible that no value is computed, for example when accessing non-existent properties in the input.
 In such cases, no output is generated.
 
+#### _[multiEmission]_ Emitting multiple results
+
+If your input contains the information for multiple desired query results (e.g. you want all usernames involved and the event contains both an author and a reviewer) then you can turn one input into multiple outputs.
+
+```text
+SELECT <expr1>, <expr2>, …
+```
+
+This can be combined with the _[spread]_ feature to emit the elements of an array as individual outputs:
+
+```text
+SELECT ...<array>
+```
+
+### _[aggregate]_ Aggregating inputs
+
+Perhaps the most powerful feature of AQL is the ability to condense a large number of inputs from many events into one output object before transferring this result to your application.
+The syntax is similar to `SELECT`, with some special operators.
+
+```text
+AGGREGATE <aggregate_expr>
+```
+
+The given expression can only refer to variables (including the current input `_`) inside one of the the following operators:
+
+- `LAST(<expr>)` yields the input with the latest event key
+- `FIRST(<expr>)` yields the input with the earliest event key
+- `MIN(<expr>)` yields the minimum value encountered among the inputs (works only for boolean and numbers)
+- `MAX(<expr>)` yields the maximum value encountered among the inputs (works only for boolean and numbers)
+- `SUM(<expr>)` yields the sum of all encountered inputs (works only for boolean and numbers)
+- `PRODUCT(<expr>)` yields the product of all encountered inputs (works only for boolean and numbers)
+
+The result yielded by these operators are then assembled into the final result using the rules for [simple expressions](#simple-expressions).
+Usage of only `LAST` operators indicates that descending event key order is desired; in this case processing will stop immediately when the first value is found.
+Usage of only `FIRST` works analogously.
+
+### _[limit]_ Discarding excess inputs
+
+If you need only the three newest events for some query you should use the `LIMIT` clause:
+
+```text
+LIMIT <number>
+```
+
+The given positive number indicates the number of events that may at most pass through this stage, stopping the input event stream immediately upon reaching this number.
+It is significant where you place this stage: if you place `LIMIT 3` before a `FILTER`, then at most three inputs are presented to the filter, while placing it after the `FILTER` only stops once three inputs have passed the filter.
+
+### _[binding]_ Variable bindings
+
+Like in your favorite programming language you can bind a computed value to a name so that you can later refer to it, e.g. to reuse it in multiple places or to build up your final result in a nicely structured fashion.
+
+```text
+LET <ident> := <expr>
+```
+
+An identifier starts with a lowercase letter followed by alphanumeric or underscore characters (as defined by Unicode).
+When referring to a variable by using its identifier, Actyx searches the preceding query stages going backwards from the point of reference and uses the first definition it can find.
+This means that it is possible to “shadow” a variable by defining it again later — note that this does not change the first binding in any way.
+
 ## The AQL data model
 
 Before discussing the expression language we need to lay the groundwork: this section describes the data types AQL works with.
-AQL is dynamically typed, meaning that each computed value does have exactly one type.
+AQL is dynamically typed, meaning that each computed value does have exactly one type, but these types are not known before the computation is run.
 This type is not considered when reading the query, it is only checked during the evaluation of expressions.
 One noteworthy difference to Javascript is that AQL does not know subtyping, and it also doesn’t coerce values from one type to the other implicitly.
 
 - `NULL` is the single value of the _unit_ type
 - `TRUE` and `FALSE` are both values of the _boolean_ type
 - `42` and `-12.34` are examples of the _number_ type, which currently contains either a 64bit unsigned integer or a double-precision finite floating point number
-- `'hello'` or `"world"` are examples of the _string_ type (with quoting rules like for tags)
-- `[1, 2, 3]` is an example of the _array_ type
+- `'hello'`, `"world"`, or `` `x{1+2}y` `` are examples of the _string_ type (with quoting rules and interpolation like for tags)
+- `TIME(2021-08-13T07:45:03.418-06:00)` is an example of the _timestamp_ type
+- `` [1, 2, 3, 'a', "b", `c`] `` is an example of the _array_ type
 - `{ one:1 two:2 }` is an example of the _object_ type
 
 ## Simple expressions
 
 Expressions are built up from literal values using a notation similar to the C family of languages.
-Whenever the description says that an error is generated, the evaluation of the whole expression stops without a result and you’ll get an error message in your query response.
+Whenever the description says that an error is generated, the evaluation of the whole expression stops without a result and you’ll get a diagnostic message in your query response.
 
 - `! <expr>` or `¬ <expr>` negates a boolean value.
-- `<expr> & <expr>`, `<expr> | <expr>`, and `<expr> ~ <expr>` compute the logical _and_, _or_,  and _xor_ of boolean values, respectively (you can also use `∧`, `∨`, and `⊻`).
+- `<expr> & <expr>`, `<expr> | <expr>`, and `<expr> ~ <expr>` compute the logical _and_, _or_, and _xor_ of boolean values, respectively (you can also use `∧`, `∨`, and `⊻`).
 - Comparison operators `>`, `>=`, `<`, `<=`, `=`, `!=` (or `≥`, `≤`, `≠`) work between operands of the same type, i.e. comparing a number to a string yields an error.
 - Arithmetic operators `+`, `-`, `*`, `/` (with alternatives `×`, `÷`), `%` (mod), `^` (exponentiation) work between numbers, otherwise yield an error.
   Natural numbers (64bit integers) are converted to floating point when combined with floating point numbers.
   All operations yield an error upon overflow or underflow.
 
+- `<expr1> ?? <expr2>` evaluates to the result of `expr1` if that is not an error, otherwise it evaluates `expr2`.
 - Arrays are constructed with `[<expr>, ...]`.
+  The contents of another array can be copied into a fresh array by using _[spread]_ syntax `[<expr1>, ...<expr2>, <expr3>]`, in which case `expr2` must evaluate to an array, otherwise an error is raised.
+
 - Objects are constructed with `{<key>: <expr>, ...}`, where the comma separators are optional;
-  each `<key>` can be either a bare word (in which case it must start with a lowercase letter, followed by lowercase letters, numbers, or underscores)
+  each `<key>` can be either a bare word (in which case it must start with a lowercase letter, followed by letters, numbers, or underscores)
   or a pair of brackets containing either a natural number, a string, or an expression.
 
   Valid examples are
@@ -164,13 +276,23 @@ Whenever the description says that an error is generated, the evaluation of the 
   If you want to index into computed sub-expressions, you need to enclose the expression in parentheses, e.g. `(['a','b'])[0]` (yields `'a'`).
 
 - `CASE <expr> => <expr> CASE ... ENDCASE` allows conditional evaluation;
-  all case clauses are tried one by one until the first `<expr>` yields `TRUE`, in which case the corresponding second `<expr>` is used to compute the result.
+  all case clauses are tried one by one until an `<expr>` yields `TRUE`, in which case the corresponding second `<expr>` is used to compute the result.
   An error is yielded if no case matches.
 
   This means that `FILTER <expr>` has the same behavior as `SELECT CASE <expr> => _ ENDCASE`.
 
 Precedence of the binary operators in increasing order is: or, xor, and, equality, ordering, additive, multiplicative, exponential.
 Indexing binds more strongly than negation.
+
+## _[subQuery]_ Sub-Queries
+
+Wherever you can write a simple value (as per the [data model](#the-aql-data-model)) you can also write a complete query `FROM … END`.
+The result of such a sub-query is always an array that contains one item per result returned from the query.
+If you use a sub-query in _array building context_ (i.e. when constructing an array or for [multi-emission](#multiemission-emitting-multiple-results)) then you can use _[spread]_ syntax to pass on the individual results instead of a single array:
+
+```text
+SELECT 42, ...FROM … END, 'the end'
+```
 
 ## Evaluation context
 
@@ -179,9 +301,51 @@ This value is available within the expression under the name `_`.
 
 ```text
 FROM 'myTag'
+LET time := TIME(_)
 FILTER _.type = "started"
-SELECT _.user_id
+SELECT { user: _.user_id time: time }
 ```
 
 In this example the filter stage checks each incoming event for a type property with string value “started”.
 All matching events are passed on to the transformation step that extracts the value of the “user_id” property from the current event.
+The result is packed into the final object together with the event’s timestamp, which has been bound to the variable `time` in the first processing step.
+
+## PRAGMAS
+
+Like many other languages, AQL supports a generic pragma mechanism.
+Pragmas can only be given at the beginning of the query and consist of a name and a value.
+
+```text
+PRAGMA x := the value -- not a comment
+PRAGMA y
+the
+multiline
+value
+ENDPRAGMA
+```
+
+In this example the value of pragma `x` is `the value -- not a comment`, i.e. the value extends up to the line’s end.
+The value of pragma `y` consists of three lines, separated by the two line separators given literally in the query.
+
+Below you can find a list of pragmas currently available.
+
+### PRAGMA features
+
+The value of this pragma is split on whitespace into words to obtain the list of enabled features for this query.
+
+### PRAGMA events
+
+When testing AQL queries you will often need to control the precise contents of the Actyx event store so that you get reliable results.
+This can be done by populating a fresh topic by hand or using `ax events restore`, but it can also be done inside a query.
+The advantage of the latter is that only this current query sees the synthetic event store, other queries using the same Actyx node at the same time are not affected.
+The syntax of the value is newline-delimited JSON:
+
+```text
+PRAGMA events
+{"timestamp":<number>,"time":<string>,"tags":[<string>,...],"appId":<string>,"payload":<value>}
+...
+ENDPRAGMA
+```
+
+All properties apart from `payload` are optional, `timestamp` has higher priority than `time` (which has the same syntax as `TIME()` values shown above).
+Note how this lets you test code that depends on specific timestamps.

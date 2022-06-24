@@ -5,7 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, FixedOffset, TimeZone, Utc};
 use derive_more::{From, Into};
 use libipld::DagCbor;
 use serde::{Deserialize, Serialize};
@@ -31,7 +31,7 @@ use serde::{Deserialize, Serialize};
 pub struct Timestamp(u64);
 
 impl Timestamp {
-    pub fn new(value: u64) -> Self {
+    pub const fn new(value: u64) -> Self {
         Self(value)
     }
     pub fn now() -> Timestamp {
@@ -63,6 +63,12 @@ impl From<DateTime<Utc>> for Timestamp {
         let seconds = dt.timestamp() as u64;
         let micros = seconds * 1_000_000 + dt.timestamp_subsec_micros() as u64;
         Self(micros)
+    }
+}
+
+impl From<DateTime<FixedOffset>> for Timestamp {
+    fn from(dt: DateTime<FixedOffset>) -> Self {
+        dt.with_timezone(&Utc).into()
     }
 }
 
@@ -115,7 +121,7 @@ impl Add<std::time::Duration> for Timestamp {
 pub struct LamportTimestamp(u64);
 
 impl LamportTimestamp {
-    pub fn new(value: u64) -> Self {
+    pub const fn new(value: u64) -> Self {
         Self(value)
     }
     pub fn incr(self) -> Self {

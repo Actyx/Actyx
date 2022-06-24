@@ -1,6 +1,7 @@
 use std::fmt::{Result, Write};
 
 use super::*;
+use chrono::{DateTime, Local, SecondsFormat, Utc};
 
 fn render_simple_pair(w: &mut impl Write, l: &SimpleExpr, op: &'static str, r: &SimpleExpr) -> Result {
     w.write_char('(')?;
@@ -78,6 +79,9 @@ fn render_array(w: &mut impl Write, e: &Arr) -> Result {
         if i > 0 {
             w.write_str(", ")?;
         }
+        if x.spread {
+            w.write_str("...")?;
+        }
         render_simple_expr(w, x)?;
     }
     w.write_char(']')
@@ -89,49 +93,79 @@ pub(crate) fn render_string(w: &mut impl Write, e: &str) -> Result {
     w.write_char('\'')
 }
 
+pub(crate) fn render_interpolation(w: &mut impl Write, e: &[SimpleExpr]) -> Result {
+    w.write_char('`')?;
+    for e in e {
+        w.write_char('{')?;
+        render_simple_expr(w, e)?;
+        w.write_char('}')?;
+    }
+    w.write_char('`')
+}
+
 pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
     match e {
         SimpleExpr::Variable(v) => w.write_str(v),
         SimpleExpr::Indexing(i) => render_indexing(w, i),
         SimpleExpr::Number(n) => render_number(w, n),
         SimpleExpr::String(s) => render_string(w, s),
+        SimpleExpr::Interpolation(s) => render_interpolation(w, &*s),
         SimpleExpr::Object(o) => render_object(w, o),
         SimpleExpr::Array(a) => render_array(w, a),
         SimpleExpr::Null => w.write_str("NULL"),
-        SimpleExpr::Bool(b) => {
-            if *b {
-                w.write_str("TRUE")
-            } else {
-                w.write_str("FALSE")
-            }
-        }
+        SimpleExpr::Bool(b) => render_bool(b, w),
         SimpleExpr::Not(e) => {
             w.write_char('!')?;
             render_simple_expr(w, e)
         }
-        SimpleExpr::Cases(v) => {
-            for (pred, expr) in v.iter() {
-                w.write_str("CASE ")?;
-                render_simple_expr(w, pred)?;
-                w.write_str(" => ")?;
-                render_simple_expr(w, expr)?;
-                w.write_char(' ')?;
-            }
-            w.write_str("ENDCASE")
-        }
+        SimpleExpr::Cases(v) => render_cases(v, w),
         SimpleExpr::BinOp(e) => render_simple_pair(w, &e.1, e.0.as_str(), &e.2),
         SimpleExpr::AggrOp(e) => render_unary_function(w, e.0.as_str(), &e.1),
-        SimpleExpr::FuncCall(f) => {
-            w.write_str(&f.name)?;
-            w.write_char('(')?;
-            for (idx, expr) in f.args.iter().enumerate() {
-                if idx > 0 {
-                    w.write_str(", ")?;
-                }
-                render_simple_expr(w, expr)?;
-            }
-            w.write_char(')')
+        SimpleExpr::FuncCall(f) => render_func_call(w, f),
+        SimpleExpr::SubQuery(q) => render_query(w, q),
+        SimpleExpr::KeyVar(v) => write!(w, "KEY({})", v),
+        SimpleExpr::KeyLiteral(k) => write!(w, "KEY({})", k),
+        SimpleExpr::TimeVar(v) => write!(w, "TIME({})", v),
+        SimpleExpr::TimeLiteral(t) => write!(
+            w,
+            "TIME({})",
+            DateTime::<Utc>::from(*t)
+                .with_timezone(&Local)
+                .to_rfc3339_opts(SecondsFormat::Micros, true)
+        ),
+        SimpleExpr::Tags(t) => write!(w, "TAGS({})", t),
+        SimpleExpr::App(a) => write!(w, "APP({})", a),
+    }
+}
+
+fn render_func_call(w: &mut impl Write, f: &FuncCall) -> Result {
+    w.write_str(&f.name)?;
+    w.write_char('(')?;
+    for (idx, expr) in f.args.iter().enumerate() {
+        if idx > 0 {
+            w.write_str(", ")?;
         }
+        render_simple_expr(w, expr)?;
+    }
+    w.write_char(')')
+}
+
+fn render_cases(v: &NonEmptyVec<(SimpleExpr, SimpleExpr)>, w: &mut impl Write) -> Result {
+    for (pred, expr) in v.iter() {
+        w.write_str("CASE ")?;
+        render_simple_expr(w, pred)?;
+        w.write_str(" => ")?;
+        render_simple_expr(w, expr)?;
+        w.write_char(' ')?;
+    }
+    w.write_str("ENDCASE")
+}
+
+fn render_bool(b: &bool, w: &mut impl Write) -> Result {
+    if *b {
+        w.write_str("TRUE")
+    } else {
+        w.write_str("FALSE")
     }
 }
 
@@ -150,6 +184,9 @@ fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
                 } else {
                     w.write_str(", ")?;
                 }
+                if e.spread {
+                    w.write_str("...")?;
+                }
                 render_simple_expr(w, e)?;
             }
             Ok(())
@@ -157,6 +194,13 @@ fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
         Operation::Aggregate(a) => {
             w.write_str("AGGREGATE ")?;
             render_simple_expr(w, a)
+        }
+        Operation::Limit(l) => {
+            write!(w, "LIMIT {}", l)
+        }
+        Operation::Binding(n, e) => {
+            write!(w, "LET {} := ", n)?;
+            render_simple_expr(w, e)
         }
     }
 }
@@ -195,6 +239,7 @@ fn render_timestamp(w: &mut impl Write, e: Timestamp) -> Result {
 fn render_tag_atom(w: &mut impl Write, e: &TagAtom) -> Result {
     match e {
         TagAtom::Tag(t) => render_string(w, t.as_ref()),
+        TagAtom::Interpolation(s) => render_interpolation(w, &*s),
         TagAtom::AllEvents => w.write_str("allEvents"),
         TagAtom::IsLocal => w.write_str("isLocal"),
         TagAtom::FromTime(ft) => {
@@ -233,7 +278,20 @@ pub fn render_query(w: &mut impl Write, e: &Query) -> Result {
         w.write_str(") ")?;
     }
     w.write_str("FROM ")?;
-    render_tag_expr(w, &e.from, None)?;
+    match &e.source {
+        Source::Events { from, order } => {
+            render_tag_expr(w, from, None)?;
+            if let Some(o) = *order {
+                match o {
+                    Order::Asc => w.write_str(" ORDER ASC")?,
+                    Order::Desc => w.write_str(" ORDER DESC")?,
+                    Order::StreamAsc => w.write_str(" ORDER STREAM")?,
+                }
+            }
+        }
+        Source::Array(arr) => render_array(w, arr)?,
+    }
+
     for op in &e.ops {
         w.write_char(' ')?;
         render_operation(w, op)?;

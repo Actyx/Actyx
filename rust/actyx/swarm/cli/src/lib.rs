@@ -161,7 +161,7 @@ pub fn keypair(i: u64) -> KeyPair {
 pub enum Command {
     AddAddress(PeerId, Multiaddr),
     Append(StreamNr, Vec<(TagSet, Payload)>),
-    SubscribeQuery(Query),
+    SubscribeQuery(Query<'static>),
     ApiPort,
     GossipSubscribe(String),
 }
@@ -190,7 +190,7 @@ impl std::str::FromStr for Command {
                 let addr: Multiaddr = parts.next().unwrap().parse()?;
                 Self::AddAddress(peer, addr)
             }
-            Some(">query") => Self::SubscribeQuery(s.split_at(7).1.parse()?),
+            Some(">query") => Self::SubscribeQuery(Query::parse(s.split_at(7).1)?.forget_pragmas()),
             Some(">append") => {
                 let s = s.split_at(8).1;
                 let mut iter = s.splitn(2, ' ');
@@ -367,7 +367,7 @@ mod tests {
                 42.into(),
                 vec![(tags!("a", "b"), Payload::from_json_str("{}").unwrap())],
             ),
-            Command::SubscribeQuery("FROM 'a' & 'b' | 'c'".parse().unwrap()),
+            Command::SubscribeQuery(Query::parse("FROM 'a' & 'b' | 'c'").unwrap()),
         ];
         for cmd in command.iter() {
             let cmd2: Command = cmd.to_string().parse()?;

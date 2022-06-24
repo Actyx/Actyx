@@ -160,7 +160,7 @@ stages:
               set -ex
               echo "Building cosmos-release"
               cd rust/release
-              cargo build --release -vv
+              cargo test --locked --release --all-features -vv
               echo "Building docs"
               cd ../../web/developer.actyx.com/
               source ~/.nvm/nvm.sh
