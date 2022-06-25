@@ -56,18 +56,15 @@ describe('event service', () => {
           query: "FROM 'integration' & 'test:1'",
           order: Order.Desc,
         }
-        await es
-          .query(req, throwOnCb('onData'))
-          .then((x) => {
-            throw new Error('invalid request succeeded: ' + x)
-          })
-          .catch((x) => {
-            expect(x).toEqual({
-              code: 'ERR_BAD_REQUEST',
-              message:
-                'Invalid request. Query bounds out of range: upper bound must be within the known present.',
-            })
-          })
+        const data: QueryResponse[] = []
+        await es.query(req, (x) => data.push(x))
+        expect(data).toEqual([
+          {
+            message: 'Query bounds out of range: upper bound must be within the known present.',
+            severity: 'error',
+            type: 'diagnostic',
+          },
+        ])
       }))
 
     it('should return events in ascending order with explicit bounds and complete', () =>
@@ -212,7 +209,7 @@ describe('event service', () => {
           {
             type: 'diagnostic',
             severity: 'warning',
-            message: expect.stringContaining('"one" is not a number'),
+            message: expect.stringContaining('`one` is not of type Number'),
           },
           { type: 'offsets', offsets: { [pub1.stream]: expect.any(Number) } },
         ])
