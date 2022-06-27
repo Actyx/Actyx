@@ -636,7 +636,9 @@ impl<'a> BanyanStoreGuard<'a> {
 
     fn received_lamport(&mut self, lamport: LamportTimestamp) -> anyhow::Result<()> {
         self.index_store.received_lamport(lamport).map_err(|e| {
-            Command::new("ls").args(["-l", "/proc/self/fd"]).spawn().ok();
+            if let Err(e) = Command::new("/bin/ls").args(["-l", "/proc/self/fd"]).spawn() {
+                tracing::error!("error checking file descriptors: {}", e);
+            }
             e
         })
     }
