@@ -78,6 +78,7 @@ use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use sqlite_index_store::SqliteIndexStore;
 use std::convert::TryInto;
+use std::process::Command;
 use std::{
     collections::{BTreeMap, VecDeque},
     convert::TryFrom,
@@ -634,7 +635,10 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 
     fn received_lamport(&mut self, lamport: LamportTimestamp) -> anyhow::Result<()> {
-        self.index_store.received_lamport(lamport)
+        self.index_store.received_lamport(lamport).map_err(|e| {
+            Command::new("ls").args(["-l", "/proc/self/fd"]).spawn().ok();
+            e
+        })
     }
 
     /// Compute the swarm offsets from scratch based on the in memory headers and trees

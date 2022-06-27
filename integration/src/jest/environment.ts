@@ -52,8 +52,25 @@ class MyEnvironment extends NodeEnvironment {
   }
 
   async teardown(): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
+    const state = (<any>expect).getState()
+    let testName: string = state.testPath
+    if (testName.startsWith(process.cwd())) {
+      testName = `<cwd>` + testName.substr(process.cwd().length)
+    }
     for (const node of (<MyGlobal>(<unknown>this.global)).axNodeSetup.thisTestEnvNodes || []) {
-      await node._private.shutdown()
+      process.stderr.write(`shutting down node ${node.name} from ${testName}\n`)
+      try {
+        await new Promise((res, rej) => {
+          node._private.shutdown().then(res)
+          setTimeout(
+            () => rej(new Error(`timeout stopping ad hoc node ${node.name} from ${testName}`)),
+            10_000,
+          )
+        })
+      } catch (e) {
+        process.stderr.write(`${e}`)
+      }
     }
     await super.teardown()
   }
