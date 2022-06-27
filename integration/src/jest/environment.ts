@@ -69,7 +69,7 @@ class MyEnvironment extends NodeEnvironment {
           )
         })
       } catch (e) {
-        process.stderr.write(`${e}`)
+        process.stderr.write(`${e}\n`)
       }
     }
     await super.teardown()
