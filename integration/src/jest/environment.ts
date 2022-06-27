@@ -4,9 +4,11 @@ import NodeEnvironment from 'jest-environment-node'
 import { type MyGlobal } from './setup'
 
 class MyEnvironment extends NodeEnvironment {
+  private path: string
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-  constructor(config: any, _context: any) {
+  constructor(config: any, context: any) {
     super(config)
+    this.path = typeof context.testPath === 'string' ? context.testPath : '<unknown>'
   }
 
   async setup(): Promise<void> {
@@ -52,11 +54,9 @@ class MyEnvironment extends NodeEnvironment {
   }
 
   async teardown(): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
-    const state = (<any>expect).getState()
-    let testName: string = state.testPath
+    let testName = this.path
     if (testName.startsWith(process.cwd())) {
-      testName = `<cwd>` + testName.substr(process.cwd().length)
+      testName = `<cwd>` + testName.substring(process.cwd().length)
     }
     for (const node of (<MyGlobal>(<unknown>this.global)).axNodeSetup.thisTestEnvNodes || []) {
       process.stderr.write(`shutting down node ${node.name} from ${testName}\n`)
