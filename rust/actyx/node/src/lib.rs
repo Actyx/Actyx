@@ -249,9 +249,10 @@ pub struct BindToOpts {
     #[structopt(
         long,
         parse(try_from_str = parse_port_maybe_host),
-        default_value = "4454",
-        long_help = "Port bind to for the API used by apps. \
-            The same rules apply as for the admin port."
+        default_value = "localhost",
+        long_help = "Port to bind to for the API used by apps. \
+            The same rules apply as for the admin port, except that giving only a port binds \
+            to 127.0.0.1 only. The default port is 4454."
     )]
     /// Port to bind to for the API used by apps.
     bind_api: Vec<PortOrHostPort<4454>>,

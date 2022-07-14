@@ -1,7 +1,9 @@
 import { FishId, Pond, Tags } from './lib/index.js'
 
 const run = async () => {
-  const pond = await Pond.of({ appId: 'com.example.x', displayName: 'test', version: '1' }, {actyxHost:'what.ever'}, {})
+  // const pond = await Pond.of({ appId: 'com.example.x', displayName: 'test', version: '1' }, {actyxHost:'what.ever'}, {})
+  const pond = await Pond.default({ appId: 'com.example.x', displayName: 'test', version: '1' })
+  console.log('got pond', pond)
   pond.observe(
     {
       fishId: FishId.of('test', 'test', 1),
