@@ -203,7 +203,7 @@ impl Scope {
         }
     }
     pub fn first(&self) -> Option<String> {
-        self.tokens.iter().cloned().next()
+        self.tokens.get(0).cloned()
     }
     pub fn split_first(&self) -> Option<(Self, Self)> {
         if !self.is_root() {
