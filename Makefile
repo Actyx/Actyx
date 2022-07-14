@@ -59,14 +59,13 @@ CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
 CARGO_BUILD_ARGS ?= --features migration-v1
 
-# CAUTION: wait for https://github.com/rust-lang/cc-rs/pull/671 before switching to 1.61+
-export BUILD_RUST_TOOLCHAIN ?= 1.59.0
+export BUILD_RUST_TOOLCHAIN ?= 1.61.0
 
 # The stable image version is the git commit hash inside `Actyx/Actyx`, with
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := f575d0c635a421309bd04f09b1b1338b2a3cf2bb
+export LATEST_STABLE_IMAGE_VERSION := 78bbcbf7efef327a3eb692b2098eebca71ad3dce
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -94,7 +93,7 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/util:osxbuilder-a5483d2105b145f5c3ceb23fd47adfffca3c94ef
+image-darwin = actyx/util:osxbuilder-570bf057efb6af0a37cfc6e578655a503117a51c
 
 image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
 
