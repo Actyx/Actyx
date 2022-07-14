@@ -2,10 +2,10 @@
 # Supported targets: i686-linux-android, x86_64-linux-android, i686-unknown-linux-gnu (e.g. all necessary dependencies should be there)
 # TODO: Build statically linked binaries
 # ref https://github.com/Actyx/Cosmos/blob/mca/actyxos-on-arm/docker/actyxos-on-linux/Dockerfile
-ARG BUILD_RUST_TOOLCHAIN=1.59.0
+ARG BUILD_RUST_TOOLCHAIN=1.61.0
 FROM rust:${BUILD_RUST_TOOLCHAIN}-buster
 
-ENV RUST_VERSION=1.59.0
+ENV RUST_VERSION=1.61.0
 
 ARG BUILD_RUST_TOOLCHAIN
 

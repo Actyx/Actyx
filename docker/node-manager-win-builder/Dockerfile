@@ -6,7 +6,7 @@ RUN apt-get update && \
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
 
 
-ARG BUILD_RUST_TOOLCHAIN=1.59.0
+ARG BUILD_RUST_TOOLCHAIN=1.61.0
 ENV TARGET=x86_64-pc-windows-gnu
 ENV CARGO_BUILD_TARGET=x86_64-pc-windows-gnu
 
