@@ -403,11 +403,12 @@ validate-node-manager-bindings:
 node-manager-win:
 	env | sort
 	docker run \
-	-v `pwd`:/src \
-	-w /src/js/node-manager \
-	--rm \
-	actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
-	bash -c "source /root/.nvm/nvm.sh --no-use && nvm install && npm ci && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
+	  -e BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
+	  -v `pwd`:/src \
+	  -w /src/js/node-manager \
+	  --rm \
+	  actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
+	  bash -c "source /root/.nvm/nvm.sh --no-use && nvm install && npm ci && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
 
 node-manager-mac-linux:
 	cd js/node-manager && \
