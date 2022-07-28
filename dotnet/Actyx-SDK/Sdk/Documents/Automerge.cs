@@ -1,0 +1,4 @@
+namespace Actyx.Documents
+{
+
+}

@@ -6,6 +6,7 @@ using System.CommandLine.Parsing;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Actyx.Documents.Driver;
 using Actyx.Sdk.Formats;
 using Newtonsoft.Json;
 
@@ -168,8 +169,120 @@ namespace Actyx.CLI
             };
             events.AddGlobalOption(new Option<bool>(new string[] { "--websocket", "-ws" }));
             events.AddGlobalOption(new Option<AppManifest>(new string[] { "--manifest", "-m" }, ParseManifest, isDefault: true) { Arity = ArgumentArity.ZeroOrOne });
-            var rootCmd = new RootCommand() { events };
+            var am = new Command("am")
+            {
+                Handler = CommandHandler.Create(() =>
+                {
+                    var (docalloc, doc) = Value(automerge.AMcreate(), AMvalue_Tag.A_MVALUE_DOC, x => x.doc);
+
+                    var (initialalloc, initial) = Value(automerge.AMgetHeads(doc), AMvalue_Tag.A_MVALUE_CHANGE_HASHES, x => x.change_hashes);
+
+                    Check(automerge.AMmapPutBool(doc, automerge.ROOT, "done", true));
+                    var (pointalloc, point) = Value(automerge.AMmapPutObject(doc, automerge.ROOT, "p", AMobjType.A_MOBJ_TYPE_MAP), AMvalue_Tag.A_MVALUE_OBJ_ID, x => x.obj_id);
+                    Check(automerge.AMmapPutInt(doc, point, "x", 23));
+                    Check(automerge.AMmapPutInt(doc, point, "y", 42));
+                    Check(automerge.AMsave(doc));
+                    automerge.AMfree(pointalloc);
+
+                    var (changealloc, changes) = Value(automerge.AMgetChanges(doc, initial), AMvalue_Tag.A_MVALUE_CHANGES, x => x.changes);
+                    var c_len = automerge.AMchangesSize(changes);
+                    Console.WriteLine($"changes: {c_len}");
+                    var c = new List<byte[]>((int)c_len);
+                    for (var p = automerge.AMchangesNext(changes, 1); !automerge.AMchangeIsEmpty(p); p = automerge.AMchangesNext(changes, 1))
+                    {
+                        Console.WriteLine("--");
+                        Console.WriteLine($"{BitConverter.ToString(Bytes.FromSpan(automerge.AMchangeRawBytes(p)))}");
+                    }
+
+                    var (keys1alloc, keys1) = Value(automerge.AMkeys(doc, automerge.ROOT, automerge.NOW), AMvalue_Tag.A_MVALUE_STRINGS, x => x.strings);
+                    for (var count = automerge.AMstringsSize(keys1); count > 0; --count)
+                    {
+                        var name = automerge.AMstringsNext(keys1, 1);
+                        var kind = Check(automerge.AMmapGet(doc, automerge.ROOT, name));
+                        Console.WriteLine($" - {name}: {kind}");
+                    }
+                    automerge.AMfree(keys1alloc);
+
+                    automerge.AMfree(initialalloc);
+                    automerge.AMfree(docalloc);
+
+                    Console.WriteLine("restore");
+
+                    var (docalloc2, doc2) = Value(automerge.AMcreate(), AMvalue_Tag.A_MVALUE_DOC, x => x.doc);
+                    Check(automerge.AMapplyChanges(doc2, automerge.AMresultValue(changealloc).changes));
+
+                    var (keys2alloc, keys2) = Value(automerge.AMkeys(doc2, automerge.ROOT, automerge.NOW), AMvalue_Tag.A_MVALUE_STRINGS, x => x.strings);
+                    for (var count = automerge.AMstringsSize(keys2); count > 0; --count)
+                    {
+                        var name = automerge.AMstringsNext(keys2, 1);
+                        var kind = Check(automerge.AMmapGet(doc2, automerge.ROOT, name));
+                        Console.WriteLine($" - {name}: {kind}");
+                    }
+                    automerge.AMfree(keys2alloc);
+
+                    var done = ValueFree(automerge.AMmapGet(doc2, automerge.ROOT, "done"), AMvalue_Tag.A_MVALUE_BOOLEAN, x => x.boolean);
+                    Console.WriteLine($"done={done}");
+                    var (objalloc, obj) = Value(automerge.AMmapGet(doc2, automerge.ROOT, "p"), AMvalue_Tag.A_MVALUE_OBJ_ID, x => x.obj_id);
+                    var x = ValueFree(automerge.AMmapGet(doc2, obj, "x"), AMvalue_Tag.A_MVALUE_INT, x => x.int_);
+                    var y = ValueFree(automerge.AMmapGet(doc2, obj, "y"), AMvalue_Tag.A_MVALUE_INT, x => x.int_);
+                    Console.WriteLine($"x={x} y={y}");
+                    automerge.AMfree(objalloc);
+                    automerge.AMfree(docalloc2);
+                })
+            };
+            var rootCmd = new RootCommand(){
+                events,
+                am
+            };
             return await rootCmd.InvokeAsync(args);
+        }
+
+        private static AMvalue_Tag Check(SWIGTYPE_p_AMresult result)
+        {
+            if (automerge.AMresultStatus(result) != AMstatus.A_MSTATUS_OK)
+            {
+                throw new Exception(automerge.AMerrorMessage(result));
+            }
+            var ret = automerge.AMresultValue(result).tag;
+            automerge.AMfree(result);
+            return ret;
+        }
+        private static (SWIGTYPE_p_AMresult, T) Value<T>(SWIGTYPE_p_AMresult result, AMvalue_Tag tag, Func<AMvalue, T> f)
+        {
+            if (automerge.AMresultStatus(result) != AMstatus.A_MSTATUS_OK)
+            {
+                throw new Exception($"automerge: {automerge.AMerrorMessage(result)}");
+            }
+            var value = automerge.AMresultValue(result);
+            if (value.tag != tag)
+            {
+                throw new Exception($"wrong tag: expected {tag} got {value.tag}");
+            }
+            var ret = f(value);
+            return (result, ret);
+        }
+        private static T ValueFree<T>(SWIGTYPE_p_AMresult result, AMvalue_Tag tag, Func<AMvalue, T> f)
+        {
+            var (alloc, res) = Value(result, tag, f);
+            automerge.AMfree(alloc);
+            return res;
+        }
+    }
+}
+
+namespace Actyx.Documents.Driver
+{
+    public static class Bytes
+    {
+        public static byte[] FromSpan(AMbyteSpan span)
+        {
+            var len = span.count;
+            var arr = new byte[len];
+            for (int i = 0; i < len; ++i)
+            {
+                arr[i] = automerge.bytes_getitem(span.src, i);
+            }
+            return arr;
         }
     }
 }
