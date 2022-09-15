@@ -22,6 +22,8 @@ import * as R from 'ramda'
 const dbg = debug(`actyx:lww:debug`)
 const trc = debug(`actyx:lww:trace`)
 
+const getRandomInt = (max: number): number => Math.floor(Math.random() * max)
+
 export type InstanceId = string
 type EntityName = string
 
@@ -413,23 +415,26 @@ const subscribeAll = <Data>(
         let isFirst = true
         trc(`adding id ${id} to receivedInitialStates`)
         receivedInitialStates.set(id, false)
-        cancelSubs.push(
-          subscribeById<Data>(
-            sdk,
-            entityName,
-            id,
-            (state) => {
-              trc(`subscription to ${id} got new state`, state)
-              if (isFirst) {
-                trc(`is first result, so adding setting receivedInitialStates accordingly`)
-                receivedInitialStates.set(id, true)
-              }
-              isFirst = false
-              handleState(state)
-            },
-            handleError,
-          ),
-        )
+
+        setTimeout(() => {
+          cancelSubs.push(
+            subscribeById<Data>(
+              sdk,
+              entityName,
+              id,
+              (state) => {
+                trc(`subscription to ${id} got new state`, state)
+                if (isFirst) {
+                  trc(`is first result, so setting receivedInitialStates accordingly`)
+                  receivedInitialStates.set(id, true)
+                }
+                isFirst = false
+                handleState(state)
+              },
+              handleError,
+            ),
+          )
+        }, 100 + getRandomInt(250))
       },
       handleError,
       customTags,
