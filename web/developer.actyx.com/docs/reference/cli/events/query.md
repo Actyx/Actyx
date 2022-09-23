@@ -21,7 +21,7 @@ ARGS:
 ```
 
 This command allows you to submit a query to a remote node, tunneled through the admin port.
-For more details on the format of such queries please refer to [the API docs](../../events-api.mdx#query-event-streams).
+For more details on the format of such queries please refer to [the AQL docs](../../aql.mdx).
 
 ```text title="Example usage"
 $ ax events query localhost 'FROM "a"' | jq .
@@ -38,5 +38,10 @@ $ ax events query localhost 'FROM "a"' | jq .
   "payload": 42
 }
 ```
+
+:::note shell syntax
+The above assumes a Unix-like shell where single quotes provide argument quoting.
+When using `cmd.exe` on Windows you’ll probably want to use double quotes and switch to single quotes within the query: `"FROM 'a'"`
+:::
 
 (The example above uses the [`jq`](https://stedolan.github.io/jq/) utility to nicely format the JSON output.)
