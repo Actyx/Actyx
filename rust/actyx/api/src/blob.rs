@@ -81,7 +81,7 @@ async fn handle_get(
                 }))
             }
         }
-        Ok(None) => Err(reject::custom(ApiError::NotFound)),
+        Ok(None) => Ok(Response::builder().status(StatusCode::NO_CONTENT).body(vec![])),
         Err(err) => {
             tracing::error!("error while getting blob {}/{}: {}", app, tail.as_str(), err);
             Err(reject::custom(ApiError::Internal))

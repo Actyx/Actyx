@@ -78,7 +78,7 @@ hosts:
       ami: ami-0e793d1a6c23e9488
       # cheapest aws bare metal instance
       # needed to have direct access to /dev/kvm
-      instance: c5n.metal
+      instance: c5.metal
       user: ubuntu
     install:
       type: android
