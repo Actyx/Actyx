@@ -23,10 +23,21 @@ use util::{
     SocketAddrHelper,
 };
 
-#[derive(Debug)]
 pub(crate) enum StoreRequest {
     NodesInspect(oneshot::Sender<Result<InspectResponse>>),
     EventsV2(EventStoreRequest),
+}
+
+impl std::fmt::Debug for StoreRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NodesInspect(_) => f.debug_tuple("NodesInspect").finish(),
+            Self::EventsV2(arg0) => {
+                let req = arg0.to_string();
+                f.debug_tuple("EventsV2").field(&req.as_str()).finish()
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -136,6 +147,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
         &self.rx
     }
     fn handle_request(&mut self, req: StoreRequest) -> Result<()> {
+        tracing::debug!("handling request {:?}", req);
         match req {
             StoreRequest::NodesInspect(tx) => {
                 if let Some(InternalStoreState { store, .. }) = self.state.as_ref() {

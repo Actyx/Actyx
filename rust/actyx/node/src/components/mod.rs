@@ -135,6 +135,7 @@ where
         loop {
             select! {
                 recv(err_rx) -> result => {
+                    tracing::debug!("Component \"{}\": started", Self::get_type());
                     let result = result.expect("We keep another Sender around, thus channel can't be disconnected");
                     state_change!(
                         supervisor,
@@ -200,6 +201,7 @@ where
                     }
                 }
             }
+            tracing::debug!("Component \"{}\": event handled", Self::get_type());
         }
 
         tracing::debug!("Component \"{}\": Shutting down", Self::get_type());

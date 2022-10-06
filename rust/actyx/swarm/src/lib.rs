@@ -406,7 +406,8 @@ struct BanyanStoreState {
 
 impl Drop for BanyanStoreState {
     fn drop(&mut self) {
-        for (_, task) in self.tasks.drain(..) {
+        for (name, task) in self.tasks.drain(..) {
+            tracing::debug!("Banyan drop aborting task {}", name);
             task.abort();
         }
     }

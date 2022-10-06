@@ -10,7 +10,7 @@ use crate::{
 };
 use actyx_sdk::{
     app_id,
-    service::{QueryResponse, SubscribeMonotonicResponse, SubscribeResponse},
+    service::{QueryRequest, QueryResponse, SubscribeMonotonicResponse, SubscribeResponse},
     tag, LamportTimestamp, NodeId, Payload,
 };
 use anyhow::{anyhow, bail, Context};
@@ -600,6 +600,12 @@ impl NetworkBehaviourEventProcess<StreamingResponseEvent<EventsProtocol>> for Ap
                         },
                     );
                     return;
+                }
+
+                if let EventsRequest::Query(QueryRequest { query, .. }) = &payload {
+                    if query.contains("PRAGMA explode") {
+                        std::process::abort();
+                    }
                 }
 
                 self.enqueue_events_v2(channel_id, payload);
