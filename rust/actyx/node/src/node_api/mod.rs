@@ -1064,6 +1064,12 @@ impl Future for SwarmFuture {
                 }
                 SwarmEvent::ListenerClosed { reason, addresses, .. } => {
                     tracing::error!(reason = ?&reason, addrs = ?&addresses, "listener closed");
+                    self.0.behaviour_mut().state.admin_sockets.transform_mut(|set| {
+                        for addr in addresses {
+                            set.remove(&addr);
+                        }
+                        true
+                    });
                 }
                 SwarmEvent::Behaviour(_) => {}
                 SwarmEvent::ConnectionEstablished { endpoint, .. } => {
@@ -1084,6 +1090,11 @@ impl Future for SwarmFuture {
                 SwarmEvent::BannedPeer { .. } => {}
                 SwarmEvent::ExpiredListenAddr { address, .. } => {
                     tracing::info!("unbound from listen address {}", address);
+                    self.0
+                        .behaviour_mut()
+                        .state
+                        .admin_sockets
+                        .transform_mut(|set| set.remove(&address));
                 }
                 SwarmEvent::Dialing(_) => {}
             }
