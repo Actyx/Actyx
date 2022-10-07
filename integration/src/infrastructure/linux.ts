@@ -164,8 +164,8 @@ export async function ensureDocker(ssh: Ssh, node: string, arch: Arch) {
   )
   await exec('sudo apt-get update')
   // Test against well known versions
-  const dckr_v = '5:20.10.6~3-0~ubuntu-hirsute'
-  const cntnrd_v = '1.4.4-1'
+  const dckr_v = '5:20.10.18~3-0~ubuntu-jammy'
+  const cntnrd_v = '1.6.8-1'
   await exec(
     `sudo apt-get --yes install docker-ce=${dckr_v} docker-ce-cli=${dckr_v} containerd.io=${cntnrd_v}`,
   )

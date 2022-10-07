@@ -3,8 +3,8 @@ hosts:
   - name: x86_64-linux-linux
     prepare:
       type: create-aws-ec2
-      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
-      ami: ami-0e793d1a6c23e9488
+      # ubuntu 22.04 LTS. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-0a750371997a814a7
       instance: t2.medium
       user: ubuntu
     install:
@@ -12,8 +12,8 @@ hosts:
   - name: x86_64-linux-docker
     prepare:
       type: create-aws-ec2
-      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
-      ami: ami-0e793d1a6c23e9488
+      # ubuntu 22.04 LTS. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-0a750371997a814a7
       instance: t2.medium
       user: ubuntu
     install:
@@ -21,8 +21,8 @@ hosts:
   - name: aarch64-linux-linux
     prepare:
       type: create-aws-ec2
-      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
-      ami: ami-07d86cfde3bba417d
+      # ubuntu 22.04 LTS. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-03fdad07796ed8be7
       instance: a1.large
       user: ubuntu
     install:
@@ -30,8 +30,8 @@ hosts:
   - name: aarch64-linux-docker
     prepare:
       type: create-aws-ec2
-      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
-      ami: ami-07d86cfde3bba417d
+      # ubuntu 22.04 LTS. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-03fdad07796ed8be7
       instance: a1.large
       user: ubuntu
     install:
@@ -39,8 +39,8 @@ hosts:
   - name: armv7-linux-linux
     prepare:
       type: create-aws-ec2
-      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
-      ami: ami-07d86cfde3bba417d
+      # ubuntu 22.04 LTS. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-03fdad07796ed8be7
       instance: a1.large
       user: ubuntu
       # There are no ARMv7 instances, but we can run ARMv7 binaries to test them
@@ -50,8 +50,8 @@ hosts:
   - name: armv7-linux-docker
     prepare:
       type: create-aws-ec2
-      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
-      ami: ami-07d86cfde3bba417d
+      # ubuntu 22.04 LTS. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-03fdad07796ed8be7
       instance: a1.large
       user: ubuntu
       armv7: true
@@ -74,8 +74,8 @@ hosts:
   - name: x86_64-android-emulator
     prepare:
       type: create-aws-ec2
-      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
-      ami: ami-0e793d1a6c23e9488
+      # ubuntu 22.04 LTS. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-0a750371997a814a7
       # cheapest aws bare metal instance
       # needed to have direct access to /dev/kvm
       instance: c5.metal
