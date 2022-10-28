@@ -5,6 +5,7 @@ use std::time::Duration;
 use crate::{internal_app_id, BanyanStore};
 use actyx_sdk::{tags, Payload, StreamNr};
 use anyhow::Result;
+use libipld::cbor::cbor::MajorKind;
 use libipld::cbor::encode::{write_u64, write_u8};
 use libipld::cbor::DagCborCodec;
 use libipld::codec::Encode;
@@ -150,9 +151,9 @@ impl Encoder for CborEncoder {
 
 fn prometheus_encode<W: Write>(families: &[prometheus::proto::MetricFamily], w: &mut W) -> Result<()> {
     let c = DagCborCodec;
-    write_u64(w, 4, families.len() as u64)?;
+    write_u64(w, MajorKind::Array, families.len() as u64)?;
     for family in families {
-        write_u8(w, 4, 3)?;
+        write_u8(w, MajorKind::Array, 3)?;
         family.get_name().encode(c, w)?;
         family.get_help().encode(c, w)?;
         let ty = family.get_field_type() as u8;
@@ -163,15 +164,15 @@ fn prometheus_encode<W: Write>(families: &[prometheus::proto::MetricFamily], w: 
             prometheus::proto::MetricType::UNTYPED => 3,
             prometheus::proto::MetricType::HISTOGRAM => 5,
         };
-        write_u64(w, 4, family.get_metric().len() as u64)?;
+        write_u64(w, MajorKind::Array, family.get_metric().len() as u64)?;
         for metric in family.get_metric() {
-            write_u8(w, 4, 2)?;
+            write_u8(w, MajorKind::Array, 2)?;
             ty.encode(c, w)?;
-            write_u8(w, 4, len)?;
+            write_u8(w, MajorKind::Array, len)?;
             let labels = metric.get_label();
-            write_u64(w, 4, labels.len() as u64)?;
+            write_u64(w, MajorKind::Array, labels.len() as u64)?;
             for label in labels {
-                write_u8(w, 4, 2)?;
+                write_u8(w, MajorKind::Array, 2)?;
                 label.get_name().encode(c, w)?;
                 label.get_value().encode(c, w)?;
             }
@@ -189,9 +190,9 @@ fn prometheus_encode<W: Write>(families: &[prometheus::proto::MetricFamily], w: 
                 summary.get_sample_count().encode(c, w)?;
                 summary.get_sample_sum().encode(c, w)?;
                 let quantiles = summary.get_quantile();
-                write_u64(w, 4, quantiles.len() as u64)?;
+                write_u64(w, MajorKind::Array, quantiles.len() as u64)?;
                 for quantile in quantiles {
-                    write_u8(w, 4, 2)?;
+                    write_u8(w, MajorKind::Array, 2)?;
                     quantile.get_quantile().encode(c, w)?;
                     quantile.get_value().encode(c, w)?;
                 }
@@ -205,9 +206,9 @@ fn prometheus_encode<W: Write>(families: &[prometheus::proto::MetricFamily], w: 
                 histogram.get_sample_count().encode(c, w)?;
                 histogram.get_sample_sum().encode(c, w)?;
                 let buckets = histogram.get_bucket();
-                write_u64(w, 4, buckets.len() as u64)?;
+                write_u64(w, MajorKind::Array, buckets.len() as u64)?;
                 for bucket in buckets {
-                    write_u8(w, 4, 2)?;
+                    write_u8(w, MajorKind::Array, 2)?;
                     bucket.get_cumulative_count().encode(c, w)?;
                     bucket.get_upper_bound().encode(c, w)?;
                 }

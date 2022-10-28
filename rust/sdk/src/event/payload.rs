@@ -1,16 +1,15 @@
-use libipld::DagCbor;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Formatter};
 
 use super::Opaque;
+use cbor_data::cbor_via;
 
 /// Compact binary storage of events created when they are received
 ///
 /// see [`Event::extract`](struct.Event.html#method.extract) for supported ways of using the
 /// data
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Ord, PartialOrd, DagCbor)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Ord, PartialOrd)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
-#[ipld(repr = "value")]
 pub struct Payload(Opaque);
 
 impl Payload {
@@ -85,18 +84,23 @@ impl Debug for Payload {
     }
 }
 
+cbor_via!(Payload => Opaque: |p| -> p.0.clone(), |o| -> Ok(Payload(o)));
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::from_cbor_me;
-    use libipld::{cbor::DagCborCodec, codec::Codec};
+    use cbor_data::{
+        codec::{ReadCbor, WriteCbor},
+        CborBuilder,
+    };
 
     #[test]
     fn payload_dag_cbor_roundtrip() -> anyhow::Result<()> {
         let text = "";
         // using JSON value allows CBOR to use known-length array encoding
         let p1: Payload = serde_json::from_value(json!([text]))?;
-        let tmp = DagCborCodec.encode(&p1)?;
+        let tmp = p1.write_cbor(CborBuilder::default());
         let expected = from_cbor_me(
             r#"
  81     # array(1)
@@ -104,8 +108,8 @@ mod tests {
         # ""
  "#,
         )?;
-        assert_eq!(tmp, expected);
-        let p2: Payload = DagCborCodec.decode(&tmp)?;
+        assert_eq!(tmp.as_slice(), expected);
+        let p2 = Payload::read_cbor(&*tmp)?;
         assert_eq!(p1, p2);
         Ok(())
     }

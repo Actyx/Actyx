@@ -36,3 +36,5 @@ lto = "off"
 
 [patch.crates-io]
 banyan = { git = "https://github.com/Actyx/banyan", branch = "rku/logging" }
+banyan-utils = { git = "https://github.com/Actyx/banyan", branch = "rku/logging" }
+# cbor-data = { path = "../../../cbor-data" }

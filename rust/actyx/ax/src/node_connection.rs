@@ -8,9 +8,7 @@ use futures::{
 };
 use libp2p::{
     core::{multiaddr::Protocol, muxing::StreamMuxerBox, transport::Boxed, ConnectedPoint, Multiaddr, PeerId},
-    identify::{Identify, IdentifyConfig, IdentifyEvent},
-    identity,
-    ping::{Ping, PingConfig, PingEvent, PingSuccess},
+    identify, identity, ping,
     request_response::{
         ProtocolSupport, RequestResponse, RequestResponseConfig, RequestResponseEvent, RequestResponseMessage,
     },
@@ -86,9 +84,9 @@ impl NodeConnection {
                 [(BanyanProtocolName, ProtocolSupport::Outbound)],
                 request_response_config,
             ),
-            ping: Ping::new(PingConfig::new().with_keep_alive(true)),
-            identify: Identify::new(
-                IdentifyConfig::new("Actyx".to_owned(), public_key).with_initial_delay(Duration::from_secs(0)),
+            ping: ping::Behaviour::new(ping::Config::new().with_keep_alive(true)),
+            identify: identify::Behaviour::new(
+                identify::Config::new("Actyx".to_owned(), public_key).with_initial_delay(Duration::from_secs(0)),
             ),
         };
         let mut swarm = SwarmBuilder::new(transport, protocol, peer_id)
@@ -122,11 +120,11 @@ impl NodeConnection {
             let message = swarm.next().await.expect("swarm exited");
             tracing::debug!("waiting for identify: {:?}", message);
             match message {
-                SwarmEvent::Behaviour(OutEvent::Identify(IdentifyEvent::Error { .. })) => {
+                SwarmEvent::Behaviour(OutEvent::Identify(identify::Event::Error { .. })) => {
                     // Actyx v2.0.x didn’t have the identify protocol
                     return (None, vec!["/actyx/admin/1.0.0".to_owned()]);
                 }
-                SwarmEvent::Behaviour(OutEvent::Identify(IdentifyEvent::Received { info, .. })) => {
+                SwarmEvent::Behaviour(OutEvent::Identify(identify::Event::Received { info, .. })) => {
                     let v = info
                         .protocol_version
                         .strip_prefix("Actyx-")
@@ -209,11 +207,11 @@ impl Connected {
                         format!("Connection to {} unexpectedly closed.", self.remote_peer_id),
                     );
                 }
-                SwarmEvent::Behaviour(OutEvent::Ping(PingEvent {
+                SwarmEvent::Behaviour(OutEvent::Ping(ping::Event {
                     peer,
                     result: Ok(success),
                 })) => {
-                    if let PingSuccess::Ping { rtt } = success {
+                    if let ping::Success::Ping { rtt } = success {
                         info!("RTT to {}: {:?}", peer, rtt);
                     }
                 }
@@ -297,11 +295,11 @@ impl Connected {
                         format!("Connection to {} unexpectedly closed.", self.remote_peer_id),
                     );
                 }
-                SwarmEvent::Behaviour(OutEvent::Ping(PingEvent {
+                SwarmEvent::Behaviour(OutEvent::Ping(ping::Event {
                     peer,
                     result: Ok(success),
                 })) => {
-                    if let PingSuccess::Ping { rtt } = success {
+                    if let ping::Success::Ping { rtt } = success {
                         info!("RTT to {}: {:?}", peer, rtt);
                     }
                 }
@@ -346,8 +344,8 @@ pub enum OutEvent {
     Admin(StreamingResponseEvent<AdminProtocol>),
     Events(StreamingResponseEvent<EventsProtocol>),
     Banyan(RequestResponseEvent<BanyanRequest, BanyanResponse>),
-    Ping(PingEvent),
-    Identify(IdentifyEvent),
+    Ping(ping::Event),
+    Identify(identify::Event),
 }
 
 #[derive(NetworkBehaviour)]
@@ -356,8 +354,8 @@ pub struct RequestBehaviour {
     admin_api: StreamingResponse<AdminProtocol>,
     events_api: StreamingResponse<EventsProtocol>,
     banyan_api: RequestResponse<BanyanProtocol>,
-    ping: Ping,
-    identify: Identify,
+    ping: ping::Behaviour,
+    identify: identify::Behaviour,
 }
 
 async fn mk_transport(keypair: identity::Keypair) -> ActyxOSResult<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {

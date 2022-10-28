@@ -1,19 +1,22 @@
-use std::{
-    convert::TryFrom,
-    fmt::{self, Debug, Display},
-    io::{Read, Seek, Write},
-    str::FromStr,
-};
-
+use crate::ParseError;
 use anyhow::{anyhow, bail, Context, Result};
+use cbor_data::{
+    cbor_via,
+    codec::{CodecError, ReadCbor, ReadCborBorrowed, WriteCbor},
+    Cbor, Writer,
+};
 use libipld::{
     cbor::DagCborCodec,
     codec::{Decode, Encode},
     DagCbor, Ipld,
 };
 use serde::{Deserialize, Serialize};
-
-use crate::ParseError;
+use std::{
+    convert::TryFrom,
+    fmt::{self, Debug, Display},
+    io::{Read, Seek, Write},
+    str::FromStr,
+};
 
 /// Macro for constructing an [`AppId`](struct.AppId.html) literal.
 ///
@@ -189,6 +192,26 @@ impl Decode<DagCborCodec> for NodeId {
     }
 }
 
+impl WriteCbor for NodeId {
+    fn write_cbor<W: Writer>(&self, w: W) -> W::Output {
+        self.as_ref().write_cbor(w)
+    }
+}
+
+impl ReadCbor for NodeId {
+    fn fmt(f: &mut impl std::fmt::Write) -> std::fmt::Result {
+        write!(f, "NodeId")
+    }
+
+    fn read_cbor(cbor: &Cbor) -> cbor_data::codec::Result<Self>
+    where
+        Self: Sized,
+    {
+        let bytes = <[u8]>::read_cbor_borrowed(cbor)?;
+        NodeId::from_bytes(bytes.as_ref()).map_err(|err| CodecError::Custom(err.into()))
+    }
+}
+
 /// The unique identifier of a single event stream emitted by an Actyx node
 ///
 /// The emitting node — identified by its [`NodeId`](struct.NodeId.html) — may emit multiple
@@ -257,6 +280,8 @@ impl Debug for StreamId {
         write!(f, "StreamId({})", self)
     }
 }
+
+cbor_via!(StreamId => (NodeId, StreamNr): |x| -> (x.node_id, x.stream_nr), |(node_id, stream_nr)| -> Ok(StreamId { node_id, stream_nr }));
 
 impl Encode<DagCborCodec> for StreamId {
     fn encode<W: Write>(&self, c: DagCborCodec, w: &mut W) -> libipld::Result<()> {
@@ -343,6 +368,8 @@ impl fmt::Display for StreamNr {
         Display::fmt(&self.0, f)
     }
 }
+
+cbor_via!(StreamNr => u64: |x| -> x.0, FROM);
 
 #[cfg(test)]
 mod tests {

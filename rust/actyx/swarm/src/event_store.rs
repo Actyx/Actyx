@@ -308,8 +308,8 @@ mod tests {
         offsets: &BTreeMap<StreamId, u32>,
     ) {
         for other in other_stores {
-            store.banyan_store.ipfs().add_address(
-                &other.banyan_store.ipfs().local_peer_id(),
+            store.banyan_store.ipfs().clone().add_address(
+                other.banyan_store.ipfs().local_peer_id(),
                 other.banyan_store.ipfs().listeners()[0].clone(),
             );
         }

@@ -1,8 +1,7 @@
 use crate::types::ArcVal;
-use libipld::{
-    cbor::DagCborCodec,
-    codec::{Decode, Encode},
-    raw_value::RawValue,
+use cbor_data::{
+    codec::{ReadCbor, WriteCbor},
+    Cbor,
 };
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -62,17 +61,22 @@ impl<'de> Deserialize<'de> for Opaque {
     }
 }
 
-impl Encode<DagCborCodec> for Opaque {
-    fn encode<W: std::io::Write>(&self, _c: DagCborCodec, w: &mut W) -> anyhow::Result<()> {
-        // we know that an opaque contains cbor, so we just write it
-        Ok(w.write_all(self.as_ref())?)
+impl WriteCbor for Opaque {
+    fn write_cbor<W: cbor_data::Writer>(&self, w: W) -> W::Output {
+        w.write_trusting(self.0.as_ref())
     }
 }
 
-impl Decode<DagCborCodec> for Opaque {
-    fn decode<R: std::io::Read + std::io::Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
-        let tmp = RawValue::<DagCborCodec>::decode(c, r)?;
-        Ok(Self(ArcVal::from_boxed(tmp.into())))
+impl ReadCbor for Opaque {
+    fn fmt(f: &mut impl std::fmt::Write) -> std::fmt::Result {
+        write!(f, "Opaque")
+    }
+
+    fn read_cbor(cbor: &Cbor) -> cbor_data::codec::Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self::from_bytes(cbor.as_slice()))
     }
 }
 
@@ -80,8 +84,27 @@ impl Decode<DagCborCodec> for Opaque {
 mod tests {
     use super::*;
     use crate::from_cbor_me;
-    use libipld::codec::Codec;
+    use libipld::{
+        cbor::DagCborCodec,
+        codec::Codec,
+        prelude::{Decode, Encode},
+        raw_value::RawValue,
+    };
     use serde_json::json;
+
+    impl Encode<DagCborCodec> for Opaque {
+        fn encode<W: std::io::Write>(&self, _c: DagCborCodec, w: &mut W) -> anyhow::Result<()> {
+            // we know that an opaque contains cbor, so we just write it
+            Ok(w.write_all(self.as_ref())?)
+        }
+    }
+
+    impl Decode<DagCborCodec> for Opaque {
+        fn decode<R: std::io::Read + std::io::Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
+            let tmp = RawValue::<DagCborCodec>::decode(c, r)?;
+            Ok(Self(ArcVal::from_boxed(tmp.into())))
+        }
+    }
 
     #[test]
     fn opaque_dag_cbor_roundtrip() -> anyhow::Result<()> {

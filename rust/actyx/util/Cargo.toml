@@ -9,20 +9,20 @@ actyx_sdk = { path = "../../sdk" }
 anyhow = "1.0.52"
 async-trait = "0.1.52"
 base64 = "0.13.0"
-cbor-data = { version = "0.8.3", features = ["rfc3339"] }
+cbor-data = { version = "0.8.7", features = ["rfc3339"] }
 chrono = { version = "0.4.19", features = ["serde"] }
 crossbeam = "0.8.1"
 derive_more = "0.99.17"
 fnv = "1.0.7"
 futures = { version = "0.3.19", package = "futures" }
 genawaiter = { version = "0.99.1", features = ["futures03"], default-features = false }
-libipld = { version = "0.12.0", default-features = false, features = ["dag-cbor", "derive"] }
-libp2p = { version = "0.43.0", default-features = false, features = ["request-response"] }
+libipld = { version = "0.14.0", default-features = false, features = ["dag-cbor", "derive"] }
+libp2p = { version = "0.49.0", default-features = false, features = ["request-response"] }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 log-panics = "2.0.0"
 multiaddr = "0.14.0"
 num-traits = "0.2.14"
-parking_lot = "0.11.2"
+parking_lot = "0.12.1"
 pin-utils = "0.1.0"
 rand = { version = "0.8.4", features = ["small_rng"] }
 serde = { version = "1.0.133", features = ["derive"] }

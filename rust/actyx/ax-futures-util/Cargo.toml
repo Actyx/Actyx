@@ -12,7 +12,7 @@ default = ["with_tokio"]
 fnv = "1.0.7"
 futures = { version = "0.3.19", package = "futures" }
 itertools = "0.10.3"
-parking_lot = "0.11.2"
+parking_lot = "0.12.1"
 pin-project-lite = "0.2.8"
 tokio = { version = "1.15.0", features = [ "time" ], optional = true, package = "tokio" }
 tokio-stream = "0.1.7"

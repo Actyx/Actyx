@@ -21,26 +21,21 @@ use crossbeam::channel::Sender;
 use crypto::PublicKey;
 use formats::NodesRequest;
 use futures::{
-    future::{ready, AbortHandle, Abortable, BoxFuture},
+    future::{ready, select_all, AbortHandle, Abortable, BoxFuture},
     stream::{self, BoxStream, FuturesUnordered},
-    task::{self, Poll},
     Future, FutureExt, Stream, StreamExt,
 };
 use libipld::{cbor::DagCborCodec, codec::Codec, Cid};
 use libp2p::{
     core::{muxing::StreamMuxerBox, transport::Boxed},
-    identify::{Identify, IdentifyConfig, IdentifyEvent},
-    identity,
+    identify, identity,
     multiaddr::Protocol,
-    ping::{Ping, PingConfig, PingEvent},
+    ping,
     request_response::{
         ProtocolSupport, RequestResponse, RequestResponseConfig, RequestResponseEvent, RequestResponseMessage,
         ResponseChannel,
     },
-    swarm::{
-        NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters, Swarm, SwarmBuilder,
-        SwarmEvent,
-    },
+    swarm::{Swarm, SwarmBuilder, SwarmEvent},
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use libp2p_streaming_response::{ChannelId, StreamingResponse, StreamingResponseConfig, StreamingResponseEvent};
@@ -51,7 +46,6 @@ use std::{
     convert::TryFrom,
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
-    pin::Pin,
     sync::Arc,
     time::Duration,
 };
@@ -129,31 +123,20 @@ struct State {
     banyan_stores: BTreeMap<String, BanyanWriter>,
 }
 
-pub struct NoEvent;
-impl<T: std::fmt::Debug> From<T> for NoEvent {
-    fn from(_: T) -> Self {
-        NoEvent
-    }
-}
-
 #[derive(NetworkBehaviour)]
-#[behaviour(poll_method = "poll", out_event = "NoEvent", event_process = true)]
 pub struct ApiBehaviour {
     admin: StreamingResponse<AdminProtocol>,
     events: StreamingResponse<EventsProtocol>,
     banyan: RequestResponse<BanyanProtocol>,
-    ping: Ping,
-    identify: Identify,
-    #[behaviour(ignore)]
-    state: State,
+    ping: ping::Behaviour,
+    identify: identify::Behaviour,
 }
-type WrappedBehaviour = Swarm<ApiBehaviour>;
 
 macro_rules! request_oneshot {
     ($channel_id:expr, $slf:expr, $build_request:expr, $result:expr) => {{
         let maybe_add_key = $slf.maybe_add_key($channel_id.peer());
         let (tx, rx) = tokio::sync::oneshot::channel();
-        $slf.state.node_tx.send($build_request(tx)).unwrap();
+        $slf.node_tx.send($build_request(tx)).unwrap();
         let fut = async move {
             if let Err(e) = maybe_add_key.await {
                 tracing::error!("Error adding initial key {}", e);
@@ -167,7 +150,7 @@ macro_rules! request_oneshot {
             ($channel_id, result)
         }
         .boxed();
-        $slf.state.pending_oneshot.push(fut);
+        $slf.pending_oneshot.push(fut);
     }};
 }
 
@@ -179,7 +162,7 @@ impl ApiBehaviour {
         store: StoreTx,
         auth_info: Arc<Mutex<NodeApiSettings>>,
         local_public_key: libp2p::core::PublicKey,
-    ) -> Self {
+    ) -> (Self, State) {
         let tx = store.clone();
         let events = EventStoreRef::new(move |req| {
             tx.try_send(ComponentRequest::Individual(StoreRequest::EventsV2(req)))
@@ -202,8 +185,8 @@ impl ApiBehaviour {
         };
         let mut request_response_config = RequestResponseConfig::default();
         request_response_config.set_request_timeout(Duration::from_secs(120));
-        Self {
-            ping: Ping::new(PingConfig::new().with_keep_alive(true)),
+        let ret = Self {
+            ping: ping::Behaviour::new(ping::Config::new().with_keep_alive(true)),
             admin: StreamingResponse::new(StreamingResponseConfig::default()),
             banyan: RequestResponse::new(
                 BanyanProtocol::default(),
@@ -211,23 +194,25 @@ impl ApiBehaviour {
                 request_response_config,
             ),
             events: StreamingResponse::new(StreamingResponseConfig::default()),
-            identify: Identify::new(IdentifyConfig::new(
+            identify: identify::Behaviour::new(identify::Config::new(
                 format!("Actyx-{}", NodeVersion::get()),
                 local_public_key,
             )),
-            state,
-        }
+        };
+        (ret, state)
     }
+}
 
+impl State {
     /// Checks whether `peer` is authorized to use this API. If there are no
     /// authorized keys, any connected peer is authorized.
     fn is_authorized(&self, peer: &PeerId) -> bool {
-        let g = self.state.auth_info.lock();
+        let g = self.auth_info.lock();
         g.authorized_keys.is_empty() || g.authorized_keys.contains(peer)
     }
 
     fn maybe_add_key(&self, peer: PeerId) -> BoxFuture<'static, ActyxOSResult<()>> {
-        let mut auth_info = self.state.auth_info.lock();
+        let mut auth_info = self.auth_info.lock();
         if auth_info.authorized_keys.is_empty() {
             match PublicKey::try_from(peer) {
                 Ok(key_id) => {
@@ -237,8 +222,7 @@ impl ApiBehaviour {
                     auth_info.authorized_keys.push(peer);
                     drop(auth_info);
                     let (tx, rx) = tokio::sync::oneshot::channel();
-                    self.state
-                        .node_tx
+                    self.node_tx
                         .send(ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
                             scope: format!("{}/admin/authorizedUsers", SYSTEM_SCOPE).parse().unwrap(),
                             ignore_errors: false,
@@ -324,18 +308,11 @@ impl ApiBehaviour {
             ),
             AdminRequest::NodesInspect => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                self.state
-                    .store
+                self.store
                     .send(ComponentRequest::Individual(StoreRequest::NodesInspect(tx)))
                     .unwrap();
                 let maybe_add_key = self.maybe_add_key(channel_id.peer());
-                let admin_addrs = self
-                    .state
-                    .admin_sockets
-                    .get_cloned()
-                    .iter()
-                    .map(|a| a.to_string())
-                    .collect();
+                let admin_addrs = self.admin_sockets.get_cloned().iter().map(|a| a.to_string()).collect();
                 let fut = async move {
                     if let Err(e) = maybe_add_key.await {
                         tracing::error!("Error adding initial key {}", e);
@@ -359,7 +336,7 @@ impl ApiBehaviour {
                     (channel_id, res)
                 }
                 .boxed();
-                self.state.pending_oneshot.push(fut);
+                self.pending_oneshot.push(fut);
             }
             AdminRequest::NodesShutdown => {
                 trigger_shutdown(true);
@@ -391,7 +368,7 @@ impl ApiBehaviour {
 
     fn enqueue_events_v2(&mut self, channel_id: ChannelId, request: EventsRequest) {
         let channel_id2 = channel_id.clone();
-        let events = self.state.events.clone();
+        let events = self.events.clone();
         let (s, h) = match request {
             EventsRequest::Offsets => self.wrap(channel_id.clone(), async move {
                 match events.offsets().await {
@@ -492,266 +469,297 @@ impl ApiBehaviour {
                 }
             }),
         };
-        self.state.stream_handles.insert(channel_id2, h);
-        self.state.pending_stream.push(s);
-    }
-
-    /// The main purpose of this function is to shovel responses from any
-    /// pending requests to libp2p.
-    fn poll(
-        &mut self,
-        cx: &mut task::Context,
-        _: &mut impl PollParameters,
-    ) -> Poll<NetworkBehaviourAction<NoEvent, <Self as NetworkBehaviour>::ConnectionHandler>> {
-        let mut wake_me_up = false;
-        let span = tracing::trace_span!("poll");
-        let _enter = span.enter();
-
-        // Handle pending requests
-        while let Poll::Ready(Some((chan, resp))) = self.state.pending_oneshot.poll_next_unpin(cx) {
-            if self.admin.respond_final(chan, resp).is_err() {
-                tracing::debug!("Client dropped request");
-            }
-            wake_me_up = true;
-        }
-
-        let span = tracing::trace_span!("poll streams");
-        let enter = span.enter();
-        let mut count = 0;
-        while let Poll::Ready(Some((chan, resp))) = self.state.pending_stream.poll_next_unpin(cx) {
-            count += 1;
-            if let Some(msg) = resp {
-                if self.events.respond(chan.clone(), msg).is_err() {
-                    if let Some(h) = self.state.stream_handles.remove(&chan) {
-                        h.abort();
-                    }
-                }
-            } else {
-                self.state.stream_handles.remove(&chan);
-                let _ = self.events.finish_response(chan);
-            }
-            wake_me_up = true;
-        }
-        tracing::trace!("handled {} stream events", count);
-        drop(enter);
-
-        while let Poll::Ready(Some((channel, response))) = self.state.pending_finalise.poll_next_unpin(cx) {
-            if let BanyanResponse::Error(ref e) = response {
-                tracing::warn!("error in Finalise: {}", e);
-            }
-            self.banyan.send_response(channel, response).ok();
-            wake_me_up = true;
-        }
-
-        // This `poll` function is the last in the derived NetworkBehaviour.
-        // This means, when interacting with any sub-behaviours here, we have to
-        // make sure that they are being polled again. This smells, but it is a
-        // limitation or design flaw within libp2p. Not much we can do about it
-        // here.
-        if wake_me_up {
-            cx.waker().wake_by_ref();
-        }
-
-        Poll::Pending
+        self.stream_handles.insert(channel_id2, h);
+        self.pending_stream.push(s);
     }
 }
 
-impl NetworkBehaviourEventProcess<StreamingResponseEvent<AdminProtocol>> for ApiBehaviour {
-    fn inject_event(&mut self, event: StreamingResponseEvent<AdminProtocol>) {
-        tracing::debug!("Received streaming_response event: {:?}", event);
+enum MyEvent {
+    Swarm(Option<SwarmEvent<ApiBehaviourEvent, TConnErr>>),
+    OneShot(Option<(ChannelId, ActyxOSResult<AdminResponse>)>),
+    Stream(Option<(ChannelId, Option<EventsResponse>)>),
+    Finalise(Option<(ResponseChannel<BanyanResponse>, BanyanResponse)>),
+}
 
+async fn poll_swarm(mut swarm: Swarm<ApiBehaviour>, mut state: State) {
+    loop {
+        let all = [
+            swarm.next().map(MyEvent::Swarm).boxed(),
+            state.pending_oneshot.next().map(MyEvent::OneShot).boxed(),
+            state.pending_stream.next().map(MyEvent::Stream).boxed(),
+            state.pending_finalise.next().map(MyEvent::Finalise).boxed(),
+        ];
+        let event = select_all(all).await.0;
         match event {
-            StreamingResponseEvent::<AdminProtocol>::ReceivedRequest { payload, channel_id } => {
-                let peer = channel_id.peer();
-                if !self.is_authorized(&peer) {
-                    tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
-                    let _ = self.admin.respond_final(
+            MyEvent::Swarm(Some(event)) => match event {
+                SwarmEvent::Behaviour(event) => match event {
+                    ApiBehaviourEvent::Admin(event) => inject_admin_event(&mut state, swarm.behaviour_mut(), event),
+                    ApiBehaviourEvent::Events(event) => inject_events_event(&mut state, swarm.behaviour_mut(), event),
+                    ApiBehaviourEvent::Banyan(event) => inject_banyan_event(&mut state, swarm.behaviour_mut(), event),
+                    ApiBehaviourEvent::Ping(_x) => {}
+                    ApiBehaviourEvent::Identify(_x) => {}
+                },
+                SwarmEvent::NewListenAddr { address, .. } => {
+                    tracing::info!(target: "ADMIN_API_BOUND", "Admin API bound to {}.", address);
+                    state.admin_sockets.transform_mut(|set| set.insert(address));
+                }
+                SwarmEvent::ExpiredListenAddr { address, .. } => {
+                    tracing::info!("unbound from listen address {}", address);
+                    state.admin_sockets.transform_mut(|set| set.remove(&address));
+                }
+                SwarmEvent::ListenerError { error, .. } => {
+                    tracing::error!("SwarmEvent::ListenerError {}", error)
+                }
+                SwarmEvent::ListenerClosed { reason, addresses, .. } => {
+                    tracing::error!(reason = ?&reason, addrs = ?&addresses, "listener closed");
+                    state.admin_sockets.transform_mut(|set| {
+                        for addr in addresses {
+                            set.remove(&addr);
+                        }
+                        true
+                    });
+                }
+                SwarmEvent::ConnectionEstablished { endpoint, .. } => {
+                    tracing::debug!(endpoint = ?&endpoint, "connection established");
+                }
+                SwarmEvent::ConnectionClosed { endpoint, .. } => {
+                    tracing::debug!(endpoint = ?&endpoint, "connection closed");
+                }
+                SwarmEvent::IncomingConnectionError {
+                    local_addr,
+                    send_back_addr,
+                    error,
+                } => {
+                    tracing::warn!(local = %&local_addr, remote = %&send_back_addr, error = %&error, "incoming connection failure");
+                }
+                SwarmEvent::IncomingConnection { .. } => {}
+                SwarmEvent::OutgoingConnectionError { .. } => {}
+                SwarmEvent::BannedPeer { .. } => {}
+                SwarmEvent::Dialing(_) => {}
+            },
+            MyEvent::OneShot(Some((id, payload))) => {
+                if swarm.behaviour_mut().admin.respond_final(id, payload).is_err() {
+                    tracing::debug!("client dropped AdminRequest");
+                }
+            }
+            MyEvent::Stream(Some((id, response))) => {
+                if let Some(payload) = response {
+                    if swarm.behaviour_mut().events.respond(id.clone(), payload).is_err() {
+                        if let Some(h) = state.stream_handles.remove(&id) {
+                            h.abort();
+                        }
+                    }
+                } else {
+                    state.stream_handles.remove(&id);
+                    swarm.behaviour_mut().events.finish_response(id).ok();
+                }
+            }
+            MyEvent::Finalise(Some((channel, response))) => {
+                if let BanyanResponse::Error(err) = &response {
+                    tracing::warn!("error in Finalise command: {}", err);
+                    swarm.behaviour_mut().banyan.send_response(channel, response).ok();
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn inject_admin_event(state: &mut State, swarm: &mut ApiBehaviour, event: StreamingResponseEvent<AdminProtocol>) {
+    tracing::debug!("Received streaming_response event: {:?}", event);
+
+    match event {
+        StreamingResponseEvent::<AdminProtocol>::ReceivedRequest { payload, channel_id } => {
+            let peer = channel_id.peer();
+            if !state.is_authorized(&peer) {
+                tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
+                let _ =
+                    swarm.admin.respond_final(
                         channel_id,
                         Err(ActyxOSCode::ERR_UNAUTHORIZED
                             .with_message("Provided key is not authorized to access the API.")),
                     );
-                    return;
-                }
+                return;
+            }
 
-                self.enqueue(channel_id, payload);
-            }
-            StreamingResponseEvent::<AdminProtocol>::CancelledRequest { .. } => {
-                // all responses are one-shot at the moment, no need to cancel anything ongoing.
-            }
-            StreamingResponseEvent::<AdminProtocol>::ResponseReceived { .. } => {}
-            StreamingResponseEvent::<AdminProtocol>::ResponseFinished { .. } => {}
+            state.enqueue(channel_id, payload);
         }
+        StreamingResponseEvent::<AdminProtocol>::CancelledRequest { .. } => {
+            // all responses are one-shot at the moment, no need to cancel anything ongoing.
+        }
+        StreamingResponseEvent::<AdminProtocol>::ResponseReceived { .. } => {}
+        StreamingResponseEvent::<AdminProtocol>::ResponseFinished { .. } => {}
     }
 }
 
-impl NetworkBehaviourEventProcess<StreamingResponseEvent<EventsProtocol>> for ApiBehaviour {
-    fn inject_event(&mut self, event: StreamingResponseEvent<EventsProtocol>) {
-        tracing::debug!("Received streaming_response event: {:?}", event);
+fn inject_events_event(state: &mut State, swarm: &mut ApiBehaviour, event: StreamingResponseEvent<EventsProtocol>) {
+    tracing::debug!("Received streaming_response event: {:?}", event);
 
-        match event {
-            StreamingResponseEvent::<EventsProtocol>::ReceivedRequest { payload, channel_id } => {
-                let peer = channel_id.peer();
-                if !self.is_authorized(&peer) {
-                    tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
-                    let _ = self.events.respond_final(
-                        channel_id,
-                        EventsResponse::Error {
-                            message: "Provided key is not authorized to access the API.".to_owned(),
-                        },
-                    );
-                    return;
+    match event {
+        StreamingResponseEvent::<EventsProtocol>::ReceivedRequest { payload, channel_id } => {
+            let peer = channel_id.peer();
+            if !state.is_authorized(&peer) {
+                tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
+                let _ = swarm.events.respond_final(
+                    channel_id,
+                    EventsResponse::Error {
+                        message: "Provided key is not authorized to access the API.".to_owned(),
+                    },
+                );
+                return;
+            }
+
+            if let EventsRequest::Query(QueryRequest { query, .. }) = &payload {
+                if query.contains("PRAGMA explode") {
+                    std::process::abort();
                 }
+            }
 
-                if let EventsRequest::Query(QueryRequest { query, .. }) = &payload {
-                    if query.contains("PRAGMA explode") {
-                        std::process::abort();
+            state.enqueue_events_v2(channel_id, payload);
+        }
+        StreamingResponseEvent::<EventsProtocol>::CancelledRequest { channel_id, .. } => {
+            if let Some(h) = state.stream_handles.remove(&channel_id) {
+                h.abort();
+            }
+        }
+        StreamingResponseEvent::<EventsProtocol>::ResponseReceived { .. } => {}
+        StreamingResponseEvent::<EventsProtocol>::ResponseFinished { .. } => {}
+    }
+}
+
+fn inject_banyan_event(
+    state: &mut State,
+    swarm: &mut ApiBehaviour,
+    event: RequestResponseEvent<BanyanRequest, BanyanResponse>,
+) {
+    tracing::debug!("received banyan event");
+
+    match event {
+        RequestResponseEvent::Message { peer, message } => {
+            tracing::debug!(peer = display(peer), "received {:?}", message);
+            match message {
+                RequestResponseMessage::Request { request, channel, .. } => {
+                    if !state.is_authorized(&peer) {
+                        tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
+                        swarm
+                            .banyan
+                            .send_response(
+                                channel,
+                                Err(ActyxOSCode::ERR_UNAUTHORIZED
+                                    .with_message("Provided key is not authorized to access the API."))
+                                .into(),
+                            )
+                            .ok();
+                        return;
                     }
-                }
-
-                self.enqueue_events_v2(channel_id, payload);
-            }
-            StreamingResponseEvent::<EventsProtocol>::CancelledRequest { channel_id, .. } => {
-                if let Some(h) = self.state.stream_handles.remove(&channel_id) {
-                    h.abort();
-                }
-            }
-            StreamingResponseEvent::<EventsProtocol>::ResponseReceived { .. } => {}
-            StreamingResponseEvent::<EventsProtocol>::ResponseFinished { .. } => {}
-        }
-    }
-}
-
-impl NetworkBehaviourEventProcess<RequestResponseEvent<BanyanRequest, BanyanResponse>> for ApiBehaviour {
-    fn inject_event(&mut self, event: RequestResponseEvent<BanyanRequest, BanyanResponse>) {
-        tracing::debug!("received banyan event");
-
-        match event {
-            RequestResponseEvent::Message { peer, message } => {
-                tracing::debug!(peer = display(peer), "received {:?}", message);
-                match message {
-                    RequestResponseMessage::Request { request, channel, .. } => {
-                        if !self.is_authorized(&peer) {
-                            tracing::warn!("Received unauthorized request from {}. Rejecting.", peer);
-                            self.banyan
-                                .send_response(
-                                    channel,
-                                    Err(ActyxOSCode::ERR_UNAUTHORIZED
-                                        .with_message("Provided key is not authorized to access the API."))
-                                    .into(),
-                                )
-                                .ok();
-                            return;
+                    match request {
+                        BanyanRequest::MakeFreshTopic(topic) => {
+                            let result = (|| -> anyhow::Result<()> {
+                                remove_old_dbs(state.store_dir.as_path(), topic.as_str())
+                                    .context("removing old DBs")?;
+                                let storage = StorageServiceStore::new(
+                                    StorageService::open(
+                                        StorageConfig::new(
+                                            Some(state.store_dir.join(format!("{}.sqlite", topic))),
+                                            None,
+                                            10_000,
+                                            Duration::from_secs(7200),
+                                        ),
+                                        swarm::IpfsEmbedExecutor::new(),
+                                    )
+                                    .context("creating new store DB")?,
+                                );
+                                let forest = swarm::BanyanForest::<swarm::TT, _>::new(storage, Default::default());
+                                tracing::info!("prepared new store DB for upload of topic `{}`", topic);
+                                state.banyan_stores.insert(topic, BanyanWriter::new(forest));
+                                Ok(())
+                            })();
+                            if let Err(ref e) = result {
+                                tracing::warn!("error in MakeFreshTopic: {:#}", e);
+                            }
+                            swarm.banyan.send_response(channel, result.into()).ok();
                         }
-                        match request {
-                            BanyanRequest::MakeFreshTopic(topic) => {
-                                let result = (|| -> anyhow::Result<()> {
-                                    remove_old_dbs(self.state.store_dir.as_path(), topic.as_str())
-                                        .context("removing old DBs")?;
-                                    let storage = StorageServiceStore::new(
-                                        StorageService::open(
-                                            StorageConfig::new(
-                                                Some(self.state.store_dir.join(format!("{}.sqlite", topic))),
-                                                None,
-                                                10_000,
-                                                Duration::from_secs(7200),
-                                            ),
-                                            swarm::IpfsEmbedExecutor::new(),
-                                        )
-                                        .context("creating new store DB")?,
+                        BanyanRequest::AppendEvents(topic, data) => {
+                            let result = (|| -> anyhow::Result<()> {
+                                let writer = state
+                                    .banyan_stores
+                                    .get_mut(&topic)
+                                    .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
+                                writer.buf.write_all(data.as_slice()).context("feeding decompressor")?;
+                                store_events(writer).context("storing events")?;
+                                Ok(())
+                            })();
+                            if let Err(ref e) = result {
+                                tracing::warn!("error in AppendEvents: {:#}", e);
+                            }
+                            swarm.banyan.send_response(channel, result.into()).ok();
+                        }
+                        BanyanRequest::Finalise(topic) => {
+                            let result = (|| -> anyhow::Result<()> {
+                                let mut writer = state
+                                    .banyan_stores
+                                    .remove(&topic)
+                                    .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
+
+                                writer.buf.flush().context("flushing decompressor")?;
+                                store_events(&mut writer).context("storing final events")?;
+
+                                if !writer.buf.get_ref().is_empty() {
+                                    tracing::warn!(
+                                        bytes = writer.buf.get_ref().len(),
+                                        "trailing garbage in upload for topic `{}`!",
+                                        topic
                                     );
-                                    let forest = swarm::BanyanForest::<swarm::TT, _>::new(storage, Default::default());
-                                    tracing::info!("prepared new store DB for upload of topic `{}`", topic);
-                                    self.state.banyan_stores.insert(topic, BanyanWriter::new(forest));
-                                    Ok(())
-                                })();
-                                if let Err(ref e) = result {
-                                    tracing::warn!("error in MakeFreshTopic: {:#}", e);
                                 }
-                                self.banyan.send_response(channel, result.into()).ok();
+
+                                finalise_streams(state.node_id, writer).context("finalising streams")?;
+
+                                Ok(())
+                            })();
+                            if let Err(ref e) = result {
+                                tracing::warn!("error in Finalise: {:#}", e);
+                                swarm.banyan.send_response(channel, result.into()).ok();
+                                return;
                             }
-                            BanyanRequest::AppendEvents(topic, data) => {
-                                let result = (|| -> anyhow::Result<()> {
-                                    let writer = self
-                                        .state
-                                        .banyan_stores
-                                        .get_mut(&topic)
-                                        .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
-                                    writer.buf.write_all(data.as_slice()).context("feeding decompressor")?;
-                                    store_events(writer).context("storing events")?;
-                                    Ok(())
-                                })();
-                                if let Err(ref e) = result {
-                                    tracing::warn!("error in AppendEvents: {:#}", e);
-                                }
-                                self.banyan.send_response(channel, result.into()).ok();
-                            }
-                            BanyanRequest::Finalise(topic) => {
-                                let result = (|| -> anyhow::Result<()> {
-                                    let mut writer = self
-                                        .state
-                                        .banyan_stores
-                                        .remove(&topic)
-                                        .ok_or_else(|| anyhow::anyhow!("topic not prepared"))?;
+                            tracing::info!("import completed for topic `{}`", topic);
 
-                                    writer.buf.flush().context("flushing decompressor")?;
-                                    store_events(&mut writer).context("storing final events")?;
-
-                                    if !writer.buf.get_ref().is_empty() {
-                                        tracing::warn!(
-                                            bytes = writer.buf.get_ref().len(),
-                                            "trailing garbage in upload for topic `{}`!",
-                                            topic
-                                        );
-                                    }
-
-                                    finalise_streams(self.state.node_id, writer).context("finalising streams")?;
-
-                                    Ok(())
-                                })();
-                                if let Err(ref e) = result {
-                                    tracing::warn!("error in Finalise: {:#}", e);
-                                    self.banyan.send_response(channel, result.into()).ok();
-                                    return;
-                                }
-                                tracing::info!("import completed for topic `{}`", topic);
-
-                                let node_tx = self.state.node_tx.clone();
-                                self.state
-                                    .pending_finalise
-                                    .push(Box::pin(switch_to_dump(node_tx, channel, topic)));
-                            }
-                            BanyanRequest::Future => {
-                                self.banyan
-                                    .send_response(channel, BanyanResponse::Error("message from the future".into()))
-                                    .ok();
-                            }
+                            let node_tx = state.node_tx.clone();
+                            state
+                                .pending_finalise
+                                .push(Box::pin(switch_to_dump(node_tx, channel, topic)));
+                        }
+                        BanyanRequest::Future => {
+                            swarm
+                                .banyan
+                                .send_response(channel, BanyanResponse::Error("message from the future".into()))
+                                .ok();
                         }
                     }
-                    RequestResponseMessage::Response { .. } => {}
                 }
+                RequestResponseMessage::Response { .. } => {}
             }
-            RequestResponseEvent::OutboundFailure {
-                peer,
-                request_id,
-                error,
-            } => tracing::warn!(
-                peer = display(peer),
-                request_id = display(request_id),
-                error = debug(&error),
-                "banyan outbound failure"
-            ),
-            RequestResponseEvent::InboundFailure {
-                peer,
-                request_id,
-                error,
-            } => tracing::warn!(
-                peer = display(peer),
-                request_id = display(request_id),
-                error = debug(&error),
-                "banyan inbound failure"
-            ),
-            RequestResponseEvent::ResponseSent { .. } => {}
         }
+        RequestResponseEvent::OutboundFailure {
+            peer,
+            request_id,
+            error,
+        } => tracing::warn!(
+            peer = display(peer),
+            request_id = display(request_id),
+            error = debug(&error),
+            "banyan outbound failure"
+        ),
+        RequestResponseEvent::InboundFailure {
+            peer,
+            request_id,
+            error,
+        } => tracing::warn!(
+            peer = display(peer),
+            request_id = display(request_id),
+            error = debug(&error),
+            "banyan inbound failure"
+        ),
+        RequestResponseEvent::ResponseSent { .. } => {}
     }
 }
 
@@ -924,18 +932,6 @@ fn store_events(writer: &mut BanyanWriter) -> anyhow::Result<()> {
     Ok(())
 }
 
-impl NetworkBehaviourEventProcess<PingEvent> for ApiBehaviour {
-    fn inject_event(&mut self, _event: PingEvent) {
-        // ignored
-    }
-}
-
-impl NetworkBehaviourEventProcess<IdentifyEvent> for ApiBehaviour {
-    fn inject_event(&mut self, _event: IdentifyEvent) {
-        // ignored
-    }
-}
-
 pub(crate) async fn mk_swarm(
     node_id: NodeId,
     keypair: libp2p::core::identity::Keypair,
@@ -949,7 +945,7 @@ pub(crate) async fn mk_swarm(
         bail!("cannot start node API without any listen addresses");
     }
 
-    let protocol = ApiBehaviour::new(node_id, node_tx, store_dir, store, auth_info, keypair.public());
+    let (protocol, state) = ApiBehaviour::new(node_id, node_tx, store_dir, store, auth_info, keypair.public());
     let (peer_id, transport) = mk_transport(keypair).await?;
 
     let mut swarm = SwarmBuilder::new(transport, protocol, peer_id)
@@ -958,7 +954,7 @@ pub(crate) async fn mk_swarm(
         }))
         .build();
 
-    let mut addrs = swarm.behaviour().state.admin_sockets.new_observer();
+    let mut addrs = state.admin_sockets.new_observer();
 
     // Trying to bind to `/ip6/::0/tcp/0` (dual-stack) won't work, as
     // rust-libp2p sets `IPV6_V6ONLY` (or the platform equivalent) [0]. This is
@@ -974,7 +970,7 @@ pub(crate) async fn mk_swarm(
             })?;
     }
 
-    tokio::spawn(SwarmFuture(swarm));
+    tokio::spawn(poll_swarm(swarm, state));
 
     // check that some addresses were bound
     let mut set = addrs.next().await.ok_or_else(|| anyhow!("address stream died"))?;
@@ -1023,86 +1019,10 @@ type TConnErr = libp2p::core::either::EitherError<
             >,
             libp2p::swarm::handler::ConnectionHandlerUpgrErr<std::io::Error>,
         >,
-        libp2p::ping::PingFailure,
+        libp2p::ping::Failure,
     >,
     std::io::Error,
 >;
-
-/// Wrapper object for driving the whole swarm
-struct SwarmFuture(WrappedBehaviour);
-impl SwarmFuture {
-    pub(crate) fn swarm(&mut self) -> &mut WrappedBehaviour {
-        &mut self.0
-    }
-
-    /// Poll the swarm once
-    pub(crate) fn poll_swarm(
-        &mut self,
-        cx: &mut task::Context,
-    ) -> std::task::Poll<Option<SwarmEvent<NoEvent, TConnErr>>> {
-        self.swarm().poll_next_unpin(cx)
-    }
-}
-
-impl Future for SwarmFuture {
-    type Output = ();
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut task::Context) -> Poll<Self::Output> {
-        // poll the swarm until pending
-        while let Poll::Ready(Some(event)) = self.poll_swarm(cx) {
-            match event {
-                SwarmEvent::NewListenAddr { address, .. } => {
-                    tracing::info!(target: "ADMIN_API_BOUND", "Admin API bound to {}.", address);
-                    self.0
-                        .behaviour_mut()
-                        .state
-                        .admin_sockets
-                        .transform_mut(|set| set.insert(address));
-                }
-                SwarmEvent::ListenerError { error, .. } => {
-                    tracing::error!("SwarmEvent::ListenerError {}", error)
-                }
-                SwarmEvent::ListenerClosed { reason, addresses, .. } => {
-                    tracing::error!(reason = ?&reason, addrs = ?&addresses, "listener closed");
-                    self.0.behaviour_mut().state.admin_sockets.transform_mut(|set| {
-                        for addr in addresses {
-                            set.remove(&addr);
-                        }
-                        true
-                    });
-                }
-                SwarmEvent::Behaviour(_) => {}
-                SwarmEvent::ConnectionEstablished { endpoint, .. } => {
-                    tracing::debug!(endpoint = ?&endpoint, "connection established");
-                }
-                SwarmEvent::ConnectionClosed { endpoint, .. } => {
-                    tracing::debug!(endpoint = ?&endpoint, "connection closed");
-                }
-                SwarmEvent::IncomingConnection { .. } => {}
-                SwarmEvent::IncomingConnectionError {
-                    local_addr,
-                    send_back_addr,
-                    error,
-                } => {
-                    tracing::warn!(local = %&local_addr, remote = %&send_back_addr, error = %&error, "incoming connection failure");
-                }
-                SwarmEvent::OutgoingConnectionError { .. } => {}
-                SwarmEvent::BannedPeer { .. } => {}
-                SwarmEvent::ExpiredListenAddr { address, .. } => {
-                    tracing::info!("unbound from listen address {}", address);
-                    self.0
-                        .behaviour_mut()
-                        .state
-                        .admin_sockets
-                        .transform_mut(|set| set.remove(&address));
-                }
-                SwarmEvent::Dialing(_) => {}
-            }
-        }
-
-        Poll::Pending
-    }
-}
 
 async fn mk_transport(id_keys: identity::Keypair) -> anyhow::Result<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {
     let peer_id = id_keys.public().to_peer_id();

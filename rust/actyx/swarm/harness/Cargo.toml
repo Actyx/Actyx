@@ -15,8 +15,8 @@ crypto = { path = "../../crypto" }
 escargot = "0.5.7"
 flate2 = "1.0.22"
 futures = { version = "0.3.19", package = "futures" }
-libipld = "0.12.0"
-libp2p = { version = "0.43.0", default-features = false }
+libipld = "0.14.0"
+libp2p = { version = "0.49.0", default-features = false }
 maplit = "1.0.2"
 petgraph = "0.6.0"
 quickcheck = "1.0.3"

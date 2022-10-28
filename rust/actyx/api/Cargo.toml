@@ -23,11 +23,11 @@ genawaiter = { version = "0.99.1", features = ["futures03"] }
 http = "0.2.6"
 hyper = { version = "0.14.16", features = ["http1", "server", "tcp"], package = "hyper" }
 itertools = "0.10.3"
-libipld = { version = "0.12.0", default-features = false }
+libipld = { version = "0.14.0", default-features = false }
 maplit = "1.0.2"
 mime_guess = "2.0.3"
 num-traits = "0.2.14"
-parking_lot = "0.11.2"
+parking_lot = "0.12.1"
 percent-encoding = "2.1.0"
 pin-project = "1.0.10"
 runtime = { path = "../runtime" }
@@ -40,7 +40,7 @@ thiserror = "1.0.30"
 tokio = { version = "1.15.0", package = "tokio" }
 tokio-stream = "0.1.8"
 tracing = "0.1.29"
-tree_magic = "0.2.3"
+tree_magic_mini = "3.0.3"
 trees = { path = "../trees" }
 warp = "0.3.2"
 wsrpc = "0.2.0"
@@ -50,7 +50,7 @@ zeroize = "1.2.0"
 bytes = "1.1.0"
 env_logger = "0.9.0"
 maplit = "1.0.2"
-multihash = { version = "0.14.0", features = ["sha2"] }
+multihash = { version = "0.16.3", features = ["sha2"] }
 serde_json = { version = "1.0.74", features = ["raw_value"] }
 tokio = { version = "1.15.0", features = ["full"], package = "tokio" }
 tracing-subscriber = "0.3.5"

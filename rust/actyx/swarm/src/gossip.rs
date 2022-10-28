@@ -5,12 +5,16 @@ use crate::{
 use actyx_sdk::{LamportTimestamp, NodeId, Offset, StreamNr, Timestamp};
 use anyhow::Result;
 use ax_futures_util::stream::ready_iter;
+use cbor_data::{
+    codec::{CodecError, ReadCbor, WriteCbor},
+    Cbor, CborBuilder,
+};
 use futures::{
     channel::mpsc::{unbounded, UnboundedSender},
     prelude::*,
 };
 use ipfs_embed::GossipEvent;
-use libipld::{cbor::DagCborCodec, codec::Codec, Cid};
+use libipld::Cid;
 use std::{
     collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
@@ -35,9 +39,11 @@ pub struct Gossip {
 }
 
 impl Gossip {
-    pub fn new(ipfs: Ipfs, node_id: NodeId, topic: String, enable_fast_path: bool, enable_slow_path: bool) -> Self {
+    pub fn new(mut ipfs: Ipfs, node_id: NodeId, topic: String, enable_fast_path: bool, enable_slow_path: bool) -> Self {
         let (tx, mut rx) = unbounded::<PublishUpdate>();
         let publish_task = async move {
+            let mut cbor_scratch = Vec::new();
+
             while let Some(updates) = ready_iter(&mut rx).await {
                 // drain the channel and only publish the latest update per stream
                 let updates = updates.map(|up| (up.stream, up)).collect::<BTreeMap<_, _>>();
@@ -74,9 +80,11 @@ impl Gossip {
                             time,
                             offset: Some(offset),
                         };
-                        let blob = DagCborCodec.encode(&GossipMessage::RootUpdate(root_update)).unwrap();
+                        let blob = GossipMessage::RootUpdate(root_update)
+                            .write_cbor(CborBuilder::with_scratch_space(&mut cbor_scratch))
+                            .into_vec();
                         tracing::trace!("broadcast_blob {} {}", stream, blob.len());
-                        if let Err(err) = ipfs.broadcast(&topic, blob) {
+                        if let Err(err) = ipfs.broadcast(topic.clone(), blob).await {
                             tracing::error!("broadcast failed: {}", err);
                         }
                     }
@@ -93,9 +101,11 @@ impl Gossip {
                             blocks: Default::default(),
                             offset: Some(offset),
                         };
-                        let blob = DagCborCodec.encode(&GossipMessage::RootUpdate(root_update)).unwrap();
+                        let blob = GossipMessage::RootUpdate(root_update)
+                            .write_cbor(CborBuilder::with_scratch_space(&mut cbor_scratch))
+                            .into_vec();
                         tracing::trace!(%stream, %topic, "publish_blob len {}", blob.len());
-                        if let Err(err) = ipfs.publish(&topic, blob) {
+                        if let Err(err) = ipfs.publish(topic.clone(), blob).await {
                             tracing::error!(%stream, %topic, "publish failed: {}", err);
                         }
                     }
@@ -128,7 +138,9 @@ impl Gossip {
     }
 
     pub fn publish_root_map(&self, store: BanyanStore, topic: String, interval: Duration) -> impl Future<Output = ()> {
+        let mut ipfs = store.ipfs().clone();
         async move {
+            let mut cbor_scratch = Vec::new();
             loop {
                 tokio::time::sleep(interval).await;
                 let _s = tracing::trace_span!("publish_root_map");
@@ -155,8 +167,10 @@ impl Gossip {
                     lamport,
                     time,
                 });
-                let blob = DagCborCodec.encode(&msg).unwrap();
-                if let Err(err) = store.ipfs().publish(&topic, blob) {
+                let blob = msg
+                    .write_cbor(CborBuilder::with_scratch_space(&mut cbor_scratch))
+                    .into_vec();
+                if let Err(err) = ipfs.publish(topic.clone(), blob).await {
                     tracing::error!("publish root map failed: {}", err);
                 } else {
                     tracing::debug!("published {} entries at lamport {}", n_entries, lamport,);
@@ -165,76 +179,78 @@ impl Gossip {
         }
     }
 
-    pub fn ingest(&self, store: BanyanStore, topic: String) -> Result<impl Future<Output = ()>> {
-        let mut subscription = store.ipfs().subscribe(&topic)?;
+    pub async fn ingest(store: BanyanStore, topic: String) -> Result<impl Future<Output = ()>> {
+        let mut ipfs = store.ipfs().clone();
+        let mut subscription = ipfs.subscribe(topic.clone()).await?;
         Ok(async move {
-            loop {
-                while let Some(event) = subscription.next().await {
-                    let (peer_id, message) = if let GossipEvent::Message(sender, message) = event {
-                        (sender, message)
-                    } else {
-                        continue;
-                    };
-                    match DagCborCodec.decode::<GossipMessage>(&message) {
-                        Ok(GossipMessage::RootUpdate(root_update)) => {
-                            let _s = tracing::trace_span!("root update", root = %root_update.root);
-                            let _s = _s.enter();
-                            tracing::debug!(
-                                "from {} with {} blocks, lamport: {}, offset: {:?}",
-                                root_update.stream,
-                                root_update.blocks.len(),
-                                root_update.lamport,
-                                root_update.offset
-                            );
-                            let mut lock = store.lock();
-                            tracing::trace!("got store lock");
-                            lock.received_lamport(root_update.lamport)
-                                .expect("unable to update lamport");
-                            drop(lock);
-                            tracing::trace!("updated lamport");
-                            if let Some(offset) = root_update.offset {
-                                store.update_highest_seen(root_update.stream, offset);
-                            }
-                            let path = if root_update.blocks.is_empty() {
-                                RootPath::SlowPath
+            while let Some(event) = subscription.next().await {
+                let (peer_id, message) = if let GossipEvent::Message(sender, message) = event {
+                    (sender, message)
+                } else {
+                    continue;
+                };
+                match Cbor::checked(&*message)
+                    .map_err(CodecError::custom)
+                    .and_then(GossipMessage::read_cbor)
+                {
+                    Ok(GossipMessage::RootUpdate(root_update)) => {
+                        let _s = tracing::trace_span!("root update", root = %root_update.root);
+                        let _s = _s.enter();
+                        tracing::debug!(
+                            "from {} with {} blocks, lamport: {}, offset: {:?}",
+                            root_update.stream,
+                            root_update.blocks.len(),
+                            root_update.lamport,
+                            root_update.offset
+                        );
+                        let mut lock = store.lock();
+                        tracing::trace!("got store lock");
+                        lock.received_lamport(root_update.lamport)
+                            .expect("unable to update lamport");
+                        drop(lock);
+                        tracing::trace!("updated lamport");
+                        if let Some(offset) = root_update.offset {
+                            store.update_highest_seen(root_update.stream, offset);
+                        }
+                        let path = if root_update.blocks.is_empty() {
+                            RootPath::SlowPath
+                        } else {
+                            RootPath::FastPath
+                        };
+                        for block in root_update.blocks {
+                            let cid = *block.cid();
+                            if let Err(err) = store.ipfs().insert(block) {
+                                tracing::error!("{}", err);
                             } else {
-                                RootPath::FastPath
-                            };
-                            for block in root_update.blocks {
-                                let cid = *block.cid();
-                                if let Err(err) = store.ipfs().insert(block) {
-                                    tracing::error!("{}", err);
-                                } else {
-                                    tracing::trace!("{} written", display(cid));
-                                }
+                                tracing::trace!("{} written", display(cid));
                             }
-                            match Link::try_from(root_update.root) {
-                                Ok(root) => store.update_root(root_update.stream, root, RootSource::new(peer_id, path)),
+                        }
+                        match Link::try_from(root_update.root) {
+                            Ok(root) => store.update_root(root_update.stream, root, RootSource::new(peer_id, path)),
+                            Err(err) => tracing::error!("failed to parse link {}", err),
+                        }
+                    }
+                    Ok(GossipMessage::RootMap(root_map)) => {
+                        let _s = tracing::trace_span!("root map", lamport = %root_map.lamport);
+                        let _s = _s.enter();
+                        tracing::debug!("with {} entries, lamport: {}", root_map.entries.len(), root_map.lamport);
+                        store
+                            .lock()
+                            .received_lamport(root_map.lamport)
+                            .expect("unable to update lamport");
+                        for (idx, (stream, root)) in root_map.entries.into_iter().enumerate() {
+                            if let Some((offset, _)) = root_map.offsets.get(idx) {
+                                store.update_highest_seen(stream, *offset);
+                            }
+                            match Link::try_from(root) {
+                                Ok(root) => {
+                                    store.update_root(stream, root, RootSource::new(peer_id, RootPath::RootMap))
+                                }
                                 Err(err) => tracing::error!("failed to parse link {}", err),
                             }
                         }
-                        Ok(GossipMessage::RootMap(root_map)) => {
-                            let _s = tracing::trace_span!("root map", lamport = %root_map.lamport);
-                            let _s = _s.enter();
-                            tracing::debug!("with {} entries, lamport: {}", root_map.entries.len(), root_map.lamport);
-                            store
-                                .lock()
-                                .received_lamport(root_map.lamport)
-                                .expect("unable to update lamport");
-                            for (idx, (stream, root)) in root_map.entries.into_iter().enumerate() {
-                                if let Some((offset, _)) = root_map.offsets.get(idx) {
-                                    store.update_highest_seen(stream, *offset);
-                                }
-                                match Link::try_from(root) {
-                                    Ok(root) => {
-                                        store.update_root(stream, root, RootSource::new(peer_id, RootPath::RootMap))
-                                    }
-                                    Err(err) => tracing::error!("failed to parse link {}", err),
-                                }
-                            }
-                        }
-                        Err(err) => tracing::debug!("received invalid gossip message; skipping. {}", err),
                     }
+                    Err(err) => tracing::debug!("received invalid gossip message; skipping. {}", err),
                 }
             }
         })

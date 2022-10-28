@@ -101,7 +101,7 @@ fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
             let ss = SqliteStore::new(bs)?;
             let value_key: chacha20::Key = opts.value_pass.map(create_chacha_key).unwrap_or_default();
             let nonce = <&chacha20::XNonce>::try_from(AxTrees::NONCE).unwrap();
-            dump::dump_json(ss, block_hash, &value_key, nonce, &mut std::io::stdout())?;
+            dump::dump_cbor(ss, block_hash, &value_key, nonce, &mut std::io::stdout())?;
         }
         _ => anyhow::bail!("Provide either root or block hash"),
     }

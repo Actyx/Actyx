@@ -184,7 +184,8 @@ pub async fn discovery_ingest(store: BanyanStore) {
         TimeQuery::from(Timestamp::now() - 1_000_000_000_000..),
     );
     let mut stream = store.stream_filtered_stream_ordered(query);
-    let peer_id = store.ipfs().local_peer_id();
+    let mut ipfs = store.ipfs().clone();
+    let peer_id = ipfs.local_peer_id();
 
     // first catch up and build a list, we won’t want to spam the address book
     let mut addresses = FnvHashMap::<PeerId, FnvHashSet<Multiaddr>>::default();
@@ -209,7 +210,7 @@ pub async fn discovery_ingest(store: BanyanStore) {
     }
     for (peer, addrs) in addresses {
         for addr in addrs {
-            store.ipfs().add_address(&peer.into(), addr.into());
+            ipfs.add_address(peer.into(), addr.into());
         }
     }
 
@@ -224,10 +225,10 @@ pub async fn discovery_ingest(store: BanyanStore) {
         match event {
             Event::NewListenAddr(peer, addr)
             | Event::NewExternalAddr(peer, addr)
-            | Event::NewObservedAddr(peer, addr) => store.ipfs().add_address(&peer.into(), addr.into()),
+            | Event::NewObservedAddr(peer, addr) => ipfs.add_address(peer.into(), addr.into()),
             Event::ExpiredListenAddr(peer, addr)
             | Event::ExpiredExternalAddr(peer, addr)
-            | Event::ExpiredObservedAddr(peer, addr) => store.ipfs().remove_address(&peer.into(), &addr.into()),
+            | Event::ExpiredObservedAddr(peer, addr) => ipfs.remove_address(peer.into(), addr.into()),
         }
     }
 }
@@ -272,7 +273,8 @@ pub fn discovery_publish(
 ) -> Result<impl Future<Output = ()>> {
     let mut buffer = vec![];
     let tags = tags!("discovery");
-    let peer_id: PeerId = store.ipfs().local_peer_id().into();
+    let mut ipfs = store.ipfs().clone();
+    let peer_id: PeerId = ipfs.local_peer_id().into();
     let mut dialers = FnvHashMap::<_, Dialer>::default();
     let mut to_warn = to_warn
         .into_iter()
@@ -311,7 +313,7 @@ pub fn discovery_publish(
                     }
                 }
                 ipfs_embed::Event::Discovered(peer) => {
-                    store.ipfs().dial(&peer);
+                    ipfs.dial(peer);
                     continue;
                 }
                 ipfs_embed::Event::Unreachable(peer) => {
@@ -325,15 +327,15 @@ pub fn discovery_publish(
                     } else {
                         tracing::debug!(id = display(&peer), "connection failed");
                     }
-                    let ipfs = store.ipfs().clone();
                     let backoff = if let Some(dialer) = dialers.remove(&peer) {
                         dialer.backoff.saturating_mul(2).min(Duration::from_secs(60))
                     } else {
                         Duration::from_secs(1)
                     };
+                    let mut ipfs = ipfs.clone();
                     let task = tokio::spawn(async move {
                         tokio::time::sleep(backoff).await;
-                        ipfs.dial(&peer);
+                        ipfs.dial(peer);
                     });
                     dialers.insert(peer, Dialer::new(backoff, task));
                     continue;
@@ -357,11 +359,11 @@ pub fn discovery_publish(
                         tracing::debug!(id = display(&peer), "disconnected");
                     }
                     // dialing on disconnected ensures the unreachable event fires.
-                    store.ipfs().dial(&peer);
+                    ipfs.dial(peer);
                     continue;
                 }
                 ipfs_embed::Event::NewInfo(peer) => {
-                    if let Some(info) = store.ipfs().peer_info(&peer) {
+                    if let Some(info) = ipfs.peer_info(&peer) {
                         if let Some(rtt) = info.full_rtt() {
                             if rtt.failures() > 0 {
                                 tracing::info!(peer = display(peer), info = debug(rtt), "ping failure");
@@ -410,41 +412,39 @@ pub fn discovery_publish(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ipfs_embed::ListenerEvent;
     use std::time::Duration;
 
     #[tokio::test]
     async fn test_discovery() -> Result<()> {
         util::setup_logger();
         let a = BanyanStore::test("a").await?;
+        let mut a = a.ipfs().clone();
         let b = BanyanStore::test("b").await?;
+        let mut b = b.ipfs().clone();
         let c = BanyanStore::test("c").await?;
-        let a_id = a.ipfs().local_peer_id();
-        let b_id = b.ipfs().local_peer_id();
-        let c_id = c.ipfs().local_peer_id();
-        a.ipfs()
-            .listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?
-            .next()
-            .await
-            .unwrap();
-        b.ipfs()
-            .listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?
-            .next()
-            .await
-            .unwrap();
-        c.ipfs()
-            .listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?
-            .next()
-            .await
-            .unwrap();
+        let mut c = c.ipfs().clone();
+        let a_id = a.local_peer_id();
+        let b_id = b.local_peer_id();
+        let c_id = c.local_peer_id();
+        assert_listen(a.listen_on("/ip4/127.0.0.1/tcp/0".parse()?).next().await.unwrap());
+        assert_listen(b.listen_on("/ip4/127.0.0.1/tcp/0".parse()?).next().await.unwrap());
+        assert_listen(c.listen_on("/ip4/127.0.0.1/tcp/0".parse()?).next().await.unwrap());
         tokio::time::sleep(Duration::from_millis(100)).await;
-        a.ipfs().add_address(&b_id, b.ipfs().listeners()[0].clone());
-        c.ipfs().add_address(&b_id, b.ipfs().listeners()[0].clone());
+        a.add_address(b_id, b.listeners()[0].clone());
+        c.add_address(b_id, b.listeners()[0].clone());
         loop {
-            if a.ipfs().is_connected(&c_id) && c.ipfs().is_connected(&a_id) {
+            if a.is_connected(&c_id) && c.is_connected(&a_id) {
                 break;
             }
             tokio::time::sleep(Duration::from_millis(100)).await
         }
         Ok(())
+    }
+
+    fn assert_listen(e: ListenerEvent) {
+        if let ListenerEvent::ListenFailed(addr, reason) = e {
+            panic!("listen failed for addr {}: {}", addr, reason)
+        }
     }
 }

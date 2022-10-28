@@ -12,7 +12,6 @@ use derive_more::{Display, From, Into};
 use libipld::{
     cbor::DagCborCodec,
     codec::{Decode, Encode},
-    DagCbor,
 };
 use num_traits::Bounded;
 use serde::{
@@ -22,6 +21,7 @@ use serde::{
 
 use crate::event::{Event, EventKey};
 use crate::scalars::StreamId;
+use cbor_data::{cbor_via, codec::CodecError};
 
 /// Maximum possible offset
 ///
@@ -249,12 +249,26 @@ impl From<u32> for Offset {
     }
 }
 
+#[derive(Debug, derive_more::Display, derive_more::Error)]
+pub enum OffsetError {
+    #[display(fmt = "number too large")]
+    TooLarge,
+    #[display(fmt = "negative number")]
+    Negative,
+}
+
+impl From<OffsetError> for CodecError {
+    fn from(oe: OffsetError) -> Self {
+        Self::custom(oe)
+    }
+}
+
 impl TryFrom<u64> for Offset {
-    type Error = &'static str;
+    type Error = OffsetError;
 
     fn try_from(value: u64) -> Result<Self, Self::Error> {
         if value > MAX_SAFE_INT as u64 {
-            Err("number too large")
+            Err(OffsetError::TooLarge)
         } else {
             Ok(Offset(value as i64))
         }
@@ -262,13 +276,13 @@ impl TryFrom<u64> for Offset {
 }
 
 impl TryFrom<i64> for Offset {
-    type Error = &'static str;
+    type Error = OffsetError;
 
     fn try_from(value: i64) -> Result<Self, Self::Error> {
         if value < 0 {
-            Err("negative number")
+            Err(OffsetError::Negative)
         } else if value > MAX_SAFE_INT {
-            Err("number too large")
+            Err(OffsetError::TooLarge)
         } else {
             Ok(Offset(value))
         }
@@ -376,6 +390,8 @@ impl Bounded for Offset {
         Offset::MAX
     }
 }
+
+cbor_via!(Offset => u64: |x| -> x.0 as u64, |x| -> Offset::try_from(x).map_err(CodecError::custom));
 
 impl Encode<DagCborCodec> for Offset {
     fn encode<W: Write>(&self, c: DagCborCodec, w: &mut W) -> libipld::Result<()> {
@@ -488,9 +504,8 @@ mod postgresql {
 /// An `OffsetMap` only contains valid offsets (non-negative numbers), but during deserialization
 /// negative values are tolerated and ignored. This is to keep compatibility with previously
 /// documented API endpoints.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize, DagCbor)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(from = "BTreeMap<StreamId, OffsetOrMin>")]
-#[ipld(repr = "value")]
 pub struct OffsetMap(BTreeMap<StreamId, Offset>);
 
 impl OffsetMap {
@@ -781,14 +796,9 @@ impl BitOrAssign for OffsetMap {
 
 #[cfg(test)]
 mod tests {
-    use libipld::{
-        codec::{assert_roundtrip, Codec},
-        ipld,
-    };
-    use maplit::btreemap;
+    use libipld::{codec::assert_roundtrip, ipld};
 
     use super::*;
-    use crate::from_cbor_me;
     use crate::{
         app_id,
         event::{Metadata, Payload},
@@ -1008,30 +1018,5 @@ mod tests {
         assert_roundtrip(DagCborCodec, &OffsetOrMin::from(0u32), &ipld!(0));
         assert_roundtrip(DagCborCodec, &OffsetOrMin::from(1u32), &ipld!(1));
         assert_roundtrip(DagCborCodec, &OffsetOrMin::MAX, &ipld!(MAX_SAFE_INT));
-    }
-
-    #[test]
-    fn offset_map_libipld() {
-        let map = OffsetMap::from(btreemap! {
-            stream_id(1) => Offset::from(1),
-            stream_id(2) => Offset::from(2),
-        });
-        let expected = from_cbor_me(
-r#"
-A2                                      # map(2)
-   82                                   # array(2)
-      58 20                             # bytes(32)
-         0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F20 # "\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\e\x1C\x1D\x1E\x1F "
-      01                                # unsigned(1)
-   01                                   # unsigned(1)
-   82                                   # array(2)
-      58 20                             # bytes(32)
-         0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F20 # "\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\e\x1C\x1D\x1E\x1F "
-      02                                # unsigned(2)
-   02                                   # unsigned(2)
-"#
-        ).unwrap();
-        let data = DagCborCodec.encode(&map).unwrap();
-        assert_eq!(data, expected);
     }
 }

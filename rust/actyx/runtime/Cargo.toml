@@ -8,13 +8,13 @@ edition = "2018"
 actyx_sdk = { path = "../../sdk" }
 ax-futures-util = { path = "../ax-futures-util" }
 anyhow = "1.0.52"
-cbor-data = { version = "0.8.3", features = ["rfc3339"] }
+cbor-data = { version = "0.8.7", features = ["rfc3339"] }
 derive_more = "0.99.17"
 futures = "0.3.16"
 itertools = "0.10.3"
 tracing = "0.1.29"
 swarm = { path = "../swarm" }
-parking_lot = "0.11.1"
+parking_lot = "0.12.1"
 chrono = "0.4.19"
 num-bigint = "0.4.3"
 
