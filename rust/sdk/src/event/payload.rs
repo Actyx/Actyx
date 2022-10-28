@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Formatter};
 
 use super::Opaque;
-use cbor_data::cbor_via;
+use cbor_data::{cbor_via, Cbor};
 
 /// Compact binary storage of events created when they are received
 ///
@@ -44,6 +44,11 @@ impl Payload {
     /// bytes are encoded in the CBOR binary format.
     pub fn json_string(&self) -> String {
         serde_json::to_string(&self).unwrap()
+    }
+
+    /// Access the native CBOR representation
+    pub fn cbor(&self) -> &Cbor {
+        Cbor::unchecked(self.as_slice())
     }
 
     /// Construct a Payload consisting only of the `null` value.

@@ -522,7 +522,7 @@ dependencies = [
 [[package]]
 name = "banyan"
 version = "0.17.1"
-source = "git+https://github.com/Actyx/banyan?branch=rku/logging#ef81ee696671f4c54d8cf6f3fa19004305fa5d78"
+source = "git+https://github.com/Actyx/banyan?branch=rku/logging#68f16af6b79d43470580af023c8000a297763fbe"
 dependencies = [
  "anyhow",
  "cbor-data",
@@ -545,7 +545,7 @@ dependencies = [
 [[package]]
 name = "banyan-utils"
 version = "0.10.1"
-source = "git+https://github.com/Actyx/banyan?branch=rku/logging#ef81ee696671f4c54d8cf6f3fa19004305fa5d78"
+source = "git+https://github.com/Actyx/banyan?branch=rku/logging#68f16af6b79d43470580af023c8000a297763fbe"
 dependencies = [
  "anyhow",
  "banyan",
