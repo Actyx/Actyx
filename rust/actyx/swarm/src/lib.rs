@@ -114,14 +114,7 @@ pub type Tree = banyan::Tree<TT, Event>;
 pub type AxStreamBuilder = banyan::StreamBuilder<TT, Event>;
 pub type Link = Sha256Digest;
 
-#[derive(Debug, Clone)]
-pub struct StoreParams;
-impl libipld::store::StoreParams for StoreParams {
-    type Hashes = libipld::multihash::Code;
-    type Codecs = libipld::IpldCodec;
-    const MAX_BLOCK_SIZE: usize = 2_000_000;
-}
-
+pub use trees::StoreParams;
 pub type Block = libipld::Block<StoreParams>;
 pub type Ipfs = ipfs_embed::Ipfs<StoreParams>;
 

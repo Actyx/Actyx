@@ -196,7 +196,13 @@ fn get_offsets(api: u16, identity: &Path) -> anyhow::Result<Value> {
             identity.as_os_str(),
             o(&format!("localhost:{}", api)),
         ])
+        .env("RUST_LOG", "trace")
         .output()?;
+    eprintln!(
+        "prep out:\n{}\nerr:\n{}\n---",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
     ensure!(out.status.success());
     let v = serde_json::from_slice::<Value>(&out.stdout)?;
     ensure!(v.pointer("/code").is_some());

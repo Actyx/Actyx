@@ -11,7 +11,10 @@ use crate::{language::SortKey, service::Order, tags::Tag, Timestamp};
 use anyhow::{bail, ensure, Result};
 use chrono::{FixedOffset, TimeZone, Utc};
 use once_cell::sync::Lazy;
-use pest::{prec_climber::PrecClimber, Parser};
+use pest::{
+    pratt_parser::{Assoc, Op, PrattParser},
+    Parser,
+};
 use unicode_normalization::UnicodeNormalization;
 use utils::*;
 
@@ -142,15 +145,13 @@ fn r_tag_expr(p: P, ctx: Context) -> Result<TagExpr> {
     use TagAtom::*;
     use TagExpr::Atom;
 
-    static CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
-        use pest::prec_climber::{Assoc::*, Operator};
-
-        PrecClimber::new(vec![Operator::new(Rule::or, Left), Operator::new(Rule::and, Left)])
+    static PRATT: Lazy<PrattParser<Rule>> = Lazy::new(|| {
+        PrattParser::new()
+            .op(Op::infix(Rule::or, Assoc::Left))
+            .op(Op::infix(Rule::and, Assoc::Left))
     });
-
-    CLIMBER.climb(
-        p.inner()?,
-        |p| {
+    PRATT
+        .map_primary(|p| {
             Ok(match p.as_rule() {
                 Rule::tag => r_tag(p, ctx)?,
                 Rule::tag_expr => r_tag_expr(p, ctx)?,
@@ -161,15 +162,15 @@ fn r_tag_expr(p: P, ctx: Context) -> Result<TagExpr> {
                 Rule::tag_app => Atom(AppId(p.single()?.as_str().parse()?)),
                 x => bail!("unexpected token: {:?}", x),
             })
-        },
-        |lhs, op, rhs| {
+        })
+        .map_infix(|lhs, op, rhs| {
             Ok(match op.as_rule() {
                 Rule::and => lhs?.and(rhs?),
                 Rule::or => lhs?.or(rhs?),
                 x => bail!("unexpected token: {:?}", x),
             })
-        },
-    )
+        })
+        .parse(p.inner()?)
 }
 
 fn r_order(p: P) -> Result<Order> {
@@ -358,10 +359,6 @@ fn r_cases(p: P, ctx: Context) -> Result<NonEmptyVec<(SimpleExpr, SimpleExpr)>> 
     Ok(ret.try_into()?)
 }
 
-fn r_not(p: P) -> Result<P> {
-    p.single()
-}
-
 fn r_aggr(p: P, ctx: Context) -> Result<SimpleExpr> {
     ensure!(ctx == Context::Aggregate, ContextError::AggregatorOutsideAggregate);
     let p = p.single()?;
@@ -424,52 +421,55 @@ fn r_sub_query(p: P, ctx: Context) -> Result<Query<'static>> {
 }
 
 fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
-    static CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
-        use pest::prec_climber::{Assoc::*, Operator};
-        let op = Operator::new;
-
-        PrecClimber::new(vec![
-            op(Rule::alternative, Left),
-            op(Rule::or, Left),
-            op(Rule::xor, Left),
-            op(Rule::and, Left),
-            op(Rule::eq, Left) | op(Rule::ne, Left),
-            op(Rule::lt, Left) | op(Rule::le, Left) | op(Rule::gt, Left) | op(Rule::ge, Left),
-            op(Rule::add, Left) | op(Rule::sub, Left),
-            op(Rule::mul, Left) | op(Rule::div, Left) | op(Rule::modulo, Left),
-            op(Rule::pow, Left),
-        ])
+    static PRATT: Lazy<PrattParser<Rule>> = Lazy::new(|| {
+        PrattParser::new()
+            .op(Op::infix(Rule::alternative, Assoc::Left))
+            .op(Op::infix(Rule::or, Assoc::Left))
+            .op(Op::infix(Rule::xor, Assoc::Left))
+            .op(Op::infix(Rule::and, Assoc::Left))
+            .op(Op::infix(Rule::eq, Assoc::Left) | Op::infix(Rule::ne, Assoc::Left))
+            .op(Op::infix(Rule::lt, Assoc::Left)
+                | Op::infix(Rule::le, Assoc::Left)
+                | Op::infix(Rule::gt, Assoc::Left)
+                | Op::infix(Rule::ge, Assoc::Left))
+            .op(Op::infix(Rule::add, Assoc::Left) | Op::infix(Rule::sub, Assoc::Left))
+            .op(Op::infix(Rule::mul, Assoc::Left)
+                | Op::infix(Rule::div, Assoc::Left)
+                | Op::infix(Rule::modulo, Assoc::Left))
+            .op(Op::infix(Rule::pow, Assoc::Left))
+            .op(Op::prefix(Rule::not))
     });
-
-    fn primary(p: P, ctx: Context) -> Result<SimpleExpr> {
-        Ok(match p.as_rule() {
-            Rule::decimal => SimpleExpr::Number(r_number(p)?),
-            Rule::var_index => r_var_index(p, ctx)?,
-            Rule::expr_index => r_expr_index(p, ctx)?,
-            Rule::simple_expr => r_simple_expr(p, ctx)?,
-            Rule::simple_not => SimpleExpr::Not(primary(r_not(p)?, ctx)?.into()),
-            Rule::string => SimpleExpr::String(r_string(p)?),
-            Rule::interpolation => SimpleExpr::Interpolation(r_interpolation(p, ctx)?),
-            Rule::object => SimpleExpr::Object(r_object(p, ctx)?),
-            Rule::array => SimpleExpr::Array(r_array(p, ctx)?),
-            Rule::null => SimpleExpr::Null,
-            Rule::bool => SimpleExpr::Bool(r_bool(p)),
-            Rule::simple_cases => SimpleExpr::Cases(r_cases(p, ctx)?),
-            Rule::aggr_op => r_aggr(p, ctx)?,
-            Rule::func_call => SimpleExpr::FuncCall(r_func_call(p, ctx)?),
-            Rule::sub_query => SimpleExpr::SubQuery(r_sub_query(p, ctx)?),
-            Rule::meta_key => r_meta_key(p, ctx)?,
-            Rule::meta_time => r_meta_time(p, ctx)?,
-            Rule::meta_tags => SimpleExpr::Tags(r_var(p.single()?, ctx)?),
-            Rule::meta_app => SimpleExpr::App(r_var(p.single()?, ctx)?),
-            x => bail!("unexpected token: {:?}", x),
+    PRATT
+        .map_primary(|p| {
+            Ok(match p.as_rule() {
+                Rule::decimal => SimpleExpr::Number(r_number(p)?),
+                Rule::var_index => r_var_index(p, ctx)?,
+                Rule::expr_index => r_expr_index(p, ctx)?,
+                Rule::simple_expr => r_simple_expr(p, ctx)?,
+                Rule::string => SimpleExpr::String(r_string(p)?),
+                Rule::interpolation => SimpleExpr::Interpolation(r_interpolation(p, ctx)?),
+                Rule::object => SimpleExpr::Object(r_object(p, ctx)?),
+                Rule::array => SimpleExpr::Array(r_array(p, ctx)?),
+                Rule::null => SimpleExpr::Null,
+                Rule::bool => SimpleExpr::Bool(r_bool(p)),
+                Rule::simple_cases => SimpleExpr::Cases(r_cases(p, ctx)?),
+                Rule::aggr_op => r_aggr(p, ctx)?,
+                Rule::func_call => SimpleExpr::FuncCall(r_func_call(p, ctx)?),
+                Rule::sub_query => SimpleExpr::SubQuery(r_sub_query(p, ctx)?),
+                Rule::meta_key => r_meta_key(p, ctx)?,
+                Rule::meta_time => r_meta_time(p, ctx)?,
+                Rule::meta_tags => SimpleExpr::Tags(r_var(p.single()?, ctx)?),
+                Rule::meta_app => SimpleExpr::App(r_var(p.single()?, ctx)?),
+                x => bail!("unexpected token: {:?}", x),
+            })
         })
-    }
-
-    CLIMBER.climb(
-        p.inner()?,
-        |p| primary(p, ctx),
-        |lhs, op, rhs| {
+        .map_prefix(|op, rhs| {
+            Ok(match op.as_rule() {
+                Rule::not => SimpleExpr::Not(rhs?.into()),
+                x => bail!("unexpected token: {:?}", x),
+            })
+        })
+        .map_infix(|lhs, op, rhs| {
             Ok(match op.as_rule() {
                 Rule::add => lhs?.add(rhs?),
                 Rule::sub => lhs?.sub(rhs?),
@@ -489,8 +489,8 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
                 Rule::alternative => lhs?.alt(rhs?),
                 x => bail!("unexpected token: {:?}", x),
             })
-        },
-    )
+        })
+        .parse(p.inner()?)
 }
 
 fn r_query<'a>(pragmas: Vec<(&'a str, &'a str)>, features: Vec<String>, p: P, ctx: Context) -> Result<Query<'a>> {

@@ -2,7 +2,7 @@ use crate::ParseError;
 use anyhow::{anyhow, bail, Context, Result};
 use cbor_data::{
     cbor_via,
-    codec::{CodecError, ReadCbor, ReadCborBorrowed, WriteCbor},
+    codec::{AsByteString, CodecError, ReadCbor, ReadCborBorrowed, WriteCbor},
     Cbor, Writer,
 };
 use libipld::{
@@ -194,7 +194,7 @@ impl Decode<DagCborCodec> for NodeId {
 
 impl WriteCbor for NodeId {
     fn write_cbor<W: Writer>(&self, w: W) -> W::Output {
-        self.as_ref().write_cbor(w)
+        AsByteString(self).write_cbor(w)
     }
 }
 
@@ -203,7 +203,7 @@ impl ReadCbor for NodeId {
         write!(f, "NodeId")
     }
 
-    fn read_cbor(cbor: &Cbor) -> cbor_data::codec::Result<Self>
+    fn read_cbor_impl(cbor: &Cbor) -> cbor_data::codec::Result<Self>
     where
         Self: Sized,
     {

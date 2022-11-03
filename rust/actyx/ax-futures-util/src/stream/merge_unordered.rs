@@ -35,6 +35,10 @@ impl<St: Stream + Unpin + Send, Si: Stream<Item = St> + Send> MergeUnordered<St,
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.streams.is_empty()
+    }
+
     /// Add the given stream to the merge pool.
     pub fn push(&mut self, input: St) {
         self.streams.push(input);

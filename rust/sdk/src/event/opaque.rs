@@ -72,7 +72,7 @@ impl ReadCbor for Opaque {
         write!(f, "Opaque")
     }
 
-    fn read_cbor(cbor: &Cbor) -> cbor_data::codec::Result<Self>
+    fn read_cbor_impl(cbor: &Cbor) -> cbor_data::codec::Result<Self>
     where
         Self: Sized,
     {

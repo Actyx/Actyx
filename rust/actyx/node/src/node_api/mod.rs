@@ -21,7 +21,7 @@ use crossbeam::channel::Sender;
 use crypto::PublicKey;
 use formats::NodesRequest;
 use futures::{
-    future::{ready, select_all, AbortHandle, Abortable, BoxFuture},
+    future::{poll_fn, ready, select_all, AbortHandle, Abortable, BoxFuture},
     stream::{self, BoxStream, FuturesUnordered},
     Future, FutureExt, Stream, StreamExt,
 };
@@ -47,6 +47,7 @@ use std::{
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
     sync::Arc,
+    task::Poll,
     time::Duration,
 };
 use swarm::{
@@ -474,6 +475,7 @@ impl State {
     }
 }
 
+#[derive(Debug)]
 enum MyEvent {
     Swarm(Option<SwarmEvent<ApiBehaviourEvent, TConnErr>>),
     OneShot(Option<(ChannelId, ActyxOSResult<AdminResponse>)>),
@@ -483,13 +485,46 @@ enum MyEvent {
 
 async fn poll_swarm(mut swarm: Swarm<ApiBehaviour>, mut state: State) {
     loop {
+        tracing::trace!("next poll loop");
+        let s1 = poll_fn(|cx| {
+            tracing::trace!("polling swarm ({:?})", std::thread::current().id());
+            swarm.poll_next_unpin(cx).map(MyEvent::Swarm)
+        });
+        let State {
+            pending_oneshot,
+            pending_stream,
+            pending_finalise,
+            ..
+        } = &mut state;
+        let s2 = poll_fn(|cx| {
+            if pending_oneshot.is_empty() {
+                Poll::Pending
+            } else {
+                pending_oneshot.poll_next_unpin(cx).map(MyEvent::OneShot)
+            }
+        });
+        let s3 = poll_fn(|cx| {
+            if pending_stream.is_empty() {
+                Poll::Pending
+            } else {
+                pending_stream.poll_next_unpin(cx).map(MyEvent::Stream)
+            }
+        });
+        let s4 = poll_fn(|cx| {
+            if pending_finalise.is_empty() {
+                Poll::Pending
+            } else {
+                pending_finalise.poll_next_unpin(cx).map(MyEvent::Finalise)
+            }
+        });
         let all = [
-            swarm.next().map(MyEvent::Swarm).boxed(),
-            state.pending_oneshot.next().map(MyEvent::OneShot).boxed(),
-            state.pending_stream.next().map(MyEvent::Stream).boxed(),
-            state.pending_finalise.next().map(MyEvent::Finalise).boxed(),
+            s1.left_future().left_future(),
+            s2.left_future().right_future(),
+            s3.right_future().left_future(),
+            s4.right_future().right_future(),
         ];
         let event = select_all(all).await.0;
+        tracing::trace!(?event, "got event");
         match event {
             MyEvent::Swarm(Some(event)) => match event {
                 SwarmEvent::Behaviour(event) => match event {
