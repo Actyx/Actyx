@@ -59,13 +59,13 @@ CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
 CARGO_BUILD_ARGS ?= --features migration-v1
 
-export BUILD_RUST_TOOLCHAIN ?= 1.61.0
+export BUILD_RUST_TOOLCHAIN ?= 1.65.0
 
 # The stable image version is the git commit hash inside `Actyx/Actyx`, with
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 2846b85b1d8fdbf1c47aeeda5fddc2292b07f918
+export LATEST_STABLE_IMAGE_VERSION := 91885f6ea3ee5989cbda35249c4956a10f7f8c71
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -93,7 +93,7 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/util:osxbuilder-570bf057efb6af0a37cfc6e578655a503117a51c
+image-darwin = actyx/util:osxbuilder-ef7314225bd89b5104526d6e2d516474b2fd8014
 
 image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
 
