@@ -1,7 +1,6 @@
 use crate::private_key::AxPrivateKey;
 use actyx_sdk::{language, NodeId};
 use crypto::PublicKey;
-use derive_more::From;
 use futures::{
     future::{ready, Either},
     stream, FutureExt, Stream, StreamExt,
@@ -12,7 +11,7 @@ use libp2p::{
     request_response::{
         ProtocolSupport, RequestResponse, RequestResponseConfig, RequestResponseEvent, RequestResponseMessage,
     },
-    swarm::{dial_opts::DialOpts, Swarm, SwarmBuilder, SwarmEvent},
+    swarm::{dial_opts::DialOpts, keep_alive, Swarm, SwarmBuilder, SwarmEvent},
     NetworkBehaviour,
 };
 use libp2p_streaming_response::{StreamingResponse, StreamingResponseEvent};
@@ -84,10 +83,11 @@ impl NodeConnection {
                 [(BanyanProtocolName, ProtocolSupport::Outbound)],
                 request_response_config,
             ),
-            ping: ping::Behaviour::new(ping::Config::new().with_keep_alive(true)),
+            ping: ping::Behaviour::new(ping::Config::new()),
             identify: identify::Behaviour::new(
                 identify::Config::new("Actyx".to_owned(), public_key).with_initial_delay(Duration::from_secs(0)),
             ),
+            keep_alive: keep_alive::Behaviour,
         };
         let mut swarm = SwarmBuilder::new(transport, protocol, peer_id)
             .executor(Box::new(|fut| {
@@ -120,11 +120,11 @@ impl NodeConnection {
             let message = swarm.next().await.expect("swarm exited");
             tracing::debug!("waiting for identify: {:?}", message);
             match message {
-                SwarmEvent::Behaviour(OutEvent::Identify(identify::Event::Error { .. })) => {
+                SwarmEvent::Behaviour(RequestBehaviourEvent::Identify(identify::Event::Error { .. })) => {
                     // Actyx v2.0.x didn’t have the identify protocol
                     return (None, vec!["/actyx/admin/1.0.0".to_owned()]);
                 }
-                SwarmEvent::Behaviour(OutEvent::Identify(identify::Event::Received { info, .. })) => {
+                SwarmEvent::Behaviour(RequestBehaviourEvent::Identify(identify::Event::Received { info, .. })) => {
                     let v = info
                         .protocol_version
                         .strip_prefix("Actyx-")
@@ -197,8 +197,9 @@ impl Connected {
     async fn wait_for_next_response(&mut self) -> ActyxOSResult<AdminResponse> {
         while let Some(message) = self.swarm.next().await {
             match message {
-                SwarmEvent::Behaviour(OutEvent::Admin(StreamingResponseEvent::ResponseReceived {
-                    payload, ..
+                SwarmEvent::Behaviour(RequestBehaviourEvent::AdminApi(StreamingResponseEvent::ResponseReceived {
+                    payload,
+                    ..
                 })) => return payload,
 
                 SwarmEvent::ConnectionClosed { peer_id, .. } if peer_id == self.remote_peer_id => {
@@ -207,7 +208,7 @@ impl Connected {
                         format!("Connection to {} unexpectedly closed.", self.remote_peer_id),
                     );
                 }
-                SwarmEvent::Behaviour(OutEvent::Ping(ping::Event {
+                SwarmEvent::Behaviour(RequestBehaviourEvent::Ping(ping::Event {
                     peer,
                     result: Ok(success),
                 })) => {
@@ -257,7 +258,7 @@ impl Connected {
                 let ev = s.next().await.expect("swarm exited");
                 tracing::debug!("got swarm event {:?}", ev);
                 match ev {
-                    SwarmEvent::Behaviour(OutEvent::Events(e)) => match e {
+                    SwarmEvent::Behaviour(RequestBehaviourEvent::EventsApi(e)) => match e {
                         StreamingResponseEvent::ResponseReceived { payload, .. } => Some((vec![payload], s)),
                         _ => None,
                     },
@@ -284,7 +285,7 @@ impl Connected {
             .send_request(&self.remote_peer_id, request);
         while let Some(message) = self.swarm.next().await {
             match message {
-                SwarmEvent::Behaviour(OutEvent::Banyan(RequestResponseEvent::Message {
+                SwarmEvent::Behaviour(RequestBehaviourEvent::BanyanApi(RequestResponseEvent::Message {
                     peer,
                     message: RequestResponseMessage::Response { request_id, response },
                 })) if peer == self.remote_peer_id && request_id == id => return Ok(response),
@@ -295,7 +296,7 @@ impl Connected {
                         format!("Connection to {} unexpectedly closed.", self.remote_peer_id),
                     );
                 }
-                SwarmEvent::Behaviour(OutEvent::Ping(ping::Event {
+                SwarmEvent::Behaviour(RequestBehaviourEvent::Ping(ping::Event {
                     peer,
                     result: Ok(success),
                 })) => {
@@ -339,23 +340,14 @@ pub fn strip_peer_id(addr: &mut Multiaddr) -> Option<PeerId> {
     }
 }
 
-#[derive(Debug, From)]
-pub enum OutEvent {
-    Admin(StreamingResponseEvent<AdminProtocol>),
-    Events(StreamingResponseEvent<EventsProtocol>),
-    Banyan(RequestResponseEvent<BanyanRequest, BanyanResponse>),
-    Ping(ping::Event),
-    Identify(identify::Event),
-}
-
 #[derive(NetworkBehaviour)]
-#[behaviour(event_process = false, out_event = "OutEvent")]
 pub struct RequestBehaviour {
     admin_api: StreamingResponse<AdminProtocol>,
     events_api: StreamingResponse<EventsProtocol>,
     banyan_api: RequestResponse<BanyanProtocol>,
     ping: ping::Behaviour,
     identify: identify::Behaviour,
+    keep_alive: keep_alive::Behaviour,
 }
 
 async fn mk_transport(keypair: identity::Keypair) -> ActyxOSResult<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {

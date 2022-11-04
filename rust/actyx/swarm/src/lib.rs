@@ -694,6 +694,7 @@ impl BanyanStore {
             network: NetworkConfig {
                 enable_loopback: cfg.enable_loopback,
                 port_reuse: false,
+                keep_alive: true,
                 node_key,
                 node_name: node_name.clone(),
                 psk: cfg.psk,
@@ -720,7 +721,6 @@ impl BanyanStore {
                     ping::Config::new()
                         .with_interval(Duration::from_secs(20))
                         .with_timeout(cfg.ping_timeout)
-                        .with_keep_alive(true)
                         .with_max_failures(NonZeroU32::new(3).unwrap()),
                 ),
                 identify: Some(

@@ -135,6 +135,8 @@ impl ReadCbor for RootUpdate {
                     .get("blocks")
                     .ok_or_else(|| CodecError::str("missing field `blocks`"))?
                     .as_ref();
+                // unfortunately Actyx 2.x tripped the libipld footgun
+                // that Vec<u8> is encoded as an array of numbers ...
                 let x = <Vec<(Cid, AsNumberArray<'static>)>>::read_cbor(cbor)?;
                 x.into_iter()
                     .map(|(cid, data)| Block::new(cid, data.0.into_owned()))

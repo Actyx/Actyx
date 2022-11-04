@@ -35,7 +35,7 @@ use libp2p::{
         ProtocolSupport, RequestResponse, RequestResponseConfig, RequestResponseEvent, RequestResponseMessage,
         ResponseChannel,
     },
-    swarm::{Swarm, SwarmBuilder, SwarmEvent},
+    swarm::{keep_alive, Swarm, SwarmBuilder, SwarmEvent},
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use libp2p_streaming_response::{ChannelId, StreamingResponse, StreamingResponseConfig, StreamingResponseEvent};
@@ -131,6 +131,7 @@ pub struct ApiBehaviour {
     banyan: RequestResponse<BanyanProtocol>,
     ping: ping::Behaviour,
     identify: identify::Behaviour,
+    keep_alive: keep_alive::Behaviour,
 }
 
 macro_rules! request_oneshot {
@@ -187,7 +188,7 @@ impl ApiBehaviour {
         let mut request_response_config = RequestResponseConfig::default();
         request_response_config.set_request_timeout(Duration::from_secs(120));
         let ret = Self {
-            ping: ping::Behaviour::new(ping::Config::new().with_keep_alive(true)),
+            ping: ping::Behaviour::new(ping::Config::new()),
             admin: StreamingResponse::new(StreamingResponseConfig::default()),
             banyan: RequestResponse::new(
                 BanyanProtocol::default(),
@@ -199,6 +200,7 @@ impl ApiBehaviour {
                 format!("Actyx-{}", NodeVersion::get()),
                 local_public_key,
             )),
+            keep_alive: keep_alive::Behaviour,
         };
         (ret, state)
     }
@@ -533,6 +535,7 @@ async fn poll_swarm(mut swarm: Swarm<ApiBehaviour>, mut state: State) {
                     ApiBehaviourEvent::Banyan(event) => inject_banyan_event(&mut state, swarm.behaviour_mut(), event),
                     ApiBehaviourEvent::Ping(_x) => {}
                     ApiBehaviourEvent::Identify(_x) => {}
+                    ApiBehaviourEvent::KeepAlive(v) => void::unreachable(v),
                 },
                 SwarmEvent::NewListenAddr { address, .. } => {
                     tracing::info!(target: "ADMIN_API_BOUND", "Admin API bound to {}.", address);
@@ -1049,14 +1052,17 @@ type TConnErr = libp2p::core::either::EitherError<
     libp2p::core::either::EitherError<
         libp2p::core::either::EitherError<
             libp2p::core::either::EitherError<
-                libp2p::swarm::handler::ConnectionHandlerUpgrErr<std::io::Error>,
+                libp2p::core::either::EitherError<
+                    libp2p::swarm::handler::ConnectionHandlerUpgrErr<std::io::Error>,
+                    libp2p::swarm::handler::ConnectionHandlerUpgrErr<std::io::Error>,
+                >,
                 libp2p::swarm::handler::ConnectionHandlerUpgrErr<std::io::Error>,
             >,
-            libp2p::swarm::handler::ConnectionHandlerUpgrErr<std::io::Error>,
+            libp2p::ping::Failure,
         >,
-        libp2p::ping::Failure,
+        std::io::Error,
     >,
-    std::io::Error,
+    void::Void,
 >;
 
 async fn mk_transport(id_keys: identity::Keypair) -> anyhow::Result<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {

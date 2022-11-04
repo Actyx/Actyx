@@ -31,7 +31,7 @@ flate2 = "1.0.22"
 fslock = "=0.1.6"
 futures = { version = "0.3.19", features = ["compat"], package = "futures" }
 hex = "0.4.3"
-ipfs-embed = { version = "0.24.0", default-features = false, features = ["tokio"] }
+ipfs-embed = { version = "0.25.0", default-features = false, features = ["tokio"] }
 ipfs-sqlite-block-store = "0.13.0"
 lazy_static = "1.4.0"
 libipld = "0.14.0"
