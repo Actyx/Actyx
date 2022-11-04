@@ -47,7 +47,7 @@ pub struct NodeApi {
     store_dir: PathBuf,
     store: StoreTx,
 }
-#[derive(Default, PartialEq, Clone)]
+#[derive(Default, PartialEq, Eq, Clone)]
 pub struct NodeApiSettings {
     pub authorized_keys: Vec<PeerId>,
 }

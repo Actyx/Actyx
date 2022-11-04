@@ -123,7 +123,7 @@ pub struct Bucket {
     pub upper_bound: f64,
 }
 
-#[derive(Clone, Debug, DagCbor, PartialEq)]
+#[derive(Clone, Debug, DagCbor, PartialEq, Eq)]
 #[ipld(repr = "tuple")]
 pub struct LabelPair {
     pub name: String,

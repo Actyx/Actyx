@@ -11,7 +11,7 @@ pub struct AppManifestSignatureProps {
     pub version: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct AppManifestSignature {
     // this is zero (for now)
     sig_version: u8,
@@ -42,7 +42,7 @@ fn deserialize_signature<'de, D: Deserializer<'de>>(d: D) -> Result<AppManifestS
         .map_err(|_| D::Error::custom("failed to deserialize to app manifest signature"))
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SignedAppManifest {
     pub app_id: AppId,

@@ -238,15 +238,15 @@ impl Connected {
         if !self.version.iter().any(|v| v.version() >= Some(Version::new(2, 13, 0))) {
             match &request {
                 EventsRequest::Query(q) => {
-                    language::Query::parse(&*q.query)
+                    language::Query::parse(&q.query)
                         .map_err(|e| ActyxOSCode::ERR_INVALID_INPUT.with_message(e.to_string()))?;
                 }
                 EventsRequest::Subscribe(q) => {
-                    language::Query::parse(&*q.query)
+                    language::Query::parse(&q.query)
                         .map_err(|e| ActyxOSCode::ERR_INVALID_INPUT.with_message(e.to_string()))?;
                 }
                 EventsRequest::SubscribeMonotonic(q) => {
-                    language::Query::parse(&*q.query)
+                    language::Query::parse(&q.query)
                         .map_err(|e| ActyxOSCode::ERR_INVALID_INPUT.with_message(e.to_string()))?;
                 }
                 _ => {}

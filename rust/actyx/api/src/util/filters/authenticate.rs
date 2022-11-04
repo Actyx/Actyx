@@ -62,7 +62,7 @@ pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Cl
     warp::filters::header::optional("Authorization").and_then(|auth_header: Option<String>| async move {
         if let Some(auth_header) = auth_header {
             let mut words = auth_header.split_whitespace();
-            let _ = match words.next() {
+            match words.next() {
                 Some("Bearer") => Ok(()),
                 Some(auth_type) => Err(ApiError::UnsupportedAuthType {
                     requested: auth_type.to_owned(),

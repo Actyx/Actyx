@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
         PublishRequest {
             data: vec![PublishEvent {
                 tags: tags!("a"),
-                payload: Payload::from_json_str(&*format!("{}", n)).unwrap(),
+                payload: Payload::from_json_str(&format!("{}", n)).unwrap(),
             }],
         }
     }

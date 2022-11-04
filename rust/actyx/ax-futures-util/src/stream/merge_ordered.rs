@@ -39,7 +39,7 @@ impl<Elem: Ord, St> PartialEq for SourceState<Elem, St> {
 
 impl<Elem: Ord, St> Eq for SourceState<Elem, St> {}
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum NewSourceMode {
     AdmitStragglers,
     DropStragglers,

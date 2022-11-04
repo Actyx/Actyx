@@ -290,7 +290,7 @@ fn update_name(
                     tracing::error!(%name, ?maybe_cid, "Rejecting because name can be interpreted as a CID");
                     anyhow::bail!("Name must not be a CID")
                 } else {
-                    let cid = Cid::from_str(&*String::from_utf8(maybe_cid.to_vec())?)?;
+                    let cid = Cid::from_str(&String::from_utf8(maybe_cid.to_vec())?)?;
                     ans.set(name, cid, PersistenceLevel::Prefetch, true).await?;
                     Ok(warp::reply())
                 }

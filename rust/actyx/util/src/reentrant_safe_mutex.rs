@@ -41,7 +41,7 @@ impl<T> ReentrantSafeMutex<T> {
             assert!(id != current_thread_id, "Reentrant locking attempt");
             self.condvar.wait(&mut thread);
         }
-        debug_assert!(*thread == None);
+        debug_assert!((*thread).is_none());
         *thread = Some(current_thread_id);
         ReentrantSafeMutexGuard { mutex: self }
     }

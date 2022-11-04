@@ -172,7 +172,7 @@ impl<'a> Context<'a> {
                     TagAtom::Interpolation(s) => {
                         let mut buf = String::new();
                         for e in s {
-                            buf.push_str(&*self.eval(e).await?.print());
+                            buf.push_str(&self.eval(e).await?.print());
                         }
                         Ok(Cow::Owned(TagExpr::Atom(TagAtom::Tag(Tag::try_from(&*buf)?))))
                     }
@@ -194,7 +194,7 @@ impl<'a> Context<'a> {
                     for i in tail.iter() {
                         v = match i {
                             Index::String(s) => v
-                                .index_borrowed([PathElement::String(Cow::Borrowed(&*s))])
+                                .index_borrowed([PathElement::String(Cow::Borrowed(s))])
                                 .ok_or_else(|| RuntimeError::NotFound {
                                     index: s.clone(),
                                     in_value: (&v.decode()).into(),
@@ -236,7 +236,7 @@ impl<'a> Context<'a> {
                     for e in s {
                         let v = self.eval(e).await?;
                         meta += v.meta();
-                        buf.push_str(&*v.print());
+                        buf.push_str(&v.print());
                     }
                     Ok(Value::new_meta(self.mk_cbor(|b| b.encode_str(buf)), meta))
                 }

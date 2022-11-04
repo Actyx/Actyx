@@ -41,7 +41,7 @@ pub struct KeygenOpts {
 pub fn generate_key() -> String {
     let mut key = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut key);
-    base64::encode(&key)
+    base64::encode(key)
 }
 
 pub fn store_key(key: String, mut path: PathBuf) -> Result<()> {

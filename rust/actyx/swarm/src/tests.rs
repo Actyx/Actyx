@@ -259,8 +259,7 @@ async fn test_add_cat() -> Result<()> {
     use rand::RngCore;
     util::setup_logger();
     let store = BanyanStore::test("local").await?;
-    let mut data = Vec::with_capacity(16_000_000);
-    data.resize(data.capacity(), 0);
+    let mut data = vec![0; 16_000_000];
     let mut rng = rand::thread_rng();
     rng.fill_bytes(&mut data);
     let mut tmp = store.ipfs().create_temp_pin()?;

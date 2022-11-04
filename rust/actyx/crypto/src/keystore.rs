@@ -190,7 +190,7 @@ impl KeyStore {
         let sigs = message.signatures().into_iter().collect::<BTreeMap<_, _>>();
         for key in keys {
             if let Some(sig) = sigs.get(&key) {
-                if !key.verify(msg, *sig) {
+                if !key.verify(msg, sig) {
                     bail!("invalid signature for {}", key);
                 }
             } else {
@@ -238,7 +238,7 @@ impl KeyStore {
         // add the version info as authenticated data
         cipher.encrypt_in_place((&*nonce).into(), version, &mut bytes)?;
         dst.write_all(&version_and_nonce[..])?;
-        dst.write_all(&*bytes)?;
+        dst.write_all(&bytes)?;
         Ok(())
     }
 
@@ -277,7 +277,7 @@ impl KeyStore {
                 let mut bytes = Vec::new();
                 src.read_to_end(&mut bytes)?;
                 cipher.decrypt_in_place((&nonce[..]).into(), &[Self::VERSION_1], &mut bytes)?;
-                Ok(serde_cbor::from_slice(&*bytes)?)
+                Ok(serde_cbor::from_slice(&bytes)?)
             }
             v => Err(UnknownVersion(v).into()),
         }

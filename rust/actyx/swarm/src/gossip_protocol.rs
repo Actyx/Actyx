@@ -358,7 +358,7 @@ mod tests {
                             .offsets
                             .iter()
                             .enumerate()
-                            .filter_map(|(i, v)| (i != idx).then(|| *v))
+                            .filter_map(|(i, v)| (i != idx).then_some(*v))
                             .collect(),
                         ..s1.clone()
                     })
@@ -474,7 +474,7 @@ mod tests {
     fn roundtrip_old_to_new(message: GossipMessage) -> bool {
         let message = old::GossipMessage::from(message);
         let bytes = DagCborCodec.encode(&message).unwrap();
-        let decoded: GossipMessage = ReadCbor::read_cbor(Cbor::checked(&*bytes).unwrap()).unwrap();
+        let decoded: GossipMessage = ReadCbor::read_cbor(Cbor::checked(&bytes).unwrap()).unwrap();
         match (decoded, message) {
             (GossipMessage::RootUpdate(x), old::GossipMessage::RootUpdate(y)) => {
                 x.stream == y.stream
@@ -608,7 +608,7 @@ mod tests {
             msg.as_slice(),
             cbor
         );
-        let root_update2 = GossipMessage::read_cbor(&*msg).unwrap();
+        let root_update2 = GossipMessage::read_cbor(&msg).unwrap();
         assert_eq!(root_update, root_update2);
         let root_update3 = GossipMessage::read_cbor(Cbor::checked(&cbor[..]).unwrap()).unwrap();
         assert_eq!(root_update, root_update3);
@@ -701,7 +701,7 @@ mod tests {
         let root_map = RootMap::default();
         let msg = root_map.write_cbor(CborBuilder::default());
         assert_eq!(msg.as_slice(), cbor);
-        let root_map2 = RootMap::read_cbor(&*msg).unwrap();
+        let root_map2 = RootMap::read_cbor(&msg).unwrap();
         assert_eq!(root_map, root_map2);
         let root_map3 = RootMap::read_cbor(Cbor::checked(&cbor[..]).unwrap()).unwrap();
         assert_eq!(root_map3, root_map);

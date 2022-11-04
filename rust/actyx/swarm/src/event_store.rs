@@ -507,7 +507,7 @@ mod tests {
           stream_id1 => 2,
           stream_id2 => 2,
         };
-        let _ = await_stream_offsets(&store1, &[&store2], &max).await;
+        await_stream_offsets(&store1, &[&store2], &max).await;
 
         // all
         assert_bounded(&store1, "'test'", None, &max, 6).await;
@@ -606,7 +606,7 @@ mod tests {
             let to = offset_map(&btreemap! { stream_id1 => u32::MAX, stream_id2 => u32::MAX });
             // stream1 is below range and stream2 non-existant at this point
             let stream = store_rx.unbounded_forward_per_stream(tag_expr, from.clone()).unwrap();
-            let _ = await_stream_offsets(
+            await_stream_offsets(
                 &store_rx,
                 &[&store1_clone, &store2_clone],
                 &btreemap! {stream_id1 => 1, stream_id2 => 0 },
@@ -717,7 +717,7 @@ mod tests {
                 .persist(
                     app_id!("test"),
                     0.into(),
-                    vec![(tags, Payload::from_json_str(&*format!("{}", i)).unwrap())],
+                    vec![(tags, Payload::from_json_str(&format!("{}", i)).unwrap())],
                 )
                 .await?[0];
             events.push(x);

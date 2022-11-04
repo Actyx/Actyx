@@ -12,7 +12,7 @@ use anyhow::Result;
 use serde::{ser::Serializer, Deserialize, Deserializer, Serialize};
 use std::{fmt::Debug, str, sync::Arc};
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct IpfsEnvelope {
     pub semantics: Semantics,
@@ -29,7 +29,7 @@ pub struct IpfsEnvelope {
     pub lamport: LamportTimestamp,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[allow(clippy::rc_buffer)]
 pub struct EnvelopeList(Arc<Vec<IpfsEnvelope>>);
 

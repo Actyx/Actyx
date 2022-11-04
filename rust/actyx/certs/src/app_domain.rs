@@ -11,7 +11,7 @@ pub struct InvalidAppDomainForm {
 }
 
 // MVP required form  <tld>.<apex>.*, which allows any subdomain as well. com.example.*.info is currently not supported.
-#[derive(Debug, Display, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Display, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct AppDomain(String);
 
 impl AppDomain {

@@ -91,7 +91,7 @@ pub(crate) async fn get_file_raw(store: BanyanStore, cid: Cid, name: &str) -> an
     if !name.is_empty() {
         response.headers_mut().insert(
             CONTENT_DISPOSITION,
-            HeaderValue::from_str(&*format!(r#"inline;filename="{}""#, name))?,
+            HeaderValue::from_str(&format!(r#"inline;filename="{}""#, name))?,
         );
     }
     Ok(response)

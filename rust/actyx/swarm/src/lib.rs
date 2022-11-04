@@ -128,7 +128,7 @@ fn internal_app_id() -> AppId {
     app_id!("com.actyx")
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EphemeralEventsConfig {
     interval: Duration,
     streams: BTreeMap<StreamNr, RetainConfig>,

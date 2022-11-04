@@ -189,7 +189,7 @@ impl Gossip {
                 } else {
                     continue;
                 };
-                match Cbor::checked(&*message)
+                match Cbor::checked(&message)
                     .map_err(CodecError::custom)
                     .and_then(GossipMessage::read_cbor)
                 {

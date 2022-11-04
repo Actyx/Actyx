@@ -18,7 +18,7 @@ impl From<&tracing::Level> for LogSeverity {
     }
 }
 
-#[derive(Serialize, PartialEq, Copy, Clone, Debug)]
+#[derive(Serialize, PartialEq, Eq, Copy, Clone, Debug)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum LogSeverity {
     Trace,
