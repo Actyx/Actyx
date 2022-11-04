@@ -36,7 +36,7 @@ use rand::Rng;
 /// The Event Service does not map client errors or internal errors to HTTP status codes,
 /// instead it gives more structured information using this data type, except when the request
 /// is not understood at all.
-#[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq, Eq)]
 #[display(fmt = "error {} while {}: {}", error_code, context, error)]
 #[serde(rename_all = "camelCase")]
 pub struct HttpClientError {
@@ -208,7 +208,7 @@ impl HttpClient {
             .text_with_charset("utf-8")
             .await
             .context(|| "Parsing response".to_string())?;
-        let cid = Cid::from_str(&*hash).map_err(|e| HttpClientError {
+        let cid = Cid::from_str(&hash).map_err(|e| HttpClientError {
             error: serde_json::Value::String(e.to_string()),
             error_code: 102,
             context: format!("Tried to parse {} into a Cid", hash),
@@ -236,8 +236,7 @@ impl HttpClient {
                             .find(|x| x.starts_with("filename="))
                             .map(|f| f.trim_start_matches("filename=").to_string())
                     })
-                })
-                .unwrap_or_else(|| "".to_string());
+                }).unwrap_or_default();
             Ok(FilesGetResponse::File {
                 name,
                 bytes: bytes.to_vec(),

@@ -39,7 +39,7 @@ impl Serialize for Binary {
         if serializer.is_human_readable() {
             serializer.serialize_str(base64::encode(&*self.0).as_str())
         } else {
-            serializer.serialize_bytes(&*self.0)
+            serializer.serialize_bytes(&self.0)
         }
     }
 }
@@ -54,7 +54,7 @@ impl FromStr for Binary {
 
 impl AsRef<[u8]> for Binary {
     fn as_ref(&self) -> &[u8] {
-        &*self.0
+        &self.0
     }
 }
 

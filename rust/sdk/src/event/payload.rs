@@ -114,7 +114,7 @@ mod tests {
  "#,
         )?;
         assert_eq!(tmp.as_slice(), expected);
-        let p2 = Payload::read_cbor(&*tmp)?;
+        let p2 = Payload::read_cbor(&tmp)?;
         assert_eq!(p1, p2);
         Ok(())
     }

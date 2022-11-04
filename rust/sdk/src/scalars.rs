@@ -427,7 +427,7 @@ mod tests {
             ]),
             stream_nr: 0.into(),
         };
-        assert_eq!(serde_json::to_value(&sid).unwrap(), Value::String(sid.to_string()));
+        assert_eq!(serde_json::to_value(sid).unwrap(), Value::String(sid.to_string()));
     }
 
     quickcheck::quickcheck! {
@@ -442,7 +442,7 @@ mod tests {
         }
 
         fn stream_id_to_string(sid: StreamId) -> bool {
-            serde_json::to_value(&sid).unwrap() == Value::String(sid.to_string())
+            serde_json::to_value(sid).unwrap() == Value::String(sid.to_string())
         }
 
         fn node_id_ord_vs_string_ord(a: NodeId, b: NodeId) -> bool {

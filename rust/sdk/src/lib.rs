@@ -52,7 +52,7 @@ mod test_util;
 pub use test_util::*;
 
 use derive_more::Display;
-#[derive(Debug, Display, PartialEq)]
+#[derive(Debug, Display, PartialEq, Eq)]
 pub enum ParseError {
     #[display(fmt = "Empty string is not permissible for Tag")]
     EmptyTag,

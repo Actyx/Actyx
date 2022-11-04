@@ -101,7 +101,7 @@ impl VersionsFile {
         for l in buf.lines() {
             let l = l?;
             if !l.starts_with('#') && !l.is_empty() {
-                versions.push(VersionLine::from_str(&*l)?);
+                versions.push(VersionLine::from_str(&l)?);
             }
         }
         Ok(Self { versions })

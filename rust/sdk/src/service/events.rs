@@ -36,7 +36,7 @@ pub enum Order {
 }
 
 /// Query for a bounded set of events across multiple event streams.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryRequest {
     /// Optional lower bound offset per stream.
@@ -50,7 +50,7 @@ pub struct QueryRequest {
 }
 
 /// Subscription to an unbounded set of events across multiple streams.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeRequest {
     /// Optional lower bound offset per stream.
@@ -289,14 +289,14 @@ impl<T> std::fmt::Display for EventResponse<T> {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct OffsetMapResponse {
     pub offsets: OffsetMap,
 }
 
 /// Publication of an event
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PublishEvent {
     /// Attached tags
@@ -306,7 +306,7 @@ pub struct PublishEvent {
 }
 
 /// Publication of a set of events
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PublishRequest {
     /// Events to be published
@@ -314,7 +314,7 @@ pub struct PublishRequest {
 }
 
 /// Result of an event publication
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PublishResponseKey {
     /// Lamport timestamp
@@ -328,7 +328,7 @@ pub struct PublishResponseKey {
 }
 
 /// Result of the publication of a set of events
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PublishResponse {
     /// Metadata for each published event
@@ -349,7 +349,7 @@ pub struct SessionId(Box<str>);
 
 impl Display for SessionId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&*self.0)
+        f.write_str(&self.0)
     }
 }
 
@@ -368,7 +368,7 @@ impl From<String> for SessionId {
 impl SessionId {
     /// Extracts a string slice containing the entire session id
     pub fn as_str(&self) -> &str {
-        &*self.0
+        &self.0
     }
 }
 
@@ -379,7 +379,7 @@ impl SessionId {
 /// an event that has already been received.
 ///
 /// Send this request to retrieve an unbounded stream of events.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeMonotonicRequest {
     /// This id uniquely identifies one particular session. Connecting again with this
@@ -399,7 +399,7 @@ pub struct SubscribeMonotonicRequest {
 }
 
 /// The response to a monotonic subscription is a stream of events terminated by a time travel.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SubscribeMonotonicResponse {
     /// This is the main message, a new event that is to be applied directly to the
@@ -428,7 +428,7 @@ pub enum SubscribeMonotonicResponse {
 ///
 /// This will currently only be elements of type `Event` but will eventually contain
 /// `Offset`s to communicate progress of events not included in the query.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum QueryResponse {
     #[serde(rename_all = "camelCase")]
@@ -445,7 +445,7 @@ pub enum QueryResponse {
 ///
 /// This will currently only be elements of type `Event` but will eventually contain
 /// `Offset`s to communicate progress of events not included in the query.
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SubscribeResponse {
     #[serde(rename_all = "camelCase")]
@@ -458,7 +458,7 @@ pub enum SubscribeResponse {
     FutureCompat,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Diagnostic {
     pub severity: Severity,
@@ -481,7 +481,7 @@ impl Diagnostic {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum Severity {
     Warning,
@@ -491,7 +491,7 @@ pub enum Severity {
 }
 
 /// Response to the offsets request
-#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct OffsetsResponse {
     /// Currently validated [`OffsetMap`] locally available
@@ -588,7 +588,7 @@ mod tests {
         })
         .unwrap();
         assert_eq!(
-            serde_json::from_str::<EventResponse<Payload>>(&*old).unwrap(),
+            serde_json::from_str::<EventResponse<Payload>>(&old).unwrap(),
             EventResponse {
                 meta: EventMeta::Event {
                     key: EventKey {
@@ -617,7 +617,7 @@ mod tests {
         })
         .unwrap();
         assert_eq!(
-            serde_json::from_str::<EventResponse<Payload>>(&*old_synthetic).unwrap(),
+            serde_json::from_str::<EventResponse<Payload>>(&old_synthetic).unwrap(),
             EventResponse {
                 meta: EventMeta::Synthetic,
                 payload: payload.clone(),
@@ -630,7 +630,7 @@ mod tests {
         })
         .unwrap();
         assert_eq!(
-            serde_json::from_str::<EventResponseV1<Payload>>(&*new_synthetic).unwrap(),
+            serde_json::from_str::<EventResponseV1<Payload>>(&new_synthetic).unwrap(),
             EventResponseV1 {
                 lamport: 0.into(),
                 stream: NodeId::default().stream(0.into()),
@@ -659,7 +659,7 @@ mod tests {
         })
         .unwrap();
         assert_eq!(
-            serde_json::from_str::<EventResponseV1<Payload>>(&*new_event).unwrap(),
+            serde_json::from_str::<EventResponseV1<Payload>>(&new_event).unwrap(),
             EventResponseV1 {
                 lamport,
                 stream,
@@ -690,7 +690,7 @@ mod tests {
         })
         .unwrap();
         assert_eq!(
-            serde_json::from_str::<EventResponseV1<Payload>>(&*new_range).unwrap(),
+            serde_json::from_str::<EventResponseV1<Payload>>(&new_range).unwrap(),
             EventResponseV1 {
                 lamport: 0.into(),
                 stream: NodeId::default().stream(0.into()),

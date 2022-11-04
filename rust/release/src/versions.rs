@@ -46,7 +46,7 @@ pub fn apply_changes(product: &Product, current_version: &Version, changes: &[Ch
     apply_impact(
         current_version,
         &get_highest_impact(
-            &*changes
+            &changes
                 .iter()
                 .map(|c| from_change_and_product(product, c))
                 .collect::<Vec<VersionImpact>>(),

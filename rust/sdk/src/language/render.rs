@@ -109,7 +109,7 @@ pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
         SimpleExpr::Indexing(i) => render_indexing(w, i),
         SimpleExpr::Number(n) => render_number(w, n),
         SimpleExpr::String(s) => render_string(w, s),
-        SimpleExpr::Interpolation(s) => render_interpolation(w, &*s),
+        SimpleExpr::Interpolation(s) => render_interpolation(w, s),
         SimpleExpr::Object(o) => render_object(w, o),
         SimpleExpr::Array(a) => render_array(w, a),
         SimpleExpr::Null => w.write_str("NULL"),
@@ -239,7 +239,7 @@ fn render_timestamp(w: &mut impl Write, e: Timestamp) -> Result {
 fn render_tag_atom(w: &mut impl Write, e: &TagAtom) -> Result {
     match e {
         TagAtom::Tag(t) => render_string(w, t.as_ref()),
-        TagAtom::Interpolation(s) => render_interpolation(w, &*s),
+        TagAtom::Interpolation(s) => render_interpolation(w, s),
         TagAtom::AllEvents => w.write_str("allEvents"),
         TagAtom::IsLocal => w.write_str("isLocal"),
         TagAtom::FromTime(ft) => {

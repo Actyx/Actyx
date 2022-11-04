@@ -1057,13 +1057,13 @@ mod tests {
     #[test]
     fn pragma() {
         let s = "PRAGMA x := y \nFROM 'x'".to_owned();
-        let q = Query::parse(&*s).unwrap();
+        let q = Query::parse(&s).unwrap();
         assert_eq!(q.pragmas, vec![("x", "y ")]);
         assert!(std::ptr::eq(q.pragmas[0].0, &s[7..8]));
         assert!(std::ptr::eq(q.pragmas[0].1, &s[12..14]));
 
         let s = "PRAGMA x \ny \nENDPRAGMA\nFROM 'x'".to_owned();
-        let q = Query::parse(&*s).unwrap();
+        let q = Query::parse(&s).unwrap();
         assert_eq!(q.pragmas, vec![("x", "y ")]);
         assert!(std::ptr::eq(q.pragmas[0].0, &s[7..8]));
         assert!(std::ptr::eq(q.pragmas[0].1, &s[10..12]));
@@ -1072,7 +1072,7 @@ mod tests {
             PRAGMA a :=hello
             FROM 'x'"
             .to_owned();
-        let q = Query::parse(&*s).unwrap();
+        let q = Query::parse(&s).unwrap();
         assert_eq!(q.pragmas, vec![("x", "y "), ("a", "hello")]);
     }
 }

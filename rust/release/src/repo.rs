@@ -37,12 +37,12 @@ impl RepoWrapper {
         }
     }
     pub fn checkout(&self, branch_name: &str, target: &Commit) -> anyhow::Result<()> {
-        let _branch = self.0.branch(&*branch_name, target, false)?;
+        let _branch = self.0.branch(branch_name, target, false)?;
         let branch_ref = format!("refs/heads/{}", branch_name);
-        let obj = self.0.revparse_single(&*branch_ref)?;
+        let obj = self.0.revparse_single(&branch_ref)?;
         self.0.checkout_tree(&obj, None)?;
 
-        self.0.set_head(&*branch_ref)?;
+        self.0.set_head(&branch_ref)?;
         Ok(())
     }
     pub fn add_file(&self, path: impl AsRef<Path>) -> anyhow::Result<git2::Oid> {
@@ -65,7 +65,7 @@ impl RepoWrapper {
             eprintln!("Running inside Azure Pipelines; shelling out to `git`. Output:");
             // `git` is properly set up on Azure Pipelines
             let mut child = std::process::Command::new("git")
-                .args(&["push", remote, branch_name])
+                .args(["push", remote, branch_name])
                 .spawn()?;
             anyhow::ensure!(child.wait()?.success());
             // println!(
@@ -89,7 +89,7 @@ impl RepoWrapper {
         if std::env::var("AZURE_HTTP_USER_AGENT").is_ok() {
             eprintln!("Running inside Azure Pipelines; shelling out to `git`. Output:");
             // `git` is properly set up on Azure Pipelines
-            let mut child = std::process::Command::new("git").args(&["remote", "update"]).spawn()?;
+            let mut child = std::process::Command::new("git").args(["remote", "update"]).spawn()?;
             anyhow::ensure!(child.wait()?.success());
             self.0.find_remote("origin")?;
         } else {

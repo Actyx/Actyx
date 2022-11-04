@@ -8,7 +8,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::language::{Query, StaticQuery};
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 /// Installs a standing [`Query`] for setting the set of pinned files. The results of this query
 /// must evaluate to a single hash. This collected set of hashes is pinned on the local node for
@@ -44,7 +44,7 @@ fn deser_prefetch<'de, D: Deserializer<'de>>(d: D) -> Result<Query<'static>, D::
     Ok(StaticQuery::deserialize(d)?.0)
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DirectoryChild {
     pub size: u64,
@@ -54,7 +54,7 @@ pub struct DirectoryChild {
 }
 
 /// Response to requesting a file.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum FilesGetResponse {
     File {
