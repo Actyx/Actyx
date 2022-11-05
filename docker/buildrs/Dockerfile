@@ -26,6 +26,7 @@ RUN apt-get install --no-install-recommends -yq unzip wget cmake \
   adoptopenjdk-8-hotspot adoptopenjdk-8-hotspot-jre \
   # CI deps
   sudo curl jq autossh sshpass dnsutils zip \
+  protobuf-compiler \
   # Necessary libraries
   liblzma-dev zlib1g-dev \
   # win64

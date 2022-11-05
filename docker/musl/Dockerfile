@@ -8,7 +8,7 @@ ARG BUILD_RUST_TOOLCHAIN=1.65.0
 RUN groupadd -g 1000 builder \
     && useradd -m -u 1000 -g 1000 builder \
     && apt-get update \
-    && apt-get install -y liblzma-dev zlib1g-dev
+    && apt-get install -y liblzma-dev zlib1g-dev protobuf-compiler
 
 RUN mkdir /src && chown -R builder:builder /src
 

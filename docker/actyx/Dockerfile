@@ -26,6 +26,8 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- \
     --target ${CARGO_BUILD_TARGET} \
     -y
 
+RUN apt update && apt install -y protobuf-compiler
+
 # actual building
 FROM --platform=$BUILDPLATFORM crossbuild AS build
 

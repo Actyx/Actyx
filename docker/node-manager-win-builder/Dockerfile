@@ -1,6 +1,6 @@
 FROM electronuserland/builder:wine-mono
 RUN apt-get update && \
-    apt-get install --no-install-recommends --assume-yes curl mingw-w64 && \
+    apt-get install --no-install-recommends --assume-yes curl mingw-w64 protobuf-compiler && \
     apt-get clean
 
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
