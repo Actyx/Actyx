@@ -192,39 +192,39 @@ impl<'a> Context<'a> {
                     let meta = v.meta().clone();
                     let mut v = v.cbor();
                     for i in tail.iter() {
-                        v = match i {
-                            Index::String(s) => v
-                                .index_borrowed([PathElement::String(Cow::Borrowed(s))])
-                                .ok_or_else(|| RuntimeError::NotFound {
-                                    index: s.clone(),
-                                    in_value: (&v.decode()).into(),
-                                })?,
-                            Index::Number(n) => {
-                                v.index_borrowed([PathElement::Number(*n)])
+                        v =
+                            match i {
+                                Index::String(s) => v
+                                    .index_borrowed([PathElement::String(Cow::Borrowed(s))])
                                     .ok_or_else(|| RuntimeError::NotFound {
+                                        index: s.clone(),
+                                        in_value: (&v.decode()).into(),
+                                    })?,
+                                Index::Number(n) => v.index_borrowed([PathElement::Number(*n)]).ok_or_else(|| {
+                                    RuntimeError::NotFound {
                                         index: format!("{:?}", n),
                                         in_value: (&v.decode()).into(),
-                                    })?
-                            }
-                            Index::Expr(e) => {
-                                let idx = self.eval(e).await?;
-                                match idx.value() {
-                                    CborValue::Number(cbor_value::Number::Int(i)) => v
-                                        .index_borrowed([PathElement::Number(i.try_into()?)])
-                                        .ok_or_else(|| RuntimeError::NotFound {
-                                            index: format!("{:?}", i),
-                                            in_value: (&v.decode()).into(),
-                                        })?,
-                                    CborValue::Str(s) => v
-                                        .index_borrowed([PathElement::String(s.clone())])
-                                        .ok_or_else(|| RuntimeError::NotFound {
-                                            index: s.into_owned(),
-                                            in_value: (&v.decode()).into(),
-                                        })?,
-                                    _ => return Err(RuntimeError::NotAnIndex(idx.to_string()).into()),
+                                    }
+                                })?,
+                                Index::Expr(e) => {
+                                    let idx = self.eval(e).await?;
+                                    match idx.value() {
+                                        CborValue::Number(cbor_value::Number::Int(i)) => v
+                                            .index_borrowed([PathElement::Number(i.try_into()?)])
+                                            .ok_or_else(|| RuntimeError::NotFound {
+                                                index: format!("{:?}", i),
+                                                in_value: (&v.decode()).into(),
+                                            })?,
+                                        CborValue::Str(s) => v
+                                            .index_borrowed([PathElement::String(s.clone())])
+                                            .ok_or_else(|| RuntimeError::NotFound {
+                                                index: s.into_owned(),
+                                                in_value: (&v.decode()).into(),
+                                            })?,
+                                        _ => return Err(RuntimeError::NotAnIndex(idx.to_string()).into()),
+                                    }
                                 }
-                            }
-                        };
+                            };
                     }
                     Ok(Value::new_meta(v.to_owned(), meta))
                 }

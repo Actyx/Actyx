@@ -236,7 +236,8 @@ impl HttpClient {
                             .find(|x| x.starts_with("filename="))
                             .map(|f| f.trim_start_matches("filename=").to_string())
                     })
-                }).unwrap_or_default();
+                })
+                .unwrap_or_default();
             Ok(FilesGetResponse::File {
                 name,
                 bytes: bytes.to_vec(),
