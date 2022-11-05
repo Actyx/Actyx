@@ -15,7 +15,7 @@ use util::formats::{
     ActyxOSCode, ActyxOSResult,
 };
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum EventDiagnostic {
     Event(EventResponse<Payload>),

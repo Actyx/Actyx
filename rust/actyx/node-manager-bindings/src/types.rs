@@ -6,7 +6,7 @@ use util::formats::NodesInspectResponse;
 #[serde(rename_all = "camelCase")]
 pub struct Nothing {}
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectedNodeDetails {
     pub node_id: NodeId,
@@ -21,7 +21,7 @@ pub struct ConnectedNodeDetails {
     pub offsets: Option<OffsetsResponse>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 #[allow(clippy::enum_variant_names, clippy::large_enum_variant)]
 pub enum Node {
