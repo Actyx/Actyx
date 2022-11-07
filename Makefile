@@ -503,7 +503,8 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/for_builder:/home/builder/.cargo \
+	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
@@ -523,7 +524,8 @@ $(soTargetPatterns): cargo-init make-always
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/for_builder:/home/builder/.cargo \
+	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
@@ -537,14 +539,16 @@ $(soTargetPatterns6): cargo-init make-always
 	  -e HOME=/home/builder \
 	  -e ANDROID6=yes \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/for_builder:/home/builder/.cargo \
+	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
 	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --target $(TARGET)
 	mv $(patsubst %6,%,$@) $@
 
-# create these so that they belong to the current user (Docker would create as root)
+# create this with permissions for everyone so that `builder` inside docker can use it
+# but only really share the `git` and `registry` folders within this!
 # (formulating as rule dependencies only runs mkdir when they are missing)
 cargo-init: $(CARGO_HOME)/for_builder
 $(CARGO_HOME)/%:
@@ -556,7 +560,8 @@ jvm/os-android/app/build/outputs/bundle/release/app-release.aab: android-libaxos
 	docker run \
 	  -u builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/for_builder:/home/builder/.cargo \
+	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  -w /src/jvm/os-android \
 	  --rm \
 	  $(DOCKER_FLAGS) \
