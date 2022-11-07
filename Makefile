@@ -405,6 +405,8 @@ node-manager-win:
 	docker run \
 	  -e BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
 	  -v `pwd`:/src \
+	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  -w /src/js/node-manager \
 	  --rm \
 	  actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
@@ -501,8 +503,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
+	  -v $(CARGO_HOME)/for_builder:/home/builder/.cargo \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
@@ -522,8 +523,7 @@ $(soTargetPatterns): cargo-init make-always
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
+	  -v $(CARGO_HOME)/for_builder:/home/builder/.cargo \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
@@ -537,8 +537,7 @@ $(soTargetPatterns6): cargo-init make-always
 	  -e HOME=/home/builder \
 	  -e ANDROID6=yes \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
+	  -v $(CARGO_HOME)/for_builder:/home/builder/.cargo \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
@@ -547,15 +546,17 @@ $(soTargetPatterns6): cargo-init make-always
 
 # create these so that they belong to the current user (Docker would create as root)
 # (formulating as rule dependencies only runs mkdir when they are missing)
-cargo-init: $(CARGO_HOME)/git $(CARGO_HOME)/registry
+cargo-init: $(CARGO_HOME)/for_builder
 $(CARGO_HOME)/%:
 	mkdir -p $@
+	chmod 777 $@
 
 jvm/os-android/app/build/outputs/bundle/release/app-release.aab: android-libaxosnodeffi make-always
 	jvm/os-android/bin/get-keystore.sh
 	docker run \
 	  -u builder \
 	  -v `pwd`:/src \
+	  -v $(CARGO_HOME)/for_builder:/home/builder/.cargo \
 	  -w /src/jvm/os-android \
 	  --rm \
 	  $(DOCKER_FLAGS) \
