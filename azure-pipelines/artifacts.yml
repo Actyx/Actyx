@@ -93,7 +93,6 @@ stages:
               WIN_CODESIGN_CERTIFICATE: $(WIN_CODESIGN_CERTIFICATE)
               WIN_CODESIGN_PASSWORD: $(WIN_CODESIGN_PASSWORD)
               ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
-              CARGO_HOME: /root/cargo
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: windows-binaries
             condition: succeeded()
@@ -113,7 +112,6 @@ stages:
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
               ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
-              CARGO_HOME: /root/cargo
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: linux-binaries
             condition: succeeded()
@@ -133,7 +131,6 @@ stages:
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
               ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
-              CARGO_HOME: /root/cargo
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: macos-binaries
             condition: succeeded()
@@ -175,7 +172,6 @@ stages:
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
               ACTYX_PUBLIC_KEY: $(ACTYX_PUBLIC_KEY)
-              CARGO_HOME: /root/cargo
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: android-binaries
             condition: succeeded()
@@ -192,8 +188,6 @@ stages:
           - bash: |
               set -e
               make node-manager-mac-linux
-            env:
-              CARGO_HOME: /root/cargo
           - publish: "$(System.DefaultWorkingDirectory)/js/node-manager/dist/artifacts"
             artifact: node-manager-mac
             condition: succeeded()
@@ -207,7 +201,6 @@ stages:
               make node-manager-mac-linux
             env:
               BASH_ENV: "~/.bashrc"
-              CARGO_HOME: /root/cargo
           - publish: "$(System.DefaultWorkingDirectory)/js/node-manager/dist/artifacts"
             artifact: node-manager-linux
             condition: succeeded()
@@ -221,7 +214,6 @@ stages:
               make node-manager-win
             env:
               BASH_ENV: "~/.bashrc"
-              CARGO_HOME: /root/cargo
           - publish: "$(System.DefaultWorkingDirectory)/js/node-manager/dist/artifacts"
             artifact: node-manager-win
             condition: succeeded()
