@@ -2263,7 +2263,7 @@ dependencies = [
 [[package]]
 name = "if-watch"
 version = "2.0.0"
-source = "git+https://github.com/rkuhn/if-watch?branch=feature-gate-runtime#a89bd1c86fb4a6a0058abb8bbc76f2fc1a2f0dd6"
+source = "git+https://github.com/rkuhn/if-watch?branch=feature-gate-runtime#92ae36c64f812b50a690c1230b3d17212c5fc396"
 dependencies = [
  "async-io",
  "core-foundation",
