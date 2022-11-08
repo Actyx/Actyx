@@ -549,8 +549,9 @@ $(soTargetPatterns6): cargo-init make-always
 
 # create this with permissions for everyone so that `builder` inside docker can use it
 # but only really share the `git` and `registry` folders within this!
+# (otherwise Docker will create them as root since they are used as volumes)
 # (formulating as rule dependencies only runs mkdir when they are missing)
-cargo-init: $(CARGO_HOME)/for_builder
+cargo-init: $(CARGO_HOME)/for_builder/git $(CARGO_HOME)/for_builder/registry
 $(CARGO_HOME)/%:
 	mkdir -p $@
 	chmod 777 $@
