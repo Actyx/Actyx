@@ -57,7 +57,7 @@ impl<'a> From<CborValue<'a>> for ValueKind {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Value {
     meta: EventMeta,
     value: CborOwned, // should later become InternedHash<[u8]>

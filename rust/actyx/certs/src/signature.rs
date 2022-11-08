@@ -16,7 +16,7 @@ fn deserialize_signature<'de, D: Deserializer<'de>>(d: D) -> Result<[u8; 64], D:
         .map_err(|x| D::Error::custom(x.to_string()))
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Signature(#[serde(deserialize_with = "deserialize_signature")] [u8; 64]);
 
 impl Serialize for Signature {

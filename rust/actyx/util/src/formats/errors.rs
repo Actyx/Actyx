@@ -37,7 +37,7 @@ impl<T, E: Display> ActyxOSResultExt<T> for Result<T, E> {
         self.map_err(move |e| ActyxOSError::new(code, format!("{} ({})", ctx.into(), e)))
     }
 }
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
 #[allow(non_camel_case_types)]
 pub enum ActyxOSCode {
     ERR_FILE_EXISTS,
@@ -68,7 +68,7 @@ impl ActyxOSCode {
     }
 }
 use ActyxOSCode::*;
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ActyxOSError {
     code: ActyxOSCode,
     message: String,

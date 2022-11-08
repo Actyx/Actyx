@@ -89,15 +89,15 @@ tag_to = { "to(" ~ ( isodate | event_key ) ~ ")" }
 tag_app = ${ "appId(" ~ app_id ~ ")" }
 
 // expressions
-simple_expr = !{ simple_atom ~ ( binary_op ~ simple_atom )* }
+simple_expr = !{ simple_prefix* ~ simple_atom ~ ( binary_op ~ simple_prefix* ~ simple_atom )* }
 binary_op = _{ alternative | add | sub | mul | div | modulo | pow | and | or | xor | le | lt | ge | gt | eq | ne }
 var_index = { var ~ index* }
 expr_index = { "(" ~ simple_expr ~ ")" ~ index* }
 func_call = { func_name ~ "(" ~ ( simple_expr ~ ("," ~ simple_expr)* )? ~ ")" }
-simple_atom = _{ decimal | func_call | var_index | string | interpolation | expr_index | simple_not | object | array | null | bool | simple_cases | aggr_op | sub_query | meta }
+simple_atom = _{ decimal | func_call | var_index | string | interpolation | expr_index | object | array | null | bool | simple_cases | aggr_op | sub_query | meta }
 sub_query = { query }
-simple_not = { not ~ simple_atom }
 simple_cases = { ( "CASE" ~ simple_expr ~ "=>" ~ simple_expr )+ ~ "ENDCASE" }
+simple_prefix = _{ not }
 
 // aggregations
 aggr_op = { aggr_sum | aggr_prod | aggr_min | aggr_max | aggr_first | aggr_last }
@@ -117,7 +117,7 @@ modulo = { "%" }
 pow = { "^" }
 and = { "&" | "∧" }
 or = { "|" | "∨" }
-not = _{ "!" | "¬" }
+not = { "!" | "¬" }
 xor = { "~" | "⊻" }
 lt = { "<" }
 le = { "<=" | "≤" }

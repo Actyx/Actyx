@@ -87,7 +87,7 @@ fn main() {
                 .ok_or_else(|| anyhow::anyhow!("machine died"))?
                 .ok_or_else(|| anyhow::anyhow!("api endpoint not configured"))?;
 
-            let origin = Url::parse(&*format!("http://{}:{}", machine.addr(), api_port))?;
+            let origin = Url::parse(&format!("http://{}:{}", machine.addr(), api_port))?;
             let namespace = machine.namespace();
 
             let publish_clients = (0..concurrent_publishes)

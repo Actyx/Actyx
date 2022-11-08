@@ -48,7 +48,7 @@ async fn smoke() -> Result<()> {
     let mut tagger = Tagger::new();
     let mut ev = move |tag| (tagger.tags(&[tag]), Payload::null());
     let store = BanyanStore::test("smoke").await?;
-    let ipfs = store.ipfs().clone();
+    let mut ipfs = store.ipfs().clone();
     tokio::task::spawn(store.stream_filtered_stream_ordered(AllQuery).for_each(|x| {
         tracing::info!("got event {:?}", x);
         future::ready(())
@@ -65,10 +65,16 @@ async fn smoke() -> Result<()> {
             let _ = store.append(stream_nr, app_id(), vec![ev("a")]).await.unwrap();
         }
     }));
-    tokio::task::spawn(ipfs.subscribe("test").unwrap().for_each(|msg| {
-        tracing::error!("event {:?}", msg);
-        future::ready(())
-    }));
+    tokio::task::spawn(async move {
+        ipfs.subscribe("test".to_owned())
+            .await
+            .unwrap()
+            .for_each(|msg| {
+                tracing::error!("event {:?}", msg);
+                future::ready(())
+            })
+            .await
+    });
     tokio::time::sleep(Duration::from_secs(1000)).await;
     Ok(())
 }
@@ -253,8 +259,7 @@ async fn test_add_cat() -> Result<()> {
     use rand::RngCore;
     util::setup_logger();
     let store = BanyanStore::test("local").await?;
-    let mut data = Vec::with_capacity(16_000_000);
-    data.resize(data.capacity(), 0);
+    let mut data = vec![0; 16_000_000];
     let mut rng = rand::thread_rng();
     rng.fill_bytes(&mut data);
     let mut tmp = store.ipfs().create_temp_pin()?;

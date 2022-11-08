@@ -28,7 +28,7 @@ fn main() -> anyhow::Result<()> {
             } else if buzz {
                 tags! {"buzz", "factory.provider.interface.adapter"}
             } else {
-                let tag = Tag::from_str(&*format!("{}", i % 11)).unwrap();
+                let tag = Tag::from_str(&format!("{}", i % 11)).unwrap();
                 tags! { tag, "we.like.long.identifiers.because.they.seem.professional" }
             }
         })

@@ -94,7 +94,7 @@ impl ApiClient {
             }
         };
 
-        let origin = Url::parse(&*format!("http://{}:{}", machine.addr(), api_port))?;
+        let origin = Url::parse(&format!("http://{}:{}", machine.addr(), api_port))?;
         let namespace = machine.namespace();
         Ok(ApiClient::new(origin, app_manifest, namespace))
     }

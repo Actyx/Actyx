@@ -95,24 +95,24 @@ impl Publisher {
     pub fn source_exists(&self) -> anyhow::Result<bool> {
         log::debug!("checking if source {} exists for target {}", self.source, self.target);
         match &self.source.r#type {
-            SourceType::Blob(s) => blob_exists(Container::Artifacts, &*s),
+            SourceType::Blob(s) => blob_exists(Container::Artifacts, s),
             SourceType::Docker {
                 registry,
                 tag,
                 repository,
-            } => docker_manifest_exists(&*format!("{}/{}:{}", registry, repository, tag), None),
+            } => docker_manifest_exists(&format!("{}/{}:{}", registry, repository, tag), None),
         }
     }
     pub fn target_exists(&self) -> anyhow::Result<bool> {
         log::debug!("checking if target {} exists for source {}", self.target, self.source);
         match &self.target {
-            TargetArtifact::Blob { file_name: s, .. } => blob_exists(Container::Releases, &*s),
+            TargetArtifact::Blob { file_name: s, .. } => blob_exists(Container::Releases, s),
             TargetArtifact::Docker {
                 registry,
                 manifest,
                 repository,
                 tag,
-            } => docker_manifest_exists(&*format!("{}/{}:{}", registry, repository, tag), Some(manifest)),
+            } => docker_manifest_exists(&format!("{}/{}:{}", registry, repository, tag), Some(manifest)),
         }
     }
     #[cfg(not(windows))]
@@ -128,7 +128,7 @@ impl Publisher {
                     ..
                 } = &self.source
                 {
-                    &*source
+                    source
                 } else {
                     anyhow::bail!("Tried creating {:?} from {:?}", self.target, self.source);
                 };
@@ -199,14 +199,14 @@ impl Publisher {
                 let local = local_result
                     .as_ref()
                     .ok_or_else(|| anyhow::anyhow!("No local file created!"))?;
-                blob_upload(local, &*file_name)
+                blob_upload(local, file_name)
             }
             TargetArtifact::Docker {
                 tag,
                 registry,
                 repository,
                 ..
-            } => docker_manifest_push(&*format!("{}/{}:{}", registry, repository, tag)),
+            } => docker_manifest_push(&format!("{}/{}:{}", registry, repository, tag)),
         }
     }
 }
@@ -240,7 +240,7 @@ fn mk_docker_tuples(
         let registry = "docker.io".to_string();
         let repository = "actyx/actyx-ci".to_string();
         let tag = format!("actyx-{}", hash);
-        let manifest = docker_manifest_inspect(&*format!("{}:{}", repository, tag))?;
+        let manifest = docker_manifest_inspect(&format!("{}:{}", repository, tag))?;
         let source = SourceArtifact {
             os_arch,
             release: release.clone(),
@@ -617,7 +617,7 @@ fn package_tar_gz(source: impl AsRef<Path>, target: impl AsRef<Path>, binary_nam
 
     let enc = GzEncoder::new(output, Compression::best());
     let mut tar = tar::Builder::new(enc);
-    tar.append_path_with_name(&source, &name).context(format!(
+    tar.append_path_with_name(&source, name).context(format!(
         "appending path {:?} to .tar.gz target {}",
         source.as_ref(),
         name
@@ -662,7 +662,7 @@ fn docker_manifest_exists(tag: &str, manifest: Option<&DockerInspectResponse>) -
 fn docker_manifest_inspect(tag: &str) -> anyhow::Result<DockerInspectResponse> {
     let args = ["manifest", "inspect", tag];
     let cmd = Command::new("docker")
-        .args(&args)
+        .args(args)
         .output()
         .context(format!("running docker {:?}", args))?;
     anyhow::ensure!(
@@ -678,10 +678,10 @@ fn docker_manifest_inspect(tag: &str) -> anyhow::Result<DockerInspectResponse> {
     Ok(out)
 }
 fn docker_manifest_rm(target: &str) -> anyhow::Result<()> {
-    let args = ["manifest", "rm", &*target];
+    let args = ["manifest", "rm", target];
 
     let cmd = Command::new("docker")
-        .args(&args)
+        .args(args)
         .output()
         .context(format!("running docker {:?}", args))?;
 
@@ -706,7 +706,7 @@ fn docker_manifest_create(
     let target = format!("{}/{}:{}", registry, target_repository, tag);
     // Make sure the manifest is removed locally, otherwise we can't
     // (re)create it
-    docker_manifest_rm(&*target)?;
+    docker_manifest_rm(&target)?;
 
     // Now the actual manifest creation
     let args = vec!["manifest".to_string(), "create".to_string(), target.clone()]
@@ -735,7 +735,7 @@ fn docker_manifest_create(
     Ok(())
 }
 
-#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub struct DockerInspectResponse {
@@ -764,7 +764,7 @@ fn docker_manifest_push(target: &str) -> anyhow::Result<()> {
     let args = ["manifest", "push", target];
     log::debug!("running docker {:?}", args);
     let cmd = Command::new("docker")
-        .args(&args)
+        .args(args)
         .output()
         .context(format!("running docker {:?}", args))?;
     anyhow::ensure!(

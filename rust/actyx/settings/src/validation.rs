@@ -1,7 +1,7 @@
 use url::Url;
 use valico::json_schema::{self, schema, validators};
 
-#[derive(thiserror::Error, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(thiserror::Error, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Error {
     #[error("Provided schema is not valid. Error: {0}")]
     InvalidSchema(String),
@@ -11,14 +11,14 @@ pub enum Error {
     MissingDefault(String),
 }
 
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ValidationErrorDescr {
     pub path: String,
     pub title: String,
     pub detail: Option<String>,
 }
 
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ValidationState {
     pub errors: Vec<ValidationErrorDescr>,
     pub missing: Vec<String>,

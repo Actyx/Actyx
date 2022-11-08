@@ -2,7 +2,7 @@ use crate::{operation::Operation, query::Query};
 use actyx_sdk::language::{Arr, SimpleExpr, TagAtom, TagExpr, Traverse};
 use std::{collections::BTreeSet, str::FromStr};
 
-#[derive(Debug, Clone, derive_more::Display, PartialEq)]
+#[derive(Debug, Clone, derive_more::Display, PartialEq, Eq)]
 pub enum FeatureError {
     #[display(fmt = "The query uses unreleased features: {}.", _0)]
     Alpha(String),
@@ -14,7 +14,7 @@ pub enum FeatureError {
 }
 impl std::error::Error for FeatureError {}
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FeatureKind {
     Released,
     Beta,

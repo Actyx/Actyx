@@ -56,7 +56,7 @@ pub fn setup_logger() {
     setup_logger_with_level(0);
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SocketAddrHelper {
     inner: HashSet<SocketAddr>,
 }

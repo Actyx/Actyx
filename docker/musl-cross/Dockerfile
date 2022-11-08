@@ -28,13 +28,15 @@ ENV CARGO_BUILD_TARGET=x86_64-pc-windows-gnu
 FROM --platform=$BUILDPLATFORM build-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} AS crossbuild
 ENV     CARGO_HOME=/usr/local/cargo \
         PATH=/usr/local/cargo/bin:$PATH
-ARG RUSTVER=1.61.0
+ARG RUSTVER=1.65.0
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- \
     --default-toolchain ${RUSTVER} \
     --profile minimal \
     --target ${CARGO_BUILD_TARGET} \
     -y
+
+RUN apt update && apt install -y protobuf-compiler
 
 # actual building
 FROM --platform=$BUILDPLATFORM crossbuild AS build

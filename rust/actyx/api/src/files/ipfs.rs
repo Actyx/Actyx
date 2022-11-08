@@ -50,8 +50,8 @@ pub fn content_type_from_ext(name: &str) -> Option<String> {
     Some(mime.into())
 }
 
-pub fn content_type_from_content(chunk: &[u8]) -> Option<String> {
-    let mime = tree_magic::from_u8(chunk);
+pub fn content_type_from_content(chunk: &[u8]) -> Option<&'static str> {
+    let mime = tree_magic_mini::from_u8(chunk);
     debug!("detected mime type {} from content", mime);
     Some(mime)
 }
@@ -83,7 +83,7 @@ pub(crate) async fn get_file_raw(store: BanyanStore, cid: Cid, name: &str) -> an
         let ct = content_type_from_content(&buf[..buf.len().min(1024)]);
         let mut r = Response::new(Body::wrap_stream(s));
         if let Some(ct) = ct {
-            r.headers_mut().insert(CONTENT_TYPE, HeaderValue::from_str(&ct)?);
+            r.headers_mut().insert(CONTENT_TYPE, HeaderValue::from_str(ct)?);
         }
         r
     };
@@ -91,7 +91,7 @@ pub(crate) async fn get_file_raw(store: BanyanStore, cid: Cid, name: &str) -> an
     if !name.is_empty() {
         response.headers_mut().insert(
             CONTENT_DISPOSITION,
-            HeaderValue::from_str(&*format!(r#"inline;filename="{}""#, name))?,
+            HeaderValue::from_str(&format!(r#"inline;filename="{}""#, name))?,
         );
     }
     Ok(response)

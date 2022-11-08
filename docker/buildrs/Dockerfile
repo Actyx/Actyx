@@ -2,10 +2,10 @@
 # Supported targets: i686-linux-android, x86_64-linux-android, i686-unknown-linux-gnu (e.g. all necessary dependencies should be there)
 # TODO: Build statically linked binaries
 # ref https://github.com/Actyx/Cosmos/blob/mca/actyxos-on-arm/docker/actyxos-on-linux/Dockerfile
-ARG BUILD_RUST_TOOLCHAIN=1.61.0
+ARG BUILD_RUST_TOOLCHAIN=1.65.0
 FROM rust:${BUILD_RUST_TOOLCHAIN}-buster
 
-ENV RUST_VERSION=1.61.0
+ENV RUST_VERSION=1.65.0
 
 ARG BUILD_RUST_TOOLCHAIN
 
@@ -26,6 +26,7 @@ RUN apt-get install --no-install-recommends -yq unzip wget cmake \
   adoptopenjdk-8-hotspot adoptopenjdk-8-hotspot-jre \
   # CI deps
   sudo curl jq autossh sshpass dnsutils zip \
+  protobuf-compiler \
   # Necessary libraries
   liblzma-dev zlib1g-dev \
   # win64

@@ -279,7 +279,7 @@ async fn try_run(
     let mut child = Command::new(target_dir().join("actyx"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .args(&[
+        .args([
             "--bind-admin",
             &*ports[0].to_string(),
             "--bind-api",

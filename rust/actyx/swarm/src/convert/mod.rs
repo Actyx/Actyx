@@ -421,7 +421,7 @@ pub fn convert_from_v1(
                         .transpose()?;
                     tracing::debug!("Setting alias {} {:?}", source, tree);
                     db2.lock()
-                        .alias(StreamAlias::from(stream_id), root.map(Cid::from).as_ref())?;
+                        .alias(StreamAlias::from(stream_id).as_ref(), root.map(Cid::from).as_ref())?;
                     Ok((source, stream_id, tree))
                 }
                 Err(cause) => {
@@ -472,7 +472,7 @@ impl BlockWriter<Sha256Digest> for Importer {
         let digest = Sha256Digest::new(&data);
         let cid = digest.into();
         let block = crate::Block::new_unchecked(cid, data);
-        self.0.lock().put_block(&block, None)?;
+        self.0.lock().put_block(block, None)?;
         Ok(digest)
     }
 }
@@ -492,7 +492,7 @@ mod test {
                 name: fish_name!("name"),
                 semantics: semantics!("sem"),
                 offset: Offset::from(offset as u32),
-                payload: Payload::from_json_str(&*format!("\"Non Empty String {}\"", offset)).unwrap(),
+                payload: Payload::from_json_str(&format!("\"Non Empty String {}\"", offset)).unwrap(),
                 tags: TagSet::empty(),
                 timestamp: (offset as u64).into(),
             }

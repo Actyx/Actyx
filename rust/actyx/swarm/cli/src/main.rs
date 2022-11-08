@@ -2,10 +2,13 @@ use actyx_sdk::{app_id, AppId, Payload};
 use anyhow::Result;
 use api::{formats::Licensing, NodeInfo};
 use ax_futures_util::prelude::AxStreamExt;
+use cbor_data::{
+    codec::{CodecError, ReadCbor},
+    Cbor,
+};
 use crypto::{KeyPair, KeyStore};
 use futures::{stream::StreamExt, TryStreamExt};
 use ipfs_embed::GossipEvent;
-use libipld::{cbor::DagCborCodec, codec::Codec};
 use parking_lot::Mutex;
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -94,17 +97,28 @@ async fn run() -> Result<()> {
     } else {
         BanyanStore::new(config.clone().into()).await?
     };
-    let mut stream = swarm.ipfs().swarm_events();
+
+    let mut ipfs = swarm.ipfs().clone();
+
+    let mut stream = ipfs.swarm_events().await.unwrap();
     // make sure we don't lose `NewListenAddr` events.
     for listen_addr in listen_addresses {
-        let _ = swarm.ipfs().listen_on(listen_addr).unwrap();
+        let mut stream = ipfs.listen_on(listen_addr);
+        tokio::spawn(async move {
+            while let Some(event) = stream.next().await {
+                let event = match event {
+                    ipfs_embed::ListenerEvent::NewListenAddr(addr) => Event::NewListenAddr(addr),
+                    ipfs_embed::ListenerEvent::ExpiredListenAddr(addr) => Event::ExpiredListenAddr(addr),
+                    ipfs_embed::ListenerEvent::ListenFailed(addr, reason) => Event::ListenFailed(addr, reason),
+                };
+                println!("{}", event);
+            }
+        });
     }
     tokio::spawn(async move {
         while let Some(event) = stream.next().await {
             tracing::debug!("got event {:?}", event);
             let event = match event {
-                ipfs_embed::Event::NewListenAddr(_, addr) => Some(Event::NewListenAddr(addr)),
-                ipfs_embed::Event::ExpiredListenAddr(_, addr) => Some(Event::ExpiredListenAddr(addr)),
                 ipfs_embed::Event::NewExternalAddr(addr) => Some(Event::NewExternalAddr(addr)),
                 ipfs_embed::Event::ExpiredExternalAddr(addr) => Some(Event::ExpiredExternalAddr(addr)),
                 ipfs_embed::Event::Discovered(peer_id) => Some(Event::Discovered(peer_id)),
@@ -126,7 +140,7 @@ async fn run() -> Result<()> {
         line.clear();
         stdin.read_line(&mut line).await?;
         match line.parse()? {
-            Command::AddAddress(peer, addr) => swarm.ipfs().add_address(&peer, addr),
+            Command::AddAddress(peer, addr) => swarm.ipfs().clone().add_address(peer, addr),
             Command::Append(nr, events) => {
                 swarm.append(nr, app_id(), events).await?;
             }
@@ -159,11 +173,14 @@ async fn run() -> Result<()> {
                 println!("{}", Event::ApiPort(config.enable_api.map(|a| a.port())));
             }
             Command::GossipSubscribe(topic) => {
-                let mut stream = swarm.ipfs().subscribe(&topic)?;
+                let mut stream = swarm.ipfs().clone().subscribe(topic.clone()).await?;
                 tokio::spawn(async move {
                     while let Some(msg) = stream.next().await {
                         if let GossipEvent::Message(sender, data) = msg {
-                            match DagCborCodec.decode::<GossipMessage>(&data[..]) {
+                            match Cbor::checked(&data[..])
+                                .map_err(CodecError::custom)
+                                .and_then(GossipMessage::read_cbor)
+                            {
                                 Ok(x) => {
                                     println!("{}", Event::GossipEvent(topic.clone(), sender, x));
                                 }

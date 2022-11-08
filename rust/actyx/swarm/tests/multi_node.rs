@@ -16,7 +16,8 @@ async fn banyan_multi_node() -> Result<()> {
     let s1 = BanyanStore::test("a").await?;
     let s2 = BanyanStore::test("b").await?;
     s1.ipfs()
-        .add_address(&s2.ipfs().local_peer_id(), s2.ipfs().listeners()[0].clone());
+        .clone()
+        .add_address(s2.ipfs().local_peer_id(), s2.ipfs().listeners()[0].clone());
 
     fn app_id() -> AppId {
         app_id!("test")

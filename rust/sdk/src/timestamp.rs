@@ -1,14 +1,14 @@
+use cbor_data::cbor_via;
+use chrono::{DateTime, FixedOffset, TimeZone, Utc};
+use derive_more::{From, Into};
+use libipld::DagCbor;
+use serde::{Deserialize, Serialize};
 use std::{
     convert::{TryFrom, TryInto},
     fmt::{self, Debug, Display, Formatter},
     ops::{Add, Sub},
     time::{SystemTime, UNIX_EPOCH},
 };
-
-use chrono::{DateTime, FixedOffset, TimeZone, Utc};
-use derive_more::{From, Into};
-use libipld::DagCbor;
-use serde::{Deserialize, Serialize};
 
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
 ///
@@ -29,6 +29,8 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[ipld(repr = "value")]
 pub struct Timestamp(u64);
+
+cbor_via!(Timestamp => u64: |x| -> x.0, FROM);
 
 impl Timestamp {
     pub const fn new(value: u64) -> Self {
@@ -120,6 +122,8 @@ impl Add<std::time::Duration> for Timestamp {
 #[ipld(repr = "value")]
 pub struct LamportTimestamp(u64);
 
+cbor_via!(LamportTimestamp => u64);
+
 impl LamportTimestamp {
     pub const fn new(value: u64) -> Self {
         Self(value)
@@ -133,6 +137,12 @@ impl LamportTimestamp {
     }
     pub fn as_i64(self) -> i64 {
         self.0 as i64
+    }
+}
+
+impl From<&LamportTimestamp> for u64 {
+    fn from(lt: &LamportTimestamp) -> Self {
+        lt.0
     }
 }
 

@@ -1,8 +1,11 @@
 use actyx_sdk::{language::Query, Payload, StreamNr, TagSet, Timestamp};
 use anyhow::Result;
+use cbor_data::{
+    codec::{ReadCbor, WriteCbor},
+    Cbor, CborBuilder,
+};
 use chrono::{DateTime, Utc};
 use crypto::{KeyPair, PrivateKey};
-use libipld::{cbor::DagCborCodec, codec::Codec};
 pub use libp2p::{multiaddr, Multiaddr, PeerId};
 use parking_lot::Mutex;
 use std::{borrow::Borrow, convert::TryFrom, net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc};
@@ -209,6 +212,7 @@ impl std::str::FromStr for Command {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum Event {
+    ListenFailed(Multiaddr, String),
     NewListenAddr(Multiaddr),
     ExpiredListenAddr(Multiaddr),
     NewExternalAddr(Multiaddr),
@@ -226,6 +230,9 @@ pub enum Event {
 impl std::fmt::Display for Event {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            Self::ListenFailed(addr, reason) => {
+                write!(f, "<listen-failed {} {}", addr, reason)?;
+            }
             Self::NewListenAddr(multiaddr) => {
                 write!(f, "<new-listen-addr {}", multiaddr)?;
             }
@@ -264,7 +271,7 @@ impl std::fmt::Display for Event {
                 }
             }
             Self::GossipEvent(topic, sender, message) => {
-                let cbor: Vec<u8> = DagCborCodec.encode(&message).unwrap();
+                let cbor = message.write_cbor(CborBuilder::default());
                 write!(f, "<gossip {} {} {}", topic, sender, hex::encode(cbor))?;
             }
         }
@@ -278,6 +285,9 @@ impl std::str::FromStr for Event {
     fn from_str(s: &str) -> Result<Self> {
         let mut parts = s.split_whitespace();
         Ok(match parts.next() {
+            Some("<listen-failed") => {
+                Self::ListenFailed(parts.next().unwrap().parse()?, parts.next().unwrap().parse()?)
+            }
             Some("<new-listen-addr") => Self::NewListenAddr(parts.next().unwrap().parse()?),
             Some("<expired-listen-addr") => Self::ExpiredListenAddr(parts.next().unwrap().parse()?),
             Some("<new-external-addr") => Self::NewExternalAddr(parts.next().unwrap().parse()?),
@@ -304,7 +314,7 @@ impl std::str::FromStr for Event {
                 let topic = parts.next().unwrap().into();
                 let sender = parts.next().unwrap().parse()?;
                 let cbor: Vec<u8> = hex::decode(parts.next().unwrap())?;
-                let message = DagCborCodec.decode(&cbor[..])?;
+                let message = GossipMessage::read_cbor(Cbor::checked(&cbor[..])?)?;
                 Self::GossipEvent(topic, sender, message)
             }
             _ => {

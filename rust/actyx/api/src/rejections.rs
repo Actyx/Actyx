@@ -5,7 +5,7 @@ use runtime::features::FeatureError;
 use tracing::*;
 use warp::{http::StatusCode, *};
 
-#[derive(Debug, Display, Clone, PartialEq)]
+#[derive(Debug, Display, Clone, PartialEq, Eq)]
 pub enum UnauthorizedReason {
     #[display(fmt = "no license found")]
     NoLicense,
@@ -19,7 +19,7 @@ pub enum UnauthorizedReason {
     Expired,
 }
 
-#[derive(Debug, Display, Clone, PartialEq)]
+#[derive(Debug, Display, Clone, PartialEq, Eq)]
 pub enum ApiError {
     #[display(fmt = "The requested resource could not be found.")]
     NotFound,

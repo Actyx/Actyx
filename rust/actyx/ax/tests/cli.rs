@@ -42,7 +42,7 @@ fn cli_help() {
 
 #[test]
 fn cli_swarm_keygen() {
-    cli().args(&["swarms", "keygen"]).assert().success();
+    cli().args(["swarms", "keygen"]).assert().success();
 }
 
 #[test]
@@ -55,7 +55,7 @@ Your public key has been saved at {}.pub",
         identity_path, identity_path,
     );
     cli()
-        .args(&["users", "keygen", "--output", &*identity_path])
+        .args(["users", "keygen", "--output", &*identity_path])
         .assert()
         .stdout(predicate::str::contains(expected))
         .stderr(predicate::eq("Generating public/private key pair ..\n"))
@@ -77,7 +77,7 @@ fn cli_users_keygen_err_on_existing_file() {
         identity_path
     );
     cli()
-        .args(&["users", "keygen", "--output", &*identity_path])
+        .args(["users", "keygen", "--output", &*identity_path])
         .assert()
         .stderr(predicate::str::contains(expected))
         .stderr(predicate::str::contains("Generating public/private key pair ..\n"))
@@ -94,7 +94,7 @@ fn cli_fail_on_missing_identity() {
         identity_path
     );
     cli()
-        .args(&["nodes", "ls", "localhost", "-i", &*identity_path])
+        .args(["nodes", "ls", "localhost", "-i", &*identity_path])
         .assert()
         .stderr(predicate::str::contains(expected))
         .failure();
@@ -102,20 +102,20 @@ fn cli_fail_on_missing_identity() {
 
 #[test]
 fn internal_subcommand() {
-    cli().args(&["internal", "help"]).assert().failure();
+    cli().args(["internal", "help"]).assert().failure();
     cli()
         .env("HERE_BE_DRAGONS", "wrong")
-        .args(&["internal", "help"])
+        .args(["internal", "help"])
         .assert()
         .failure();
     cli()
         .env("HERE_BE_DRAGONS", "zøg")
-        .args(&["internal", "help"])
+        .args(["internal", "help"])
         .assert()
         .success();
     cli()
         .env("HERE_BE_DRAGONS", "zoeg")
-        .args(&["internal", "help"])
+        .args(["internal", "help"])
         .assert()
         .success();
 }

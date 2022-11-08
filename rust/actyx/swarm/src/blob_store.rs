@@ -344,7 +344,7 @@ mod tests {
 
         let (folder, mime) = store.blob_get(app_id.clone(), "a".into()).unwrap().unwrap();
         assert_eq!(mime, "application/json");
-        let folder: HashMap<String, PathInfo> = serde_json::from_slice(&*folder).unwrap();
+        let folder: HashMap<String, PathInfo> = serde_json::from_slice(&folder).unwrap();
 
         assert_eq!(folder.len(), 4);
         assert!(matches!(
@@ -377,7 +377,7 @@ mod tests {
             .blob_put(app_id.clone(), "a//".into(), "text/plain".into(), b"woah")
             .unwrap();
         let folder = store.blob_get(app_id, "a".into()).unwrap().unwrap().0;
-        let folder: HashMap<String, PathInfo> = serde_json::from_slice(&*folder).unwrap();
+        let folder: HashMap<String, PathInfo> = serde_json::from_slice(&folder).unwrap();
         assert_eq!(folder.len(), 4);
         assert!(matches!(&folder[""], PathInfo::Folder));
     }

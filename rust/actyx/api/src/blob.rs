@@ -72,7 +72,7 @@ async fn handle_get(
     let path = tail.as_str().to_owned();
     match store.blob_get(app.clone(), path) {
         Ok(Some((data, mime))) => {
-            if accept.contains(&*mime) || accept.contains(mime_wild(&*mime).as_ref()) || accept.contains("*/*") {
+            if accept.contains(&*mime) || accept.contains(mime_wild(&mime).as_ref()) || accept.contains("*/*") {
                 Ok(Response::builder().header("Content-Type", mime).body(data))
             } else {
                 Err(reject::custom(ApiError::NotAcceptable {

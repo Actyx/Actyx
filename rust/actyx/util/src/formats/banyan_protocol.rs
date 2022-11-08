@@ -10,7 +10,7 @@ use std::{
     io::{Error, ErrorKind, Result},
 };
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum BanyanRequest {
     MakeFreshTopic(String),
     AppendEvents(String, Vec<u8>),
@@ -29,7 +29,7 @@ impl std::fmt::Debug for BanyanRequest {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BanyanResponse {
     Ok,
     Error(String),

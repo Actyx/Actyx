@@ -30,7 +30,7 @@ pub enum EventsRequest {
     Publish(PublishRequest),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum EventsResponse {
     Error {

@@ -180,7 +180,7 @@ impl Encode<DagCborCodec> for Tag {
 impl<T: Into<String>> Add<T> for Tag {
     type Output = Tag;
     fn add(self, rhs: T) -> Self::Output {
-        Tag::from_str(&*(self.0.to_string() + rhs.into().as_str())).unwrap()
+        Tag::from_str(&(self.0.to_string() + rhs.into().as_str())).unwrap()
     }
 }
 
@@ -470,7 +470,7 @@ mod tests {
             if s.is_empty() {
                 TestResult::discard()
             } else {
-                TestResult::from_bool(Tag::from_str(&*s).unwrap().to_string() == s.nfc().collect::<String>())
+                TestResult::from_bool(Tag::from_str(&s).unwrap().to_string() == s.nfc().collect::<String>())
             }
         }
 
@@ -479,7 +479,7 @@ mod tests {
                 TestResult::discard()
             } else {
                 let bytes = serde_json::to_vec(&s).unwrap();
-                let t: Tag = serde_json::from_slice(&*bytes).unwrap();
+                let t: Tag = serde_json::from_slice(&bytes).unwrap();
                 TestResult::from_bool(t.to_string() == s.nfc().collect::<String>())
             }
         }

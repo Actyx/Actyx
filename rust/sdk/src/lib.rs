@@ -38,7 +38,7 @@ pub use app_manifest::AppManifest;
 pub use event::{Event, EventKey, Metadata, Opaque, Payload};
 #[cfg(feature = "client")]
 pub use http_client::HttpClient;
-pub use offset::{Offset, OffsetMap, OffsetOrMin};
+pub use offset::{Offset, OffsetError, OffsetMap, OffsetOrMin};
 pub use scalars::{AppId, NodeId, StreamId, StreamNr};
 pub use tags::{Tag, TagSet};
 pub use timestamp::{LamportTimestamp, Timestamp};
@@ -52,7 +52,7 @@ mod test_util;
 pub use test_util::*;
 
 use derive_more::Display;
-#[derive(Debug, Display, PartialEq)]
+#[derive(Debug, Display, PartialEq, Eq)]
 pub enum ParseError {
     #[display(fmt = "Empty string is not permissible for Tag")]
     EmptyTag,

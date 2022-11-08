@@ -14,7 +14,7 @@ use crate::{
     tags::TagSet,
 };
 
-#[derive(Debug, Display, PartialEq)]
+#[derive(Debug, Display, PartialEq, Eq)]
 pub enum ParseError {
     #[display(fmt = "SourceId was longer than maximum")]
     SourceIdTooLong,

@@ -10,7 +10,7 @@ use util::formats::LogSeverity;
 // it's mostly in sync, but subtle bugs may be introduced by
 // changing the schema w/o changing the types here.
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Events {
     pub read_only: bool,
@@ -18,7 +18,7 @@ pub struct Events {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub internal: Option<serde_json::Value>,
 }
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Swarm {
     pub swarm_key: String,
@@ -35,26 +35,26 @@ pub struct Swarm {
     pub mdns: bool,
     pub branch_cache_size: u64,
 }
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Admin {
     pub display_name: String,
     pub authorized_users: Vec<PublicKey>,
     pub log_levels: LogLevels,
 }
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Api {
     pub events: Events,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct LogLevels {
     pub node: LogSeverity,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub swarm: Swarm,

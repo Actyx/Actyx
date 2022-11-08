@@ -10,7 +10,7 @@ use std::{
 use trees::query::{OffsetQuery, TimeQuery};
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 /// Note: Events are kept on a best-effort basis, potentially violating the
 /// constraints expressed by this config.
 pub enum RetainConfig {
@@ -195,7 +195,7 @@ mod test {
         let store = create_store().await?;
         let events = (0..event_count)
             .into_iter()
-            .map(|i| (tags!("test"), Payload::from_json_str(&*i.to_string()).unwrap()))
+            .map(|i| (tags!("test"), Payload::from_json_str(&i.to_string()).unwrap()))
             .collect::<Vec<_>>();
         store.append(stream_nr, app_id(), events).await?;
 
@@ -295,7 +295,7 @@ mod test {
         let store = create_store().await?;
         let events = (0..event_count)
             .into_iter()
-            .map(|i| (tags!("test"), Payload::from_json_str(&*i.to_string()).unwrap()))
+            .map(|i| (tags!("test"), Payload::from_json_str(&i.to_string()).unwrap()))
             .collect::<Vec<_>>();
         for (i, chunk) in events.chunks((event_count / 100) as usize).enumerate() {
             let timestamp = base + Duration::from_millis(i as u64);

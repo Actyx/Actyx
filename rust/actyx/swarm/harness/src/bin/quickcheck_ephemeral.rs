@@ -6,7 +6,6 @@ fn main() {
         tags, OffsetMap, Payload,
     };
     use futures::{future, stream::FuturesUnordered, StreamExt};
-    use libipld::{cbor::DagCborCodec, codec::Codec};
     use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
     use std::{
         fs::File,
@@ -244,7 +243,7 @@ fn main() {
         let retain_config = RetainConfig::Size(input.retain_kbytes as u64 * 1024);
         let events = make_events(input.events);
         let bytes_per_event_uncompressed = if let Some(f) = events.first().as_ref() {
-            DagCborCodec.encode(&f.payload).unwrap().len()
+            f.payload.as_bytes().len()
         } else {
             1024
         };

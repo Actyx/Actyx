@@ -10,7 +10,7 @@ use libp2p::{
     identity, noise,
     plaintext::PlainText2Config,
     pnet::{PnetConfig, PreSharedKey},
-    tcp::TokioTcpConfig,
+    tcp::{GenTcpConfig, TokioTcpTransport},
     yamux::YamuxConfig,
     PeerId, Transport,
 };
@@ -24,7 +24,7 @@ pub async fn build_transport(
     psk: Option<PreSharedKey>,
     upgrade_timeout: Duration,
 ) -> anyhow::Result<Boxed<(PeerId, StreamMuxerBox)>> {
-    let tcp = TokioTcpConfig::new().nodelay(true);
+    let tcp = TokioTcpTransport::new(GenTcpConfig::new().nodelay(true));
     let base_transport = if cfg!(target_os = "android") {
         // No official support for DNS on Android.
         // see https://github.com/Actyx/Cosmos/issues/6582
@@ -73,7 +73,7 @@ pub async fn build_dev_transport(
         local_public_key: key_pair.public(),
     };
     let yamux_config = YamuxConfig::default();
-    let transport = MemoryTransport {}
+    let transport = MemoryTransport::new()
         .upgrade(Version::V1)
         .authenticate(plaintext_config)
         .multiplex(yamux_config)

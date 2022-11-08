@@ -27,7 +27,7 @@ fn main() -> anyhow::Result<()> {
         }
 
         let events = (0..EVENTS)
-            .map(|i| (tags!("test"), Payload::from_json_str(&*format!("{}", i)).unwrap()))
+            .map(|i| (tags!("test"), Payload::from_json_str(&format!("{}", i)).unwrap()))
             .collect();
 
         let (first, rest) = sim.machines_mut().split_first_mut().unwrap();

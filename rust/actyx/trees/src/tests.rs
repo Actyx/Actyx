@@ -13,6 +13,7 @@ use banyan::{
 };
 use futures::prelude::*;
 use parking_lot::Mutex;
+use pretty_assertions::assert_eq;
 use serde_json::json;
 use std::sync::Arc;
 
@@ -228,7 +229,7 @@ fn events_banyan_tree_roundtrip_with(events: Vec<(AxKey, Payload)>) -> anyhow::R
 /// Roundtrip test from events to banyan tree and back
 #[test]
 fn events_banyan_tree_roundtrip() -> anyhow::Result<()> {
-    for events in vec![generate_events(10000), generate_random_events(10000)] {
+    for events in vec![generate_events(100), generate_random_events(100)] {
         events_banyan_tree_roundtrip_with(events)?;
     }
     Ok(())
@@ -325,7 +326,7 @@ async fn events_banyan_tree_simple_queries_with(events: Vec<(AxKey, Payload)>) -
 
 #[tokio::test]
 async fn events_banyan_tree_simple_queries() -> anyhow::Result<()> {
-    for events in vec![generate_events(10000), generate_random_events(10000)] {
+    for events in vec![generate_events(100), generate_random_events(100)] {
         events_banyan_tree_simple_queries_with(events).await?;
     }
     Ok(())

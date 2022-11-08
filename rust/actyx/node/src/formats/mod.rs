@@ -7,7 +7,7 @@ use util::formats::NodeName;
 pub mod node_settings;
 pub use node_settings::Settings;
 
-#[derive(Deserialize, PartialEq, Clone, Debug)]
+#[derive(Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct NodeDetails {
     pub node_id: NodeId,
     pub node_name: NodeName,
@@ -22,7 +22,7 @@ impl NodeDetails {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Entity {
     Host,
     HostUi,

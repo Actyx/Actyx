@@ -13,6 +13,14 @@ pub use self::header::Header as AxTreeHeader;
 
 type TagIndex = cbor_tag_index::TagIndex<ScopedTag>;
 
+#[derive(Debug, Clone)]
+pub struct StoreParams;
+impl libipld::store::StoreParams for StoreParams {
+    type Hashes = libipld::multihash::Code;
+    type Codecs = libipld::IpldCodec;
+    const MAX_BLOCK_SIZE: usize = 2_000_000;
+}
+
 /// Type alias for the actyx flavour of banyan trees
 pub type AxTree = banyan::Tree<axtrees::AxTrees, actyx_sdk::Payload>;
 /// Type alias for builders

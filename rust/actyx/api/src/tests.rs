@@ -548,7 +548,7 @@ async fn bad_request_unknown_stream() {
         .reply(&route)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
-    let js = serde_json::from_slice::<serde_json::Value>(&*resp.body()).unwrap();
+    let js = serde_json::from_slice::<serde_json::Value>(resp.body()).unwrap();
     assert_eq!(
         js,
         json!({ "type": "diagnostic", "severity": "error", "message": "Query bounds out of range: upper bound must be within the known present."})
@@ -571,7 +571,7 @@ async fn bad_request_invalid_upper_bounds() {
         .reply(&route)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
-    let js = serde_json::from_slice::<serde_json::Value>(&*resp.body()).unwrap();
+    let js = serde_json::from_slice::<serde_json::Value>(resp.body()).unwrap();
     assert_eq!(
         js,
         json!({ "type": "diagnostic", "severity": "error", "message": "Query bounds out of range: upper bound must be within the known present."})

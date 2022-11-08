@@ -2,7 +2,7 @@ use crate::{json_differ::JsonDiffer, scope::Scope};
 use serde_json::json;
 use std::collections::BTreeSet;
 
-#[derive(thiserror::Error, Debug, PartialEq)]
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum Error {
     #[error("Value {value} at path {path} is not of type object or array.")]
     NotAnObjectOrArray { path: Scope, value: serde_json::Value },

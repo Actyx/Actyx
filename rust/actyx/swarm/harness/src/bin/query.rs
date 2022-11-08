@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
         (0..n)
             .map(|i| PublishEvent {
                 tags: tags!("a", "b"),
-                payload: Payload::from_json_str(&*format!("{}", i)).unwrap(),
+                payload: Payload::from_json_str(&format!("{}", i)).unwrap(),
             })
             .collect()
     }

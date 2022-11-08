@@ -18,7 +18,7 @@ impl InvalidAppId {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeveloperCertificateInput {
     dev_pubkey: PublicKey,
@@ -34,7 +34,7 @@ impl DeveloperCertificateInput {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ManifestDeveloperCertificate {
     #[serde(flatten)]
@@ -79,7 +79,7 @@ fn deserialize_dev_private_key<'de, D: Deserializer<'de>>(d: D) -> Result<Privat
     s.parse::<PrivateKey>().map_err(serde::de::Error::custom)
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeveloperCertificate {
     #[serde(serialize_with = "serialize_dev_private_key")]

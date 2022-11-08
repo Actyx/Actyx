@@ -989,7 +989,7 @@ mod for_tests {
             // as during parsing. Luckily, this test will then prove that our canonicalisation
             // actually works.
             let s = q.to_string();
-            let p = match Query::parse(&*s) {
+            let p = match Query::parse(&s) {
                 Ok(p) => p,
                 Err(e) => return TestResult::error(e.to_string()),
             };

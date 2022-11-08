@@ -145,7 +145,7 @@ impl<T: Eq + Hash + ?Sized> Deref for ArcVal<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        &*self.0
+        &self.0
     }
 }
 
@@ -371,7 +371,7 @@ mod tests {
     #[cfg(feature = "dataflow")]
     #[allow(clippy::string_lit_as_bytes)]
     pub fn must_work_for_u8s() {
-        let value: ArcVal<[u8]> = ArcVal::clone_from_unsized(&*b"hello");
+        let value: ArcVal<[u8]> = ArcVal::clone_from_unsized(b"hello");
 
         let mut bytes = Vec::new();
         unsafe { abomonation::encode(&value, &mut bytes).unwrap() };

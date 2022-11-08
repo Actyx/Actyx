@@ -3,12 +3,12 @@
 ARG TARGET=armv7-unknown-linux-musleabihf
 FROM rustembedded/cross:${TARGET}-0.2.1 as crossbuild-amd64
 ARG TARGET
-ARG BUILD_RUST_TOOLCHAIN=1.61.0
+ARG BUILD_RUST_TOOLCHAIN=1.65.0
 
 RUN groupadd -g 1000 builder \
     && useradd -m -u 1000 -g 1000 builder \
     && apt-get update \
-    && apt-get install -y liblzma-dev zlib1g-dev
+    && apt-get install -y liblzma-dev zlib1g-dev protobuf-compiler
 
 RUN mkdir /src && chown -R builder:builder /src
 

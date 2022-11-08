@@ -115,8 +115,7 @@ impl TryFrom<libp2p::core::PeerId> for PublicKey {
                                 .map_err(|e| anyhow!(e))
                                 .context("Not a valid ed25519_dalek::PublicKey")?;
                             Ok(pub_key.into())
-                        }
-                        _ => bail!("Expected ed25519_dalek::PublicKey!"),
+                        } // _ => bail!("Expected ed25519_dalek::PublicKey!"),
                     }
                 } else {
                     bail!("Only PeerIds encoded with identity hash can be decoded")

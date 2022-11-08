@@ -93,7 +93,7 @@ fn with_api(
     let mut process = run("actyx")?
         .current_dir(workdir.path())
         .stderr(Stdio::piped())
-        .args(&["--bind-api=0", "--bind-admin=0", "--bind-swarm=0"])
+        .args(["--bind-api=0", "--bind-admin=0", "--bind-swarm=0"])
         .env("RUST_LOG", "debug")
         .spawn()?;
     let stderr = process.stderr.take().unwrap();
@@ -189,14 +189,20 @@ fn with_api(
 
 fn get_offsets(api: u16, identity: &Path) -> anyhow::Result<Value> {
     let out = run("ax")?
-        .args(&[
+        .args([
             o("events"),
             o("offsets"),
             o("-ji"),
             identity.as_os_str(),
             o(&format!("localhost:{}", api)),
         ])
+        .env("RUST_LOG", "trace")
         .output()?;
+    eprintln!(
+        "prep out:\n{}\nerr:\n{}\n---",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
     ensure!(out.status.success());
     let v = serde_json::from_slice::<Value>(&out.stdout)?;
     ensure!(v.pointer("/code").is_some());
@@ -215,7 +221,7 @@ fn offsets() -> anyhow::Result<()> {
     let log = Log::default();
     let result = with_api(log.clone(), |api, identity| {
         let out = run("ax")?
-            .args(&[
+            .args([
                 o("events"),
                 o("offsets"),
                 o("-ji"),
@@ -241,7 +247,7 @@ fn offsets() -> anyhow::Result<()> {
             .v("first key")?;
 
         let out = run("ax")?
-            .args(&[
+            .args([
                 o("events"),
                 o("offsets"),
                 o("-i"),
@@ -270,7 +276,7 @@ fn query() -> anyhow::Result<()> {
     let log = Log::default();
     let result = with_api(log.clone(), |api, identity| {
         let out = run("ax")?
-            .args(&[
+            .args([
                 o("events"),
                 o("query"),
                 o("-i"),
@@ -299,7 +305,7 @@ fn query() -> anyhow::Result<()> {
         ensure!(found, "no events with text output");
 
         let out = run("ax")?
-            .args(&[
+            .args([
                 o("events"),
                 o("query"),
                 o("-ji"),
@@ -344,7 +350,7 @@ fn bad_query() -> anyhow::Result<()> {
     let log = Log::default();
     let result = with_api(log.clone(), |api, identity| {
         let out = run("ax")?
-            .args(&[
+            .args([
                 o("events"),
                 o("query"),
                 o("-i"),
@@ -367,7 +373,7 @@ fn bad_query() -> anyhow::Result<()> {
         );
 
         let out = run("ax")?
-            .args(&[
+            .args([
                 o("events"),
                 o("query"),
                 o("-ji"),
@@ -403,7 +409,7 @@ fn publish() -> anyhow::Result<()> {
     let log = Log::default();
     let result = with_api(log.clone(), |api, identity| {
         let out = run("ax")?
-            .args(&[
+            .args([
                 o("events"),
                 o("publish"),
                 o("-ji"),
@@ -437,7 +443,7 @@ fn diagnostics() -> anyhow::Result<()> {
     let log = Log::default();
     let result = with_api(log.clone(), |api, identity| {
         let out = run("ax")?
-            .args(&[
+            .args([
                 o("events"),
                 o("query"),
                 o("-i"),
@@ -467,7 +473,7 @@ fn aggregate() -> anyhow::Result<()> {
     let log = Log::default();
     let result = with_api(log.clone(), |api, identity| {
         let out = run("ax")?
-            .args(&[
+            .args([
                 o("events"),
                 o("query"),
                 o("-ji"),

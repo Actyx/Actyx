@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, From)]
 pub struct NodeCycleCount(u64);
 
-#[derive(Deserialize, PartialEq, Clone, Debug, From, Into, AsRef, Display)]
+#[derive(Deserialize, PartialEq, Eq, Clone, Debug, From, Into, AsRef, Display)]
 pub struct NodeName(pub String);
 
 #[derive(Debug, Display)]

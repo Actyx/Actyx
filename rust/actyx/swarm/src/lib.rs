@@ -69,9 +69,9 @@ use libipld::{cbor::DagCborCodec, error::BlockNotFound};
 use libp2p::{
     dns::ResolverConfig,
     gossipsub::{GossipsubConfigBuilder, ValidationMode},
-    identify::IdentifyConfig,
+    identify,
     multiaddr::Protocol,
-    ping::PingConfig,
+    ping,
 };
 use maplit::btreemap;
 use parking_lot::Mutex;
@@ -114,14 +114,7 @@ pub type Tree = banyan::Tree<TT, Event>;
 pub type AxStreamBuilder = banyan::StreamBuilder<TT, Event>;
 pub type Link = Sha256Digest;
 
-#[derive(Debug, Clone)]
-pub struct StoreParams;
-impl libipld::store::StoreParams for StoreParams {
-    type Hashes = libipld::multihash::Code;
-    type Codecs = libipld::IpldCodec;
-    const MAX_BLOCK_SIZE: usize = 2_000_000;
-}
-
+pub use trees::StoreParams;
 pub type Block = libipld::Block<StoreParams>;
 pub type Ipfs = ipfs_embed::Ipfs<StoreParams>;
 
@@ -135,7 +128,7 @@ fn internal_app_id() -> AppId {
     app_id!("com.actyx")
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EphemeralEventsConfig {
     interval: Duration,
     streams: BTreeMap<StreamNr, RetainConfig>,
@@ -697,10 +690,11 @@ impl BanyanStore {
             .node_name
             .unwrap_or_else(|| names::Generator::with_naming(names::Name::Numbered).next().unwrap());
 
-        let ipfs = Ipfs::new(IpfsConfig {
+        let mut ipfs = Ipfs::new(IpfsConfig {
             network: NetworkConfig {
                 enable_loopback: cfg.enable_loopback,
                 port_reuse: false,
+                keep_alive: true,
                 node_key,
                 node_name: node_name.clone(),
                 psk: cfg.psk,
@@ -724,14 +718,13 @@ impl BanyanStore {
                     })
                 },
                 ping: Some(
-                    PingConfig::new()
+                    ping::Config::new()
                         .with_interval(Duration::from_secs(20))
                         .with_timeout(cfg.ping_timeout)
-                        .with_keep_alive(true)
                         .with_max_failures(NonZeroU32::new(3).unwrap()),
                 ),
                 identify: Some(
-                    IdentifyConfig::new("/actyx/2.0.0".to_string(), Ed25519(public)).with_agent_version(node_name),
+                    identify::Config::new("/actyx/2.0.0".to_string(), Ed25519(public)).with_agent_version(node_name),
                 ),
                 gossipsub: Some(
                     GossipsubConfigBuilder::default()
@@ -761,7 +754,7 @@ impl BanyanStore {
         })
         .await?;
         // call as soon as possible to avoid missed events
-        let swarm_events = ipfs.swarm_events();
+        let swarm_events = ipfs.swarm_events().await?;
         let mut bootstrap: FnvHashMap<PeerId, Vec<Multiaddr>> = FnvHashMap::default();
         for mut addr in cfg.bootstrap_addresses {
             tracing::debug!(addr = display(&addr), "adding initial peer");
@@ -776,12 +769,7 @@ impl BanyanStore {
         let listen_addrs = cfg.listen_addresses.lock().iter().collect::<Vec<_>>();
         for addr in listen_addrs {
             let maddr = to_multiaddr(addr);
-            let mut listener = ipfs
-                .listen_on(maddr.clone())
-                .with_context(|| NodeErrorContext::BindFailed {
-                    addr: maddr.clone(),
-                    component: "Swarm".into(),
-                })?;
+            let mut listener = ipfs.listen_on(maddr.clone());
 
             match listener.next().await {
                 Some(ListenerEvent::NewListenAddr(bound_addr)) => {
@@ -790,6 +778,14 @@ impl BanyanStore {
                     if let Some(bound_addr) = to_socket_addr(bound_addr) {
                         cfg.listen_addresses.lock().inject_bound_addr(addr, bound_addr);
                     }
+                }
+                Some(ListenerEvent::ListenFailed(_addr, reason)) => {
+                    return Err(anyhow::anyhow!("bind failed: {}", reason)).with_context(|| {
+                        NodeErrorContext::BindFailed {
+                            addr: maddr.clone(),
+                            component: "Swarm".into(),
+                        }
+                    })
                 }
                 e => {
                     return Err(anyhow::anyhow!("got unexpected event {:?}", e)).with_context(|| {
@@ -811,6 +807,9 @@ impl BanyanStore {
                         ListenerEvent::ExpiredListenAddr(addr) => {
                             tracing::info!("Swarm Services no longer listening on {}.", addr)
                         }
+                        ListenerEvent::ListenFailed(addr, reason) => {
+                            tracing::warn!(%addr, %reason, "got belated listen failure");
+                        }
                     }
                 }
             });
@@ -823,7 +822,7 @@ impl BanyanStore {
         let peers = bootstrap.keys().cloned().collect::<Vec<_>>();
         for (peer, addrs) in bootstrap {
             for mut addr in addrs {
-                ipfs.add_address(&peer, addr.clone());
+                ipfs.add_address(peer, addr.clone());
                 let addr_dbg = tracing::field::debug(addr.clone());
                 if let Some(info) = ipfs.peer_info(&peer) {
                     addr.push(Protocol::P2p(peer.into()));
@@ -903,7 +902,7 @@ impl BanyanStore {
         });
         banyan.spawn_task(
             "gossip_ingest",
-            banyan.data.gossip.ingest(banyan.clone(), cfg.topic.clone())?,
+            Gossip::ingest(banyan.clone(), cfg.topic.clone()).await?,
         );
         if cfg.enable_root_map {
             banyan.spawn_task(
@@ -1364,7 +1363,7 @@ impl BanyanStore {
         // attempt to sync. This may take a while and is likely to be interrupted
         tracing::trace!("starting to sync from {} peers", peers.len());
         // create the sync stream, and log progress. Add an additional element.
-        let mut sync = ipfs.sync(&cid, peers);
+        let mut sync = ipfs.sync(&cid, peers).await?;
         // during the sync, try to load the tree asap and abort in case it is not good
         let mut header: Option<AxTreeHeader> = None;
         let mut tree: Option<AxTree> = None;

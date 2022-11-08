@@ -22,7 +22,7 @@ impl fmt::Display for AxPrivateKey {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 /// Wrapper around `crypto::PrivateKey` for use inside ax's context. Most notably
 /// is the on disk format, which differs from [`crypto::Keystore::dump`].
 pub struct AxPrivateKey(PrivateKey);

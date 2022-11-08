@@ -59,13 +59,13 @@ CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
 CARGO_BUILD_ARGS ?= --features migration-v1
 
-export BUILD_RUST_TOOLCHAIN ?= 1.61.0
+export BUILD_RUST_TOOLCHAIN ?= 1.65.0
 
 # The stable image version is the git commit hash inside `Actyx/Actyx`, with
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 2846b85b1d8fdbf1c47aeeda5fddc2292b07f918
+export LATEST_STABLE_IMAGE_VERSION := a1d06897bfcb83cb99d49fb452a87f236489cc93
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -93,7 +93,7 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/util:osxbuilder-570bf057efb6af0a37cfc6e578655a503117a51c
+image-darwin = actyx/util:osxbuilder-21c53b627e3c4f06514bef593e4ef7f23bb91581
 
 image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
 
@@ -405,6 +405,8 @@ node-manager-win:
 	docker run \
 	  -e BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
 	  -v `pwd`:/src \
+	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  -w /src/js/node-manager \
 	  --rm \
 	  actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
@@ -501,8 +503,8 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
+	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
@@ -522,8 +524,8 @@ $(soTargetPatterns): cargo-init make-always
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
+	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
@@ -537,25 +539,30 @@ $(soTargetPatterns6): cargo-init make-always
 	  -e HOME=/home/builder \
 	  -e ANDROID6=yes \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
+	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
 	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --target $(TARGET)
 	mv $(patsubst %6,%,$@) $@
 
-# create these so that they belong to the current user (Docker would create as root)
+# create this with permissions for everyone so that `builder` inside docker can use it
+# but only really share the `git` and `registry` folders within this!
+# (otherwise Docker will create them as root since they are used as volumes)
 # (formulating as rule dependencies only runs mkdir when they are missing)
-cargo-init: $(CARGO_HOME)/git $(CARGO_HOME)/registry
+cargo-init: $(CARGO_HOME)/for_builder/git $(CARGO_HOME)/for_builder/registry
 $(CARGO_HOME)/%:
 	mkdir -p $@
+	chmod 777 $@
 
 jvm/os-android/app/build/outputs/bundle/release/app-release.aab: android-libaxosnodeffi make-always
 	jvm/os-android/bin/get-keystore.sh
 	docker run \
 	  -u builder \
 	  -v `pwd`:/src \
+	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  -w /src/jvm/os-android \
 	  --rm \
 	  $(DOCKER_FLAGS) \

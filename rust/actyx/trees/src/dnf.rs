@@ -92,7 +92,7 @@ mod tests {
     }
 
     fn assert_dnf(expr: TagExpr, dnf: &'static [&'static [&'static str]]) {
-        let expected = Dnf(dnf.iter().map(|conj| conj.iter().map(|c| atom(*c)).collect()).collect());
+        let expected = Dnf(dnf.iter().map(|conj| conj.iter().map(|c| atom(c)).collect()).collect());
         assert_eq!(Dnf::from(&expr), expected);
     }
 

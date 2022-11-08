@@ -49,6 +49,9 @@ pub struct DumpTreeOpts {
     /// --dot --root .. | dot -Tpng > out.png`
     #[structopt(long)]
     dot: bool,
+    /// Output all values, one per line
+    #[structopt(long)]
+    values: bool,
 }
 
 fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
@@ -66,7 +69,7 @@ fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
             let tree = forest.load_tree::<Payload>(secrets, header.root)?;
             if opts.dot {
                 dump::graph(&forest, &tree, std::io::stdout())?;
-            } else {
+            } else if opts.values {
                 for maybe_pair in forest.iter_from(&tree) {
                     let (_, k, v) = maybe_pair?;
                     if opts.with_keys {
@@ -91,9 +94,11 @@ fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
                             })
                         );
                     } else {
-                        println!("{}", v.json_string());
+                        println!("{}", v.cbor());
                     }
                 }
+            } else {
+                forest.dump(&tree)?;
             }
         }
         (None, Some(block_hash)) => {
@@ -101,7 +106,7 @@ fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
             let ss = SqliteStore::new(bs)?;
             let value_key: chacha20::Key = opts.value_pass.map(create_chacha_key).unwrap_or_default();
             let nonce = <&chacha20::XNonce>::try_from(AxTrees::NONCE).unwrap();
-            dump::dump_json(ss, block_hash, &value_key, nonce, &mut std::io::stdout())?;
+            dump::dump_cbor(ss, block_hash, &value_key, nonce, &mut std::io::stdout())?;
         }
         _ => anyhow::bail!("Provide either root or block hash"),
     }

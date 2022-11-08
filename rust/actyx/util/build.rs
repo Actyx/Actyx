@@ -16,7 +16,7 @@ fn find_commit(prefix: &str, commit: String) -> Option<String> {
         if line.starts_with('#') || line.trim().is_empty() {
             continue;
         }
-        let mut items = line.trim().split_whitespace();
+        let mut items = line.split_whitespace();
         let version = items.next().expect("version");
         let hash = items.next().expect("hash");
         if version.starts_with(prefix) && hash == &*commit {

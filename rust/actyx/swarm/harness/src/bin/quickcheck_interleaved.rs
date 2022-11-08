@@ -72,7 +72,7 @@ fn main() {
                 .map(|v| {
                     v.into_iter()
                         .enumerate()
-                        .map(|(idx, _)| Tag::from_str(&*format!("{}", idx)).unwrap())
+                        .map(|(idx, _)| Tag::from_str(&format!("{}", idx)).unwrap())
                         .collect::<TagSet>()
                 })
                 .collect::<Vec<_>>();

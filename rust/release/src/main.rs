@@ -291,11 +291,11 @@ Overview:"#
                 eprintln!("Done.");
 
                 eprint!("2) git checkout -b {} ... ", branch_name);
-                if repo.branch_exists(&*branch_name)? {
+                if repo.branch_exists(&branch_name)? {
                     eprintln!("Already exists. Exiting");
                     return Ok(());
                 } else {
-                    repo.checkout(&*branch_name, commit)?;
+                    repo.checkout(&branch_name, commit)?;
                     eprintln!("Done.");
                 }
 
@@ -304,11 +304,11 @@ Overview:"#
                 eprintln!("Done.");
 
                 eprint!("3) git commit ... ");
-                let oid = repo.commit(oid, &*changelog)?;
+                let oid = repo.commit(oid, &changelog)?;
                 eprintln!("Done. ({})", oid);
 
                 eprint!("4) git push origin/{} ... ", branch_name);
-                repo.push("origin", &*branch_name)?;
+                repo.push("origin", &branch_name)?;
                 eprintln!("Done.");
             }
         }

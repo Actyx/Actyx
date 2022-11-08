@@ -139,7 +139,7 @@ impl FilePinner {
                 if let Err(error) = tx
                     .send((
                         app_id!("com.actyx"),
-                        Query::parse(&*format!(
+                        Query::parse(&format!(
                             r#"
 FEATURES(zøg aggregate timeRange)
 FROM isLocal &

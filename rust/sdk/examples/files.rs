@@ -101,7 +101,7 @@ pub async fn main() -> anyhow::Result<()> {
 
 fn list_file_or_dir(client: &HttpClient, name_or_cid: String, level: usize) -> BoxFuture<'_, anyhow::Result<()>> {
     async move {
-        let response = client.files_get(&*name_or_cid).await?;
+        let response = client.files_get(&name_or_cid).await?;
         match response {
             actyx_sdk::service::FilesGetResponse::File { name, bytes, mime } if level == 0 => {
                 println!("{} ({}): {}", name, mime, bytes.len());
@@ -129,7 +129,7 @@ fn get_file_or_dir(
     write_to: PathBuf,
 ) -> BoxFuture<'static, anyhow::Result<()>> {
     async move {
-        match client.files_get(&*name_or_cid).await? {
+        match client.files_get(&name_or_cid).await? {
             actyx_sdk::service::FilesGetResponse::File { bytes, .. } => {
                 let mut file = File::create(write_to).await?;
                 file.write_all(&bytes[..]).await?;

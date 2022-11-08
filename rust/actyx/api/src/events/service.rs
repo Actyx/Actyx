@@ -90,14 +90,14 @@ impl EventService {
         _app_id: AppId,
         request: QueryRequest,
     ) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
-        let query = language::Query::parse(&*request.query).map_err(|e| ApiError::BadRequest {
+        let query = language::Query::parse(&request.query).map_err(|e| ApiError::BadRequest {
             cause: format!("{:#}", e),
         })?;
 
         let (query, pragmas) = Query::from(query);
         let features = Features::from_query(&query);
         let enabled = query.enabled_features(&pragmas);
-        features.validate(&*enabled, Endpoint::Query)?;
+        features.validate(&enabled, Endpoint::Query)?;
         let mut feeder = query.make_feeder();
 
         async fn y(co: &Co<QueryResponse>, vs: Vec<anyhow::Result<Value>>) {
@@ -241,7 +241,7 @@ impl EventService {
         _app_id: AppId,
         request: SubscribeRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
-        let query = language::Query::parse(&*request.query).map_err(|e| ApiError::BadRequest {
+        let query = language::Query::parse(&request.query).map_err(|e| ApiError::BadRequest {
             cause: format!("{:#}", e),
         })?;
         let tag_expr = match &query.source {
@@ -260,7 +260,7 @@ impl EventService {
         let (query, pragmas) = Query::from(query);
         let features = Features::from_query(&query);
         let enabled = query.enabled_features(&pragmas);
-        features.validate(&*enabled, Endpoint::Subscribe)?;
+        features.validate(&enabled, Endpoint::Subscribe)?;
         let mut query = query.make_feeder();
 
         let cx = Context::root(
@@ -336,7 +336,7 @@ impl EventService {
         _app_id: AppId,
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        let query = language::Query::parse(&*request.query).map_err(|e| ApiError::BadRequest {
+        let query = language::Query::parse(&request.query).map_err(|e| ApiError::BadRequest {
             cause: format!("{:#}", e),
         })?;
         let tag_expr = match &query.source {
@@ -358,7 +358,7 @@ impl EventService {
         let (query, pragmas) = Query::from(query);
         let features = Features::from_query(&query);
         let enabled = query.enabled_features(&pragmas);
-        features.validate(&*enabled, Endpoint::SubscribeMonotonic)?;
+        features.validate(&enabled, Endpoint::SubscribeMonotonic)?;
         let mut query = query.make_feeder();
 
         let cx = Context::root(
@@ -603,7 +603,7 @@ mod tests {
     fn evp(tags: TagSet, n: u32) -> PublishEvent {
         PublishEvent {
             tags,
-            payload: Payload::from_json_str(&*format!("{:?}", n)).unwrap(),
+            payload: Payload::from_json_str(&format!("{:?}", n)).unwrap(),
         }
     }
     fn evr(publ: PublishResponseKey, tags: TagSet, n: u32) -> SubscribeResponse {
@@ -620,7 +620,7 @@ mod tests {
                     app_id: app_id!("me"),
                 },
             },
-            payload: Payload::from_json_str(&*format!("{:?}", n)).unwrap(),
+            payload: Payload::from_json_str(&format!("{:?}", n)).unwrap(),
         })
     }
     fn offsets(offsets: OffsetMap) -> SubscribeResponse {
@@ -1131,7 +1131,7 @@ ENDPRAGMA
 
                     let mut node_bytes = String::from("[");
                     node_bytes.push_str(
-                        &*meta1
+                        &meta1
                             .0
                             .stream
                             .node_id

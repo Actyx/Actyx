@@ -1,7 +1,7 @@
 const HIERARCHY_SEPARATOR: char = '/';
 const ROOT_SCOPE: char = '.';
 
-#[derive(thiserror::Error, Debug, PartialEq)]
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum Error {
     #[error("Scope [{0}] contains empty parts.")]
     InvalidScope(Scope),

@@ -105,7 +105,7 @@ impl AxCliCommand for EventsRestore {
                 if let Message::Text(token) = msg {
                     let signature = KeyPair::from(cert.private_key()).sign(token.as_bytes());
                     let response = CborBuilder::new().encode_array(|b| {
-                        b.encode_bytes(&signature);
+                        b.encode_bytes(signature);
                         b.encode_str(serde_json::to_string(&cert.manifest_dev_cert()).unwrap());
                     });
                     ws.write_message(Message::Binary(response.as_slice().into()))

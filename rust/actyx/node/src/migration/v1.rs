@@ -226,12 +226,12 @@ fn backup_v1(v1: &V1Directory, backup_in: impl AsRef<Path>) -> anyhow::Result<Pa
         let mut archive = tar::Builder::new(GzEncoder::new(tmp_file, Compression::default()));
         for p in [&v1.node_db, &v1.settings_db].iter() {
             archive
-                .append_path_with_name(&p, p.file_name().unwrap().to_string_lossy().to_string())
+                .append_path_with_name(p, p.file_name().unwrap().to_string_lossy().to_string())
                 .with_context(|| format!("Appending {} to archive", p.display()))?;
         }
         let store_dir = v1.index_db.parent().unwrap();
         archive
-            .append_dir_all("store", &store_dir)
+            .append_dir_all("store", store_dir)
             .with_context(|| format!("Appending {} to archive", store_dir.display()))?;
         archive
             .into_inner()
@@ -299,7 +299,7 @@ fn remove_v1(v1: V1Directory) -> anyhow::Result<()> {
         }
     }
     let store_dir = index_db.parent().unwrap();
-    fs::remove_dir_all(&store_dir).with_context(|| format!("Removing {}", store_dir.display()))?;
+    fs::remove_dir_all(store_dir).with_context(|| format!("Removing {}", store_dir.display()))?;
     Ok(())
 }
 
@@ -412,7 +412,7 @@ pub fn migrate(
     swarm::convert::convert_from_v1(
         v1_working_dir.as_ref().join("store"),
         temp_v2.path(),
-        &*v1_dir.topic,
+        &v1_dir.topic,
         "com.actyx.v1-migration",
         opts,
         true,

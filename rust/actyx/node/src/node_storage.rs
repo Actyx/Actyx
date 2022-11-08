@@ -92,7 +92,7 @@ impl NodeStorage {
                     .unwrap()?;
 
                 if version == 0 {
-                    let v0_key_id = crypto::LegacyKeyId::from_str(&*conn.query_row(
+                    let v0_key_id = crypto::LegacyKeyId::from_str(&conn.query_row(
                         "SELECT value FROM node WHERE name='node_id'",
                         [],
                         |row| row.get::<_, String>(0),
@@ -134,7 +134,7 @@ impl NodeStorage {
             |row| row.get(0),
         )? {
             0 => {
-                conn.execute_batch(&*format!(
+                conn.execute_batch(&format!(
                     "BEGIN;\
                          CREATE TABLE node (name TEXT PRIMARY KEY, value BLOB) WITHOUT ROWID;\
                          INSERT INTO node (name, value) VALUES ('database_version', {});\
@@ -159,8 +159,8 @@ impl NodeStorage {
             x => bail!("can’t be: {} tables named 'node'", x),
         }
 
-        conn.pragma_update(None, "journal_mode", &"WAL")?;
-        conn.pragma_update(None, "synchronous", &"EXTRA")?;
+        conn.pragma_update(None, "journal_mode", "WAL")?;
+        conn.pragma_update(None, "synchronous", "EXTRA")?;
 
         conn.execute_batch(
             "INSERT INTO node (name, value) VALUES ('cycle_count', -1) ON CONFLICT DO NOTHING;\
@@ -194,7 +194,7 @@ impl NodeStorage {
         let id: PublicKey = node_id.into();
         let id = id.to_string();
 
-        conn.execute("INSERT INTO node VALUES ('node_id', ?)", &[&id])?;
+        conn.execute("INSERT INTO node VALUES ('node_id', ?)", [&id])?;
         Ok(())
     }
 
@@ -216,7 +216,7 @@ impl NodeStorage {
     }
 
     pub fn get_node_key(&self) -> anyhow::Result<Option<NodeId>> {
-        Self::query_node_id(&*self.connection.lock())
+        Self::query_node_id(&self.connection.lock())
     }
 
     fn query_keystore(conn: &Connection) -> anyhow::Result<Option<Box<[u8]>>> {
@@ -239,7 +239,7 @@ impl NodeStorage {
 
     fn persist_keystore(conn: &Connection, dump: Box<[u8]>) -> anyhow::Result<()> {
         let encoded = base64::encode(&dump);
-        conn.execute("INSERT OR REPLACE INTO node VALUES ('key_store', ?)", &[&encoded])?;
+        conn.execute("INSERT OR REPLACE INTO node VALUES ('key_store', ?)", [&encoded])?;
         Ok(())
     }
 
