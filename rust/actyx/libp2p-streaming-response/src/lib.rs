@@ -66,11 +66,8 @@ use libp2p::{
 };
 use libp2p::{Multiaddr, PeerId};
 use protocol::{RequestId, StreamingResponseMessage};
+use std::collections::{BTreeMap, VecDeque};
 use std::task::{Context, Poll};
-use std::{
-    collections::{BTreeMap, VecDeque},
-    convert::Into,
-};
 use thiserror::Error;
 
 mod protocol;
@@ -85,7 +82,7 @@ pub enum StreamingResponseError {
 }
 pub(crate) type Result<T> = std::result::Result<T, StreamingResponseError>;
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 /// Opaque struct identifying a response stream.
 pub struct ChannelId {
     peer_id: PeerId,
@@ -103,12 +100,6 @@ impl ChannelId {
     }
     pub fn peer(&self) -> PeerId {
         self.peer_id
-    }
-}
-
-impl From<ChannelId> for (PeerId, ConnectionId) {
-    fn from(c: ChannelId) -> Self {
-        (c.peer_id, c.con)
     }
 }
 
@@ -166,9 +157,8 @@ pub struct StreamingResponse<TCodec: Codec + Clone + Send + Debug + 'static> {
     >,
     /// Request ID for the next outgoing request
     next_request_id: RequestId,
-    /// Map from (PeerId, ConnectionId) tuple to a map from RequestId to the last
-    /// sequence_no
-    open_channels: BTreeMap<(PeerId, ConnectionId), BTreeMap<RequestId, SequenceNo>>,
+    /// Map from ChannelId to the last used sequence_no
+    open_channels: BTreeMap<ChannelId, SequenceNo>,
 }
 
 impl<TCodec> StreamingResponse<TCodec>
@@ -203,12 +193,9 @@ where
     /// Initiates sending a response given a `ChannelIdentifier`. This function
     /// will return an error, if the channel is not intact any more.
     pub fn respond(&mut self, id: ChannelId, payload: TCodec::Response) -> Result<()> {
-        let x = self
+        let seq_no = self
             .open_channels
-            .get_mut(&(id.peer_id, id.con))
-            .ok_or(StreamingResponseError::ChannelClosed)?;
-        let seq_no = x
-            .get_mut(&id.peer_request_id)
+            .get_mut(&id)
             .ok_or(StreamingResponseError::ChannelClosed)?;
         seq_no.increment();
 
@@ -226,17 +213,10 @@ where
 
     /// Finalize a response stream.
     pub fn finish_response(&mut self, id: ChannelId) -> Result<()> {
-        let x = self
+        let mut seq_no = self
             .open_channels
-            .get_mut(&(id.peer_id, id.con))
+            .remove(&id)
             .ok_or(StreamingResponseError::ChannelClosed)?;
-        let mut seq_no = x
-            .remove(&id.peer_request_id)
-            .ok_or(StreamingResponseError::ChannelClosed)?;
-        // Clean map if there are no other ongoing requests
-        if x.is_empty() {
-            let _ = self.open_channels.remove(&(id.peer_id, id.con));
-        }
         seq_no.increment();
 
         self.events.push_back(NetworkBehaviourAction::NotifyHandler {
@@ -253,7 +233,7 @@ where
     /// Send a response and finalize the stream. This is just a convenient
     /// method.
     pub fn respond_final(&mut self, id: ChannelId, payload: TCodec::Response) -> Result<()> {
-        self.respond(id.clone(), payload)?;
+        self.respond(id, payload)?;
         self.finish_response(id)
     }
 
@@ -275,13 +255,10 @@ where
     type OutEvent = StreamingResponseEvent<TCodec>;
 
     fn new_handler(&mut self) -> Self::ConnectionHandler {
-        // This effectively serializes all requests per handler (thus
-        // per response stream)
-        let max_dial_negotiated = if self.config.ordered_outgoing { 1 } else { 8 };
         OneShotHandler::new(
-            SubstreamProtocol::new(Default::default(), ()),
+            SubstreamProtocol::new(self.config.clone(), ()),
             OneShotHandlerConfig {
-                max_dial_negotiated,
+                max_dial_negotiated: 1,
                 ..Default::default()
             },
         )
@@ -299,19 +276,20 @@ where
         _: <Self::ConnectionHandler as IntoConnectionHandler>::Handler,
         _remaining_established: usize,
     ) {
-        // remove any pending requests from the just disconnected (PeerId,
-        // ConnectionId)
-        if let Some(c) = self.open_channels.remove(&(*peer_id, *con_id)) {
-            for (id, _) in c {
-                // No need to send `ResponseEnd` to the remote peer, as the
-                // connection is already closed
-                self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                    StreamingResponseEvent::CancelledRequest {
-                        channel_id: ChannelId::new(*peer_id, *con_id, id),
-                        reason: CancellationReason::PeerDisconnected,
-                    },
-                ));
-            }
+        let start = ChannelId::new(*peer_id, *con_id, RequestId(0));
+        let end = ChannelId::new(*peer_id, *con_id + 1, RequestId(0));
+        let mut second = self.open_channels.split_off(&end);
+        let removed = self.open_channels.split_off(&start);
+        self.open_channels.append(&mut second);
+        for (channel_id, _) in removed {
+            // No need to send `ResponseEnd` to the remote peer, as the
+            // connection is already closed
+            self.events.push_back(NetworkBehaviourAction::GenerateEvent(
+                StreamingResponseEvent::CancelledRequest {
+                    channel_id,
+                    reason: CancellationReason::PeerDisconnected,
+                },
+            ));
         }
     }
 
@@ -320,37 +298,22 @@ where
         let ev = match msg {
             Rx(StreamingResponseMessage::Request { id, payload }) => {
                 let channel_id = ChannelId::new(peer, con_id, id);
-
-                self.open_channels
-                    .entry((peer, con_id))
-                    .or_insert_with(BTreeMap::new)
-                    .insert(id, SequenceNo::default());
-
+                self.open_channels.insert(channel_id, SequenceNo::default());
                 StreamingResponseEvent::ReceivedRequest { payload, channel_id }
             }
             Rx(StreamingResponseMessage::CancelRequest { id }) => {
                 let channel_id = ChannelId::new(peer, con_id, id);
-                if let Some(requests_per_peer) = self.open_channels.get_mut(&channel_id.clone().into()) {
-                    if let Some(mut seq_no) = requests_per_peer.remove(&channel_id.peer_request_id) {
-                        // Acknowledge end of stream to peer
-                        seq_no.increment();
-                        self.events.push_back(NetworkBehaviourAction::NotifyHandler {
-                            peer_id: peer,
-                            handler: NotifyHandler::One(con_id),
-                            event: StreamingResponseMessage::ResponseEnd { id, seq_no },
-                        });
-                        // Cleanup if this was the only request from `peer`
-                        if requests_per_peer.is_empty() {
-                            self.open_channels.remove(&channel_id.clone().into());
-                        }
-                        StreamingResponseEvent::CancelledRequest {
-                            channel_id,
-                            reason: CancellationReason::PeerCancelled,
-                        }
-                    } else {
-                        // Peer has other ongoing requests, but not with this
-                        // request_id.
-                        return;
+                if let Some(mut seq_no) = self.open_channels.remove(&channel_id) {
+                    // Acknowledge end of stream to peer
+                    seq_no.increment();
+                    self.events.push_back(NetworkBehaviourAction::NotifyHandler {
+                        peer_id: peer,
+                        handler: NotifyHandler::One(con_id),
+                        event: StreamingResponseMessage::ResponseEnd { id, seq_no },
+                    });
+                    StreamingResponseEvent::CancelledRequest {
+                        channel_id,
+                        reason: CancellationReason::PeerCancelled,
                     }
                 } else {
                     // No record of this request, discard.
@@ -532,16 +495,15 @@ mod tests {
             assert_eq!(*payload, request);
             assert_eq!(channel_id.peer_request_id, test_request_id);
             assert_eq!(channel_id.peer_id, *a.peer_id());
-            channel_id
+            *channel_id
         } else {
             panic!()
-        }
-        .clone();
+        };
 
         // send response
         {
             let response = TestResponse { counter: 43 };
-            b.respond(channel_id.clone(), response.clone()).unwrap();
+            b.respond(channel_id, response.clone()).unwrap();
             assert!(b.poll_until_pending().is_empty());
             if let StreamingResponseEvent::ResponseReceived {
                 payload,
@@ -594,11 +556,10 @@ mod tests {
             assert_eq!(*payload, request);
             assert_eq!(channel_id.peer_request_id, request_id_1);
             assert_eq!(channel_id.peer_id, *a.peer_id());
-            channel_id
+            *channel_id
         } else {
             panic!()
-        }
-        .clone();
+        };
 
         // send request 2
         let request_2 = TestRequest { initial_count: 84 };
@@ -610,16 +571,15 @@ mod tests {
             assert_eq!(*payload, request_2);
             assert_eq!(channel_id.peer_request_id, request_id_2);
             assert_eq!(channel_id.peer_id, *a.peer_id());
-            channel_id
+            *channel_id
         } else {
             panic!()
-        }
-        .clone();
+        };
 
         // send response for request 1
         {
             let response = TestResponse { counter: 43 };
-            b.respond(channel_id_1.clone(), response.clone()).unwrap();
+            b.respond(channel_id_1, response.clone()).unwrap();
             assert!(b.poll_until_pending().is_empty());
             if let StreamingResponseEvent::ResponseReceived {
                 payload,
@@ -637,7 +597,7 @@ mod tests {
 
         // finish request 1
         {
-            b.finish_response(channel_id_1.clone()).unwrap();
+            b.finish_response(channel_id_1).unwrap();
             assert!(b.poll_until_pending().is_empty());
             if let StreamingResponseEvent::ResponseFinished {
                 request_id,

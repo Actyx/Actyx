@@ -56,8 +56,6 @@ pub enum StreamingResponseMessage<TCodec: Codec> {
 pub struct StreamingResponseConfig<TCodec: Codec> {
     /// Maximum size in bytes accepted for incoming requests
     max_buf_size: usize,
-    /// Serializes all outgoing responses, effectively making the stream FIFO
-    pub(crate) ordered_outgoing: bool,
     _c: PhantomData<TCodec>,
 }
 
@@ -68,7 +66,6 @@ where
     fn default() -> Self {
         Self {
             max_buf_size: 1024 * 1024 * 4,
-            ordered_outgoing: true,
             _c: PhantomData,
         }
     }
