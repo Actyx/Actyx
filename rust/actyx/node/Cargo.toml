@@ -1,6 +1,6 @@
 [package]
+edition = { workspace = true }
 authors = ["Actyx AG"]
-edition = "2018"
 name = "node"
 version = "0.1.0"
 

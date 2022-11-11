@@ -67,6 +67,7 @@ impl ActyxOSCode {
         }
     }
 }
+use futures::channel::mpsc;
 use ActyxOSCode::*;
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ActyxOSError {
@@ -96,6 +97,11 @@ impl From<RecvError> for ActyxOSError {
 }
 impl<T> From<SendError<T>> for ActyxOSError {
     fn from(err: SendError<T>) -> ActyxOSError {
+        ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("Error sending on channel: {}", err))
+    }
+}
+impl From<mpsc::SendError> for ActyxOSError {
+    fn from(err: mpsc::SendError) -> Self {
         ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("Error sending on channel: {}", err))
     }
 }

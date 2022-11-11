@@ -354,12 +354,11 @@ impl State {
     ) -> (BoxStream<'static, (ChannelId, Option<EventsResponse>)>, AbortHandle) {
         let mac = self.maybe_add_key(c.peer());
         let (handle, reg) = AbortHandle::new_pair();
-        let c2 = c.clone();
         let s = async move {
             match mac.await {
                 Ok(_) => f.await.left_stream(),
                 Err(e) => {
-                    stream::once(ready((c2, Some(EventsResponse::Error { message: e.to_string() })))).right_stream()
+                    stream::once(ready((c, Some(EventsResponse::Error { message: e.to_string() })))).right_stream()
                 }
             }
         }
@@ -370,10 +369,9 @@ impl State {
     }
 
     fn enqueue_events_v2(&mut self, channel_id: ChannelId, request: EventsRequest) {
-        let channel_id2 = channel_id.clone();
         let events = self.events.clone();
         let (s, h) = match request {
-            EventsRequest::Offsets => self.wrap(channel_id.clone(), async move {
+            EventsRequest::Offsets => self.wrap(channel_id, async move {
                 match events.offsets().await {
                     Ok(o) => stream::once(ready((channel_id, Some(EventsResponse::Offsets(o))))),
                     Err(e) => stream::once(ready((
@@ -382,7 +380,7 @@ impl State {
                     ))),
                 }
             }),
-            EventsRequest::Query(request) => self.wrap(channel_id.clone(), async move {
+            EventsRequest::Query(request) => self.wrap(channel_id, async move {
                 match events.query(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => TracePoll::new(
                         resp.filter_map(move |x| {
@@ -391,14 +389,14 @@ impl State {
                                 QueryResponse::Event(ev) => {
                                     let span = tracing::trace_span!("ready event");
                                     let _enter = span.enter();
-                                    ready(Some((channel_id.clone(), Some(EventsResponse::Event(ev)))))
+                                    ready(Some((channel_id, Some(EventsResponse::Event(ev)))))
                                 }
                                 QueryResponse::Offsets(o) => ready(Some((
-                                    channel_id.clone(),
+                                    channel_id,
                                     Some(EventsResponse::OffsetMap { offsets: o.offsets }),
                                 ))),
                                 QueryResponse::Diagnostic(d) => {
-                                    ready(Some((channel_id.clone(), Some(EventsResponse::Diagnostic(d)))))
+                                    ready(Some((channel_id, Some(EventsResponse::Diagnostic(d)))))
                                 }
                                 QueryResponse::FutureCompat => ready(None),
                             }
@@ -413,19 +411,17 @@ impl State {
                     .right_stream(),
                 }
             }),
-            EventsRequest::Subscribe(request) => self.wrap(channel_id.clone(), async move {
+            EventsRequest::Subscribe(request) => self.wrap(channel_id, async move {
                 match events.subscribe(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => resp
                         .filter_map(move |x| match x {
-                            SubscribeResponse::Event(ev) => {
-                                ready(Some((channel_id.clone(), Some(EventsResponse::Event(ev)))))
-                            }
+                            SubscribeResponse::Event(ev) => ready(Some((channel_id, Some(EventsResponse::Event(ev))))),
                             SubscribeResponse::Offsets(o) => ready(Some((
-                                channel_id.clone(),
+                                channel_id,
                                 Some(EventsResponse::OffsetMap { offsets: o.offsets }),
                             ))),
                             SubscribeResponse::Diagnostic(d) => {
-                                ready(Some((channel_id.clone(), Some(EventsResponse::Diagnostic(d)))))
+                                ready(Some((channel_id, Some(EventsResponse::Diagnostic(d)))))
                             }
                             SubscribeResponse::FutureCompat => ready(None),
                         })
@@ -437,20 +433,20 @@ impl State {
                     .right_stream(),
                 }
             }),
-            EventsRequest::SubscribeMonotonic(request) => self.wrap(channel_id.clone(), async move {
+            EventsRequest::SubscribeMonotonic(request) => self.wrap(channel_id, async move {
                 match events.subscribe_monotonic(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => resp
                         .filter_map(move |x| match x {
                             SubscribeMonotonicResponse::Offsets(o) => ready(Some((
-                                channel_id.clone(),
+                                channel_id,
                                 Some(EventsResponse::OffsetMap { offsets: o.offsets }),
                             ))),
                             SubscribeMonotonicResponse::Event { event, .. } => {
-                                ready(Some((channel_id.clone(), Some(EventsResponse::Event(event)))))
+                                ready(Some((channel_id, Some(EventsResponse::Event(event)))))
                             }
-                            SubscribeMonotonicResponse::TimeTravel { .. } => ready(Some((channel_id.clone(), None))),
+                            SubscribeMonotonicResponse::TimeTravel { .. } => ready(Some((channel_id, None))),
                             SubscribeMonotonicResponse::Diagnostic(d) => {
-                                ready(Some((channel_id.clone(), Some(EventsResponse::Diagnostic(d)))))
+                                ready(Some((channel_id, Some(EventsResponse::Diagnostic(d)))))
                             }
                             SubscribeMonotonicResponse::FutureCompat => ready(None),
                         })
@@ -462,7 +458,7 @@ impl State {
                     .right_stream(),
                 }
             }),
-            EventsRequest::Publish(request) => self.wrap(channel_id.clone(), async move {
+            EventsRequest::Publish(request) => self.wrap(channel_id, async move {
                 match events.publish(app_id!("com.actyx.cli"), 0.into(), request).await {
                     Ok(resp) => stream::once(ready((channel_id, Some(EventsResponse::Publish(resp))))),
                     Err(e) => stream::once(ready((
@@ -472,7 +468,7 @@ impl State {
                 }
             }),
         };
-        self.stream_handles.insert(channel_id2, h);
+        self.stream_handles.insert(channel_id, h);
         self.pending_stream.push(s);
     }
 }
@@ -582,7 +578,7 @@ async fn poll_swarm(mut swarm: Swarm<ApiBehaviour>, mut state: State) {
             }
             MyEvent::Stream(Some((id, response))) => {
                 if let Some(payload) = response {
-                    if swarm.behaviour_mut().events.respond(id.clone(), payload).is_err() {
+                    if swarm.behaviour_mut().events.respond(id, payload).is_err() {
                         if let Some(h) = state.stream_handles.remove(&id) {
                             h.abort();
                         }

@@ -38,7 +38,6 @@ impl std::str::FromStr for Scope {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        use std::convert::TryFrom;
         Scope::try_from(s.to_string())
     }
 }
@@ -46,7 +45,6 @@ impl std::str::FromStr for Scope {
 #[cfg(test)]
 impl std::convert::From<&'static str> for Scope {
     fn from(value: &'static str) -> Self {
-        use std::convert::TryInto;
         value.to_string().try_into().unwrap()
     }
 }

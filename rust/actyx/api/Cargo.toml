@@ -1,8 +1,8 @@
 [package]
+edition = { workspace = true }
 name = "api"
 version = "0.1.0"
 authors = ["Actyx AG"]
-edition = "2018"
 
 [dependencies]
 actyx-util = { path = "../util", package = "util" }

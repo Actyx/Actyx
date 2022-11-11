@@ -21,6 +21,7 @@ members = [
   "util",
 ]
 resolver = "2"
+package.edition = "2021"
 
 # This can only be set per workspace. In release, we rely on a setting a custom
 # panic hook (see `node/src/util.rs::init_panic_hook`), which safely brings

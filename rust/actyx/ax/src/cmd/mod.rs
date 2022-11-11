@@ -1,19 +1,15 @@
 use formats::{ActyxCliResult, Result};
-use futures::{future, Future, Stream, StreamExt};
+use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
 use serde::Serialize;
-use std::{
-    convert::{TryFrom, TryInto},
-    fmt,
-    path::PathBuf,
-    str::FromStr,
-};
+use std::{fmt, net::ToSocketAddrs, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult};
 
 use crate::{
-    node_connection::{Connected, NodeConnection},
+    node_connection::{connect, mk_swarm, Task},
     private_key::AxPrivateKey,
 };
+use libp2p::{multiaddr::Protocol, Multiaddr, PeerId};
 
 pub mod apps;
 pub mod events;
@@ -24,19 +20,62 @@ pub mod settings;
 pub mod swarms;
 pub mod users;
 
+#[derive(Debug, Clone)]
+pub struct Authority {
+    pub original: String,
+    pub addrs: Vec<Multiaddr>,
+}
+
+impl FromStr for Authority {
+    type Err = ActyxOSError;
+
+    fn from_str(s: &str) -> Result<Self> {
+        let original = s.to_owned();
+        if let Ok(m) = s.parse::<Multiaddr>() {
+            Ok(Self {
+                original,
+                addrs: vec![m],
+            })
+        } else if let Ok(s) = s.to_socket_addrs() {
+            Ok(Self {
+                original,
+                addrs: s
+                    .map(|a| Multiaddr::empty().with(a.ip().into()).with(Protocol::Tcp(a.port())))
+                    .collect(),
+            })
+        } else if let Ok(s) = (s, 4458).to_socket_addrs() {
+            Ok(Self {
+                original,
+                addrs: s
+                    .map(|a| Multiaddr::empty().with(a.ip().into()).with(Protocol::Tcp(a.port())))
+                    .collect(),
+            })
+        } else {
+            Err(ActyxOSError::new(
+                ActyxOSCode::ERR_INVALID_INPUT,
+                format!("cannot interpret {} as address", original),
+            ))
+        }
+    }
+}
+
 #[derive(StructOpt, Debug)]
 pub struct ConsoleOpt {
     #[structopt(name = "NODE", required = true)]
     /// the IP address or <host>:<admin port> of the node to perform the operation on.
-    authority: NodeConnection,
+    authority: Authority,
     #[structopt(short, long, value_name = "FILE")]
     /// File from which the identity (private key) for authentication is read.
     identity: Option<KeyPathWrapper>,
 }
 
 impl ConsoleOpt {
-    pub async fn connect(&self) -> ActyxOSResult<Connected> {
-        self.authority.connect(&(&self.identity).try_into()?).await
+    pub async fn connect(&self) -> ActyxOSResult<(Sender<Task>, PeerId)> {
+        let key = AxPrivateKey::try_from(&self.identity)?;
+        let (task, mut channel) = mk_swarm(key).await?;
+        tokio::spawn(task);
+        let peer_id = connect(&mut channel, self.authority.clone()).await?;
+        Ok((channel, peer_id))
     }
 }
 

@@ -468,6 +468,7 @@ dependencies = [
  "hyper",
  "if-watch",
  "ipfs-sqlite-block-store",
+ "itertools",
  "lazy_static",
  "libipld 0.14.0",
  "libp2p",
@@ -3007,7 +3008,12 @@ dependencies = [
  "libp2p",
  "serde",
  "serde_cbor",
+ "smallvec",
  "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "void",
 ]
 
 [[package]]

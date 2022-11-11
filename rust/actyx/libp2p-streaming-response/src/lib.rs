@@ -57,584 +57,209 @@
 //! will commit individual responses sequentially to the underlying transport
 //! mechanism.
 
-use libp2p::swarm::{
-    IntoConnectionHandler, NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, OneShotHandler, PollParameters,
-};
+use crate::handler::IntoHandler;
+use derive_more::{Add, Deref, Display, Sub};
+use futures::channel::mpsc;
+use handler::Request;
 use libp2p::{
-    core::{connection::ConnectionId, ConnectedPoint},
-    swarm::{OneShotHandlerConfig, SubstreamProtocol},
+    core::connection::ConnectionId,
+    swarm::{NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, PollParameters},
+    PeerId,
 };
-use libp2p::{Multiaddr, PeerId};
-use protocol::{RequestId, StreamingResponseMessage};
-use std::collections::{BTreeMap, VecDeque};
-use std::task::{Context, Poll};
-use thiserror::Error;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use std::{
+    collections::VecDeque,
+    fmt::Debug,
+    marker::PhantomData,
+    task::{Context, Poll},
+    time::Duration,
+};
 
+mod handler;
 mod protocol;
+mod protocol_v2;
+mod upgrade;
 
-pub use protocol::{Codec, SequenceNo, StreamingResponseConfig};
-use std::fmt::Debug;
+#[cfg(test)]
+mod tests;
 
-#[derive(Error, Debug)]
-pub enum StreamingResponseError {
-    #[error("Channel closed")]
-    ChannelClosed,
+pub use handler::Response;
+pub use protocol_v2::ProtocolError;
+
+/// A [`Codec`] defines the request and response types for a [`StreamingResponse`]
+/// protocol. Request and responses are encoded / decoded using `serde_cbor`, so
+/// `Serialize` and `Deserialize` impls have to be provided. Implement this trait
+/// to specialize the [`StreamingResponse`].
+pub trait Codec {
+    type Request: Send + Serialize + DeserializeOwned + std::fmt::Debug + 'static;
+    type Response: Send + Serialize + DeserializeOwned + std::fmt::Debug + 'static;
+
+    /// The first protocol name is used for the v2 protocol, the second for v1.
+    fn protocol_info() -> [&'static str; 2];
+    fn info_v1() -> &'static str {
+        Self::protocol_info()[1]
+    }
+    fn info_v2() -> &'static str {
+        Self::protocol_info()[0]
+    }
 }
-pub(crate) type Result<T> = std::result::Result<T, StreamingResponseError>;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-/// Opaque struct identifying a response stream.
-pub struct ChannelId {
-    peer_id: PeerId,
-    con: ConnectionId,
-    peer_request_id: RequestId,
+#[derive(
+    Debug, Serialize, Deserialize, Default, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Display, Add, Sub, Deref,
+)]
+// SequenceNo for responses
+pub struct SequenceNo(pub(crate) u64);
+impl SequenceNo {
+    pub fn increment(&mut self) {
+        self.0 += 1
+    }
 }
 
-impl ChannelId {
-    fn new(peer_id: PeerId, con: ConnectionId, peer_request_id: RequestId) -> Self {
+pub struct RequestReceived<T: Codec> {
+    pub peer_id: PeerId,
+    pub connection: ConnectionId,
+    pub request: T::Request,
+    pub channel: mpsc::Sender<T::Response>,
+}
+
+impl<T: Codec> Debug for RequestReceived<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RequestReceived")
+            .field("peer_id", &self.peer_id)
+            .field("connection", &self.connection)
+            .field("request", &self.request)
+            .finish()
+    }
+}
+
+pub struct StreamingResponseConfig {
+    request_timeout: Duration,
+    max_message_size: u32,
+    response_send_buffer_size: usize,
+    keep_alive: bool,
+}
+
+impl StreamingResponseConfig {
+    /// Timeout for the transmission of the request to the peer, default is 10sec
+    pub fn with_request_timeout(self, request_timeout: Duration) -> Self {
         Self {
-            peer_id,
-            con,
-            peer_request_id,
+            request_timeout,
+            ..self
         }
     }
-    pub fn peer(&self) -> PeerId {
-        self.peer_id
+    /// Maximum message size permitted for requests and responses (limited to 0xfeffffff !)
+    ///
+    /// The maximum is slightly below 4GiB, the default 1MB. Sending huge messages requires corresponding
+    /// buffers and may not be desirable.
+    pub fn with_max_message_size(self, max_message_size: u32) -> Self {
+        if max_message_size >= 0xff000000 {
+            panic!(
+                "max_message_size {} is beyond the limit of {}",
+                max_message_size, 0xfeffffffu32
+            );
+        }
+        Self {
+            max_message_size,
+            ..self
+        }
+    }
+    /// Set the queue size in messages for the channel created for incoming requests
+    ///
+    /// All channels are bounded in size and use back-pressure. This channel size allows some
+    /// decoupling between response generation and network transmission. Default is 128.
+    pub fn with_response_send_buffer_size(self, response_send_buffer_size: usize) -> Self {
+        Self {
+            response_send_buffer_size,
+            ..self
+        }
+    }
+    /// If this is set to true, then this behaviour will keep the connection alive
+    ///
+    /// Otherwise the connection is released (i.e. closed if no other behaviour keeps it alive)
+    /// when there are no active requests ongoing. Default is `false`.
+    pub fn with_keep_alive(self, keep_alive: bool) -> Self {
+        Self { keep_alive, ..self }
     }
 }
 
-#[derive(Debug)]
-pub enum CancellationReason {
-    PeerDisconnected,
-    PeerCancelled,
+impl Default for StreamingResponseConfig {
+    fn default() -> Self {
+        Self {
+            request_timeout: Duration::from_secs(10),
+            max_message_size: 1_000_000,
+            response_send_buffer_size: 128,
+            keep_alive: false,
+        }
+    }
 }
 
-#[derive(Debug)]
-pub enum StreamingResponseEvent<TCodec: Codec> {
-    /// A new request has been received from a remote peer
-    ReceivedRequest {
-        /// Identifier for this response channel
-        channel_id: ChannelId,
-        /// Request payload
-        payload: TCodec::Request,
-    },
-    /// An ongoing request has been cancelled, either because the peer
-    /// disconnected or a `CancelRequest` message was received.
-    CancelledRequest {
-        /// Identifier for this response channel
-        channel_id: ChannelId,
-        /// Reason for the cancellation
-        reason: CancellationReason,
-    },
-    /// A response frame for an ongoing request has been received.
-    ResponseReceived {
-        /// Local requestId identifying the response stream
-        request_id: RequestId,
-        /// Monotonically increasing sequence number
-        sequence_no: SequenceNo,
-        /// Response payload
-        payload: TCodec::Response,
-    },
-    /// An ongoing response stream has been finalized, either because the peer
-    /// disconnected or a `ResponseEnd` message was received.
-    ResponseFinished {
-        /// Local requestId identifying the response stream
-        request_id: RequestId,
-        /// Monotonically increasing sequence number
-        sequence_no: SequenceNo,
-    },
+pub struct StreamingResponse<T: Codec + Send + 'static> {
+    config: StreamingResponseConfig,
+    events: VecDeque<RequestReceived<T>>,
+    requests: VecDeque<NetworkBehaviourAction<RequestReceived<T>, IntoHandler<T>>>,
+    _ph: PhantomData<T>,
 }
 
-#[derive(Default)]
-pub struct StreamingResponse<TCodec: Codec + Clone + Send + Debug + 'static> {
-    config: StreamingResponseConfig<TCodec>,
-    /// Internal queue for events to be emitted to `libp2p::Swarm`
-    events: VecDeque<
-        NetworkBehaviourAction<
-            StreamingResponseEvent<TCodec>,
-            <StreamingResponse<TCodec> as NetworkBehaviour>::ConnectionHandler,
-        >,
-    >,
-    /// Request ID for the next outgoing request
-    next_request_id: RequestId,
-    /// Map from ChannelId to the last used sequence_no
-    open_channels: BTreeMap<ChannelId, SequenceNo>,
-}
-
-impl<TCodec> StreamingResponse<TCodec>
-where
-    TCodec: Codec + Clone + Send + Debug + 'static,
-{
-    pub fn new(config: StreamingResponseConfig<TCodec>) -> Self {
+impl<T: Codec + Send + 'static> StreamingResponse<T> {
+    pub fn new(config: StreamingResponseConfig) -> Self {
         Self {
             config,
-            open_channels: Default::default(),
-            events: Default::default(),
-            next_request_id: RequestId(0),
+            events: VecDeque::default(),
+            requests: VecDeque::default(),
+            _ph: PhantomData,
         }
     }
 
-    /// Initiates sending a request. The caller needs to make sure that the
-    /// target `peer_id` is already connected. This behaviour won't initiate any
-    /// dialing attempts.
-    /// A `RequestId` is returned to identify future responses, or any failures.
-    pub fn request(&mut self, peer_id: PeerId, request: TCodec::Request) -> RequestId {
-        let id = self.next_request_id();
-        let event = StreamingResponseMessage::Request { id, payload: request };
-        self.events.push_back(NetworkBehaviourAction::NotifyHandler {
-            event,
+    pub fn request(&mut self, peer_id: PeerId, request: T::Request, channel: mpsc::Sender<Response<T::Response>>) {
+        self.requests.push_back(NetworkBehaviourAction::NotifyHandler {
             peer_id,
-            // Can't name a specific peer connection here.
             handler: NotifyHandler::Any,
-        });
-        id
-    }
-
-    /// Initiates sending a response given a `ChannelIdentifier`. This function
-    /// will return an error, if the channel is not intact any more.
-    pub fn respond(&mut self, id: ChannelId, payload: TCodec::Response) -> Result<()> {
-        let seq_no = self
-            .open_channels
-            .get_mut(&id)
-            .ok_or(StreamingResponseError::ChannelClosed)?;
-        seq_no.increment();
-
-        self.events.push_back(NetworkBehaviourAction::NotifyHandler {
-            handler: NotifyHandler::One(id.con),
-            peer_id: id.peer_id,
-            event: StreamingResponseMessage::Response {
-                id: id.peer_request_id,
-                payload,
-                seq_no: *seq_no,
-            },
-        });
-        Ok(())
-    }
-
-    /// Finalize a response stream.
-    pub fn finish_response(&mut self, id: ChannelId) -> Result<()> {
-        let mut seq_no = self
-            .open_channels
-            .remove(&id)
-            .ok_or(StreamingResponseError::ChannelClosed)?;
-        seq_no.increment();
-
-        self.events.push_back(NetworkBehaviourAction::NotifyHandler {
-            handler: NotifyHandler::One(id.con),
-            peer_id: id.peer_id,
-            event: StreamingResponseMessage::ResponseEnd {
-                id: id.peer_request_id,
-                seq_no,
-            },
-        });
-        Ok(())
-    }
-
-    /// Send a response and finalize the stream. This is just a convenient
-    /// method.
-    pub fn respond_final(&mut self, id: ChannelId, payload: TCodec::Response) -> Result<()> {
-        self.respond(id, payload)?;
-        self.finish_response(id)
-    }
-
-    fn next_request_id(&mut self) -> RequestId {
-        let r = self.next_request_id;
-        self.next_request_id.0 += 1;
-        r
+            event: Request::new(request, channel),
+        })
     }
 }
 
-impl<TCodec> NetworkBehaviour for StreamingResponse<TCodec>
-where
-    TCodec: Codec + Send + Clone + std::fmt::Debug + 'static,
-    TCodec::Request: Send + 'static,
-    TCodec::Response: Send + 'static,
-{
-    type ConnectionHandler =
-        OneShotHandler<StreamingResponseConfig<TCodec>, StreamingResponseMessage<TCodec>, HandlerEvent<TCodec>>;
-    type OutEvent = StreamingResponseEvent<TCodec>;
+impl<T: Codec + Send + 'static> NetworkBehaviour for StreamingResponse<T> {
+    type ConnectionHandler = IntoHandler<T>;
+    type OutEvent = RequestReceived<T>;
 
     fn new_handler(&mut self) -> Self::ConnectionHandler {
-        OneShotHandler::new(
-            SubstreamProtocol::new(self.config.clone(), ()),
-            OneShotHandlerConfig {
-                max_dial_negotiated: 1,
-                ..Default::default()
-            },
+        IntoHandler::new(
+            self.config.max_message_size,
+            self.config.request_timeout,
+            self.config.response_send_buffer_size,
+            self.config.keep_alive,
         )
     }
 
-    fn addresses_of_peer(&mut self, _: &PeerId) -> Vec<Multiaddr> {
-        Vec::new()
-    }
-
-    fn inject_connection_closed(
+    fn inject_event(
         &mut self,
-        peer_id: &PeerId,
-        con_id: &ConnectionId,
-        _: &ConnectedPoint,
-        _: <Self::ConnectionHandler as IntoConnectionHandler>::Handler,
-        _remaining_established: usize,
+        peer_id: PeerId,
+        connection: ConnectionId,
+        event: <<Self::ConnectionHandler as libp2p::swarm::IntoConnectionHandler>::Handler as libp2p::swarm::ConnectionHandler>::OutEvent,
     ) {
-        let start = ChannelId::new(*peer_id, *con_id, RequestId(0));
-        let end = ChannelId::new(*peer_id, *con_id + 1, RequestId(0));
-        let mut second = self.open_channels.split_off(&end);
-        let removed = self.open_channels.split_off(&start);
-        self.open_channels.append(&mut second);
-        for (channel_id, _) in removed {
-            // No need to send `ResponseEnd` to the remote peer, as the
-            // connection is already closed
-            self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                StreamingResponseEvent::CancelledRequest {
-                    channel_id,
-                    reason: CancellationReason::PeerDisconnected,
-                },
-            ));
-        }
-    }
-
-    fn inject_event(&mut self, peer: PeerId, con_id: ConnectionId, msg: HandlerEvent<TCodec>) {
-        use HandlerEvent::*;
-        let ev = match msg {
-            Rx(StreamingResponseMessage::Request { id, payload }) => {
-                let channel_id = ChannelId::new(peer, con_id, id);
-                self.open_channels.insert(channel_id, SequenceNo::default());
-                StreamingResponseEvent::ReceivedRequest { payload, channel_id }
-            }
-            Rx(StreamingResponseMessage::CancelRequest { id }) => {
-                let channel_id = ChannelId::new(peer, con_id, id);
-                if let Some(mut seq_no) = self.open_channels.remove(&channel_id) {
-                    // Acknowledge end of stream to peer
-                    seq_no.increment();
-                    self.events.push_back(NetworkBehaviourAction::NotifyHandler {
-                        peer_id: peer,
-                        handler: NotifyHandler::One(con_id),
-                        event: StreamingResponseMessage::ResponseEnd { id, seq_no },
-                    });
-                    StreamingResponseEvent::CancelledRequest {
-                        channel_id,
-                        reason: CancellationReason::PeerCancelled,
-                    }
-                } else {
-                    // No record of this request, discard.
-                    return;
-                }
-            }
-            Rx(StreamingResponseMessage::Response { id, payload, seq_no }) => {
-                StreamingResponseEvent::ResponseReceived {
-                    request_id: id,
-                    sequence_no: seq_no,
-                    payload,
-                }
-            }
-            Rx(StreamingResponseMessage::ResponseEnd { seq_no, id }) => StreamingResponseEvent::ResponseFinished {
-                sequence_no: seq_no,
-                request_id: id,
-            },
-            Tx => {
-                return;
-            }
-        };
-        self.events.push_back(NetworkBehaviourAction::GenerateEvent(ev));
+        let handler::RequestReceived { request, channel } = event;
+        tracing::trace!("request received by behaviour: {:?}", request);
+        self.events.push_back(RequestReceived {
+            peer_id,
+            connection,
+            request,
+            channel,
+        });
     }
 
     fn poll(
         &mut self,
-        _: &mut Context,
-        _: &mut impl PollParameters,
+        _cx: &mut Context<'_>,
+        _params: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<Self::OutEvent, Self::ConnectionHandler>> {
-        if let Some(event) = self.events.pop_front() {
-            Poll::Ready(event)
-        } else {
-            Poll::Pending
+        if let Some(action) = self.requests.pop_front() {
+            tracing::trace!("triggering request action");
+            return Poll::Ready(action);
         }
-    }
-}
-
-/// Transmission between the `OneShotHandler` and `StreamingResponse`.
-#[derive(Debug)]
-pub enum HandlerEvent<TCodec: Codec> {
-    /// We received a `Message` from a remote.
-    Rx(StreamingResponseMessage<TCodec>),
-    /// We successfully sent a `Message`.
-    Tx,
-}
-
-impl<TCodec> From<StreamingResponseMessage<TCodec>> for HandlerEvent<TCodec>
-where
-    TCodec: Codec,
-{
-    fn from(message: StreamingResponseMessage<TCodec>) -> Self {
-        Self::Rx(message)
-    }
-}
-
-impl<TCodec> From<()> for HandlerEvent<TCodec>
-where
-    TCodec: Codec,
-{
-    fn from(_: ()) -> Self {
-        Self::Tx
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use libp2p::swarm::AddressRecord;
-    use serde::{Deserialize, Serialize};
-    use std::sync::{Arc, Mutex};
-    struct DummySwarm {
-        peer_id: PeerId,
-        behaviour: Arc<Mutex<StreamingResponse<TestCodec>>>,
-        connections: BTreeMap<PeerId, Arc<Mutex<StreamingResponse<TestCodec>>>>,
-    }
-    impl DummySwarm {
-        fn new() -> Self {
-            Self {
-                peer_id: PeerId::random(),
-                behaviour: Arc::new(Mutex::new(StreamingResponse::<TestCodec>::new(Default::default()))),
-                connections: Default::default(),
-            }
-        }
-        fn peer_id(&self) -> &PeerId {
-            &self.peer_id
-        }
-        fn dial(&mut self, other: &mut DummySwarm) {
-            self.connections.insert(*other.peer_id(), other.behaviour.clone());
-            other.connections.insert(*self.peer_id(), self.behaviour.clone());
-        }
-        fn request(&self, peer_id: PeerId, request: TestRequest) -> RequestId {
-            self.behaviour.lock().unwrap().request(peer_id, request)
-        }
-        fn respond(&self, cid: ChannelId, response: TestResponse) -> Result<()> {
-            self.behaviour.lock().unwrap().respond(cid, response)
-        }
-        fn finish_response(&self, cid: ChannelId) -> Result<()> {
-            self.behaviour.lock().unwrap().finish_response(cid)
-        }
-        fn poll_until_pending(&self) -> Vec<StreamingResponseEvent<TestCodec>> {
-            let waker = futures::task::noop_waker();
-            let mut ctx = Context::from_waker(&waker);
-            let mut me = self.behaviour.lock().unwrap();
-            let mut events = vec![];
-            while let Poll::Ready(e) = me.poll(&mut ctx, &mut DummyPollParameters) {
-                match e {
-                    NetworkBehaviourAction::NotifyHandler { peer_id, event, .. } => {
-                        if let Some(other) = self.connections.get(&peer_id) {
-                            let mut other = other.lock().unwrap();
-                            other.inject_event(*self.peer_id(), ConnectionId::new(0), HandlerEvent::Rx(event));
-                        }
-                    }
-                    NetworkBehaviourAction::GenerateEvent(event) => events.push(event),
-                    NetworkBehaviourAction::Dial { opts, handler: _ } => panic!("unexpected Dial({:?})", opts),
-                    NetworkBehaviourAction::ReportObservedAddr { address, score } => panic!(
-                        "unexpected ReportObservedAddr(address: {:?}, score: {:?})",
-                        address, score
-                    ),
-                    NetworkBehaviourAction::CloseConnection { peer_id, connection } => panic!(
-                        "unexpected CloseConnection(peer_id: {}, connection: {:?})",
-                        peer_id, connection
-                    ),
-                }
-            }
-            events
-        }
-    }
-    #[derive(Clone, Debug)]
-    struct TestCodec;
-    #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-    struct TestRequest {
-        initial_count: u64,
-    }
-    #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-    struct TestResponse {
-        counter: u64,
-    }
-    impl Codec for TestCodec {
-        type Request = TestRequest;
-        type Response = TestResponse;
-
-        fn protocol_info() -> &'static [u8] {
-            b"/test"
-        }
-    }
-    struct DummyPollParameters;
-    impl PollParameters for DummyPollParameters {
-        type SupportedProtocolsIter = std::iter::Empty<Vec<u8>>;
-        type ListenedAddressesIter = std::iter::Empty<Multiaddr>;
-        type ExternalAddressesIter = std::iter::Empty<AddressRecord>;
-        fn supported_protocols(&self) -> Self::SupportedProtocolsIter {
-            unimplemented!()
-        }
-        fn listened_addresses(&self) -> Self::ListenedAddressesIter {
-            unimplemented!()
-        }
-        fn external_addresses(&self) -> Self::ExternalAddressesIter {
-            unimplemented!()
-        }
-        fn local_peer_id(&self) -> &PeerId {
-            unimplemented!()
-        }
-    }
-    //
-    #[test]
-    fn smoke() {
-        let mut a = DummySwarm::new();
-        let mut b = DummySwarm::new();
-        // Setup connection
-        a.dial(&mut b);
-
-        // send request
-        let request = TestRequest { initial_count: 42 };
-        let test_request_id = a.request(*b.peer_id(), request.clone());
-        assert!(a.poll_until_pending().is_empty());
-        let channel_id = if let StreamingResponseEvent::ReceivedRequest { channel_id, payload } =
-            b.poll_until_pending().first().unwrap()
-        {
-            assert_eq!(*payload, request);
-            assert_eq!(channel_id.peer_request_id, test_request_id);
-            assert_eq!(channel_id.peer_id, *a.peer_id());
-            *channel_id
-        } else {
-            panic!()
-        };
-
-        // send response
-        {
-            let response = TestResponse { counter: 43 };
-            b.respond(channel_id, response.clone()).unwrap();
-            assert!(b.poll_until_pending().is_empty());
-            if let StreamingResponseEvent::ResponseReceived {
-                payload,
-                request_id,
-                sequence_no,
-            } = a.poll_until_pending().first().unwrap()
-            {
-                assert_eq!(sequence_no.0, 1);
-                assert_eq!(*request_id, test_request_id);
-                assert_eq!(*payload, response);
-            } else {
-                panic!()
-            }
-        }
-
-        // send another response
-        {
-            let response = TestResponse { counter: 44 };
-            b.respond(channel_id, response.clone()).unwrap();
-            assert!(b.poll_until_pending().is_empty());
-            if let StreamingResponseEvent::ResponseReceived {
-                payload,
-                request_id,
-                sequence_no,
-            } = a.poll_until_pending().first().unwrap()
-            {
-                assert_eq!(sequence_no.0, 2);
-                assert_eq!(*request_id, test_request_id);
-                assert_eq!(*payload, response);
-            } else {
-                panic!()
-            }
-        }
-    }
-
-    #[test]
-    fn two_parallel_requests_from_the_same_peer() {
-        let mut a = DummySwarm::new();
-        let mut b = DummySwarm::new();
-        // Setup connection
-        a.dial(&mut b);
-
-        // send request 1
-        let request = TestRequest { initial_count: 42 };
-        let request_id_1 = a.request(*b.peer_id(), request.clone());
-        assert!(a.poll_until_pending().is_empty());
-        let channel_id_1 = if let StreamingResponseEvent::ReceivedRequest { channel_id, payload } =
-            b.poll_until_pending().first().unwrap()
-        {
-            assert_eq!(*payload, request);
-            assert_eq!(channel_id.peer_request_id, request_id_1);
-            assert_eq!(channel_id.peer_id, *a.peer_id());
-            *channel_id
-        } else {
-            panic!()
-        };
-
-        // send request 2
-        let request_2 = TestRequest { initial_count: 84 };
-        let request_id_2 = a.request(*b.peer_id(), request_2.clone());
-        assert!(a.poll_until_pending().is_empty());
-        let channel_id_2 = if let StreamingResponseEvent::ReceivedRequest { channel_id, payload } =
-            b.poll_until_pending().first().unwrap()
-        {
-            assert_eq!(*payload, request_2);
-            assert_eq!(channel_id.peer_request_id, request_id_2);
-            assert_eq!(channel_id.peer_id, *a.peer_id());
-            *channel_id
-        } else {
-            panic!()
-        };
-
-        // send response for request 1
-        {
-            let response = TestResponse { counter: 43 };
-            b.respond(channel_id_1, response.clone()).unwrap();
-            assert!(b.poll_until_pending().is_empty());
-            if let StreamingResponseEvent::ResponseReceived {
-                payload,
-                request_id,
-                sequence_no,
-            } = a.poll_until_pending().first().unwrap()
-            {
-                assert_eq!(sequence_no.0, 1);
-                assert_eq!(*request_id, request_id_1);
-                assert_eq!(*payload, response);
-            } else {
-                panic!()
-            }
-        }
-
-        // finish request 1
-        {
-            b.finish_response(channel_id_1).unwrap();
-            assert!(b.poll_until_pending().is_empty());
-            if let StreamingResponseEvent::ResponseFinished {
-                request_id,
-                sequence_no,
-            } = a.poll_until_pending().first().unwrap()
-            {
-                assert_eq!(sequence_no.0, 2);
-                assert_eq!(*request_id, request_id_1);
-            } else {
-                panic!()
-            }
-
-            // Try to send another response on the finished stream
-            let response = TestResponse { counter: 43 };
-            if let Err(StreamingResponseError::ChannelClosed) = b.respond(channel_id_1, response) {
-            } else {
-                panic!()
-            }
-        }
-
-        // send response for request 2
-        {
-            let response = TestResponse { counter: 85 };
-            b.respond(channel_id_2, response.clone()).unwrap();
-            assert!(b.poll_until_pending().is_empty());
-            if let StreamingResponseEvent::ResponseReceived {
-                payload,
-                request_id,
-                sequence_no,
-            } = a.poll_until_pending().first().unwrap()
-            {
-                assert_eq!(sequence_no.0, 1);
-                assert_eq!(*request_id, request_id_2);
-                assert_eq!(*payload, response);
-            } else {
-                panic!()
-            }
+        match self.events.pop_front() {
+            Some(e) => Poll::Ready(NetworkBehaviourAction::GenerateEvent(e)),
+            None => Poll::Pending,
         }
     }
 }
