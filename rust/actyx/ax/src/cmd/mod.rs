@@ -1,4 +1,4 @@
-use formats::{ActyxCliResult, Result};
+use formats::Result;
 use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
 use serde::Serialize;
 use std::{fmt, net::ToSocketAddrs, path::PathBuf, str::FromStr};
@@ -19,6 +19,8 @@ pub mod nodes;
 pub mod settings;
 pub mod swarms;
 pub mod users;
+
+pub use formats::ActyxCliResult;
 
 #[derive(Debug, Clone)]
 pub struct Authority {

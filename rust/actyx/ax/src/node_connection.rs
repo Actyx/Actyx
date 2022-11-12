@@ -49,6 +49,7 @@ struct Behaviour {
 }
 
 #[derive(Debug, From)]
+#[allow(clippy::large_enum_variant)]
 enum OutEvent {
     Admin(RequestReceived<AdminProtocol>),
     Events(RequestReceived<EventsProtocol>),

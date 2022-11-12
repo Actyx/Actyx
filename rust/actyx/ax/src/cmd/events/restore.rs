@@ -1,6 +1,7 @@
 use super::dump::Diag;
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
+    node_connection::request_banyan,
     private_key::load_dev_cert,
 };
 use cbor_data::{Cbor, CborBuilder, Encoder};
@@ -164,16 +165,17 @@ impl AxCliCommand for EventsRestore {
             let topic = format!("dump-{}", timestamp.to_rfc3339()).replace(':', "-");
             diag.log(format!("uploading to topic `{}`", topic))?;
 
-            let mut conn = opts.console_opt.connect().await?;
+            let (mut conn, peer) = opts.console_opt.connect().await?;
 
-            conn.request_banyan(BanyanRequest::MakeFreshTopic(topic.clone()))
-                .await?
-                .br()?;
+            request_banyan(&mut conn, peer, BanyanRequest::MakeFreshTopic(topic.clone())).await?;
             let mut count = 0;
             loop {
-                conn.request_banyan(BanyanRequest::AppendEvents(topic.clone(), buf[..pos].into()))
-                    .await?
-                    .br()?;
+                request_banyan(
+                    &mut conn,
+                    peer,
+                    BanyanRequest::AppendEvents(topic.clone(), buf[..pos].into()),
+                )
+                .await?;
                 count += pos;
                 diag.status(format!("{} bytes uploaded", count))?;
                 pos = input.read(buf.as_mut_slice()).io("reading dump")?;
@@ -182,9 +184,7 @@ impl AxCliCommand for EventsRestore {
                 }
             }
             diag.log(format!("in total {} bytes uploaded", count))?;
-            conn.request_banyan(BanyanRequest::Finalise(topic.clone()))
-                .await?
-                .br()?;
+            request_banyan(&mut conn, peer, BanyanRequest::Finalise(topic.clone())).await?;
             diag.log(format!("topic switched to `{}`", topic))?;
             diag.log("Actyx node switched into read-only network mode")?;
 

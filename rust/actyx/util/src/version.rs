@@ -33,7 +33,13 @@ impl FromStr for Version {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+impl std::fmt::Display for Version {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeVersion {
     pub profile: String,

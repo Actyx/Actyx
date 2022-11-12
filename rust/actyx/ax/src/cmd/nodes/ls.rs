@@ -1,10 +1,11 @@
 use std::{convert::TryInto, time::Duration};
 
 use crate::{
-    cmd::{consts::TABLE_FORMAT, AxCliCommand, KeyPathWrapper, NodeConnection},
+    cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand, KeyPathWrapper},
+    node_connection::{connect, mk_swarm, request_single, Task},
     private_key::AxPrivateKey,
 };
-use futures::{future::join_all, stream, Stream};
+use futures::{channel::mpsc, future::join_all, stream, Stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
@@ -16,7 +17,7 @@ use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, Admi
 pub struct LsOpts {
     #[structopt(name = "NODE", required = true)]
     /// the IP address or <host>:<admin port> of the nodes to list.
-    authority: Vec<NodeConnection>,
+    authority: Vec<Authority>,
     #[structopt(short, long)]
     /// File from which the identity (private key) for authentication is read.
     identity: Option<KeyPathWrapper>,
@@ -77,14 +78,11 @@ fn format_output(output: Vec<Output>) -> String {
     table.to_string()
 }
 
-async fn request(timeout: u8, identity: AxPrivateKey, connection: NodeConnection) -> Output {
-    let host = connection.original.clone();
+async fn request(timeout: u8, mut conn: mpsc::Sender<Task>, authority: Authority) -> Output {
+    let host = authority.original.clone();
     let response = tokio::time::timeout(Duration::from_secs(timeout.into()), async move {
-        connection
-            .connect(&identity)
-            .await?
-            .request(AdminRequest::NodesLs)
-            .await
+        let peer = connect(&mut conn, authority).await?;
+        request_single(&mut conn, move |tx| Task::Admin(peer, AdminRequest::NodesLs, tx), Ok).await
     })
     .await;
     match response {
@@ -106,10 +104,12 @@ async fn request(timeout: u8, identity: AxPrivateKey, connection: NodeConnection
 async fn run(opts: LsOpts) -> ActyxOSResult<Vec<Output>> {
     let identity: AxPrivateKey = (&opts.identity).try_into()?;
     let timeout = opts.timeout;
+    let (task, channel) = mk_swarm(identity).await?;
+    tokio::spawn(task);
     Ok(join_all(
         opts.authority
             .into_iter()
-            .map(|a| request(timeout, identity.clone(), a))
+            .map(|a| request(timeout, channel.clone(), a))
             .collect::<Vec<_>>(),
     )
     .await)

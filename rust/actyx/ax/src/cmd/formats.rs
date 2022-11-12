@@ -6,15 +6,18 @@ use serde::{Deserialize, Serialize};
 #[serde(untagged)]
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
-pub enum ActyxCliResult<T: Serialize> {
-    OK { code: &'static str, result: T },
+pub enum ActyxCliResult<T> {
+    OK { code: String, result: T },
     ERROR(ActyxOSError),
 }
 const OK: &str = "OK";
-impl<T: Serialize> From<ActyxOSResult<T>> for ActyxCliResult<T> {
+impl<T> From<ActyxOSResult<T>> for ActyxCliResult<T> {
     fn from(res: ActyxOSResult<T>) -> Self {
         match res {
-            Ok(result) => ActyxCliResult::OK { code: OK, result },
+            Ok(result) => ActyxCliResult::OK {
+                code: OK.to_owned(),
+                result,
+            },
             Err(err) => ActyxCliResult::ERROR(err),
         }
     }

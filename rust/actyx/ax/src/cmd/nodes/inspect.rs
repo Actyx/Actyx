@@ -1,10 +1,18 @@
 use std::fmt::Write;
 
-use crate::cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt},
+    node_connection::{request_single, Task},
+};
+use actyx_sdk::NodeId;
 use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
+use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
-use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse};
+use util::{
+    formats::{ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse},
+    version::NodeVersion,
+};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
@@ -14,19 +22,41 @@ pub struct InspectOpts {
     console_opt: ConsoleOpt,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Output {
+    node_id: Option<NodeId>,
+    node_version: Option<NodeVersion>,
+    #[serde(flatten)]
+    inspect: NodesInspectResponse,
+}
+
 pub struct NodesInspect();
 impl AxCliCommand for NodesInspect {
     type Opt = InspectOpts;
-    type Output = NodesInspectResponse;
+    type Output = Output;
     fn run(opts: InspectOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let fut = async move {
-            let mut conn = opts.console_opt.connect().await?;
-            let response = conn.request(AdminRequest::NodesInspect).await;
-            match response {
-                Ok(AdminResponse::NodesInspectResponse(resp)) => Ok(resp),
-                Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
-                Err(err) => Err(err),
-            }
+            let (mut conn, peer) = opts.console_opt.connect().await?;
+            let (node_id, node_version) = request_single(&mut conn, move |tx| Task::NodeId(peer, tx), Ok)
+                .await
+                .ok()
+                .map(|p| (Some(p.0), Some(p.1)))
+                .unwrap_or((None, None));
+            let inspect = request_single(
+                &mut conn,
+                move |tx| Task::Admin(peer, AdminRequest::NodesInspect, tx),
+                |m| match m {
+                    AdminResponse::NodesInspectResponse(r) => Ok(r),
+                    x => Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("invalid response: {:?}", x))),
+                },
+            )
+            .await?;
+            Ok(Output {
+                node_id,
+                node_version,
+                inspect,
+            })
         }
         .boxed();
         Box::new(stream::once(fut))
@@ -34,13 +64,18 @@ impl AxCliCommand for NodesInspect {
 
     fn pretty(result: Self::Output) -> String {
         let mut s = String::new();
+        let Output {
+            node_id,
+            node_version,
+            inspect: result,
+        } = result;
         writeln!(&mut s, "PeerId: {}", result.peer_id).unwrap();
-        writeln!(
-            &mut s,
-            "NodeId: {}",
-            crypto::peer_id_to_node_id(result.peer_id.parse().unwrap()).unwrap()
-        )
-        .unwrap();
+        if let Some(node_id) = node_id {
+            writeln!(&mut s, "NodeId: {}", node_id).unwrap()
+        }
+        if let Some(node_version) = node_version {
+            writeln!(&mut s, "Node version: {}", node_version).unwrap()
+        }
 
         writeln!(&mut s, "SwarmAddrs:").unwrap();
         for addr in &result.swarm_addrs {
