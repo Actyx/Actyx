@@ -452,6 +452,15 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
                     StreamingResponseMessage::Response { id, seq_no: _, payload } => {
                         if let Some(tx) = self.responses_v1.get_mut(&id) {
                             if let Err(err) = tx.try_send(Response::Msg(payload)) {
+                                if err.is_disconnected() {
+                                    self.events.push_back(ConnectionHandlerEvent::OutboundSubstreamRequest {
+                                        protocol: SubstreamProtocol::new(
+                                            upgrade::<T>(true),
+                                            OutboundInfo::V1(StreamingResponseMessage::CancelRequest { id }),
+                                        ),
+                                    });
+                                    self.responses_v1.remove(&id);
+                                }
                                 tracing::warn!("`{}` dropping response: {}", T::info_v1(), err);
                             }
                         } else {
@@ -490,11 +499,16 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
             }
         }
 
+        let mut some_finished = false;
         while !self.streams.is_empty() {
             let Poll::Ready(Some(result)) = self.streams.poll_next_unpin(cx) else { break };
+            some_finished = true;
             if let Err(e) = result {
                 tracing::debug!("error in substream task: {}", e);
             }
+        }
+        if some_finished {
+            self.cancel_v1.retain(|_k, v| !v.is_canceled());
         }
 
         Poll::Pending

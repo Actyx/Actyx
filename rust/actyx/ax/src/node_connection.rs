@@ -292,7 +292,13 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
                             ) {
                                 continue;
                             }
-                            let (tx, rx) = mpsc::channel(128);
+                            // in case the node uses v1 or v2 protocol there is no back-pressure, so avoid dropping
+                            let has_back_pressure = infos
+                                .get(&peer_id)
+                                .map(|(_, protos, _)| protos.contains("/actyx/events/v3"))
+                                .unwrap_or_default();
+                            let buffer = if has_back_pressure { 128 } else { 100000 };
+                            let (tx, rx) = mpsc::channel(buffer);
                             swarm.behaviour_mut().events.request(peer_id, request, tx);
                             forward_stream(rx, channel, Ok);
                         }
