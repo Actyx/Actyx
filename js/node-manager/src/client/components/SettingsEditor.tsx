@@ -1,6 +1,6 @@
 import React, { useEffect, useReducer, useState } from 'react'
 import clsx from 'clsx'
-import { ReachableNode } from '../../common/types'
+import { ReachableNodeUi } from '../../common/types'
 import deepEqual from 'deep-equal'
 import { JsonEditor } from './JsonEditor'
 import { Button } from './basics'
@@ -247,7 +247,7 @@ const reducer = (current: State, action: Action): State => {
 }
 
 interface Props {
-  node: ReachableNode
+  node: ReachableNodeUi
 }
 
 export const SettingsEditor: React.FC<Props> = ({ node: { addr, details } }) => {

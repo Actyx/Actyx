@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { NodeType, Node } from '../../common/types'
+import { NodeType, UiNode } from '../../common/types'
 import { nodeAddrValid } from '../../common/util'
 import { Layout } from '../components/Layout'
 import { useAppState, AppActionKey } from '../app-state'
@@ -9,7 +9,7 @@ import { SolidStarIcon, UnsolidStarIcon } from '../components/icons'
 import { useStore } from '../store'
 import { StoreState } from '../store/types'
 
-const nodeToStatusText = (node: Node) => {
+const nodeToStatusText = (node: UiNode) => {
   switch (node.type) {
     case NodeType.Reachable: {
       if (node.details.swarmState === null) {
@@ -27,10 +27,10 @@ const nodeToStatusText = (node: Node) => {
   }
 }
 
-const isFavorite = (store: StoreState, node: Node) =>
+const isFavorite = (store: StoreState, node: UiNode) =>
   store.key === 'Loaded' && store.data.preferences.favoriteNodeAddrs.includes(node.addr)
 
-const NodeCard: React.FC<{ node: Node; remove: () => void; view: () => void }> = ({
+const NodeCard: React.FC<{ node: UiNode; remove: () => void; view: () => void }> = ({
   node,
   remove,
   view,

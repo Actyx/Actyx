@@ -29,6 +29,7 @@ use std::{
     time::Duration,
 };
 use swarm::transport::build_transport;
+use tokio::sync::mpsc::UnboundedSender;
 use util::{
     formats::{
         banyan_protocol::{BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse},
@@ -64,6 +65,8 @@ pub enum Task {
     Events(PeerId, EventsRequest, Sender<ActyxOSResult<EventsResponse>>),
     Banyan(PeerId, BanyanRequest, Sender<ActyxOSResult<BanyanResponse>>),
     NodeId(PeerId, Sender<ActyxOSResult<(NodeId, NodeVersion)>>),
+    #[allow(dead_code)]
+    OnDisconnect(UnboundedSender<PeerId>),
 }
 
 impl std::fmt::Debug for Task {
@@ -74,6 +77,7 @@ impl std::fmt::Debug for Task {
             Self::Events(p, arg0, _arg1) => f.debug_tuple("Events").field(p).field(arg0).finish(),
             Self::Banyan(p, arg0, _arg1) => f.debug_tuple("Banyan").field(p).field(arg0).finish(),
             Self::NodeId(p, _arg0) => f.debug_tuple("NodeId").field(p).finish(),
+            Self::OnDisconnect(_) => f.debug_tuple("OnDisconnect").finish(),
         }
     }
 }
@@ -118,6 +122,7 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
     let mut connects = HashMap::<Multiaddr, Vec<Sender<ActyxOSResult<PeerId>>>>::new();
     let mut awaiting_info = HashMap::<PeerId, Vec<Sender<ActyxOSResult<PeerId>>>>::new();
     let mut infos = HashMap::<PeerId, (Option<PublicKey>, BTreeSet<String>, Option<NodeVersion>)>::new();
+    let mut disconnects = Vec::<UnboundedSender<PeerId>>::new();
     let task = poll_fn(move |cx| {
         loop {
             tracing::debug!("polling swarm");
@@ -141,6 +146,7 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
                             let peer_public_key = PublicKey::try_from(&info.public_key).ok();
                             let e = infos.entry(peer_id).or_default();
                             e.0 = e.0.or(peer_public_key);
+                            e.1.clear();
                             e.1.extend(info.protocols);
                             e.2 = info
                                 .protocol_version
@@ -224,6 +230,7 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
                                     true
                                 }
                             });
+                            disconnects.retain(|tx| tx.send(peer_id).is_ok());
                         }
                         _ => {}
                     }
@@ -327,6 +334,7 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
                             });
                             channel.try_send(node_id).log();
                         }
+                        Task::OnDisconnect(tx) => disconnects.push(tx),
                     }
                     // need to poll the swarm again to process the request
                     cx.waker().wake_by_ref()

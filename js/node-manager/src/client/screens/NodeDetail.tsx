@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { NodeType, ReachableNode as ReachableNodeT } from '../../common/types'
+import { NodeType, ReachableNodeUi as ReachableNodeT } from '../../common/types'
 import { Layout } from '../components/Layout'
 import { useAppState, AppActionKey } from '../app-state'
 import { Error } from '../components/Error'

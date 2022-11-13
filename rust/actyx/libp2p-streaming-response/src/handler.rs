@@ -25,6 +25,7 @@ use std::{
     fmt::Debug,
     io::ErrorKind,
     marker::PhantomData,
+    mem::{forget, ManuallyDrop},
     task::{Context, Poll},
     time::Duration,
 };
@@ -48,13 +49,41 @@ impl<T> Response<T> {
 }
 
 pub struct Request<T: Codec> {
-    request: T::Request,
-    channel: mpsc::Sender<Response<T::Response>>,
+    request: ManuallyDrop<T::Request>,
+    channel: ManuallyDrop<mpsc::Sender<Response<T::Response>>>,
+}
+
+impl<T: Codec> Drop for Request<T> {
+    // this is needed because the Swarm simply drops connection handler notifications to the
+    // floor if there is no suitable connection
+    fn drop(&mut self) {
+        self.channel
+            .try_send(Response::Error(ProtocolError::Io(ErrorKind::ConnectionAborted.into())))
+            .ok();
+        unsafe {
+            ManuallyDrop::drop(&mut self.request);
+            ManuallyDrop::drop(&mut self.channel);
+        }
+    }
 }
 
 impl<T: Codec> Request<T> {
     pub fn new(request: T::Request, channel: mpsc::Sender<Response<T::Response>>) -> Self {
-        Self { request, channel }
+        Self {
+            request: ManuallyDrop::new(request),
+            channel: ManuallyDrop::new(channel),
+        }
+    }
+
+    pub fn into_inner(mut self) -> (T::Request, mpsc::Sender<Response<T::Response>>) {
+        let ret = unsafe {
+            (
+                ManuallyDrop::take(&mut self.request),
+                ManuallyDrop::take(&mut self.channel),
+            )
+        };
+        forget(self);
+        ret
     }
 }
 
@@ -324,7 +353,7 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
     }
 
     fn inject_event(&mut self, command: Self::InEvent) {
-        let Request { request, channel } = command;
+        let (request, channel) = command.into_inner();
         tracing::trace!("requesting {:?}", request);
         self.events.push_back(ConnectionHandlerEvent::OutboundSubstreamRequest {
             protocol: SubstreamProtocol::new(upgrade::<T>(false), OutboundInfo::V2(request, channel))

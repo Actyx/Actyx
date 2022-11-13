@@ -8,10 +8,11 @@ import {
   RPC_SignAppManifest,
   RPC_CreateUserKeyPair,
   RPC_GenerateSwarmKey,
-  RPC_GetNodesDetails,
+  RPC_GetNodeDetails,
   RPC_SetSettings,
   RPC_ShutdownNode,
   RPC_Query,
+  RPC_Connect,
 } from '../../common/ipc'
 import { isLeft } from 'fp-ts/lib/Either'
 import { ioErrToStr } from '../../common/util'
@@ -92,24 +93,23 @@ export const waitForNoUserKeysFound = (): Promise<void> =>
 const mkRpc =
   <Req, Resp>(rpc: RPC<Req, Resp>) =>
   (req: Req): Promise<Resp> =>
-    new Promise((resolve, reject) => {
-      ipcRenderer.once(rpc.ipcCode, (_, arg) => {
-        if (isLeft(arg)) {
-          console.log(`got error: ${JSON.stringify(arg.left)}`)
-          reject(arg.left)
-        } else {
-          const resp = rpc.response.decode(arg.right)
-          if (isLeft(resp)) {
-            reject(`error decoding response for IPC RPC ${rpc.ipcCode}: ${ioErrToStr(resp.left)}`)
-            return
-          }
-          resolve(resp.right)
+    ipcRenderer.invoke(rpc.ipcCode, rpc.request.encode(req)).then((arg) => {
+      if (isLeft(arg)) {
+        console.log(`got error: ${JSON.stringify(arg.left)}`)
+        throw arg.left
+      } else {
+        const resp = rpc.response.decode(arg.right)
+        if (isLeft(resp)) {
+          throw new Error(
+            `error decoding response for IPC RPC ${rpc.ipcCode}: ${ioErrToStr(resp.left)}`,
+          )
         }
-      })
-      ipcRenderer.send(rpc.ipcCode, rpc.request.encode(req))
+        return resp.right
+      }
     })
 
-export const getNodesDetails = mkRpc(RPC_GetNodesDetails)
+export const connect = mkRpc(RPC_Connect)
+export const getNodeDetails = mkRpc(RPC_GetNodeDetails)
 export const setSettings = mkRpc(RPC_SetSettings)
 export const shutdownNode = mkRpc(RPC_ShutdownNode)
 export const createUserKeyPair = mkRpc(RPC_CreateUserKeyPair)

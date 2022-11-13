@@ -1,13 +1,15 @@
 import * as io from 'io-ts'
 import {
+  ConnectRequest,
+  ConnectResponse,
   SignAppManifestRequest,
   SignAppManifestResponse,
   CreateUserKeyPairRequest,
   CreateUserKeyPairResponse,
   GenerateSwarmKeyRequest,
   GenerateSwarmKeyResponse,
-  GetNodesDetailsResponse,
-  GetNodesDetailsRequest,
+  GetNodeDetailsResponse,
+  GetNodeDetailsRequest,
   SetSettingsRequest,
   SetSettingsResponse,
   ShutdownNodeRequest,
@@ -59,10 +61,12 @@ const mkRPC = <Req, Resp>(
   response,
 })
 
-export const RPC_GetNodesDetails = mkRPC(
+export const RPC_Connect = mkRPC('Connect', ConnectRequest, ConnectResponse)
+
+export const RPC_GetNodeDetails = mkRPC(
   'GetNodesDetails',
-  GetNodesDetailsRequest,
-  GetNodesDetailsResponse,
+  GetNodeDetailsRequest,
+  GetNodeDetailsResponse,
 )
 
 export const RPC_SetSettings = mkRPC('SetSettings', SetSettingsRequest, SetSettingsResponse)

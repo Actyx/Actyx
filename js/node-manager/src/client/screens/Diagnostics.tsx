@@ -1,5 +1,5 @@
 import React from 'react'
-import { Node, NodeType, ReachableNode as ReachableNodeT } from '../../common/types'
+import { UiNode, NodeType, ReachableNodeUi as ReachableNodeT } from '../../common/types'
 import { Layout } from '../components/Layout'
 import { useAppState } from '../app-state'
 import { SimpleCanvas } from '../components/SimpleCanvas'
@@ -11,7 +11,7 @@ import { HslPercentageSpectrum, RedToGreenPercentageSpectrum } from '../util/col
 import { OffsetInfo, Offset } from '../offsets'
 import { isNone } from 'fp-ts/lib/Option'
 
-const isConnectedTo = (from: ReachableNodeT, to: Node) => {
+const isConnectedTo = (from: ReachableNodeT, to: UiNode) => {
   if (to.type === NodeType.Reachable) {
     if (from.details.swarmState === null || to.details.swarmState === null) {
       return false
@@ -28,13 +28,13 @@ const isConnectedTo = (from: ReachableNodeT, to: Node) => {
   }
 }
 
-const nodeDisplayName = (node: Node) =>
+const nodeDisplayName = (node: UiNode) =>
   node.type === NodeType.Reachable ? `${node.details.displayName} (${node.addr})` : node.addr
 
 const Connected = () => <span className="text-green-300 font-xs font-medium">Connected</span>
 const Disconnected = () => <span className="text-red-300 font-xs font-medium">Not connected</span>
 
-const OffsetMatrix: React.FC<{ nodes: Node[]; offsets: OffsetInfo }> = ({ nodes, offsets }) => {
+const OffsetMatrix: React.FC<{ nodes: UiNode[]; offsets: OffsetInfo }> = ({ nodes, offsets }) => {
   const headerSize = 44
   const cellWidth = 16
   const cellHeight = 8
@@ -133,7 +133,7 @@ const OffsetMatrix: React.FC<{ nodes: Node[]; offsets: OffsetInfo }> = ({ nodes,
     </div>
   )
 }
-const ReachableNode: React.FC<{ node: ReachableNodeT; others: Node[] }> = ({ node, others }) => (
+const ReachableNode: React.FC<{ node: ReachableNodeT; others: UiNode[] }> = ({ node, others }) => (
   <li className="pb-3">
     <span className="font-medium">{nodeDisplayName(node)}</span>
     <ul className="">
@@ -147,13 +147,13 @@ const ReachableNode: React.FC<{ node: ReachableNodeT; others: Node[] }> = ({ nod
   </li>
 )
 
-const UnreachableNode: React.FC<{ node: Node }> = ({ node }) => (
+const UnreachableNode: React.FC<{ node: UiNode }> = ({ node }) => (
   <li className="text-gray-500 pb-3">
     <span className="font-medium">{nodeDisplayName(node)}</span> is not reachable
   </li>
 )
 
-const SwarmConnectivity: React.FC<{ nodes: Node[] }> = ({ nodes }) => {
+const SwarmConnectivity: React.FC<{ nodes: UiNode[] }> = ({ nodes }) => {
   return (
     <div>
       {nodes.length < 2 ? (

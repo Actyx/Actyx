@@ -4,11 +4,12 @@ import {
   signAppManifest,
   createUserKeyPair,
   generateSwarmKey,
-  getNodesDetails,
+  getNodeDetails,
   setSettings,
   waitForNoUserKeysFound,
   shutdownNode,
   query,
+  connect,
 } from '../util'
 import {
   CreateUserKeyPairResponse,
@@ -17,6 +18,7 @@ import {
   GenerateSwarmKeyResponse,
   SignAppManifestResponse,
   QueryResponse,
+  UiNode,
 } from '../../common/types'
 import { AppState, AppAction, AppStateKey, AppActionKey } from './types'
 import { useAnalytics } from '../analytics'
@@ -29,6 +31,7 @@ import { none, Option, some } from 'fp-ts/lib/Option'
 import { useStore } from '../store'
 import { StoreStateKey } from '../store/types'
 import { DEFAULT_TIMEOUT_SEC } from 'common/consts'
+import { ipcRenderer } from 'electron'
 
 const POLLING_INTERVAL_MS = 1_000
 
@@ -100,9 +103,13 @@ export const reducer =
   }
 
 interface Data {
-  nodes: Node[]
+  nodes: UiNode[]
   offsets: Option<OffsetInfo>
+  p2n: Map<string, string>
+  n2p: Map<string, string>
 }
+
+const getPeer = (n: Node, d: Data) => ('peer' in n ? n.peer : d.n2p.get(n.addr))
 
 interface Actions {
   addNodes: (addrs: string[]) => void
@@ -140,7 +147,12 @@ export const AppStateProvider: React.FC<{
   const [state, dispatch] = useReducer(reducer(analytics), {
     key: AppStateKey.Overview,
   })
-  const [data, setData] = useState<Data>({ nodes: [], offsets: none })
+  const [data, setData] = useState<Data>({
+    nodes: [],
+    offsets: none,
+    p2n: new Map(),
+    n2p: new Map(),
+  })
 
   const actions: Actions = {
     // Wrap addNodes and add the node as loading as soon as the request
@@ -149,10 +161,33 @@ export const AppStateProvider: React.FC<{
       setData((current) => {
         if (analytics) {
           addrs.forEach((addr) => {
-            if (current.nodes.find((node) => node.addr !== addr)) {
+            if (current.n2p.get(addr) === undefined) {
               analytics.addedNode()
             }
           })
+        }
+        for (const addr of addrs) {
+          console.log('connecting to', addr)
+          connect({ addr, timeout: null })
+            .then(({ peer }) => {
+              console.log('connected to', addr, peer)
+              setData((current) => ({
+                ...current,
+                p2n: current.p2n.set(peer, addr),
+                n2p: current.n2p.set(addr, peer),
+              }))
+            })
+            .catch((err) => {
+              console.log('connect error', addr, err)
+              setData((current) => ({
+                ...current,
+                nodes: current.nodes.map((n) =>
+                  n.type === NodeType.Loading && n.addr === addr
+                    ? { type: NodeType.Unreachable, addr }
+                    : n,
+                ),
+              }))
+            })
         }
         return {
           ...current,
@@ -160,7 +195,6 @@ export const AppStateProvider: React.FC<{
             addrs.map((addr) => ({
               type: NodeType.Loading,
               addr,
-              offsets: null,
             })),
           ),
         }
@@ -181,13 +215,19 @@ export const AppStateProvider: React.FC<{
       if (analytics) {
         analytics.setSettings()
       }
-      return setSettings({ addr, settings })
+      const peer = data.n2p.get(addr)
+      return peer === undefined
+        ? Promise.reject(`not connected to ${addr}`)
+        : setSettings({ peer, settings })
     },
     shutdownNode: (addr) => {
       if (analytics) {
         analytics.shutdownNode()
       }
-      return shutdownNode({ addr })
+      const peer = data.n2p.get(addr)
+      return peer === undefined
+        ? Promise.reject(`not connected to ${addr}`)
+        : shutdownNode({ peer })
     },
     createUserKeyPair: (privateKeyPath) => {
       if (analytics) {
@@ -210,13 +250,31 @@ export const AppStateProvider: React.FC<{
         pathToCertificate,
       })
     },
-    query: (args) => {
+    query: ({ addr, query: q }) => {
       if (analytics) {
-        analytics.queriedEvents(args.query)
+        analytics.queriedEvents(q)
       }
-      return query(args)
+      const peer = data.n2p.get(addr)
+      return peer === undefined
+        ? Promise.reject(`not connected to ${addr}`)
+        : query({ peer, query: q })
     },
   }
+
+  useEffect(() => {
+    ipcRenderer.on('onDisconnect', (event, peer) => {
+      console.log('onDisconnect', event, peer)
+      setData((current) => {
+        const addr = data.p2n.get(peer)
+        if (addr === undefined) return current
+        const p2n = data.p2n
+        p2n.delete(peer)
+        const n2p = data.n2p
+        n2p.delete(addr)
+        return { ...current, p2n, n2p }
+      })
+    })
+  }, [])
 
   useEffect(() => {
     ;(async () => {
@@ -238,11 +296,17 @@ export const AppStateProvider: React.FC<{
     const getDetailsAndUpdate = async () => {
       console.log('getting node information')
       try {
-        const nodes = await getNodesDetails({
-          addrs: data.nodes.map((n) => n.addr),
-          timeout: getTimeoutSec,
-        })
-        const offsetsInfo = OffsetInfo.of(data.nodes)
+        const toGet = data.nodes.reduce((acc: Record<string, string>, n) => {
+          const peer = getPeer(n, data)
+          if (peer) acc[peer] = n.addr
+          return acc
+        }, {})
+        const nodes = (
+          await Promise.all(
+            Object.keys(toGet).map((peer) => getNodeDetails({ peer, timeout: getTimeoutSec })),
+          )
+        ).map((n) => ({ ...n, addr: toGet[getPeer(n, data) || ''] }))
+        const offsetsInfo = OffsetInfo.of(nodes)
         if (!unmounted) {
           if (!deepEqual(data.nodes, nodes) || !deepEqual(data.offsets, some(offsetsInfo))) {
             console.log(`+++ updating app-state/nodes +++`)
@@ -250,8 +314,12 @@ export const AppStateProvider: React.FC<{
               ...data,
               offsets: some(offsetsInfo),
               nodes: data.nodes
-                .filter((n) => !nodes.map((n) => n.addr).includes(n.addr))
-                .concat(nodes.filter((n) => data.nodes.map((n) => n.addr).includes(n.addr)))
+                .filter((n) => getPeer(n, data) === undefined)
+                .concat(
+                  nodes.filter((n) =>
+                    data.nodes.map((n) => getPeer(n, data)).includes(getPeer(n, data)),
+                  ),
+                )
                 .sort((n1, n2) => n1.addr.localeCompare(n2.addr)),
             })
           }
