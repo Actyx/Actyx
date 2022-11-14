@@ -105,11 +105,12 @@ export const reducer =
 interface Data {
   nodes: UiNode[]
   offsets: Option<OffsetInfo>
-  p2n: Map<string, string>
-  n2p: Map<string, string>
 }
 
-const getPeer = (n: Node, d: Data) => ('peer' in n ? n.peer : d.n2p.get(n.addr))
+const getPeer = (addr: string, data: Data) => {
+  const n = data.nodes.find((n) => n.addr === addr)
+  return n && 'peer' in n ? n.peer : undefined
+}
 
 interface Actions {
   addNodes: (addrs: string[]) => void
@@ -150,8 +151,6 @@ export const AppStateProvider: React.FC<{
   const [data, setData] = useState<Data>({
     nodes: [],
     offsets: none,
-    p2n: new Map(),
-    n2p: new Map(),
   })
 
   const actions: Actions = {
@@ -161,39 +160,14 @@ export const AppStateProvider: React.FC<{
       setData((current) => {
         if (analytics) {
           addrs.forEach((addr) => {
-            if (current.n2p.get(addr) === undefined) {
-              analytics.addedNode()
-            }
+            analytics.addedNode()
           })
-        }
-        for (const addr of addrs) {
-          console.log('connecting to', addr)
-          connect({ addr, timeout: null })
-            .then(({ peer }) => {
-              console.log('connected to', addr, peer)
-              setData((current) => ({
-                ...current,
-                p2n: current.p2n.set(peer, addr),
-                n2p: current.n2p.set(addr, peer),
-              }))
-            })
-            .catch((err) => {
-              console.log('connect error', addr, err)
-              setData((current) => ({
-                ...current,
-                nodes: current.nodes.map((n) =>
-                  n.type === NodeType.Loading && n.addr === addr
-                    ? { type: NodeType.Unreachable, addr }
-                    : n,
-                ),
-              }))
-            })
         }
         return {
           ...current,
           nodes: current.nodes.concat(
             addrs.map((addr) => ({
-              type: NodeType.Loading,
+              type: NodeType.Fresh,
               addr,
             })),
           ),
@@ -215,7 +189,7 @@ export const AppStateProvider: React.FC<{
       if (analytics) {
         analytics.setSettings()
       }
-      const peer = data.n2p.get(addr)
+      const peer = getPeer(addr, data)
       return peer === undefined
         ? Promise.reject(`not connected to ${addr}`)
         : setSettings({ peer, settings })
@@ -224,7 +198,7 @@ export const AppStateProvider: React.FC<{
       if (analytics) {
         analytics.shutdownNode()
       }
-      const peer = data.n2p.get(addr)
+      const peer = getPeer(addr, data)
       return peer === undefined
         ? Promise.reject(`not connected to ${addr}`)
         : shutdownNode({ peer })
@@ -254,7 +228,11 @@ export const AppStateProvider: React.FC<{
       if (analytics) {
         analytics.queriedEvents(q)
       }
-      const peer = data.n2p.get(addr)
+      const peer = getPeer(addr, data)
+      console.log(
+        `'${addr}', '${peer}'`,
+        data.nodes.map((n) => ({ t: n.type, a: n.addr, p: (n as any).peer })),
+      )
       return peer === undefined
         ? Promise.reject(`not connected to ${addr}`)
         : query({ peer, query: q })
@@ -265,13 +243,14 @@ export const AppStateProvider: React.FC<{
     ipcRenderer.on('onDisconnect', (event, peer) => {
       console.log('onDisconnect', event, peer)
       setData((current) => {
-        const addr = data.p2n.get(peer)
-        if (addr === undefined) return current
-        const p2n = data.p2n
-        p2n.delete(peer)
-        const n2p = data.n2p
-        n2p.delete(addr)
-        return { ...current, p2n, n2p }
+        return {
+          ...current,
+          nodes: current.nodes.map((n) =>
+            'peer' in n && n.peer === peer
+              ? { type: NodeType.Disconnected, peer, addr: n.addr }
+              : n,
+          ),
+        }
       })
     })
   }, [])
@@ -296,30 +275,65 @@ export const AppStateProvider: React.FC<{
     const getDetailsAndUpdate = async () => {
       console.log('getting node information')
       try {
+        data.nodes.forEach((n) => {
+          switch (n.type) {
+            case NodeType.Disconnected:
+            case NodeType.Fresh:
+            case NodeType.Unreachable: {
+              const addr = n.addr
+              console.log('connecting to', addr)
+              connect({ addr, timeout: null })
+                .then(({ peer }) => {
+                  console.log('connected to', addr, peer)
+                  setData((current) => ({
+                    ...current,
+                    nodes: current.nodes.map((n) =>
+                      n.addr === addr ? { type: NodeType.Connected, addr, peer } : n,
+                    ),
+                  }))
+                })
+                .catch((err) => {
+                  console.log('connect error', addr, err)
+                  setData((current) => ({
+                    ...current,
+                    nodes: current.nodes.map((n) =>
+                      n.addr === addr
+                        ? { type: NodeType.Unreachable, addr, error: safeErrorToStr(err) }
+                        : n,
+                    ),
+                  }))
+                })
+              const prevError = n.type === NodeType.Unreachable ? n.error : null
+              setData((current) => ({
+                ...current,
+                nodes: current.nodes.map((n) =>
+                  n.addr === addr ? { type: NodeType.Connecting, addr, prevError } : n,
+                ),
+              }))
+            }
+          }
+        })
+
         const toGet = data.nodes.reduce((acc: Record<string, string>, n) => {
-          const peer = getPeer(n, data)
-          if (peer) acc[peer] = n.addr
+          if ('peer' in n && n.type !== NodeType.Disconnected) acc[n.peer] = n.addr
           return acc
         }, {})
         const nodes = (
           await Promise.all(
             Object.keys(toGet).map((peer) => getNodeDetails({ peer, timeout: getTimeoutSec })),
           )
-        ).map((n) => ({ ...n, addr: toGet[getPeer(n, data) || ''] }))
-        const offsetsInfo = OffsetInfo.of(nodes)
+        ).map((n) => ({ ...n, addr: toGet[n.peer] }))
+
         if (!unmounted) {
+          const offsetsInfo = OffsetInfo.of(nodes)
           if (!deepEqual(data.nodes, nodes) || !deepEqual(data.offsets, some(offsetsInfo))) {
             console.log(`+++ updating app-state/nodes +++`)
             setData({
               ...data,
               offsets: some(offsetsInfo),
               nodes: data.nodes
-                .filter((n) => getPeer(n, data) === undefined)
-                .concat(
-                  nodes.filter((n) =>
-                    data.nodes.map((n) => getPeer(n, data)).includes(getPeer(n, data)),
-                  ),
-                )
+                .filter((n) => nodes.every((n2) => n.addr !== n2.addr))
+                .concat(nodes.filter((n) => data.nodes.some((n2) => n.addr === n2.addr)))
                 .sort((n1, n2) => n1.addr.localeCompare(n2.addr)),
             })
           }

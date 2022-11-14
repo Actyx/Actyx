@@ -48,7 +48,6 @@ const setupRpc = <Req, Resp>(
 ): void => {
   ipcMain.handle(rpc.ipcCode, async (event, arg) => {
     const req = rpc.request.decode(arg)
-    console.log('received', rpc.ipcCode, req)
     if (isLeft(req)) {
       triggerFatalError(window, {
         shortMessage: `IPC RPC decoding error; unable to decode argument for request ${rpc.ipcCode}`,

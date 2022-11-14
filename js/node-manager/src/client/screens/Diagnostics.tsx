@@ -56,7 +56,7 @@ const OffsetMatrix: React.FC<{ nodes: UiNode[]; offsets: OffsetInfo }> = ({ node
   }
 
   // We ignore all loading nodes
-  nodes = nodes.filter((n) => n.type !== NodeType.Loading)
+  nodes = nodes.filter((n) => n.type !== NodeType.Fresh)
 
   return (
     <div className="w-max">

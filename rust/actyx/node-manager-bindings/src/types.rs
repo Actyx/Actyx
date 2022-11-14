@@ -32,9 +32,6 @@ pub enum Node {
     UnauthorizedNode {
         peer: String,
     },
-    UnreachableNode {
-        addr: String,
-    },
     DisconnectedNode {
         peer: String,
     },

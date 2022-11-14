@@ -18,8 +18,8 @@ export type StoreData = io.TypeOf<typeof StoreData>
 // Basics
 
 export const PeerInfo = io.type({
-  protocolVersion: io.union([io.undefined, io.string]),
-  agentVersion: io.union([io.undefined, io.string]),
+  protocolVersion: io.union([io.null, io.string]),
+  agentVersion: io.union([io.null, io.string]),
   protocols: io.array(io.string),
   listeners: io.array(io.string),
 })
@@ -81,8 +81,10 @@ export const enum NodeType {
   Reachable = 'reachableNode',
   Unauthorized = 'unauthorizedNode',
   Unreachable = 'unreachableNode',
-  Loading = 'loading',
+  Fresh = 'fresh',
   Disconnected = 'disconnectedNode',
+  Connecting = 'connecting',
+  Connected = 'connected',
 }
 
 export const ReachableNode = io.type({
@@ -103,33 +105,45 @@ export const ReachableNode = io.type({
 })
 export type ReachableNode = io.TypeOf<typeof ReachableNode>
 export type ReachableNodeUi = ReachableNode & { addr: string }
+
 const UnauthorizedNode = io.type({
   type: io.literal(NodeType.Unauthorized),
   peer: io.string,
-})
-const UnreachableNode = io.type({
-  type: io.literal(NodeType.Unreachable),
-  addr: io.string,
 })
 const DisconnectedNode = io.type({
   type: io.literal(NodeType.Disconnected),
   peer: io.string,
 })
-const LoadingNode = io.type({
-  type: io.literal(NodeType.Loading),
-  addr: io.string,
-})
 
-export const Node = io.union([
-  ReachableNode,
-  UnauthorizedNode,
-  UnreachableNode,
-  DisconnectedNode,
-  LoadingNode,
-])
+export const Node = io.union([ReachableNode, UnauthorizedNode, DisconnectedNode])
 export type Node = io.TypeOf<typeof Node>
 
-export type UiNode = Node & { addr: string }
+type UnreachableNode = {
+  type: NodeType.Unreachable
+  addr: string
+  error: string
+}
+type LoadingNode = {
+  type: NodeType.Fresh
+  addr: string
+}
+type ConnectingNode = {
+  type: NodeType.Connecting
+  addr: string
+  prevError: string | null
+}
+type ConnectedNode = {
+  type: NodeType.Connected
+  addr: string
+  peer: string
+}
+
+export type UiNode =
+  | (Node & { addr: string })
+  | UnreachableNode
+  | LoadingNode
+  | ConnectingNode
+  | ConnectedNode
 
 // Helpers
 const EmptyRequest = io.type({})

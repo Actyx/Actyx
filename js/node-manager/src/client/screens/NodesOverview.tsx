@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { NodeType, UiNode } from '../../common/types'
 import { nodeAddrValid } from '../../common/util'
 import { Layout } from '../components/Layout'
@@ -8,6 +8,34 @@ import { Button } from '../components/basics'
 import { SolidStarIcon, UnsolidStarIcon } from '../components/icons'
 import { useStore } from '../store'
 import { StoreState } from '../store/types'
+
+const ErrorSpan: React.FC<{ error: string }> = ({ children, error }) => {
+  const [open, setOpen] = useState(false)
+  return (
+    <span onClick={() => setOpen(!open)}>
+      {children}
+      {open ? (
+        <p
+          style={{
+            position: 'absolute',
+            top: '1ex',
+            left: '1ex',
+            right: '1ex',
+            border: '1px solid #555',
+            backgroundColor: 'white',
+            overflowX: 'hidden',
+            whiteSpace: 'break-spaces',
+            zIndex: 2,
+          }}
+        >
+          {error}
+        </p>
+      ) : (
+        <></>
+      )}
+    </span>
+  )
+}
 
 const nodeToStatusText = (node: UiNode) => {
   switch (node.type) {
@@ -21,9 +49,15 @@ const nodeToStatusText = (node: UiNode) => {
     case NodeType.Unauthorized:
       return 'Not authorized'
     case NodeType.Unreachable:
+      return <ErrorSpan error={node.error}>Unreachable</ErrorSpan>
+    case NodeType.Fresh:
+      return 'Just added'
+    case NodeType.Disconnected:
       return 'Disconnected'
-    case NodeType.Loading:
-      return 'Loading'
+    case NodeType.Connecting:
+      return <ErrorSpan error={node.prevError || 'no error'}>Connecting</ErrorSpan>
+    case NodeType.Connected:
+      return 'Connected'
   }
 }
 
@@ -84,8 +118,11 @@ const NodeCard: React.FC<{ node: UiNode; remove: () => void; view: () => void }>
             'text-red-300':
               node.type === NodeType.Unauthorized || node.type === NodeType.Unreachable,
             'text-green-300': node.type === NodeType.Reachable && node.details.swarmState !== null,
-            'text-yellow-300': node.type === NodeType.Reachable && node.details.swarmState === null,
-            'text-gray-300': node.type === NodeType.Loading,
+            'text-yellow-300':
+              (node.type === NodeType.Reachable && node.details.swarmState === null) ||
+              node.type === NodeType.Disconnected ||
+              node.type === NodeType.Connecting,
+            'text-gray-300': node.type === NodeType.Fresh || node.type === NodeType.Connected,
           })}
         >
           {nodeToStatusText(node)}

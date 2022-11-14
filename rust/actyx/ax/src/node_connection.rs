@@ -24,7 +24,8 @@ use libp2p_streaming_response::{RequestReceived, Response, StreamingResponse, St
 use std::{
     collections::{BTreeSet, HashMap},
     convert::{TryFrom, TryInto},
-    fmt::Debug,
+    error::Error,
+    fmt::{Debug, Write},
     task::Poll,
     time::Duration,
 };
@@ -184,7 +185,11 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
                                 }
                                 DialError::Transport(e) => {
                                     for (addr, error) in e {
-                                        let error = ActyxOSCode::ERR_NODE_UNREACHABLE.with_message(error.to_string());
+                                        let mut s = error.to_string();
+                                        if let Some(cause) = error.source() {
+                                            write!(&mut s, "{}", cause).ok();
+                                        }
+                                        let error = ActyxOSCode::ERR_NODE_UNREACHABLE.with_message(s);
                                         conn_errors(&mut connects, &addr, error);
                                     }
                                 }

@@ -1,7 +1,7 @@
 use futures::FutureExt;
 use neon::prelude::*;
 use serde::{Deserialize, Serialize};
-use tokio::time::Duration;
+use tokio::time::{timeout, Duration};
 use util::formats::events_protocol::{EventsRequest, EventsResponse};
 use util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse};
 
@@ -12,13 +12,7 @@ use axlib::node_connection::{request_single, Task};
 use futures::channel::mpsc::Sender;
 use libp2p::PeerId;
 
-async fn get_node_details(
-    mut tx: Sender<Task>,
-    peer: PeerId,
-    timeout: Duration,
-) -> ActyxOSResult<ConnectedNodeDetails> {
-    println!("getting details for node {:?} (timeout: {})", peer, timeout.as_secs());
-
+async fn get_node_details(mut tx: Sender<Task>, peer: PeerId) -> ActyxOSResult<ConnectedNodeDetails> {
     let status = request_single(
         &mut tx,
         move |tx| Task::Admin(peer, AdminRequest::NodesLs, tx),
@@ -103,17 +97,16 @@ pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let ud = cx.undefined();
     run_task::<Args, Node>(
         cx,
-        Box::new(|tx, Args { peer, timeout }| {
+        Box::new(|tx, Args { peer, timeout: time }| {
             async move {
-                let res = get_node_details(
-                    tx,
-                    peer.parse().unwrap(),
-                    Duration::from_secs(timeout.unwrap_or(DEFAULT_TIMEOUT_SEC)),
+                let res = timeout(
+                    Duration::from_secs(time.unwrap_or(DEFAULT_TIMEOUT_SEC)),
+                    get_node_details(tx, peer.parse().unwrap()),
                 )
-                .await;
+                .await
+                .unwrap_or_else(|_| Err(ActyxOSCode::ERR_NODE_UNREACHABLE.with_message("operation timed out")));
 
                 match res {
-                    Err(e) if e.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => Ok(Node::DisconnectedNode { peer }),
                     Err(e) if e.code() == ActyxOSCode::ERR_UNAUTHORIZED => Ok(Node::UnauthorizedNode { peer }),
                     Err(e) if e.code() == ActyxOSCode::ERR_IO => Ok(Node::DisconnectedNode { peer }),
                     Ok(details) => Ok(Node::ReachableNode { peer, details }),
