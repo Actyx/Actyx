@@ -314,6 +314,7 @@ fn o(s: &str) -> &OsStr {
     OsStr::new(s)
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn all_ax() -> anyhow::Result<()> {
     let binaries = setup();
@@ -349,9 +350,11 @@ fn all_ax() -> anyhow::Result<()> {
     result
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn all_actyx() -> anyhow::Result<()> {
     let binaries = setup();
+    let ax = run("ax")?;
     for (version, actyx) in &binaries.actyx {
         let log = Log::default();
         let use_stdout_before = Version::new(2, 1, 0);
@@ -361,7 +364,7 @@ fn all_actyx() -> anyhow::Result<()> {
             log.clone(),
             |port, identity| {
                 println!("testing version {}", version);
-                let out = run("ax")?
+                let out = Command::new(ax.get_program())
                     .args([
                         o("nodes"),
                         o("inspect"),
