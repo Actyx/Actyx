@@ -104,16 +104,18 @@ export const ReachableNode = io.type({
   }),
 })
 export type ReachableNode = io.TypeOf<typeof ReachableNode>
-export type ReachableNodeUi = ReachableNode & { addr: string }
+export type ReachableNodeUi = ReachableNode & { addr: string; timeouts: number }
 
 const UnauthorizedNode = io.type({
   type: io.literal(NodeType.Unauthorized),
   peer: io.string,
 })
+type UnauthorizedNode = io.TypeOf<typeof UnauthorizedNode>
 const DisconnectedNode = io.type({
   type: io.literal(NodeType.Disconnected),
   peer: io.string,
 })
+type DisconnectedNode = io.TypeOf<typeof DisconnectedNode>
 
 export const Node = io.union([ReachableNode, UnauthorizedNode, DisconnectedNode])
 export type Node = io.TypeOf<typeof Node>
@@ -139,7 +141,8 @@ type ConnectedNode = {
 }
 
 export type UiNode =
-  | (Node & { addr: string })
+  | ReachableNodeUi
+  | ((UnauthorizedNode | DisconnectedNode) & { addr: string })
   | UnreachableNode
   | LoadingNode
   | ConnectingNode

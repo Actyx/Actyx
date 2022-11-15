@@ -2351,9 +2351,9 @@ dependencies = [
 
 [[package]]
 name = "ipfs-embed"
-version = "0.25.0"
+version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6717aae379f821e05c46a793dfeeef6e4bd7de33e54deefbeb0eaf497e5496ec"
+checksum = "4486e4bd2607ee68ac355d41992d8337c936b9ddf42fe6bdd5f12e0ea83d82d8"
 dependencies = [
  "anyhow",
  "async-trait",

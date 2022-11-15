@@ -282,7 +282,7 @@ export const AppStateProvider: React.FC<{
             case NodeType.Unreachable: {
               const addr = n.addr
               console.log('connecting to', addr)
-              connect({ addr, timeout: null })
+              connect({ addr, timeout: getTimeoutSec })
                 .then(({ peer }) => {
                   console.log('connected to', addr, peer)
                   setData((current) => ({
@@ -314,15 +314,25 @@ export const AppStateProvider: React.FC<{
           }
         })
 
-        const toGet = data.nodes.reduce((acc: Record<string, string>, n) => {
-          if ('peer' in n && n.type !== NodeType.Disconnected) acc[n.peer] = n.addr
-          return acc
-        }, {})
-        const nodes = (
-          await Promise.all(
-            Object.keys(toGet).map((peer) => getNodeDetails({ peer, timeout: getTimeoutSec })),
-          )
-        ).map((n) => ({ ...n, addr: toGet[n.peer] }))
+        const nodes = await Promise.all(
+          data.nodes.reduce((acc: Promise<UiNode>[], n) => {
+            if ('peer' in n && n.type !== NodeType.Disconnected) {
+              acc.push(
+                getNodeDetails({ peer: n.peer, timeout: getTimeoutSec })
+                  .then((res) => ({
+                    ...res,
+                    timeouts: 0,
+                    addr: n.addr,
+                  }))
+                  .catch(() => ({
+                    ...n,
+                    timeouts: n.type === NodeType.Reachable ? n.timeouts + 1 : 0,
+                  })),
+              )
+            }
+            return acc
+          }, []),
+        )
 
         if (!unmounted) {
           const offsetsInfo = OffsetInfo.of(nodes)
@@ -351,7 +361,7 @@ export const AppStateProvider: React.FC<{
     }
 
     if (state.key !== 'SetupUserKey') {
-      timeout = setTimeout(getDetailsAndUpdate, POLLING_INTERVAL_MS)
+      timeout = setTimeout(getDetailsAndUpdate, 100)
     }
 
     return () => {

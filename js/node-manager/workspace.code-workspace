@@ -4,8 +4,11 @@
 			"path": "."
 		},
 		{
-			"path": "..\\..\\rust\\actyx"
-		}
+			"path": "../../rust/actyx"
+		},
+    {
+      "path": "../../rust/sdk"
+    }
 	],
 	"settings": {
 		"typescript.tsdk": "node_modules/typescript/lib"

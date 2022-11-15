@@ -130,6 +130,9 @@ const NodeCard: React.FC<{ node: UiNode; remove: () => void; view: () => void }>
         {node.type === NodeType.Reachable && <span>&nbsp;{node.addr}</span>}
       </p>
       <p className="text-xl mt-0 font-medium truncate overflow-ellipsis">
+        {node.type === NodeType.Reachable && node.timeouts > 0 ? (
+          <span className="text-red-500">(⏰ {node.timeouts})&nbsp;</span>
+        ) : undefined}
         {node.type === NodeType.Reachable ? node.details.displayName : node.addr}
       </p>
       <div className="mt-6 flex">
