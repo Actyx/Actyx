@@ -205,7 +205,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 )?;
                 let store = BanyanStore::new(swarm_config).await?;
                 store.spawn_task(
-                    "api",
+                    "api".to_owned(),
                     api::run(node_info, store.clone(), event_store, blobs, bind_api, snd),
                 );
                 Ok::<BanyanStore, anyhow::Error>(store)

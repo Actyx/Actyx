@@ -69,7 +69,7 @@ async fn run() -> Result<()> {
         let event_store = {
             let store = swarm.clone();
             let (tx, mut rx) = mpsc::channel::<EventStoreRequest>(10);
-            swarm.spawn_task("handler", async move {
+            swarm.spawn_task("handler".to_owned(), async move {
                 let mut handler = EventStoreHandler::new(store);
                 let runtime = Handle::current();
                 while let Some(request) = rx.recv().await {
@@ -83,7 +83,7 @@ async fn run() -> Result<()> {
         };
         let blobs = BlobStore::new(DbPath::Memory)?;
         swarm.spawn_task(
-            "api",
+            "api".to_owned(),
             api::run(
                 node_info,
                 swarm.clone(),

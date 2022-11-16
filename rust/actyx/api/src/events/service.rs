@@ -513,7 +513,7 @@ async fn store_ephemeral(value: &str) -> anyhow::Result<EphemeralStore> {
     let event_store = {
         let store2 = banyan.clone();
         let (tx, mut rx) = mpsc::channel(100);
-        banyan.spawn_task("handler", async move {
+        banyan.spawn_task("handler".to_owned(), async move {
             let mut handler = EventStoreHandler::new(store2);
             let runtime = tokio::runtime::Handle::current();
             while let Some(request) = rx.recv().await {
@@ -570,7 +570,7 @@ mod tests {
         let event_store = {
             let store2 = store.clone();
             let (tx, mut rx) = mpsc::channel(100);
-            store.spawn_task("handler", async move {
+            store.spawn_task("handler".to_owned(), async move {
                 let mut handler = EventStoreHandler::new(store2);
                 let runtime = Handle::current();
                 while let Some(request) = rx.recv().await {

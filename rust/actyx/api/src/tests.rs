@@ -54,7 +54,7 @@ async fn test_routes() -> (
     let event_store = {
         let store2 = store.clone();
         let (tx, mut rx) = mpsc::channel(100);
-        store.spawn_task("handler", async move {
+        store.spawn_task("handler".to_owned(), async move {
             let mut handler = EventStoreHandler::new(store2);
             let runtime = Handle::current();
             while let Some(request) = rx.recv().await {
