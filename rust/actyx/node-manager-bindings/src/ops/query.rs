@@ -1,21 +1,11 @@
 use crate::util::run_task;
-use actyx_sdk::{
-    service::{Diagnostic, EventResponse, Order, QueryRequest},
-    Payload,
-};
-use axlib::node_connection::{request_events, Task};
+use actyx_sdk::service::{Order, QueryRequest};
+use axlib::node_connection::{request_events, EventDiagnostic, Task};
 use futures::{channel::mpsc::Sender, FutureExt, StreamExt};
 use libp2p::PeerId;
 use neon::prelude::*;
 use serde::{Deserialize, Serialize};
 use util::formats::{ax_err, events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult};
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum EventDiagnostic {
-    Event(EventResponse<Payload>),
-    Diagnostic(Diagnostic),
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -53,7 +43,10 @@ async fn do_query(mut tx: Sender<Task>, peer: PeerId, query: String) -> ActyxOSR
             async {
                 let mut events = Vec::new();
                 while let Some(ev) = stream.next().await {
-                    events.push(EventDiagnostic::Event(ev?));
+                    events.push(ev?);
+                    if events.len() >= 1000 {
+                        break;
+                    }
                 }
                 Ok(Res { events: Some(events) })
             }

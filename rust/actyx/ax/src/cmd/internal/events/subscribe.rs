@@ -1,11 +1,8 @@
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
-    node_connection::request_events,
+    node_connection::{request_events, EventDiagnostic},
 };
-use actyx_sdk::{
-    service::{EventResponse, SubscribeRequest},
-    Payload,
-};
+use actyx_sdk::service::SubscribeRequest;
 use futures::{future::ready, Stream, StreamExt};
 use structopt::StructOpt;
 use util::{
@@ -26,7 +23,7 @@ pub struct SubscribeOpts {
 pub struct EventsSubscribe;
 impl AxCliCommand for EventsSubscribe {
     type Opt = SubscribeOpts;
-    type Output = EventResponse<Payload>;
+    type Output = EventDiagnostic;
 
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let ret = GenStream::new(move |co| async move {

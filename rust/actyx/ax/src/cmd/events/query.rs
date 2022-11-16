@@ -1,14 +1,10 @@
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
-    node_connection::request_events,
+    node_connection::{request_events, EventDiagnostic},
 };
-use actyx_sdk::{
-    service::{Diagnostic, EventResponse, Order, QueryRequest},
-    Payload,
-};
+use actyx_sdk::service::{Order, QueryRequest};
 use futures::{future::ready, Stream, StreamExt};
 use runtime::value::Value;
-use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read};
 use structopt::StructOpt;
 use util::{
@@ -24,13 +20,6 @@ pub struct QueryOpts {
     console_opt: ConsoleOpt,
     /// event API query (read from file if the argument starts with @)
     query: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum EventDiagnostic {
-    Event(EventResponse<Payload>),
-    Diagnostic(Diagnostic),
 }
 
 pub struct EventsQuery;
@@ -67,7 +56,7 @@ impl AxCliCommand for EventsQuery {
             .await?;
 
             while let Some(ev) = stream.next().await {
-                co.yield_(Ok(Some(EventDiagnostic::Event(ev?)))).await;
+                co.yield_(Ok(Some(ev?))).await;
             }
             Ok(None)
         })

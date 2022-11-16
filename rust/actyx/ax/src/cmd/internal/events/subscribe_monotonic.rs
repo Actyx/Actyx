@@ -1,10 +1,10 @@
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
-    node_connection::request_events,
+    node_connection::{request_events, EventDiagnostic},
 };
 use actyx_sdk::{
-    service::{EventResponse, StartFrom, SubscribeMonotonicRequest},
-    OffsetMap, Payload,
+    service::{StartFrom, SubscribeMonotonicRequest},
+    OffsetMap,
 };
 use futures::{future::ready, Stream, StreamExt};
 use structopt::StructOpt;
@@ -26,7 +26,7 @@ pub struct SubscribeMonotonicOpts {
 pub struct EventsSubscribeMonotonic;
 impl AxCliCommand for EventsSubscribeMonotonic {
     type Opt = SubscribeMonotonicOpts;
-    type Output = EventResponse<Payload>;
+    type Output = EventDiagnostic;
 
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let ret = GenStream::new(move |co| async move {

@@ -1,5 +1,8 @@
 use crate::{cmd::Authority, private_key::AxPrivateKey};
-use actyx_sdk::{service::EventResponse, NodeId, Payload};
+use actyx_sdk::{
+    service::{Diagnostic, EventResponse},
+    NodeId, Payload,
+};
 use anyhow::anyhow;
 use crypto::PublicKey;
 use derive_more::From;
@@ -21,6 +24,7 @@ use libp2p::{
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use libp2p_streaming_response::{RequestReceived, Response, StreamingResponse, StreamingResponseConfig};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashMap},
     convert::{TryFrom, TryInto},
@@ -452,23 +456,27 @@ where
     Ok(v)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum EventDiagnostic {
+    Event(EventResponse<Payload>),
+    Diagnostic(Diagnostic),
+}
+
 pub async fn request_events(
     task: &mut Sender<Task>,
     peer_id: PeerId,
     req: EventsRequest,
-) -> ActyxOSResult<BoxStream<'static, ActyxOSResult<EventResponse<Payload>>>> {
+) -> ActyxOSResult<BoxStream<'static, ActyxOSResult<EventDiagnostic>>> {
     let (tx, rx) = channel(128);
     task.feed(Task::Events(peer_id, req, tx)).await?;
     Ok(rx
         .filter_map(|m| match m {
-            Ok(EventsResponse::Event(ev)) => ready(Some(Ok(ev))),
+            Ok(EventsResponse::Event(ev)) => ready(Some(Ok(EventDiagnostic::Event(ev)))),
             Ok(EventsResponse::Error { message }) => {
                 ready(Some(Err(ActyxOSCode::ERR_INVALID_INPUT.with_message(message))))
             }
-            Ok(EventsResponse::Diagnostic(d)) => {
-                tracing::warn!("AQL diagnostic: {}", d);
-                ready(None)
-            }
+            Ok(EventsResponse::Diagnostic(d)) => ready(Some(Ok(EventDiagnostic::Diagnostic(d)))),
             Ok(EventsResponse::OffsetMap { offsets }) => {
                 tracing::info!("received OffsetMap covering {} events", offsets.size());
                 ready(None)
