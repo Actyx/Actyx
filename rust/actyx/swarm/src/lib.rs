@@ -391,7 +391,7 @@ struct BanyanStoreState {
     known_streams: Vec<mpsc::UnboundedSender<StreamId>>,
 
     /// tasks of the stream manager.
-    tasks: Vec<(&'static str, tokio::task::JoinHandle<()>)>,
+    tasks: Vec<(String, tokio::task::JoinHandle<()>)>,
 
     /// Banyan related config
     banyan_config: BanyanConfig,
@@ -513,7 +513,10 @@ impl<'a> BanyanStoreGuard<'a> {
             .streams
             .insert(stream_nr, stream.clone());
         let store = self.outer();
-        self.spawn_task("careful_ingestion", store.careful_ingestion(stream_id, stream.clone()));
+        self.spawn_task(
+            format!("careful_ingestion({})", stream_id),
+            store.careful_ingestion(stream_id, stream.clone()),
+        );
         tracing::debug!("publish new stream_id {}", stream_id);
         self.publish_new_stream_id(stream_id);
         Ok(stream)
@@ -602,10 +605,11 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 
     /// Spawns a new task that will be shutdown when [`BanyanStore`] is dropped.
-    pub fn spawn_task(&mut self, name: &'static str, task: impl Future<Output = ()> + Send + 'static) {
+    pub fn spawn_task(&mut self, name: String, task: impl Future<Output = ()> + Send + 'static) {
         tracing::debug!("Spawning task '{}'!", name);
+        let name2 = name.clone();
         let handle =
-            tokio::spawn(task.map(move |_| tracing::error!("Fatal: Task '{}' unexpectedly terminated!", name)));
+            tokio::spawn(task.map(move |_| tracing::error!("Fatal: Task '{}' unexpectedly terminated!", name2)));
         self.tasks.push((name, handle));
     }
 
@@ -894,33 +898,39 @@ impl BanyanStore {
         tracing::info!("validating event streams");
         banyan.validate_known_streams().await?;
         tracing::info!("starting maintenance tasks");
-        banyan.spawn_task("cache_debug", async move {
+        banyan.spawn_task("cache_debug".to_owned(), async move {
             loop {
                 tokio::time::sleep(Duration::from_secs(60)).await;
                 tracing::debug!(c = %branch_cache.debug());
             }
         });
         banyan.spawn_task(
-            "gossip_ingest",
+            "gossip_ingest".to_owned(),
             Gossip::ingest(banyan.clone(), cfg.topic.clone()).await?,
         );
         if cfg.enable_root_map {
             banyan.spawn_task(
-                "gossip_publish_root_map",
+                "gossip_publish_root_map".to_owned(),
                 banyan
                     .data
                     .gossip
                     .publish_root_map(banyan.clone(), cfg.topic.clone(), cfg.cadence_root_map),
             );
         }
-        banyan.spawn_task("compaction", banyan.clone().compaction_loop(cfg.cadence_compact));
+        banyan.spawn_task(
+            "compaction".to_owned(),
+            banyan.clone().compaction_loop(cfg.cadence_compact),
+        );
         if cfg.enable_discovery {
-            banyan.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(banyan.clone()));
+            banyan.spawn_task(
+                "discovery_ingest".to_owned(),
+                crate::discovery::discovery_ingest(banyan.clone()),
+            );
         }
         // if `cfg.enable_discovery` is not set, this function WON'T emit any
         // events! It's needed in any case for `ipfs-embed` to do its thing.
         banyan.spawn_task(
-            "discovery",
+            "discovery".to_owned(),
             crate::discovery::discovery_publish(
                 banyan.clone(),
                 swarm_events,
@@ -932,12 +942,12 @@ impl BanyanStore {
         );
         if cfg.enable_metrics {
             banyan.spawn_task(
-                "metrics",
+                "metrics".to_owned(),
                 crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), cfg.metrics_interval)?,
             );
         }
         banyan.spawn_task(
-            "prune_events",
+            "prune_events".to_owned(),
             crate::prune::prune(banyan.clone(), cfg.ephemeral_event_config),
         );
         Ok(banyan)
@@ -1502,7 +1512,7 @@ impl BanyanStore {
         self.lock().tree_stream(stream_id)
     }
 
-    pub fn spawn_task(&self, name: &'static str, task: impl Future<Output = ()> + Send + 'static) {
+    pub fn spawn_task(&self, name: String, task: impl Future<Output = ()> + Send + 'static) {
         self.lock().spawn_task(name, task)
     }
 

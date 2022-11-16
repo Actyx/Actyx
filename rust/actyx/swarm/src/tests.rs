@@ -181,7 +181,10 @@ async fn must_not_lose_events_through_compaction() -> Result<()> {
     const EVENTS: usize = 1000;
     let store = BanyanStore::test("compaction_max_tree").await?;
     // compact continuously
-    store.spawn_task("compaction", store.clone().compaction_loop(Duration::from_micros(0)));
+    store.spawn_task(
+        "compaction".to_owned(),
+        store.clone().compaction_loop(Duration::from_micros(0)),
+    );
 
     let tags_query =
         TagExprQuery::from_expr(&"'abc'".parse().unwrap()).unwrap()(true, store.node_id().stream(0.into()));
