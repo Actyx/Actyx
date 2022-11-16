@@ -1,4 +1,7 @@
-use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{formats::Result, AxCliCommand, ConsoleOpt},
+    node_connection::{request_single, Task},
+};
 use futures::{stream, Stream};
 use serde::Serialize;
 use structopt::StructOpt;
@@ -38,16 +41,23 @@ struct GetSettingsCommand {
 }
 
 pub async fn run(opts: GetOpt) -> Result<serde_json::Value> {
-    let mut conn = opts.console_opt.connect().await?;
-    match conn
-        .request(AdminRequest::SettingsGet {
-            no_defaults: opts.actual_opts.no_defaults,
-            scope: opts.actual_opts.scope,
-        })
-        .await
-    {
-        Ok(AdminResponse::SettingsGetResponse(resp)) => Ok(resp),
-        Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
-        Err(err) => Err(err),
-    }
+    let (mut conn, peer) = opts.console_opt.connect().await?;
+    request_single(
+        &mut conn,
+        move |tx| {
+            Task::Admin(
+                peer,
+                AdminRequest::SettingsGet {
+                    no_defaults: opts.actual_opts.no_defaults,
+                    scope: opts.actual_opts.scope,
+                },
+                tx,
+            )
+        },
+        |t| match t {
+            AdminResponse::SettingsGetResponse(resp) => Ok(resp),
+            r => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
+        },
+    )
+    .await
 }

@@ -1,6 +1,6 @@
 #[cfg(target_os = "linux")]
 fn main() {
-    use std::{convert::TryFrom, time::Duration};
+    use std::time::Duration;
 
     use actyx_sdk::{
         service::{EventMeta, EventResponse, EventService, SubscribeRequest, SubscribeResponse},

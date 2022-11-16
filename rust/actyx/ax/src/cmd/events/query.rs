@@ -1,18 +1,14 @@
-use crate::cmd::{AxCliCommand, ConsoleOpt};
-use actyx_sdk::{
-    service::{Diagnostic, EventResponse, Order, QueryRequest, Severity},
-    Payload,
+use crate::{
+    cmd::{AxCliCommand, ConsoleOpt},
+    node_connection::{request_events, EventDiagnostic},
 };
+use actyx_sdk::service::{Order, QueryRequest};
 use futures::{future::ready, Stream, StreamExt};
 use runtime::value::Value;
-use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read};
 use structopt::StructOpt;
 use util::{
-    formats::{
-        events_protocol::{EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
-    },
+    formats::{events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
     gen_stream::GenStream,
 };
 
@@ -24,13 +20,6 @@ pub struct QueryOpts {
     console_opt: ConsoleOpt,
     /// event API query (read from file if the argument starts with @)
     query: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum EventDiagnostic {
-    Event(EventResponse<Payload>),
-    Diagnostic(Diagnostic),
 }
 
 pub struct EventsQuery;
@@ -53,33 +42,21 @@ impl AxCliCommand for EventsQuery {
             } else {
                 opts.query
             };
-            let mut conn = opts.console_opt.connect().await?;
-            let mut s = conn
-                .request_events(EventsRequest::Query(QueryRequest {
+            let (mut conn, peer) = opts.console_opt.connect().await?;
+            let mut stream = request_events(
+                &mut conn,
+                peer,
+                EventsRequest::Query(QueryRequest {
                     lower_bound: None,
                     upper_bound: None,
                     query,
                     order: Order::Asc,
-                }))
-                .await?;
+                }),
+            )
+            .await?;
 
-            while let Some(x) = s.next().await {
-                match x {
-                    EventsResponse::Event(ev) => co.yield_(Ok(Some(EventDiagnostic::Event(ev)))).await,
-                    EventsResponse::Diagnostic(d) => match d.severity {
-                        Severity::Warning => co.yield_(Ok(Some(EventDiagnostic::Diagnostic(d)))).await,
-                        Severity::Error => {
-                            co.yield_(Err(ActyxOSError::new(ActyxOSCode::ERR_AQL_ERROR, d.message)))
-                                .await
-                        }
-                        Severity::FutureCompat => {}
-                    },
-                    EventsResponse::Error { message } => {
-                        co.yield_(Err(ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, message)))
-                            .await
-                    }
-                    _ => {}
-                }
+            while let Some(ev) = stream.next().await {
+                co.yield_(Ok(Some(ev?))).await;
             }
             Ok(None)
         })

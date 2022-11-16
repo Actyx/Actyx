@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react'
-import { NodeType, Node } from '../../common/types'
+import React, { useEffect, useState } from 'react'
+import { NodeType, UiNode } from '../../common/types'
 import { nodeAddrValid } from '../../common/util'
 import { Layout } from '../components/Layout'
 import { useAppState, AppActionKey } from '../app-state'
@@ -9,7 +9,35 @@ import { SolidStarIcon, UnsolidStarIcon } from '../components/icons'
 import { useStore } from '../store'
 import { StoreState } from '../store/types'
 
-const nodeToStatusText = (node: Node) => {
+const ErrorSpan: React.FC<{ error: string }> = ({ children, error }) => {
+  const [open, setOpen] = useState(false)
+  return (
+    <span onClick={() => setOpen(!open)}>
+      {children}
+      {open ? (
+        <p
+          style={{
+            position: 'absolute',
+            top: '1ex',
+            left: '1ex',
+            right: '1ex',
+            border: '1px solid #555',
+            backgroundColor: 'white',
+            overflowX: 'hidden',
+            whiteSpace: 'break-spaces',
+            zIndex: 2,
+          }}
+        >
+          {error}
+        </p>
+      ) : (
+        <></>
+      )}
+    </span>
+  )
+}
+
+const nodeToStatusText = (node: UiNode) => {
   switch (node.type) {
     case NodeType.Reachable: {
       if (node.details.swarmState === null) {
@@ -21,16 +49,22 @@ const nodeToStatusText = (node: Node) => {
     case NodeType.Unauthorized:
       return 'Not authorized'
     case NodeType.Unreachable:
+      return <ErrorSpan error={node.error}>Unreachable</ErrorSpan>
+    case NodeType.Fresh:
+      return 'Just added'
+    case NodeType.Disconnected:
       return 'Disconnected'
-    case NodeType.Loading:
-      return 'Loading'
+    case NodeType.Connecting:
+      return <ErrorSpan error={node.prevError || 'no error'}>Connecting</ErrorSpan>
+    case NodeType.Connected:
+      return 'Connected'
   }
 }
 
-const isFavorite = (store: StoreState, node: Node) =>
+const isFavorite = (store: StoreState, node: UiNode) =>
   store.key === 'Loaded' && store.data.preferences.favoriteNodeAddrs.includes(node.addr)
 
-const NodeCard: React.FC<{ node: Node; remove: () => void; view: () => void }> = ({
+const NodeCard: React.FC<{ node: UiNode; remove: () => void; view: () => void }> = ({
   node,
   remove,
   view,
@@ -84,8 +118,11 @@ const NodeCard: React.FC<{ node: Node; remove: () => void; view: () => void }> =
             'text-red-300':
               node.type === NodeType.Unauthorized || node.type === NodeType.Unreachable,
             'text-green-300': node.type === NodeType.Reachable && node.details.swarmState !== null,
-            'text-yellow-300': node.type === NodeType.Reachable && node.details.swarmState === null,
-            'text-gray-300': node.type === NodeType.Loading,
+            'text-yellow-300':
+              (node.type === NodeType.Reachable && node.details.swarmState === null) ||
+              node.type === NodeType.Disconnected ||
+              node.type === NodeType.Connecting,
+            'text-gray-300': node.type === NodeType.Fresh || node.type === NodeType.Connected,
           })}
         >
           {nodeToStatusText(node)}
@@ -93,6 +130,9 @@ const NodeCard: React.FC<{ node: Node; remove: () => void; view: () => void }> =
         {node.type === NodeType.Reachable && <span>&nbsp;{node.addr}</span>}
       </p>
       <p className="text-xl mt-0 font-medium truncate overflow-ellipsis">
+        {node.type === NodeType.Reachable && node.timeouts > 0 ? (
+          <span className="text-red-500">(⏰ {node.timeouts})&nbsp;</span>
+        ) : undefined}
         {node.type === NodeType.Reachable ? node.details.displayName : node.addr}
       </p>
       <div className="mt-6 flex">
@@ -101,7 +141,12 @@ const NodeCard: React.FC<{ node: Node; remove: () => void; view: () => void }> =
             Details
           </Button>
         )}
-        <Button color="gray" onClick={remove} disabled={isFavorite(store, node)}>
+        <Button
+          color="gray"
+          onClick={remove}
+          disabled={isFavorite(store, node)}
+          title={isFavorite(store, node) ? 'cannot remove starred node' : undefined}
+        >
           Remove
         </Button>
       </div>

@@ -1,15 +1,15 @@
-use crate::cmd::{AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{AxCliCommand, ConsoleOpt},
+    node_connection::{request_events, EventDiagnostic},
+};
 use actyx_sdk::{
-    service::{EventResponse, StartFrom, SubscribeMonotonicRequest},
-    OffsetMap, Payload,
+    service::{StartFrom, SubscribeMonotonicRequest},
+    OffsetMap,
 };
 use futures::{future::ready, Stream, StreamExt};
 use structopt::StructOpt;
 use util::{
-    formats::{
-        events_protocol::{EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult,
-    },
+    formats::{events_protocol::EventsRequest, ActyxOSResult},
     gen_stream::GenStream,
 };
 
@@ -26,27 +26,24 @@ pub struct SubscribeMonotonicOpts {
 pub struct EventsSubscribeMonotonic;
 impl AxCliCommand for EventsSubscribeMonotonic {
     type Opt = SubscribeMonotonicOpts;
-    type Output = EventResponse<Payload>;
+    type Output = EventDiagnostic;
 
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let ret = GenStream::new(move |co| async move {
-            let mut conn = opts.console_opt.connect().await?;
-            let mut s = conn
-                .request_events(EventsRequest::SubscribeMonotonic(SubscribeMonotonicRequest {
+            let (mut conn, peer) = opts.console_opt.connect().await?;
+            let mut s = request_events(
+                &mut conn,
+                peer,
+                EventsRequest::SubscribeMonotonic(SubscribeMonotonicRequest {
                     session: "".into(),
                     from: StartFrom::LowerBound(OffsetMap::default()),
                     query: opts.query,
-                }))
-                .await?;
+                }),
+            )
+            .await?;
 
-            while let Some(x) = s.next().await {
-                match x {
-                    EventsResponse::Event(ev) => co.yield_(Ok(Some(ev))).await,
-                    EventsResponse::Error { message } => {
-                        return Err(ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, message))
-                    }
-                    _ => {}
-                }
+            while let Some(ev) = s.next().await {
+                co.yield_(Ok(Some(ev?))).await;
             }
 
             Ok(None)

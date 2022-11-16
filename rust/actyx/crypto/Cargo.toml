@@ -1,8 +1,8 @@
 [package]
+edition = { workspace = true }
 name = "crypto"
 version = "0.1.0"
 authors = ["Actyx AG"]
-edition = "2018"
 
 [features]
 legacy = ["aes-stream", "rust-crypto"]

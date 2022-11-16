@@ -1,4 +1,4 @@
-import { Node, NodeType } from '../common/types'
+import { NodeType, UiNode } from '../common/types'
 
 const EventsStreamName = (nodeId: string) => `${nodeId}-0`
 
@@ -18,7 +18,7 @@ export type OffsetInfo = {
   highestKnown: HighestKnownOffsets
 }
 export const OffsetInfo = {
-  of: (nodes: Node[]): OffsetInfo => {
+  of: (nodes: UiNode[]): OffsetInfo => {
     const matrix: OffsetMatrix = {}
     const highestKnown: HighestKnownOffsets = {}
 

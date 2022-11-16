@@ -1,6 +1,9 @@
-use crate::cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt},
+    node_connection::{request_single, Task},
+};
 use actyx_sdk::service::OffsetsResponse;
-use futures::{stream, FutureExt, Stream, StreamExt};
+use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
 use std::collections::BTreeSet;
 use structopt::StructOpt;
@@ -23,22 +26,21 @@ impl AxCliCommand for EventsOffsets {
     type Output = OffsetsResponse;
 
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
-        let fut = async move {
-            let response = opts
-                .console_opt
-                .connect()
-                .await?
-                .request_events(EventsRequest::Offsets)
-                .await?
-                .next()
-                .await;
-            match response {
-                Some(EventsResponse::Offsets(o)) => Ok(o),
-                Some(x) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", x))),
-                None => Err(ActyxOSError::internal("stream closed without result".to_string())),
+        Box::new(stream::once(
+            async move {
+                let (mut conn, peer) = opts.console_opt.connect().await?;
+                request_single(
+                    &mut conn,
+                    move |tx| Task::Events(peer, EventsRequest::Offsets, tx),
+                    |response| match response {
+                        EventsResponse::Offsets(o) => Ok(o),
+                        x => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", x))),
+                    },
+                )
+                .await
             }
-        };
-        Box::new(stream::once(fut.boxed()))
+            .boxed(),
+        ))
     }
 
     fn pretty(result: Self::Output) -> String {

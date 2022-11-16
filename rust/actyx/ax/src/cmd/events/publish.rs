@@ -1,10 +1,13 @@
-use crate::cmd::{AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{AxCliCommand, ConsoleOpt},
+    node_connection::Task,
+};
 use actyx_sdk::{
     service::{PublishEvent, PublishRequest, PublishResponse},
     Payload, Tag, TagSet,
 };
 use chrono::{DateTime, Utc};
-use futures::{future::ready, Stream, StreamExt};
+use futures::{channel::mpsc::channel, future::ready, SinkExt, Stream, StreamExt};
 use genawaiter::sync::Co;
 use structopt::StructOpt;
 use util::{
@@ -40,15 +43,19 @@ impl AxCliCommand for EventsPublish {
                 let payload = Payload::from_json_value(opts.payload)
                     .map_err(|msg| ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, msg))?;
 
-                let mut conn = opts.console_opt.connect().await?;
-                let mut s = conn
-                    .request_events(EventsRequest::Publish(PublishRequest {
+                let (mut conn, peer) = opts.console_opt.connect().await?;
+                let (tx, mut rx) = channel(2);
+                conn.feed(Task::Events(
+                    peer,
+                    EventsRequest::Publish(PublishRequest {
                         data: vec![PublishEvent { tags, payload }],
-                    }))
-                    .await?;
+                    }),
+                    tx,
+                ))
+                .await?;
 
-                while let Some(x) = s.next().await {
-                    match x {
+                while let Some(msg) = rx.next().await {
+                    match msg? {
                         EventsResponse::Publish(res) => co.yield_(Ok(Some(res))).await,
                         EventsResponse::Error { message } => {
                             co.yield_(Err(ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, message)))

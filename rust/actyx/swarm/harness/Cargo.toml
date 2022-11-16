@@ -1,8 +1,8 @@
 [package]
+edition = { workspace = true }
 name = "swarm-harness"
 version = "0.1.0"
 authors = ["Actyx AG"]
-edition = "2018"
 
 [dependencies]
 actyx_sdk = { path = "../../../sdk", features = ["client", "arb", "with-tokio"] }

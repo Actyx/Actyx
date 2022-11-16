@@ -1,4 +1,7 @@
-use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{formats::Result, AxCliCommand, ConsoleOpt},
+    node_connection::{request_single, Task},
+};
 use anyhow::anyhow;
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
@@ -87,24 +90,32 @@ pub async fn run(opts: SetOpt) -> Result<Output> {
     let settings = load_yml(opts.actual_opts.input)?;
     info!("Parsed {:?}", settings);
     let scope = opts.actual_opts.scope.clone();
+    let scope2 = scope.clone();
     let json = serde_json::to_value(settings).ax_err_ctx(
         util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
         "cannot parse provided value",
     )?;
-    let mut conn = opts.console_opt.connect().await?;
-    match conn
-        .request(AdminRequest::SettingsSet {
-            scope: scope.clone(),
-            json,
-            ignore_errors: false,
-        })
-        .await
-    {
-        Ok(AdminResponse::SettingsSetResponse(settings)) => Ok(Output {
-            scope: super::print_scope(scope),
-            settings,
-        }),
-        Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
-        Err(err) => Err(err),
-    }
+    let (mut conn, peer) = opts.console_opt.connect().await?;
+    request_single(
+        &mut conn,
+        move |tx| {
+            Task::Admin(
+                peer,
+                AdminRequest::SettingsSet {
+                    scope,
+                    json,
+                    ignore_errors: false,
+                },
+                tx,
+            )
+        },
+        move |m| match m {
+            AdminResponse::SettingsSetResponse(settings) => Ok(Output {
+                scope: super::print_scope(scope2.clone()),
+                settings,
+            }),
+            r => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
+        },
+    )
+    .await
 }

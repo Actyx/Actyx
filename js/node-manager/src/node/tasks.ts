@@ -1,10 +1,12 @@
 import {
+  ConnectRequest,
+  ConnectResponse,
   CreateUserKeyPairRequest,
   CreateUserKeyPairResponse,
   GenerateSwarmKeyRequest,
   GenerateSwarmKeyResponse,
-  GetNodesDetailsRequest,
-  GetNodesDetailsResponse,
+  GetNodeDetailsRequest,
+  GetNodeDetailsResponse,
   Node,
   QueryRequest,
   QueryResponse,
@@ -27,12 +29,14 @@ const runAndDecode = <T>(
     task(JSON.stringify(payload), (err, resp) => {
       if (err) {
         reject(err)
+        return
       }
       let obj: object = {}
       try {
         obj = JSON.parse(resp)
       } catch (error) {
         reject(`error parsing JSON response ${error}`)
+        return
       }
 
       const decoded = decoder.decode(obj)
@@ -56,13 +60,11 @@ const runWithoutResult = (task: native.AsyncTask, payload: object): Promise<void
     })
   })
 
-const getNodeDetails = (addr: string, timeout: number | null): Promise<Node> =>
-  runAndDecode(native.getNodeDetails, { addr, timeout }, Node)
+export const connect = (req: ConnectRequest): Promise<ConnectResponse> =>
+  runAndDecode(native.connect, req, ConnectResponse)
 
-export const getNodesDetails = async (
-  reqs: GetNodesDetailsRequest,
-): Promise<GetNodesDetailsResponse> =>
-  Promise.all(reqs.addrs.map((addr) => getNodeDetails(addr, reqs.timeout)))
+export const getNodeDetails = (req: GetNodeDetailsRequest): Promise<GetNodeDetailsResponse> =>
+  runAndDecode(native.getNodeDetails, req, GetNodeDetailsResponse)
 
 export const setSettings = (req: SetSettingsRequest): Promise<void> =>
   runWithoutResult(native.setSettings, req)

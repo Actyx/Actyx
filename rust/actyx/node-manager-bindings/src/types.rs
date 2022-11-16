@@ -26,13 +26,13 @@ pub struct ConnectedNodeDetails {
 #[allow(clippy::enum_variant_names, clippy::large_enum_variant)]
 pub enum Node {
     ReachableNode {
-        addr: String,
+        peer: String,
         details: ConnectedNodeDetails,
     },
     UnauthorizedNode {
-        addr: String,
+        peer: String,
     },
-    UnreachableNode {
-        addr: String,
+    DisconnectedNode {
+        peer: String,
     },
 }

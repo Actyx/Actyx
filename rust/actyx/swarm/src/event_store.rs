@@ -222,7 +222,6 @@ impl EventStore {
 }
 
 fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> {
-    use std::convert::TryFrom;
     let min = u64::try_from(selection.from_exclusive - OffsetOrMin::MIN).expect("negative value");
     let max = u64::try_from(selection.to_inclusive - OffsetOrMin::ZERO).expect("negative value");
     min..=max

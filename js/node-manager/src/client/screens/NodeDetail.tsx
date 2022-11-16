@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { NodeType, ReachableNode as ReachableNodeT } from '../../common/types'
+import { Connection, NodeType, Peer, ReachableNodeUi as ReachableNodeT } from '../../common/types'
 import { Layout } from '../components/Layout'
 import { useAppState, AppActionKey } from '../app-state'
 import { Error } from '../components/Error'
@@ -7,7 +7,6 @@ import { SimpleCanvas } from '../components/SimpleCanvas'
 import { Button, Tabs } from '../components/basics'
 import { SettingsEditor } from '../components/SettingsEditor'
 import clsx from 'clsx'
-import { string } from 'fp-ts'
 
 const removePeerIdFromPeerAddr = (addr: string): string => {
   const parts = addr.split('/')
@@ -19,111 +18,157 @@ const removePeerIdFromPeerAddr = (addr: string): string => {
 }
 
 const Peers_Peer: React.FC<{
+  displayName: string
   peerId: string
-  connectedAddr?: string
+  ping: React.ReactNode
+  since: string
+  connectedAddrs: string[]
   disconnectedAddrs: string[]
-  showAddresses: boolean
-}> = ({ peerId, connectedAddr, disconnectedAddrs, showAddresses }) => {
-  const isConnected = !!connectedAddr
-  const allAddresses = disconnectedAddrs.concat(connectedAddr ? [connectedAddr] : [])
+  issues: string[]
+}> = ({ displayName, peerId, ping, since, connectedAddrs, disconnectedAddrs, issues }) => {
+  const isConnected = connectedAddrs.length > 0
+  const [show, setShow] = useState(false)
 
   return (
-    <p
-      className={clsx('text-sm text-gray-500', {
-        'pb-1': showAddresses,
-      })}
-    >
-      {!connectedAddr && <span className="font-medium text-red-300">Disconnected</span>}
-      {connectedAddr && <span className="font-medium text-green-300">Connected</span>} node{' '}
-      <code className="text-black">{peerId}</code> with {allAddresses.length} known address
-      {allAddresses.length > 1 ? 'es' : ''}
-      {showAddresses ? ':' : ''}
-      {showAddresses && (
-        <ul className="list-disc pl-5">
-          {connectedAddr && (
-            <li>
-              <code className="text-black">{removePeerIdFromPeerAddr(connectedAddr)}</code>{' '}
-              <span className="italic">(currently connected via this address)</span>
-            </li>
-          )}
-          {disconnectedAddrs.map((addr, ix) => (
-            <li key={`${peerId}-disconnected-addr-${ix}`}>
-              <code>{removePeerIdFromPeerAddr(addr)}</code>
-            </li>
-          ))}
-        </ul>
+    <div className="w-full p-4 rounded bg-gray-100" onClick={() => setShow(!show)}>
+      <p
+        className={clsx(
+          'text-xl mt-0 font-medium',
+          isConnected ? 'text-green-500' : 'text-red-500',
+        )}
+      >
+        <span style={{ width: '1.5rem', display: 'inline-block' }}>{show ? '▼' : '►'}</span>
+        {displayName}
+      </p>
+      <p>
+        <code title={`PeerID: ${peerId}`}>{peerId.substring(0, 10)}…</code>
+        {ping}
+        <span className="text-blue-300">{since}</span>
+      </p>
+      {show && (
+        <>
+          <p>Swarm addresses:</p>
+          <ul className="list-disc list-inside">
+            {...connectedAddrs.map((addr) => (
+              <li className="text-green-500" key={addr}>
+                <code>{addr}</code>
+              </li>
+            ))}
+            {...disconnectedAddrs.map((addr) => (
+              <li key={addr}>
+                <code>{addr}</code>
+              </li>
+            ))}
+          </ul>
+          <p>Recent connection issues</p>
+          <ul className="list-disc list-inside">
+            {...issues.map((issue) => (
+              <li key={issue}>
+                <code className="text-sm">{issue}</code>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
-    </p>
+    </div>
   )
 }
 
 const Peers: React.FC<{ node: ReachableNodeT }> = ({ node }) => {
-  const [showConnectedAddresses, setConnectedShowAddresses] = useState(true)
-  const [showDisconnectedAddresses, setDisconnectedShowAddresses] = useState(false)
   if (node.details.swarmState === null) {
     return <p className="text-yellow-500">Please wait for complete node startup...</p>
   }
-  const { knownPeers, connections: connectedPeers } = node.details.swarmState
-  const disconnectedPeers = knownPeers.filter(
-    ({ peerId }) => !connectedPeers.find((p) => p.peerId === peerId),
-  )
+
+  const { knownPeers, connections } = node.details.swarmState
+  const formatMicros = (n: number) => (n >= 10000 ? `${Math.round(n / 1000)}ms` : `${n}µs`)
+  const ping = (peer: Peer) => {
+    const stats = peer.pingStats
+    if (!stats) {
+      return (
+        <span>
+          <i>no ping stats</i>
+        </span>
+      )
+    }
+    return (
+      <code
+        className={clsx(
+          'px-8',
+          stats.failureRate > 9999 || stats.decay3 > 1000000 // 1% or 1s
+            ? 'text-red-500'
+            : stats.failureRate > 999 || stats.decay3 > 10000 // 0.1% or 10ms
+            ? 'text-yellow-500'
+            : 'text-green-500',
+        )}
+      >
+        ping {formatMicros(stats.current)} with{' '}
+        {(stats.failureRate / 1000000).toLocaleString(undefined, {
+          maximumFractionDigits: 1,
+          style: 'percent',
+        })}{' '}
+        loss
+      </code>
+    )
+  }
+  const since = (peer: Peer) => {
+    const conns = connections.map((c) => (c.peerId === peer.peerId ? c.since : 'A'))
+    conns.sort()
+    const since = conns.shift()
+    if (since === undefined || since === 'A') return ''
+    const date = Date.parse(since)
+    let diff = Date.now() - date
+    let ret = ''
+    if (diff >= 86400000) {
+      const days = Math.floor(diff / 86400000)
+      ret += ` ${days}d`
+      diff -= days * 86400000
+    }
+    if (diff >= 3600000) {
+      const hours = Math.floor(diff / 3600000)
+      ret += ` ${hours}h`
+      diff -= hours * 3600000
+    }
+    if (diff >= 60000) {
+      const minutes = Math.floor(diff / 60000)
+      ret += ` ${minutes}m`
+      diff -= minutes * 60000
+    }
+    if (diff >= 1000) {
+      const seconds = Math.floor(diff / 1000)
+      ret += ` ${seconds}s`
+    }
+    return ret
+  }
+  const connected = (peer: Peer) => {
+    const c = Object.keys(
+      connections.reduce((acc: Record<string, null>, conn) => {
+        if (conn.peerId === peer.peerId) acc[conn.addr] = null
+        return acc
+      }, {}),
+    )
+    c.sort()
+    return c.map((conn) => (peer.addrs.includes(conn) ? conn : conn + ' (NAT)'))
+  }
+  const disconnected = (peer: Peer) => {
+    const c = peer.addrs.filter((addr) =>
+      connections.every((conn) => conn.peerId !== peer.peerId || conn.addr !== addr),
+    )
+    c.sort()
+    return c
+  }
+
   return (
-    <div className="">
-      <p className="pb-2">
-        Node connected to {connectedPeers.length} peers
-        {connectedPeers.length > 0 && (
-          <>
-            {' '}
-            (
-            <span
-              className="text-sm underline text-blue-500 cursor-pointer pb-2"
-              onClick={() => setConnectedShowAddresses((curr) => !curr)}
-            >
-              {showConnectedAddresses ? 'hide' : 'show'} addresses
-            </span>
-            )
-          </>
-        )}
-        {connectedPeers.length > 0 ? ':' : '.'}
-      </p>
-      {connectedPeers.map(({ peerId, addr: connectedAddr }) => {
-        const knownPeer = knownPeers.find((p) => p.peerId === peerId)
-        const disconnectedAddrs = !knownPeer
-          ? []
-          : knownPeer.addrs.filter((a) => a !== connectedAddr)
-        return (
-          <Peers_Peer
-            key={`connected-${peerId}`}
-            peerId={peerId}
-            disconnectedAddrs={disconnectedAddrs}
-            connectedAddr={connectedAddr}
-            showAddresses={showConnectedAddresses}
-          />
-        )
-      })}
-      <p className="pt-4 pb-2">
-        Node not connected to {disconnectedPeers.length} known peers
-        {disconnectedPeers.length > 0 && (
-          <>
-            {' '}
-            (
-            <span
-              className="text-sm underline text-blue-500 cursor-pointer pb-2"
-              onClick={() => setDisconnectedShowAddresses((curr) => !curr)}
-            >
-              {showDisconnectedAddresses ? 'hide' : 'show'} addresses
-            </span>
-            )
-          </>
-        )}
-        {disconnectedPeers.length > 0 ? ':' : '.'}
-      </p>
-      {disconnectedPeers.map(({ peerId, addrs }) => (
+    <div>
+      {...knownPeers.map((p) => (
         <Peers_Peer
-          key={`disconnected-${peerId}`}
-          peerId={peerId}
-          disconnectedAddrs={addrs}
-          showAddresses={showDisconnectedAddresses}
+          key={p.peerId}
+          peerId={p.peerId}
+          displayName={p.info?.agentVersion || p.peerId}
+          ping={ping(p)}
+          since={since(p)}
+          connectedAddrs={connected(p)}
+          disconnectedAddrs={disconnected(p)}
+          issues={p.failures?.map((f) => `[${f.time}] ${f.addr}: ${f.display}`) || []}
         />
       ))}
     </div>

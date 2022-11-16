@@ -17,9 +17,36 @@ export type StoreData = io.TypeOf<typeof StoreData>
 
 // Basics
 
+export const PeerInfo = io.type({
+  protocolVersion: io.union([io.null, io.string]),
+  agentVersion: io.union([io.null, io.string]),
+  protocols: io.array(io.string),
+  listeners: io.array(io.string),
+})
+
+export const Failure = io.type({
+  addr: io.string,
+  time: io.string,
+  display: io.string,
+  details: io.string,
+})
+
+export const PingStats = io.type({
+  current: io.Int,
+  decay3: io.Int,
+  decay10: io.Int,
+  failures: io.Int,
+  failureRate: io.Int,
+})
+
 export const Peer = io.type({
   peerId: io.string,
   addrs: io.array(io.string),
+  info: io.union([io.undefined, PeerInfo]),
+  addrSource: io.union([io.undefined, io.array(io.string)]),
+  addrSince: io.union([io.undefined, io.array(io.string)]),
+  failures: io.union([io.undefined, io.array(Failure)]),
+  pingStats: io.union([io.undefined, io.null, PingStats]),
 })
 
 export type Peer = io.TypeOf<typeof Peer>
@@ -27,6 +54,8 @@ export type Peer = io.TypeOf<typeof Peer>
 export const Connection = io.type({
   peerId: io.string,
   addr: io.string,
+  since: io.union([io.undefined, io.string]),
+  outbound: io.union([io.undefined, io.boolean]),
 })
 
 export type Connection = io.TypeOf<typeof Connection>
@@ -52,12 +81,15 @@ export const enum NodeType {
   Reachable = 'reachableNode',
   Unauthorized = 'unauthorizedNode',
   Unreachable = 'unreachableNode',
-  Loading = 'loading',
+  Fresh = 'fresh',
+  Disconnected = 'disconnectedNode',
+  Connecting = 'connecting',
+  Connected = 'connected',
 }
 
 export const ReachableNode = io.type({
   type: io.literal(NodeType.Reachable),
-  addr: io.string,
+  peer: io.string,
   details: io.type({
     addrs: io.union([io.null, io.string]),
     nodeId: io.string,
@@ -72,63 +104,80 @@ export const ReachableNode = io.type({
   }),
 })
 export type ReachableNode = io.TypeOf<typeof ReachableNode>
+export type ReachableNodeUi = ReachableNode & { addr: string; timeouts: number }
+
 const UnauthorizedNode = io.type({
   type: io.literal(NodeType.Unauthorized),
-  addr: io.string,
+  peer: io.string,
 })
-const UnreachableNode = io.type({
-  type: io.literal(NodeType.Unreachable),
-  addr: io.string,
+type UnauthorizedNode = io.TypeOf<typeof UnauthorizedNode>
+const DisconnectedNode = io.type({
+  type: io.literal(NodeType.Disconnected),
+  peer: io.string,
 })
-const LoadingNode = io.type({
-  type: io.literal(NodeType.Loading),
-  addr: io.string,
-})
+type DisconnectedNode = io.TypeOf<typeof DisconnectedNode>
 
-export const Node = io.union([ReachableNode, UnauthorizedNode, UnreachableNode, LoadingNode])
+export const Node = io.union([ReachableNode, UnauthorizedNode, DisconnectedNode])
 export type Node = io.TypeOf<typeof Node>
 
+type UnreachableNode = {
+  type: NodeType.Unreachable
+  addr: string
+  error: string
+}
+type LoadingNode = {
+  type: NodeType.Fresh
+  addr: string
+}
+type ConnectingNode = {
+  type: NodeType.Connecting
+  addr: string
+  prevError: string | null
+}
+type ConnectedNode = {
+  type: NodeType.Connected
+  addr: string
+  peer: string
+}
+
+export type UiNode =
+  | ReachableNodeUi
+  | ((UnauthorizedNode | DisconnectedNode) & { addr: string })
+  | UnreachableNode
+  | LoadingNode
+  | ConnectingNode
+  | ConnectedNode
+
 // Helpers
-const RequestWithAddr = io.type({ addr: io.string })
 const EmptyRequest = io.type({})
 const Void = io.void
 
+// connect to a node
+export const ConnectRequest = io.type({
+  addr: io.string,
+  timeout: io.union([io.null, io.number]),
+})
+export type ConnectRequest = io.TypeOf<typeof ConnectRequest>
+export const ConnectResponse = io.type({
+  peer: io.string,
+})
+export type ConnectResponse = io.TypeOf<typeof ConnectResponse>
+
 // Get node details
 export const GetNodeDetailsRequest = io.type({
-  addr: io.string,
+  peer: io.string,
   timeout: io.union([io.null, io.number]),
 })
 export type GetNodeDetailsRequest = io.TypeOf<typeof GetNodeDetailsRequest>
 
-export const GetNodeDetailsResponse = io.array(Node)
+export const GetNodeDetailsResponse = Node
 export type GetNodeDetailsResponse = io.TypeOf<typeof GetNodeDetailsResponse>
 
-// Get nodes details
-export const GetNodesDetailsRequest = io.type({
-  addrs: io.array(io.string),
-  timeout: io.union([io.null, io.number]),
-})
-export type GetNodesDetailsRequest = io.TypeOf<typeof GetNodesDetailsRequest>
-
-export const GetNodesDetailsResponse = io.array(Node)
-export type GetNodesDetailsResponse = io.TypeOf<typeof GetNodesDetailsResponse>
-
-// Get node settings
-export const GetSettingsRequest = RequestWithAddr
-export type GetSettingsRequest = io.TypeOf<typeof GetSettingsRequest>
-
-export const GetSettingsResponse = io.type({
+// Set node settings
+export const SetSettingsRequest = io.type({
+  peer: io.string,
   settings: io.unknown,
 })
-export type GetSettingsResponse = io.TypeOf<typeof GetSettingsResponse>
-
-// Set node settings
-export const SetSettingsRequest = io.intersection([
-  RequestWithAddr,
-  io.type({
-    settings: io.unknown,
-  }),
-])
 export type SetSettingsRequest = io.TypeOf<typeof SetSettingsRequest>
 
 export const SetSettingsResponse = Void
@@ -164,11 +213,18 @@ export const SignAppManifestRequest = io.type({
 
 export type SignAppManifestRequest = io.TypeOf<typeof SignAppManifestRequest>
 
-export const SignAppManifestResponse = io.type({})
+export const SignAppManifestResponse = io.type({
+  appId: io.string,
+  displayName: io.string,
+  version: io.string,
+  signature: io.string,
+})
 export type SignAppManifestResponse = io.TypeOf<typeof SignAppManifestResponse>
 
 // Shutdown node
-export const ShutdownNodeRequest = RequestWithAddr
+export const ShutdownNodeRequest = io.type({
+  peer: io.string,
+})
 export type ShutdownNodeRequest = io.TypeOf<typeof ShutdownNodeRequest>
 
 export const ShutdownNodeResponse = Void
@@ -199,7 +255,7 @@ export const EventDiagnostic = io.union([EventResponse, Diagnostic])
 export type EventDiagnostic = io.TypeOf<typeof EventDiagnostic>
 
 export const QueryRequest = io.type({
-  addr: io.string,
+  peer: io.string,
   query: io.string,
 })
 export type QueryRequest = io.TypeOf<typeof QueryRequest>

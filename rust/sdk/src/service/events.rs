@@ -11,6 +11,7 @@ use crate::{
     tags::TagSet,
     LamportTimestamp, Offset, OffsetMap, Payload, Timestamp,
 };
+use derive_more::Display;
 use lazy_static::lazy_static;
 
 /// The order in which you want to receive events for a query
@@ -458,8 +459,9 @@ pub enum SubscribeResponse {
     FutureCompat,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Display)]
 #[serde(rename_all = "camelCase")]
+#[display(fmt = "{:?} - {}", severity, message)]
 pub struct Diagnostic {
     pub severity: Severity,
     pub message: String,

@@ -8,25 +8,28 @@ import {
   RPC_SignAppManifest,
   RPC_CreateUserKeyPair,
   RPC_GenerateSwarmKey,
-  RPC_GetNodesDetails,
+  RPC_GetNodeDetails,
   RPC_SetSettings,
   RPC_ShutdownNode,
   RPC_Query,
+  RPC_Connect,
 } from '../common/ipc'
 import { readStore, writeStore, storePath } from './store'
 import {
   createUserKeyPair,
   generateSwarmKey,
-  getNodesDetails,
+  getNodeDetails,
   setSettings,
   signAppManifest,
   shutdownNode,
   query,
+  connect,
 } from './tasks'
 import { isLeft, left, right } from 'fp-ts/lib/Either'
 import { ioErrToStr, safeErrorToStr } from '../common/util'
 import { FileFilter } from 'electron/main'
 import { isDev } from './util'
+import { onDisconnect } from './native'
 
 export const triggerFatalError = (browserWindow: BrowserWindow, error: FatalError) => {
   console.log(`triggering fatal error: ${JSON.stringify(error)}`)
@@ -43,7 +46,7 @@ const setupRpc = <Req, Resp>(
   rpc: RPC<Req, Resp>,
   action: (req: Req) => Promise<Resp>,
 ): void => {
-  ipcMain.on(rpc.ipcCode, async (event, arg) => {
+  ipcMain.handle(rpc.ipcCode, async (event, arg) => {
     const req = rpc.request.decode(arg)
     if (isLeft(req)) {
       triggerFatalError(window, {
@@ -54,12 +57,11 @@ const setupRpc = <Req, Resp>(
     }
     try {
       const resp = await action(req.right)
-      event.reply(rpc.ipcCode, right(rpc.response.encode(resp)))
+      return right(rpc.response.encode(resp))
     } catch (error) {
       // This is a bit of a hack
       const safeError = safeErrorToStr(error)
-      console.log(`safeError:`)
-      console.log(safeError)
+      console.log(`safeError:`, safeError)
       if (
         safeError.includes('ERR_USER_UNAUTHENTICATED') &&
         safeError.includes('Unable to authenticate with node since no user keys found in')
@@ -69,7 +71,7 @@ const setupRpc = <Req, Resp>(
         const err: FatalError = {
           shortMessage: safeError,
         }
-        event.reply(rpc.ipcCode, left(err))
+        return left(err)
       }
       return
     }
@@ -77,13 +79,19 @@ const setupRpc = <Req, Resp>(
 }
 
 export const setupIpc = (app: App, browserWindow: BrowserWindow) => {
-  setupRpc(browserWindow, RPC_GetNodesDetails, getNodesDetails)
+  setupRpc(browserWindow, RPC_GetNodeDetails, getNodeDetails)
   setupRpc(browserWindow, RPC_SetSettings, setSettings)
   setupRpc(browserWindow, RPC_CreateUserKeyPair, createUserKeyPair)
   setupRpc(browserWindow, RPC_GenerateSwarmKey, generateSwarmKey)
   setupRpc(browserWindow, RPC_SignAppManifest, signAppManifest)
   setupRpc(browserWindow, RPC_ShutdownNode, shutdownNode)
   setupRpc(browserWindow, RPC_Query, query)
+  setupRpc(browserWindow, RPC_Connect, connect)
+
+  onDisconnect((peer) => {
+    console.log(`peer ${peer} disconnected`)
+    browserWindow.webContents.send('onDisconnect', peer)
+  })
 
   ipcMain.on(IpcFromClient.SelectFolder, async (event, arg) => {
     console.log(`[ipc] got request ${IpcFromClient.SelectFolder}`)

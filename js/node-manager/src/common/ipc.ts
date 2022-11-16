@@ -1,13 +1,15 @@
 import * as io from 'io-ts'
 import {
+  ConnectRequest,
+  ConnectResponse,
   SignAppManifestRequest,
   SignAppManifestResponse,
   CreateUserKeyPairRequest,
   CreateUserKeyPairResponse,
   GenerateSwarmKeyRequest,
   GenerateSwarmKeyResponse,
-  GetNodesDetailsResponse,
-  GetNodesDetailsRequest,
+  GetNodeDetailsResponse,
+  GetNodeDetailsRequest,
   SetSettingsRequest,
   SetSettingsResponse,
   ShutdownNodeRequest,
@@ -22,7 +24,6 @@ export const enum IpcFromClient {
   Shutdown = 'shutdown',
   ToggleDevTools = 'toggle-dev-tools',
   LoadStore = 'load-store',
-  GetNodesDetails = 'get-nodes-details',
   GetIsDev = 'get-is-dev',
 }
 
@@ -59,10 +60,12 @@ const mkRPC = <Req, Resp>(
   response,
 })
 
-export const RPC_GetNodesDetails = mkRPC(
-  'GetNodesDetails',
-  GetNodesDetailsRequest,
-  GetNodesDetailsResponse,
+export const RPC_Connect = mkRPC('Connect', ConnectRequest, ConnectResponse)
+
+export const RPC_GetNodeDetails = mkRPC(
+  'GetNodeDetails',
+  GetNodeDetailsRequest,
+  GetNodeDetailsResponse,
 )
 
 export const RPC_SetSettings = mkRPC('SetSettings', SetSettingsRequest, SetSettingsResponse)

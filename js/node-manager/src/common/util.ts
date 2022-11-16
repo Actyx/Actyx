@@ -27,7 +27,7 @@ export const safeErrorToStr = (err: unknown): string => {
       }
     }
   }
-  return JSON.stringify(err, (_, v) => (typeof v === 'function' ? '<func>' : v))
+  return JSON.stringify(err, (_, v) => (typeof v === 'function' ? '<func>' : v)) + err
 }
 
 export const isValidMultiAddr = (str: string): boolean => {

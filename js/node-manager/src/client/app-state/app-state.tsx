@@ -4,11 +4,12 @@ import {
   signAppManifest,
   createUserKeyPair,
   generateSwarmKey,
-  getNodesDetails,
+  getNodeDetails,
   setSettings,
   waitForNoUserKeysFound,
   shutdownNode,
   query,
+  connect,
 } from '../util'
 import {
   CreateUserKeyPairResponse,
@@ -17,6 +18,7 @@ import {
   GenerateSwarmKeyResponse,
   SignAppManifestResponse,
   QueryResponse,
+  UiNode,
 } from '../../common/types'
 import { AppState, AppAction, AppStateKey, AppActionKey } from './types'
 import { useAnalytics } from '../analytics'
@@ -29,8 +31,12 @@ import { none, Option, some } from 'fp-ts/lib/Option'
 import { useStore } from '../store'
 import { StoreStateKey } from '../store/types'
 import { DEFAULT_TIMEOUT_SEC } from 'common/consts'
+import { ipcRenderer } from 'electron'
 
 const POLLING_INTERVAL_MS = 1_000
+const DEFER_UPDATE_AFTER_CHANGE_MS = 200
+// the below MUST be less than the above
+const DEFER_CONNECTING_STATE_MS = 150
 
 export const reducer =
   (analytics: AnalyticsActions | undefined) =>
@@ -100,8 +106,13 @@ export const reducer =
   }
 
 interface Data {
-  nodes: Node[]
+  nodes: UiNode[]
   offsets: Option<OffsetInfo>
+}
+
+const getPeer = (addr: string, data: Data) => {
+  const n = data.nodes.find((n) => n.addr === addr)
+  return n && 'peer' in n ? n.peer : undefined
 }
 
 interface Actions {
@@ -140,7 +151,10 @@ export const AppStateProvider: React.FC<{
   const [state, dispatch] = useReducer(reducer(analytics), {
     key: AppStateKey.Overview,
   })
-  const [data, setData] = useState<Data>({ nodes: [], offsets: none })
+  const [data, setData] = useState<Data>({
+    nodes: [],
+    offsets: none,
+  })
 
   const actions: Actions = {
     // Wrap addNodes and add the node as loading as soon as the request
@@ -149,18 +163,15 @@ export const AppStateProvider: React.FC<{
       setData((current) => {
         if (analytics) {
           addrs.forEach((addr) => {
-            if (current.nodes.find((node) => node.addr !== addr)) {
-              analytics.addedNode()
-            }
+            analytics.addedNode()
           })
         }
         return {
           ...current,
           nodes: current.nodes.concat(
             addrs.map((addr) => ({
-              type: NodeType.Loading,
+              type: NodeType.Fresh,
               addr,
-              offsets: null,
             })),
           ),
         }
@@ -181,13 +192,19 @@ export const AppStateProvider: React.FC<{
       if (analytics) {
         analytics.setSettings()
       }
-      return setSettings({ addr, settings })
+      const peer = getPeer(addr, data)
+      return peer === undefined
+        ? Promise.reject(`not connected to ${addr}`)
+        : setSettings({ peer, settings })
     },
     shutdownNode: (addr) => {
       if (analytics) {
         analytics.shutdownNode()
       }
-      return shutdownNode({ addr })
+      const peer = getPeer(addr, data)
+      return peer === undefined
+        ? Promise.reject(`not connected to ${addr}`)
+        : shutdownNode({ peer })
     },
     createUserKeyPair: (privateKeyPath) => {
       if (analytics) {
@@ -210,13 +227,32 @@ export const AppStateProvider: React.FC<{
         pathToCertificate,
       })
     },
-    query: (args) => {
+    query: ({ addr, query: q }) => {
       if (analytics) {
-        analytics.queriedEvents(args.query)
+        analytics.queriedEvents(q)
       }
-      return query(args)
+      const peer = getPeer(addr, data)
+      return peer === undefined
+        ? Promise.reject(`not connected to ${addr}`)
+        : query({ peer, query: q })
     },
   }
+
+  useEffect(() => {
+    ipcRenderer.on('onDisconnect', (event, peer) => {
+      console.log('onDisconnect', event, peer)
+      setData((current) => {
+        return {
+          ...current,
+          nodes: current.nodes.map((n) =>
+            'peer' in n && n.peer === peer
+              ? { type: NodeType.Disconnected, peer, addr: n.addr }
+              : n,
+          ),
+        }
+      })
+    })
+  }, [])
 
   useEffect(() => {
     ;(async () => {
@@ -238,23 +274,92 @@ export const AppStateProvider: React.FC<{
     const getDetailsAndUpdate = async () => {
       console.log('getting node information')
       try {
-        const nodes = await getNodesDetails({
-          addrs: data.nodes.map((n) => n.addr),
-          timeout: getTimeoutSec,
-        })
-        const offsetsInfo = OffsetInfo.of(data.nodes)
-        if (!unmounted) {
-          if (!deepEqual(data.nodes, nodes) || !deepEqual(data.offsets, some(offsetsInfo))) {
-            console.log(`+++ updating app-state/nodes +++`)
-            setData({
-              ...data,
-              offsets: some(offsetsInfo),
-              nodes: data.nodes
-                .filter((n) => !nodes.map((n) => n.addr).includes(n.addr))
-                .concat(nodes.filter((n) => data.nodes.map((n) => n.addr).includes(n.addr)))
-                .sort((n1, n2) => n1.addr.localeCompare(n2.addr)),
-            })
+        data.nodes.forEach((n) => {
+          switch (n.type) {
+            case NodeType.Disconnected:
+            case NodeType.Fresh:
+            case NodeType.Unreachable: {
+              const addr = n.addr
+              console.log('connecting to', addr)
+
+              // defer setting `connecting` to avoid flickering when it fails fast
+              const prevError = n.type === NodeType.Unreachable ? n.error : null
+              const setter = setTimeout(() => {
+                console.log('setting connecting status', addr)
+                setData((current) => ({
+                  ...current,
+                  nodes: current.nodes.map((n) =>
+                    n.addr === addr ? { type: NodeType.Connecting, addr, prevError } : n,
+                  ),
+                }))
+              }, DEFER_CONNECTING_STATE_MS)
+
+              connect({ addr, timeout: getTimeoutSec })
+                .then(({ peer }) => {
+                  console.log('connected to', addr, peer)
+                  clearTimeout(setter)
+                  setData((current) => ({
+                    ...current,
+                    nodes: current.nodes.map((n) =>
+                      n.addr === addr ? { type: NodeType.Connected, addr, peer } : n,
+                    ),
+                  }))
+                })
+                .catch((err) => {
+                  console.log('connect error', addr, err)
+                  clearTimeout(setter)
+                  const idx = data.nodes.findIndex((n) => n.addr === addr)
+                  if (idx >= 0) {
+                    const node = data.nodes[idx]
+                    const error = safeErrorToStr(err)
+                    // do not update state without need, to avoid causing too quick retries
+                    if (node.type !== NodeType.Unreachable || node.error !== error) {
+                      setData((current) => {
+                        const nodes = current.nodes.slice()
+                        console.log('overwriting', nodes[idx])
+                        nodes[idx] = { type: NodeType.Unreachable, addr, error }
+                        return { ...current, nodes }
+                      })
+                    }
+                  }
+                })
+            }
           }
+        })
+
+        const nodeInfos = await Promise.all(
+          data.nodes.reduce((acc: Promise<UiNode>[], n) => {
+            if ('peer' in n && n.type !== NodeType.Disconnected) {
+              acc.push(
+                getNodeDetails({ peer: n.peer, timeout: getTimeoutSec })
+                  .then((res) => ({
+                    ...res,
+                    timeouts: 0,
+                    addr: n.addr,
+                  }))
+                  .catch(() => ({
+                    ...n,
+                    timeouts: n.type === NodeType.Reachable ? n.timeouts + 1 : 0,
+                  })),
+              )
+            }
+            return acc
+          }, []),
+        )
+
+        const offsetsInfo = OffsetInfo.of(nodeInfos)
+        const nodes = data.nodes
+          .filter((n) => nodeInfos.every((n2) => n.addr !== n2.addr)) // the ones that didn’t get retrieved
+          .concat(nodeInfos.filter((n) => data.nodes.some((n2) => n.addr === n2.addr))) // cull the removed ones
+          .sort((n1, n2) => n1.addr.localeCompare(n2.addr))
+        if (!deepEqual(data.nodes, nodes) || !deepEqual(data.offsets, some(offsetsInfo))) {
+          console.log(`+++ updating app-state/nodes +++`)
+          setData({
+            offsets: some(offsetsInfo),
+            nodes,
+          })
+        }
+        if (!unmounted) {
           timeout = setTimeout(() => {
             getDetailsAndUpdate()
           }, POLLING_INTERVAL_MS)
@@ -269,7 +374,7 @@ export const AppStateProvider: React.FC<{
     }
 
     if (state.key !== 'SetupUserKey') {
-      timeout = setTimeout(getDetailsAndUpdate, POLLING_INTERVAL_MS)
+      timeout = setTimeout(getDetailsAndUpdate, DEFER_UPDATE_AFTER_CHANGE_MS)
     }
 
     return () => {

@@ -1,8 +1,8 @@
 [package]
+edition = { workspace = true }
 name = "certs"
 version = "0.1.0"
 authors = ["Actyx AG"]
-edition = "2018"
 
 [dependencies]
 crypto = { path = "../crypto" }

@@ -1,38 +1,50 @@
-use derive_more::{Add, Deref, Display, Sub};
+use crate::{Codec, SequenceNo};
 use futures::{
     future::BoxFuture,
     io::{AsyncRead, AsyncWrite, AsyncWriteExt},
 };
 use libp2p::core::{upgrade, InboundUpgrade, OutboundUpgrade, UpgradeInfo};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::{
     io::{self, Error, ErrorKind, Result},
     marker::PhantomData,
 };
 
-/// A [`Codec`] defines the request and response types for a [`StreamingResponse`]
-/// protocol. Request and responses are encoded / decoded using `serde_cbor`, so
-/// `Serialize` and `Deserialize` impls have to be provided. Implement this trait
-/// to specialize the [`StreamingResponse`].
-pub trait Codec {
-    type Request: Send + Serialize + DeserializeOwned + std::fmt::Debug;
-    type Response: Send + Serialize + DeserializeOwned + std::fmt::Debug;
+#[derive(Clone, Debug)]
+pub struct StreamingResponseConfig<TCodec: Codec> {
+    /// Maximum size in bytes accepted for incoming requests
+    max_buf_size: usize,
+    _c: PhantomData<TCodec>,
+}
 
-    fn protocol_info() -> &'static [u8];
+impl<TCodec: Codec> StreamingResponseConfig<TCodec> {
+    pub fn new(max_buf_size: usize) -> Self {
+        Self {
+            max_buf_size,
+            _c: PhantomData,
+        }
+    }
+}
+
+impl<TCodec> Default for StreamingResponseConfig<TCodec>
+where
+    TCodec: Codec,
+{
+    fn default() -> Self {
+        Self {
+            max_buf_size: 1024 * 1024 * 4,
+            _c: PhantomData,
+        }
+    }
 }
 
 /// Local requestId
 #[derive(Debug, Default, Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd)]
-pub struct RequestId(pub(crate) u64);
+pub struct RequestId(u64);
 
-#[derive(
-    Debug, Serialize, Deserialize, Default, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Display, Add, Sub, Deref,
-)]
-// SequenceNo for responses
-pub struct SequenceNo(pub(crate) u64);
-impl SequenceNo {
+impl RequestId {
     pub fn increment(&mut self) {
-        self.0 += 1
+        self.0 += 1;
     }
 }
 
@@ -52,24 +64,13 @@ pub enum StreamingResponseMessage<TCodec: Codec> {
     ResponseEnd { id: RequestId, seq_no: SequenceNo },
 }
 
-#[derive(Clone, Debug)]
-pub struct StreamingResponseConfig<TCodec: Codec> {
-    /// Maximum size in bytes accepted for incoming requests
-    max_buf_size: usize,
-    /// Serializes all outgoing responses, effectively making the stream FIFO
-    pub(crate) ordered_outgoing: bool,
-    _c: PhantomData<TCodec>,
-}
-
-impl<TCodec> Default for StreamingResponseConfig<TCodec>
-where
-    TCodec: Codec,
-{
-    fn default() -> Self {
-        Self {
-            max_buf_size: 1024 * 1024 * 4,
-            ordered_outgoing: true,
-            _c: PhantomData,
+impl<T: Codec> StreamingResponseMessage<T> {
+    pub fn id(&self) -> RequestId {
+        match self {
+            StreamingResponseMessage::Request { id, .. } => *id,
+            StreamingResponseMessage::CancelRequest { id } => *id,
+            StreamingResponseMessage::Response { id, .. } => *id,
+            StreamingResponseMessage::ResponseEnd { id, .. } => *id,
         }
     }
 }
@@ -78,11 +79,11 @@ impl<TCodec> UpgradeInfo for StreamingResponseConfig<TCodec>
 where
     TCodec: Codec,
 {
-    type Info = &'static [u8];
-    type InfoIter = std::iter::Once<Self::Info>;
+    type Info = &'static str;
+    type InfoIter = core::array::IntoIter<Self::Info, 2>;
 
     fn protocol_info(&self) -> Self::InfoIter {
-        std::iter::once(TCodec::protocol_info())
+        TCodec::protocol_info().into_iter()
     }
 }
 
@@ -109,11 +110,11 @@ impl<TCodec> UpgradeInfo for StreamingResponseMessage<TCodec>
 where
     TCodec: Codec,
 {
-    type Info = &'static [u8];
-    type InfoIter = std::iter::Once<Self::Info>;
+    type Info = &'static str;
+    type InfoIter = core::array::IntoIter<Self::Info, 2>;
 
     fn protocol_info(&self) -> Self::InfoIter {
-        std::iter::once(TCodec::protocol_info())
+        TCodec::protocol_info().into_iter()
     }
 }
 
