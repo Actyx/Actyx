@@ -105,6 +105,9 @@ fn setup() -> &'static Binaries {
         let mut actyx = vec![];
         let mut ax = vec![];
 
+        // the newest versions may not yet be uploaded, especially when validating the release PR
+        let mut may_skip_actyx = true;
+        let mut may_skip_ax = true;
         for line in BufReader::new(File::open(VERSIONS).unwrap_or_else(|e| panic!("cannot open {}: {}", VERSIONS, e)))
             .lines()
             .map(|line| line.unwrap())
@@ -118,8 +121,10 @@ fn setup() -> &'static Binaries {
                 if version == Version::new(1, 1, 5) {
                     continue;
                 }
-                let path = download("actyx", "actyx", version, &storage_dir);
-                actyx.push((version, path))
+                let path = download("actyx", "actyx", version, &storage_dir, &mut may_skip_actyx);
+                if let Some(path) = path {
+                    actyx.push((version, path))
+                }
             }
             if line.starts_with("cli-") {
                 let end = line
@@ -130,8 +135,10 @@ fn setup() -> &'static Binaries {
                 if version == Version::new(1, 1, 5) {
                     continue;
                 }
-                let path = download("actyx-cli", "ax", version, &storage_dir);
-                ax.push((version, path))
+                let path = download("actyx-cli", "ax", version, &storage_dir, &mut may_skip_ax);
+                if let Some(path) = path {
+                    ax.push((version, path))
+                }
             }
         }
 
@@ -139,7 +146,7 @@ fn setup() -> &'static Binaries {
     })
 }
 
-fn download(package: &str, bin: &str, version: Version, dst_dir: &Path) -> PathBuf {
+fn download(package: &str, bin: &str, version: Version, dst_dir: &Path, may_skip: &mut bool) -> Option<PathBuf> {
     let arch = match Arch::current() {
         Arch::x86_64 => "amd64",
         Arch::aarch64 => "arm64",
@@ -154,7 +161,7 @@ fn download(package: &str, bin: &str, version: Version, dst_dir: &Path) -> PathB
     match target.metadata() {
         Ok(meta) if meta.is_file() && meta.len() > 0 => {
             println!("assuming {} version {} is already there", bin, version);
-            return target;
+            return Some(target);
         }
         _ => println!("storing {} from {} into {}", bin, url, target.display()),
     }
@@ -162,14 +169,22 @@ fn download(package: &str, bin: &str, version: Version, dst_dir: &Path) -> PathB
     let resp = reqwest::blocking::get(&url).unwrap_or_else(|e| panic!("making request to {}: {}", url, e));
     let gzip = GzDecoder::new(resp);
     let mut archive = Archive::new(gzip);
-    for entry in archive.entries().unwrap() {
+    let entries = match archive.entries() {
+        Ok(e) => e,
+        Err(_) if *may_skip => {
+            *may_skip = false;
+            return None;
+        }
+        x => x.unwrap(),
+    };
+    for entry in entries {
         let mut entry = entry.unwrap();
         let path = entry.path().unwrap_or_else(|e| panic!("getting path: {}", e));
         if entry.header().entry_type().is_file() && path.as_ref() == Path::new(bin) {
             entry
                 .unpack(&target)
                 .unwrap_or_else(|e| panic!("unpacking {}: {}", version, e));
-            return target;
+            return Some(target);
         } else {
             println!("skipping {:?} {}", entry.header().entry_type(), path.display());
         }
