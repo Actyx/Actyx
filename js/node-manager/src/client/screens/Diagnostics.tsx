@@ -102,8 +102,8 @@ const OffsetMatrix: React.FC<{ nodes: UiNode[]; offsets: OffsetInfo }> = ({ node
                   {nodeDisplayName(from)}
                 </div>
                 {nodes.map((to, ix) => {
-                  const offset = offsets.matrix[from.addr][to.addr]
-                  const highestKnown = offsets.highestKnown[to.addr]
+                  const offset = offsets.matrix[from.addr]?.[to.addr] || 'NoOffsetFound'
+                  const highestKnown = offsets.highestKnown[to.addr] || 0
                   const percentage = typeof offset !== 'number' ? 0 : (100 * offset) / highestKnown
                   return (
                     <div

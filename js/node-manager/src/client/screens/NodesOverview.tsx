@@ -141,7 +141,12 @@ const NodeCard: React.FC<{ node: UiNode; remove: () => void; view: () => void }>
             Details
           </Button>
         )}
-        <Button color="gray" onClick={remove} disabled={isFavorite(store, node)}>
+        <Button
+          color="gray"
+          onClick={remove}
+          disabled={isFavorite(store, node)}
+          title={isFavorite(store, node) ? 'cannot remove starred node' : undefined}
+        >
           Remove
         </Button>
       </div>

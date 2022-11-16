@@ -282,9 +282,23 @@ export const AppStateProvider: React.FC<{
             case NodeType.Unreachable: {
               const addr = n.addr
               console.log('connecting to', addr)
+
+              // defer setting `connecting` to avoid flickering when it fails fast
+              const prevError = n.type === NodeType.Unreachable ? n.error : null
+              const setter = setTimeout(() => {
+                console.log('setting connecting status', addr)
+                setData((current) => ({
+                  ...current,
+                  nodes: current.nodes.map((n) =>
+                    n.addr === addr ? { type: NodeType.Connecting, addr, prevError } : n,
+                  ),
+                }))
+              }, 250)
+
               connect({ addr, timeout: getTimeoutSec })
                 .then(({ peer }) => {
                   console.log('connected to', addr, peer)
+                  clearTimeout(setter)
                   setData((current) => ({
                     ...current,
                     nodes: current.nodes.map((n) =>
@@ -294,27 +308,27 @@ export const AppStateProvider: React.FC<{
                 })
                 .catch((err) => {
                   console.log('connect error', addr, err)
-                  setData((current) => ({
-                    ...current,
-                    nodes: current.nodes.map((n) =>
-                      n.addr === addr
-                        ? { type: NodeType.Unreachable, addr, error: safeErrorToStr(err) }
-                        : n,
-                    ),
-                  }))
+                  clearTimeout(setter)
+                  const idx = data.nodes.findIndex((n) => n.addr === addr)
+                  if (idx >= 0) {
+                    const node = data.nodes[idx]
+                    const error = safeErrorToStr(err)
+                    // do not update state without need, to avoid causing too quick retries
+                    if (node.type !== NodeType.Unreachable || node.error !== error) {
+                      setData((current) => {
+                        const nodes = current.nodes.slice()
+                        console.log('overwriting', nodes[idx])
+                        nodes[idx] = { type: NodeType.Unreachable, addr, error }
+                        return { ...current, nodes }
+                      })
+                    }
+                  }
                 })
-              const prevError = n.type === NodeType.Unreachable ? n.error : null
-              setData((current) => ({
-                ...current,
-                nodes: current.nodes.map((n) =>
-                  n.addr === addr ? { type: NodeType.Connecting, addr, prevError } : n,
-                ),
-              }))
             }
           }
         })
 
-        const nodes = await Promise.all(
+        const nodeInfos = await Promise.all(
           data.nodes.reduce((acc: Promise<UiNode>[], n) => {
             if ('peer' in n && n.type !== NodeType.Disconnected) {
               acc.push(
@@ -334,19 +348,19 @@ export const AppStateProvider: React.FC<{
           }, []),
         )
 
+        const offsetsInfo = OffsetInfo.of(nodeInfos)
+        const nodes = data.nodes
+          .filter((n) => nodeInfos.every((n2) => n.addr !== n2.addr))
+          .concat(nodeInfos.filter((n) => data.nodes.some((n2) => n.addr === n2.addr)))
+          .sort((n1, n2) => n1.addr.localeCompare(n2.addr))
+        if (!deepEqual(data.nodes, nodes) || !deepEqual(data.offsets, some(offsetsInfo))) {
+          console.log(`+++ updating app-state/nodes +++`)
+          setData({
+            offsets: some(offsetsInfo),
+            nodes,
+          })
+        }
         if (!unmounted) {
-          const offsetsInfo = OffsetInfo.of(nodes)
-          if (!deepEqual(data.nodes, nodes) || !deepEqual(data.offsets, some(offsetsInfo))) {
-            console.log(`+++ updating app-state/nodes +++`)
-            setData({
-              ...data,
-              offsets: some(offsetsInfo),
-              nodes: data.nodes
-                .filter((n) => nodes.every((n2) => n.addr !== n2.addr))
-                .concat(nodes.filter((n) => data.nodes.some((n2) => n.addr === n2.addr)))
-                .sort((n1, n2) => n1.addr.localeCompare(n2.addr)),
-            })
-          }
           timeout = setTimeout(() => {
             getDetailsAndUpdate()
           }, POLLING_INTERVAL_MS)

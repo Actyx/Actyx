@@ -37,10 +37,11 @@ const Peers_Peer: React.FC<{
           isConnected ? 'text-green-500' : 'text-red-500',
         )}
       >
+        <span style={{ width: '1.5rem', display: 'inline-block' }}>{show ? '▼' : '►'}</span>
         {displayName}
       </p>
       <p>
-        <code title={peerId}>{peerId.substring(0, 10)}…</code>
+        <code title={`PeerID: ${peerId}`}>{peerId.substring(0, 10)}…</code>
         {ping}
         <span className="text-blue-300">{since}</span>
       </p>
