@@ -2,23 +2,17 @@ import React, { useState } from 'react'
 import clsx from 'clsx'
 import {
   BarChartIcon,
-  Cube3DIcon,
-  DocumentIcon,
   SignatureIcon,
   HelpIcon,
-  HomeIcon,
   InboxIcon,
   PreferencesIcon,
   ShieldIcon,
   VerticalTripleDots,
   NodeManagerIcon,
   KeyIcon,
-  ClipboardIcon,
-  ClipboardCheckedIcon,
   SearchIcon,
 } from './icons'
 import { ClassName } from '../react'
-import { getNodeDetails } from '../util'
 import { useAppState, AppActionKey, AppStateKey } from '../app-state'
 
 // Inspiration: https://codepen.io/robstinson/pen/zYBGNQB
@@ -288,14 +282,6 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
           active={state.key === AppStateKey.Preferences}
           hidden={hideMenuItems}
         />
-        {/* <NavButton
-          onClick={() => {
-            getNodesDetails(['localhost'])
-          }}
-          icon={<PreferencesIcon />}
-          text="Preferences"
-          hidden={hideMenuItems}
-        /> */}
         <NavButton
           onClick={() => dispatch({ key: AppActionKey.ShowAbout })}
           icon={<HelpIcon />}

@@ -329,6 +329,17 @@ const Results = ({
             </React.Fragment>
           )
         })}
+        {events.length + ixOffset >= 1000 && (
+          <React.Fragment key="lastRow">
+            <DiagnosticRow
+              isChecked={false}
+              diagnostic={{
+                severity: 'warning',
+                message: 'there may be more rows (Node Manager retrieves at most 1000)',
+              }}
+            />
+          </React.Fragment>
+        )}
       </div>
     </div>
   )
@@ -548,7 +559,8 @@ const Screen = () => {
                     <span>
                       Showing {currentPageIndex + 1} to{' '}
                       {Math.min(allEvents.length, currentPageIndex + NUM_EVENTS_PER_PAGE)} of{' '}
-                      {allEvents.length} events.
+                      {allEvents.length} events
+                      {allEvents.length >= 1000 ? ' (Node Manager retrieves at most 1000)' : ''}.
                     </span>
                     <Button
                       className="ml-3"

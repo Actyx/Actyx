@@ -34,6 +34,9 @@ import { DEFAULT_TIMEOUT_SEC } from 'common/consts'
 import { ipcRenderer } from 'electron'
 
 const POLLING_INTERVAL_MS = 1_000
+const DEFER_UPDATE_AFTER_CHANGE_MS = 200
+// the below MUST be less than the above
+const DEFER_CONNECTING_STATE_MS = 150
 
 export const reducer =
   (analytics: AnalyticsActions | undefined) =>
@@ -229,10 +232,6 @@ export const AppStateProvider: React.FC<{
         analytics.queriedEvents(q)
       }
       const peer = getPeer(addr, data)
-      console.log(
-        `'${addr}', '${peer}'`,
-        data.nodes.map((n) => ({ t: n.type, a: n.addr, p: (n as any).peer })),
-      )
       return peer === undefined
         ? Promise.reject(`not connected to ${addr}`)
         : query({ peer, query: q })
@@ -293,7 +292,7 @@ export const AppStateProvider: React.FC<{
                     n.addr === addr ? { type: NodeType.Connecting, addr, prevError } : n,
                   ),
                 }))
-              }, 250)
+              }, DEFER_CONNECTING_STATE_MS)
 
               connect({ addr, timeout: getTimeoutSec })
                 .then(({ peer }) => {
@@ -350,8 +349,8 @@ export const AppStateProvider: React.FC<{
 
         const offsetsInfo = OffsetInfo.of(nodeInfos)
         const nodes = data.nodes
-          .filter((n) => nodeInfos.every((n2) => n.addr !== n2.addr))
-          .concat(nodeInfos.filter((n) => data.nodes.some((n2) => n.addr === n2.addr)))
+          .filter((n) => nodeInfos.every((n2) => n.addr !== n2.addr)) // the ones that didn’t get retrieved
+          .concat(nodeInfos.filter((n) => data.nodes.some((n2) => n.addr === n2.addr))) // cull the removed ones
           .sort((n1, n2) => n1.addr.localeCompare(n2.addr))
         if (!deepEqual(data.nodes, nodes) || !deepEqual(data.offsets, some(offsetsInfo))) {
           console.log(`+++ updating app-state/nodes +++`)
@@ -375,7 +374,7 @@ export const AppStateProvider: React.FC<{
     }
 
     if (state.key !== 'SetupUserKey') {
-      timeout = setTimeout(getDetailsAndUpdate, 100)
+      timeout = setTimeout(getDetailsAndUpdate, DEFER_UPDATE_AFTER_CHANGE_MS)
     }
 
     return () => {
