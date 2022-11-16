@@ -303,7 +303,7 @@ const Results = ({
 }) =>
   error ? (
     <div className="flex-grow mt-6 border rounded-md mb-1 text-base flex flex-col p-2 text-red-300">
-      {error}
+      <pre>{error}</pre>
     </div>
   ) : (
     <div className="flex-grow mt-6 border-b border-l border-r rounded-md mb-1 text-xs flex flex-col">
