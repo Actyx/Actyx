@@ -218,6 +218,7 @@ module.exports = {
     algolia: {
       appId: 'Z04B1KZTQW',
       apiKey: 'efd986519885318f43c39ac07337f21f',
+      indexName: 'actyx_developer',
     },
   },
   presets: [
