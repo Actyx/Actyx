@@ -29,8 +29,8 @@
     "find-dead-links": "blc -ro http://localhost:3000"
   },
   "dependencies": {
-    "@docusaurus/core": "^2.0.0-beta.15",
-    "@docusaurus/preset-classic": "^2.0.0-beta.15",
+    "@docusaurus/core": "^2.2.0",
+    "@docusaurus/preset-classic": "^2.2.0",
     "@typescript-eslint/eslint-plugin": "^5.10.2",
     "@typescript-eslint/parser": "^5.10.2",
     "docusaurus-gtm-plugin": "0.0.2",
@@ -58,7 +58,7 @@
     ]
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "2.0.0-beta.15",
+    "@docusaurus/module-type-aliases": "^2.2.0",
     "@textlint-rule/textlint-rule-no-unmatched-pair": "^1.0.8",
     "@tsconfig/docusaurus": "^1.0.4",
     "@types/react": "^17.0.38",

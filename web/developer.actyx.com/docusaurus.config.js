@@ -216,9 +216,9 @@ module.exports = {
       additionalLanguages: ['rust', 'csharp'],
     },
     algolia: {
-      apiKey: 'dee14099c148f0ca14d046428003623a',
+      appId: 'Z04B1KZTQW',
+      apiKey: 'efd986519885318f43c39ac07337f21f',
       indexName: 'actyx_developer',
-      algoliaOptions: {}, // Optional, if provided by Algolia
     },
   },
   presets: [
