@@ -19,6 +19,7 @@ module.exports = {
       },
     ],
     [require.resolve('./src/plugins/cosmos-versions'), {}],
+    [require.resolve('docusaurus-lunr-search'), {}],
     [
       'docusaurus-plugin-typedoc',
       {
@@ -214,11 +215,6 @@ module.exports = {
       theme: require('prism-react-renderer/themes/vsDark'),
       darkTheme: require('prism-react-renderer/themes/dracula'),
       additionalLanguages: ['rust', 'csharp'],
-    },
-    algolia: {
-      appId: 'Z04B1KZTQW',
-      apiKey: 'efd986519885318f43c39ac07337f21f',
-      indexName: 'actyx_developer',
     },
   },
   presets: [
