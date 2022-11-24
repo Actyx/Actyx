@@ -10,6 +10,7 @@ use itertools::Itertools;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use semver::Version;
+use serde::Serialize;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::collections::BinaryHeap;
@@ -34,6 +35,26 @@ pub struct CalculationResult {
     pub prev_version: Version,
     pub new_version: Option<Version>,
     pub changes: Vec<(String, Change)>,
+}
+
+/// Shape
+/// {
+///   actyx: [
+///     {
+///       version: "2.2.1",
+///       commit: "abdas",
+///       changes: ["change a"]
+///     }
+///   ]
+/// }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct History(BTreeMap<String, Vec<HistoryChange>>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct HistoryChange {
+    version: String,
+    commit: String,
+    changes: Vec<String>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -175,6 +196,35 @@ impl VersionsFile {
             .par_iter()
             .map(|p| self.calculate_version(p, ignore).map(|x| (p.clone(), x)))
             .collect()
+    }
+
+    pub fn history(&self, ignore: &VersionsIgnoreFile) -> anyhow::Result<History> {
+        let mut map = BTreeMap::<String, Vec<HistoryChange>>::new();
+        let versions = self.versions();
+        let Some(first) = versions.get(0).cloned() else { return Ok(History(map)) };
+        for (current, previous) in versions.into_iter().chain(std::iter::once(first)).tuple_windows() {
+            let product = current.release.product;
+            if product == previous.release.product {
+                let changes = self.calculate_changes_for_version(&product, &current.release.version, ignore)?;
+                let entry = map.entry(product.to_string()).or_default();
+                entry.push(HistoryChange {
+                    version: current.release.version.to_string(),
+                    commit: current.commit.to_string(),
+                    changes: changes
+                        .into_iter()
+                        .map(|(_, change)| format!("{}: {}", change.kind, change.message))
+                        .collect(),
+                });
+            } else {
+                let entry = map.entry(product.to_string()).or_default();
+                entry.push(HistoryChange {
+                    version: current.release.version.to_string(),
+                    commit: current.commit.to_string(),
+                    changes: vec![],
+                });
+            }
+        }
+        Ok(History(map))
     }
 
     /// Calculates all changes between the given version and its predecessor

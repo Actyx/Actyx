@@ -83,15 +83,14 @@ module.exports = {
           to: '/releases',
         },
         {
-          label: 'Blog',
-          activeBasePath: '/blog',
+          label: 'Chat',
           position: 'right',
-          to: '/blog',
+          to: 'https://discord.gg/4RZpTqmPgC',
         },
         {
           label: 'Forum',
           position: 'right',
-          to: 'https://community.actyx.com/',
+          to: 'https://groups.google.com/a/actyx.io/g/developers',
         },
       ],
     },

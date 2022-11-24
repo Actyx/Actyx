@@ -2,9 +2,8 @@
 const fs = require('fs/promises')
 const path = require('path')
 const { constants: fsConstants } = require('fs')
-const { getChanges } = require('./changes')
-const { COSMOS_RELEASE_PATH } = require('./consts')
-const { getVersionsAndCommits } = require('./versions')
+const { COSMOS_RELEASE_PATH, PRODUCTS } = require('./consts')
+const { exec } = require('child_process')
 
 const cosmosReleaseAvailable = async () =>
   fs
@@ -49,6 +48,21 @@ const addReleasePage = async (
   })
 }
 
+const getHistory = async () => {
+  return new Promise((resolve, reject) => {
+    try {
+      exec(`"${COSMOS_RELEASE_PATH}" history`, (err, stdout, stderr) => {
+        if (err) {
+          reject(new Error(`XXX ${err}: ${stderr}`))
+        }
+        resolve(JSON.parse(stdout))
+      })
+    } catch (error) {
+      reject(new Error(`unable to find changes for ${version} of ${product}: ${error}`))
+    }
+  })
+}
+
 const plugin = () => ({
   name: 'cosmos-versions',
   loadContent: async () => {
@@ -75,12 +89,6 @@ const plugin = () => ({
       process.exit(1)
     }
 
-    const versionsAndCommits = await getVersionsAndCommits()
-    console.log(`cosmos-versions found the following product versions:`)
-    Object.entries(versionsAndCommits).forEach(([name, vacs]) => {
-      console.log(` - ${name}: ${vacs.map(([version, hash]) => `${version}:${hash}`).join(', ')}`)
-    })
-
     /**
      *  Shape
      * {
@@ -94,27 +102,10 @@ const plugin = () => ({
      *  ]
      * }
      */
+    const h = await getHistory()
     const history = {}
-    for (product of Object.keys(versionsAndCommits)) {
-      history[product] = []
-      for (vac of versionsAndCommits[product]) {
-        const [version, commit] = vac
-        const changes = await getChanges(product, version)
-        console.log(`Changelog for version ${version} of ${product}:`)
-        if (changes.length < 1) {
-          console.log('  none')
-        } else {
-          changes.forEach((change) => {
-            console.log(`  ${change}`)
-          })
-        }
-
-        history[product].push({
-          version,
-          commit,
-          changes,
-        })
-      }
+    for (const product of PRODUCTS) {
+      history[product] = h[product]
     }
 
     return { history }

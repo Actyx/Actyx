@@ -3,7 +3,11 @@ use chrono::{TimeZone, Utc};
 use clap::Parser;
 use repo::RepoWrapper;
 use semver::Version;
-use std::{fmt::Write, path::PathBuf};
+use std::{
+    fmt::Write,
+    path::PathBuf,
+    sync::atomic::{AtomicBool, Ordering},
+};
 use versions_file::{VersionLine, VersionsFile};
 use versions_ignore_file::VersionsIgnoreFile;
 
@@ -69,6 +73,8 @@ enum Command {
         #[clap(long, short)]
         commits: bool,
     },
+    /// Retrieve full history information for website in one go
+    History,
     /// Updates a persisted version file
     Update {
         /// Path to persisted version file. Defaults to stdout if omitted
@@ -196,6 +202,12 @@ fn main() -> Result<(), Error> {
                 }
             }
         }
+
+        Command::History => {
+            let history = version_file.history(&ignores_file)?;
+            println!("{}", serde_json::to_string(&history)?);
+        }
+
         Command::Update { output } => {
             let new_versions = version_file
                 .calculate_versions(&ignores_file)?
@@ -345,6 +357,7 @@ Overview:"#
                     let tmp = tempdir()?;
                     log::debug!("Temp dir for {}: {}", release, tmp.path().display());
 
+                    let needed_write = AtomicBool::new(false);
                     let out = OsArch::all()
                         .par_iter()
                         .map(|os_arch| {
@@ -358,6 +371,7 @@ Overview:"#
                                         if target_exists {
                                             writeln!(&mut out, "    [OK] {} already exists.", p.target)?;
                                         } else if source_exists {
+                                            needed_write.store(true, Ordering::Relaxed);
                                             log::debug!("creating release artifact in dir {}", tmp.path().display());
                                             p.create_release_artifact(tmp.path()).context(format!(
                                                 "creating release artifact at {}",
@@ -389,6 +403,9 @@ Overview:"#
                         .join("");
                     println!("  {} ({}) .. ", release, commit);
                     println!("{}", out);
+                    if !needed_write.load(Ordering::Relaxed) {
+                        break;
+                    }
                 }
             }
         }
