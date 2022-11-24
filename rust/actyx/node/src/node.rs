@@ -312,6 +312,7 @@ impl Node {
                         ExternalEvent::SettingsRequest(req) => self.handle_settings_request(req),
                         ExternalEvent::RestartRequest(comp) => self.handle_restart_request(comp),
                         ExternalEvent::ShutdownRequested(r) => break r,
+                        ExternalEvent::RegisterActors(_r) => todo!(),
                     };
                 },
                 recv(component_rx) -> msg => {

@@ -15,6 +15,7 @@ pub mod serde_support;
 pub mod serde_util;
 pub mod trace_poll;
 pub mod value_or_limit;
+pub mod variable;
 pub mod version;
 
 pub use self::value_or_limit::*;
