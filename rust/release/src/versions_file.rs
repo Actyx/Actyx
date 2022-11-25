@@ -5,6 +5,8 @@ use crate::repo::get_changes_for_product;
 use crate::versions::apply_changes;
 use crate::versions_ignore_file::VersionsIgnoreFile;
 use anyhow::anyhow;
+use chrono::SecondsFormat;
+use chrono::TimeZone;
 use git2::{Oid, Repository};
 use itertools::Itertools;
 use rayon::iter::IntoParallelRefIterator;
@@ -54,6 +56,7 @@ pub struct History(BTreeMap<String, Vec<HistoryChange>>);
 pub struct HistoryChange {
     version: String,
     commit: String,
+    time: String,
     changes: Vec<String>,
 }
 
@@ -204,12 +207,16 @@ impl VersionsFile {
         let Some(first) = versions.get(0).cloned() else { return Ok(History(map)) };
         for (current, previous) in versions.into_iter().chain(std::iter::once(first)).tuple_windows() {
             let product = current.release.product;
+            let repo = Repository::open_from_env()?;
+            let ts = repo.find_commit(current.commit)?.time().seconds();
+            let time = chrono::Utc.timestamp(ts, 0).to_rfc3339_opts(SecondsFormat::Secs, true);
             if product == previous.release.product {
                 let changes = self.calculate_changes_for_version(&product, &current.release.version, ignore)?;
                 let entry = map.entry(product.to_string()).or_default();
                 entry.push(HistoryChange {
                     version: current.release.version.to_string(),
                     commit: current.commit.to_string(),
+                    time,
                     changes: changes
                         .into_iter()
                         .map(|(_, change)| format!("{}: {}", change.kind, change.message))
@@ -220,6 +227,7 @@ impl VersionsFile {
                 entry.push(HistoryChange {
                     version: current.release.version.to_string(),
                     commit: current.commit.to_string(),
+                    time,
                     changes: vec![],
                 });
             }

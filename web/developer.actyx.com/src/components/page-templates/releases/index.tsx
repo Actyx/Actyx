@@ -15,7 +15,7 @@ const ReleasesList: React.FC<{
   releases: Release[]
 }> = ({ product, productDisplayName, releases: allReleases }) => {
   const [showAll, setShowAll] = useState(false)
-  const NUM_SHOW_INITIAL = 5
+  const NUM_SHOW_INITIAL = 3
   const releases = showAll
     ? allReleases
     : allReleases.length > NUM_SHOW_INITIAL
@@ -27,12 +27,18 @@ const ReleasesList: React.FC<{
       <Col width="12">
         <h2>{productDisplayName}</h2>
         <ul>
-          {releases.map(({ version }, i) => (
+          {releases.map(({ version, time, changes }, i) => (
             <li key={product + version}>
               <a href={`/releases/${product}/${version}`}>
                 {productDisplayName} {version}
               </a>
               {i === 0 && ' (latest)'}
+              <span style={{ paddingLeft: '8px', color: 'gray', fontSize: 'small' }}>{time}</span>
+              {changes.map((c) => (
+                <div style={{ color: 'gray' }}>
+                  <i>{c}</i>
+                </div>
+              ))}
             </li>
           ))}
           {!showAll && allReleases.length > NUM_SHOW_INITIAL && (
@@ -62,12 +68,12 @@ const Page: React.FC<{ data: ReleaseHistory }> = ({ data: history }) => {
           </Col>
         </Row>
         <ReleasesList productDisplayName="Actyx" product="actyx" releases={history.actyx} />
-        <ReleasesList productDisplayName="Actyx CLI" product="cli" releases={history.cli} />
         <ReleasesList
           productDisplayName="Actyx Node Manager"
           product="node-manager"
           releases={history['node-manager']}
         />
+        <ReleasesList productDisplayName="Actyx CLI" product="cli" releases={history.cli} />
         <ReleasesList productDisplayName="Actyx Pond" product="pond" releases={history.pond} />
       </div>
     </Layout>

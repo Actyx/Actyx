@@ -5,6 +5,7 @@ export type Change = string
 export type Release = {
   version: Version
   commit: Hash
+  time: string
   changes: Change[]
 }
 export type ReleaseHistory = {
