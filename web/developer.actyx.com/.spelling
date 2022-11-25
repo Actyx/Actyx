@@ -241,6 +241,7 @@ pragmas
 backticks
 backtick
 dataset
+mdns
  - blog/2020-06-09-building-docker-apps-for-arm64v8.md
 arm64
 ActyxOS
@@ -525,6 +526,7 @@ pingTimeout
 blockCacheCount
 blockCacheSize
 blockGcInterval
+branchCacheSize
 - ./docs/tutorials/advanced-tutorial/business-logic.mdx
 statemachine.svg
 orderfish.svg
