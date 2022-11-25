@@ -194,12 +194,12 @@ module.exports = {
               to: 'https://www.actyx.com',
             },
             {
-              label: 'Forum',
-              to: 'https://community.actyx.com',
+              label: 'Chat',
+              to: 'https://discord.gg/4RZpTqmPgC',
             },
             {
-              label: 'Blog',
-              to: 'blog',
+              label: 'Forum',
+              to: 'https://groups.google.com/a/actyx.io/g/developers',
             },
             {
               label: 'Careers',
