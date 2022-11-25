@@ -17,12 +17,7 @@ image: /images/defaults/default.svg
 | Android  | Android 6-10                      | x86, arm64-v8a or armeabi-v7a [ABI](https://developer.android.com/ndk/guides/abis.html#sa) |
 | Linux    | Ubuntu 18.04+ or Alpine 3.9+      | x86_64, aarch64, armv7 or arm                                                              |
 | Docker   | Docker 20+                        | x86_64, aarch64, armv7 or arm                                                              |
-| macOS    | Big Sur                           | x86_64 or aarch64                                                                          |
-
-:::warning Android 11 not supported
-Note that Actyx is currently not supported on Android 11.
-We are on it and will release support for the latest version of Android in one of the coming releases!
-:::
+| macOS    | Big Sur _or later_                | x86_64 or aarch64                                                                          |
 
 ## Networking Requirements
 
@@ -34,6 +29,17 @@ It is **not** supported to put firewalls between devices of the same swarm.
 Wherever possible, devices should be placed within one broadcast domain.
 Placing devices of the same swarm across different broadcast domains requires [manually configuring initial peers](../how-to/swarms/connect-nodes.mdx) and configuring communication between these broadcast domains accordingly.
 
+:::info Using non-standard ports
+Apart from the mDNS parameters, the three used TCP ports can be freely configured when starting Actyx.
+The command line options for these are
+
+- `--bind-swarm` for the inter-node data transfer port (default: 4001)
+- `--bind-api` for the HTTP API used by applications (default: 4454)
+- `--bind-admin` for the admin port used by the Node Manager and Actyx CLI (default: 4458)
+
+See also `actyx --help` for more details.
+:::
+
 ## Performance
 
 A lot of different factors play into performance of Actyx and your apps. Assuming a standard network setup, rugged tablets or other devices with relatively low computing power, and a standard factory use case, these are approximate limits:
@@ -43,6 +49,8 @@ A lot of different factors play into performance of Actyx and your apps. Assumin
 | Latency         | below 200 ms, not guaranteed as dependent on several factors |
 | No. of nodes    | max. 100 nodes                                               |
 | Event data rate | ~1 event per node per 10 seconds                             |
+
+Please refer to the [performance and limits](../conceptual/performance-and-limits.mdx) page for more detailed information, also regarding typical disk usage etc.
 
 The following list shows the factors that influence performance. **Please note that these are not requirements, but assumptions made for the above performance characteristics:**
 
@@ -60,24 +68,6 @@ The following list shows the factors that influence performance. **Please note t
 The limits regarding performance and disk space described on this page are only true within the circumstances outlined above. If one of these factors changes, the limits for your solution might change. If you are looking for guidance on a specific use case, please refer to our [conceptual guide](../conceptual/performance-and-limits.mdx) or contact us.
 :::
 
-## Disk space requirements
-
-The required disk space depends on the size, number, and compressibility of the events that are emitted by apps built on Actyx.
-These are example calculations for factory apps, either with or without machine integrations, based on our project experience and for a 1-year time frame:
-
-|                   | With machine integrations | Without machine integrations |
-| ----------------- | ------------------------- | ---------------------------- |
-| Number of nodes   | 8                         | 10                           |
-| Number of events  | 10,000,000                | 580,000                      |
-| Disk space needed | 65 MB                     | 30 MB                        |
-
-The events used for the above examples contained information on orders and their progress, or machine values (~10) read from a OPC UA interface.
-
-:::tip
-We are already working on the functionality to configure replication and lifespan of events.
-By configuring when events should be deleted or to which devices they should be replicated, you will be able to optimize for low disk space usage.
-:::
-
 ## Node Settings Schema
 
 Which settings are available and which values they may have is defined in the so-called Actyx **Node Setting Schema**.
@@ -85,8 +75,8 @@ The most recent version thereof is available for download at:
 
 [https://developer.actyx.com/schemas/node-settings.schema.json](pathname:///schemas/node-settings.schema.json)
 
-The `admin` section of the settings holds a list of authorized users, represented by their public keys (you can find yours in your O/S-specific user profile folder under `actyx/keys/users/id.pub`).
-If you need to access a node that doesn’t accept your key, but you have administrator access to the (virtual) device it is running on, then you may use `ax users add-key` to get yourself in — make sure to stop Actyx before doing this.
+The `admin` section of the settings holds a list of [authorized users](../how-to/user-auth/manage-authorized-users.mdx), represented by their public keys (you can find yours in your O/S-specific user profile folder under `actyx/keys/users/id.pub`).
+If you need to access a node that doesn’t accept your key, but you have administrator access to the (virtual) device it is running on, then you may use [`ax users add-key`](../reference/cli/users/add-key.md) to get yourself in — make sure to stop Actyx before doing this.
 The `displayName` property is shown in the Node Manager or `ax nodes inspect` etc., so it is useful to set it to some short string that helps you identify the node.
 You can change the `/admin/logLevels/node` setting to adjust the logging output verbosity at runtime; valid values are DEBUG, INFO, WARN, or ERROR.
 
@@ -100,14 +90,8 @@ In the `swarm` section you can fine-tune the networking behavior of Actyx:
 - **announceAddresses:** an array of addresses allows you to declare IP addresses under which the node is reachable, but that are not listen addresses.
   This is frequently necessary when running Actyx inside a Docker container, see [configuring the `announceAddresses` setting](../how-to/swarms/configure-announced-addresses.mdx).
 
-- **initialPeers:** an array of addresses of the form `/ip4/<IP address>/tcp/<port>/p2p/<PeerId>` to which this node shall [immediately try to connect](../how-to/swarms/connect-nodes.mdx).
-
 - **bitswapTimeout:** maximal wait time for a data request sent to another swarm node.
   You may need to increase this on very slow networks if you regularly see bitswap timeout warnings in the logs.
-
-- **pingTimeout:** Each connection to another Actyx node is continually monitored via messages sent over that TCP connection (they are called “ping”, but have nothing to do with the `ping` network tool).
-  When three successive pings have not been answered within the allotted timeout, the connection is closed and will be re-established.
-  You may need to increase this on very slow networks if you regularly see ping timeout warnings in the logs.
 
 - **blockCacheCount:** the number of IPFS data blocks kept in the local `actyx-data` folder for the current topic.
   All swarm event data blocks and pinned files will be kept regardless of this setting, only voluntarily cached blocks can be evicted.
@@ -117,6 +101,18 @@ In the `swarm` section you can fine-tune the networking behavior of Actyx:
 
 - **blockGcInterval:** the interval at which eligible data are evicted from the local `actyx-data` folder for the current topic.
   There should be no need to change this.
+
+- **branchCacheSize:** cache size in bytes for those IPFS blocks that contain event stream metadata.
+  You may need to increase this in situations where many devices have been producing events for a long time:
+  if this cache becomes too small, application query performance will drastically decline.
+
+- **initialPeers:** an array of addresses of the form `/ip4/<IP address>/tcp/<port>/p2p/<PeerId>` to which this node shall [immediately try to connect](../how-to/swarms/connect-nodes.mdx).
+
+- **mdns:** flag with which usage of the [mDNS protocol](https://en.wikipedia.org/wiki/Multicast_DNS) for peer discovery can be disabled.
+
+- **pingTimeout:** Each connection to another Actyx node is continually monitored via messages sent over that TCP connection (they are called “ping”, but have nothing to do with the `ping` network tool).
+  When three successive pings have not been answered within the allotted timeout, the connection is closed and will be re-established.
+  You may need to increase this on very slow networks if you regularly see ping timeout warnings in the logs.
 
 - **swarmKey:** an additional layer of encryption between Actyx nodes that allows you to separate swarm so that they cannot connect to each other.
   See [the guide on swarm keys](../how-to/swarms/setup-swarm.mdx#create-a-swarm-key).
