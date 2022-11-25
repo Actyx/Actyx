@@ -99,11 +99,13 @@ export const Lamport = {
   zero: mkLamport(0),
 }
 
-/** Offset within an Actyx event stream. @public */
+/** Offset within an Actyx event stream.
+ * @public */
 export type Offset = number
 const mkOffset = (n: number): Offset => n as Offset
 
-/** Functions related to Offsets. @public */
+/** Functions related to Offsets.
+ * @public */
 export const Offset = {
   of: mkOffset,
   zero: mkOffset(0),
@@ -117,12 +119,14 @@ export const Offset = {
   max: mkOffset(Number.MAX_SAFE_INTEGER),
 }
 
-/** Timestamp (UNIX epoch), MICROseconds resolution. @public */
+/** Timestamp (UNIX epoch), MICROseconds resolution.
+ * @public */
 export type Timestamp = number
 const mkTimestamp = (time: number): Timestamp => time as Timestamp
 const formatTimestamp = (timestamp: Timestamp): string => new Date(timestamp / 1000).toISOString()
 const secondsPerDay = 24 * 60 * 60
-/** Helper functions for making sense of and converting Timestamps. @public */
+/** Helper functions for making sense of and converting Timestamps.
+ * @public */
 export const Timestamp = {
   of: mkTimestamp,
   zero: mkTimestamp(0),
@@ -140,10 +144,12 @@ export const Timestamp = {
   max: (values: Timestamp[]) => mkTimestamp(Math.max(...values)),
 }
 
-/** Some number of milliseconds. @public */
+/** Some number of milliseconds.
+ * @public */
 export type Milliseconds = number
 const mkMilliseconds = (time: number): Milliseconds => time as Milliseconds
-/** Helper functions for making sense of and converting Milliseconds. @public */
+/** Helper functions for making sense of and converting Milliseconds.
+ * @public */
 export const Milliseconds = {
   of: mkMilliseconds,
   fromDate: (date: Date): Milliseconds => mkMilliseconds(date.valueOf()),
@@ -205,14 +211,16 @@ const ordEventKey: Ord<EventKey> = {
 
 const formatEventKey = (key: EventKey): string => `${key.lamport}/${key.stream}`
 
-/** Functions related to EventKey. @public */
+/** Functions related to EventKey.
+ * @public */
 export const EventKey = {
   zero: zeroKey,
   ord: ordEventKey,
   format: formatEventKey,
 }
 
-/** Generic Metadata attached to every event. @public */
+/** Generic Metadata attached to every event.
+ * @public */
 export type Metadata = {
   // Was this event written by the very node we are running on?
   isLocalEvent: boolean
@@ -289,26 +297,30 @@ export type PendingEmission = {
   toPromise: () => Promise<Metadata[]>
 }
 
-/** An event with tags attached. @public */
+/** An event with tags attached.
+ * @public */
 export type TaggedEvent = {
   tags: string[]
   event: unknown
 }
 
-/** A typed event with tags attached. @public */
+/** A typed event with tags attached.
+ * @public */
 export interface TaggedTypedEvent<E = unknown> extends TaggedEvent {
   readonly tags: string[]
   readonly event: E
   withTags<E1>(tags: Tags<E1> & (E extends E1 ? unknown : never)): TaggedTypedEvent<E>
 }
 
-/** An event with its metadata. @public */
+/** An event with its metadata.
+ * @public */
 export type ActyxEvent<E = unknown> = {
   meta: Metadata
   payload: E
 }
 
-/** Things related to ActyxEvent. @public */
+/** Things related to ActyxEvent.
+ * @public */
 export const ActyxEvent = {
   // TODO: Maybe improve this by just comparing the lamport -> stream combo
   ord: contramap((e: ActyxEvent) => e.meta.eventId)(OrdString),
@@ -347,7 +359,8 @@ export type EventChunk = {
   upperBound: OffsetMap
 }
 
-/** Options used when creating a new `Actyx` instance. @public */
+/** Options used when creating a new `Actyx` instance.
+ * @public */
 export type ActyxOpts = {
   /** Host of the Actxy service. This defaults to localhost and should stay localhost in almost all cases. */
   actyxHost?: string
@@ -365,19 +378,24 @@ export type ActyxOpts = {
 }
 
 /**
- * Test tool. @beta
+ * Test tool.
+ * @beta
  */
 export type TimeInjector = (tags: string[], events: unknown) => Timestamp
 
-/** Options used when creating a new TEST `Actyx` instance. @public */
+/** Options used when creating a new TEST `Actyx` instance.
+ * @public */
 export type ActyxTestOpts = {
-  /** Local node id to use @public */
+  /** Local node id to use
+   * @public */
   nodeId?: NodeId
-  /** Install the given time source for test purposes @beta */
+  /** Install the given time source for test purposes
+   * @beta */
   timeInjector?: TimeInjector
 }
 
-/** Manifest describing an Actyx application. Used for authorizing API access. @public */
+/** Manifest describing an Actyx application. Used for authorizing API access.
+ * @public */
 export type AppManifest = {
   /**
    * Structured application id.
@@ -411,13 +429,15 @@ export enum EventsSortOrder {
   StreamAscending = 'stream-asc',
 }
 
-/** AQL message describing the offsets at the current state of the response stream. @beta */
+/** AQL message describing the offsets at the current state of the response stream.
+ * @beta */
 export type AqlOffsetsMsg = {
   type: 'offsets'
   offsets: OffsetMap
 }
 
-/** AQL message conveying a raw event or a record created by mapping an event via SELECT. @beta */
+/** AQL message conveying a raw event or a record created by mapping an event via SELECT.
+ * @beta */
 export type AqlEventMessage = {
   /** A simply-mapped event */
   type: 'event'
@@ -429,7 +449,8 @@ export type AqlEventMessage = {
   meta: Metadata
 }
 
-/** AQL diagnostic output describing an error that occured during query evaluation. @beta */
+/** AQL diagnostic output describing an error that occured during query evaluation.
+ * @beta */
 export type AqlDiagnosticMessage = {
   /** A problem occured */
   type: 'diagnostic'
@@ -437,7 +458,8 @@ export type AqlDiagnosticMessage = {
   message: string
 }
 
-/** Future versions of AQL will know additional response message types. @beta */
+/** Future versions of AQL will know additional response message types.
+ * @beta */
 export type AqlFutureCompat = {
   /** Consult AQL documentation to find out about future available types. */
   type: Exclude<'event' | 'offsets' | 'diagnostic', string>
@@ -448,7 +470,8 @@ export type AqlFutureCompat = {
   meta: Record<string, unknown>
 }
 
-/** Response message returned by running AQL query. @beta */
+/** Response message returned by running AQL query.
+ * @beta */
 export type AqlResponse = AqlEventMessage | AqlOffsetsMsg | AqlDiagnosticMessage | AqlFutureCompat
 
 /** Uptime data type returned by Actyx @internal */

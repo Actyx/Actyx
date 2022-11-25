@@ -209,7 +209,8 @@ export const FishId = {
   canonical: (v: FishId): string => JSON.stringify([v.entityType, v.name, v.version]),
 }
 
-/** Indicate in-process (nonpersistent) Caching. @beta */
+/** Indicate in-process (nonpersistent) Caching.
+ * @beta */
 export type InProcessCaching = {
   type: 'in-process'
 
@@ -217,15 +218,18 @@ export type InProcessCaching = {
   key: string
 }
 
-/** Indicator for disabled caching of pond.observeAll(). @beta */
+/** Indicator for disabled caching of pond.observeAll().
+ * @beta */
 export type NoCaching = { readonly type: 'none' }
 
-/** Caching indicator for pond.observeAll(). @beta */
+/** Caching indicator for pond.observeAll().
+ * @beta */
 export type Caching = NoCaching | InProcessCaching
 
 export type EnabledCaching = InProcessCaching
 
-/** Caching related functions @beta */
+/** Caching related functions
+ * @beta */
 export const Caching = {
   none: { type: 'none' as const },
 
@@ -237,7 +241,8 @@ export const Caching = {
   }),
 }
 
-/** Optional parameters to pond.observeAll @beta */
+/** Optional parameters to pond.observeAll
+ * @beta */
 export type ObserveAllOpts = Partial<{
   /**
    * How to cache the known set of Fish.
@@ -365,11 +370,13 @@ export type StateEffect<S, EWrite> = (
   pond: Pond,
 ) => void | Promise<void>
 
-/** Context for an error thrown by a Fish’s functions. @public */
+/** Context for an error thrown by a Fish’s functions.
+ * @public */
 export type FishErrorContext =
   | { occuredIn: 'onEvent'; state: unknown; event: unknown; metadata: Metadata }
   | { occuredIn: 'isReset'; event: unknown; metadata: Metadata }
   | { occuredIn: 'deserializeState'; jsonState: unknown }
 
-/** Error reporter for when Fish functions throw exceptions. @public */
+/** Error reporter for when Fish functions throw exceptions.
+ * @public */
 export type FishErrorReporter = (err: unknown, fishId: FishId, detail: FishErrorContext) => void

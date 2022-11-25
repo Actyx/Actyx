@@ -39,10 +39,6 @@ const ESSENTIALS = [
       link: '/docs/how-to/local-development/install-actyx',
     },
     {
-      title: 'Set up a new project',
-      link: '/docs/how-to/local-development/set-up-a-new-project',
-    },
-    {
       title: 'Package for mobile',
       link: '/docs/how-to/packaging/mobile-apps',
     },

@@ -15,21 +15,25 @@ import { makeWsMultiplexerV2, v2getNodeId, WebsocketEventStoreV2 } from './v2'
 import { BlobSnapshotStore } from './v2/blobSnapshotStore'
 import { getApiLocation, getToken, v2WaitForSwarmSync } from './v2/utils'
 
-/** Access all sorts of functionality related to the Actyx system! @public */
+/** Access all sorts of functionality related to the Actyx system!
+ * @public */
 export type Actyx = EventFns & {
   /** Id of the Actyx node this interface is connected to. */
   readonly nodeId: NodeId
 
-  /** Fish snapshot store for the Pond @beta */
+  /** Fish snapshot store for the Pond
+   * @beta */
   readonly snapshotStore: SnapshotStore
 
-  /** Dispose of this Actyx connector, cancelling all ongoing subscriptions and freeing all underlying ressources. @public */
+  /** Dispose of this Actyx connector, cancelling all ongoing subscriptions and freeing all underlying ressources.
+   * @public */
   dispose: () => void
 
   /** Wait for the connected node to be in sync with the swarm. This is on a
    * best-effort basis and waits at most 30 seconds after the point in time the
    * node has been started. This can be used in order to reduce stale state
-   * inside the application when started together with an Actyx node. @public */
+   * inside the application when started together with an Actyx node.
+   * @public */
   waitForSync: () => Promise<void>
 
   /**
@@ -52,14 +56,17 @@ export type TestActyx = TestEventFns & {
   /** Prented id of the underlying Actyx instance that actually is just simulated. */
   readonly nodeId: NodeId
 
-  /** Fish snapshot store for the Pond @beta */
+  /** Fish snapshot store for the Pond
+   * @beta */
   readonly snapshotStore: SnapshotStore
 
-  /** For `TestActyx` instances, this method does nothing; it’s just there so all normal `Actyx` functions are provided. @public */
+  /** For `TestActyx` instances, this method does nothing; it’s just there so all normal `Actyx` functions are provided.
+   * @public */
   dispose: () => void
 
   waitForSync: () => Promise<void>
-  /** Underlying snapshotstore, only for testing snapshot interactions. FIXME: Define proper public snapshot API on `Actyx`. @alpha */
+  /** Underlying snapshotstore, only for testing snapshot interactions. FIXME: Define proper public snapshot API on `Actyx`.
+   * @alpha */
   // snapshotStore: SnapshotStore
 }
 
@@ -103,9 +110,11 @@ const createV1 = async (opts: ActyxOpts): Promise<Actyx> => {
   }
 }
 
-/** Function for creating `Actyx` instances. @public */
+/** Function for creating `Actyx` instances.
+ * @public */
 export const Actyx = {
-  /** Create an `Actyx` instance that talks to a running `Actyx` system. @public */
+  /** Create an `Actyx` instance that talks to a running `Actyx` system.
+   * @public */
   of: async (manifest: AppManifest, opts: ActyxOpts = {}): Promise<Actyx> => {
     const nodeId = await v2getNodeId(opts)
     log.actyx.debug('NodeId call returned:', nodeId)

@@ -70,7 +70,8 @@ import {
 } from './types'
 import { noop } from './util'
 
-/** Advanced configuration options for the Pond. @public */
+/** Advanced configuration options for the Pond.
+ * @public */
 export type PondOptions = {
   /**
    * Callback that is invoked whenever Fish execution encounters an error.
@@ -79,7 +80,8 @@ export type PondOptions = {
   fishErrorReporter?: FishErrorReporter
 }
 
-/** Information concerning the running Pond. @public */
+/** Information concerning the running Pond.
+ * @public */
 export type PondInfo = {
   nodeId: NodeId
 }
@@ -139,7 +141,8 @@ const wrapStateFn = <S, EWrite>(pond: Pond, fn: StateEffect<S, EWrite>) => {
   return effect
 }
 
-/** Pending command application. @public */
+/** Pending command application.
+ * @public */
 export type PendingCommand = {
   // Add another callback; if emission has already completed, the callback will be executed straight-away.
   subscribe: (whenEmitted: () => void) => void
@@ -169,13 +172,15 @@ type ActiveFish<S> = {
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
 
-/** Parameter object for the `Pond.getNodeConnectivity` call. @public */
+/** Parameter object for the `Pond.getNodeConnectivity` call.
+ * @public */
 export type GetNodeConnectivityParams = {
   callback: (newState: unknown) => void
   specialSources?: NodeId[]
 }
 
-/** Parameter object for the `Pond.waitForSwarmSync` call. @public */
+/** Parameter object for the `Pond.waitForSwarmSync` call.
+ * @public */
 export type WaitForSwarmSyncParams = WaitForSwarmConfig & {
   onSyncComplete: () => void
   onProgress?: (newState: SplashState) => void
@@ -749,11 +754,13 @@ const mkPond = async (
   return pondFromServices(actyx, opts)
 }
 
-/** A Pond with extensions for testing. @public */
+/** A Pond with extensions for testing.
+ * @public */
 export type TestPond = Pond & {
   directlyPushEvents: (events: TestEvent[]) => void
 }
-/** Extended options for TestPond. @public */
+/** Extended options for TestPond.
+ * @public */
 export type TestPondOptions = PondOptions & { timeInjector?: TimeInjector }
 
 const mkTestPond = (opts?: TestPondOptions): TestPond => {
@@ -780,13 +787,17 @@ const pondFromServices = (actyx: Actyx, opts: PondOptions): Pond => {
   return pond
 }
 
-/** Static methods for constructing Pond instances. @public */
+/** Static methods for constructing Pond instances.
+ * @public */
 export const Pond = {
-  /** Start Pond with default parameters. @public */
+  /** Start Pond with default parameters.
+   * @public */
   default: async (manifest: AppManifest): Promise<Pond> => Pond.of(manifest, {}, {}),
-  /** Start Pond with custom parameters. @public */
+  /** Start Pond with custom parameters.
+   * @public */
   of: mkPond,
-  /** Start Pond from provided Actyx SDK instance. @public */
+  /** Start Pond from provided Actyx SDK instance.
+   * @public */
   from: (actyx: Actyx, opts: PondOptions) => pondFromServices(actyx, opts),
   /**
    * Get a Pond instance that runs a simulated store locally

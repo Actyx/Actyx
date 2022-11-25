@@ -12,10 +12,12 @@ export interface Multiplexer {
   request: (reqType: string, payload?: unknown) => Observable<unknown>
 }
 
-/** The format of snapshots coming back from the store. @beta */
+/** The format of snapshots coming back from the store.
+ * @beta */
 export type LocalSnapshotFromIndex = LocalSnapshot<string>
 
-/** The signature of the function to store a snapshot. @beta */
+/** The signature of the function to store a snapshot.
+ * @beta */
 export type StoreSnapshot = (
   semantics: string,
   name: string,
@@ -28,21 +30,25 @@ export type StoreSnapshot = (
   serializedBlob: string,
 ) => Promise<boolean>
 
-/** The signature of the function to retrieve a snapshot. @beta */
+/** The signature of the function to retrieve a snapshot.
+ * @beta */
 export type RetrieveSnapshot = (
   semantics: string,
   name: string,
   version: number,
 ) => Promise<LocalSnapshotFromIndex | undefined>
 
-/** The signature of the function to invalidate snapshots for a given fish. @beta */
+/** The signature of the function to invalidate snapshots for a given fish.
+ * @beta */
 export type InvalidateSnapshots = (semantics: string, name: string, key: EventKey) => Promise<void>
 
-/** The signature of the function to invalidate all stored snapshots. @beta */
+/** The signature of the function to invalidate all stored snapshots.
+ * @beta */
 export type InvalidateAllSnapshots = () => Promise<void>
 
 /**
- * Interface to the snapshot store. @beta
+ * Interface to the snapshot store.
+ * @beta
  */
 export interface SnapshotStore {
   /**
@@ -112,7 +118,8 @@ const noopSnapshotStore: SnapshotStore = {
   invalidateAllSnapshots: () => Promise.resolve(undefined),
 }
 
-/** Interface to the snapshot store. @beta */
+/** Interface to the snapshot store.
+ * @beta */
 export const SnapshotStore = {
   noop: noopSnapshotStore,
   inMem: InMemSnapshotStore.of,

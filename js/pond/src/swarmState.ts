@@ -124,7 +124,8 @@ export const swarmState = (
   )
 const emptySwarmSummary = toSwarmSummary(emptySwarmInfo)
 
-/** SwarmSummary associated functions. @public */
+/** SwarmSummary associated functions.
+ * @public */
 export const SwarmSummary = {
   empty: emptySwarmSummary,
   fromSwarmInfo: toSwarmSummary,

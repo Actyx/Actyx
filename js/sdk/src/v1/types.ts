@@ -216,10 +216,12 @@ export type ConnectivityStatus = t.TypeOf<typeof ConnectivityStatus>
 
 /* Other things */
 
-/** Hook to run on store connection being closed. @public */
+/** Hook to run on store connection being closed.
+ * @public */
 export type StoreConnectionClosedHook = () => void
 
-/** Configuration for the WebSocket store connection. @public */
+/** Configuration for the WebSocket store connection.
+ * @public */
 export type WsStoreConfig = {
   /** url of the destination */
   url: string

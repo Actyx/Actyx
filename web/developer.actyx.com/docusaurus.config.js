@@ -110,10 +110,6 @@ module.exports = {
               to: 'docs/how-to/local-development/install-actyx',
             },
             {
-              label: 'Set up a new project',
-              to: 'docs/how-to/local-development/set-up-a-new-project',
-            },
-            {
               label: 'Jump into Actyx Pond',
               to: 'docs/how-to/actyx-pond/getting-started',
             },

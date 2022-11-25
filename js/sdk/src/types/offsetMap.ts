@@ -37,7 +37,8 @@ const emptyOffsetMap: OffsetMap = {}
 export const _offsetMapLookup = (m: OffsetMap, s: string): Offset =>
   getOrElseO(() => Offset.min)(fromNullable(m[s]))
 
-/** Anything with offset on a stream. @public */
+/** Anything with offset on a stream.
+ * @public */
 export type HasOffsetAndStream = {
   offset: number
   stream: string
@@ -65,7 +66,8 @@ const includeEvent = (psnMap: OffsetMapBuilder, ev: HasOffsetAndStream): OffsetM
  * @public
  */
 export type OffsetMapBuilder = Record<string, Offset>
-/** OffsetMap companion functions. @public */
+/** OffsetMap companion functions.
+ * @public */
 export type OffsetMapCompanion = {
   empty: OffsetMap
   isEmpty: (m: OffsetMap) => boolean
@@ -74,7 +76,8 @@ export type OffsetMapCompanion = {
   update: (m: OffsetMapBuilder, ev: HasOffsetAndStream) => OffsetMapBuilder
 }
 
-/** OffsetMap companion functions. @public */
+/** OffsetMap companion functions.
+ * @public */
 export const OffsetMap: OffsetMapCompanion = {
   empty: emptyOffsetMap,
   isEmpty: (m) => Object.keys(m).length === 0,

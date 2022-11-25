@@ -118,7 +118,8 @@ export const LoggersInternal = {
   testLoggers: mkTestLoggers,
 }
 
-/** Loggers associated methods. @public */
+/** Loggers associated methods.
+ * @public */
 export const Loggers = {
   of: mkLoggers,
 }

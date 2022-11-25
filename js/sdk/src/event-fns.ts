@@ -21,7 +21,8 @@ import {
   Where,
 } from './types'
 
-/** Which clock to compare events by. Defaults to `Lamport`. @beta */
+/** Which clock to compare events by. Defaults to `Lamport`.
+ * @beta */
 export enum EventOrder {
   /**
    * Comparison according to Lamport clock, which is a logical clock,
@@ -39,7 +40,8 @@ export enum EventOrder {
   Timestamp = 'timestamp',
 }
 
-/** Query for a fixed set of known events. @public */
+/** Query for a fixed set of known events.
+ * @public */
 export type RangeQuery = {
   /** Statement to select specific events. Defaults to `allEvents`. */
   query?: Where<unknown>
@@ -66,7 +68,8 @@ export type RangeQuery = {
   horizon?: string
 }
 
-/** Query for a set of events which is automatically capped at the latest available upperBound. @public */
+/** Query for a set of events which is automatically capped at the latest available upperBound.
+ * @public */
 export type AutoCappedQuery = {
   /**
    * Starting point for the query. Everything up-to-and-including `lowerBound` will be omitted from the result.
@@ -85,7 +88,8 @@ export type AutoCappedQuery = {
   horizon?: string
 }
 
-/** Subscription to a set of events that may still grow. @public */
+/** Subscription to a set of events that may still grow.
+ * @public */
 export type EventSubscription = {
   /**
    * Starting point for the query. Everything up-to-and-including `lowerBound` will be omitted from the result.
@@ -114,7 +118,8 @@ export type MonotonicSubscription<E> = {
   attemptStartFrom: FixedStart
 }
 
-/** Query for observeEarliest. @beta  */
+/** Query for observeEarliest.
+ * @beta  */
 export type EarliestQuery<E> = {
   /** Statement to select specific events. */
   query: Where<E>
@@ -130,10 +135,12 @@ export type EarliestQuery<E> = {
   eventOrder?: EventOrder
 }
 
-/** Query for observeLatest. @beta  */
+/** Query for observeLatest.
+ * @beta  */
 export type LatestQuery<E> = EarliestQuery<E>
 
-/** An aql query is either a plain string, or an object containing the string and the desired order.  @beta */
+/** An aql query is either a plain string, or an object containing the string and the desired order.
+ * @beta */
 export type AqlQuery =
   | string
   | {
@@ -152,7 +159,8 @@ export type AqlQuery =
  **/
 export type OnCompleteOrErr = (err?: unknown) => void
 
-/** Functions that operate directly on Events. @public  */
+/** Functions that operate directly on Events.
+ * @public  */
 export interface EventFns {
   /** Get the current local 'present' i.e. offsets up to which we can provide events without any gaps. */
   present: () => Promise<OffsetMap>
@@ -418,8 +426,10 @@ export interface EventFns {
   publish(events: TaggedEvent[]): Promise<Metadata[]>
 }
 
-/** EventFns for unit-tests. @public */
+/** EventFns for unit-tests.
+ * @public */
 export type TestEventFns = EventFns & {
-  /** Inject an event as if it arrived from anywhere. @public */
+  /** Inject an event as if it arrived from anywhere.
+   * @public */
   directlyPushEvents: (events: TestEvent[]) => void
 }

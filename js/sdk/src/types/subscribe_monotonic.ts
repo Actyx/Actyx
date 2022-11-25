@@ -10,7 +10,8 @@ import { ActyxEvent, EventKey } from './various'
 /// As we are still fleshing out the subscribe_monotonic endpoint, all types in here are alpha.
 
 /**
- * A state and its corresponding psn map. @beta
+ * A state and its corresponding psn map.
+ * @beta
  */
 export type StateWithProvenance<S> = {
   readonly state: S
@@ -21,7 +22,8 @@ export type StateWithProvenance<S> = {
   readonly offsets: OffsetMap
 }
 
-/** A local snapshot of state. @beta */
+/** A local snapshot of state.
+ * @beta */
 export type LocalSnapshot<S> = StateWithProvenance<S> & {
   /**
    * eventKey of the last event according to event order that went into the state.
@@ -46,36 +48,42 @@ export type LocalSnapshot<S> = StateWithProvenance<S> & {
   cycle: number
 }
 
-/** A local snapshot where the state has already been serialised. @beta */
+/** A local snapshot where the state has already been serialised.
+ * @beta */
 export type SerializedStateSnap = LocalSnapshot<string>
 
-/** Possible subscribe_monotonic message types. @alpha */
+/** Possible subscribe_monotonic message types.
+ * @alpha */
 export enum MsgType {
   state = 'state',
   events = 'events',
   timetravel = 'timetravel',
 }
 
-/** Implies consumer should apply the given state. @alpha */
+/** Implies consumer should apply the given state.
+ * @alpha */
 export type StateMsg = {
   type: MsgType.state
   snapshot: SerializedStateSnap
 }
 
-/** Implies consumer should apply the given events to its latest local state. @alpha */
+/** Implies consumer should apply the given events to its latest local state.
+ * @alpha */
 export type EventsMsg<E> = {
   type: MsgType.events
   events: ActyxEvent<E>[]
   caughtUp: boolean
 }
 
-/** Implies consumer should re-subscribe starting from `trigger` or earlier. @alpha */
+/** Implies consumer should re-subscribe starting from `trigger` or earlier.
+ * @alpha */
 export type TimeTravelMsg<E> = {
   type: MsgType.timetravel
   trigger: EventKey
 }
 
-/** Possible subscribe_monotonic message types. @alpha */
+/** Possible subscribe_monotonic message types.
+ * @alpha */
 export type EventsOrTimetravel<E> = StateMsg | EventsMsg<E> | TimeTravelMsg<E>
 
 /**

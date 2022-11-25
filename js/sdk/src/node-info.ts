@@ -43,7 +43,8 @@ export const getInfo = (config: ActyxOpts) => {
 }
 
 /**
- * Accessor to information on the Actyx node this SDK is connected to. @public
+ * Accessor to information on the Actyx node this SDK is connected to.
+ * @public
  */
 export class NodeInfo {
   private semver: SV.SemVer
