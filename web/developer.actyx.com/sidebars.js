@@ -7,8 +7,6 @@ module.exports = {
       collapsed: true,
       items: [
         'how-to/local-development/install-actyx',
-        'how-to/local-development/set-up-your-environment',
-        'how-to/local-development/set-up-a-new-project',
         'how-to/local-development/install-cli-node-manager',
         'how-to/local-development/reset-your-node',
       ],
@@ -200,10 +198,10 @@ module.exports = {
       label: 'Actyx API',
       collapsed: true,
       items: [
+        'reference/node-api',
+        'reference/auth-api',
         'reference/events-api',
         'reference/files-api',
-        'reference/auth-api',
-        'reference/node-api',
       ],
     },
     {
@@ -249,7 +247,6 @@ module.exports = {
       ],
     },
     'reference/aql',
-    'reference/rust-sdk',
   ],
   tutorialSidebar: [
     {
@@ -263,20 +260,6 @@ module.exports = {
     {
       type: 'doc',
       id: 'tutorials/chat', // string - document id
-    },
-    {
-      type: 'category',
-      label: 'Advanced Tutorial',
-      collapsed: true,
-      items: [
-        'tutorials/advanced-tutorial/introduction',
-        'tutorials/advanced-tutorial/architecture',
-        'tutorials/advanced-tutorial/get-started',
-        'tutorials/advanced-tutorial/project',
-        'tutorials/advanced-tutorial/business-logic',
-        'tutorials/advanced-tutorial/packaging',
-        'tutorials/advanced-tutorial/next-steps',
-      ],
     },
     { type: 'doc', id: 'tutorials/aql' },
   ],

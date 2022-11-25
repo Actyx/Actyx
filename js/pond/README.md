@@ -1,3 +1,4 @@
+<!--
 <div align="center">
     <h1>Actyx Pond Framework</h1>
     <a href="https://www.npmjs.com/package/@actyx/pond"><img src="https://img.shields.io/npm/v/@actyx/pond.svg?style=flat" /></a>
@@ -5,6 +6,7 @@
     <br />
     <hr />
 </div>
+-->
 
 An open-source Typescript/Javascript framework for implementing distributed state-machines which are automatically kept in sync across 
 a swarm of interconnected devices. The Actyx Pond requires Actyx to be running on each device.

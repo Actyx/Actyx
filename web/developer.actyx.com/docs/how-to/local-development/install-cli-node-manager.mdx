@@ -29,7 +29,6 @@ import TabItem from '@theme/TabItem'
 >
 <TabItem value="windows">
 
-
 ## Actyx CLI
 
 To run Actyx CLI on Windows you need to have the following prerequisites:
@@ -71,7 +70,6 @@ To install Actyx Node Manager, please follow these steps:
 
 </TabItem>
 <TabItem value="linux">
-
 
 <h2>Actyx CLI</h2>
 
@@ -124,7 +122,6 @@ Congratulations, you have successfully installed Actyx Node Manager! 🎉
 </TabItem>
 <TabItem value="mac">
 
-
 <h2>Actyx CLI</h2>
 
 To run Actyx CLI on macOS you need to have the following prerequisites:
@@ -147,7 +144,12 @@ To install Actyx CLI, please follow these steps:
 <!-- prettier-ignore -->
   ```text
   chmod +x /usr/local/bin/ax
+  xattr -d com.apple.quarantine /usr/local/bin/ax
   ```
+
+:::info Possible errors
+If you forget the second command, your Mac may tell you that the program is damaged and cannot be executed.
+:::
 
 If you do not get asked for your password at this point, you have to explicitly allow Actyx:
 
@@ -188,4 +190,3 @@ Congratulations, you have successfully installed Actyx Node Manager! 🎉
 
 </TabItem>
 </Tabs>
-
