@@ -134,10 +134,6 @@ module.exports = {
               label: 'Actyx jargon',
               to: 'docs/conceptual/actyx-jargon',
             },
-            {
-              label: 'Local First Cooperation',
-              to: 'docs/conceptual/local-first-cooperation',
-            },
           ],
         },
         {
@@ -196,10 +192,6 @@ module.exports = {
             {
               label: 'Forum',
               to: 'https://groups.google.com/a/actyx.io/g/developers',
-            },
-            {
-              label: 'Careers',
-              to: 'https://careers.actyx.io/',
             },
           ],
         },

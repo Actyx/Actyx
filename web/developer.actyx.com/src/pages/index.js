@@ -57,10 +57,6 @@ const ESSENTIALS = [
       link: '/docs/conceptual/event-sourcing',
     },
     {
-      title: 'Local First Cooperation',
-      link: '/docs/conceptual/local-first-cooperation',
-    },
-    {
       title: 'Performance and limits',
       link: '/docs/conceptual/performance-and-limits',
     },
@@ -73,10 +69,6 @@ const ESSENTIALS = [
     {
       title: 'Actyx reference',
       link: '/docs/reference/actyx-reference',
-    },
-    {
-      title: 'Actyx CLI reference',
-      link: '/docs/reference/cli/cli-overview',
     },
     {
       title: 'Node Manager reference',

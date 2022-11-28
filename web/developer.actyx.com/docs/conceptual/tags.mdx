@@ -9,19 +9,40 @@ This conceptual guide explains the concept of tagging and querying events.
 ## Tagging
 
 A tag is an arbitrary non-empty Unicode string, such as `dog`, `🅳🅾🅶`, or 🐶.
-This means that there are no reserved tags, apps are free to use the tag space in any way they see fit — even by ignoring it completely (emitting without tags and reading back all events visible to their app ID).
+This means that there are no reserved tags, apps are free to use the tag space in any way they see fit — even by ignoring it completely (e.g. emitting without tags and reading back all events visible to their app ID).
 By being arbitrary strings, tags are modular and versatile and can thus be used to specifically characterize an event, creating a clear structure within the events of a swarm.
+
+As an example, imagine an app feature that lets some person (represented by a user account) write something on a message board that is organized by topics.
+Each message publication would be done by emitting an Actyx event.
+The tags of that event might be chosen as follows:
+
+- `messagePosted` to mark that this event contains a posted message
+- `user:fred` assuming the message was posted by user account `fred`
+- `topic:Casual Friday`, since that was the topic Fred posted about
+
+Choosing the tagging scheme should be done wisely — or at least deliberately, as we’ll see in the next section.
 
 ## Queries
 
 Queries are used to express interest in a specific subset of events within a swarm.
-They always start with the keyword `FROM` followed by a combination of boolean expressions.
-Note that with all queries, the usual associativity and parentheses rules are supported, e.g. `A & ( B | C) == A & B | A & C`.
+They start with the keyword `FROM` (but check out the [primer](../tutorials/aql.mdx) or the [reference](../reference/aql.mdx) for the details) followed by a combination of tags using “and” and “or” combinators.
+The usual associativity and parentheses rules apply, e.g. `A & ( B | C) == A & B | A & C`.
 
-By combining tags with boolean expressions, any subgroup of events can be queried.
-Consider a node that is interested in all events that have the tag `A`, and either tag `B` or tag `C`.
-The corresponding tag query that this node needs to perform is `FROM 'A' & ('B' | 'C')`.
+By combining tags with boolean expressions, any tagged subgroup of events can be queried.
+In the example sketched above, we might want to obtain all messages posted by Fred:
 
-The image below illustrates how different queries lead to different subsets of events.
+```sql
+FROM 'messagePosted' & 'user:fred'
+```
 
-![tags-gif](../../static/images/conceptual/tag-expressions/tags.gif)
+This yields all events that have both tags on them.
+Assuming that all other application features also using tagging along these same lines, we could retrieve everything Fred has ever done by asking only for tag `'user:fred'`.
+Or we could search for all messages posted by Fred on two particular topics:
+
+```sql
+FROM 'messagePosted' & 'user:fred' & ( 'topic:Casual Friday' | 'topic:Coffee break' )
+```
+
+The important take-away here is that applying tags to events serves a similar purpose like adding SQL indexes: they make it fast and efficient to find certain pieces of information.
+Unlike SQL indexes, though, tags cannot be added later — this is why you should spend some thought on the intended queries when designing an event model.
+This tends to be a very helpful exercise in any case, as it will tell you which events you forgot to model so far.
