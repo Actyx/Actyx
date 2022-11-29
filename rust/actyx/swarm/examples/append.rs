@@ -2,6 +2,7 @@
 //!
 //! Can be run using `RUST_LOG=debug cargo run --release --example append to see timings`,
 //! or `cargo flamegraph --example append` to see a flamegraph (on a proper linux).
+use acto::ActoRef;
 use actyx_sdk::{app_id, tags, AppId, Payload};
 use std::{path::PathBuf, time::Instant};
 use swarm::*;
@@ -22,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
         db_path: Some(db),
         ..SwarmConfig::basic()
     };
-    let store = BanyanStore::new(config).await?;
+    let store = BanyanStore::new(config, ActoRef::blackhole()).await?;
     let n: usize = 1000;
     let t0 = Instant::now();
     for (i, tags, payload) in (0..n).map(|i| (i, tags!("abc"), Payload::null())) {

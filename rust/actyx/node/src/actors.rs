@@ -6,6 +6,7 @@ use std::{any::Any, sync::Arc};
 pub enum ActorCommand {
     NewSettings(Settings),
     Supervise(SupervisionRef<ComponentCommand, <AcTokio as ActoRuntime>::ActoHandle<anyhow::Result<()>>>),
+    Shutdown,
 }
 
 pub enum ComponentCommand {
@@ -54,6 +55,10 @@ async fn supervisor(
             }
             ActoMsgSuper::Message(ActorCommand::Supervise(ar)) => {
                 supervised.push(cell.supervise(ar));
+            }
+            ActoMsgSuper::Message(ActorCommand::Shutdown) => {
+                tracing::debug!("shutting down");
+                return;
             }
             ActoMsgSuper::Supervision { id, name, result } => {
                 let result = result

@@ -18,7 +18,7 @@ pub struct Events {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub internal: Option<serde_json::Value>,
 }
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Swarm {
     pub swarm_key: String,
@@ -34,6 +34,9 @@ pub struct Swarm {
     pub bitswap_timeout: u64,
     pub mdns: bool,
     pub branch_cache_size: u64,
+    pub gossip_interval: u64,
+    pub detection_cycles_low_latency: f64,
+    pub detection_cycles_high_latency: f64,
 }
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -54,7 +57,7 @@ pub struct LogLevels {
     pub node: LogSeverity,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub swarm: Swarm,
@@ -81,6 +84,9 @@ impl Settings {
                 bitswap_timeout: 15,
                 mdns: true,
                 branch_cache_size: 67108864,
+                gossip_interval: 10,
+                detection_cycles_low_latency: 2.0,
+                detection_cycles_high_latency: 5.0,
             },
             admin: Admin {
                 display_name: "some name".into(),

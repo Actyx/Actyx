@@ -5,6 +5,7 @@ version = "0.1.0"
 authors = ["Actyx AG"]
 
 [dependencies]
+acto = "0.2.9"
 actyx_sdk = { path = "../../../sdk" }
 anyhow = "1.0.52"
 api = { path = "../../api" }

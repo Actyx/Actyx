@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "acto"
-version = "0.2.8"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df52e0754dcac3f624a2f37cc004476cc3411f47dbc717100e4f3bf842dfb9cd"
+checksum = "b6b834b65c03f33495a2303621fe51f2cba3036003060d82c39140d038ef79d0"
 dependencies = [
  "parking_lot 0.12.1",
  "pin-project-lite",
@@ -5643,6 +5643,7 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 name = "swarm"
 version = "0.1.0"
 dependencies = [
+ "acto",
  "actyx_sdk",
  "anyhow",
  "ax-futures-util",
@@ -5691,6 +5692,7 @@ dependencies = [
 name = "swarm-cli"
 version = "0.1.0"
 dependencies = [
+ "acto",
  "actyx_sdk",
  "anyhow",
  "api",

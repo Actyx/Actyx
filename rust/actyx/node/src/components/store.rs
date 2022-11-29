@@ -1,5 +1,6 @@
 use super::{Component, ComponentRequest};
 use crate::{node_settings::Settings, BindTo};
+use acto::ActoRef;
 use actyx_sdk::NodeId;
 use anyhow::Result;
 use api::formats::Licensing;
@@ -7,14 +8,14 @@ use api::NodeInfo;
 use chrono::{DateTime, SecondsFormat::Millis, Utc};
 use crossbeam::channel::{Receiver, Sender};
 use crypto::KeyStoreRef;
-use ipfs_embed::Direction;
+use ipfs_embed::{Direction, PeerId};
 use libp2p::{multiaddr::Protocol, Multiaddr};
 use parking_lot::Mutex;
 use std::{convert::TryInto, path::PathBuf, sync::Arc, time::Duration};
 use swarm::{
     blob_store::BlobStore,
     event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
-    BanyanStore, DbPath, Ipfs, SwarmConfig,
+    BanyanStore, DbPath, GossipMessage, Ipfs, SwarmConfig,
 };
 use tokio::sync::oneshot;
 use tracing::*;
@@ -195,6 +196,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             // needs to be called with a tokio runtime
             let event_store = self.event_store.clone();
             let swarm_config = cfg.swarm_config;
+            let swarm_observer = self.swarm_observer.clone();
             let store = rt.block_on(async move {
                 let blobs = BlobStore::new(
                     swarm_config
@@ -203,7 +205,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
                         .map(DbPath::File)
                         .unwrap_or(DbPath::Memory),
                 )?;
-                let store = BanyanStore::new(swarm_config).await?;
+                let store = BanyanStore::new(swarm_config, swarm_observer).await?;
                 store.spawn_task(
                     "api".to_owned(),
                     api::run(node_info, store.clone(), event_store, blobs, bind_api, snd),
@@ -273,6 +275,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             ping_timeout: Duration::from_secs(s.swarm.ping_timeout),
             bitswap_timeout: Duration::from_secs(s.swarm.bitswap_timeout),
             branch_cache_size: s.swarm.branch_cache_size,
+            cadence_root_map: Duration::from_secs(s.swarm.gossip_interval),
             ..SwarmConfig::basic()
         };
         Ok(StoreConfig {
@@ -300,6 +303,7 @@ pub(crate) struct Store {
     number_of_threads: Option<usize>,
     node_cycle_count: NodeCycleCount,
     started_at: DateTime<Utc>,
+    swarm_observer: ActoRef<(PeerId, GossipMessage)>,
 }
 
 impl Store {
@@ -312,6 +316,7 @@ impl Store {
         keystore: KeyStoreRef,
         node_id: NodeId,
         node_cycle_count: NodeCycleCount,
+        swarm_observer: ActoRef<(PeerId, GossipMessage)>,
     ) -> anyhow::Result<Self> {
         std::fs::create_dir_all(working_dir.clone())?;
         Ok(Self {
@@ -327,6 +332,7 @@ impl Store {
             number_of_threads: None,
             node_cycle_count,
             started_at: Utc::now(),
+            swarm_observer,
         })
     }
 }

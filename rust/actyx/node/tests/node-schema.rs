@@ -21,6 +21,9 @@ fn node_schema_in_sync() {
             bitswap_timeout: 15,
             mdns: true,
             branch_cache_size: 67108864,
+            gossip_interval: 10,
+            detection_cycles_low_latency: 2.0,
+            detection_cycles_high_latency: 5.0,
         },
         admin: Admin {
             display_name: "some name".into(),

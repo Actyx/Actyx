@@ -621,6 +621,15 @@ impl OffsetMap {
             None
         }
     }
+
+    pub fn includes(&self, other: impl IntoIterator<Item = (StreamId, Offset)>) -> bool {
+        for (stream_id, offset) in other.into_iter() {
+            if self.get(stream_id) < Some(offset) {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 impl PartialOrd for OffsetMap {

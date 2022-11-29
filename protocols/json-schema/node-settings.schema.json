@@ -171,6 +171,21 @@
           "type": "integer",
           "default": 67108864,
           "description": "Maximum number of index bytes cached in memory"
+        },
+        "gossipInterval": {
+          "type": "integer",
+          "default": 10,
+          "description": "Interval at which the node sends its known stream links and offsets to all peers"
+        },
+        "detectionCyclesLowLatency": {
+          "type": "number",
+          "default": 2,
+          "description": "multiple of the gossipInterval used for determining low-latency stream replication"
+        },
+        "detectionCyclesHighLatency": {
+          "type": "number",
+          "default": 5,
+          "description": "multiple of the gossipInterval used for determining high-latency but still working stream replication"
         }
       }
     },

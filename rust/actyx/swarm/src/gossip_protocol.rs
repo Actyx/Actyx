@@ -82,6 +82,15 @@ pub struct RootUpdate {
     pub offset: Option<Offset>,
 }
 
+impl RootUpdate {
+    pub fn clone_without_blocks(&self) -> Self {
+        Self {
+            blocks: vec![],
+            ..*self
+        }
+    }
+}
+
 impl WriteCbor for RootUpdate {
     fn write_cbor<W: cbor_data::Writer>(&self, w: W) -> W::Output {
         w.encode_dict(|w| {

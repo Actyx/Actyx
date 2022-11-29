@@ -12,8 +12,11 @@ mod node_storage;
 pub mod settings;
 mod util;
 
-pub use crate::node::NodeError;
-pub use crate::util::{init_shutdown_ceremony, shutdown_ceremony, spawn_with_name};
+pub use crate::{
+    components::swarm_observer::{Status, SwarmObserver, SwarmState},
+    node::NodeError,
+    util::{init_shutdown_ceremony, shutdown_ceremony, spawn_with_name},
+};
 pub use formats::{node_settings, ShutdownReason};
 #[cfg(not(target_os = "android"))]
 pub use host::lock_working_dir;
@@ -21,7 +24,7 @@ pub use host::lock_working_dir;
 use ::util::formats::LogSeverity;
 
 use crate::actors::Actors;
-use crate::components::swarm_observer::{swarm_observer, SwarmObserver, SwarmState};
+use crate::components::swarm_observer::swarm_observer;
 use crate::{
     components::{
         android::{Android, FfiMessage},
@@ -194,6 +197,7 @@ fn spawn(
         keystore,
         node_id,
         node_cycle_count,
+        swarm_observer_ref.contramap(SwarmObserver::from),
     )
     .context("creating event store")?;
     join_handles.push(store.spawn().context("spawning event store")?);

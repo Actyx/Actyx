@@ -1,4 +1,5 @@
 use crate::{AxTreeExt, BanyanStore, SwarmConfig, MAX_TREE_LEVEL};
+use acto::ActoRef;
 use actyx_sdk::{app_id, tags, AppId, Offset, OffsetMap, Payload, StreamNr, Tag, TagSet};
 use anyhow::Result;
 use ax_futures_util::{
@@ -90,7 +91,7 @@ async fn should_compact() -> Result<()> {
     const EVENTS: usize = 10100;
     let mut config = SwarmConfig::test("compaction_interval");
     config.cadence_compact = Duration::from_secs(100000);
-    let store = BanyanStore::new(config).await?;
+    let store = BanyanStore::new(config, ActoRef::blackhole()).await?;
 
     // Wait for the first compaction loop to pass.
     tokio::time::sleep(Duration::from_millis(500)).await;
@@ -233,7 +234,7 @@ fn config_in_temp_folder() -> anyhow::Result<(SwarmConfig, tempfile::TempDir)> {
 async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
     const EVENTS: usize = 10;
     let (config, _dir) = config_in_temp_folder()?;
-    let store = BanyanStore::new(config.clone()).await?;
+    let store = BanyanStore::new(config.clone(), ActoRef::blackhole()).await?;
     let stream = store.get_or_create_own_stream(0.into())?;
     let stream_id = store.node_id().stream(0.into());
     let expected_present = OffsetMap::from(btreemap! { stream_id => Offset::from(9) });
@@ -248,7 +249,7 @@ async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
     drop(store);
 
     // load non-empty store from disk and check that the offsets are correctly computed
-    let store = BanyanStore::new(config).await?;
+    let store = BanyanStore::new(config, ActoRef::blackhole()).await?;
     let swarm_offsets = store.data.offsets.project(Clone::clone);
     assert_eq!(swarm_offsets.present, expected_present);
     // replication_target should be equal to the present. is nulled in the event service API

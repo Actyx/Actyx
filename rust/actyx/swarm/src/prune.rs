@@ -164,6 +164,7 @@ mod test {
 
     use super::*;
     use crate::{BanyanConfig, SwarmConfig};
+    use acto::ActoRef;
     use parking_lot::Mutex;
 
     fn app_id() -> AppId {
@@ -188,7 +189,7 @@ mod test {
             },
             ..SwarmConfig::basic()
         };
-        BanyanStore::new(cfg).await
+        BanyanStore::new(cfg, ActoRef::blackhole()).await
     }
 
     async fn publish_events(stream_nr: StreamNr, event_count: u64) -> anyhow::Result<BanyanStore> {
