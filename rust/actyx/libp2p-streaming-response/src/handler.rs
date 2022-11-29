@@ -21,7 +21,7 @@ use libp2p::{
 };
 use smallvec::SmallVec;
 use std::{
-    collections::{BTreeMap, VecDeque},
+    collections::{BTreeMap, HashSet, VecDeque},
     fmt::Debug,
     io::ErrorKind,
     marker::PhantomData,
@@ -188,6 +188,8 @@ pub struct Handler<T: Codec + Send + 'static> {
     request_timeout: Duration,
     response_send_buffer_size: usize,
     keep_alive: bool,
+    v1_dialling: HashSet<RequestId>,
+    v1_queue: Vec<(Upgrade, StreamingResponseMessage<T>)>,
 }
 
 impl<T: Codec + Send + 'static> Debug for Handler<T> {
@@ -222,6 +224,8 @@ impl<T: Codec + Send + 'static> Handler<T> {
             request_timeout,
             response_send_buffer_size,
             keep_alive,
+            v1_dialling: HashSet::new(),
+            v1_queue: vec![],
         }
     }
 }
@@ -274,6 +278,9 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
         stream: <Self::OutboundProtocol as OutboundUpgradeSend>::Output,
         info: Self::OutboundOpenInfo,
     ) {
+        if let OutboundInfo::V1(v1) = &info {
+            self.v1_dialling.remove(&v1.id());
+        }
         let (stream, proto) = stream;
         tracing::trace!("handler opened outbound stream for protocol {}", proto);
         match info {
@@ -366,6 +373,9 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
         info: Self::OutboundOpenInfo,
         error: ConnectionHandlerUpgrErr<<Self::OutboundProtocol as OutboundUpgradeSend>::Error>,
     ) {
+        if let OutboundInfo::V1(v1) = &info {
+            self.v1_dialling.remove(&v1.id());
+        }
         let error = match error {
             ConnectionHandlerUpgrErr::Timeout => ProtocolError::Timeout,
             ConnectionHandlerUpgrErr::Timer => ProtocolError::Timeout,
@@ -514,8 +524,40 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
             self.events.push_back(msg);
         }
 
-        if let Some(e) = self.events.pop_front() {
-            return Poll::Ready(e);
+        if let Some(idx) = self
+            .v1_queue
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, (_, msg))| (!self.v1_dialling.contains(&msg.id())).then_some(idx))
+            .next()
+        {
+            let (upgrade, v1) = self.v1_queue.drain(idx..idx + 1).next().unwrap();
+            self.v1_dialling.insert(v1.id());
+            return Poll::Ready(ConnectionHandlerEvent::OutboundSubstreamRequest {
+                protocol: SubstreamProtocol::new(upgrade, OutboundInfo::V1(v1)),
+            });
+        }
+        while let Some(e) = self.events.pop_front() {
+            let emit = match e {
+                ConnectionHandlerEvent::OutboundSubstreamRequest { protocol } => match protocol.into_upgrade() {
+                    (upgrade, OutboundInfo::V1(v1)) => {
+                        if self.v1_dialling.contains(&v1.id()) {
+                            self.v1_queue.push((upgrade, v1));
+                            None
+                        } else {
+                            self.v1_dialling.insert(v1.id());
+                            Some((upgrade, OutboundInfo::V1(v1)))
+                        }
+                    }
+                    (upgrade, info) => Some((upgrade, info)),
+                },
+                e => return Poll::Ready(e),
+            };
+            if let Some((upgrade, info)) = emit {
+                return Poll::Ready(ConnectionHandlerEvent::OutboundSubstreamRequest {
+                    protocol: SubstreamProtocol::new(upgrade, info),
+                });
+            }
         }
 
         while !self.outbound_v1.is_empty() {
