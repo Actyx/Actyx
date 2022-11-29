@@ -45,6 +45,7 @@ The features are:
 ![node-overview](../../static/images/node-manager/node-overview.png)
 
 The Node Overview screen displays all nodes that were added since opening the app.
+You can click on the star in the upper right corner of each card to store that node’s address and open it again when the Node Manager is restarted.
 
 ### 1 Connected node
 
@@ -99,7 +100,13 @@ For more information on `announceAddresses`, please refer to our [how-to guide](
 
 ![node-peers](../../static/images/node-manager/node-peers.png)
 
-The _Peers_ view displays all peers of the selected node.
+The _Peers_ view displays all peers of the selected node together with its _ping stats_ and connection time.
+Actyx aims at keeping stable connections between peers, so seeing short times here may be indicative of network issues.
+The ping stats tell you more about the round-trip latency of the network connection between the nodes as well as the failure rate.
+
+You can click on each one to expand more details, as is shown for the lower one.
+Besides all known (and previously known) addresses for this node you can also inspect the most recent connection issues.
+While “connection refused” usually means that Actyx is not running, “timeout” errors often indicate a firewall problem.
 
 ### 4 Offsets
 
@@ -202,7 +209,6 @@ Consider three examples of an offset matrix and the interpretation thereof.
 In this example, Node 1 has emitted 34 events which all have been synchronized with Node 2.
 Node 2 has not emitted any events yet.
 
-
 ![partially-connected](../../static/images/node-manager/offset-matrix-partial.png)
 
 </TabItem>
@@ -210,19 +216,16 @@ Node 2 has not emitted any events yet.
 In this example, Node 1 and Node 2 have both emitted events and all events from Node 1 have been fully synchronized. 
 Node 2 has emitted 35 events but Node 1 has only received 14 of them yet and is currently synchronizing.
 
-
 ![partially-synced](../../static/images/node-manager/offset-matrix-partially-synced.png)
 
 </TabItem>
 <TabItem value="3">
 In this example, both nodes are fully synchronized meaning every event from Node 1 has arrived at Node 2 and vice versa.
 
-
 ![fully-synced](../../static/images/node-manager/offset-matrix-synced.png)
 
 </TabItem>
 </Tabs>
-
 
 ### 3 Node Manager
 
