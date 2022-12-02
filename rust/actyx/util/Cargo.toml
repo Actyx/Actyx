@@ -16,10 +16,10 @@ derive_more = "0.99.17"
 fnv = "1.0.7"
 futures = { version = "0.3.19", package = "futures" }
 genawaiter = { version = "0.99.1", features = ["futures03"], default-features = false }
-libp2p = { version = "0.49.0", default-features = false, features = ["request-response"] }
+libp2p = { version = "0.50.0", default-features = false, features = ["request-response"] }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 log-panics = "2.0.0"
-multiaddr = "0.14.0"
+multiaddr = "0.16.0"
 num-traits = "0.2.14"
 parking_lot = "0.12.1"
 pin-utils = "0.1.0"

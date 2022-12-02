@@ -105,7 +105,7 @@ fn spawn(
 
     let actors = Actors::new(node_tx.clone()).context("creating Actors")?;
     let swarm_state_writer = Writer::new(SwarmState::default());
-    let swarm_state = swarm_state_writer.reader();
+    // let swarm_state = swarm_state_writer.reader();
     let swarm_observer = actors
         .rt()
         .spawn_actor("swarm_observer", |cell| swarm_observer(cell, swarm_state_writer));

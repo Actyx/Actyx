@@ -7,7 +7,7 @@ authors = ["Actyx AG"]
 [dependencies]
 derive_more = "0.99.17"
 futures = { version = "0.3.19", package = "futures" }
-libp2p = { version = "0.49.0", default-features = false }
+libp2p = { version = "0.50.0", default-features = false }
 serde = { version = "1.0.133", features = ["derive"] }
 serde_cbor = "0.11.2"
 smallvec = "1.10.0"
@@ -16,6 +16,6 @@ tracing = "0.1.37"
 void = "1.0.2"
 
 [dev-dependencies]
-libp2p = { version = "0.49.0", features = ["yamux", "plaintext"] }
+libp2p = { version = "0.50.0", features = ["yamux", "plaintext"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }

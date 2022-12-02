@@ -903,7 +903,7 @@ impl BanyanStore {
         banyan.spawn_task("cache_debug".to_owned(), async move {
             loop {
                 tokio::time::sleep(Duration::from_secs(60)).await;
-                tracing::debug!(c = %branch_cache.debug());
+                tracing::debug!(?branch_cache);
             }
         });
         banyan.spawn_task(

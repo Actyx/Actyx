@@ -33,7 +33,6 @@
 //! and followed by a concatenation of signatures. Each signature is classified by the first
 //! byte such that its length can be deduced by consumers.
 
-mod dh;
 mod keystore;
 #[cfg(feature = "legacy")]
 mod legacy;
@@ -42,7 +41,6 @@ mod private;
 mod public;
 mod signature;
 
-pub use dh::*;
 pub use keystore::{KeyStore, KeyStoreRef};
 #[cfg(feature = "legacy")]
 pub use legacy::LegacyKeyId;

@@ -4,7 +4,7 @@ use libp2p::{
     dns::{ResolverConfig, TokioDnsConfig},
     identity, noise,
     pnet::{PnetConfig, PreSharedKey},
-    tcp::{GenTcpConfig, TokioTcpTransport},
+    tcp,
     yamux::YamuxConfig,
     PeerId, Transport,
 };
@@ -16,7 +16,7 @@ pub async fn build_transport(
     psk: Option<PreSharedKey>,
     upgrade_timeout: Duration,
 ) -> anyhow::Result<Boxed<(PeerId, StreamMuxerBox)>> {
-    let tcp = TokioTcpTransport::new(GenTcpConfig::new().nodelay(true));
+    let tcp = tcp::tokio::Transport::new(tcp::Config::new().nodelay(true));
     let base_transport = if cfg!(target_os = "android") {
         // No official support for DNS on Android.
         // see https://github.com/Actyx/Cosmos/issues/6582

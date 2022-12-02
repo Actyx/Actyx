@@ -8,7 +8,7 @@ authors = ["Actyx AG"]
 actyx_sdk = { path = "../../sdk", features = ["arb"] }
 
 anyhow = "1.0.52"
-banyan = "0.17.1"
+banyan = "0.18.0"
 libipld = { version = "0.14.0", default-features = false, features = ["dag-cbor", "derive"] }
 num-traits = "0.2.14"
 quickcheck = { version = "1.0.3", optional = true }
