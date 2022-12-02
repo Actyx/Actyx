@@ -4,6 +4,7 @@ use std::{
 };
 
 use crate::{
+    actors::ActorCommand,
     components::{store::StoreRequest, ComponentRequest, ComponentState, ComponentType},
     formats::{ExternalEvent, NodeDetails, NodeEvent, NodeState, ResultInspect, ShutdownReason},
     host::Host,
@@ -12,6 +13,7 @@ use crate::{
     spawn_with_name,
     util::trigger_shutdown,
 };
+use acto::ActoRef;
 use chrono::SecondsFormat;
 use crossbeam::{
     channel::{bounded, Receiver, Sender},
@@ -86,6 +88,7 @@ struct Node {
     state: NodeState,
     runtime_storage: Host,
     components: Vec<(ComponentType, ComponentChannel)>,
+    actors: ActoRef<ActorCommand>,
 }
 
 impl Node {
@@ -101,6 +104,7 @@ impl Node {
             state,
             runtime_storage,
             components,
+            actors: ActoRef::blackhole(),
         })
     }
 }
@@ -256,9 +260,10 @@ impl Node {
                     .map_err(|_| ActyxOSError::internal("Failed to get node id"))?,
             );
             debug!("Setting node settings to: {:?}", settings);
-            self.state.settings = settings;
+            self.state.settings = settings.clone();
             self.state.details = details;
             self.send(NodeEvent::StateUpdate(self.state.clone()))?;
+            self.actors.send(ActorCommand::NewSettings(settings));
         }
         Ok(())
     }
@@ -312,6 +317,10 @@ impl Node {
                         ExternalEvent::SettingsRequest(req) => self.handle_settings_request(req),
                         ExternalEvent::RestartRequest(comp) => self.handle_restart_request(comp),
                         ExternalEvent::ShutdownRequested(r) => break r,
+                        ExternalEvent::RegisterActors(supervisor) => {
+                            self.actors = supervisor;
+                            self.actors.send(ActorCommand::NewSettings(self.state.settings.clone()));
+                        }
                     };
                 },
                 recv(component_rx) -> msg => {
@@ -348,6 +357,7 @@ impl Node {
         }
         // Inform all registered components
         self.send(NodeEvent::Shutdown(shutdown_reason.clone())).internal()?;
+        self.actors.send(ActorCommand::Shutdown);
 
         // Wait for registered components to stop, at most 500 ms
         let mut stopped_components = 0;
@@ -434,6 +444,9 @@ mod test {
               "bitswapTimeout": 15,
               "mdns": true,
               "branchCacheSize": 67108864,
+              "gossipInterval": 10,
+              "detectionCyclesLowLatency": 2,
+              "detectionCyclesHighLatency": 5
             },
             "admin": {
               "displayName": "My Node",

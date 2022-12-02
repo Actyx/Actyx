@@ -314,7 +314,7 @@ fn get_offsets(api: u16, identity: &Path) -> anyhow::Result<ActyxCliResult<Offse
             identity.as_os_str(),
             o(&format!("localhost:{}", api)),
         ])
-        .env("RUST_LOG", "info")
+        .env("RUST_LOG", "debug")
         .output()?;
     println!(
         "prep out:\n{}\nerr:\n{}\n---",
@@ -337,6 +337,24 @@ fn all_ax() -> anyhow::Result<()> {
     let result = with_api(run("actyx").unwrap(), false, log.clone(), |port, identity| {
         for (version, ax) in &binaries.ax {
             println!("testing {}", version);
+            if *version >= Version::new(2, 1, 0) {
+                let out = Command::new(ax)
+                    .args([
+                        o("events"),
+                        o("offsets"),
+                        o("-ji"),
+                        identity.as_os_str(),
+                        o(&format!("localhost:{}", port)),
+                    ])
+                    .env("RUST_LOG", "info")
+                    .output()?;
+                println!(
+                    "offsets out:\n{}\nerr:\n{}---\n",
+                    String::from_utf8_lossy(&out.stdout),
+                    String::from_utf8_lossy(&out.stderr)
+                );
+                ensure!(out.status.success());
+            }
             let out = Command::new(ax)
                 .args([
                     o("nodes"),

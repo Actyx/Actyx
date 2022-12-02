@@ -1,5 +1,6 @@
 #![deny(clippy::future_not_send)]
 
+mod actors;
 mod components;
 mod formats;
 mod host;
@@ -11,14 +12,19 @@ mod node_storage;
 pub mod settings;
 mod util;
 
-pub use crate::node::NodeError;
-pub use crate::util::{init_shutdown_ceremony, shutdown_ceremony, spawn_with_name};
+pub use crate::{
+    components::swarm_observer::{Status, SwarmObserver, SwarmState},
+    node::NodeError,
+    util::{init_shutdown_ceremony, shutdown_ceremony, spawn_with_name},
+};
 pub use formats::{node_settings, ShutdownReason};
 #[cfg(not(target_os = "android"))]
 pub use host::lock_working_dir;
 
 use ::util::formats::LogSeverity;
 
+use crate::actors::Actors;
+use crate::components::swarm_observer::swarm_observer;
 use crate::{
     components::{
         android::{Android, FfiMessage},
@@ -34,7 +40,9 @@ use crate::{
     settings::SettingsRequest,
     util::init_panic_hook,
 };
+use ::util::variable::Writer;
 use ::util::SocketAddrHelper;
+use acto::ActoRuntime;
 use actyx_sdk::legacy::SourceId;
 use anyhow::Context;
 use crossbeam::channel::{bounded, Receiver, Sender};
@@ -68,6 +76,7 @@ pub enum Runtime {
 pub struct ApplicationState {
     pub join_handles: Vec<thread::JoinHandle<()>>,
     pub manager: NodeWrapper,
+    _actors: Actors,
     #[allow(dead_code)]
     #[cfg(not(target_os = "android"))]
     _lock: fslock::LockFile,
@@ -93,6 +102,15 @@ fn spawn(
     let (node_tx, node_rx) = bounded_channel();
     let (logs_tx, logs_rx) = bounded_channel();
     let (nodeapi_tx, nodeapi_rx) = bounded_channel();
+
+    let actors = Actors::new(node_tx.clone()).context("creating Actors")?;
+    let swarm_state_writer = Writer::new(SwarmState::default());
+    // let swarm_state = swarm_state_writer.reader();
+    let swarm_observer = actors
+        .rt()
+        .spawn_actor("swarm_observer", |cell| swarm_observer(cell, swarm_state_writer));
+    let swarm_observer_ref = swarm_observer.me.clone();
+    actors.supervise(swarm_observer.contramap(SwarmObserver::from));
 
     let tx = store_tx.clone();
     let event_store = EventStoreRef::new(move |e| {
@@ -179,6 +197,7 @@ fn spawn(
         keystore,
         node_id,
         node_cycle_count,
+        swarm_observer_ref.contramap(SwarmObserver::from),
     )
     .context("creating event store")?;
     join_handles.push(store.spawn().context("spawning event store")?);
@@ -188,6 +207,7 @@ fn spawn(
     Ok(ApplicationState {
         join_handles,
         manager: node,
+        _actors: actors,
         #[cfg(not(target_os = "android"))]
         _lock,
     })

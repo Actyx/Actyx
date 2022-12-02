@@ -9,6 +9,7 @@ pub mod android;
 pub mod logging;
 pub mod node_api;
 pub mod store;
+pub mod swarm_observer;
 
 #[derive(Debug)]
 pub enum ComponentRequest<A> {

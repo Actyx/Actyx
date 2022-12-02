@@ -2,6 +2,7 @@ use crate::{
     gossip_protocol::{GossipMessage, RootMap, RootUpdate},
     BanyanStore, Ipfs, Link, RootPath, RootSource,
 };
+use acto::ActoRef;
 use actyx_sdk::{LamportTimestamp, NodeId, Offset, StreamNr, Timestamp};
 use anyhow::Result;
 use ax_futures_util::stream::ready_iter;
@@ -13,7 +14,7 @@ use futures::{
     channel::mpsc::{unbounded, UnboundedSender},
     prelude::*,
 };
-use ipfs_embed::GossipEvent;
+use ipfs_embed::{GossipEvent, PeerId};
 use libipld::Cid;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -39,7 +40,14 @@ pub struct Gossip {
 }
 
 impl Gossip {
-    pub fn new(mut ipfs: Ipfs, node_id: NodeId, topic: String, enable_fast_path: bool, enable_slow_path: bool) -> Self {
+    pub fn new(
+        mut ipfs: Ipfs,
+        node_id: NodeId,
+        topic: String,
+        enable_fast_path: bool,
+        enable_slow_path: bool,
+        swarm_observer: ActoRef<(PeerId, GossipMessage)>,
+    ) -> Self {
         let (tx, mut rx) = unbounded::<PublishUpdate>();
         let publish_task = async move {
             let mut cbor_scratch = Vec::new();
@@ -70,6 +78,18 @@ impl Gossip {
                         }
                     }
                     tracing::trace!(bytes = size, blocks = blocks.len());
+
+                    swarm_observer.send((
+                        ipfs.local_peer_id(),
+                        GossipMessage::RootUpdate(RootUpdate {
+                            stream,
+                            root,
+                            blocks: vec![],
+                            lamport,
+                            time,
+                            offset: Some(offset),
+                        }),
+                    ));
 
                     if enable_fast_path {
                         let root_update = RootUpdate {
@@ -137,7 +157,13 @@ impl Gossip {
         Ok(())
     }
 
-    pub fn publish_root_map(&self, store: BanyanStore, topic: String, interval: Duration) -> impl Future<Output = ()> {
+    pub fn publish_root_map(
+        &self,
+        store: BanyanStore,
+        topic: String,
+        interval: Duration,
+        swarm_observer: ActoRef<(PeerId, GossipMessage)>,
+    ) -> impl Future<Output = ()> {
         let mut ipfs = store.ipfs().clone();
         async move {
             let mut cbor_scratch = Vec::new();
@@ -167,6 +193,7 @@ impl Gossip {
                     lamport,
                     time,
                 });
+                swarm_observer.send((ipfs.local_peer_id(), msg.clone()));
                 let blob = msg
                     .write_cbor(CborBuilder::with_scratch_space(&mut cbor_scratch))
                     .into_vec();
@@ -179,7 +206,11 @@ impl Gossip {
         }
     }
 
-    pub async fn ingest(store: BanyanStore, topic: String) -> Result<impl Future<Output = ()>> {
+    pub async fn ingest(
+        store: BanyanStore,
+        topic: String,
+        swarm_observer: ActoRef<(PeerId, GossipMessage)>,
+    ) -> Result<impl Future<Output = ()>> {
         let mut ipfs = store.ipfs().clone();
         let mut subscription = ipfs.subscribe(topic.clone()).await?;
         Ok(async move {
@@ -194,6 +225,7 @@ impl Gossip {
                     .and_then(GossipMessage::read_cbor)
                 {
                     Ok(GossipMessage::RootUpdate(root_update)) => {
+                        swarm_observer.send((peer_id, GossipMessage::RootUpdate(root_update.clone_without_blocks())));
                         let _s = tracing::trace_span!("root update", root = %root_update.root);
                         let _s = _s.enter();
                         tracing::debug!(
@@ -231,6 +263,7 @@ impl Gossip {
                         }
                     }
                     Ok(GossipMessage::RootMap(root_map)) => {
+                        swarm_observer.send((peer_id, GossipMessage::RootMap(root_map.clone())));
                         let _s = tracing::trace_span!("root map", lamport = %root_map.lamport);
                         let _s = _s.enter();
                         tracing::debug!("with {} entries, lamport: {}", root_map.entries.len(), root_map.lamport);

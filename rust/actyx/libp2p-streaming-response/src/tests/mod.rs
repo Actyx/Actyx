@@ -34,7 +34,7 @@ fn test_swarm() -> Swarm<StreamingResponse<Proto>> {
         .with_keep_alive(true)
         .with_max_message_size(100);
     let behaviour = StreamingResponse::new(config);
-    SwarmBuilder::new(transport, behaviour, local_peer_id).build()
+    SwarmBuilder::with_tokio_executor(transport, behaviour, local_peer_id).build()
 }
 
 fn fake_swarm(rt: &Runtime, bytes: &[u8]) -> Swarm<proto::TestBehaviour> {
@@ -47,7 +47,7 @@ fn fake_swarm(rt: &Runtime, bytes: &[u8]) -> Swarm<proto::TestBehaviour> {
         .multiplex(YamuxConfig::default())
         .boxed();
     let behaviour = proto::TestBehaviour(rt.handle().clone(), bytes.to_owned());
-    SwarmBuilder::new(transport, behaviour, local_peer_id).build()
+    SwarmBuilder::with_tokio_executor(transport, behaviour, local_peer_id).build()
 }
 
 struct Proto;

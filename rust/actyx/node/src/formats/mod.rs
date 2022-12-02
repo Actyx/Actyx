@@ -1,10 +1,14 @@
-use crate::{components::ComponentType, node::NodeError, node_api::formats::NodesRequest, settings::SettingsRequest};
+use crate::{
+    actors::ActorCommand, components::ComponentType, node::NodeError, node_api::formats::NodesRequest,
+    settings::SettingsRequest,
+};
 use actyx_sdk::NodeId;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use util::formats::NodeName;
 
 pub mod node_settings;
+use acto::ActoRef;
 pub use node_settings::Settings;
 
 #[derive(Deserialize, PartialEq, Eq, Clone, Debug)]
@@ -35,6 +39,7 @@ pub enum ExternalEvent {
     SettingsRequest(SettingsRequest),
     RestartRequest(ComponentType),
     ShutdownRequested(ShutdownReason),
+    RegisterActors(ActoRef<ActorCommand>),
 }
 
 #[derive(PartialEq, Clone, Debug)]

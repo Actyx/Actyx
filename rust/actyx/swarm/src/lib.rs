@@ -114,6 +114,7 @@ pub type Tree = banyan::Tree<TT, Event>;
 pub type AxStreamBuilder = banyan::StreamBuilder<TT, Event>;
 pub type Link = Sha256Digest;
 
+use acto::ActoRef;
 pub use trees::StoreParams;
 pub type Block = libipld::Block<StoreParams>;
 pub type Ipfs = ipfs_embed::Ipfs<StoreParams>;
@@ -682,7 +683,7 @@ impl<'a> BanyanStoreGuard<'a> {
 
 impl BanyanStore {
     /// Creates a new [`BanyanStore`] from a [`SwarmConfig`].
-    pub async fn new(cfg: SwarmConfig) -> Result<Self> {
+    pub async fn new(cfg: SwarmConfig, swarm_observer: ActoRef<(PeerId, GossipMessage)>) -> Result<Self> {
         tracing::debug!("client_from_config({:?})", cfg);
         tracing::debug!("Start listening on topic '{}'", &cfg.topic);
 
@@ -873,6 +874,7 @@ impl BanyanStore {
             cfg.topic.clone(),
             cfg.enable_fast_path,
             cfg.enable_slow_path,
+            swarm_observer.clone(),
         );
         let banyan = Self {
             data: Arc::new(BanyanStoreData {
@@ -901,20 +903,22 @@ impl BanyanStore {
         banyan.spawn_task("cache_debug".to_owned(), async move {
             loop {
                 tokio::time::sleep(Duration::from_secs(60)).await;
-                tracing::debug!(c = %branch_cache.debug());
+                tracing::debug!(?branch_cache);
             }
         });
         banyan.spawn_task(
             "gossip_ingest".to_owned(),
-            Gossip::ingest(banyan.clone(), cfg.topic.clone()).await?,
+            Gossip::ingest(banyan.clone(), cfg.topic.clone(), swarm_observer.clone()).await?,
         );
         if cfg.enable_root_map {
             banyan.spawn_task(
                 "gossip_publish_root_map".to_owned(),
-                banyan
-                    .data
-                    .gossip
-                    .publish_root_map(banyan.clone(), cfg.topic.clone(), cfg.cadence_root_map),
+                banyan.data.gossip.publish_root_map(
+                    banyan.clone(),
+                    cfg.topic.clone(),
+                    cfg.cadence_root_map,
+                    swarm_observer,
+                ),
             );
         }
         banyan.spawn_task(
@@ -955,7 +959,7 @@ impl BanyanStore {
 
     /// Creates a new [`BanyanStore`] for testing.
     pub async fn test(node_name: &str) -> Result<Self> {
-        Self::new(SwarmConfig::test(node_name)).await
+        Self::new(SwarmConfig::test(node_name), ActoRef::blackhole()).await
     }
 
     fn lock(&self) -> BanyanStoreGuard<'_> {

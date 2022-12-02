@@ -7,7 +7,7 @@ authors = ["Actyx AG"]
 [dependencies]
 anyhow = "1.0.52"
 log = "0.4.14"
-multiaddr = "0.14.0"
+multiaddr = "0.16.0"
 parking_lot = "0.12.1"
 rusqlite = { version = "0.26.3", features = ["bundled", "backup"] }
 serde = { version = "1.0.133", features = ["derive"] }

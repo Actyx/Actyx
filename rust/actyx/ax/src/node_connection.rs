@@ -20,8 +20,8 @@ use libp2p::{
         ProtocolSupport, RequestId, RequestResponse, RequestResponseConfig, RequestResponseEvent,
         RequestResponseMessage,
     },
-    swarm::{dial_opts::DialOpts, DialError, SwarmBuilder, SwarmEvent},
-    Multiaddr, NetworkBehaviour, PeerId,
+    swarm::{dial_opts::DialOpts, DialError, NetworkBehaviour, SwarmBuilder, SwarmEvent},
+    Multiaddr, PeerId,
 };
 use libp2p_streaming_response::{RequestReceived, Response, StreamingResponse, StreamingResponseConfig};
 use serde::{Deserialize, Serialize};
@@ -45,7 +45,7 @@ use util::{
 };
 
 #[derive(NetworkBehaviour)]
-#[behaviour(event_process = false, out_event = "OutEvent")]
+#[behaviour(out_event = "OutEvent")]
 struct Behaviour {
     admin: StreamingResponse<AdminProtocol>,
     events: StreamingResponse<EventsProtocol>,
@@ -117,11 +117,7 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
             identify::Config::new("Actyx".to_owned(), public_key).with_initial_delay(Duration::ZERO),
         ),
     };
-    let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id)
-        .executor(Box::new(|task| {
-            tokio::spawn(task);
-        }))
-        .build();
+    let mut swarm = SwarmBuilder::with_tokio_executor(transport, behaviour, local_peer_id).build();
 
     let mut banyan_channels = HashMap::<(PeerId, RequestId), Sender<ActyxOSResult<BanyanResponse>>>::new();
     let mut connects = HashMap::<Multiaddr, Vec<Sender<ActyxOSResult<PeerId>>>>::new();

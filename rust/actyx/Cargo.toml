@@ -37,10 +37,8 @@ opt-level = 0
 lto = "off"
 
 [patch.crates-io]
-banyan = { git = "https://github.com/Actyx/banyan", branch = "rku/logging" }
-banyan-utils = { git = "https://github.com/Actyx/banyan", branch = "rku/logging" }
+banyan = { git = "https://github.com/Actyx/banyan", branch = "master" }
+banyan-utils = { git = "https://github.com/Actyx/banyan", branch = "master" }
 # cbor-data = { path = "../../../cbor-data" }
 # ipfs-embed = { path = "../../../ipfs-embed" }
-if-watch = { git = "https://github.com/rkuhn/if-watch", branch = "feature-gate-runtime" }
-# if-watch = { path = "../../../if-watch" }
 # libp2p = { path = "../../../rust-libp2p" }

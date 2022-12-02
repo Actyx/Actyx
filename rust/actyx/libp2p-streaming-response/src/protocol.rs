@@ -39,7 +39,7 @@ where
 }
 
 /// Local requestId
-#[derive(Debug, Default, Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Default, Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct RequestId(u64);
 
 impl RequestId {

@@ -1,3 +1,4 @@
+use acto::ActoRef;
 use actyx_sdk::{app_id, AppId, Payload};
 use anyhow::Result;
 use api::{formats::Licensing, NodeInfo};
@@ -56,7 +57,7 @@ async fn run() -> Result<()> {
         let cfg = SwarmConfig::from(config.clone());
         let mut key_store = KeyStore::default();
         key_store.add_key_pair_ed25519(cfg.keypair.unwrap_or_else(KeyPair::generate).into())?;
-        let swarm = BanyanStore::new(cfg).await?;
+        let swarm = BanyanStore::new(cfg, ActoRef::blackhole()).await?;
         tracing::info!("Binding api to {:?}", addr);
         let node_info = NodeInfo::new(
             swarm.node_id(),
@@ -95,7 +96,7 @@ async fn run() -> Result<()> {
         );
         swarm
     } else {
-        BanyanStore::new(config.clone().into()).await?
+        BanyanStore::new(config.clone().into(), ActoRef::blackhole()).await?
     };
 
     let mut ipfs = swarm.ipfs().clone();

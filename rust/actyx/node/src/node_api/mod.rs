@@ -36,8 +36,8 @@ use libp2p::{
         ProtocolSupport, RequestResponse, RequestResponseConfig, RequestResponseEvent, RequestResponseMessage,
         ResponseChannel,
     },
-    swarm::{keep_alive, ConnectionHandler, IntoConnectionHandler, NetworkBehaviour, Swarm, SwarmBuilder, SwarmEvent},
-    Multiaddr, NetworkBehaviour, PeerId,
+    swarm::{keep_alive, NetworkBehaviour, Swarm, SwarmBuilder, SwarmEvent},
+    Multiaddr, PeerId,
 };
 use libp2p_streaming_response::{RequestReceived, StreamingResponse, StreamingResponseConfig};
 use parking_lot::Mutex;
@@ -871,11 +871,7 @@ pub(crate) async fn mk_swarm(
     let (protocol, state) = ApiBehaviour::new(node_id, node_tx, store_dir, store, auth_info, keypair.public());
     let (peer_id, transport) = mk_transport(keypair).await?;
 
-    let mut swarm = SwarmBuilder::new(transport, protocol, peer_id)
-        .executor(Box::new(|fut| {
-            tokio::spawn(fut);
-        }))
-        .build();
+    let mut swarm = SwarmBuilder::with_tokio_executor(transport, protocol, peer_id).build();
 
     let mut addrs = state.admin_sockets.new_observer();
 
@@ -933,7 +929,7 @@ pub(crate) async fn mk_swarm(
     Ok(peer_id)
 }
 
-type TConnErr = <<<ApiBehaviour as NetworkBehaviour>::ConnectionHandler as IntoConnectionHandler>::Handler as ConnectionHandler>::Error;
+type TConnErr = <<<ApiBehaviour as NetworkBehaviour>::ConnectionHandler as libp2p::swarm::IntoConnectionHandler>::Handler as libp2p::swarm::ConnectionHandler>::Error;
 
 async fn mk_transport(id_keys: identity::Keypair) -> anyhow::Result<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {
     let peer_id = id_keys.public().to_peer_id();

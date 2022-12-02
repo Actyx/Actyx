@@ -643,7 +643,7 @@ mod tests {
                 QueryResponse::Event(e) => e.payload.json_string(),
                 QueryResponse::Offsets(_) => "offsets".to_owned(),
                 QueryResponse::Diagnostic(d) => d.message,
-                QueryResponse::FutureCompat => todo!(),
+                QueryResponse::FutureCompat => unreachable!(),
             })
             .collect()
             .await
