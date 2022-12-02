@@ -178,7 +178,14 @@ fn download(package: &str, bin: &str, version: Version, dst_dir: &Path, may_skip
         x => x.unwrap(),
     };
     for entry in entries {
-        let mut entry = entry.unwrap();
+        let mut entry = match entry {
+            Ok(e) => e,
+            Err(_) if *may_skip => {
+                *may_skip = false;
+                return None;
+            }
+            x => x.unwrap(),
+        };
         let path = entry.path().unwrap_or_else(|e| panic!("getting path: {}", e));
         if entry.header().entry_type().is_file() && path.as_ref() == Path::new(bin) {
             entry
