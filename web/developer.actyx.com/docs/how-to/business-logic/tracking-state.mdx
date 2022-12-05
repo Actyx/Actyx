@@ -89,13 +89,12 @@ const queue: TaggedEvent[] = []
 const publish = (t: TaggedEvent) => {
   const start = queue.length === 0
   queue.length < QUEUE_CAPACITY && queue.push(t)
-  if (start) {
-    ;(async () => {
+  start &&
+    (async () => {
       while (queue.length > 0) {
-        await actyx.publish(Tag('t').apply(queue.shift()))
+        await actyx.publish(queue.shift())
       }
     })()
-  }
 }
 
 // and use this like so:
