@@ -122,7 +122,7 @@ All we have to do is to run some AQL queries.
 In case of the window this is almost too easy:
 
 ```sql
-PRAGMA features = aggregate
+PRAGMA features := aggregate
 FROM 'window:living room' AGGREGATE LAST(_.type)
 ```
 
