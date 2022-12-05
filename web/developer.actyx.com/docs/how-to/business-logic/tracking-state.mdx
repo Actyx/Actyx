@@ -122,7 +122,7 @@ All we have to do is to run some AQL queries.
 In case of the window this is almost too easy:
 
 ```sql
-PRAGMA features = aggregate
+PRAGMA features := aggregate
 FROM 'window:living room' AGGREGATE LAST(_.type)
 ```
 
@@ -132,7 +132,7 @@ Otherwise, it will say either `"closed"` or `"openend"`.
 We can retrieve the current mode of the thermostat in the same fashion, or we can also include the latest temperature measurements:
 
 ```sql
-PRAGMA features = aggregate
+PRAGMA features := aggregate
 FROM 'thermostat:living room'
 AGGREGATE {
     temperature: LAST(CASE _.type = 'temperatureReading' => _.inside ENDCASE)
@@ -144,7 +144,7 @@ This query will cause Actyx to search all events tagged for the living room ther
 If we wanted to get the last set point then it would be more efficient to search for that using more tags, since we can assume that the set point is changed much less frequently than the occurrence of the other events.
 
 ```sql
-PRAGMA features = aggregate
+PRAGMA features := aggregate
 FROM 'window:living room' & 'setPointChanged' AGGREGATE LAST(_.setPoint)
 ```
 
@@ -154,7 +154,7 @@ If we encapsulate these queries inside helper functions, our little example appâ
 const getWindowState = async (actyx: EventFns) => {
   const results = await actyx.queryAql({
     // the PRAGMA needs its own line
-    query: `PRAGMA features = aggregate
+    query: `PRAGMA features := aggregate
             FROM 'window:living room' AGGREGATE LAST(_.type)`,
   })
   const values = results.filter((r) => r.type === 'event')
@@ -189,7 +189,7 @@ Since we emit changes as events, we have access to the whole history!
 This means we can find out whether the window was open at some specific point in time:
 
 ```sql
-PRAGMA features = aggregate timeRange
+PRAGMA features := aggregate timeRange
 FROM 'window:living room' & to(2022-09-23T12:15:00+02:00) AGGREGATE LAST(_.type)
 ```
 
@@ -202,7 +202,7 @@ import { linearRegression } from 'simple-statistics'
 const temperatureTrend = async (actyx: EventFns) => {
   const fromTime = new Date(Date.now() - 60 * 60 * 1000) // one hour ago
   const results = await actyx.queryAql({
-    query: `PRAGMA features = timeRange
+    query: `PRAGMA features := timeRange
             FROM 'thermostat:living room' & 'temperatureReading' & from(${fromTime})
             SELECT _.outside`,
   })

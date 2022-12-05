@@ -1,0 +1,10 @@
+digraph dinner {
+    edge [fontname="Courier"];
+    dineOut [pos="-100,10"];
+    initial -> voting [label="{ type: 'started',\l  options: string[] }\l"];
+    voting -> voting [label="{ type: 'voted',\l  option: string }\l"];
+    voting -> decided [label="{ type: 'decided',\l  choice: string,\l  ingredients: string[] }\l"];
+    decided -> cooking [label="{ type: 'ready' }\l"];
+    voting -> dineOut [label="{ type: 'aborted' }",weight=0.1];
+    decided -> dineOut [label="{ type: 'aborted' }  ",weight=0.1];
+}

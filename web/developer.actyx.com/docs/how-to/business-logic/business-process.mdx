@@ -1,0 +1,211 @@
+---
+title: Modeling a business process
+---
+
+In contrast to [tracking state of some external thing](./tracking-state.mdx), modeling a business process aims at following the proper procedure within Actyx.
+The process is usually designed by a domain expert and implemented by IT personnel.
+
+Consider for example the agreement on what to cook for dinner:
+
+- someone poses the question, which comes at the price of having to list a few options
+- for a limited time period everybody gets to cast their vote
+- when it is time to make a decision, mom picks the winner
+- this happens in time for dad to pay a visit to the grocery store
+- once all ingredients are at home, the fun can begin
+
+As a tribute to real life, we also include the possibility to abort this process at any point, which means that the family will dine out.
+
+## Solution strategy
+
+Since following this process means limiting current choices based on what has already happened, we will use the Actyx Pond library.
+Again, we start by defining the event model for recording the progression of the workflow, but in order to ensure that only appropriate events are emitted we then use a _fish_ to process them.
+This yields both a current state and a set of applicable commands.
+
+## Designing the event model
+
+This time the event model does not record changes in some external thing; this time each event marks the progression of the desired workflow.
+We therefore start by drawing the workflow:
+
+![dinner](dinner_decision.gv.png)
+
+This diagram shows the five states our workflow can be in, together with the events that mark transitions between them.
+We include the data that will be needed and thus the event design is already finished.
+
+```ts
+type Started = { type: 'started'; options: string[] }
+type Voted = { type: 'voted'; option: string }
+type Decided = { type: 'decided'; choice: string; ingredients: string[] }
+type Ready = { type: 'ready' }
+type Aborted = { type: 'aborted' }
+type DinnerEvent = Started | Voted | Decided | Ready | Aborted
+```
+
+## Encoding the state machine
+
+Once we have the events, we need to use them to compute a current state.
+This state is not just equal to the type of the most recently written event because the proper sequence of transitions needs to be observed.
+If we get a nonsensical event, we need to ignore it.
+We start out by defining the states:
+
+```ts
+type Initial = { type: 'initial' }
+type Voting = { type: 'voting'; options: string[]; votes: string[] }
+type Decided = { type: 'decided'; choice: string; ingredients: string[] }
+type Cooking = { type: 'cooking'; choice: string }
+type DineOut = { type: 'dineOut' }
+type DinnerState = Initial | Voting | Decided | Cooking | DineOut
+```
+
+There is some overlap with the event definitions, but the states usually hold on to more information than a single event provided.
+For example, it is useful to know what we are cooking, or we need to keep track of submitted votes.
+The state machine is the code that takes an existing state and a new event and then decides what the following state shall be.
+
+```ts
+const onEvent: Reduce<DinnerState, DinnerEvent> = (state, event) => {
+  switch (state.type) {
+    case 'initial': {
+      switch (event.type) {
+        case 'started': {
+          const { options } = event
+          return { type: 'started', options }
+        }
+      }
+      break
+    }
+    case 'voting': {
+      switch (event.type) {
+        case 'voted': {
+          const { option } = event
+          const { votes } = state
+          votes.push(option)
+          return { ...state, votes }
+        }
+        case 'decided': {
+          const { choice, ingredients } = event
+          return { state: 'decided', choice, ingredients }
+        }
+      }
+      break
+    }
+    // and so on for the other states
+  }
+  // otherwise, if an unexpected event was encountered, stay in the same state
+  return state
+}
+```
+
+If this state machine gets too big, it is a good idea to factor out the handling of each state into its own function.
+
+:::info Classes are not yet supported
+Please note that states need to be plain objects in current versions of Actyx Pond — using classes is not yet supported.
+:::
+
+## Breathing life into the fish
+
+In order to see the state machine in action, we will need to instantiate it in an Actyx Pond.
+This requires a [small collection of metadata](../../reference/pond/modules#fish) to describe what exactly should happen:
+
+```ts
+const DinnerTag = Tag<DinnerEvent>('Dinner')
+const DinnerFish = (dinnerId: string): Fish<DinnerState, DinnerEvent> => {
+    fishId: FishId.of('Dinner', dinnerId, 1),
+    where: DinnerTag.withId(dinnerId),
+    initialState: { type: 'initial' },
+    onEvent
+}
+```
+
+Now we could observe this fish with `pond.observe(DinnerFish('abcd'))`, but it will always be in the `initial` state because no events have been emitted.
+
+## Offering the appropriate commands
+
+Each of the state transitions described above is triggered by the reception of an event, which may come from some other Actyx node or from the local one.
+In any case it must be generated somewhere, based on the current state known at that Actyx node.
+This is done using the `Pond.run()` facility.
+
+```ts
+const commands = (dinnerId: string, pond: Pond) => (state: DinnerState) => {
+  start: state.type === 'initial'
+    ? (options: string[]) =>
+        pond
+          .run(
+            (state2, enqueue) =>
+              state2.type === 'initial' &&
+              enqueue([
+                DinnerTag.withId(dinnerId).and(Tag('started')),
+                { type: 'started', options },
+              ]),
+          )
+          .toPromise()
+    : undefined
+  vote: state.type === 'voting'
+    ? (option: string) =>
+        pond
+          .run(
+            (state2, enqueue) =>
+              state2.type === 'voting' &&
+              enqueue([DinnerTag.withId(dinnerId), { type: 'voted', option }]),
+          )
+          .toPromise()
+    : undefined
+  // and so on for the other events
+}
+```
+
+This function needs to be primed with a `dinnerId` and `pond`, which results in a function that computes the available commands for a given state.
+A (graphical) UI could inspect the returned object and render buttons according to command availability.
+When such a button is pressed, the required inputs are passed into the corresponding command function, which will dispatch this request via the Pond to the DinnerFish.
+If the target fish still is in the right state when it is this command’s turn to be executed, then the `enqueue` function is invoked to effect the event emission.
+Subsequently the fish will see the emitted event and publish a new state to all its observers.
+
+:::tip Await the promises
+The `Promise` returned from each command invocation should be `await`ed to see whether the event publication succeeded:
+it can fail if Actyx is currently unavailable (for example because it is being restarted).
+:::
+
+## Tying the pieces together
+
+With the above code implemented, we can create a skeleton “dinner voting app”:
+
+```ts
+import * as uuid from 'uuid'
+
+const pond = await Pond.default(/* app manifest */)
+const dinnerId = uuid.v4()
+const dinnerCommands = commands(dinnerId, pond)
+pond.observe(DinnerFish(dinnerId), (state) => renderButtons(dinnerCommands(state)))
+```
+
+This is not quite good enough yet because every time this app starts on some Actyx node it will show a fresh dinner workflow in its initial state.
+Instead, we want to show a selection of dinner preparations to join.
+The astute reader will have noticed that the extra `started` tag has been added in the command processor defined above.
+Using this tag we can efficiently find all preparations started within the last hours:
+
+```ts
+const cutOff = new Date(Date.now() - 6 * 60 * 60 * 1000) // six hours ago
+const dinnerIdResult = await pond.events().queryAql({
+  query: `PRAGMA features := timeRange
+          FROM 'Dinner' & 'started' & from(${cutOff})`,
+})
+const dinnerIds = dinnerIdResult
+  .filter((r) => r.type === 'event')
+  .map((r) => r.meta.tags.find((t) => t.startsWith('Dinner:')?.slice(7)))
+const dinnerStates = await Promise.all(
+  dinnerIds.map(
+    (id) =>
+      new Promise((res) => {
+        const cancel = pond.observe(
+          DinnerFish(id),
+          (state) => {
+            cancel()
+            res({ ...state, id })
+          },
+          () => cancel(),
+        )
+      }),
+  ),
+)
+```
+
+Now we have a set of dinner workflows, complete with their identifier and respective state.
+We could render an overview page for the user to select one of these or start a new one (i.e. creating a new identifier and emitting a `started` event with the corresponding fish).
