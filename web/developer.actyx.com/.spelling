@@ -417,6 +417,7 @@ showLinks
 tutorial-setup-02
  - ./docs/tutorials/chat.mdx
 http
+actyx.io
  - ./blog/2020-06-09-building-docker-apps-for-arm64v8.md
 arm64
 rc.2
