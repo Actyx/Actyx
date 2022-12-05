@@ -74,7 +74,7 @@ If you now navigate to [http://localhost:1234](http://localhost:1234) in your br
 
 ### Help, I’m stuck!
 
-If you get stuck, ping us on our [Discord Chat](https://discord.gg/262yJhc) or e-mail us at developer@actyx.io.
+If you get stuck, ping us on our [Discord Chat](https://discord.gg/262yJhc) or e-mail the mailing list at [developer@actyx.io](mailto:developer@actyx.io).
 
 ## What is Actyx?
 
@@ -133,8 +133,10 @@ This is the complete chat logic. Let's now turn this into a fish.
 
 ### The chat fish
 
-:::note Twin == Fish
-The Actyx library that allows you to write twins, actually calls them Fishes. You will see below, but Twin == Fish!
+:::info Twin == Fish
+We use these two terms interchangeably:
+_local twins_ take [digital twins](https://en.wikipedia.org/wiki/Digital_twin) from the cloud into edge computing while
+Actyx enables edge computing by offering a lake of data in which programs can live and breathe — like _fishes_.
 :::
 
 A _fish_, aka twin, is defined as an object with a couple of properties. You must provide the fish with an ID, an initial state, the `onEvent` function and information about where to get the chat messages from, a so-called _event stream tags_.
@@ -184,7 +186,7 @@ What Actyx allows you to do now is run this chat app on as many computers as you
 
 The power of this is that you do not have to worry about programming the network, nor about setting up some central database for storage. You only think: local-first.
 
-And, your user can use the app whenever his device is on. Even when he is in airplane mode. Actyx will sync the twin when he gets back into the network. This is local-first.
+And, your user can use the app whenever their device is on. Even when they are in airplane mode. Actyx will sync the twin when they get back into the network. This is local-first.
 
 And just like that you have built a decentralized app that would traditionally have required a web server and a shared database or pub-sub broker 🎉
 
@@ -205,12 +207,11 @@ You can download the complete code for this tutorial from GitHub [here](https://
 
 ## Further resources
 
-- Move onto the advanced tutorial to implement a factory use-case
-- Visit our how-to guides to get started immediately
-- Dive into how it works with the Conceptual Guides
+- Visit our [how-to guides](../how-to/overview.mdx) to get started immediately
+- Dive into how it works with the [conceptual guides](../conceptual/overview.mdx)
 
 :::note Join our Discord chat
-Feel free to join our [Actyx Developer Chat](https://discord.gg/262yJhc) on Discord. We would love to hear about what you want to build on the Actyx Platform.
+Feel free to join our [Actyx Developer Chat](https://discord.gg/4RZpTqmPgC) on Discord. We would love to hear about what you want to build on the Actyx Platform.
 :::
 
 <!-- markdownlint-disable MD025 -->
