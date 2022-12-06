@@ -2,7 +2,8 @@
 title: Modeling a business process
 ---
 
-In contrast to [tracking state of some external thing](./tracking-state.mdx), modeling a business process aims at following the proper procedure within Actyx.
+In contrast to [tracking state of some external thing](./tracking-state.mdx), modeling a business process aims at enforcing the proper procedure within Actyx.
+Not all events or changes are possible at all times, there is a prescribed sequence of events and decision points that needs to be observed.
 The process is usually designed by a domain expert and implemented by IT personnel.
 
 Consider for example the agreement on what to cook for dinner:
@@ -209,3 +210,23 @@ const dinnerStates = await Promise.all(
 
 Now we have a set of dinner workflows, complete with their identifier and respective state.
 We could render an overview page for the user to select one of these or start a new one (i.e. creating a new identifier and emitting a `started` event with the corresponding fish).
+
+## How it will be executed
+
+The process we described and encoded in a state machine relies on getting the events in the right order:
+if we see a `ready` event without having seen the `decided` event then we have no clue what we should be cooking!
+Actyx helps by giving you three core guarantees:
+
+- every node will eventually get all the events it needs (assuming the system keeps running and communication works sometimes) _[reliability]_
+- once a node gets all events about some process, it will apply them to the state machine in the same order as all other nodes _[eventual consistency]_
+- an event that is emitted after seeing a state based on some other events will be ordered _after_ those other events _[causality]_
+
+In our above process, dad will have seen the `decided` event (and the included list of ingredients) when he publishes the `ready` event.
+Therefore, everyone will eventually see these two in that same order.
+One of the kids may first get dad’s event without having synced events from mom’s phone yet, in which case our `onEvent` function will ignore the `ready` event; the app will remain in the `voting` state until the sync with mom occurs.
+
+_There is one piece of our event design that bears special mention:_
+we included the `choice` in the `decided` event instead of relying on always applying the same voting mechanism.
+This is important because the decision recorded here is fixed, based on what mom knew at the time.
+Once dad is shopping groceries there is no way to go back and revisit the voting process.
+So if a vote arrives late at mom’s phone, subsequent review of the event history may indicate that the decision was “incorrect”, but that is only true in hindsight and irrelevant for the ongoing execution of the workflow.
