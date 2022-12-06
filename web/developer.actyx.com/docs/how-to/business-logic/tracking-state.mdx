@@ -38,9 +38,9 @@ In the case of the thermostat the event model is bigger but not complicatedâ€Šâ€
 <!-- prettier-ignore -->
 ```ts
 type ThermostatId = string
-type TemperaturReading = { type: 'temperatureReading', id: ThermostatId, inside: number, outside: number }
-type SetPointChanged = { type: 'setPointChanged', id: ThermostatId, setPoint: number }
-type ModeChanged = { type: 'modeChanged', id: ThermostatId, mode: 'heating' | 'neutral' | 'cooling' }
+type TemperaturReading = { type: 'temperatureReading'; id: ThermostatId; inside: number; outside: number }
+type SetPointChanged = { type: 'setPointChanged'; id: ThermostatId; setPoint: number }
+type ModeChanged = { type: 'modeChanged'; id: ThermostatId; mode: 'heating' | 'neutral' | 'cooling' }
 type ThermostatEvent = TemperaturReading | SetPointChanged | ModeChanged
 ```
 
