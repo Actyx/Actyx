@@ -326,9 +326,19 @@ export class NodeInfo {
     // (undocumented)
     longVersion(): string;
     // (undocumented)
+    peersStatus(): Record<string, NodeStatus> | undefined;
+    // (undocumented)
     semVer(): string;
     // (undocumented)
     uptimeMillis(): number;
+}
+
+// @public
+export enum NodeStatus {
+    HighLatency = "HighLatency",
+    LowLatency = "LowLatency",
+    NotWorking = "NotWorking",
+    PartiallyWorking = "PartiallyWorking"
 }
 
 // @public
