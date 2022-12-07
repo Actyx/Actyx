@@ -1,7 +1,7 @@
 /**
  * @jest-environment ./dist/integration/src/jest/environment
  */
-import { Actyx, NodeStatus } from '@actyx/sdk'
+import { Actyx } from '@actyx/sdk'
 import { assertOK } from '../assertOK'
 import { mkNodeIdService as mkNodeService, mkTrialHttpClient, trialManifest } from '../http-client'
 import { runOnEvery } from '../infrastructure/hosts'
@@ -33,7 +33,7 @@ describe('node service', () => {
         await retryTimes(async () => {
           // takes two gossip intervals to get first data
           const peers = (await sdk.nodeInfo(0)).peersStatus()
-          expect(peers).toMatchObject({ [sdk.nodeId]: NodeStatus.LowLatency })
+          expect(peers).toMatchObject({ [sdk.nodeId]: expect.anything() })
         }, 30)
       }))
   })
