@@ -771,7 +771,12 @@ const mkTestPond = (opts?: TestPondOptions): TestPond => {
       /* noop */
     },
     nodeInfo: async () =>
-      new NodeInfo({ connectedNodes: 0, version: '2.0.0-test', uptime: { secs: 0, nanos: 0 } }),
+      new NodeInfo({
+        connectedNodes: 0,
+        version: '2.0.0-test',
+        uptime: { secs: 0, nanos: 0 },
+        swarmState: undefined,
+      }),
   }
   return {
     ...pondFromServices(actyx, opts1),

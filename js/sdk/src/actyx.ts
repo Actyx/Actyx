@@ -42,6 +42,10 @@ export type Actyx = EventFns & {
    * freshness requirements — for human consumption a couple hundred milliseconds is good enough.
    *
    * The underlying API endpoint has been added in Actyx 2.5.0, earlier versions report dummy data.
+   *
+   * Starting with Actyx 2.15.0 the returned data also contains the swarm status as seen by this node.
+   *
+   * @public
    */
   nodeInfo: (maxAgeMillis: number) => Promise<NodeInfo>
 }

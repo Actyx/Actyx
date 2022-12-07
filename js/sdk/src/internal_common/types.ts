@@ -10,7 +10,7 @@ import { Ordering } from 'fp-ts/lib/Ordering'
 import * as N from 'fp-ts/number'
 import * as S from 'fp-ts/string'
 import * as t from 'io-ts'
-import { EventsSortOrder, isString } from '../types'
+import { EventsSortOrder, isString, NodeStatus } from '../types'
 import { Codecs, EventKeyIO, OffsetMapIO } from '../types/wire'
 
 // EnumType Class
@@ -219,6 +219,11 @@ export type WsStoreConfig = {
   // todo timeouts?, heartbeats? etc.
 }
 
+export const NodeStatusIo = createEnumType<NodeStatus>(NodeStatus, 'NodeStatusIo')
+export const SwarmState = t.type({
+  peersStatus: t.record(Codecs.NodeId, NodeStatusIo),
+})
+
 export const NodeInfo = t.type({
   connectedNodes: t.number,
   uptime: t.type({
@@ -226,5 +231,6 @@ export const NodeInfo = t.type({
     nanos: t.number,
   }),
   version: t.string,
+  swarmState: t.union([t.undefined, SwarmState]),
 })
 export type NodeInfo = t.TypeOf<typeof NodeInfo>

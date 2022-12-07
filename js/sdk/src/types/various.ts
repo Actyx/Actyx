@@ -474,15 +474,29 @@ export type AqlFutureCompat = {
  * @beta */
 export type AqlResponse = AqlEventMessage | AqlOffsetsMsg | AqlDiagnosticMessage | AqlFutureCompat
 
-/** Uptime data type returned by Actyx @internal */
-export type Uptime = {
-  secs: number
-  nanos: number
-}
-
-/** Node information block returned by Actyx @internal */
-export type NodeInfo = {
-  connectedNodes: number
-  uptime: Uptime
-  version: string
+/**
+ * Status of another node as observed by the local node
+ * @public
+ */
+export enum NodeStatus {
+  /**
+   * Replicates all streams within at most two gossip cycles
+   */
+  LowLatency = 'LowLatency',
+  /**
+   * Replicates all streams within at most five gossip cycles
+   */
+  HighLatency = 'HighLatency',
+  /**
+   * Replicates at least half of all streams within five gossip cycles
+   */
+  PartiallyWorking = 'PartiallyWorking',
+  /**
+   * Replicates less than half of all streams within five gossip cycles
+   *
+   * This state either means that the node is disconnected from our part of
+   * the network or that it has been shut down or decommissioned. Old streams
+   * will stay in the swarm in this state.
+   */
+  NotWorking = 'NotWorking',
 }

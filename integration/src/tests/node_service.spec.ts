@@ -1,10 +1,11 @@
 /**
  * @jest-environment ./dist/integration/src/jest/environment
  */
-import { Actyx } from '@actyx/sdk'
+import { Actyx, NodeStatus } from '@actyx/sdk'
 import { assertOK } from '../assertOK'
 import { mkNodeIdService as mkNodeService, mkTrialHttpClient, trialManifest } from '../http-client'
 import { runOnEvery } from '../infrastructure/hosts'
+import { retryTimes } from '../retry'
 import { getHttpApi } from '../util'
 
 describe('node service', () => {
@@ -29,6 +30,11 @@ describe('node service', () => {
         })
         const info = await sdk.nodeInfo(0)
         expect(info.longVersion()).toMatch(process.env.ACTYX_VERSION || 'ACTYX_VERSION not set')
+        await retryTimes(async () => {
+          // takes two gossip intervals to get first data
+          const peers = (await sdk.nodeInfo(0)).peersStatus()
+          expect(peers).toMatchObject({ [sdk.nodeId]: NodeStatus.LowLatency })
+        }, 30)
       }))
   })
 })

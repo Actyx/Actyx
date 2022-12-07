@@ -2,7 +2,7 @@ import fetch from 'cross-fetch'
 import { NodeInfo as NodeInfoIo } from './internal_common'
 import * as SV from 'semver'
 import * as E from 'fp-ts/Either'
-import { ActyxOpts } from '.'
+import { ActyxOpts, NodeStatus } from '.'
 import log from './internal_common/log'
 import { pipe } from 'fp-ts/function'
 import { getApiLocation, mkHeaders } from './v2/utils'
@@ -43,7 +43,9 @@ export const getInfo = (config: ActyxOpts) => {
 }
 
 /**
- * Accessor to information on the Actyx node this SDK is connected to.
+ * Information about the Actyx node this SDK is connected to.
+ *
+ * Instances are returned by `Pond.nodeInfo()`.
  * @public
  */
 export class NodeInfo {
@@ -93,10 +95,19 @@ export class NodeInfo {
   connectedNodes(): number {
     return this.io.connectedNodes
   }
+
+  /**
+   *
+   * @returns information about the perceived connectivity of other nodes
+   */
+  peersStatus(): Record<string, NodeStatus> | undefined {
+    return this.io.swarmState?.peersStatus
+  }
 }
 
 export const invalidNodeInfo = new NodeInfo({
   connectedNodes: -1,
   uptime: { secs: 0, nanos: 0 },
   version: '1.0.0-unknown',
+  swarmState: undefined,
 })
