@@ -19,6 +19,7 @@ import {
   SignAppManifestResponse,
   QueryResponse,
   UiNode,
+  EventDiagnostic,
 } from '../../common/types'
 import { AppState, AppAction, AppStateKey, AppActionKey } from './types'
 import { useAnalytics } from '../analytics'
@@ -130,6 +131,13 @@ interface Actions {
     pathToCertificate: string
   }) => Promise<SignAppManifestResponse>
   query: (args: { addr: string; query: string }) => Promise<QueryResponse>
+  setQueryState: React.Dispatch<React.SetStateAction<QueryState>>
+}
+
+interface QueryState {
+  text: string
+  node?: string
+  results: EventDiagnostic[]
 }
 
 export type AppDispatch = (action: AppAction) => void
@@ -139,6 +147,7 @@ const AppStateContext = React.createContext<
       data: Data
       actions: Actions
       dispatch: AppDispatch
+      query: QueryState
     }
   | undefined
 >(undefined)
@@ -155,6 +164,7 @@ export const AppStateProvider: React.FC<{
     nodes: [],
     offsets: none,
   })
+  const [queryState, setQueryState] = useState<QueryState>({ text: 'FROM allEvents', results: [] })
 
   const actions: Actions = {
     // Wrap addNodes and add the node as loading as soon as the request
@@ -236,6 +246,7 @@ export const AppStateProvider: React.FC<{
         ? Promise.reject(`not connected to ${addr}`)
         : query({ peer, query: q })
     },
+    setQueryState,
   }
 
   useEffect(() => {
@@ -389,7 +400,7 @@ export const AppStateProvider: React.FC<{
   }, [data, state.key, setFatalError, store.key])
 
   return (
-    <AppStateContext.Provider value={{ state, data, actions, dispatch }}>
+    <AppStateContext.Provider value={{ state, data, actions, dispatch, query: queryState }}>
       {children}
     </AppStateContext.Provider>
   )

@@ -347,17 +347,15 @@ const Results = ({
 const Screen = () => {
   const {
     data: { nodes },
-    actions: { query },
+    actions: { query, setQueryState },
+    query: { text: queryStr, node: selectedNodeAddr, results: allEvents },
   } = useAppState()
 
   const NUM_EVENTS_PER_PAGE = 250
 
-  const [selectedNodeAddr, setSelectedNodeAddr] = useState<string | null>(null)
-  const [queryStr, setQueryStr] = useState<string>('FROM allEvents')
   const [queryRunning, setQueryRunning] = useState(false)
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
   const [wasSavedToClipboard, setWasSavedToClipboard] = useState(false)
-  const [allEvents, setAllEvents] = useState<EventDiagnostic[]>([])
   const [checkedIxs, setCheckedIxs] = useState<(undefined | true)[]>([])
   const [queryError, setQueryError] = useState<string>('')
 
@@ -431,7 +429,7 @@ const Screen = () => {
 
   const runQuery = async () => {
     setQueryRunning(true)
-    setAllEvents([])
+    setQueryState((s) => ({ ...s, results: [] }))
     setCurrentPageIndex(0)
     if (!selectedNodeAddr) {
       return
@@ -449,13 +447,52 @@ const Screen = () => {
       }
       setQueryRunning(false)
       setCheckedIxs([...Array(events.length)])
-      setAllEvents(events)
+      setQueryState((s) => ({ ...s, results: events }))
       setQueryError('')
     } catch (error) {
       console.error(error)
       setQueryRunning(false)
       setQueryError(safeErrorToStr(error))
     }
+  }
+
+  const options = nodes.map((n) => {
+    const opt = { value: n.addr }
+    if (n.type !== NodeType.Reachable) {
+      return {
+        ...opt,
+        label: `${n.addr}: node not reachable`,
+        disabled: true,
+      }
+    }
+    /**
+     * Here we check for version 2.2 or below. The reason is that Actyx 2.1 allows
+     * queries, but for some reason doesn't return anything when queried using SELECT.
+     */
+    const version = semver.coerce(n.details.version)
+    if (!semver.valid(version) || version === null || !semver.satisfies(version, '>=2.2.0')) {
+      return {
+        ...opt,
+        label: `${n.details.displayName} (${n.addr}): not supported; upgrade to Actyx 2.2.0 or above`,
+        disabled: true,
+      }
+    }
+    return {
+      ...opt,
+      label: `${n.details.displayName} (${n.addr})`,
+      disabled: false,
+    }
+  })
+  const defaultOption = options.find(
+    (o) => o.value === selectedNodeAddr && o.disabled === false,
+  )?.label
+  console.log('selected', selectedNodeAddr, 'default', defaultOption, 'end')
+  if (defaultOption === undefined && selectedNodeAddr !== undefined) {
+    // recently selected node is no longer available
+    setQueryState((s) => {
+      const { node, ...rest } = s
+      return rest
+    })
   }
 
   return (
@@ -477,7 +514,7 @@ const Screen = () => {
                 mode="sql"
                 theme="textmate"
                 name="event-query"
-                onChange={(t) => setQueryStr(t)}
+                onChange={(t) => setQueryState((s) => ({ ...s, text: t }))}
                 fontSize={18}
                 showPrintMargin={false}
                 height={`120px`}
@@ -495,41 +532,19 @@ const Screen = () => {
               />
               <div className="flex flex-row justify-end pt-3">
                 <Select
-                  options={nodes.map((n) => {
-                    const opt = { value: n.addr }
-                    if (n.type !== NodeType.Reachable) {
-                      return {
-                        ...opt,
-                        label: `${n.addr}: node not reachable`,
-                        disabled: true,
-                      }
-                    }
-                    /**
-                     * Here we check for version 2.2 or below. The reason is that Actyx 2.1 allows
-                     * queries, but for some reason doesn't return anything when queried using SELECT.
-                     */
-                    const version = semver.coerce(n.details.version)
-                    if (
-                      !semver.valid(version) ||
-                      version === null ||
-                      !semver.satisfies(version, '>=2.2.0')
-                    ) {
-                      return {
-                        ...opt,
-                        label: `${n.details.displayName} (${n.addr}): not supported; upgrade to Actyx 2.2.0 or above`,
-                        disabled: true,
-                      }
-                    }
-                    return {
-                      ...opt,
-                      label: `${n.details.displayName} (${n.addr})`,
-                      disabled: false,
-                    }
-                  })}
+                  options={options}
                   isOptionDisabled={(o) => !!o.disabled}
                   placeholder="Select node..."
-                  onChange={(v) => setSelectedNodeAddr(v ? v.value : null)}
+                  onChange={(v) =>
+                    v
+                      ? setQueryState((s) => ({ ...s, node: v.value }))
+                      : setQueryState((s) => {
+                          const { node, ...rest } = s
+                          return rest
+                        })
+                  }
                   className="flex-grow mr-3"
+                  defaultInputValue={defaultOption}
                 />
 
                 <Button
