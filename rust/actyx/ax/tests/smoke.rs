@@ -121,7 +121,7 @@ fn with_api(
             // unfortunately escargot doesn’t inform us when building is finished,
             // so we start the Actyx timeout upon seeing the first line of output
             spawn(move || {
-                let _ = rx.recv_timeout(Duration::from_secs(10));
+                let _ = rx.recv_timeout(Duration::from_secs(60));
                 eprintln!("killing Actyx");
                 let _ = process.kill();
             });
@@ -196,7 +196,7 @@ fn get_offsets(api: u16, identity: &Path) -> anyhow::Result<Value> {
             identity.as_os_str(),
             o(&format!("localhost:{}", api)),
         ])
-        .env("RUST_LOG", "trace")
+        .env("RUST_LOG", "debug")
         .output()?;
     eprintln!(
         "prep out:\n{}\nerr:\n{}\n---",
