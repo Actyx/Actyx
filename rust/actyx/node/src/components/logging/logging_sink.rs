@@ -31,10 +31,12 @@ impl LoggingSink {
         // said value. This supports the common RUST_LOG syntax, see
         // https://docs.rs/tracing-subscriber/0.2.17/tracing_subscriber/fmt/index.html#filtering-events-with-environment-variables
         // Any overrides via `ax settings` will be ignored
-        let (filter, level_from_env) = if let Ok(filter) = EnvFilter::try_from_default_env() {
-            (filter, true)
-        } else {
-            (EnvFilter::new(level.to_string()), false)
+        let (filter, level_from_env) = match EnvFilter::try_from_default_env() {
+            Ok(filter) => (filter, true),
+            Err(e) => {
+                eprintln!("tracing: falling back to {}, error parsing RUST_LOG: {}", level, e);
+                (EnvFilter::new(level.to_string()), false)
+            }
         };
         let log_color = !log_no_color;
 
@@ -88,15 +90,22 @@ impl LoggingSink {
             if self.level_from_env {
                 tracing::info!(
                     "Ignoring set log level \"{}\", as the log filter is set via the \"{}\" environment variable (\"{}\")",
-                    level,
+                    self.configured_level,
                     DEFAULT_ENV,
                     std::env::var(DEFAULT_ENV).unwrap_or_else(|_| "".into())
                 );
             } else {
-                let new_filter = EnvFilter::new(level.to_string());
+                let new_filter = EnvFilter::new(self.configured_level.to_string());
                 if let Err(e) = self.filter_handle.reload(new_filter) {
-                    eprintln!("Error installing new EnvFilter with severity {}: {}", level, e);
-                    tracing::error!("Error installing new EnvFilter with severity {}: {}", level, e);
+                    eprintln!(
+                        "Error installing new EnvFilter with severity {}: {}",
+                        self.configured_level, e
+                    );
+                    tracing::error!(
+                        "Error installing new EnvFilter with severity {}: {}",
+                        self.configured_level,
+                        e
+                    );
                 }
             }
         }

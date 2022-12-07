@@ -144,7 +144,7 @@ fn spawn(
     // Host interface
     let host = Host::new(working_dir.clone()).context("creating host interface")?;
     // now set up the configured log level after initializing `Host`
-    logging.set_log_level(host.get_settings().admin.log_levels.node)?;
+    logging.set_log_level(host.get_settings().admin.log_levels.node.clone())?;
     join_handles.push(logging.spawn().context("spawning logger")?);
 
     let node_id = host.get_or_create_node_id().context("getting node ID")?;

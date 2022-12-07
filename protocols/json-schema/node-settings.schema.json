@@ -35,9 +35,9 @@
         "minLength": 1
       },
       "Topic": {
-	"type": "string",
-	"minLength": 1,
-	"maxLength": 60
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 60
       },
       "MultiAddr": {
           "type": "string",
@@ -64,12 +64,7 @@
     "Composite": {
       "LogLevel": {
         "type": "string",
-        "enum": [
-          "DEBUG",
-          "WARN",
-          "INFO",
-          "ERROR"
-        ],
+        "pattern": "^(ERROR|WARN|INFO|DEBUG|[a-z0-9_:,=]+)$",
         "default": "INFO"
       },
       "NodeLicense": {
