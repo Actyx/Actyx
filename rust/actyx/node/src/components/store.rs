@@ -1,7 +1,7 @@
 use super::{Component, ComponentRequest};
 use crate::{node_settings::Settings, BindTo};
 use acto::ActoRef;
-use actyx_sdk::NodeId;
+use actyx_sdk::{service::SwarmState, NodeId};
 use anyhow::Result;
 use api::formats::Licensing;
 use api::NodeInfo;
@@ -21,6 +21,7 @@ use tokio::sync::oneshot;
 use tracing::*;
 use util::{
     formats::{Connection, Failure, NodeCycleCount, Peer, PeerInfo, PingStats},
+    variable::Reader,
     SocketAddrHelper,
 };
 
@@ -197,6 +198,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             let event_store = self.event_store.clone();
             let swarm_config = cfg.swarm_config;
             let swarm_observer = self.swarm_observer.clone();
+            let swarm_state = self.swarm_state.clone();
             let store = rt.block_on(async move {
                 let blobs = BlobStore::new(
                     swarm_config
@@ -208,7 +210,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 let store = BanyanStore::new(swarm_config, swarm_observer).await?;
                 store.spawn_task(
                     "api".to_owned(),
-                    api::run(node_info, store.clone(), event_store, blobs, bind_api, snd),
+                    api::run(node_info, store.clone(), event_store, blobs, bind_api, snd, swarm_state),
                 );
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;
@@ -304,6 +306,7 @@ pub(crate) struct Store {
     node_cycle_count: NodeCycleCount,
     started_at: DateTime<Utc>,
     swarm_observer: ActoRef<(PeerId, GossipMessage)>,
+    swarm_state: Reader<SwarmState>,
 }
 
 impl Store {
@@ -317,6 +320,7 @@ impl Store {
         node_id: NodeId,
         node_cycle_count: NodeCycleCount,
         swarm_observer: ActoRef<(PeerId, GossipMessage)>,
+        swarm_state: Reader<SwarmState>,
     ) -> anyhow::Result<Self> {
         std::fs::create_dir_all(working_dir.clone())?;
         Ok(Self {
@@ -333,6 +337,7 @@ impl Store {
             node_cycle_count,
             started_at: Utc::now(),
             swarm_observer,
+            swarm_state,
         })
     }
 }

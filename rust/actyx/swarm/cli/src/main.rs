@@ -1,5 +1,5 @@
 use acto::ActoRef;
-use actyx_sdk::{app_id, AppId, Payload};
+use actyx_sdk::{app_id, service::SwarmState, AppId, Payload};
 use anyhow::Result;
 use api::{formats::Licensing, NodeInfo};
 use ax_futures_util::prelude::AxStreamExt;
@@ -25,6 +25,7 @@ use tokio::{
     sync::mpsc,
 };
 use trees::{query::TagExprQuery, AxKey};
+use util::variable::Writer;
 
 #[tokio::main]
 async fn main() {
@@ -83,6 +84,7 @@ async fn run() -> Result<()> {
             EventStoreRef::new(move |e| tx.try_send(e).map_err(event_store_ref::Error::from))
         };
         let blobs = BlobStore::new(DbPath::Memory)?;
+        let swarm_state = Writer::new(SwarmState::default()).reader();
         swarm.spawn_task(
             "api".to_owned(),
             api::run(
@@ -92,6 +94,7 @@ async fn run() -> Result<()> {
                 blobs,
                 Arc::new(Mutex::new(addr.into())),
                 tx,
+                swarm_state,
             ),
         );
         swarm

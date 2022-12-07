@@ -13,7 +13,7 @@ pub mod settings;
 mod util;
 
 pub use crate::{
-    components::swarm_observer::{Status, SwarmObserver, SwarmState},
+    components::swarm_observer::SwarmObserver,
     node::NodeError,
     util::{init_shutdown_ceremony, shutdown_ceremony, spawn_with_name},
 };
@@ -43,7 +43,7 @@ use crate::{
 use ::util::variable::Writer;
 use ::util::SocketAddrHelper;
 use acto::ActoRuntime;
-use actyx_sdk::legacy::SourceId;
+use actyx_sdk::{legacy::SourceId, service::SwarmState};
 use anyhow::Context;
 use crossbeam::channel::{bounded, Receiver, Sender};
 use std::net::ToSocketAddrs;
@@ -105,7 +105,7 @@ fn spawn(
 
     let actors = Actors::new(node_tx.clone()).context("creating Actors")?;
     let swarm_state_writer = Writer::new(SwarmState::default());
-    // let swarm_state = swarm_state_writer.reader();
+    let swarm_state = swarm_state_writer.reader();
     let swarm_observer = actors
         .rt()
         .spawn_actor("swarm_observer", |cell| swarm_observer(cell, swarm_state_writer));
@@ -198,6 +198,7 @@ fn spawn(
         node_id,
         node_cycle_count,
         swarm_observer_ref.contramap(SwarmObserver::from),
+        swarm_state,
     )
     .context("creating event store")?;
     join_handles.push(store.spawn().context("spawning event store")?);

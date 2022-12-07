@@ -129,5 +129,20 @@ fn roundtrips() -> anyhow::Result<()> {
       "caughtUp": true
     }))?;
 
+    roundtrip::<NodeInfoResponse>(json!({
+      "connectedNodes": 12,
+      "uptime": {
+        "secs": 1234,
+        "nanos": 42,
+      },
+      "version": "Hello World Version",
+      "swarmState": {
+        "peersStatus": {
+          "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s": "PartiallyWorking"
+        }
+      }
+    }))
+    .unwrap();
+
     Ok(())
 }

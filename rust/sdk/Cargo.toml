@@ -36,6 +36,7 @@ chrono = "0.4.19"
 derive_more = "0.99.17"
 fixed = { version = "1.11.0", features = [] }
 futures = "0.3.19"
+im = { version = "15.1.0", features = ["serde"] }
 intern-arc = "0.5.0"
 lazy_static = "1.4.0"
 libipld = { version = "0.14.0", default-features = false, features = ["dag-cbor", "derive"] }

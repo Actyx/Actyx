@@ -1,7 +1,10 @@
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, convert::Infallible};
 
-use actyx_sdk::{service::NodeInfoResponse, AppId, NodeId};
-use actyx_util::version::NodeVersion;
+use actyx_sdk::{
+    service::{NodeInfoResponse, SwarmState},
+    AppId, NodeId,
+};
+use actyx_util::{variable::Reader, version::NodeVersion};
 use chrono::Utc;
 use swarm::BanyanStore;
 use warp::*;
@@ -15,25 +18,30 @@ use crate::{
     NodeInfo,
 };
 
-fn with_node_id(node_id: NodeId) -> impl Filter<Extract = (NodeId,), Error = std::convert::Infallible> + Clone {
+fn with_node_id(node_id: NodeId) -> impl Filter<Extract = (NodeId,), Error = Infallible> + Clone {
     any().map(move || node_id)
 }
 
-pub fn with_store(
-    store: BanyanStore,
-) -> impl Filter<Extract = (BanyanStore,), Error = std::convert::Infallible> + Clone {
+pub fn with_store(store: BanyanStore) -> impl Filter<Extract = (BanyanStore,), Error = Infallible> + Clone {
     any().map(move || store.clone())
 }
 
-pub fn with_node_info(info: NodeInfo) -> impl Filter<Extract = (NodeInfo,), Error = std::convert::Infallible> + Clone {
+pub fn with_node_info(info: NodeInfo) -> impl Filter<Extract = (NodeInfo,), Error = Infallible> + Clone {
     any().map(move || info.clone())
+}
+
+pub fn with_swarm_state(
+    swarm_state: Reader<SwarmState>,
+) -> impl Filter<Extract = (Reader<SwarmState>,), Error = Infallible> + Clone {
+    any().map(move || swarm_state.clone())
 }
 
 pub(crate) fn route(
     node_info: NodeInfo,
     store: BanyanStore,
+    swarm_state: Reader<SwarmState>,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    balanced_or!(filter_id(node_info.clone()), filter_info(node_info, store))
+    balanced_or!(filter_id(node_info.clone()), filter_info(node_info, store, swarm_state))
 }
 
 fn filter_id(node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
@@ -54,6 +62,7 @@ async fn handle_id(node_id: NodeId) -> Result<impl Reply> {
 fn filter_info(
     node_info: NodeInfo,
     store: BanyanStore,
+    swarm_state: Reader<SwarmState>,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     path("info")
         .and(path::end())
@@ -61,10 +70,16 @@ fn filter_info(
         .and(authenticate(node_info.clone(), header_or_query_token()))
         .and(with_store(store))
         .and(with_node_info(node_info))
+        .and(with_swarm_state(swarm_state))
         .and_then(handle_info)
 }
 
-async fn handle_info(_app_id: AppId, store: BanyanStore, node_info: NodeInfo) -> Result<impl Reply> {
+async fn handle_info(
+    _app_id: AppId,
+    store: BanyanStore,
+    node_info: NodeInfo,
+    swarm_state: Reader<SwarmState>,
+) -> Result<impl Reply> {
     let connected_nodes = store
         .ipfs()
         .connections()
@@ -81,6 +96,7 @@ async fn handle_info(_app_id: AppId, store: BanyanStore, node_info: NodeInfo) ->
             connected_nodes,
             uptime,
             version: NodeVersion::get().to_string(),
+            swarm_state: Some(swarm_state.get_cloned()),
         })
         .map(|r| reply::json(&r))
         .map_err(reject)

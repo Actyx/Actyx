@@ -30,6 +30,7 @@ dependencies = [
  "derive_more",
  "fixed",
  "futures 0.3.25",
+ "im",
  "intern-arc",
  "lazy_static",
  "libipld 0.14.0",

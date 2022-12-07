@@ -21,6 +21,8 @@ use warp::*;
 pub use crate::events::service::EventService;
 pub use crate::util::{AppMode, BearerToken, NodeInfo, Token};
 use crate::{files::FilePinner, util::hyper_serve::serve_it};
+use actyx_sdk::service::SwarmState;
+use actyx_util::variable::Reader;
 use actyx_util::{to_multiaddr, SocketAddrHelper};
 use parking_lot::Mutex;
 use std::sync::Arc;
@@ -33,10 +35,11 @@ pub async fn run(
     blobs: BlobStore,
     bind_to: Arc<Mutex<SocketAddrHelper>>,
     snd: Sender<anyhow::Result<()>>,
+    swarm_state: Reader<SwarmState>,
 ) {
     let event_service = events::service::EventService::new(event_store, node_info.node_id);
     let pinner = FilePinner::new(event_service.clone(), store.ipfs().clone());
-    let api = routes(node_info, store, event_service, pinner, blobs);
+    let api = routes(node_info, store, event_service, pinner, blobs, swarm_state);
     #[allow(clippy::needless_collect)]
     // following clippy here would lead to deadlock, d’oh
     let addrs = bind_to.lock().iter().collect::<Vec<_>>();
@@ -78,9 +81,10 @@ fn routes(
     event_service: EventService,
     pinner: FilePinner,
     blobs: BlobStore,
+    swarm_state: Reader<SwarmState>,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let events = events::routes(node_info.clone(), event_service);
-    let node = node::route(node_info.clone(), store.clone());
+    let node = node::route(node_info.clone(), store.clone(), swarm_state);
     let auth = auth::route(node_info.clone());
     let files = files::route(store.clone(), node_info.clone(), pinner);
     let blob = blob::routes(blobs, node_info.clone());

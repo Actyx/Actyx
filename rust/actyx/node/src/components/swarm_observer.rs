@@ -1,9 +1,11 @@
 use crate::{actors::ComponentCommand, node_settings::Settings};
 use acto::{ActoCell, ActoInput, ActoRuntime};
-use actyx_sdk::{NodeId, Offset, OffsetMap, StreamId, Timestamp};
+use actyx_sdk::{
+    service::{PeerStatus, SwarmState},
+    NodeId, Offset, OffsetMap, StreamId, Timestamp,
+};
 use im::OrdMap;
 use ipfs_embed::PeerId;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use swarm::{GossipMessage, RootMap, RootUpdate};
 use util::variable::Writer;
@@ -29,26 +31,6 @@ impl From<(PeerId, GossipMessage)> for SwarmObserver {
             GossipMessage::RootUpdate(x) => Self::StreamUpdate(peer_id, x),
         }
     }
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SwarmState {
-    peers_status: OrdMap<NodeId, Status>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Status {
-    /// Acknowledge replication within two gossip cycles
-    LowLatency,
-    /// Acknowledge replication within five gossip cycles
-    HighLatency,
-    /// Acknowledge replication of at least half of all streams within
-    /// five gossip cycles
-    PartiallyWorking,
-    /// Acknowledge replication of less than half of all streams within
-    /// five gossip cycles
-    NotWorking,
 }
 
 #[derive(Debug, Clone)]
@@ -146,18 +128,18 @@ pub async fn swarm_observer(
                 let offsets = latest.get(peer_id).unwrap_or(&empty);
                 let (_present, absent) = check_streams(low, offsets);
                 if absent == 0 {
-                    set_state(&mut swarm_state, *node_id, Status::LowLatency);
+                    set_state(&mut swarm_state, *node_id, PeerStatus::LowLatency);
                     continue;
                 }
                 // some streams were missing, try with the high-latency setting
                 if let Some(high) = high {
                     let (present, absent) = check_streams(high, offsets);
                     if absent == 0 {
-                        set_state(&mut swarm_state, *node_id, Status::HighLatency)
+                        set_state(&mut swarm_state, *node_id, PeerStatus::HighLatency)
                     } else if absent <= present {
-                        set_state(&mut swarm_state, *node_id, Status::PartiallyWorking)
+                        set_state(&mut swarm_state, *node_id, PeerStatus::PartiallyWorking)
                     } else {
-                        set_state(&mut swarm_state, *node_id, Status::NotWorking)
+                        set_state(&mut swarm_state, *node_id, PeerStatus::NotWorking)
                     }
                 }
             }
@@ -168,7 +150,7 @@ pub async fn swarm_observer(
     Ok(())
 }
 
-fn set_state(swarm_state: &mut SwarmState, node_id: NodeId, status: Status) {
+fn set_state(swarm_state: &mut SwarmState, node_id: NodeId, status: PeerStatus) {
     if swarm_state.peers_status.get(&node_id) != Some(&status) {
         swarm_state
             .peers_status

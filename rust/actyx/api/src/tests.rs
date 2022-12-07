@@ -1,4 +1,8 @@
-use actyx_sdk::{app_id, service::AuthenticationResponse, NodeId};
+use actyx_sdk::{
+    app_id,
+    service::{AuthenticationResponse, SwarmState},
+    NodeId,
+};
 use bytes::Bytes;
 use chrono::Utc;
 use crypto::{KeyStore, KeyStoreRef, PrivateKey, PublicKey};
@@ -15,6 +19,7 @@ use warp::*;
 use crate::{
     auth::create_token, files::FilePinner, formats::Licensing, rejections, util::NodeInfo, AppMode, EventService,
 };
+use actyx_util::variable::Writer;
 use tokio::{runtime::Handle, sync::mpsc};
 
 const UNAUTHORIZED_TOKEN: &str = "AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ==";
@@ -66,8 +71,9 @@ async fn test_routes() -> (
     let event_service = EventService::new(event_store, auth_args.node_id);
     let pinner = FilePinner::new(event_service.clone(), store.ipfs().clone());
     let blobs = BlobStore::new(DbPath::Memory).unwrap();
-    let route =
-        super::routes(auth_args.clone(), store, event_service, pinner, blobs).with(warp::trace::named("api_test"));
+    let swarm_state = Writer::new(SwarmState::default()).reader();
+    let route = super::routes(auth_args.clone(), store, event_service, pinner, blobs, swarm_state)
+        .with(warp::trace::named("api_test"));
 
     let token = create_token(
         auth_args,
