@@ -299,7 +299,9 @@ fn query() -> anyhow::Result<()> {
             }
             let start = line.find(": ").ok_or_else(|| anyhow!("cannot parse"))? + 2;
             let json = serde_json::from_str::<Value>(&line[start..])?;
-            get(&json, "/NewListenAddr").or_else(|_| get(&json, "/NewObservedAddr"))?;
+            get(&json, "/NewListenAddr")
+                .or_else(|_| get(&json, "/NewObservedAddr"))
+                .or_else(|_| get(&json, "/ExpiredObservedAddr"))?;
             found = true;
         }
         ensure!(found, "no events with text output");
