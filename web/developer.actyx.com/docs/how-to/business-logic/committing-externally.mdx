@@ -107,6 +107,7 @@ async function processEvent(resp: AqlEventMessage): Promise<void> {
     await actyx.publish(
       BookingTag.and(BookingOffsetsTag).apply({ type: 'bookingOffsets', offsets: lowerBound }),
     )
+    eventsSinceOffsets = 0
   }
 }
 ```
