@@ -110,8 +110,8 @@ module.exports = {
               to: 'docs/how-to/local-development/install-actyx',
             },
             {
-              label: 'Jump into Actyx Pond',
-              to: 'docs/how-to/actyx-pond/getting-started',
+              label: 'Jump into Actyx',
+              to: 'docs/how-to/overview#business-logic',
             },
             {
               label: 'Package for mobile',

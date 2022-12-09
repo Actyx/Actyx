@@ -87,7 +87,7 @@ actyx.subscribeAql(
 When updating `lowerBound` we rely on the fact that Actyx always returns events from the same stream in strictly increasing offset order, therefore we can simply update the offset map.
 We then use the computed `OffsetMap` as the starting point for the subscription to material movement events — which will cover both historic and live events.
 Upon first start, there will be no `BookingOffsets` event, so `lowerBound` will stay the emtpy object, also throughout the `queryAqlChunked` call (since no events will be found), so we start processing from the beginning of time.
-If this is not desired then we can always add a [time range](https://developer.actyx.com/docs/reference/aql#event-queries) restricting how far back in history we are willing or obliged to look.
+If this is not desired then we can always add a [time range](../../reference/aql.mdx#event-queries) restricting how far back in history we are willing or obliged to look.
 
 Now all that is missing is the function for performing the actual bookings:
 
