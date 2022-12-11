@@ -36,3 +36,17 @@ pub enum RuntimeError {
     #[display(fmt = "Not supported: {}", _0)]
     NotSupported(#[error(ignore)] String),
 }
+
+#[derive(Debug, Display, Error)]
+pub enum RuntimeFailure {
+    #[display(fmt = "anti-input cannot be processed in saturated LIMIT")]
+    AntiInputInLimit,
+    #[display(fmt = "anti-input cannot be processed in LAST()")]
+    AntiInputInLast,
+    #[display(fmt = "anti-input cannot be processed in FIRST()")]
+    AntiInputInFirst,
+    #[display(fmt = "anti-input cannot be processed in MIN()")]
+    AntiInputInMin,
+    #[display(fmt = "anti-input cannot be processed in MAX()")]
+    AntiInputInMax,
+}

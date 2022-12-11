@@ -64,16 +64,16 @@ macro_rules! features {
 }
 
 features! {
-    timeRange: Beta [],
-    eventKeyRange: Beta [],
-    // unclear: metadata for results
+    timeRange: Released [],
+    eventKeyRange: Released [],
+    // unclear: metadata cloning for results
     multiEmission: Beta [Subscribe SubscribeMonotonic],
-    // unclear: metadata for results, group-by semantics
-    aggregate: Beta [Subscribe SubscribeMonotonic],
-    // unclear: metadata for results
+    // unclear: group-by semantics
+    aggregate: Beta [SubscribeMonotonic],
+    // unclear: metadata for results, interaction with aggregate on subscribe endpoints
     subQuery: Beta [Subscribe SubscribeMonotonic],
-    limit: Beta [Subscribe SubscribeMonotonic],
-    binding: Beta [],
+    limit: Released [SubscribeMonotonic],
+    binding: Released [],
     // unclear: canonical string representation of all value kinds
     interpolation: Beta [],
     // unclear: metadata of injected values
@@ -209,10 +209,10 @@ fn features_tag(feat: &mut Features, expr: &TagExpr) {
             TagAtom::Tag(_) => {}
             TagAtom::AllEvents => {}
             TagAtom::IsLocal => {}
-            TagAtom::FromTime(_) => feat.add(timeRange),
-            TagAtom::ToTime(_) => feat.add(timeRange),
-            TagAtom::FromLamport(_) => feat.add(eventKeyRange),
-            TagAtom::ToLamport(_) => feat.add(eventKeyRange),
+            TagAtom::FromTime(..) => feat.add(timeRange),
+            TagAtom::ToTime(..) => feat.add(timeRange),
+            TagAtom::FromLamport(..) => feat.add(eventKeyRange),
+            TagAtom::ToLamport(..) => feat.add(eventKeyRange),
             TagAtom::AppId(_) => {}
             TagAtom::Interpolation(e) => {
                 feat.add(interpolation);
@@ -287,24 +287,6 @@ mod tests {
     }
 
     #[test]
-    fn time_range() {
-        assert_eq!(q("FROM from(2021-07-07Z)"), Err(Beta(s("timeRange"))));
-        assert_eq!(q("FROM to(2021-07-07Z)"), Err(Beta(s("timeRange"))));
-
-        assert_eq!(q("FEATURES(timeRange) FROM from(2021-07-07Z)"), Ok(()));
-        assert_eq!(q("FEATURES(timeRange) FROM to(2021-07-07Z)"), Ok(()));
-    }
-
-    #[test]
-    fn event_key_range() {
-        assert_eq!(q("FROM from(12345)"), Err(Beta(s("eventKeyRange"))));
-        assert_eq!(q("FROM to(12345)"), Err(Beta(s("eventKeyRange"))));
-
-        assert_eq!(q("FEATURES(eventKeyRange) FROM from(12345)"), Ok(()));
-        assert_eq!(q("FEATURES(eventKeyRange) FROM to(12345)"), Ok(()));
-    }
-
-    #[test]
     fn multi_emission() {
         assert_eq!(q("FROM allEvents SELECT _, _"), Err(Beta(s("multiEmission"))));
         assert_eq!(q("FEATURES(multiEmission) FROM allEvents SELECT _, _"), Ok(()));
@@ -325,10 +307,10 @@ mod tests {
         let mut f = Features::new();
         f.add(Feature::aggregate);
         assert_eq!(
-            f.validate(&[s("zøg"), s("aggregate")], Endpoint::Subscribe),
+            f.validate(&[s("zøg"), s("aggregate")], Endpoint::SubscribeMonotonic),
             Err(Unsupported {
                 features: s("aggregate"),
-                endpoint: s("Subscribe")
+                endpoint: s("SubscribeMonotonic")
             })
         );
     }

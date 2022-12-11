@@ -452,6 +452,8 @@ pub enum SubscribeResponse {
     #[serde(rename_all = "camelCase")]
     Event(EventResponse<Payload>),
     #[serde(rename_all = "camelCase")]
+    AntiEvent(EventResponse<Payload>),
+    #[serde(rename_all = "camelCase")]
     Offsets(OffsetMapResponse),
     #[serde(rename_all = "camelCase")]
     Diagnostic(Diagnostic),

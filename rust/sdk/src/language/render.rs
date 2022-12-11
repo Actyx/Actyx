@@ -242,25 +242,23 @@ fn render_tag_atom(w: &mut impl Write, e: &TagAtom) -> Result {
         TagAtom::Interpolation(s) => render_interpolation(w, s),
         TagAtom::AllEvents => w.write_str("allEvents"),
         TagAtom::IsLocal => w.write_str("isLocal"),
-        TagAtom::FromTime(ft) => {
-            w.write_str("from(")?;
-            render_timestamp(w, *ft)?;
-            w.write_char(')')
+        TagAtom::FromTime(ft, incl) => {
+            let op = if *incl { ">=" } else { ">" };
+            write!(w, "TIME {} ", op)?;
+            render_timestamp(w, *ft)
         }
-        TagAtom::ToTime(tt) => {
-            w.write_str("to(")?;
-            render_timestamp(w, *tt)?;
-            w.write_char(')')
+        TagAtom::ToTime(tt, incl) => {
+            let op = if *incl { "<=" } else { "<" };
+            write!(w, "TIME {} ", op)?;
+            render_timestamp(w, *tt)
         }
-        TagAtom::FromLamport(SortKey { lamport, stream }) => {
-            w.write_str("from(")?;
-            write!(w, "{}/{}", u64::from(*lamport), stream)?;
-            w.write_char(')')
+        TagAtom::FromLamport(SortKey { lamport, stream }, incl) => {
+            let op = if *incl { ">=" } else { ">" };
+            write!(w, "KEY {} {}/{}", op, u64::from(*lamport), stream)
         }
-        TagAtom::ToLamport(SortKey { lamport, stream }) => {
-            w.write_str("to(")?;
-            write!(w, "{}/{}", u64::from(*lamport), stream)?;
-            w.write_char(')')
+        TagAtom::ToLamport(SortKey { lamport, stream }, incl) => {
+            let op = if *incl { "<=" } else { "<" };
+            write!(w, "KEY {} {}/{}", op, u64::from(*lamport), stream)
         }
         TagAtom::AppId(app_id) => w.write_fmt(format_args!("appId({})", app_id)),
     }

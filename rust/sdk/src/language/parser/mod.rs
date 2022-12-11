@@ -1,7 +1,11 @@
 #![allow(dead_code)]
 #![allow(clippy::upper_case_acronyms)]
 
-use std::{convert::TryInto, str::FromStr, sync::Arc};
+use std::{
+    convert::{TryFrom, TryInto},
+    str::FromStr,
+    sync::Arc,
+};
 
 use super::{
     non_empty::NonEmptyVec, AggrOp, Arr, FuncCall, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, Source,
@@ -35,8 +39,35 @@ mod utils;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Context {
-    Simple,
-    Aggregate,
+    Simple { now: Timestamp },
+    Aggregate { now: Timestamp },
+}
+
+impl Context {
+    pub(crate) fn now(&self) -> Timestamp {
+        match self {
+            Context::Simple { now } => *now,
+            Context::Aggregate { now } => *now,
+        }
+    }
+
+    pub(crate) fn is_aggregate(&self) -> bool {
+        matches!(self, Self::Aggregate { .. })
+    }
+
+    pub(crate) fn aggregate(self) -> Self {
+        match self {
+            Context::Simple { now } => Context::Aggregate { now },
+            Context::Aggregate { now } => Context::Aggregate { now },
+        }
+    }
+
+    pub(crate) fn simple(self) -> Self {
+        match self {
+            Context::Simple { now } => Context::Simple { now },
+            Context::Aggregate { now } => Context::Simple { now },
+        }
+    }
 }
 
 #[derive(Debug, Clone, derive_more::Display, derive_more::Error)]
@@ -114,29 +145,57 @@ fn r_interpolation(p: P, ctx: Context) -> Result<Vec<SimpleExpr>> {
 }
 
 enum FromTo {
-    From,
-    To,
+    From(bool),
+    To(bool),
 }
-fn r_tag_from_to(p: P, f: FromTo) -> Result<TagExpr> {
+fn r_tag_from_to(p: P, f: FromTo, ctx: Context) -> Result<TagExpr> {
     use TagAtom::*;
     use TagExpr::Atom;
-    let mut p = p.inner()?;
-    let first = p.next().ok_or(NoVal("r_tag_from_to first"))?;
-    Ok(match first.as_rule() {
+    Ok(match p.as_rule() {
         Rule::event_key => {
-            let mut p = first.inner()?;
+            let mut p = p.inner()?;
             let lamport = p.natural()?.into();
             // if no streamId was given, use the first one (just like assuming 00:00:00 for a date)
             let stream = p.parse_or_default()?;
             match f {
-                FromTo::From => Atom(FromLamport(SortKey { lamport, stream })),
-                FromTo::To => Atom(ToLamport(SortKey { lamport, stream })),
+                FromTo::From(incl) => Atom(FromLamport(SortKey { lamport, stream }, incl)),
+                FromTo::To(incl) => Atom(ToLamport(SortKey { lamport, stream }, incl)),
             }
         }
         Rule::isodate => match f {
-            FromTo::From => Atom(FromTime(r_timestamp(first)?)),
-            FromTo::To => Atom(ToTime(r_timestamp(first)?)),
+            FromTo::From(incl) => Atom(FromTime(r_timestamp(p)?, incl)),
+            FromTo::To(incl) => Atom(ToTime(r_timestamp(p)?, incl)),
         },
+        Rule::duration_ago => {
+            let mut p = p.inner()?;
+            let count = p.natural()?;
+            let unit = match p.next().ok_or(NoVal("duration_unit"))?.as_str() {
+                "s" => 1_000_000,
+                "m" => 60_000_000,
+                "h" => 3_600_000_000,
+                "D" => 86_400_000_000,
+                "W" => 604_800_000_000,    // seven days
+                "M" => 2_551_442_876_908,  // Y2000 synodic month after Chapront(-Touzé)
+                "Y" => 31_556_925_250_733, // J2000.0 mean tropical year
+                x => bail!("unknown duration_unit {}", x),
+            };
+            let offset = count.saturating_mul(unit);
+            let ts = ctx.now() - offset;
+            match f {
+                FromTo::From(incl) => Atom(FromTime(ts, incl)),
+                FromTo::To(incl) => Atom(ToTime(ts, incl)),
+            }
+        }
+        x => bail!("unexpected token: {:?}", x),
+    })
+}
+
+fn r_tag_comp(p: P) -> Result<FromTo> {
+    Ok(match p.as_rule() {
+        Rule::lt => FromTo::To(false),
+        Rule::le => FromTo::To(true),
+        Rule::gt => FromTo::From(false),
+        Rule::ge => FromTo::From(true),
         x => bail!("unexpected token: {:?}", x),
     })
 }
@@ -157,9 +216,19 @@ fn r_tag_expr(p: P, ctx: Context) -> Result<TagExpr> {
                 Rule::tag_expr => r_tag_expr(p, ctx)?,
                 Rule::all_events => Atom(AllEvents),
                 Rule::is_local => Atom(IsLocal),
-                Rule::tag_from => r_tag_from_to(p, FromTo::From)?,
-                Rule::tag_to => r_tag_from_to(p, FromTo::To)?,
+                Rule::tag_from => r_tag_from_to(p.single()?, FromTo::From(true), ctx)?,
+                Rule::tag_to => r_tag_from_to(p.single()?, FromTo::To(false), ctx)?,
                 Rule::tag_app => Atom(AppId(p.single()?.as_str().parse()?)),
+                Rule::tag_key => {
+                    let mut p = p.inner()?;
+                    let from_to = r_tag_comp(p.next().ok_or(NoVal("tag_key first"))?)?;
+                    r_tag_from_to(p.next().ok_or(NoVal("tag_key second"))?, from_to, ctx)?
+                }
+                Rule::tag_time => {
+                    let mut p = p.inner()?;
+                    let from_to = r_tag_comp(p.next().ok_or(NoVal("tag_time first"))?)?;
+                    r_tag_from_to(p.next().ok_or(NoVal("tag_time second"))?, from_to, ctx)?
+                }
                 x => bail!("unexpected token: {:?}", x),
             })
         })
@@ -207,7 +276,7 @@ fn r_string(p: P) -> Result<String> {
 fn r_var(p: P, ctx: Context) -> Result<super::var::Var> {
     let s = p.as_str();
     if s == "_" {
-        ensure!(ctx != Context::Aggregate, ContextError::CurrentValueInAggregate);
+        ensure!(!ctx.is_aggregate(), ContextError::CurrentValueInAggregate);
     }
     Ok(super::var::Var(s.nfc().collect()))
 }
@@ -216,7 +285,7 @@ fn r_var_index(p: P, ctx: Context) -> Result<SimpleExpr> {
     let mut p = p.inner()?;
     let s = p.next().ok_or(NoVal("no var"))?.as_str();
     if s == "_" {
-        ensure!(ctx != Context::Aggregate, ContextError::CurrentValueInAggregate);
+        ensure!(!ctx.is_aggregate(), ContextError::CurrentValueInAggregate);
     }
     let head = SimpleExpr::Variable(super::var::Var(s.nfc().collect()));
     let mut tail = vec![];
@@ -360,15 +429,15 @@ fn r_cases(p: P, ctx: Context) -> Result<NonEmptyVec<(SimpleExpr, SimpleExpr)>> 
 }
 
 fn r_aggr(p: P, ctx: Context) -> Result<SimpleExpr> {
-    ensure!(ctx == Context::Aggregate, ContextError::AggregatorOutsideAggregate);
+    ensure!(ctx.is_aggregate(), ContextError::AggregatorOutsideAggregate);
     let p = p.single()?;
     Ok(match p.as_rule() {
-        Rule::aggr_sum => SimpleExpr::AggrOp(Arc::new((AggrOp::Sum, r_simple_expr(p.single()?, Context::Simple)?))),
-        Rule::aggr_prod => SimpleExpr::AggrOp(Arc::new((AggrOp::Prod, r_simple_expr(p.single()?, Context::Simple)?))),
-        Rule::aggr_min => SimpleExpr::AggrOp(Arc::new((AggrOp::Min, r_simple_expr(p.single()?, Context::Simple)?))),
-        Rule::aggr_max => SimpleExpr::AggrOp(Arc::new((AggrOp::Max, r_simple_expr(p.single()?, Context::Simple)?))),
-        Rule::aggr_first => SimpleExpr::AggrOp(Arc::new((AggrOp::First, r_simple_expr(p.single()?, Context::Simple)?))),
-        Rule::aggr_last => SimpleExpr::AggrOp(Arc::new((AggrOp::Last, r_simple_expr(p.single()?, Context::Simple)?))),
+        Rule::aggr_sum => SimpleExpr::AggrOp(Arc::new((AggrOp::Sum, r_simple_expr(p.single()?, ctx.simple())?))),
+        Rule::aggr_prod => SimpleExpr::AggrOp(Arc::new((AggrOp::Prod, r_simple_expr(p.single()?, ctx.simple())?))),
+        Rule::aggr_min => SimpleExpr::AggrOp(Arc::new((AggrOp::Min, r_simple_expr(p.single()?, ctx.simple())?))),
+        Rule::aggr_max => SimpleExpr::AggrOp(Arc::new((AggrOp::Max, r_simple_expr(p.single()?, ctx.simple())?))),
+        Rule::aggr_first => SimpleExpr::AggrOp(Arc::new((AggrOp::First, r_simple_expr(p.single()?, ctx.simple())?))),
+        Rule::aggr_last => SimpleExpr::AggrOp(Arc::new((AggrOp::Last, r_simple_expr(p.single()?, ctx.simple())?))),
         x => bail!("unexpected token: {:?}", x),
     })
 }
@@ -497,7 +566,7 @@ fn r_query<'a>(pragmas: Vec<(&'a str, &'a str)>, features: Vec<String>, p: P, ct
     let mut p = p.inner()?;
     let source = match p.peek().unwrap().as_rule() {
         Rule::tag_expr => {
-            let from = r_tag_expr(p.next().ok_or(NoVal("tag expression"))?, Context::Simple)?;
+            let from = r_tag_expr(p.next().ok_or(NoVal("tag expression"))?, ctx.simple())?;
             let mut order = None;
             if let Some(o) = p.peek() {
                 if o.as_rule() == Rule::query_order {
@@ -518,21 +587,19 @@ fn r_query<'a>(pragmas: Vec<(&'a str, &'a str)>, features: Vec<String>, p: P, ct
     };
     for o in p {
         match o.as_rule() {
-            Rule::filter => q
-                .ops
-                .push(Operation::Filter(r_simple_expr(o.single()?, Context::Simple)?)),
+            Rule::filter => q.ops.push(Operation::Filter(r_simple_expr(o.single()?, ctx.simple())?)),
             Rule::select => {
-                let v = r_array(o, Context::Simple)?.items.to_vec();
+                let v = r_array(o, ctx.simple())?.items.to_vec();
                 q.ops.push(Operation::Select(v.try_into()?))
             }
             Rule::aggregate => q
                 .ops
-                .push(Operation::Aggregate(r_simple_expr(o.single()?, Context::Aggregate)?)),
+                .push(Operation::Aggregate(r_simple_expr(o.single()?, ctx.aggregate())?)),
             Rule::limit => q.ops.push(Operation::Limit(o.single()?.natural()?.try_into()?)),
             Rule::binding => {
                 let mut p = o.inner()?;
                 let ident = p.string()?;
-                let expr = r_simple_expr(p.single()?, Context::Simple)?;
+                let expr = r_simple_expr(p.single()?, ctx.simple())?;
                 q.ops.push(Operation::Binding(ident, expr));
             }
             x => bail!("unexpected token: {:?}", x),
@@ -556,7 +623,17 @@ pub(crate) fn query_from_str(s: &str) -> Result<Query<'_>> {
     } else {
         vec![]
     };
-    r_query(pragmas, features, f, Context::Simple)
+    let now = Timestamp::now();
+    r_query(pragmas, features, f, Context::Simple { now })
+}
+
+impl TryFrom<(Timestamp, &str)> for TagExpr {
+    type Error = anyhow::Error;
+
+    fn try_from((now, s): (Timestamp, &str)) -> Result<Self, Self::Error> {
+        let p = Aql::parse(Rule::main_tag_expr, s)?.single()?.single()?;
+        r_tag_expr(p, Context::Simple { now })
+    }
 }
 
 impl FromStr for TagExpr {
@@ -564,7 +641,8 @@ impl FromStr for TagExpr {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let p = Aql::parse(Rule::main_tag_expr, s)?.single()?.single()?;
-        r_tag_expr(p, Context::Simple)
+        let now = Timestamp::now();
+        r_tag_expr(p, Context::Simple { now })
     }
 }
 
@@ -573,7 +651,8 @@ impl FromStr for SimpleExpr {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let p = Aql::parse(Rule::main_simple_expr, s)?.single()?.single()?;
-        r_simple_expr(p, Context::Simple)
+        let now = Timestamp::now();
+        r_simple_expr(p, Context::Simple { now })
     }
 }
 
@@ -632,12 +711,12 @@ mod tests {
     fn tag() -> Result<()> {
         let p = Aql::parse(Rule::tag, "'hello''s revenge'")?;
         assert_eq!(
-            r_tag(p.single()?, Context::Simple)?,
+            r_tag(p.single()?, Context::Simple { now: Timestamp::now() })?,
             TagExpr::Atom(TagAtom::Tag(tag!("hello's revenge")))
         );
         let p = Aql::parse(Rule::tag, "\"hello\"\"s revenge\"")?;
         assert_eq!(
-            r_tag(p.single()?, Context::Simple)?,
+            r_tag(p.single()?, Context::Simple { now: Timestamp::now() })?,
             TagExpr::Atom(TagAtom::Tag(tag!("hello\"s revenge")))
         );
         Ok(())
@@ -645,7 +724,7 @@ mod tests {
 
     #[test]
     fn tag_expr() -> Result<()> {
-        use TagAtom::Tag;
+        use TagAtom::{FromLamport, FromTime, Tag, ToLamport, ToTime};
         use TagExpr::*;
         assert_eq!(
             "'x' |\t'y'\n&'z'".parse::<TagExpr>()?,
@@ -655,6 +734,74 @@ mod tests {
             )
                 .into())
         );
+        assert_eq!(
+            "'a' & TIME > 1986-12-15Z & TIME < 2001-03-27+04:00".parse::<TagExpr>()?,
+            And((
+                And((Atom(Tag(tag!("a"))), Atom(FromTime(534988800000000.into(), false)),).into()),
+                Atom(ToTime(985636800000000.into(), false))
+            )
+                .into())
+        );
+        let stream = NodeId([
+            12, 65, 70, 28, 130, 74, 44, 32, 196, 20, 97, 200, 36, 162, 194, 12, 65, 70, 28, 130, 74, 44, 32, 196, 20,
+            97, 200, 36, 162, 194, 12, 65,
+        ])
+        .stream(4312.into());
+        assert_eq!(
+            "'a' & KEY >= 12/1234567890123456789012345678901234567890122-4312 & \
+             KEY <= 13/1234567890123456789012345678901234567890122-4312"
+                .parse::<TagExpr>()?,
+            And((
+                And((
+                    Atom(Tag(tag!("a"))),
+                    Atom(FromLamport(
+                        SortKey {
+                            lamport: 12.into(),
+                            stream
+                        },
+                        true
+                    )),
+                )
+                    .into()),
+                Atom(ToLamport(
+                    SortKey {
+                        lamport: 13.into(),
+                        stream
+                    },
+                    true
+                ))
+            )
+                .into())
+        );
+        assert_eq!(
+            TagExpr::try_from((Timestamp::new(100_000_000_000_000), "TIME > 7s ago")).unwrap(),
+            Atom(FromTime(Timestamp::new(99_999_993_000_000), false))
+        );
+        assert_eq!(
+            TagExpr::try_from((Timestamp::new(100_000_000_000_000), "TIME > 2m ago")).unwrap(),
+            Atom(FromTime(Timestamp::new(99_999_880_000_000), false))
+        );
+        assert_eq!(
+            TagExpr::try_from((Timestamp::new(100_000_000_000_000), "TIME > 2h ago")).unwrap(),
+            Atom(FromTime(Timestamp::new(99_992_800_000_000), false))
+        );
+        assert_eq!(
+            TagExpr::try_from((Timestamp::new(100_000_000_000_000), "TIME > 1D ago")).unwrap(),
+            Atom(FromTime(Timestamp::new(99_913_600_000_000), false))
+        );
+        assert_eq!(
+            TagExpr::try_from((Timestamp::new(100_000_000_000_000), "TIME > 1W ago")).unwrap(),
+            Atom(FromTime(Timestamp::new(99_395_200_000_000), false))
+        );
+        assert_eq!(
+            TagExpr::try_from((Timestamp::new(100_000_000_000_000), "TIME > 1M ago")).unwrap(),
+            Atom(FromTime(Timestamp::new(97_448_557_123_092), false))
+        );
+        assert_eq!(
+            TagExpr::try_from((Timestamp::new(100_000_000_000_000), "TIME > 1Y ago")).unwrap(),
+            Atom(FromTime(Timestamp::new(68_443_074_749_267), false))
+        );
+
         Ok(())
     }
 
@@ -720,19 +867,25 @@ mod tests {
             Query::new(
                 Atom(Tag(tag!("machine"))).or(Tag(tag!("user"))
                     .and(IsLocal)
-                    .and(Atom(FromTime(1356912000000000.into())))
-                    .and(Atom(ToLamport(SortKey {
-                        lamport: 12345678901234567.into(),
-                        stream: StreamId::min(),
-                    })))
-                    .and(Atom(FromLamport(SortKey {
-                        lamport: 10.into(),
-                        stream: NodeId([
-                            12, 65, 70, 28, 130, 74, 44, 32, 196, 20, 97, 200, 36, 162, 194, 12, 65, 70, 28, 130, 74,
-                            44, 32, 196, 20, 97, 200, 36, 162, 194, 12, 65
-                        ])
-                        .stream(4312.into())
-                    })))
+                    .and(Atom(FromTime(1356912000000000.into(), true)))
+                    .and(Atom(ToLamport(
+                        SortKey {
+                            lamport: 12345678901234567.into(),
+                            stream: StreamId::min(),
+                        },
+                        false
+                    )))
+                    .and(Atom(FromLamport(
+                        SortKey {
+                            lamport: 10.into(),
+                            stream: NodeId([
+                                12, 65, 70, 28, 130, 74, 44, 32, 196, 20, 97, 200, 36, 162, 194, 12, 65, 70, 28, 130,
+                                74, 44, 32, 196, 20, 97, 200, 36, 162, 194, 12, 65
+                            ])
+                            .stream(4312.into())
+                        },
+                        true
+                    )))
                     .and(Atom(AppId(app_id!("hello-5.-x-"))))
                     .and(Atom(AllEvents)))
             )

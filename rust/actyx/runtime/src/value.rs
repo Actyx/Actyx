@@ -61,6 +61,7 @@ impl<'a> From<CborValue<'a>> for ValueKind {
 pub struct Value {
     meta: EventMeta,
     value: CborOwned, // should later become InternedHash<[u8]>
+    anti: bool,
 }
 
 impl From<Event<Payload>> for Value {
@@ -71,6 +72,7 @@ impl From<Event<Payload>> for Value {
                 meta: event.meta,
             },
             value: CborOwned::unchecked(event.payload.as_bytes()),
+            anti: false,
         }
     }
 }
@@ -79,6 +81,7 @@ impl From<EventResponse<Payload>> for Value {
         Self {
             meta: ev.meta,
             value: CborOwned::unchecked(ev.payload.as_bytes()),
+            anti: false,
         }
     }
 }
@@ -132,15 +135,28 @@ impl Value {
         Self {
             meta: EventMeta::Synthetic,
             value,
+            anti: false,
         }
     }
 
     pub fn new_meta(value: CborOwned, meta: EventMeta) -> Self {
-        Self { value, meta }
+        Self {
+            value,
+            meta,
+            anti: false,
+        }
     }
 
     pub fn meta(&self) -> &EventMeta {
         &self.meta
+    }
+
+    pub fn is_anti(&self) -> bool {
+        self.anti
+    }
+
+    pub fn anti(&mut self) {
+        self.anti = true;
     }
 
     pub fn min_key(&self) -> EventKey {
@@ -215,6 +231,7 @@ impl Value {
             .map(|cbor| Self {
                 meta: self.meta().clone(),
                 value: cbor.into_owned(),
+                anti: false,
             })
             .collect())
     }

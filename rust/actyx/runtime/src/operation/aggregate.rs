@@ -1,4 +1,8 @@
-use crate::{error::RuntimeError, eval::Context, value::Value};
+use crate::{
+    error::{RuntimeError, RuntimeFailure},
+    eval::Context,
+    value::Value,
+};
 use actyx_sdk::{
     language::{AggrOp, Num, SimpleExpr, Var},
     service::{EventMeta, Order},
@@ -15,33 +19,62 @@ pub trait Aggregator {
 }
 
 trait SumOp {
-    fn bool(l: bool, r: bool) -> bool;
-    fn num(l: Num, r: Num) -> anyhow::Result<Num>;
+    fn bool(l: u64, r: bool, anti: bool) -> u64;
+    fn to_bool(n: u64) -> bool;
+    fn num(l: Num, r: Num, anti: bool) -> anyhow::Result<Num>;
 }
 #[derive(Default)]
 struct AddOp;
 impl SumOp for AddOp {
-    fn bool(l: bool, r: bool) -> bool {
-        l || r
+    fn bool(l: u64, r: bool, anti: bool) -> u64 {
+        if r {
+            if anti {
+                l - 1
+            } else {
+                l + 1
+            }
+        } else {
+            l
+        }
     }
-    fn num(l: Num, r: Num) -> anyhow::Result<Num> {
-        Ok(l.add(&r)?)
+    fn to_bool(n: u64) -> bool {
+        n > 0
+    }
+    fn num(l: Num, r: Num, anti: bool) -> anyhow::Result<Num> {
+        if anti {
+            Ok(l.sub(&r)?)
+        } else {
+            Ok(l.add(&r)?)
+        }
     }
 }
 #[derive(Default)]
 struct MulOp;
 impl SumOp for MulOp {
-    fn bool(l: bool, r: bool) -> bool {
-        l && r
+    fn bool(l: u64, r: bool, anti: bool) -> u64 {
+        if r {
+            l
+        } else if anti {
+            l - 1
+        } else {
+            l + 1
+        }
     }
-    fn num(l: Num, r: Num) -> anyhow::Result<Num> {
-        Ok(l.mul(&r)?)
+    fn to_bool(n: u64) -> bool {
+        n == 0
+    }
+    fn num(l: Num, r: Num, anti: bool) -> anyhow::Result<Num> {
+        if anti {
+            Ok(l.div(&r)?)
+        } else {
+            Ok(l.mul(&r)?)
+        }
     }
 }
 
 enum Summable<T: SumOp> {
     Empty(PhantomData<T>),
-    Bool(EventMeta, bool),
+    Bool(EventMeta, u64),
     Num(EventMeta, Num),
     Error(anyhow::Error),
 }
@@ -49,11 +82,12 @@ enum Summable<T: SumOp> {
 impl<T: SumOp> AddAssign<&Value> for Summable<T> {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn add_assign(&mut self, rhs: &Value) {
+        let anti = rhs.is_anti();
         match std::mem::replace(self, Self::Empty(PhantomData)) {
             Summable::Empty(_) => {
                 *self = rhs
                     .as_bool()
-                    .map(|b| Self::Bool(rhs.meta().clone(), b))
+                    .map(|b| Self::Bool(rhs.meta().clone(), T::bool(0, b, anti)))
                     .or_else(|_| rhs.as_number().map(|n| Self::Num(rhs.meta().clone(), n)))
                     .unwrap_or_else(Self::Error)
             }
@@ -62,7 +96,7 @@ impl<T: SumOp> AddAssign<&Value> for Summable<T> {
                     .as_bool()
                     .map(|o| {
                         meta += rhs.meta();
-                        Self::Bool(meta, T::bool(b, o))
+                        Self::Bool(meta, T::bool(b, o, anti))
                     })
                     .unwrap_or_else(Self::Error)
             }
@@ -70,7 +104,7 @@ impl<T: SumOp> AddAssign<&Value> for Summable<T> {
                 *self = rhs
                     .as_number()
                     .and_then(|o| {
-                        let result = T::num(n, o)?;
+                        let result = T::num(n, o, anti)?;
                         meta += rhs.meta();
                         Ok(Self::Num(meta, result))
                     })
@@ -98,7 +132,10 @@ impl<T: SumOp> Aggregator for Sum<T> {
     fn flush(&mut self, cx: &Context) -> anyhow::Result<Value> {
         match &self.0 {
             Summable::Empty(_) => Err(RuntimeError::NoValueYet.into()),
-            Summable::Bool(meta, n) => Ok(Value::new_meta(cx.mk_cbor(|b| b.encode_bool(*n)), meta.clone())),
+            Summable::Bool(meta, n) => Ok(Value::new_meta(
+                cx.mk_cbor(|b| b.encode_bool(T::to_bool(*n))),
+                meta.clone(),
+            )),
             Summable::Num(meta, n) => Ok(Value::new_meta(cx.number(n), meta.clone())),
             Summable::Error(e) => Err(anyhow!("incompatible types in sum: {}", e)),
         }
@@ -112,6 +149,9 @@ impl<T: SumOp> Aggregator for Sum<T> {
 struct First(Option<Value>);
 impl Aggregator for First {
     fn feed(&mut self, input: Value) -> anyhow::Result<()> {
+        if input.is_anti() {
+            return Err(RuntimeFailure::AntiInputInFirst.into());
+        }
         if let Some(v) = &mut self.0 {
             if input.min_key() < v.min_key() || input.min_key() == v.min_key() && input.max_key() < v.max_key() {
                 *v = input;
@@ -134,6 +174,9 @@ impl Aggregator for First {
 struct Last(Option<Value>);
 impl Aggregator for Last {
     fn feed(&mut self, input: Value) -> anyhow::Result<()> {
+        if input.is_anti() {
+            return Err(RuntimeFailure::AntiInputInLast.into());
+        }
         if let Some(v) = &mut self.0 {
             if input.max_key() > v.max_key() || input.max_key() == v.max_key() && input.min_key() > v.min_key() {
                 *v = input;
@@ -156,6 +199,9 @@ impl Aggregator for Last {
 struct Min(Option<anyhow::Result<Value>>);
 impl Aggregator for Min {
     fn feed(&mut self, input: Value) -> anyhow::Result<()> {
+        if input.is_anti() {
+            return Err(RuntimeFailure::AntiInputInMin.into());
+        }
         self.0 = match self.0.take() {
             Some(Ok(v)) => match v.partial_cmp(&input) {
                 Some(o) => Some(Ok(if o == Ordering::Greater { input } else { v })),
@@ -185,6 +231,9 @@ impl Aggregator for Min {
 struct Max(Option<anyhow::Result<Value>>);
 impl Aggregator for Max {
     fn feed(&mut self, input: Value) -> anyhow::Result<()> {
+        if input.is_anti() {
+            return Err(RuntimeFailure::AntiInputInMax.into());
+        }
         self.0 = match self.0.take() {
             Some(Ok(v)) => match v.partial_cmp(&input) {
                 Some(o) => Some(Ok(if o == Ordering::Less { input } else { v })),
@@ -221,14 +270,29 @@ struct Aggregate {
     expr: SimpleExpr,
     state: Vec<AggrState>,
     order: Option<Order>,
+    previous: Option<Value>,
 }
 impl super::Processor for Aggregate {
     fn apply<'a, 'b: 'a>(&'a mut self, cx: &'a mut Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
         async move {
+            /*
+             * Anti-flag propagation:
+             *
+             * If we get an anti-input, the specific aggregator will either ingest it or
+             * emit an error. Aggregators always build on a (positive) set of inputs, so
+             * they cannot contain an anti-value.
+             */
+            let anti = cx
+                .lookup_opt("_")
+                .map(|v| v.as_ref().map(|v| v.is_anti()).unwrap_or_default())
+                .unwrap_or_default();
             let mut errors = vec![];
             for aggr in self.state.iter_mut() {
                 match cx.eval(&aggr.key.1).await {
-                    Ok(v) => {
+                    Ok(mut v) => {
+                        if anti {
+                            v.anti();
+                        }
                         if let Err(e) = aggr.aggregator.feed(v) {
                             errors.push(Err(e))
                         }
@@ -247,7 +311,23 @@ impl super::Processor for Aggregate {
             for aggr in self.state.iter_mut() {
                 cx.bind_placeholder(format!("!{}", aggr.variable), aggr.aggregator.flush(&cx));
             }
-            vec![cx.eval(&self.expr).await]
+            let v = match cx.eval(&self.expr).await {
+                Ok(v) => v,
+                e => return vec![e],
+            };
+            if let Some(mut p) = self.previous.take() {
+                if p == v {
+                    self.previous = Some(p);
+                    vec![]
+                } else {
+                    self.previous = Some(v.clone());
+                    p.anti();
+                    vec![Ok(p), Ok(v)]
+                }
+            } else {
+                self.previous = Some(v.clone());
+                vec![Ok(v)]
+            }
         }
         .boxed()
     }
@@ -323,7 +403,12 @@ pub(super) fn aggregate(expr: &SimpleExpr) -> Box<dyn super::Processor> {
         }
     };
 
-    Box::new(Aggregate { expr, state, order })
+    Box::new(Aggregate {
+        expr,
+        state,
+        order,
+        previous: None,
+    })
 }
 
 #[cfg(test)]
@@ -373,14 +458,20 @@ mod tests {
         a.apply(cx).await.into_iter().collect::<anyhow::Result<_>>().unwrap()
     }
     async fn flush<'a, 'b: 'a>(a: &'a mut dyn Processor, cx: &'a mut Context<'b>) -> String {
-        a.flush(cx)
+        let v = a
+            .flush(cx)
             .await
             .into_iter()
-            .next()
-            .unwrap()
-            .unwrap()
-            .cbor()
-            .to_string()
+            .map(|r| {
+                let v = r.unwrap();
+                if v.is_anti() {
+                    format!("!{}", v.cbor())
+                } else {
+                    v.cbor().to_string()
+                }
+            })
+            .collect::<Vec<_>>();
+        v.join(",")
     }
 
     #[tokio::test]
@@ -398,7 +489,7 @@ mod tests {
         assert_eq!(apply(&mut *s, &mut cx, 1, 3).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "12");
         assert_eq!(apply(&mut *s, &mut cx, 2, 4).await, vec![]);
-        assert_eq!(flush(&mut *s, &mut cx).await, "11");
+        assert_eq!(flush(&mut *s, &mut cx).await, "!12,11");
     }
 
     #[tokio::test]
@@ -416,7 +507,7 @@ mod tests {
         assert_eq!(apply(&mut *s, &mut cx, 2, 3).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "11");
         assert_eq!(apply(&mut *s, &mut cx, 1, 4).await, vec![]);
-        assert_eq!(flush(&mut *s, &mut cx).await, "12");
+        assert_eq!(flush(&mut *s, &mut cx).await, "!11,12");
     }
 
     #[tokio::test]
@@ -428,10 +519,10 @@ mod tests {
         assert_eq!(apply(&mut *s, &mut cx, 2, 1).await, vec![]);
         assert_eq!(flush(&mut *s, &mut cx).await, "[2, 2, 2, 2]");
         assert_eq!(apply(&mut *s, &mut cx, 1, 2).await, vec![]);
-        assert_eq!(flush(&mut *s, &mut cx).await, "[2, 1, 1, 2]");
+        assert_eq!(flush(&mut *s, &mut cx).await, "![2, 2, 2, 2],[2, 1, 1, 2]");
         assert_eq!(apply(&mut *s, &mut cx, 4, 3).await, vec![]);
-        assert_eq!(flush(&mut *s, &mut cx).await, "[2, 4, 1, 4]");
+        assert_eq!(flush(&mut *s, &mut cx).await, "![2, 1, 1, 2],[2, 4, 1, 4]");
         assert_eq!(apply(&mut *s, &mut cx, 3, 4).await, vec![]);
-        assert_eq!(flush(&mut *s, &mut cx).await, "[2, 3, 1, 4]");
+        assert_eq!(flush(&mut *s, &mut cx).await, "![2, 4, 1, 4],[2, 3, 1, 4]");
     }
 }

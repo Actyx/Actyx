@@ -1,4 +1,9 @@
-use crate::{error::RuntimeError, eval::Context, query::Query, value::Value};
+use crate::{
+    error::{RuntimeError, RuntimeFailure},
+    eval::Context,
+    query::Query,
+    value::Value,
+};
 use actyx_sdk::{
     language::{self, NonEmptyVec, SimpleExpr, SpreadExpr},
     service::Order,
@@ -68,6 +73,12 @@ struct Filter(SimpleExpr);
 impl Processor for Filter {
     fn apply<'a, 'b: 'a>(&'a mut self, cx: &'a mut Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
         async move {
+            /*
+             * Anti-flag propagation:
+             *
+             * This is automatic in this case because the value bound to "_" has the
+             * flag and we take it out of the context and hand it back.
+             */
             cx.eval(&self.0)
                 .await
                 .and_then(move |v| {
@@ -90,6 +101,18 @@ impl Processor for Select {
     fn apply<'a, 'b: 'a>(&'a mut self, cx: &'a mut Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
         async move {
             let mut v = vec![];
+            /*
+             * Anti-flag propagation:
+             *
+             * The idea here is that an anti-input produces anti-outputs. Instead of
+             * tracking this throughout the evaluation (with some difficulty regarding
+             * inputs stemming from different inputs) we slap the anti-flag on all
+             * outputs in the end.
+             */
+            let anti = cx
+                .lookup_opt("_")
+                .map(|v| v.as_ref().map(|v| v.is_anti()).unwrap_or_default())
+                .unwrap_or_default();
             for expr in self.0.iter() {
                 if let (SimpleExpr::SubQuery(e), true) = (&expr.expr, expr.spread) {
                     match Query::eval(e, cx).await {
@@ -113,6 +136,11 @@ impl Processor for Select {
                     }
                 }
             }
+            if anti {
+                for v in v.iter_mut().flatten() {
+                    v.anti();
+                }
+            }
             v
         }
         .boxed()
@@ -123,11 +151,30 @@ struct Limit(u64);
 impl Processor for Limit {
     fn apply<'a, 'b: 'a>(&'a mut self, cx: &'a mut Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
         async move {
+            /*
+             * Anti-flag propagation:
+             *
+             * As long as the limit has not been exhausted, anti-inputs become anti-outputs;
+             * the latter increment the limit again. As soon as the limit has reached zero,
+             * anti-input cannot meaningfully be processed since we cannot know whether the
+             * corresponding output was emitted or suppressed earlier, so we stop the query
+             * with an error.
+             */
             if self.0 > 0 {
-                self.0 -= 1;
-                vec![cx.remove("_")]
+                let v = cx.remove("_");
+                match &v {
+                    Ok(v) if v.is_anti() => self.0 += 1,
+                    Ok(_) => self.0 -= 1,
+                    _ => {}
+                }
+                vec![v]
             } else {
-                vec![]
+                let anti = cx.remove("_").map(|v| v.is_anti()).unwrap_or_default();
+                if anti {
+                    vec![Err(RuntimeFailure::AntiInputInLimit.into())]
+                } else {
+                    vec![]
+                }
             }
         }
         .boxed()
@@ -142,6 +189,12 @@ struct Binding(String, SimpleExpr);
 impl Processor for Binding {
     fn apply<'a, 'b: 'a>(&'a mut self, cx: &'a mut Context<'b>) -> BoxFuture<'a, Vec<anyhow::Result<Value>>> {
         async move {
+            /*
+             * Anti-flag propagation:
+             *
+             * This is automatic in this case because the value bound to "_" has the
+             * flag and we take it out of the context and hand it back.
+             */
             match cx.eval(&self.1).await {
                 Ok(v) => {
                     cx.bind(self.0.as_str(), v);

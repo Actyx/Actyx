@@ -591,13 +591,13 @@ async fn bad_request_aql_feature() {
         .path("/api/v2/events/query")
         .method("POST")
         .header("Authorization", format!("Bearer {}", token))
-        .json(&json!({"query": "FROM from(2021-07-20Z)", "order":"asc"}))
+        .json(&json!({"query": "FROM allEvents AGGREGATE LAST(_)", "order":"asc"}))
         .reply(&route)
         .await;
     assert_err_response(
         resp,
         http::StatusCode::BAD_REQUEST,
-        json!({"code": "ERR_BAD_REQUEST", "message": "Invalid request. The query uses beta features that are not enabled: timeRange."}),
+        json!({"code": "ERR_BAD_REQUEST", "message": "Invalid request. The query uses beta features that are not enabled: aggregate."}),
     );
 }
 
@@ -680,7 +680,7 @@ async fn ws_aql_feature() -> anyhow::Result<()> {
             "serviceId": "query",
             "requestId": 1,
             "payload": {
-                "query": "FROM from(2021-07-20Z)",
+                "query": "FROM allEvents AGGREGATE LAST(_)",
                 "order": "asc",
             }
         })
@@ -694,7 +694,7 @@ async fn ws_aql_feature() -> anyhow::Result<()> {
             "requestId": 1,
             "kind": {
                 "type": "serviceError",
-                "value": "The query uses beta features that are not enabled: timeRange."
+                "value": "The query uses beta features that are not enabled: aggregate."
             }
         })
     );

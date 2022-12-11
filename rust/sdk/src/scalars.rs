@@ -349,6 +349,9 @@ impl StreamNr {
     pub const fn new(s: u64) -> Self {
         Self(s)
     }
+    pub fn succ(self) -> Self {
+        Self(self.0.saturating_add(1))
+    }
 }
 
 impl From<u64> for StreamNr {

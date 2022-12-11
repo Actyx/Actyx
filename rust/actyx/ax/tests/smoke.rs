@@ -358,7 +358,7 @@ fn bad_query() -> anyhow::Result<()> {
                 o("-i"),
                 identity.as_os_str(),
                 o(&format!("localhost:{}", api)),
-                o("FROM from(2021-07-20Z) END"),
+                o("FROM [1] END"),
             ])
             .output()?;
         eprintln!(
@@ -369,7 +369,7 @@ fn bad_query() -> anyhow::Result<()> {
         ensure!(!out.status.success());
         let out = String::from_utf8(out.stderr)?;
         ensure!(
-            out == "[ERR_INVALID_INPUT] Error: The query uses beta features that are not enabled: timeRange.\n",
+            out == "[ERR_INVALID_INPUT] Error: The query uses beta features that are not enabled: fromArray.\n",
             "{}",
             out
         );
@@ -381,7 +381,7 @@ fn bad_query() -> anyhow::Result<()> {
                 o("-ji"),
                 identity.as_os_str(),
                 o(&format!("localhost:{}", api)),
-                o("FROM from(2021-07-20Z) END"),
+                o("FROM [1] END"),
             ])
             .output()?;
         eprintln!(
@@ -392,7 +392,7 @@ fn bad_query() -> anyhow::Result<()> {
         ensure!(!out.status.success());
         let out = String::from_utf8(out.stdout)?;
         ensure!(
-            out == r#"{"code":"ERR_INVALID_INPUT","message":"The query uses beta features that are not enabled: timeRange."}
+            out == r#"{"code":"ERR_INVALID_INPUT","message":"The query uses beta features that are not enabled: fromArray."}
 "#,
             "{}",
             out

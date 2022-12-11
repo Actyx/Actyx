@@ -365,8 +365,10 @@ fn get_lamport_query(tag_set: &BTreeSet<TagAtom>, q: &mut Option<LamportQueryBui
     let query = tag_set
         .iter()
         .filter_map(|x| match x {
-            TagAtom::FromLamport(l) => Some(LamportQueryBuilder::from(*l..)),
-            TagAtom::ToLamport(l) => Some(LamportQueryBuilder::from(..*l)),
+            TagAtom::FromLamport(l, incl) if *incl => Some(LamportQueryBuilder::from(*l..)),
+            TagAtom::FromLamport(l, incl) if !*incl => Some(LamportQueryBuilder::from(l.succ()..)),
+            TagAtom::ToLamport(l, incl) if *incl => Some(LamportQueryBuilder::from(..l.succ())),
+            TagAtom::ToLamport(l, incl) if !*incl => Some(LamportQueryBuilder::from(..*l)),
             _ => None,
         })
         .collect();
@@ -389,8 +391,10 @@ fn get_time_query(tag_set: &BTreeSet<TagAtom>, q: &mut Option<TimeQuery>) -> Res
     let query = tag_set
         .iter()
         .filter_map(|x| match x {
-            TagAtom::FromTime(l) => Some(TimeQuery::from(*l..)),
-            TagAtom::ToTime(l) => Some(TimeQuery::from(..*l)),
+            TagAtom::FromTime(l, incl) if *incl => Some(TimeQuery::from(*l..)),
+            TagAtom::FromTime(l, incl) if !*incl => Some(TimeQuery::from(*l + 1..)),
+            TagAtom::ToTime(l, incl) if *incl => Some(TimeQuery::from(..*l + 1)),
+            TagAtom::ToTime(l, incl) if !*incl => Some(TimeQuery::from(..*l)),
             _ => None,
         })
         .collect();

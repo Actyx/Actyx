@@ -361,11 +361,13 @@ impl<'a> Context<'a> {
                                                 b.encode_u64(from_key.lamport.into());
                                                 b.encode_bytes(from_key.stream.node_id.as_ref());
                                                 b.encode_u64(from_key.stream.stream_nr.into());
+                                                b.encode_u64(from_key.offset.into());
                                             });
                                             b.encode_array(|b| {
                                                 b.encode_u64(to_key.lamport.into());
                                                 b.encode_bytes(to_key.stream.node_id.as_ref());
                                                 b.encode_u64(to_key.stream.stream_nr.into());
+                                                b.encode_u64(to_key.offset.into());
                                             });
                                         })
                                     }),
@@ -381,6 +383,7 @@ impl<'a> Context<'a> {
                                                 b.encode_u64(key.lamport.into());
                                                 b.encode_bytes(key.stream.node_id.as_ref());
                                                 b.encode_u64(key.stream.stream_nr.into());
+                                                b.encode_u64(key.offset.into());
                                             });
                                         })
                                     }),

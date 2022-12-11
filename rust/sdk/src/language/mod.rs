@@ -118,6 +118,12 @@ impl SortKey {
     pub fn new(lamport: LamportTimestamp, stream: StreamId) -> Self {
         Self { lamport, stream }
     }
+
+    pub fn succ(self) -> Self {
+        let Self { lamport, stream } = self;
+        let stream = stream.node_id().stream(stream.stream_nr().succ());
+        Self { lamport, stream }
+    }
 }
 
 impl From<EventKey> for SortKey {
@@ -135,10 +141,10 @@ pub enum TagAtom {
     Interpolation(Vec<SimpleExpr>),
     AllEvents,
     IsLocal,
-    FromTime(Timestamp),
-    ToTime(Timestamp),
-    FromLamport(SortKey),
-    ToLamport(SortKey),
+    FromTime(Timestamp, bool),
+    ToTime(Timestamp, bool),
+    FromLamport(SortKey, bool),
+    ToLamport(SortKey, bool),
     AppId(AppId),
 }
 
@@ -618,16 +624,16 @@ mod for_tests {
 
     thread_local! {
         static DEPTH: RefCell<usize> = RefCell::new(0);
-        static CTX: RefCell<Context> = RefCell::new(Context::Simple);
+        static CTX: RefCell<Context> = RefCell::new(Context::Simple { now: Timestamp::now() });
     }
 
     macro_rules! arb {
-        ($T:ident: $g:ident => $($n:ident$({$extra:expr})?)*, $($rec:ident)*, $($rec2:ident$({$extra2:expr})?)*, $($e:ident)* $(, $($names:ident)+)?) => {{
+        ($T:ident: $g:ident => $($n:ident$(($t:ty))*$({$extra:expr})?)*, $($rec:ident)*, $($rec2:ident$({$extra2:expr})?)*, $($e:ident)* $(, $($names:ident)+)?) => {{
             $(
                 #[allow(non_snake_case)]
                 fn $n(g: &mut Gen) -> $T {
                     $(let prev = CTX.with(|c| c.replace($extra));)*
-                    let ret = $T::$n(Arbitrary::arbitrary(g));
+                    let ret = $T::$n(Arbitrary::arbitrary(g) $(,<$t>::arbitrary(g))*);
                     $(CTX.with(|c| c.replace(prev)); stringify!($extra);)*
                     ret
                 }
@@ -657,7 +663,7 @@ mod for_tests {
             let ctx = CTX.with(|c| *c.borrow());
             let choices = if depth > 5 {
                 &[$($n as fn(&mut Gen) -> $T,)* $($e,)* $($($names,)*)?][..]
-            } else if ctx == Context::Aggregate {
+            } else if ctx.is_aggregate() {
                 &[$($n,)* $($rec,)* $($rec2,)* $($e,)* $($($names,)*)?][..]
             } else {
                 &[$($n,)* $($rec,)* $($e,)* $($($names,)*)?][..]
@@ -676,9 +682,12 @@ mod for_tests {
                 $($T::$rec(x) => Box::new(x.shrink().map($T::$rec)),)*
             }
         };
-        ($T:ident: $s:ident => $($n:ident)*, $($rec:ident($m:ident,$($ex:expr),*))*, $($e:ident)* $(, $pat:pat => $patex:expr )*) => {
+        ($T:ident: $s:ident => $($n:ident$(($add:ident))*)*, $($rec:ident($m:ident,$($ex:expr),*))*, $($e:ident)* $(, $pat:pat => $patex:expr )*) => {
             match $s {
-                $($T::$n(x) => Box::new(x.shrink().map($T::$n)),)*
+                $($T::$n(x $(,$add)*) => {
+                    $(let $add = *$add;)*
+                    Box::new(x.shrink().map(move |x| $T::$n(x $(,$add.clone())*)))
+                })*
                 $($T::$rec($m) => Box::new(vec![$($ex,)*].into_iter().chain($m.shrink().map($T::$rec))),)*
                 $($T::$e => quickcheck::empty_shrinker(),)*
                 $($pat => $patex,)*
@@ -833,7 +842,7 @@ mod for_tests {
             arb!(SimpleExpr: g =>
                 Variable Number String Bool KeyLiteral KeyVar TimeLiteral TimeVar Tags App,
                 Indexing Object Array Cases BinOp Not FuncCall Interpolation,
-                AggrOp{ Context::Simple },
+                AggrOp{ Context::Simple { now: Timestamp::now() } },
                 Null,
                 SubQuery
             )
@@ -870,10 +879,10 @@ mod for_tests {
 
     impl Arbitrary for TagAtom {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(TagAtom: g => Tag FromTime ToTime FromLamport ToLamport AppId, Interpolation, , AllEvents IsLocal)
+            arb!(TagAtom: g => Tag FromTime(bool) ToTime(bool) FromLamport(bool) ToLamport(bool) AppId, Interpolation, , AllEvents IsLocal)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            shrink!(TagAtom: self => Tag FromTime ToTime FromLamport ToLamport AppId, Interpolation(x,), AllEvents IsLocal)
+            shrink!(TagAtom: self => Tag FromTime(i) ToTime(i) FromLamport(i) ToLamport(i) AppId, Interpolation(x,), AllEvents IsLocal)
         }
     }
 
@@ -892,7 +901,7 @@ mod for_tests {
             fn Binding(g: &mut Gen) -> Operation {
                 Operation::Binding(Var::arbitrary(g).0, SimpleExpr::arbitrary(g))
             }
-            arb!(Operation: g => Filter Select Aggregate{ Context::Aggregate } Limit,,,, Binding)
+            arb!(Operation: g => Filter Select Aggregate{ Context::Aggregate { now: Timestamp::now() } } Limit,,,, Binding)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             shrink!(Operation: self => Filter Select Aggregate Limit,,,
@@ -941,7 +950,7 @@ mod for_tests {
                 let len = Vec::<()>::arbitrary(g).len().max(1);
                 (0..len).map(|_| g.choose(choices).unwrap()).collect()
             }
-            let prev = CTX.with(|c| c.replace(Context::Simple));
+            let prev = CTX.with(|c| c.replace(Context::Simple { now: Timestamp::now() }));
             let source = Source::arbitrary(g);
             let ret = Self {
                 pragmas: Vec::new(),

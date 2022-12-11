@@ -38,6 +38,7 @@ pub enum EventsResponse {
     },
     Offsets(OffsetsResponse),
     Event(EventResponse<Payload>),
+    AntiEvent(EventResponse<Payload>),
     OffsetMap {
         offsets: OffsetMap,
     },

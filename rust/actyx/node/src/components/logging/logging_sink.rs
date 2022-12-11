@@ -34,7 +34,9 @@ impl LoggingSink {
         let (filter, level_from_env) = match EnvFilter::try_from_default_env() {
             Ok(filter) => (filter, true),
             Err(e) => {
-                eprintln!("tracing: falling back to {}, error parsing RUST_LOG: {}", level, e);
+                if std::env::var(EnvFilter::DEFAULT_ENV).is_ok() {
+                    eprintln!("tracing: falling back to {}, error parsing RUST_LOG: {}", level, e);
+                }
                 (EnvFilter::new(level.to_string()), false)
             }
         };

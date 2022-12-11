@@ -479,6 +479,7 @@ fn inject_events_event(state: &mut State, event: RequestReceived<EventsProtocol>
                             tracing::trace!("got message");
                             let item = match msg {
                                 SubscribeResponse::Event(ev) => EventsResponse::Event(ev),
+                                SubscribeResponse::AntiEvent(ev) => EventsResponse::AntiEvent(ev),
                                 SubscribeResponse::Offsets(o) => EventsResponse::OffsetMap { offsets: o.offsets },
                                 SubscribeResponse::Diagnostic(d) => EventsResponse::Diagnostic(d),
                                 SubscribeResponse::FutureCompat => continue,

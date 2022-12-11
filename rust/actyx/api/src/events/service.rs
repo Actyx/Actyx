@@ -4,27 +4,33 @@ use actyx_sdk::{
     language::{self, Arr, SimpleExpr, SpreadExpr},
     service::{
         Diagnostic, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse,
-        PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
+        PublishResponseKey, QueryRequest, QueryResponse, Severity, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
     AppId, Event, EventKey, NodeId, OffsetMap, OffsetOrMin, Payload, StreamNr, TagSet, Timestamp,
 };
-use ax_futures_util::ReceiverExt;
+use ax_futures_util::{stream::AxStreamExt, ReceiverExt};
 use futures::{
     future::{poll_fn, ready},
     stream::{self, BoxStream, StreamExt},
+    task::noop_waker,
     FutureExt,
 };
 use genawaiter::sync::{Co, Gen};
 use runtime::{
-    error::RuntimeError,
+    error::{RuntimeError, RuntimeFailure},
     eval::Context,
     features::{Endpoint, Feature, FeatureError, Features},
     query::{Feeder, Query},
     value::Value,
 };
 use serde::Deserialize;
-use std::{convert::TryFrom, num::NonZeroU64, ops::Deref, task::Poll};
+use std::{
+    convert::TryFrom,
+    num::NonZeroU64,
+    ops::Deref,
+    task::{self, Poll},
+};
 use swarm::{
     event_store_ref::{EventStoreHandler, EventStoreRef},
     BanyanStore,
@@ -104,7 +110,7 @@ impl EventService {
             for v in vs {
                 co.yield_(match v {
                     Ok(v) => QueryResponse::Event(v.into()),
-                    Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e.to_string())),
+                    Err(e) => QueryResponse::Diagnostic(to_diagnostic(e)),
                 })
                 .await;
             }
@@ -231,6 +237,15 @@ impl EventService {
 
             co.yield_(QueryResponse::Offsets(OffsetMapResponse { offsets: upper_bound }))
                 .await;
+        })
+        .take_until_condition(|r| {
+            ready(matches!(
+                r,
+                QueryResponse::Diagnostic(Diagnostic {
+                    severity: Severity::Error,
+                    ..
+                })
+            ))
         });
 
         Ok(gen.boxed())
@@ -289,8 +304,9 @@ impl EventService {
         async fn y(co: &Co<SubscribeResponse>, vs: Vec<anyhow::Result<Value>>) {
             for v in vs {
                 co.yield_(match v {
+                    Ok(v) if v.is_anti() => SubscribeResponse::AntiEvent(v.into()),
                     Ok(v) => SubscribeResponse::Event(v.into()),
-                    Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e.to_string())),
+                    Err(e) => SubscribeResponse::Diagnostic(to_diagnostic(e)),
                 })
                 .await;
             }
@@ -311,21 +327,52 @@ impl EventService {
                 y(&co, vs).await;
             }
 
+            let vs = query.feed(None, &cx).await;
+            y(&co, vs).await;
+
             co.yield_(SubscribeResponse::Offsets(OffsetMapResponse { offsets: present }))
                 .await;
 
-            while let Some(ev) = unbounded.next().await {
-                let ev = match ev {
-                    Ok(ev) => ev,
-                    Err(e) => {
-                        tracing::error!("aborting subscribe for tags {} due to {:#}", tags, e);
-                        y(&co, vec![Err(e.into())]).await;
-                        return;
+            'a: while let Some(mut input) = unbounded.next().await {
+                loop {
+                    let ev = match input {
+                        Ok(ev) => ev,
+                        Err(e) => {
+                            tracing::error!("aborting subscribe for tags {} due to {:#}", tags, e);
+                            y(&co, vec![Err(e.into())]).await;
+                            return;
+                        }
+                    };
+                    let vs = query.feed(Some(ev.into()), &cx).await;
+                    y(&co, vs).await;
+                    if query.is_done() {
+                        break 'a;
                     }
-                };
-                let vs = query.feed(Some(ev.into()), &cx).await;
+                    input = match unbounded.poll_next_unpin(&mut task::Context::from_waker(&noop_waker())) {
+                        Poll::Ready(Some(ev)) => ev,
+                        Poll::Ready(None) => break 'a,
+                        Poll::Pending => break,
+                    };
+                }
+                let vs = query.feed(None, &cx).await;
+                y(&co, vs).await;
+                if query.is_done() {
+                    break;
+                }
+            }
+            if !query.is_done() {
+                let vs = query.feed(None, &cx).await;
                 y(&co, vs).await;
             }
+        })
+        .take_until_condition(|r| {
+            ready(matches!(
+                r,
+                SubscribeResponse::Diagnostic(Diagnostic {
+                    severity: Severity::Error,
+                    ..
+                })
+            ))
         });
 
         Ok(gen.boxed())
@@ -429,7 +476,7 @@ impl EventService {
                                 event: v.into(),
                                 caught_up,
                             },
-                            Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e.to_string())),
+                            Err(e) => SubscribeMonotonicResponse::Diagnostic(to_diagnostic(e)),
                         })
                         .await;
                     }
@@ -484,9 +531,32 @@ impl EventService {
                     Poll::Pending => event = unbounded.next().await,
                 }
             }
+        })
+        .take_until_condition(|r| {
+            ready(matches!(
+                r,
+                SubscribeMonotonicResponse::Diagnostic(Diagnostic {
+                    severity: Severity::Error,
+                    ..
+                })
+            ))
         });
 
         Ok(gen.boxed())
+    }
+}
+
+fn to_diagnostic(err: anyhow::Error) -> Diagnostic {
+    if let Some(err) = err.downcast_ref::<RuntimeFailure>() {
+        Diagnostic {
+            severity: Severity::Error,
+            message: err.to_string(),
+        }
+    } else {
+        Diagnostic {
+            severity: Severity::Warning,
+            message: err.to_string(),
+        }
     }
 }
 
@@ -554,8 +624,12 @@ mod tests {
         service::{EventMeta, EventResponse},
         tags, Metadata, Offset, StreamId, TagSet,
     };
+    use futures::Stream;
     use itertools::Itertools;
-    use std::{convert::TryInto, iter::FromIterator, time::Duration};
+    use lazy_static::lazy_static;
+    use maplit::btreemap;
+    use regex::Regex;
+    use std::{collections::BTreeMap, convert::TryInto, iter::FromIterator, pin::Pin, time::Duration};
     use swarm::{
         event_store_ref::{self, EventStoreHandler},
         BanyanStore,
@@ -565,6 +639,54 @@ mod tests {
         sync::mpsc,
         time::timeout,
     };
+
+    #[derive(Debug, PartialEq, Eq)]
+    enum SResp {
+        Event(String),
+        AntiEvent(String),
+        Offsets(BTreeMap<u64, u64>),
+        Diag(String),
+    }
+
+    impl SResp {
+        pub fn event(s: &str) -> Self {
+            Self::Event(s.into())
+        }
+        pub fn anti(s: &str) -> Self {
+            Self::AntiEvent(s.into())
+        }
+        pub fn diag(s: &str) -> Self {
+            Self::Diag(s.into())
+        }
+        pub async fn next(mut s: Pin<&mut dyn Stream<Item = SubscribeResponse>>) -> Self {
+            Self::from(timeout(Duration::from_millis(500), s.next()).await.unwrap().unwrap())
+        }
+    }
+
+    impl From<SubscribeResponse> for SResp {
+        fn from(sr: SubscribeResponse) -> Self {
+            lazy_static! {
+                static ref RE: Regex = Regex::new(r"/[^-]+-(\d+)@[^ ]+").unwrap();
+            }
+            match sr {
+                SubscribeResponse::Event(e) => {
+                    Self::Event(RE.replace_all(&Value::from(e).to_string(), "-$1").into_owned())
+                }
+                SubscribeResponse::AntiEvent(e) => {
+                    Self::AntiEvent(RE.replace_all(&Value::from(e).to_string(), "-$1").into_owned())
+                }
+                SubscribeResponse::Offsets(OffsetMapResponse { offsets }) => Self::Offsets(
+                    offsets
+                        .into_inner()
+                        .into_iter()
+                        .map(|(k, v)| (u64::from(k.stream_nr()), u64::from(v)))
+                        .collect(),
+                ),
+                SubscribeResponse::Diagnostic(d) => Self::Diag(format!("{:?} {}", d.severity, d.message)),
+                x => panic!("unexpected: {:?}", x),
+            }
+        }
+    }
 
     fn setup(store: &BanyanStore) -> (NodeId, EventService) {
         let event_store = {
@@ -1152,12 +1274,12 @@ ENDPRAGMA
                         .await,
                         vec![
                             format!(
-                                "[[[0,{},0]],[{:?}],[\"a1\",\"b\"],[\"me\"]]",
+                                "[[[0,{},0,0]],[{:?}],[\"a1\",\"b\"],[\"me\"]]",
                                 node_bytes,
                                 meta1.1.timestamp.as_i64() as f64 / 1e6
                             ),
                             format!(
-                                "[[[1,{},0]],[{:?}],[\"a2\"],[\"me\"]]",
+                                "[[[1,{},0,1]],[{:?}],[\"a2\"],[\"me\"]]",
                                 node_bytes,
                                 meta2.1.timestamp.as_i64() as f64 / 1e6
                             ),
@@ -1175,7 +1297,7 @@ ENDPRAGMA
                         .await,
                         vec![
                             format!(
-                                "[[[0,{},0],[2,{},0]],[{:?},{:?}],[],[]]",
+                                "[[[0,{},0,0],[2,{},0,2]],[{:?},{:?}],[],[]]",
                                 node_bytes,
                                 node_bytes,
                                 meta1.1.timestamp.as_i64() as f64 / 1e6,
@@ -1187,6 +1309,218 @@ ENDPRAGMA
                 })
                 .await
             })
+            .unwrap();
+    }
+
+    #[test]
+    fn subscribe_aggregate() {
+        let f = async {
+            let store = BanyanStore::test("subscribe_aggregate").await.unwrap();
+            let (_node_id, service) = setup(&store);
+
+            publish(&service, 0, tags!("b"), 1).await;
+            publish(&service, 0, tags!("b"), 2).await;
+
+            let mut q1 = service
+                .subscribe(
+                    app_id!("me"),
+                    SubscribeRequest {
+                        lower_bound: None,
+                        query: "PRAGMA features := aggregate
+                                FROM allEvents AGGREGATE LAST(_)"
+                            .to_owned(),
+                    },
+                )
+                .await
+                .unwrap();
+            let mut q2 = service
+                .subscribe(
+                    app_id!("ne"),
+                    SubscribeRequest {
+                        lower_bound: None,
+                        query: "PRAGMA features := aggregate
+                                FROM 'a' AGGREGATE LAST(_)"
+                            .to_owned(),
+                    },
+                )
+                .await
+                .unwrap();
+            let mut q3 = service
+                .subscribe(
+                    app_id!("ne"),
+                    SubscribeRequest {
+                        lower_bound: None,
+                        query: "PRAGMA features := aggregate
+                                FROM 'a' AGGREGATE LAST(_) AGGREGATE SUM(1)"
+                            .to_owned(),
+                    },
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("1-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::diag("Warning no value added"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
+            assert_eq!(SResp::next(q3.as_mut()).await, SResp::diag("Warning no value added"));
+            assert_eq!(SResp::next(q3.as_mut()).await, SResp::diag("Warning no value added"));
+            assert_eq!(SResp::next(q3.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
+
+            publish(&service, 0, tags!("a"), 2).await;
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("1-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("2-0 2"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("2-0 2"));
+            assert_eq!(SResp::next(q3.as_mut()).await, SResp::event("synthetic: 1"));
+
+            publish(&service, 0, tags!("a"), 3).await;
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("2-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("3-0 3"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("2-0 2"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("3-0 3"));
+
+            publish(&service, 0, tags!("a"), 4).await;
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("3-0 3"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("4-0 4"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("3-0 3"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("4-0 4"));
+
+            timeout(Duration::from_millis(500), q3.next()).await.unwrap_err();
+        };
+        Runtime::new()
+            .unwrap()
+            .block_on(async { timeout(Duration::from_secs(10), f).await })
+            .unwrap();
+    }
+
+    #[test]
+    fn subscribe_aggregate_limit() {
+        let f = async {
+            let store = BanyanStore::test("subscribe_aggregate").await.unwrap();
+            let (_node_id, service) = setup(&store);
+
+            publish(&service, 0, tags!("b"), 1).await;
+
+            let mut q = service
+                .subscribe(
+                    app_id!("me"),
+                    SubscribeRequest {
+                        lower_bound: None,
+                        query: "PRAGMA features := aggregate spread
+                                FROM allEvents
+                                AGGREGATE LAST(_)
+                                SELECT ...CASE _ < 3 => [_] CASE _ = 3 => [_, _] CASE TRUE => [_, _, _] ENDCASE
+                                LIMIT 3"
+                            .to_owned(),
+                    },
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("0-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 0}));
+
+            publish(&service, 0, tags!("b"), 2).await;
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("0-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("1-0 2"));
+
+            publish(&service, 0, tags!("b"), 3).await;
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("1-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-0 3"));
+
+            publish(&service, 0, tags!("b"), 4).await;
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 4"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 4"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 4"));
+
+            assert_eq!(timeout(Duration::from_millis(300), q.next()).await.unwrap(), None);
+        };
+        Runtime::new()
+            .unwrap()
+            .block_on(async { timeout(Duration::from_secs(10), f).await })
+            .unwrap();
+    }
+
+    #[test]
+    fn subscribe_aggregate_filter() {
+        let f = async {
+            let store = BanyanStore::test("subscribe_aggregate").await.unwrap();
+            let (_node_id, service) = setup(&store);
+
+            publish(&service, 0, tags!("b"), 1).await;
+
+            let mut q = service
+                .subscribe(
+                    app_id!("me"),
+                    SubscribeRequest {
+                        lower_bound: None,
+                        query: "PRAGMA features := aggregate spread
+                                FROM allEvents
+                                AGGREGATE LAST(_)
+                                FILTER _ < 3"
+                            .to_owned(),
+                    },
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("0-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 0}));
+
+            publish(&service, 0, tags!("b"), 2).await;
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("0-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("1-0 2"));
+
+            publish(&service, 0, tags!("b"), 3).await;
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("1-0 2"));
+
+            publish(&service, 0, tags!("b"), 1).await;
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 1"));
+        };
+        Runtime::new()
+            .unwrap()
+            .block_on(async { timeout(Duration::from_secs(10), f).await })
+            .unwrap();
+    }
+
+    #[test]
+    fn subscribe_aggregate_error() {
+        let f = async {
+            let store = BanyanStore::test("subscribe_aggregate").await.unwrap();
+            let (_node_id, service) = setup(&store);
+
+            publish(&service, 0, tags!("b"), 1).await;
+
+            let mut q = service
+                .subscribe(
+                    app_id!("me"),
+                    SubscribeRequest {
+                        lower_bound: None,
+                        query: "PRAGMA features := aggregate spread
+                                FROM allEvents
+                                AGGREGATE LAST(_)
+                                AGGREGATE MAX(3)"
+                            .to_owned(),
+                    },
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("synthetic: 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 0}));
+
+            publish(&service, 0, tags!("b"), 2).await;
+            assert_eq!(
+                SResp::next(q.as_mut()).await,
+                SResp::diag("Error anti-input cannot be processed in MAX()")
+            );
+            assert_eq!(timeout(Duration::from_millis(300), q.next()).await.unwrap(), None);
+        };
+        Runtime::new()
+            .unwrap()
+            .block_on(async { timeout(Duration::from_secs(10), f).await })
             .unwrap();
     }
 }

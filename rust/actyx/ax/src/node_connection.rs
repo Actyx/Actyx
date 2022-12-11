@@ -456,6 +456,7 @@ where
 #[serde(untagged)]
 pub enum EventDiagnostic {
     Event(EventResponse<Payload>),
+    AntiEvent(EventResponse<Payload>),
     Diagnostic(Diagnostic),
 }
 
@@ -469,6 +470,7 @@ pub async fn request_events(
     Ok(rx
         .filter_map(|m| match m {
             Ok(EventsResponse::Event(ev)) => ready(Some(Ok(EventDiagnostic::Event(ev)))),
+            Ok(EventsResponse::AntiEvent(ev)) => ready(Some(Ok(EventDiagnostic::AntiEvent(ev)))),
             Ok(EventsResponse::Error { message }) => {
                 ready(Some(Err(ActyxOSCode::ERR_INVALID_INPUT.with_message(message))))
             }
@@ -477,7 +479,10 @@ pub async fn request_events(
                 tracing::info!("received OffsetMap covering {} events", offsets.size());
                 ready(None)
             }
-            Ok(x) => ready(Some(Err(
+            Ok(x @ EventsResponse::Offsets(..) | x @ EventsResponse::Publish(..)) => ready(Some(Err(
+                ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("unexpected: {:?}", x)),
+            ))),
+            Ok(x @ EventsResponse::FutureCompat) => ready(Some(Err(
                 ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("{:?}", x))
             ))),
             Err(e) => ready(Some(Err(e))),

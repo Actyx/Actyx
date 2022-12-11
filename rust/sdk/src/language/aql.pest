@@ -70,6 +70,10 @@ microsecond = { ( '0'..'9'{6} ) }
 nanosecond = { ( '0'..'9'{9} ) }
 isodate = ${ year ~ "-" ~ month ~ "-" ~ day ~ ("T" ~ hour ~ ":" ~ minute ~ (":" ~ second ~ ("." ~ (nanosecond|microsecond|millisecond))?)?)? ~ ( "Z" | sign ~ hour ~ ":" ~ minute ) }
 
+// some duration ago
+duration_ago = ${ natural ~ duration_unit ~ WHITE_SPACE ~ "ago" }
+duration_unit = { "Y" | "M" | "W" | "D" | "h" | "m" | "s" }
+
 // metadata
 meta_key = { "KEY(" ~ ( ident | event_key ) ~ ")" }
 meta_time = { "TIME(" ~ ( ident | isodate ) ~ ")" }
@@ -79,7 +83,7 @@ meta = _{ meta_key | meta_time | meta_tags | meta_app }
 
 // tags
 tag_expr = { tag_atom ~ ( tag_op ~ tag_atom )* }
-tag_atom = _{ tag | "(" ~ tag_expr ~ ")" | all_events | is_local | tag_from | tag_to | tag_app }
+tag_atom = _{ tag | "(" ~ tag_expr ~ ")" | all_events | is_local | tag_from | tag_to | tag_app | tag_key | tag_time }
 tag_op = _{ and | or }
 tag = { nonempty_string | interpolation }
 all_events = { "allEvents" }
@@ -87,6 +91,9 @@ is_local = { "isLocal" }
 tag_from = { "from(" ~ ( isodate | event_key ) ~ ")" }
 tag_to = { "to(" ~ ( isodate | event_key ) ~ ")" }
 tag_app = ${ "appId(" ~ app_id ~ ")" }
+tag_key = { "KEY" ~ tag_comp ~ event_key }
+tag_time = { "TIME" ~ tag_comp ~ ( isodate | duration_ago ) }
+tag_comp = _{ le | lt | ge | gt }
 
 // expressions
 simple_expr = !{ simple_prefix* ~ simple_atom ~ ( binary_op ~ simple_prefix* ~ simple_atom )* }
