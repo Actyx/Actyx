@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2020 Actyx AG
  */
-import { firstValueFrom, Observable } from 'rxjs'
+import { firstValueFrom, Observable } from '../../node_modules/rxjs'
 import { Actyx, Tags } from '..'
 
 // Just a manual test that connects to live Actyx store, to test stuff with quick turnaround

@@ -33,7 +33,7 @@ LAST_COSMOS_COMMIT=$(git rev-parse --short HEAD)
 echo "last cosmos commit: $LAST_COSMOS_COMMIT"
 
 BRANCH_NAME="update-to-cosmos/$LAST_COSMOS_COMMIT"
-echo "will create branch $LAST_COSMOS_COMMIT"
+echo "will create branch $BRANCH_NAME"
 
 SLACK_WEBHOOK="https://hooks.slack.com/services/$SLACK_HOOK"
 
@@ -74,15 +74,15 @@ do
         echo "[$repo] adding changes"
         (cd "$ACTUAL_REPO" && git add --all)
 
-        COMMIT_MSG="updating to Cosmos/$LAST_COSMOS_COMMIT"
+        COMMIT_MSG="updating to Actyx/$LAST_COSMOS_COMMIT"
         echo "[$repo] creating commit $COMMIT_MSG"
         (cd "$ACTUAL_REPO" && git commit -m "$COMMIT_MSG")
 
         echo "[$repo] pushing branch to remote"
         (cd "$ACTUAL_REPO" && git push -u origin "$BRANCH_NAME" )
 
-        PR_TITLE="Update to Cosmos/$LAST_COSMOS_COMMIT"
-        PR_BODY="Updating to https://github.com/Actyx/Cosmos/commit/$LAST_COSMOS_COMMIT"
+        PR_TITLE="Update to Actyx/$LAST_COSMOS_COMMIT"
+        PR_BODY="Updating to https://github.com/Actyx/Actyx/commit/$LAST_COSMOS_COMMIT"
         echo "[$repo] creating PR $PR_TITLE"
         PR_URL=$(cd "$ACTUAL_REPO" && gh pr create --title "$PR_TITLE" --body "$PR_BODY" | grep "https://")
 

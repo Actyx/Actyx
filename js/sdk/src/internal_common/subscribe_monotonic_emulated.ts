@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { fromNullable, Option, map as mapOption, fold as foldOption } from 'fp-ts/lib/Option'
 import { gt, geq } from 'fp-ts/lib/Ord'
-import { Observable, EMPTY, from, of, combineLatest, concat, defer } from 'rxjs'
+import { Observable, EMPTY, from, of, combineLatest, concat, defer } from '../../node_modules/rxjs'
 import {
   filter,
   mergeMap,
@@ -17,7 +17,7 @@ import {
   defaultIfEmpty,
   bufferCount,
   tap,
-} from 'rxjs/operators'
+} from '../../node_modules/rxjs/operators'
 import { LocalSnapshotFromIndex, SnapshotStore } from '../snapshotStore'
 import {
   EventKey,

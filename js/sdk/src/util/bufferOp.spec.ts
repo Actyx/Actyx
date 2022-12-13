@@ -1,4 +1,4 @@
-import { lastValueFrom, Subject, toArray, catchError, NEVER, of } from 'rxjs'
+import { lastValueFrom, Subject, toArray, catchError, NEVER, of } from '../../node_modules/rxjs'
 import { bufferOp } from './bufferOp'
 
 describe('bufferOp', () => {
