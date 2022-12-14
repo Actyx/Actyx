@@ -1,6 +1,9 @@
 use crate::Ctx;
 use anyhow::Result;
-use axlib::{node_connection::Task, private_key::AxPrivateKey};
+use axlib::{
+    node_connection::Task,
+    private_key::{AxPrivateKey, DEFAULT_PRIVATE_KEY_FILE_NAME},
+};
 use futures::{channel::mpsc::Sender, future::BoxFuture};
 use neon::{
     context::{Context, FunctionContext},
@@ -10,7 +13,7 @@ use neon::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::convert::TryFrom;
-use util::formats::ActyxOSResult;
+use util::formats::{ActyxOSCode, ActyxOSResult};
 
 pub fn to_stringified<Se: Serialize>(s: Se) -> Result<String> {
     Ok(serde_json::to_string(&s)?)
@@ -25,6 +28,18 @@ pub fn from_stringified<'a, De: DeserializeOwned>(cx: &mut impl Context<'a>, str
 
 pub fn default_private_key() -> ActyxOSResult<AxPrivateKey> {
     AxPrivateKey::try_from(&None)
+}
+
+pub fn create_default_private_key() -> ActyxOSResult<AxPrivateKey> {
+    let path = AxPrivateKey::get_and_create_default_user_identity_dir()?.join(DEFAULT_PRIVATE_KEY_FILE_NAME);
+    if path.exists() {
+        return Err(ActyxOSCode::ERR_FILE_EXISTS.with_message(path.display().to_string()));
+    }
+    eprintln!("writing fresh default keypair to {}", path.display());
+    let key = AxPrivateKey::generate();
+    key.to_file(path)?;
+    eprintln!("keypair written");
+    Ok(key)
 }
 
 #[allow(clippy::type_complexity)]
