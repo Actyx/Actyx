@@ -1,0 +1,9 @@
+digraph dinner {
+    edge [fontname="Courier"];
+    canceled;
+    initial -> open [label="{ type: 'created',\l  order: string }\l"];
+    open -> working [label="{ type: 'workStarted',\l  who: string }\l"];
+    working -> done [label="{ type: 'workDone' }"];
+    open -> canceled [label="{ type: 'orderCanceled',\l  byWhom: string }\l",weight=0.1];
+    working -> canceled [label="{ type: 'orderCanceled',\l  byWhom: string }\l",weight=0.1];
+}

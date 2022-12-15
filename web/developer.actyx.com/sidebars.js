@@ -139,6 +139,7 @@ module.exports = {
     'conceptual/event-streams',
     'conceptual/tags',
     'conceptual/actyx-jargon',
+    'conceptual/pond',
     'conceptual/discovery',
     'conceptual/performance-and-limits',
     'conceptual/authentication-and-authorization',

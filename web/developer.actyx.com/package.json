@@ -17,7 +17,7 @@
     "serve": "docusaurus serve",
     "check:code": "eslint \"./src/**/*.{js,ts,tsx}\" \"./bin/**/*.{js,ts,tsx}\" --max-warnings=0",
     "fix:code": "npm run check:code -- --fix",
-    "check:md": "markdownlint ./docs/**/* ./blog/**/*",
+    "check:md": "markdownlint ./docs/**/*.mdx ./docs/**/*.md",
     "fix:md": "npm run check:md -- --fix",
     "check:text": "textlint -f pretty-error ./docs/**/* ./blog/**/*",
     "fix:text": "npm run check:text -- --fix",

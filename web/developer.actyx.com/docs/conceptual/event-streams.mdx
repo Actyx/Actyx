@@ -107,7 +107,7 @@ Since in that scenario, at any time there may be partitions between the parties 
 The device's wall clock can not be used for this since clock skew may have changed sufficiently since the previous observation.
 Therefore, events need to be ordered according to their causal relationship, irrespective of wall clocks.
 In Actyx this causal ordering of events is achieved by using a logical clock;
-concretely, we employ[Lamport timestamp](https://lamport.azurewebsites.net/pubs/time-clocks.pdf).
+concretely, we employ [Lamport timestamps](https://lamport.azurewebsites.net/pubs/time-clocks.pdf).
 This algorithm is designed to preserve causal order even when wall clocks on devices are sufficiently skewed or off entirely.
 
 :::info
