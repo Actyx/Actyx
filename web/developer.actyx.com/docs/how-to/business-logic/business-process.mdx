@@ -18,7 +18,7 @@ As a tribute to real life, we also include the possibility to abort this process
 
 ## Solution strategy
 
-Since following this process means limiting current choices based on what has already happened, we will use the Actyx Pond library.
+Since following this process means limiting current choices based on what has already happened, we will use the [Actyx Pond](https://www.npmjs.com/package/@actyx/pond) library, see the [conceptual guide](../../conceptual/pond.mdx) for an introduction.
 Again, we start by defining the event model for recording the progression of the workflow, but in order to ensure that only appropriate events are emitted we then use a _fish_ to process them.
 This yields both a current state and a set of applicable commands.
 
