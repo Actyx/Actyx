@@ -1,13 +1,13 @@
 {
 	"folders": [
 		{
-			"path": "."
+			"path": "sdk"
 		},
 		{
-			"path": "..\\pond"
+			"path": "pond"
 		},
 		{
-			"path": "..\\..\\integration"
+			"path": "../integration"
 		}
 	],
 	"settings": {
