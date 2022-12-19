@@ -54,30 +54,27 @@ export const JsonEditor: React.FC<Props & ClassName> = ({
   }
 
   return (
-    <div className={clsx('max-w-full max-h-full', className)}>
-      <AceEditor
-        readOnly={readOnly}
-        className="w-full"
-        mode="json"
-        theme="textmate"
-        name="blah2"
-        onChange={onChange}
-        fontSize={14}
-        showPrintMargin={false}
-        //height={`${editorHeight - 100}px`}
-        height={`500px`}
-        width={`100%`}
-        showGutter={false}
-        highlightActiveLine={true}
-        minLines={100}
-        value={str}
-        setOptions={{
-          showFoldWidgets: false,
-          showLineNumbers: true,
-          tabSize: 2,
-          useWorker: false,
-        }}
-      />
-    </div>
+    <AceEditor
+      readOnly={readOnly}
+      mode="json"
+      theme="textmate"
+      name="blah2"
+      onChange={onChange}
+      className={className}
+      height="auto"
+      width="auto"
+      fontSize={14}
+      showPrintMargin={false}
+      showGutter={false}
+      highlightActiveLine={true}
+      value={str}
+      setOptions={{
+        showFoldWidgets: false,
+        showLineNumbers: true,
+        tabSize: 2,
+        useWorker: false,
+      }}
+      onLoad={(editor) => editor.resize()}
+    />
   )
 }

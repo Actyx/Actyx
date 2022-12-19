@@ -30,7 +30,7 @@ const Peers_Peer: React.FC<{
   const [show, setShow] = useState(false)
 
   return (
-    <div className="w-full p-4 rounded bg-gray-100" onClick={() => setShow(!show)}>
+    <div className="w-full p-4 rounded bg-gray-100 mb-4" onClick={() => setShow(!show)}>
       <p
         className={clsx(
           'text-xl mt-0 font-medium',

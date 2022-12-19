@@ -297,9 +297,9 @@ export const SettingsEditor: React.FC<Props> = ({ node: { addr, details } }) => 
   const valid = validationErrors.length < 1
 
   return (
-    <div className="flex flex-col flex-grow">
+    <>
       <JsonEditor
-        className="border border-gray-200 flex-grow flex-shrink"
+        className="border border-gray-200 flex-grow"
         json={state.editor}
         onChanged={onEditorValueChanged}
         onDirtied={onDirtied}
@@ -344,6 +344,6 @@ export const SettingsEditor: React.FC<Props> = ({ node: { addr, details } }) => 
         )}
       </div>
       {state.key === 'Error' && <div className="pt-3 text-red-500">Error: {state.reason}</div>}
-    </div>
+    </>
   )
 }
