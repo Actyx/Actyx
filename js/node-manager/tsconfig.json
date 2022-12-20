@@ -10,6 +10,7 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "jsx": "react",
+    "lib": ["ES2019", "DOM"],
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -19,7 +20,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noImplicitReturns": false,
-    "noFallthroughCasesInSwitch": true,
+    "noFallthroughCasesInSwitch": true
   },
   "extends": "./node_modules/electron-webpack/tsconfig-base.json"
 }

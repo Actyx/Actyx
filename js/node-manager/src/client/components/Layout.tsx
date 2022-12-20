@@ -303,7 +303,7 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
             ))}
           <Menu className={clsx({ 'ml-auto': !input && !actions })} {...menuProps} />
         </div>
-        <div className="flex-grow p-4 max-w-full overflow-auto overflow-x-auto flex-shrink bg-gray-200">
+        <div className="flex-grow p-4 max-w-full overflow-auto overflow-x-auto flex-shrink bg-gray-200 relative">
           {children}
         </div>
       </div>

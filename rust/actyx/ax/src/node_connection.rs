@@ -121,6 +121,7 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
 
     let mut banyan_channels = HashMap::<(PeerId, RequestId), Sender<ActyxOSResult<BanyanResponse>>>::new();
     let mut connects = HashMap::<Multiaddr, Vec<Sender<ActyxOSResult<PeerId>>>>::new();
+    let mut connected = HashMap::<Multiaddr, PeerId>::new();
     let mut awaiting_info = HashMap::<PeerId, Vec<Sender<ActyxOSResult<PeerId>>>>::new();
     let mut infos = HashMap::<PeerId, (Option<PublicKey>, BTreeSet<String>, Option<NodeVersion>)>::new();
     let mut disconnects = Vec::<UnboundedSender<PeerId>>::new();
@@ -202,6 +203,7 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
                             concurrent_dial_errors,
                             ..
                         } => {
+                            connected.insert(endpoint.get_remote_address().clone(), peer_id);
                             for (addr, error) in concurrent_dial_errors.unwrap_or_default() {
                                 tracing::error!("error dialling {}: {}", addr, error);
                                 let error =
@@ -221,8 +223,9 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
                             peer_id,
                             num_established,
                             cause: Some(error),
-                            ..
+                            endpoint,
                         } if num_established == 0 => {
+                            connected.remove(endpoint.get_remote_address());
                             tracing::warn!("peer disconnected: {}", error);
                             banyan_channels.retain(|(peer, _req), sender| {
                                 if *peer == peer_id {
@@ -236,6 +239,9 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
                                 }
                             });
                             disconnects.retain(|tx| tx.send(peer_id).is_ok());
+                        }
+                        SwarmEvent::ConnectionClosed { endpoint, .. } => {
+                            connected.remove(endpoint.get_remote_address());
                         }
                         _ => {}
                     }
@@ -260,13 +266,22 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
                             let mut errors = Vec::new();
                             let mut successes = 0;
                             for addr in request.addrs {
+                                if let Some(peer_id) = connected.get(&addr) {
+                                    successes = 1;
+                                    channel.try_send(Ok(*peer_id)).ok();
+                                    break;
+                                }
                                 let opts = if let Some(Protocol::P2p(peer)) = addr.iter().last() {
-                                    DialOpts::peer_id(peer.try_into().map_err(|_| {
+                                    let peer_id = peer.try_into().map_err(|_| {
                                         ActyxOSCode::ERR_INVALID_INPUT
                                             .with_message(format!("`{}` is not a valid PeerId", Protocol::P2p(peer)))
-                                    })?)
-                                    .addresses(vec![addr.clone()])
-                                    .build()
+                                    })?;
+                                    if swarm.is_connected(&peer_id) {
+                                        channel.try_send(Ok(peer_id)).ok();
+                                        successes += 1;
+                                        break;
+                                    }
+                                    DialOpts::peer_id(peer_id).addresses(vec![addr.clone()]).build()
                                 } else {
                                     DialOpts::unknown_peer_id().address(addr.clone()).build()
                                 };
