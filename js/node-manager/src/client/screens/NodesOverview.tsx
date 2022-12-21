@@ -163,11 +163,11 @@ type Peer = {
   displayName: string
 }
 
-const Search: React.FC<{ nodes: UiNode[]; addNodes: (addrs: string[]) => void }> = ({
-  nodes,
-  addNodes,
-}) => {
-  const [show, setShow] = useState(false)
+const SearchOverlay: React.FC<{
+  nodes: UiNode[]
+  addNodes: (addrs: string[]) => void
+  hide: () => void
+}> = ({ nodes, addNodes, hide }) => {
   // one list of addresses per PeerId (which is assumed to be the same between Swarm and Admin)
   const [candidates, setCandidates] = useState<Record<string, Set<string>>>({})
   // these are the admin PeerIds
@@ -250,7 +250,7 @@ const Search: React.FC<{ nodes: UiNode[]; addNodes: (addrs: string[]) => void }>
         })
       }
     })
-    for (const [peer, addrs] of show ? Object.entries(candidates) : []) {
+    for (const [peer, addrs] of Object.entries(candidates)) {
       addrs.forEach(async (addr) => {
         try {
           const { peer } = await connect({ addr, timeout: 10 })
@@ -261,7 +261,7 @@ const Search: React.FC<{ nodes: UiNode[]; addNodes: (addrs: string[]) => void }>
         }
       })
     }
-  }, [show, candidates, nodes])
+  }, [candidates, nodes])
 
   const select = (addr: string | null, addrs: string[]) => () => {
     setSelected((sel) => {
@@ -272,6 +272,87 @@ const Search: React.FC<{ nodes: UiNode[]; addNodes: (addrs: string[]) => void }>
     })
   }
 
+  const trying =
+    Object.values(candidates)
+      .map((c) => c.size)
+      .reduce((a, b) => a + b, 0) -
+    Object.values(peers)
+      .map((p) => p.addr.length)
+      .reduce((a, b) => a + b, 0)
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  const ignore = () => {}
+
+  return (
+    <div
+      className="absolute top-8 right-8 left-8 bottom-8 border rounded border-gray-200 bg-white"
+      style={{ zIndex: 1 }}
+    >
+      <div className="border-b-2 border-gray-200 bg-gray-100 w-full flex items-center">
+        <span className="text-xl p-4 cursor-pointer" onClick={hide}>
+          ←
+        </span>
+        <div className="flex-grow text-center text-gray-300">trying {trying} addresses</div>
+        <Button
+          className="ml-4"
+          disabled={selected.length === 0}
+          onClick={() => addNodes(selected)}
+        >
+          Add selected
+        </Button>
+        <Button className="m-4" onClick={() => addNodes(peers.map((p) => p.addr[0]))}>
+          Add all
+        </Button>
+      </div>
+      <div>
+        {peers.length === 0 && (
+          <p className="italic text-xl text-gray-300 m-8">
+            This list is filled with addresses guessed by looking at the Swarm ports of peers
+            connected to already added nodes, so it only works if you’re using default ports.
+          </p>
+        )}
+        {peers.map(({ peer, addr, displayName }) => (
+          <div key={peer} className="bg-white border border-gray-200 p-4 m-4 rounded">
+            <p onClick={select(null, addr)} className="cursor-pointer">
+              <span
+                className={clsx(
+                  'text-xl',
+                  addr.some((a) => selected.includes(a)) && 'text-green-500',
+                )}
+              >
+                {displayName}
+              </span>{' '}
+              <span className="text-sm italic text-gray-300">{peer}</span>
+            </p>
+            {addr.map((a) => (
+              <p
+                key={a}
+                className={clsx(selected.includes(a) && 'text-green-500', 'cursor-pointer')}
+                onClick={select(a, addr)}
+              >
+                <input
+                  type="radio"
+                  name={peer}
+                  checked={selected.includes(a)}
+                  onChange={ignore}
+                  className="mx-4"
+                />
+                <code>{a}</code>
+              </p>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const Search: React.FC<{ nodes: UiNode[]; addNodes: (addrs: string[]) => void }> = ({
+  nodes,
+  addNodes,
+}) => {
+  const [show, setShow] = useState(false)
+
   return (
     <div key="/" className="bg-white rounded p-4 w-56">
       <p
@@ -280,75 +361,7 @@ const Search: React.FC<{ nodes: UiNode[]; addNodes: (addrs: string[]) => void }>
       >
         Search for other nodes …
       </p>
-      {show && (
-        <div
-          className="absolute top-8 right-8 left-8 bottom-8 border rounded border-gray-200 bg-white"
-          style={{ zIndex: 1 }}
-        >
-          <div className="border-b-2 border-gray-200 bg-gray-100 w-full flex items-center">
-            <span className="text-xl p-4 cursor-pointer" onClick={() => setShow(false)}>
-              ←
-            </span>
-            <div className="flex-grow text-center text-gray-300">
-              {Object.values(candidates)
-                .map((c) => c.size)
-                .reduce((a, b) => a + b, 0)}{' '}
-              address candidates
-            </div>
-            <Button
-              className="ml-4"
-              disabled={selected.length === 0}
-              onClick={() => addNodes(selected)}
-            >
-              Add selected
-            </Button>
-            <Button className="m-4" onClick={() => addNodes(peers.map((p) => p.addr[0]))}>
-              Add all
-            </Button>
-          </div>
-          <div>
-            {peers.length === 0 && (
-              <p className="italic text-xl text-gray-300 m-8">
-                This list is filled with addresses guessed by looking at the Swarm ports of peers
-                connected to already added nodes, so it only works if you’re using default ports.
-              </p>
-            )}
-            {peers.map(({ peer, addr, displayName }) => (
-              <div key={peer} className="bg-white border border-gray-200 p-4 m-4 rounded">
-                <p onClick={select(null, addr)} className="cursor-pointer">
-                  <span
-                    className={clsx(
-                      'text-xl',
-                      addr.some((a) => selected.includes(a)) && 'text-green-500',
-                    )}
-                  >
-                    {displayName}
-                  </span>{' '}
-                  <span className="text-sm italic text-gray-300">{peer}</span>
-                </p>
-                {addr.map((a) => (
-                  <p
-                    key={a}
-                    className={clsx(selected.includes(a) && 'text-green-500', 'cursor-pointer')}
-                    onClick={select(a, addr)}
-                  >
-                    <input
-                      type="radio"
-                      name={peer}
-                      checked={selected.includes(a)}
-                      onChange={() => {
-                        /* You know nuthin, Jon Snow */
-                      }}
-                      className="mx-4"
-                    />
-                    <code>{a}</code>
-                  </p>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {show && <SearchOverlay nodes={nodes} addNodes={addNodes} hide={() => setShow(false)} />}
     </div>
   )
 }
