@@ -216,7 +216,6 @@ const SearchOverlay: React.FC<{
   useEffect(() => {
     const addNode = (addr: string, peer: string, displayName: string) => {
       setPeers((peers) => {
-        if (nodes.find((n) => 'peer' in n && n.peer === peer)) return peers
         const p = peers.find((p) => p.peer === peer) || { addr: [], peer, displayName }
         if (p.addr.length === 0) {
           peers.push(p)
@@ -229,27 +228,6 @@ const SearchOverlay: React.FC<{
         return [...peers]
       })
     }
-    nodes.forEach((n) => {
-      if ('peer' in n) {
-        setPeers((peers) => {
-          const pos = peers.findIndex((p) => p.peer === n.peer)
-          if (pos < 0) return peers
-          const peer = peers[pos]
-          setSelected((sel) => {
-            let modified = false
-            for (const addr of peer.addr) {
-              const pos1 = sel.indexOf(addr)
-              if (pos1 < 0) continue
-              modified = true
-              sel.splice(pos1, 1)
-            }
-            return modified ? [...sel] : sel
-          })
-          peers.splice(pos, 1)
-          return [...peers]
-        })
-      }
-    })
     for (const [peer, addrs] of Object.entries(candidates)) {
       addrs.forEach(async (addr) => {
         try {
@@ -261,7 +239,7 @@ const SearchOverlay: React.FC<{
         }
       })
     }
-  }, [candidates, nodes])
+  }, [candidates])
 
   const select = (addr: string | null, addrs: string[]) => () => {
     setSelected((sel) => {
@@ -283,6 +261,12 @@ const SearchOverlay: React.FC<{
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   const ignore = () => {}
 
+  const add = (n: string[]) => {
+    addNodes(n)
+    setPeers([])
+    setSelected([])
+  }
+
   return (
     <div
       className="absolute top-8 right-8 left-8 bottom-8 border rounded border-gray-200 bg-white"
@@ -293,14 +277,10 @@ const SearchOverlay: React.FC<{
           ←
         </span>
         <div className="flex-grow text-center text-gray-300">trying {trying} addresses</div>
-        <Button
-          className="ml-4"
-          disabled={selected.length === 0}
-          onClick={() => addNodes(selected)}
-        >
+        <Button className="ml-4" disabled={selected.length === 0} onClick={() => add(selected)}>
           Add selected
         </Button>
-        <Button className="m-4" onClick={() => addNodes(peers.map((p) => p.addr[0]))}>
+        <Button className="m-4" onClick={() => add(peers.map((p) => p.addr[0]))}>
           Add all
         </Button>
       </div>
