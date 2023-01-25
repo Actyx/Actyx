@@ -103,6 +103,10 @@ export const reducer =
         }
         return { ...state, ...action, key: AppStateKey.Query }
       }
+      case AppActionKey.ShowSettings: {
+        if (analytics) analytics.viewedScreen('Settings')
+        return { ...state, ...action, key: AppStateKey.Settings }
+      }
     }
   }
 
@@ -119,7 +123,7 @@ const getPeer = (addr: string, data: Data) => {
 interface Actions {
   addNodes: (addrs: string[]) => void
   remNodes: (addrs: string[]) => void
-  setSettings: (addr: string, settings: object) => Promise<void>
+  setSettings: (addr: string, settings: object, scope: string[]) => Promise<void>
   shutdownNode: (addr: string) => Promise<void>
   createUserKeyPair: (privateKeyPath: string | null) => Promise<CreateUserKeyPairResponse>
   generateSwarmKey: () => Promise<GenerateSwarmKeyResponse>
@@ -132,12 +136,19 @@ interface Actions {
   }) => Promise<SignAppManifestResponse>
   query: (args: { addr: string; query: string }) => Promise<QueryResponse>
   setQueryState: React.Dispatch<React.SetStateAction<QueryState>>
+  setSettingPath: (path: string) => void
+  setSettingJson: (json: string | null) => void
 }
 
 interface QueryState {
   text: string
   node?: string
   results: EventDiagnostic[]
+}
+
+interface SettingsState {
+  path: string
+  json: string | null
 }
 
 export type AppDispatch = (action: AppAction) => void
@@ -148,6 +159,7 @@ const AppStateContext = React.createContext<
       actions: Actions
       dispatch: AppDispatch
       query: QueryState
+      settings: SettingsState
     }
   | undefined
 >(undefined)
@@ -165,6 +177,7 @@ export const AppStateProvider: React.FC<{
     offsets: none,
   })
   const [queryState, setQueryState] = useState<QueryState>({ text: 'FROM allEvents', results: [] })
+  const [settingsState, setSettingsState] = useState<SettingsState>({ path: '', json: null })
 
   const actions: Actions = {
     // Wrap addNodes and add the node as loading as soon as the request
@@ -198,14 +211,14 @@ export const AppStateProvider: React.FC<{
         nodes: current.nodes.filter((n) => !addrs.includes(n.addr)),
       }))
     },
-    setSettings: (addr, settings) => {
+    setSettings: (addr, settings, scope) => {
       if (analytics) {
         analytics.setSettings()
       }
       const peer = getPeer(addr, data)
       return peer === undefined
         ? Promise.reject(`not connected to ${addr}`)
-        : setSettings({ peer, settings })
+        : setSettings({ peer, settings, scope })
     },
     shutdownNode: (addr) => {
       if (analytics) {
@@ -247,6 +260,18 @@ export const AppStateProvider: React.FC<{
         : query({ peer, query: q })
     },
     setQueryState,
+    setSettingPath: (path) => {
+      setSettingsState((current) => {
+        if (path === current.path) return current
+        return { ...current, path }
+      })
+    },
+    setSettingJson: (json) => {
+      setSettingsState((current) => {
+        if (json === current.json) return current
+        return { ...current, json }
+      })
+    },
   }
 
   useEffect(() => {
@@ -400,7 +425,9 @@ export const AppStateProvider: React.FC<{
   }, [data, state.key, setFatalError, store.key])
 
   return (
-    <AppStateContext.Provider value={{ state, data, actions, dispatch, query: queryState }}>
+    <AppStateContext.Provider
+      value={{ state, data, actions, dispatch, query: queryState, settings: settingsState }}
+    >
       {children}
     </AppStateContext.Provider>
   )

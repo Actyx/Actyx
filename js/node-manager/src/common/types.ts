@@ -177,6 +177,7 @@ export type GetNodeDetailsResponse = io.TypeOf<typeof GetNodeDetailsResponse>
 export const SetSettingsRequest = io.type({
   peer: io.string,
   settings: io.unknown,
+  scope: io.array(io.string),
 })
 export type SetSettingsRequest = io.TypeOf<typeof SetSettingsRequest>
 

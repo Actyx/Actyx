@@ -200,6 +200,7 @@ interface LayoutProps {
   input?: InputProps
   actions?: ActionProps[]
   menuItems?: MenuItem[]
+  flex?: boolean
 }
 
 export const Layout: React.FC<LayoutProps & ClassName> = ({
@@ -209,6 +210,7 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
   input,
   actions,
   menuItems,
+  flex,
 }) => {
   const { state, dispatch } = useAppState()
 
@@ -245,6 +247,12 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
           icon={<SearchIcon />}
           text="Query"
           active={state.key === AppStateKey.Query}
+          hidden={hideMenuItems}
+        />
+        <NavButton
+          onClick={() => dispatch({ key: AppActionKey.ShowSettings })}
+          icon={<PreferencesIcon />}
+          text="Settings"
           hidden={hideMenuItems}
         />
         <NavButton
@@ -303,7 +311,12 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
             ))}
           <Menu className={clsx({ 'ml-auto': !input && !actions })} {...menuProps} />
         </div>
-        <div className="flex-grow p-4 max-w-full overflow-auto overflow-x-auto flex-shrink bg-gray-200 relative">
+        <div
+          className={clsx(
+            'flex-grow p-4 max-w-full overflow-auto overflow-x-auto flex-shrink bg-gray-200 relative',
+            flex && 'flex flex-col',
+          )}
+        >
           {children}
         </div>
       </div>
