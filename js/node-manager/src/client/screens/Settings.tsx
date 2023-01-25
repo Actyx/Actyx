@@ -143,7 +143,7 @@ const Screen: React.FC<{}> = () => {
       <div>
         <input
           type="text"
-          placeholder="settings scope"
+          placeholder="scope (e.g. /swarm)"
           value={path}
           className={clsx(
             'text-sm w-96 rounded-md bg-white border-transparent focus:border-gray-300 focus:ring-0',
