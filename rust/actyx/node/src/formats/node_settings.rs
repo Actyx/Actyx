@@ -71,23 +71,26 @@ pub struct Stream {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
-pub struct FromExpression(String);
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct Route {
-    pub from: FromExpression, // TODO: placeholder
+    pub from: String,
     pub into: String,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct EventRouting {
+    // NOTE(duarte): node::test::change_and_forward_settings fails if skip_serializing_if is set
+    // #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub streams: HashMap<String, Stream>,
-    // routes: Vec<Route>,
+    // #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub routes: Vec<Route>,
 }
 
 impl Default for EventRouting {
     fn default() -> Self {
-        Self { streams: Default::default() }
+        Self {
+            streams: Default::default(),
+            routes: Default::default(),
+        }
     }
 }
 

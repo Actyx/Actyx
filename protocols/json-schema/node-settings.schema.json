@@ -277,6 +277,18 @@
             }
           },
           "default":{}
+        },
+        "routes": {
+          "type": "array",
+          "properties": {
+            "from": {
+              "type": "string"
+            },
+            "into": {
+              "type": "string"
+            }
+          },
+          "default": []
         }
       }
     }

@@ -414,7 +414,7 @@ mod test {
     use super::*;
     use crate::{
         components::Component,
-        node_settings::{Settings, Stream, EventRouting},
+        node_settings::{EventRouting, Route, Settings, Stream},
     };
     use anyhow::Result;
     use futures::executor::block_on;
@@ -483,7 +483,13 @@ mod test {
                 "metrics": {
                   "maxAge": 3600
                 }
-              }
+              },
+              "routes": [
+                {
+                  "from": "'tag_1 & tag_2'",
+                  "into": "metrics"
+                }
+              ]
             }
           }
         );
@@ -617,43 +623,55 @@ mod test {
         let mut node = bootstrap_node().await;
         let json = json!(
             {
-                "logs": {
-                  "maxEvents": 1024
+                "streams": {
+                    "logs": {
+                      "maxEvents": 1024
+                    },
+                    "metrics": {
+                      "maxAge": 3600
+                    }
                 },
-                "metrics": {
-                  "maxAge": 3600
-                }
+                "routes": [
+                    {
+                        "from": "'tag_1 & tag_2'",
+                        "into": "metrics"
+                    }
+                ]
             }
         );
         let (response, rx) = channel();
         node.handle_settings_request(SettingsRequest::SetSettings {
-            scope: "com.actyx/eventRouting/streams".parse().unwrap(),
+            scope: "com.actyx/eventRouting".parse().unwrap(),
             json: json.clone(),
             response,
             ignore_errors: false,
         });
         assert_eq!(json, rx.await.unwrap().unwrap());
-        assert_eq!(
-            node.state.settings.event_routing,
-            EventRouting {
-                streams: HashMap::from([
-                    (
-                        "logs".to_string(),
-                        Stream {
-                            max_events: 1024.into(),
-                            ..Default::default()
-                        }
-                    ),
-                    (
-                        "metrics".to_string(),
-                        Stream {
-                            max_age: 3600.into(),
-                            ..Default::default()
-                        }
-                    ),
-                ])
-            }
-        );
+        let expected_event_routing = EventRouting {
+            streams: HashMap::from([
+                (
+                    "logs".to_string(),
+                    Stream {
+                        max_events: 1024.into(),
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "metrics".to_string(),
+                    Stream {
+                        max_age: 3600.into(),
+                        ..Default::default()
+                    },
+                ),
+            ]),
+            routes: vec![
+                Route {
+                    from: "'tag_1 & tag_2'".to_string(),
+                    into: "metrics".to_string(),
+                }
+            ],
+        };
+        assert_eq!(node.state.settings.event_routing, expected_event_routing);
     }
 
     struct DummyComponent {
@@ -764,25 +782,25 @@ mod test {
     }
 
     #[test]
-    fn change_and_forward_settings() -> anyhow::Result<()> {
+    fn change_and_forward_settings() {
         // Bootstrap
         let (node_tx, node_rx) = crossbeam::channel::bounded(512);
         let (component_tx, component_rx) = crossbeam::channel::bounded(512);
-        let host = Host::new(std::env::current_dir()?)?;
+        let host = Host::new(std::env::current_dir().unwrap()).unwrap();
         let node = NodeWrapper::new(
             (node_tx.clone(), node_rx),
             vec![("test".into(), ComponentChannel::Test(component_tx))],
             host,
-        )?;
+        ).unwrap();
 
         // should register with Component
-        let _component_state_tx = match component_rx.recv()? {
+        let _component_state_tx = match component_rx.recv().unwrap() {
             ComponentRequest::RegisterSupervisor(snd) => snd,
             _ => panic!(),
         };
 
         // should emit initial state
-        let mut settings = match component_rx.recv()? {
+        let mut settings = match component_rx.recv().unwrap() {
             ComponentRequest::SettingsChanged(s) => s,
             _ => panic!(),
         };
@@ -790,17 +808,17 @@ mod test {
         settings.admin.display_name = "Changed".into();
 
         let (req_tx, req_rx) = tokio::sync::oneshot::channel();
-        let json = serde_json::to_value(&*settings)?;
+        let json = serde_json::to_value(&*settings).unwrap();
         node.tx
             .send(ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
                 ignore_errors: false,
                 json: json.clone(),
                 scope: system_scope(),
                 response: req_tx,
-            }))?;
-        assert_eq!(block_on(req_rx)??, json);
+            })).unwrap();
+        assert_eq!(block_on(req_rx).unwrap().unwrap(), json);
 
-        let set_up = match component_rx.recv()? {
+        let set_up = match component_rx.recv().unwrap() {
             ComponentRequest::SettingsChanged(s) => s,
             _ => panic!(),
         };
@@ -808,11 +826,9 @@ mod test {
 
         // shutdown
         node.tx
-            .send(ExternalEvent::ShutdownRequested(ShutdownReason::TriggeredByHost))?;
+            .send(ExternalEvent::ShutdownRequested(ShutdownReason::TriggeredByHost)).unwrap();
         // forward shutdown request to component
-        assert!(matches!(component_rx.recv()?, ComponentRequest::Shutdown(_)));
+        assert!(matches!(component_rx.recv().unwrap(), ComponentRequest::Shutdown(_)));
         assert_node_shutdown(node_tx);
-
-        Ok(())
     }
 }
