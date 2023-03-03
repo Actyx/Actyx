@@ -1,5 +1,5 @@
 use super::{Component, ComponentRequest};
-use crate::{node_settings::Settings, BindTo};
+use crate::{node_settings::{Settings, EventRouting}, BindTo};
 use acto::ActoRef;
 use actyx_sdk::{service::SwarmState, NodeId};
 use anyhow::Result;
@@ -58,6 +58,7 @@ pub(crate) type StoreTx = Sender<ComponentRequest<StoreRequest>>;
 pub(crate) struct StoreConfig {
     swarm_config: SwarmConfig,
     licensing: Licensing,
+    event_routing: EventRouting,
 }
 
 fn without_peer(addr: &Multiaddr) -> String {
@@ -283,6 +284,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
         Ok(StoreConfig {
             swarm_config,
             licensing: s.licensing,
+            event_routing: s.event_routing,
         })
     }
 }

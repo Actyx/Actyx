@@ -21,6 +21,9 @@
           "$ref": "#/definitions/API/Events"
         }
       }
+    },
+    "eventRouting": {
+      "$ref": "#/definitions/EventRouting"
     }
   },
   "definitions": {
@@ -40,8 +43,8 @@
         "maxLength": 60
       },
       "MultiAddr": {
-          "type": "string",
-          "format": "multiaddr-without-peer-id"
+        "type": "string",
+        "format": "multiaddr-without-peer-id"
       },
       "MultiAddrWithPeerId": {
         "type": "string",
@@ -150,7 +153,7 @@
           "minimum": 0,
           "default": 5,
           "description": "Timeout for one swarm-internal ping response"
-	      },
+        },
         "bitswapTimeout": {
           "type": "integer",
           "minimum": 0,
@@ -246,6 +249,34 @@
             "type": "object",
             "additionalProperties": true
           }
+        }
+      }
+    },
+    "EventRouting": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "streams": {
+          "type": "object",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "maxEvents": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "maxSize": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "maxAge": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "default":{}
         }
       }
     }

@@ -409,8 +409,13 @@ impl NodeWrapper {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+
     use super::*;
-    use crate::{components::Component, node_settings::Settings};
+    use crate::{
+        components::Component,
+        node_settings::{Settings, Stream, EventRouting},
+    };
     use anyhow::Result;
     use futures::executor::block_on;
     use serde_json::json;
@@ -419,10 +424,10 @@ mod test {
     use util::formats::NodeName;
 
     #[tokio::test]
-    async fn should_handle_settings_requests() -> anyhow::Result<()> {
+    async fn should_handle_settings_requests() {
         let (_runtime_tx, runtime_rx) = crossbeam::channel::bounded(8);
         let temp_dir = TempDir::new().unwrap();
-        let runtime = Host::new(temp_dir.path().to_path_buf())?;
+        let runtime = Host::new(temp_dir.path().to_path_buf()).unwrap();
         let mut node = Node::new(runtime_rx, vec![], runtime).unwrap();
         let schema = serde_json::from_slice(include_bytes!(
             "../../../../protocols/json-schema/node-settings.schema.json"
@@ -469,6 +474,16 @@ mod test {
                   "topic": "actyxos-demo"
                 }
               }
+            },
+            "eventRouting": {
+              "streams": {
+                "logs": {
+                  "maxEvents": 1024
+                },
+                "metrics": {
+                  "maxAge": 3600
+                }
+              }
             }
           }
         );
@@ -481,8 +496,7 @@ mod test {
                 json: schema,
                 response,
             });
-
-            rx.await??;
+            rx.await.unwrap().unwrap();
         }
         // Set settings for `com.actyx`
         {
@@ -494,7 +508,7 @@ mod test {
                 ignore_errors: false,
             });
 
-            assert_eq!(json, rx.await??);
+            assert_eq!(json, rx.await.unwrap().unwrap());
             assert_eq!(node.state.settings, serde_json::from_value(json).unwrap());
             assert_eq!(node.state.details.node_name, NodeName("My Node".into()));
         }
@@ -506,7 +520,7 @@ mod test {
                 no_defaults: false,
                 response,
             });
-            assert_eq!("My Node", rx.await??);
+            assert_eq!("My Node", rx.await.unwrap().unwrap());
         }
         {
             let changed = serde_json::json!("changed");
@@ -518,7 +532,7 @@ mod test {
                 ignore_errors: false,
             });
 
-            assert_eq!(rx.await??, changed);
+            assert_eq!(rx.await.unwrap().unwrap(), changed);
         }
         {
             let invalid = serde_json::json!("not_valid");
@@ -530,7 +544,7 @@ mod test {
                 ignore_errors: false, // <=========
             });
             assert_eq!(
-                rx.await?,
+                rx.await.unwrap(),
                 Err(ActyxOSCode::ERR_SETTINGS_INVALID
                     .with_message("Validation failed.\n\tErrors:\n\t\t/licensing/node: OneOf conditions are not met."))
             );
@@ -546,7 +560,7 @@ mod test {
                 ignore_errors: true, // <=========
             });
             assert_eq!(
-                rx.await?,
+                rx.await.unwrap(),
                 Err(ActyxOSCode::ERR_SETTINGS_INVALID
                     .with_message("Validation failed.\n\tErrors:\n\t\t/licensing/node: OneOf conditions are not met."))
             )
@@ -557,7 +571,7 @@ mod test {
                 scope: settings::Scope::root(),
                 response,
             });
-            assert!(rx.await?.is_ok());
+            assert!(rx.await.unwrap().is_ok());
         }
         {
             let json = serde_json::json!(null);
@@ -569,12 +583,77 @@ mod test {
                 ignore_errors: false,
             });
             assert_eq!(
-                rx.await?,
+                rx.await.unwrap(),
                 Err(ActyxOSCode::ERR_INVALID_INPUT
                     .with_message("You cannot set settings for the root scope. Please specify a settings scope."))
             );
         }
-        Ok(())
+    }
+
+    // TODO(jmgduarte): check which tests can also benefit from this bootstrap function
+    async fn bootstrap_node() -> Node {
+        let (_runtime_tx, runtime_rx) = crossbeam::channel::bounded(8);
+        let temp_dir = TempDir::new().unwrap();
+        let runtime = Host::new(temp_dir.path().to_path_buf()).unwrap();
+        let mut node = Node::new(runtime_rx, vec![], runtime).unwrap();
+        let schema = serde_json::from_slice(include_bytes!(
+            "../../../../protocols/json-schema/node-settings.schema.json"
+        ))
+        .unwrap();
+        {
+            let (response, rx) = channel();
+            node.handle_settings_request(SettingsRequest::SetSchema {
+                scope: system_scope(),
+                json: schema,
+                response,
+            });
+            rx.await.unwrap().unwrap();
+        }
+        node
+    }
+
+    #[tokio::test]
+    async fn should_handle_settings_requests_event_routing() {
+        let mut node = bootstrap_node().await;
+        let json = json!(
+            {
+                "logs": {
+                  "maxEvents": 1024
+                },
+                "metrics": {
+                  "maxAge": 3600
+                }
+            }
+        );
+        let (response, rx) = channel();
+        node.handle_settings_request(SettingsRequest::SetSettings {
+            scope: "com.actyx/eventRouting/streams".parse().unwrap(),
+            json: json.clone(),
+            response,
+            ignore_errors: false,
+        });
+        assert_eq!(json, rx.await.unwrap().unwrap());
+        assert_eq!(
+            node.state.settings.event_routing,
+            EventRouting {
+                streams: HashMap::from([
+                    (
+                        "logs".to_string(),
+                        Stream {
+                            max_events: 1024.into(),
+                            ..Default::default()
+                        }
+                    ),
+                    (
+                        "metrics".to_string(),
+                        Stream {
+                            max_age: 3600.into(),
+                            ..Default::default()
+                        }
+                    ),
+                ])
+            }
+        );
     }
 
     struct DummyComponent {

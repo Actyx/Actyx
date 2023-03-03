@@ -1,7 +1,7 @@
 use api::formats::Licensing;
 use crypto::PublicKey;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use util::formats::LogSeverity;
 
 // These type definitions need to be kept in sync with the Actyx
@@ -57,6 +57,40 @@ pub struct LogLevels {
     pub node: LogSeverity,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Stream {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_events: Option<u64>,
+    /// Stream Maximum Size (in Mb)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_size: Option<u64>,
+    /// Stream Maximum Age (in Minutes)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_age: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
+pub struct FromExpression(String);
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
+pub struct Route {
+    pub from: FromExpression, // TODO: placeholder
+    pub into: String,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
+pub struct EventRouting {
+    pub streams: HashMap<String, Stream>,
+    // routes: Vec<Route>,
+}
+
+impl Default for EventRouting {
+    fn default() -> Self {
+        Self { streams: Default::default() }
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
@@ -64,6 +98,7 @@ pub struct Settings {
     pub admin: Admin,
     pub licensing: Licensing,
     pub api: Api,
+    pub event_routing: EventRouting,
 }
 
 impl Settings {
@@ -100,6 +135,7 @@ impl Settings {
                     read_only: true,
                 },
             },
+            event_routing: Default::default(),
         }
     }
 }
