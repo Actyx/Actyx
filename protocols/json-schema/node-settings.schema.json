@@ -286,15 +286,22 @@
         },
         "routes": {
           "type": "array",
-          "properties": {
-            "from": {
-              "type": "string",
-              "pattern": "^('[a-zA-Z0-9_-]+') *((&|) *('[a-zA-Z0-9_-]+'))*$"
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "type": "string",
+                "pattern": "^('[a-zA-Z0-9_-]+') *([|&] *('[a-zA-Z0-9_-]+'))*$"
+              },
+              "into": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              }
             },
-            "into": {
-              "type": "string",
-              "pattern": "^[a-zA-Z0-9_-]+$"
-            }
+            "required": [
+              "from",
+              "into"
+            ]
           },
           "default": []
         }
