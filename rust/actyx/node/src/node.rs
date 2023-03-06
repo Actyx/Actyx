@@ -487,7 +487,7 @@ mod test {
               },
               "routes": [
                 {
-                  "from": "'tag_1 & tag_2'",
+                  "from": "'tag_1' | 'tag_2'",
                   "into": "metrics"
                 }
               ]
