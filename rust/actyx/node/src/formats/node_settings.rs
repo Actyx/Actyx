@@ -130,22 +130,13 @@ pub struct Route {
     pub into: String,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
 pub struct EventRouting {
     // NOTE(duarte): node::test::change_and_forward_settings fails if skip_serializing_if is set
     // #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub streams: HashMap<String, Stream>,
     // #[serde(skip_serializing_if = "Vec::is_empty")]
     pub routes: Vec<Route>,
-}
-
-impl Default for EventRouting {
-    fn default() -> Self {
-        Self {
-            streams: Default::default(),
-            routes: Default::default(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
