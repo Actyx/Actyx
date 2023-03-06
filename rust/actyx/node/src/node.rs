@@ -409,13 +409,14 @@ impl NodeWrapper {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, str::FromStr};
 
     use super::*;
     use crate::{
         components::Component,
         node_settings::{EventRouting, Route, Settings, Stream},
     };
+    use actyx_sdk::language::TagExpr;
     use anyhow::Result;
     use futures::executor::block_on;
     use serde_json::json;
@@ -596,8 +597,8 @@ mod test {
         }
     }
 
-    // TODO(jmgduarte): check which tests can also benefit from this bootstrap function
-    async fn bootstrap_node() -> Node {
+    #[tokio::test]
+    async fn should_handle_settings_requests_event_routing() {
         let (_runtime_tx, runtime_rx) = crossbeam::channel::bounded(8);
         let temp_dir = TempDir::new().unwrap();
         let runtime = Host::new(temp_dir.path().to_path_buf()).unwrap();
@@ -615,12 +616,6 @@ mod test {
             });
             rx.await.unwrap().unwrap();
         }
-        node
-    }
-
-    #[tokio::test]
-    async fn should_handle_settings_requests_event_routing() {
-        let mut node = bootstrap_node().await;
         let json = json!(
             {
                 "streams": {
@@ -633,7 +628,7 @@ mod test {
                 },
                 "routes": [
                     {
-                        "from": "'tag_1 & tag_2'",
+                        "from": "'tag_1 | tag_2'",
                         "into": "metrics"
                     }
                 ]
@@ -664,12 +659,10 @@ mod test {
                     },
                 ),
             ]),
-            routes: vec![
-                Route {
-                    from: "'tag_1 & tag_2'".to_string(),
-                    into: "metrics".to_string(),
-                }
-            ],
+            routes: vec![Route {
+                from: TagExpr::from_str("'tag_1 | tag_2'").unwrap(),
+                into: "metrics".to_string(),
+            }],
         };
         assert_eq!(node.state.settings.event_routing, expected_event_routing);
     }
@@ -791,7 +784,8 @@ mod test {
             (node_tx.clone(), node_rx),
             vec![("test".into(), ComponentChannel::Test(component_tx))],
             host,
-        ).unwrap();
+        )
+        .unwrap();
 
         // should register with Component
         let _component_state_tx = match component_rx.recv().unwrap() {
@@ -815,7 +809,8 @@ mod test {
                 json: json.clone(),
                 scope: system_scope(),
                 response: req_tx,
-            })).unwrap();
+            }))
+            .unwrap();
         assert_eq!(block_on(req_rx).unwrap().unwrap(), json);
 
         let set_up = match component_rx.recv().unwrap() {
@@ -826,7 +821,8 @@ mod test {
 
         // shutdown
         node.tx
-            .send(ExternalEvent::ShutdownRequested(ShutdownReason::TriggeredByHost)).unwrap();
+            .send(ExternalEvent::ShutdownRequested(ShutdownReason::TriggeredByHost))
+            .unwrap();
         // forward shutdown request to component
         assert!(matches!(component_rx.recv().unwrap(), ComponentRequest::Shutdown(_)));
         assert_node_shutdown(node_tx);

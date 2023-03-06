@@ -1,3 +1,4 @@
+use actyx_sdk::language::TagExpr;
 use api::formats::Licensing;
 use crypto::PublicKey;
 use serde::{Deserialize, Serialize};
@@ -60,19 +61,72 @@ pub struct LogLevels {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Stream {
+    /// Number of maximum events to keep
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_events: Option<u64>,
-    /// Stream Maximum Size (in Mb)
+    /// Maximum size (in bytes) the stream occupy
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_size: Option<u64>,
-    /// Stream Maximum Age (in Minutes)
+    /// Maximum event age (in seconds)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_age: Option<u64>,
 }
 
+mod tag_expr {
+    use std::str::FromStr;
+
+    use actyx_sdk::language::TagExpr;
+    use serde::{de::Visitor, Deserializer, Serializer};
+
+    pub fn serialize<S>(value: &TagExpr, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&value.to_string())
+    }
+
+    struct TagExprVisitor;
+
+    impl<'de> Visitor<'de> for TagExprVisitor {
+        type Value = TagExpr;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a string")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match TagExpr::from_str(v) {
+                Err(_) => Err(E::invalid_value(serde::de::Unexpected::Str(v), &"Invalid expression")),
+                Ok(val) => Ok(val),
+            }
+        }
+
+        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match TagExpr::from_str(&v) {
+                Err(_) => Err(E::invalid_value(serde::de::Unexpected::Str(&v), &"Invalid expression")),
+                Ok(val) => Ok(val),
+            }
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<TagExpr, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(TagExprVisitor)
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct Route {
-    pub from: String,
+    #[serde(with = "tag_expr")]
+    pub from: TagExpr,
     pub into: String,
 }
 

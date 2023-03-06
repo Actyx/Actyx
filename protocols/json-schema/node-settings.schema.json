@@ -91,6 +91,14 @@
             "const": "testing"
           }
         ]
+      },
+      "Expression": {
+        "type": "string",
+        "pattern": "[a-zA-Z0-9_-]+((&|)[[a-zA-Z0-9_-]+])*"
+      },
+      "StreamName": {
+        "type": "string",
+        "pattern": "[a-zA-Z0-9_-]"
       }
     },
     "Swarm": {
@@ -264,28 +272,34 @@
             "properties": {
               "maxEvents": {
                 "type": "integer",
-                "minimum": 0
+                "description": "The maximum number of events to store",
+                "minimum": 0,
+                "default": 0
               },
               "maxSize": {
                 "type": "integer",
-                "minimum": 0
+                "description": "The maximum total size for the stream, in bytes",
+                "minimum": 0,
+                "default": 0
               },
               "maxAge": {
                 "type": "integer",
-                "minimum": 0
+                "description": "The maximum age for stream events, in seconds",
+                "minimum": 0,
+                "default": 0
               }
             }
           },
-          "default":{}
+          "default": {}
         },
         "routes": {
           "type": "array",
           "properties": {
             "from": {
-              "type": "string"
+              "$ref": "#/definitions/Composite/Expression"
             },
             "into": {
-              "type": "string"
+              "$ref": "#/definitions/Composite/StreamName"
             }
           },
           "default": []

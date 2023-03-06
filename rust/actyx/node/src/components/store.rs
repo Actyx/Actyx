@@ -1,5 +1,8 @@
 use super::{Component, ComponentRequest};
-use crate::{node_settings::{Settings, EventRouting}, BindTo};
+use crate::{
+    node_settings::{EventRouting, Settings},
+    BindTo,
+};
 use acto::ActoRef;
 use actyx_sdk::{service::SwarmState, NodeId};
 use anyhow::Result;
@@ -58,6 +61,10 @@ pub(crate) type StoreTx = Sender<ComponentRequest<StoreRequest>>;
 pub(crate) struct StoreConfig {
     swarm_config: SwarmConfig,
     licensing: Licensing,
+    // TODO: There needs to be a distinction between the "pre-parsed" EventRouting
+    // and the parsed one. This is required since to validate the "from" expression
+    // we need to parse the expression and serialization does not work
+    // maybe this helps: https://serde.rs/remote-derive.html
     event_routing: EventRouting,
 }
 
