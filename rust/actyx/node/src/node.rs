@@ -628,7 +628,7 @@ mod test {
                 },
                 "routes": [
                     {
-                        "from": "'tag_1 | tag_2'",
+                        "from": "'tag_1' | 'tag_2'",
                         "into": "metrics"
                     }
                 ]
@@ -660,7 +660,7 @@ mod test {
                 ),
             ]),
             routes: vec![Route {
-                from: TagExpr::from_str("'tag_1 | tag_2'").unwrap(),
+                from: TagExpr::from_str("'tag_1' | 'tag_2'").unwrap(),
                 into: "metrics".to_string(),
             }],
         };

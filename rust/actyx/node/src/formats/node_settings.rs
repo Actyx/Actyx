@@ -99,7 +99,7 @@ mod tag_expr {
             E: serde::de::Error,
         {
             match TagExpr::from_str(v) {
-                Err(_) => Err(E::invalid_value(serde::de::Unexpected::Str(v), &"Invalid expression")),
+                Err(err) => Err(E::custom(err)),
                 Ok(val) => Ok(val),
             }
         }
@@ -109,7 +109,7 @@ mod tag_expr {
             E: serde::de::Error,
         {
             match TagExpr::from_str(&v) {
-                Err(_) => Err(E::invalid_value(serde::de::Unexpected::Str(&v), &"Invalid expression")),
+                Err(err) => Err(E::custom(err)),
                 Ok(val) => Ok(val),
             }
         }

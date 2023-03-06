@@ -91,14 +91,6 @@
             "const": "testing"
           }
         ]
-      },
-      "Expression": {
-        "type": "string",
-        "pattern": "[a-zA-Z0-9_-]+((&|)[[a-zA-Z0-9_-]+])*"
-      },
-      "StreamName": {
-        "type": "string",
-        "pattern": "[a-zA-Z0-9_-]"
       }
     },
     "Swarm": {
@@ -296,10 +288,12 @@
           "type": "array",
           "properties": {
             "from": {
-              "$ref": "#/definitions/Composite/Expression"
+              "type": "string",
+              "pattern": "^('[a-zA-Z0-9_-]+') *((&|) *('[a-zA-Z0-9_-]+'))*$"
             },
             "into": {
-              "$ref": "#/definitions/Composite/StreamName"
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_-]+$"
             }
           },
           "default": []
