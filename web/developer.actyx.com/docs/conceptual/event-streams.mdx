@@ -104,7 +104,7 @@ Event ordering in distributed systems is essential.
 Consider a workflow that spans multiple participants where each action performed by one of the parties has a logical consequence for other participants within the same workflow.
 The events written in such a flow have a causal relationship, the second one can only have been emitted because the first event has been processed.
 Since in that scenario, at any time there may be partitions between the parties and events could still be emitted by offline parties, these events need to be correctly merged after the partition has been healed.
-The device's wall clock can not be used for this since clock skew may have changed sufficiently since the previous observation.
+The device's wall clock cannot be used for this because clock skew may have changed significantly since the previous observation.
 Therefore, events need to be ordered according to their causal relationship, irrespective of wall clocks.
 In Actyx this causal ordering of events is achieved by using a logical clock;
 concretely, we employ [Lamport timestamps](https://lamport.azurewebsites.net/pubs/time-clocks.pdf).
@@ -112,6 +112,5 @@ This algorithm is designed to preserve causal order even when wall clocks on dev
 
 :::info
 Note that lamport ordering only guarantees correct event ordering for events that stem from the same logical workflow.
-Once events are combined that have no causal relationship, you need to consider a slightly more elaborate approach.
-If you want to know more about event ordering in detail, please read our [blog post about negative time spans](https://developer.actyx.com/blog/2021/05/31/avoiding-negative-timespans)!
+It is impossible to define a correct order for events within a computer system that are not causally connected when no reliable global clock is available.
 :::

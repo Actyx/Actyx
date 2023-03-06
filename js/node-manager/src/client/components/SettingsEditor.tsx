@@ -13,38 +13,15 @@ const eq = (a: Settings, b: Settings): boolean => deepEqual(a, b, { strict: fals
 
 type ValidationError = string
 
-const cachedSchemas: { [key: string]: object } = {}
-const ajv = new Ajv()
-ajv.addFormat('multiaddr-without-peer-id', isValidMultiAddr)
-ajv.addFormat('multiaddr-with-peer-id', isValidMultiAddrWithPeerId)
-ajv.addMetaSchema(draft6)
-
 // This should be refactored at some point and hooked up with
 // fatal error triggering
-const validateAgainstSchema = (
-  nodeAddr: string,
-  data: object,
-  schema: object,
-): ValidationError[] => {
-  if (!cachedSchemas[nodeAddr] || !eq(cachedSchemas[nodeAddr], schema)) {
-    ajv.removeSchema(nodeAddr)
-    if (!ajv.validateSchema(schema)) {
-      throw `unable to validate schema ${JSON.stringify(ajv.errors)}`
-    }
+export const validateAgainstSchema = (data: object, schema: object): ValidationError[] => {
+  const ajv = new Ajv()
+  ajv.addFormat('multiaddr-without-peer-id', isValidMultiAddr)
+  ajv.addFormat('multiaddr-with-peer-id', isValidMultiAddrWithPeerId)
+  ajv.addMetaSchema(draft6)
 
-    try {
-      ajv.addSchema(schema, nodeAddr)
-      cachedSchemas[nodeAddr] = schema
-    } catch (error) {
-      try {
-        ajv.removeSchema(nodeAddr)
-      } catch (error) {
-        console.error(error)
-      }
-    }
-  }
-
-  if (ajv.validate(nodeAddr, data)) {
+  if (ajv.validate(schema, data)) {
     return []
   } else {
     if (ajv.errors) {
@@ -280,14 +257,14 @@ export const SettingsEditor: React.FC<Props> = ({ node: { addr, details } }) => 
   const updateSettings = async () => {
     dispatch({ key: 'SavingToRemote', settings: state.editor })
     if (state.editor !== null) {
-      await setSettings(addr, state.editor)
+      await setSettings(addr, state.editor, [])
       dispatch({ key: 'Initial', initial: state.editor })
     }
   }
 
   const onEditorValueChanged = (val: object) => {
     dispatch({ key: 'EditorUpdated', editor: val })
-    setValidationErrors(validateAgainstSchema(addr, val, details.settingsSchema))
+    setValidationErrors(validateAgainstSchema(val, details.settingsSchema))
   }
 
   const onDirtied = () => {

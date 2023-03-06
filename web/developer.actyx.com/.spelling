@@ -244,64 +244,6 @@ dataset
 mdns
 statelessly
 stateful
-- blog/2020-06-09-building-docker-apps-for-arm64v8.md
-arm64
-ActyxOS
-rc.2
-Actyx
-yml
-- blog/2020-06-16-registry-fishes.md
-RegistryFish
-createRegistryFish
-observeRegistry
-- blog/2020-06-22-react-pond.md
-materialRequestFish
-useRegistryFish
-industrial-ui
-dev-server
-learnings
-- blog/2020-06-25-differential-dataflow.md
-Drill1
-Drill2
-Drill3
-DbRecord
-serde
-webview
-EventService
-machineFish
-new_limited
-actyxos_data_flow
-combinator
-- blog/2020-07-24-pond-v2-release.md
-fishName
-v1
-Array.reduce
-TaskDone
-CLR
-- blog/2020-07-27-libp2p-gossipsub.md
-ethereum
-go-ipfs
-gossipsub
-bitswap
-messageids
-utf8
-Dimitris
-Vyzovitis
-non-uft8
-base64
-protobuf
-repo
-proto
-Js-ipfs
-js-libp2p
-rust-libp2
-- blog/2020-08-04-event-design-for-a-logistics-solution.md
-architecting
-intra-logistics
-SKUs
-Amongst
-- blog/2020-08-19-pond-210-release.md
-package.json
 - docs/faq/supported-edge-devices.md
 NIOT-E-TPI51-EN-RE
 MXE-1500
@@ -400,73 +342,6 @@ tutorial-setup-02
 - ./docs/tutorials/chat.mdx
 http
 actyx.io
-- ./blog/2020-06-09-building-docker-apps-for-arm64v8.md
-arm64
-rc.2
-yml
-- ./blog/2020-06-16-registry-fishes.md
-RegistryFish
-createRegistryFish
-observeRegistry
-- ./blog/2020-06-22-react-pond.md
-materialRequestFish
-useRegistryFish
-industrial-ui
-- ./blog/2020-06-25-differential-dataflow.md
-Drill1
-Drill2
-Drill3
-DbRecord
-serde
-webview
-machineFish
-new_limited
-actyxos_data_flow
-- ./blog/2020-07-24-pond-v2-release.md
-v1
-TaskDone
-Array.reduce
-- ./blog/2020-07-27-libp2p-gossipsub.md
-go-ipfs
-gossipsub
-bitswap
-messageids
-Dimitris
-Vyzovitis
-non-uft8
-base64
-protobuf
-proto
-Js-ipfs
-rust-libp2
-- ./blog/2020-08-19-pond-210-release.md
-package.json
-- ./blog/2020-08-27-from-events-to-erp-bookings.md
-MovementTrackingFish
-stringly
-SkuFish
-- ./blog/2020-09-01-optimizing-differential-dataflow-applications-strings.md
-pcs
-Abomonation
-ArcVal
-- ./blog/2020-09-30-designing-csharp-pond.md
-unioning
-JsonSubTypes
-impl
-- ./blog/2020-11-17-introducing-observe-all.md
-irst
-observeAll
-observeOne
-- ./blog/2021-03-19-manage-snapshot-sizes.md
-chart.js
-highcharts
-_If_
-_if_
-rawSizeMB
-compressedSizeMB
-roundtripOk
-pufferfish
-Yurasits
 - ./docs/tutorials/advanced-tutorial/architecture.mdx
 img1
 dx1-tutorial
@@ -487,21 +362,6 @@ src
 statemachine.png
 machinefish.png
 orderfish.png
-- ./blog/2021-04-22-registry-fishes.md
-RxPond
-registryFish
-stateChanged
-- ./blog/2021-04-29-partial-connectivity-ux.md
-non-realtime
-intralogistics
-Oleg
-barcode
-UX-wise
-MaintenanceModeRequested
-ModeChangeStarted
-ModeChangeCompleted
-FinishedGoodsLogged
-FinishedGoodsBooked
 - ./docs/reference/actyx.mdx
 ff02
 fb
@@ -554,16 +414,6 @@ bar2
 caughtUp
 query.json
 1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s
-- ./blog/2021-06-23-actyx-2-0-0-release.md
-header.svg
-events-api
-node-api
-roadmap
-node-manager-ui
-changelog
-lightspeed.gif
-10x
-benchmark.svg
 - ./docs/reference/aql.mdx
 _or_
 timeRange
