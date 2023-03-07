@@ -91,7 +91,7 @@ mod tag_expr {
         type Value = TagExpr;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("a string")
+            formatter.write_str("a string containing a valid AQL tag expression.")
         }
 
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
