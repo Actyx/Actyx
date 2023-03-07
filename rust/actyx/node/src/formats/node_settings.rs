@@ -98,10 +98,7 @@ mod tag_expr {
         where
             E: serde::de::Error,
         {
-            match TagExpr::from_str(v) {
-                Err(err) => Err(E::custom(err)),
-                Ok(val) => Ok(val),
-            }
+            TagExpr::from_str(v).map_err(E::custom)
         }
 
         fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
