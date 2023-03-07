@@ -61,10 +61,6 @@ pub(crate) type StoreTx = Sender<ComponentRequest<StoreRequest>>;
 pub(crate) struct StoreConfig {
     swarm_config: SwarmConfig,
     licensing: Licensing,
-    // TODO: There needs to be a distinction between the "pre-parsed" EventRouting
-    // and the parsed one. This is required since to validate the "from" expression
-    // we need to parse the expression and serialization does not work
-    // maybe this helps: https://serde.rs/remote-derive.html
     event_routing: EventRouting,
 }
 

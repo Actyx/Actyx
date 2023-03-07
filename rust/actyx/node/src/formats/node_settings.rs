@@ -100,16 +100,6 @@ mod tag_expr {
         {
             TagExpr::from_str(v).map_err(E::custom)
         }
-
-        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            match TagExpr::from_str(&v) {
-                Err(err) => Err(E::custom(err)),
-                Ok(val) => Ok(val),
-            }
-        }
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<TagExpr, D::Error>
