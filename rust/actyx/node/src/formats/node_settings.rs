@@ -1,7 +1,8 @@
+use actyx_sdk::language::TagExpr;
 use api::formats::Licensing;
 use crypto::PublicKey;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use util::formats::LogSeverity;
 
 // These type definitions need to be kept in sync with the Actyx
@@ -57,6 +58,71 @@ pub struct LogLevels {
     pub node: LogSeverity,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Stream {
+    /// Number of maximum events to keep
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_events: Option<u64>,
+    /// Maximum size (in bytes) the stream occupy
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_size: Option<u64>,
+    /// Maximum event age (in seconds)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_age: Option<u64>,
+}
+
+mod tag_expr {
+    use std::str::FromStr;
+
+    use actyx_sdk::language::TagExpr;
+    use serde::{de::Visitor, Deserializer, Serializer};
+
+    pub fn serialize<S>(value: &TagExpr, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&value.to_string())
+    }
+
+    struct TagExprVisitor;
+
+    impl<'de> Visitor<'de> for TagExprVisitor {
+        type Value = TagExpr;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a string containing a valid AQL tag expression.")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            TagExpr::from_str(v).map_err(E::custom)
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<TagExpr, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(TagExprVisitor)
+    }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
+pub struct Route {
+    #[serde(with = "tag_expr")]
+    pub from: TagExpr,
+    pub into: String,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
+pub struct EventRouting {
+    pub streams: HashMap<String, Stream>,
+    pub routes: Vec<Route>,
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
@@ -64,6 +130,7 @@ pub struct Settings {
     pub admin: Admin,
     pub licensing: Licensing,
     pub api: Api,
+    pub event_routing: EventRouting,
 }
 
 impl Settings {
@@ -100,6 +167,7 @@ impl Settings {
                     read_only: true,
                 },
             },
+            event_routing: Default::default(),
         }
     }
 }

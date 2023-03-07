@@ -15,7 +15,8 @@ secrets.yml
 .metals/
 .ensime*
 /make-always
-actyx-data/
+actyx-data*/
 **/obj
 dotnet/**/bin
 pipeline-artifacts
+.DS_Store

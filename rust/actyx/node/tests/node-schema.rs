@@ -37,6 +37,7 @@ fn node_schema_in_sync() {
                 read_only: true,
             },
         },
+        event_routing: Default::default(),
     };
     let current_schema: serde_json::Value = serde_json::from_slice(include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
