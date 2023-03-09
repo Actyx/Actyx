@@ -114,7 +114,9 @@ mod tag_expr {
 pub struct Route {
     #[serde(with = "tag_expr")]
     pub from: TagExpr,
-    pub into: String,
+    pub into: String, // associate to a number
+
+                      // needs to load all previously mapped names -> number
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]

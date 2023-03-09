@@ -68,7 +68,7 @@ impl EventService {
     pub async fn publish(
         &self,
         app_id: AppId,
-        stream_nr: StreamNr,
+        stream_nr: StreamNr, // remove from here and compute the stream number in the banyan store
         request: PublishRequest,
     ) -> anyhow::Result<PublishResponse> {
         let events = request
@@ -76,7 +76,14 @@ impl EventService {
             .into_iter()
             .map(|PublishEvent { tags, payload }| (tags, payload))
             .collect();
-        let meta = self.store.persist(app_id, stream_nr, events).await?;
+        let meta = self
+            .store
+            .persist(
+                app_id,
+                stream_nr,
+                events,
+            )
+            .await?;
         let response = PublishResponse {
             data: meta
                 .into_iter()

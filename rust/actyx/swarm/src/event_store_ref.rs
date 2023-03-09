@@ -244,7 +244,10 @@ impl EventStoreHandler {
                 let state = self.state.clone();
                 runtime.spawn(async move {
                     let n = events.len();
-                    let _ = reply.send(store.persist(app_id, stream_nr, events).await.map_err(move |e| {
+                    let _ = reply.send(store.persist(
+                        app_id,
+                        stream_nr,
+                        events).await.map_err(move |e| {
                         tracing::error!("failed to persist {} events: {:#}", n, e);
                         Error::Aborted
                     }));
