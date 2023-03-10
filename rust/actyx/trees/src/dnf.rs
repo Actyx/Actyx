@@ -4,7 +4,7 @@ use actyx_sdk::language::{self, TagAtom};
 
 // invariant: none of the sets are ever empty
 #[derive(Debug, PartialEq)]
-pub(crate) struct Dnf(pub BTreeSet<BTreeSet<language::TagAtom>>);
+pub struct Dnf(pub BTreeSet<BTreeSet<language::TagAtom>>);
 
 impl Dnf {
     pub fn or(self, other: Dnf) -> Self {
