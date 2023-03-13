@@ -27,6 +27,7 @@ pub mod transport;
 #[cfg(test)]
 mod tests;
 
+use crate::event_store::PersistenceMeta;
 pub use crate::sqlite::{StorageServiceStore, StorageServiceStoreWrite};
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
@@ -200,7 +201,7 @@ pub struct SwarmConfig {
     pub ping_timeout: Duration,
     pub bitswap_timeout: Duration,
     pub branch_cache_size: u64,
-    pub event_routes: Vec<EventRouteConfig>,
+    pub event_routes: Vec<EventRoute>,
 }
 impl SwarmConfig {
     pub fn basic() -> Self {
@@ -699,12 +700,12 @@ impl<'a> BanyanStoreGuard<'a> {
 
 /// The "dual" for the event route configuration in the node.
 #[derive(Debug, Clone)]
-pub struct EventRouteConfig {
+pub struct EventRoute {
     from: TagExpr,
     into: String,
 }
 
-impl Default for EventRouteConfig {
+impl Default for EventRoute {
     fn default() -> Self {
         Self {
             from: TagExpr::from_str("allEvents").expect("Valid tag expression."),
@@ -756,11 +757,6 @@ struct RoutingTable {
 }
 
 impl RoutingTable {
-    /// Alias to `RoutingTable::default()`.
-    fn new() -> Self {
-        Default::default()
-    }
-
     /// Add a new stream to the routing table.
     fn add_stream(&mut self, stream: String, stream_nr: Option<StreamNr>) -> Result<Option<StreamNr>> {
         if let Some(stream_nr) = stream_nr {
@@ -823,6 +819,10 @@ impl RoutingTable {
 
     fn get_max_stream_nr(&self) -> Option<StreamNr> {
         self.max_stream_nr
+    }
+
+    fn is_empty(&self) -> bool {
+        self.max_stream_nr.is_none()
     }
 }
 
@@ -1116,18 +1116,65 @@ impl BanyanStore {
 
         // Should all this be "blocking" (i.e. not in another thread)?
         // Since this is a crucial step in the bootstrap and we should proceed without it
-        banyan.load_route_mappings_from_stream(node_id).await?;
-        let routes = if cfg.event_routes.is_empty() {
-            std::borrow::Cow::Owned(vec![EventRouteConfig {
+        let mappings = banyan.get_published_mappings(node_id).await?;
+        {
+            let mut guard = banyan.lock();
+            for (name, nr) in mappings {
+                guard.event_routing_table.add_stream(name, nr.into())?;
+            }
+        }
+
+        // Publish the default stream if missing
+        let is_routing_table_empty = {
+            let guard = banyan.lock();
+            guard.event_routing_table.is_empty()
+        };
+        if is_routing_table_empty {
+            let event = EventRouteMappingEvent(DEFAULT_STREAM_NAME.to_string(), DEFAULT_STREAM_NR.into());
+            let events = vec![(
+                actyx_sdk::tags!("event_routing"),
+                Event::compact(&event).expect("Should be a valid event."),
+            )];
+            banyan
+                .append(DEFAULT_STREAM_NR.into(), internal_app_id(), events)
+                .await?;
+            // If publishing went ok, we can move on with adding the stream to the table
+            {
+                let mut guard = banyan.lock();
+                guard
+                    .event_routing_table
+                    .add_stream(DEFAULT_STREAM_NAME.to_string(), Some(DEFAULT_STREAM_NR.into()))
+                    .expect("The default stream should not have been previously added.");
+            }
+        }
+
+        let event_routes = if cfg.event_routes.is_empty() {
+            vec![EventRoute {
                 from: "allEvents"
                     .parse::<TagExpr>()
                     .expect("The default target (allEvents) should be a valid TagExpr."),
                 into: "default".to_string(),
-            }]) // add the proper entries after
+            }]
         } else {
-            std::borrow::Cow::Borrowed(&cfg.event_routes)
+            cfg.event_routes.clone()
         };
-        banyan.load_route_mappings_from_configuration(&routes).await?;
+
+        let unpublished_streams = {
+            let mut streams = HashMap::new();
+            let mut guard = banyan.lock();
+            for route in event_routes {
+                let nr = guard.event_routing_table.add_route(route.from, route.into.clone());
+                if let Some(nr) = nr {
+                    streams.insert(route.into, nr);
+                }
+            }
+            streams
+        };
+
+        for (name, number) in unpublished_streams {
+            banyan.append_stream_mapping_event(name, number).await?;
+        }
+
         // after everything is loaded
         // i can check the default stream (i.e. 0)
         // and filter for the com.actyx + tag (which should be unique for the event naming thing)
@@ -1138,77 +1185,43 @@ impl BanyanStore {
         Ok(banyan)
     }
 
+    async fn append_stream_mapping_event(&self, name: String, number: StreamNr) -> Result<()> {
+        let event = EventRouteMappingEvent(name, number);
+        let events = vec![(
+            actyx_sdk::tags!("event_routing"),
+            Event::compact(&event).expect("Should be a valid event."),
+        )];
+        self.append(DEFAULT_STREAM_NR.into(), internal_app_id(), events).await?;
+        Ok(())
+    }
+
     /// Loads the default stream, reading all [RouteMappingEvents] from it and returning
     /// the respective route mapping.
-    async fn load_route_mappings_from_stream(&self, node_id: NodeId) -> Result<()> {
-        // [X] create the structure outside of this (RouteMapping)
-        // [X] read it from the stream
-        // [X] map all mappings
-        // [X] write new ones to the stream (they should be in the swarm config, if not, add them)
-
+    async fn get_published_mappings(&self, node_id: NodeId) -> Result<HashMap<String, StreamNr>> {
         let stream_id = StreamId {
             node_id,
             stream_nr: DEFAULT_STREAM_NR.into(),
         };
 
         let tag_expr = format!("'{}' & appId({})", EVENT_ROUTING_TAG_NAME, internal_app_id());
-        // Safe unwrap because the query is "static"
-        let tag_expr = TagExpr::from_str(&tag_expr).unwrap();
-        let query_factory = TagExprQuery::from_expr(&tag_expr).unwrap();
+        let tag_expr = TagExpr::from_str(&tag_expr).expect("The tag expression should be valid.");
+        let query_factory = TagExprQuery::from_expr(&tag_expr).expect("The query should be valid.");
         // The boolean value we call here is irrelevant
         let query = query_factory(false, stream_id);
 
-        // Read from our own default stream (which should be loaded by now)
-        let mut guard = self.lock();
-
-        // guard.event_routing_table =
-        let mut events = self
-            .stream_filtered_chunked(stream_id, 0..=u64::max_value(), query)
-            .map_ok(|chunk| {
-                stream::iter(chunk.data)
-                    .map(|(_, _, payload)| payload.extract::<EventRouteMappingEvent>().map_err(anyhow::Error::from))
-            })
-            .try_flatten();
-
-        while let Some(event) = events.try_next().await? {
-            guard.event_routing_table.add_stream(event.0, event.1.into())?;
-        }
-
-        Ok(())
         // If we couldn't read the routing table from the stream, should we read it ONLY from the config?
-    }
-
-    async fn load_route_mappings_from_configuration(&self, event_routes: &Vec<EventRouteConfig>) -> Result<()> {
-        let event_routing_tag = Tag::from_str(EVENT_ROUTING_TAG_NAME).expect("The tag should not be empty.");
-        let event_routing_tag_set = actyx_sdk::tags!(event_routing_tag);
-
-        let mut banyan_store = self.lock();
-        // Attempt to publish the default stream number to itself (should metrics and friends also come?)
-        let routing_table = &mut banyan_store.guard.event_routing_table;
-        if let None = routing_table.get_max_stream_nr() {
-            routing_table
-                .add_stream(DEFAULT_STREAM_NAME.to_string(), Some(DEFAULT_STREAM_NR.into()))
-                .expect("The \"default\" stream should not have been added before.");
-
-            let event = EventRouteMappingEvent(DEFAULT_STREAM_NAME.to_string(), DEFAULT_STREAM_NR.into());
-            let events = vec![(
-                event_routing_tag_set.clone(),
-                Event::compact(&event).expect("Should be a valid event."),
-            )];
-            self.append(DEFAULT_STREAM_NR.into(), internal_app_id(), events).await?;
-        }
-
-        for route in event_routes.iter() {
-            if let Some(stream_nr) = routing_table.add_route(route.from.clone(), route.into.clone()) {
-                let event = EventRouteMappingEvent(route.into.clone(), stream_nr);
-                let events = vec![(
-                    event_routing_tag_set.clone(),
-                    Event::compact(&event).expect("Should be a valid event."),
-                )];
-                self.append(DEFAULT_STREAM_NR.into(), internal_app_id(), events).await?;
-            }
-        }
-        Ok(())
+        self.stream_filtered_chunked(stream_id, 0..=u64::max_value(), query)
+            .map_ok(|chunk| {
+                stream::iter(chunk.data).map(|(_, _, payload)| {
+                    payload
+                        .extract::<EventRouteMappingEvent>()
+                        .map(|event| (event.0, event.1))
+                        .map_err(anyhow::Error::from)
+                })
+            })
+            .try_flatten()
+            .try_collect()
+            .await
     }
 
     /// Creates a new [`BanyanStore`] for testing.
@@ -1387,30 +1400,79 @@ impl BanyanStore {
     }
 
     /// Append events to a stream, publishing the new data.
-    pub async fn append(&self, stream_nr: StreamNr, app_id: AppId, events: Vec<(TagSet, Event)>) -> Result<AppendMeta> {
+    pub async fn append(
+        &self,
+        stream_nr: StreamNr,
+        app_id: AppId,
+        events: Vec<(TagSet, Event)>,
+    ) -> Result<Vec<PersistenceMeta>> {
         // Check all call-sites for the stream_nr (if it's hardcoded or not)
         // compute the stream number here
         // appid + tagset evaluates to the routing table
 
-        // write the matching based on the dnf query etc (the current impl is too complicated)
-        let mut routes: HashMap<StreamNr, Vec<(TagSet, Payload)>> = HashMap::new();
         let timestamp = Timestamp::now();
-        let guard = self.lock();
-        for (tag_set, payload) in events {
+
+        let mut guard = self.lock();
+        let lamports = guard.reserve_lamports(events.len())?;
+        // We need to keep the store lock to make sure that no other append operations can write
+        // to the streams before we are done, because that might break lamport ordering within
+        // the streams.
+
+        let mut metas = vec![];
+        for (idx, (tag_set, payload)) in lamports.zip(events) {
             let stream_nr = guard.event_routing_table.get_matching_stream_nr(&tag_set);
-            if let Some(routed_events) = routes.get_mut(&stream_nr) {
-                routed_events.push((tag_set, payload));
-            } else {
-                routes.insert(stream_nr, vec![(tag_set, payload)]);
-            }
-        }
-        for (stream_nr, events) in routes {
-            self.append0(stream_nr, app_id.clone(), timestamp, events).await?;
+            let append_meta = self
+                .append_event(stream_nr, app_id.clone(), idx, timestamp, tag_set, payload)
+                .await?;
+            metas.push((
+                append_meta.min_lamport,
+                append_meta.min_offset,
+                stream_nr.clone(),
+                timestamp,
+            ));
         }
 
-        todo!("find out the appropriate append meta");
-        // let stream_nr = 0.into();
-        // self.append0(stream_nr, app_id, timestamp, events).await
+        Ok(metas)
+    }
+
+    pub async fn append_event(
+        &self,
+        stream_nr: StreamNr,
+        app_id: AppId,
+        lamport: LamportTimestamp,
+        timestamp: Timestamp,
+        tag_set: TagSet,
+        event: Event,
+    ) -> Result<AppendMeta> {
+        let stream = self.get_or_create_own_stream(stream_nr)?;
+        let mut guard = stream.lock().await;
+
+        let _s = tracing::trace_span!("append", stream_nr = display(stream_nr), timestamp = debug(timestamp));
+        let _s = _s.enter();
+
+        let app_id_tag = ScopedTag::new(
+            trees::tags::TagScope::Internal,
+            Tag::try_from(format!("app_id:{}", app_id).as_str()).expect("Should be a valid tag"),
+        );
+        let mut tags = ScopedTagSet::from(tag_set);
+        tags.insert(app_id_tag);
+        let k = (AxKey::new(tags, lamport, timestamp), event);
+
+        let min_offset = self.transform_stream(&mut guard, |txn, tree| {
+            let snapshot = tree.snapshot();
+            txn.extend_unpacked(tree, std::iter::once(k))?;
+            if tree.level() > MAX_TREE_LEVEL {
+                txn.pack(tree)?;
+            }
+            Ok(snapshot.offset())
+        })?;
+        let min_offset = min_offset.map(|o| o + 1).unwrap_or(Offset::ZERO);
+
+        Ok(AppendMeta {
+            min_lamport: lamport,
+            min_offset,
+            timestamp,
+        })
     }
 
     // Keep in mind where this is called
