@@ -163,7 +163,7 @@ pub fn keypair(i: u64) -> KeyPair {
 #[derive(Debug, Eq, PartialEq)]
 pub enum Command {
     AddAddress(PeerId, Multiaddr),
-    Append(StreamNr, Vec<(TagSet, Payload)>),
+    Append(Vec<(TagSet, Payload)>),
     SubscribeQuery(Query<'static>),
     ApiPort,
     GossipSubscribe(String),
@@ -173,7 +173,7 @@ impl std::fmt::Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::AddAddress(peer, addr) => write!(f, ">add-address {} {}", peer, addr)?,
-            Self::Append(nr, events) => write!(f, ">append {} {}", nr, serde_json::to_string(events).unwrap())?,
+            Self::Append(events) => write!(f, ">append {}", serde_json::to_string(events).unwrap())?,
             Self::SubscribeQuery(expr) => write!(f, ">query {}", expr)?,
             Self::ApiPort => write!(f, ">api-port")?,
             Self::GossipSubscribe(topic) => write!(f, ">gossip-subscribe {}", topic)?,
@@ -199,7 +199,7 @@ impl std::str::FromStr for Command {
                 let mut iter = s.splitn(2, ' ');
                 let nr: u64 = iter.next().unwrap().parse()?;
                 let events = serde_json::from_str(iter.next().unwrap())?;
-                Self::Append(nr.into(), events)
+                Self::Append(events)
             }
             Some(">api-port") => Self::ApiPort,
             Some(">gossip-subscribe") => Self::GossipSubscribe(parts.next().unwrap().into()),
@@ -373,10 +373,7 @@ mod tests {
     #[test]
     fn test_command() -> Result<()> {
         let command = &[
-            Command::Append(
-                42.into(),
-                vec![(tags!("a", "b"), Payload::from_json_str("{}").unwrap())],
-            ),
+            Command::Append(vec![(tags!("a", "b"), Payload::from_json_str("{}").unwrap())]),
             Command::SubscribeQuery(Query::parse("FROM 'a' & 'b' | 'c'").unwrap()),
         ];
         for cmd in command.iter() {

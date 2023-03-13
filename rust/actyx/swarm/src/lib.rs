@@ -817,10 +817,6 @@ impl RoutingTable {
         StreamNr::default()
     }
 
-    fn get_max_stream_nr(&self) -> Option<StreamNr> {
-        self.max_stream_nr
-    }
-
     fn is_empty(&self) -> bool {
         self.max_stream_nr.is_none()
     }
@@ -1130,7 +1126,9 @@ impl BanyanStore {
             guard.event_routing_table.is_empty()
         };
         if is_routing_table_empty {
-            banyan.append_stream_mapping_event(DEFAULT_STREAM_NAME.to_string(), DEFAULT_STREAM_NR.into());
+            banyan
+                .append_stream_mapping_event(DEFAULT_STREAM_NAME.to_string(), DEFAULT_STREAM_NR.into())
+                .await?;
             // If publishing went ok, we can move on with adding the stream to the table
             {
                 let mut guard = banyan.lock();

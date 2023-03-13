@@ -56,14 +56,14 @@ async fn smoke() -> Result<()> {
     }));
     let stream_nr = StreamNr::try_from(1)?;
     tracing::info!("append first event!");
-    let _ = store.append(stream_nr, app_id(), vec![ev("a")]).await?;
+    let _ = store.append(app_id(), vec![ev("a")]).await?;
     tracing::info!("append second event!");
     tokio::task::spawn(interval(Duration::from_secs(1)).for_each(move |_| {
         let store = store.clone();
         let mut tagger = Tagger::new();
         let mut ev = move |tag| (tagger.tags(&[tag]), Payload::null());
         async move {
-            let _ = store.append(stream_nr, app_id(), vec![ev("a")]).await.unwrap();
+            let _ = store.append(app_id(), vec![ev("a")]).await.unwrap();
         }
     }));
     tokio::task::spawn(async move {
@@ -107,7 +107,7 @@ async fn should_compact() -> Result<()> {
         .collect::<Vec<_>>()
         .chunks(10)
     {
-        store.append(0.into(), app_id(), chunk.to_vec()).await?;
+        store.append(app_id(), chunk.to_vec()).await?;
     }
     let tree_after_append = last_item(&mut tree_stream)?;
     assert!(!store.data.forest.is_packed(&tree_after_append)?);
@@ -151,7 +151,7 @@ async fn should_extend_packed_when_hitting_max_tree_depth() -> Result<()> {
 
     // Append individually to force creation of new branches
     for ev in (0..MAX_TREE_LEVEL).map(|_| (tags!("abc"), Payload::null())) {
-        store.append(0.into(), app_id(), vec![ev]).await?;
+        store.append(app_id(), vec![ev]).await?;
     }
     let tree_after_append = last_item(&mut tree_stream)?;
     assert!(!store.data.forest.is_packed(&tree_after_append)?);
@@ -162,9 +162,7 @@ async fn should_extend_packed_when_hitting_max_tree_depth() -> Result<()> {
     );
 
     // packing will be triggered when the existing tree's level is MAX_TREE_LEVEL + 1
-    store
-        .append(0.into(), app_id(), vec![(tags!("abc"), Payload::null())])
-        .await?;
+    store.append(app_id(), vec![(tags!("abc"), Payload::null())]).await?;
     let tree_after_pack = last_item(&mut tree_stream)?;
     // the tree is not packed
     assert!(store.data.forest.is_packed(&tree_after_pack)?);
@@ -194,7 +192,7 @@ async fn must_not_lose_events_through_compaction() -> Result<()> {
     assert!(stream.published_tree().is_none());
 
     for ev in (0..EVENTS).map(|_| (tags!("abc"), Payload::null())) {
-        store.append(0.into(), app_id(), vec![ev]).await?;
+        store.append(app_id(), vec![ev]).await?;
     }
 
     let evs = store
@@ -241,7 +239,7 @@ async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
     assert!(stream.published_tree().is_none());
 
     for ev in (0..EVENTS).map(|_| (tags!("abc"), Payload::null())) {
-        store.append(0.into(), app_id(), vec![ev]).await?;
+        store.append(app_id(), vec![ev]).await?;
     }
 
     let present = store.data.offsets.project(|x| x.present.clone());

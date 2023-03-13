@@ -12,7 +12,7 @@ use libipld::codec::Encode;
 use libipld::DagCbor;
 use prometheus::{Encoder, Registry};
 
-pub fn metrics(store: BanyanStore, nr: StreamNr, interval: Duration) -> Result<impl Future<Output = ()>> {
+pub fn metrics(store: BanyanStore, interval: Duration) -> Result<impl Future<Output = ()>> {
     let registry = Registry::new();
     store.ipfs().register_metrics(&registry)?;
     let tags = tags!("metrics");
@@ -29,11 +29,7 @@ pub fn metrics(store: BanyanStore, nr: StreamNr, interval: Duration) -> Result<i
                 continue;
             }
             if let Err(err) = store
-                .append(
-                    nr,
-                    internal_app_id(),
-                    vec![(tags.clone(), Payload::from_slice(&buffer))],
-                )
+                .append(internal_app_id(), vec![(tags.clone(), Payload::from_slice(&buffer))])
                 .await
             {
                 tracing::warn!("error appending metrics: {}", err);

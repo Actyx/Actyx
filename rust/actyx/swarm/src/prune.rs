@@ -192,13 +192,13 @@ mod test {
         BanyanStore::new(cfg, ActoRef::blackhole()).await
     }
 
-    async fn publish_events(stream_nr: StreamNr, event_count: u64) -> anyhow::Result<BanyanStore> {
+    async fn publish_events(event_count: u64) -> anyhow::Result<BanyanStore> {
         let store = create_store().await?;
         let events = (0..event_count)
             .into_iter()
             .map(|i| (tags!("test"), Payload::from_json_str(&i.to_string()).unwrap()))
             .collect::<Vec<_>>();
-        store.append(stream_nr, app_id(), events).await?;
+        store.append(app_id(), events).await?;
 
         Ok(store)
     }
@@ -207,7 +207,7 @@ mod test {
         util::setup_logger();
         let test_stream = 42.into();
 
-        let store = publish_events(test_stream, event_count).await?;
+        let store = publish_events(event_count).await?;
 
         let config = EphemeralEventsConfig {
             interval: Duration::from_micros(1),
@@ -243,7 +243,7 @@ mod test {
         let upper_bound = 1024;
         let test_stream = 42.into();
 
-        let store = publish_events(test_stream, upper_bound).await?;
+        let store = publish_events(upper_bound).await?;
 
         let config = EphemeralEventsConfig {
             interval: Duration::from_micros(1),

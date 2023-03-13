@@ -145,8 +145,8 @@ async fn run() -> Result<()> {
         stdin.read_line(&mut line).await?;
         match line.parse()? {
             Command::AddAddress(peer, addr) => swarm.ipfs().clone().add_address(peer, addr),
-            Command::Append(nr, events) => {
-                swarm.append(nr, app_id(), events).await?;
+            Command::Append(events) => {
+                swarm.append(app_id(), events).await?;
             }
             Command::SubscribeQuery(q) => {
                 let from = match q.source {

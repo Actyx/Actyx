@@ -46,14 +46,9 @@ async fn banyan_multi_node() -> Result<()> {
         assert_eq!(e2, payload);
     });
 
-    s1.append(
-        StreamNr::from(11),
-        app_id(),
-        vec![(tags.clone(), Payload::compact(&event)?)],
-    )
-    .await?;
-    s1.append(StreamNr::from(11), app_id(), vec![(tags, Payload::compact(&event)?)])
+    s1.append(app_id(), vec![(tags.clone(), Payload::compact(&event)?)])
         .await?;
+    s1.append(app_id(), vec![(tags, Payload::compact(&event)?)]).await?;
 
     handle.await?;
 

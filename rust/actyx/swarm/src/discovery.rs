@@ -395,11 +395,7 @@ pub fn discovery_publish(
                     continue;
                 }
                 if let Err(err) = store
-                    .append(
-                        nr,
-                        internal_app_id(),
-                        vec![(tags.clone(), Payload::from_slice(&buffer))],
-                    )
+                    .append(internal_app_id(), vec![(tags.clone(), Payload::from_slice(&buffer))])
                     .await
                 {
                     tracing::warn!("error appending discovery: {}", err);

@@ -1,6 +1,6 @@
 use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
-use crate::{selection::StreamEventSelection, AppendMeta, BanyanStore, SwarmOffsets};
+use crate::{selection::StreamEventSelection, BanyanStore, SwarmOffsets};
 use actyx_sdk::{
     language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
     Payload, StreamId, StreamNr, TagSet, Timestamp,
@@ -116,12 +116,7 @@ impl EventStore {
         self.banyan_store.data.offsets.get_cloned()
     }
 
-    pub async fn persist(
-        &self,
-        app_id: AppId,
-        stream_nr: StreamNr,
-        events: Vec<(TagSet, Payload)>,
-    ) -> anyhow::Result<Vec<PersistenceMeta>> {
+    pub async fn persist(&self, app_id: AppId, events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
         if events.is_empty() {
             return Ok(vec![]);
         }
@@ -129,21 +124,7 @@ impl EventStore {
         if n == 0 {
             return Ok(vec![]);
         }
-        let AppendMeta {
-            min_lamport,
-            min_offset,
-            timestamp,
-            ..
-        } = self.banyan_store.append(stream_nr, app_id, events).await?;
-        let keys = (0..n)
-            .map(|i| {
-                let i = i as u64;
-                let lamport = min_lamport + i;
-                let offset = min_offset.increase(i).unwrap();
-                (lamport, offset, stream_nr, timestamp)
-            })
-            .collect();
-        Ok(keys)
+        self.banyan_store.append(app_id, events).await
     }
 
     pub async fn bounded_forward(
@@ -371,7 +352,7 @@ mod tests {
         let app_id = app_id!("test-forward-stream");
 
         store
-            .persist(app_id.clone(), 0.into(), vec![(tags!(), Payload::null())])
+            .persist(app_id.clone(), vec![(tags!(), Payload::null())])
             .await
             .unwrap();
 
@@ -422,7 +403,7 @@ mod tests {
         let app_id = app_id!("test-backward-stream");
 
         store
-            .persist(app_id.clone(), 0.into(), vec![(tags!(), Payload::null())])
+            .persist(app_id.clone(), vec![(tags!(), Payload::null())])
             .await
             .unwrap();
 
@@ -457,7 +438,6 @@ mod tests {
         store1
             .persist(
                 app_id(),
-                0.into(),
                 vec![
                     (tags!("test", "test:stream1"), Payload::null()),
                     (tags!("test", "test:stream1"), Payload::null()),
@@ -469,7 +449,6 @@ mod tests {
         store2
             .persist(
                 app_id(),
-                0.into(),
                 vec![
                     (tags!("test", "test:stream2"), Payload::null()),
                     (tags!("test", "test:stream2"), Payload::null()),
@@ -565,11 +544,7 @@ mod tests {
         let stream_id2 = store2.node_id().stream(0.into());
 
         store1
-            .persist(
-                app_id(),
-                0.into(),
-                vec![(tags!("test:unbounded:forward"), Payload::null())],
-            )
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::null())])
             .await
             .unwrap();
 
@@ -615,19 +590,11 @@ mod tests {
         });
 
         store1
-            .persist(
-                app_id(),
-                0.into(),
-                vec![(tags!("test:unbounded:forward"), Payload::null())],
-            )
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::null())])
             .await
             .unwrap();
         store2
-            .persist(
-                app_id(),
-                0.into(),
-                vec![(tags!("test:unbounded:forward"), Payload::null())],
-            )
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::null())])
             .await
             .unwrap();
 
@@ -663,7 +630,7 @@ mod tests {
         let mut handles = Vec::new();
         for i in 0..n {
             let (_, offset, _, _) = store
-                .persist(app_id(), 0.into(), vec![(mk_tag(i), Payload::null())])
+                .persist(app_id(), vec![(mk_tag(i), Payload::null())])
                 .await
                 .unwrap()[0];
             assert_eq!(offset, Offset::from(i as u32));
@@ -715,7 +682,6 @@ mod tests {
             let x = store
                 .persist(
                     app_id!("test"),
-                    0.into(),
                     vec![(tags, Payload::from_json_str(&format!("{}", i)).unwrap())],
                 )
                 .await?[0];
