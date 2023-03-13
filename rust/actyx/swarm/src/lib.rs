@@ -1106,7 +1106,7 @@ impl BanyanStore {
         if cfg.enable_metrics {
             banyan.spawn_task(
                 "metrics".to_owned(),
-                crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), cfg.metrics_interval)?,
+                crate::metrics::metrics(banyan.clone(), cfg.metrics_interval)?,
             );
         }
         banyan.spawn_task(
@@ -1130,14 +1130,7 @@ impl BanyanStore {
             guard.event_routing_table.is_empty()
         };
         if is_routing_table_empty {
-            let event = EventRouteMappingEvent(DEFAULT_STREAM_NAME.to_string(), DEFAULT_STREAM_NR.into());
-            let events = vec![(
-                actyx_sdk::tags!("event_routing"),
-                Event::compact(&event).expect("Should be a valid event."),
-            )];
-            banyan
-                .append(DEFAULT_STREAM_NR.into(), internal_app_id(), events)
-                .await?;
+            banyan.append_stream_mapping_event(DEFAULT_STREAM_NAME.to_string(), DEFAULT_STREAM_NR.into());
             // If publishing went ok, we can move on with adding the stream to the table
             {
                 let mut guard = banyan.lock();
@@ -1191,7 +1184,7 @@ impl BanyanStore {
             actyx_sdk::tags!("event_routing"),
             Event::compact(&event).expect("Should be a valid event."),
         )];
-        self.append(DEFAULT_STREAM_NR.into(), internal_app_id(), events).await?;
+        self.append(internal_app_id(), events).await?;
         Ok(())
     }
 
@@ -1400,12 +1393,7 @@ impl BanyanStore {
     }
 
     /// Append events to a stream, publishing the new data.
-    pub async fn append(
-        &self,
-        stream_nr: StreamNr,
-        app_id: AppId,
-        events: Vec<(TagSet, Event)>,
-    ) -> Result<Vec<PersistenceMeta>> {
+    pub async fn append(&self, app_id: AppId, events: Vec<(TagSet, Event)>) -> Result<Vec<PersistenceMeta>> {
         // Check all call-sites for the stream_nr (if it's hardcoded or not)
         // compute the stream number here
         // appid + tagset evaluates to the routing table
@@ -1418,49 +1406,53 @@ impl BanyanStore {
         // to the streams before we are done, because that might break lamport ordering within
         // the streams.
 
-        let mut metas = vec![];
+        let mut reserved_events: HashMap<_, (Vec<LamportTimestamp>, Vec<(TagSet, Event)>)> = HashMap::new();
         for (idx, (tag_set, payload)) in lamports.zip(events) {
             let stream_nr = guard.event_routing_table.get_matching_stream_nr(&tag_set);
-            let append_meta = self
-                .append_event(stream_nr, app_id.clone(), idx, timestamp, tag_set, payload)
+            let entry = reserved_events.entry(stream_nr).or_default();
+            entry.0.push(idx);
+            entry.1.push((tag_set, payload));
+        }
+
+        let mut metas = vec![];
+        for (stream_nr, (lamports, events)) in reserved_events {
+            let append_metas = self
+                .append_reserved_events(stream_nr.clone(), app_id.clone(), timestamp, lamports, events)
                 .await?;
-            metas.push((
-                append_meta.min_lamport,
-                append_meta.min_offset,
-                stream_nr.clone(),
-                timestamp,
-            ));
+            for meta in append_metas {
+                metas.push((meta.min_lamport, meta.min_offset, stream_nr.clone(), timestamp));
+            }
         }
 
         Ok(metas)
     }
 
-    pub async fn append_event(
+    pub async fn append_reserved_events(
         &self,
         stream_nr: StreamNr,
         app_id: AppId,
-        lamport: LamportTimestamp,
         timestamp: Timestamp,
-        tag_set: TagSet,
-        event: Event,
-    ) -> Result<AppendMeta> {
-        let stream = self.get_or_create_own_stream(stream_nr)?;
-        let mut guard = stream.lock().await;
-
+        lamports: Vec<LamportTimestamp>,
+        events: Vec<(TagSet, Event)>,
+    ) -> Result<Vec<AppendMeta>> {
         let _s = tracing::trace_span!("append", stream_nr = display(stream_nr), timestamp = debug(timestamp));
         let _s = _s.enter();
 
+        let stream = self.get_or_create_own_stream(stream_nr)?;
+        let mut guard = stream.lock().await;
+
         let app_id_tag = ScopedTag::new(
             trees::tags::TagScope::Internal,
-            Tag::try_from(format!("app_id:{}", app_id).as_str()).expect("Should be a valid tag"),
+            Tag::try_from(format!("app_id:{}", app_id).as_str()).unwrap(),
         );
-        let mut tags = ScopedTagSet::from(tag_set);
-        tags.insert(app_id_tag);
-        let k = (AxKey::new(tags, lamport, timestamp), event);
-
+        let kvs = lamports.iter().zip(events).map(|(lamport, (tags, payload))| {
+            let mut tags = ScopedTagSet::from(tags);
+            tags.insert(app_id_tag.clone());
+            (AxKey::new(tags, lamport.clone(), timestamp), payload)
+        });
         let min_offset = self.transform_stream(&mut guard, |txn, tree| {
             let snapshot = tree.snapshot();
-            txn.extend_unpacked(tree, std::iter::once(k))?;
+            txn.extend_unpacked(tree, kvs)?;
             if tree.level() > MAX_TREE_LEVEL {
                 txn.pack(tree)?;
             }
@@ -1468,11 +1460,14 @@ impl BanyanStore {
         })?;
         let min_offset = min_offset.map(|o| o + 1).unwrap_or(Offset::ZERO);
 
-        Ok(AppendMeta {
-            min_lamport: lamport,
-            min_offset,
-            timestamp,
-        })
+        Ok(lamports
+            .into_iter()
+            .map(|lamport| AppendMeta {
+                min_lamport: lamport,
+                min_offset,
+                timestamp,
+            })
+            .collect())
     }
 
     // Keep in mind where this is called
