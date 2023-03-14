@@ -28,12 +28,8 @@ on:
   push:
   registry_package:
   release:
-  repository_dispatch:
   status:
   watch:
-  workflow_call:
-  workflow_dispatch:
-  workflow_run:
 
 jobs:
   discord:
