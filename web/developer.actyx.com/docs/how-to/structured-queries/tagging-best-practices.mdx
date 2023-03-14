@@ -1,0 +1,175 @@
+---
+title: Event Tagging Best Practices
+hide_title: false
+hide_table_of_contents: false
+---
+
+The previous section shows how Actyx delivers events for a given AQL query.
+In this section we give some guidance on how to use tags to keep event retrieval efficient — it corresponds to learning about how to use indexes for performance optimisation in SQL.
+
+## Apps and streams
+
+All events in Actyx are locally assigned to a single event stream.
+You can see this by looking at the `stream` property e.g. in the Node Manager.
+This stream is then replicated to other Actyx nodes to make the events available there.
+Since this technicality is the main purpose of this mechanism the assigned stream should be considered an implementation or administration detail.
+
+Independently of the above each event is also internally marked with the `appId` of the app that created it — this is the reason why access to the HTTP API requires an app manifest.
+In contrast to the `stream`, the `appId` is very useful when searching for events.
+After all, multiple apps may use a single Actyx node, and each of them might have a different idea of what a `'user'` tag means on an event.
+
+Therefore it is good practice to use `appId(...)` matchers in your AQL queries:
+
+```sql
+FROM appId(com.actyx.quickstart) & 'item' & 'created'
+...
+```
+
+This does not only protect your app from interference with other programmers’ apps, it also ensures peaceful coexistence with your own future apps.
+As soon as you have multiple apps that should exchange information you’ll match on the other app’s ID to take in foreign events, and the counterparty may do vice versa.
+
+## Event history ownership: entity tags
+
+With `stream` and `appId` it is obvious that each event belongs to one of each kind, and the same should hold for a certain kind of tag:
+_every event is written by exactly one entity — represented in your app — to which it belongs._
+This entity is described by two pieces of information:
+
+- a class of entities (like “user”, “order”, “door”, etc.)
+- a unique identifier for that exact instance (like “user Fred”)
+
+In the Actyx SDK this combination is created with code like the following:
+
+```ts
+const userTag = Tag<UserEvent>('user')
+const fredTag = userTag.withId('Fred')
+```
+
+In an AQL query you search for events emitted with `fredTag` using a query beginning with
+
+```sql
+FROM appId(...) & 'user' & 'user:Fred' ...
+```
+
+The TypeScript code above shows that `userTag` carries the expectation that it applies only to events that fit the `UserEvent` type.
+We could mention the user “Fred” without stating that this is a `UserEvent` by just using `userTag.id('Fred')`.
+
+:::info rule
+When emitting an event, make sure to include **exactly one** `.withId()` call result.
+This names the entity to which the event belongs, including which data type the event has.
+
+If the event includes information on other entities (see [external analyses](#external-analyses) below) then you mention those using `.id()`.
+:::
+
+So if you find yourself wanting to place more than one `.withId()` tag on an event you should probably emit multiple events instead, one for each entity.
+TypeScript will also nudge you in that direction if you properly declare your entity kind tags with the expected event type:
+
+```ts
+const itemTag = Tag<ItemEvent>('item')
+const toEmit = itemTag.withId('1234').and(userTag.withId('Fred'))
+// `toEmit` now requires events to conform to both UserEvent and ItemEvent at the same time!
+```
+
+## Short-lived entities
+
+Coordination between multiple users is one of the two main purposes of Actyx (the second is discussed in the section below).
+The event exchanges necessary for such coordination are typically short-lived.
+Take as an example an order at a fastfood restaurant: you walk in and select what you desire, your payment is confirmed, then the kitchen staff prepare it and the counter staff serves it to you.
+This process takes a few minutes to run to completion and afterwards it is only interesting for audits or statistics.
+
+The fastfood order is an example of a widely useful class of entities: **workflows.**
+Each workflow needs to be uniquely identifiable, whether it models entering and starting a car or having one’s hair dressed, so we tag it with an entity tag pair as described in the section above.
+
+There is a reason why _coordination_ and _short-lived_ go together: coordination requires following a strict protocol, discarding (or compensating) invalid choices resulting from concurrency or network partitions, i.e. we need to evaluate the relevant event history with a state machine (like the `onEvent` function in Actyx Pond apps).
+This fundamentally requires inspecting all state changes, from applying the first event in the initial state to applying the last known event to get the current state.
+If the event history grows long then this process becomes impractical.
+
+:::info rule
+When inspecting short-lived entities like workflows, always query by the tag pair that uniquely identifies this instance.
+Do not query all events of the entity type to “get an overview” — this pattern will inevitably lead to very poor performance after some while.
+:::
+
+We discuss obtaining an overview over a group of workflows further below.
+Note that Actyx is pretty good at finding events by their tags, so leaving a workflow in some intermediate state for a while and then coming back to finish it a month later is not a problem.
+
+## Long-lived entities
+
+In addition to workflows you will typically want to track information about long-lived objects, which is the second main purpose of Actyx.
+These objects may be persons, devices, places, anything you can think of.
+Examples are tracking what I’m doing all day or taking note of the CPU temperature of my laptop over time.
+
+Such long-lived collections of information usually do not need stringent state-based rules for making sense of them: in order to use the CPU temperature data covering the past five minutes I do not need to access data from last week — in short there is no need to run a state machine over all events in their proper sequence from the beginning of time.
+
+As for short-lived entities, the primary rule of tagging events with the tag pair uniquely identifying the entity applies here as well.
+But in contrast to short-lived entities we rarely query all events for such an entity.
+Instead we are usually only interested in some time window or in finding the latest events pertaining to a certain quality of the object we are tracking.
+For example we might ask where a robot currently is and whether it most recently started a mission or finished it:
+
+```sql
+FROM appId(...) & 'robot' & 'robot:4711' & TIME > 1D ago  -- safeguard against no recent mission events
+LIMIT 10000 -- optionally limit the number of events to be considered in total
+AGGREGATE {
+    position: LAST(CASE _.type = 'position' => _.position ENDCASE)
+    mission: LAST(
+        CASE _.type = 'missionStarted' => 'mission'
+        CASE _.type = 'missionCompleted' => 'idle'
+        CASE _.type = 'missionAborted' => 'idle'
+        ENDCASE
+    ) ?? 'dunno'  -- fall back in case no recent mission events are found
+}
+```
+
+:::info rule
+When looking for a current or recent state, always bound the query by both the unique tag pair for the entity as well as a time window or event count.
+:::
+
+## Noteworthy events
+
+In the example above the query will be quite efficient if mission events are sufficiently frequent.
+If there is a large imbalance between the number of position updates and mission events, then finding the most recent mission event will need to sift through a large number of position updates first.
+We can avoid this by making the interesting events — mission events in this case — more visible for queries: we attach additional tags to them.
+If we ensure for example that all mission-related events are tagged with `'mission'` then we can look for the latest state type one like so:
+
+```sql
+FROM appId(...) & 'robot' & 'robot:4711' & 'mission' AGGREGATE LAST(_.type)
+```
+
+This doesn’t need a bounded time window or event count because it will peruse the event tag index to directly find the most recent event with these tags.
+
+Another example of noteworthy events that benefit from extra tags are those events that start a given kind of workflow.
+We saw above that querying all orders so that we can get an overview is quite wasteful: who would read the full reports of all orders ever served by a restaurant if all they want is to find the currently open ones?
+
+:::info common pattern
+Not a strict rule but almost universally useful: tag the event that starts off a workflow with an additional tag.
+Also often useful is tagging some notable state transitions, in particular when the workflow has been completed.
+:::
+
+If you do this, then you can efficiently get a list of all workflows for a given time period — many workflows become irrelevant after some time, consider e.g. an unfinished order in a fastfood restaurant and whether you’ll want to complete it on the next day.
+Getting an overview of today’s currently open fastfood orders might be done with a query like the following:
+
+```sql
+FROM appId(...) & 'order' & 'created' & TIME > 2023-03-14T00:00+01:00 -- insert beginning of today
+FILTER !IsDefined(
+    (   -- run a sub-query on this particular order ID
+        FROM appId(...) & 'order' & `order:{_.id}` & 'completed'
+    )[0] -- and try to access the first result
+) -- filter out those order creations for which a completion exists
+SELECT _.id -- and get the order ID of the open ones
+```
+
+## External observers
+
+The final part of this document considers relationships between different entities.
+For example the fastfood order could have been created by a customer with a known ID, in which case it would be useful to tag this event additionally with `customer:<ID>`.
+Or if someone (e.g. a robot) moves something into or out of a warehouse and tracks this with a dedicated workflow, it would make sense to tag the event that signifies “the parcel has been placed in position XYZ” additionally with `parcel:<ID>`.
+
+At this point it is important to recall the rule that no event shall be tagged with two unique entity tag pairs — in other words, one event should only drive one workflow, not two at the same time.
+Deviations from this rule may be contemplated within a tighly-knit app, but it is obvious that the implied coordination around event types is impractical between different apps.
+
+:::info rule
+It is frequently useful to additionally tag events belonging to a workflow with the identifiers (but not the entity type tags!) of long-lived entities for whom this event is relevant.
+
+Mentioning another workflow in this way is an anti-pattern that should be avoided — emit multiple events instead, each one belonging to one workflow.
+:::
+
+In our fastfood restaurant example, order creation might add tags to mention the customer, preparation the kitchen staff involved, and completion the counter staff who served it.
+This way, the mentioned long-lived entities are enriched with more attributes that can be queried, both historically and for the current state.
