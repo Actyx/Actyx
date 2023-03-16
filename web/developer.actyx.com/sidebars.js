@@ -26,7 +26,10 @@ module.exports = {
       type: 'category',
       label: 'Structured queries',
       collapsed: true,
-      items: ['how-to/structured-queries/query-events-with-aql'],
+      items: [
+        'how-to/structured-queries/query-events-with-aql',
+        'how-to/structured-queries/tagging-best-practices',
+      ],
     },
     {
       type: 'category',
