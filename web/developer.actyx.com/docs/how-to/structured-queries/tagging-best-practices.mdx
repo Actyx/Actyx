@@ -12,7 +12,7 @@ In this section we give some guidance on how to use tags to keep event retrieval
 All events in Actyx are locally assigned to a single event stream.
 You can see this by looking at the `stream` property e.g. in the Node Manager.
 This stream is then replicated to other Actyx nodes to make the events available there.
-Since this technicality is the main purpose of this mechanism the assigned stream should be considered an implementation or administration detail.
+This mechanism’s role does not extend beyond event replication, so the assigned stream identifier should be considered an implementation or administration detail.
 
 Independently of the above each event is also internally marked with the `appId` of the app that created it — this is the reason why access to the HTTP API requires an app manifest.
 In contrast to the `stream`, the `appId` is very useful when searching for events.
@@ -88,7 +88,7 @@ When inspecting short-lived entities like workflows, always query by the tag pai
 Do not query all events of the entity type to “get an overview” — this pattern will inevitably lead to very poor performance after some while.
 :::
 
-We discuss obtaining an overview over a group of workflows further below.
+We discuss obtaining an overview over a group of workflows [further below](#getting-an-overview).
 Note that Actyx is pretty good at finding events by their tags, so leaving a workflow in some intermediate state for a while and then coming back to finish it a month later is not a problem.
 
 ## Long-lived entities
@@ -142,6 +142,8 @@ We saw above that querying all orders so that we can get an overview is quite wa
 Not a strict rule but almost universally useful: tag the event that starts off a workflow with an additional tag.
 Also often useful is tagging some notable state transitions, in particular when the workflow has been completed.
 :::
+
+## Getting an overview
 
 If you do this, then you can efficiently get a list of all workflows for a given time period — many workflows become irrelevant after some time, consider e.g. an unfinished order in a fastfood restaurant and whether you’ll want to complete it on the next day.
 Getting an overview of today’s currently open fastfood orders might be done with a query like the following:
