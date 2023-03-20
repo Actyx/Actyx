@@ -54,7 +54,6 @@ async fn smoke() -> Result<()> {
         tracing::info!("got event {:?}", x);
         future::ready(())
     }));
-    let stream_nr = StreamNr::try_from(1)?;
     tracing::info!("append first event!");
     let _ = store.append(app_id(), vec![ev("a")]).await?;
     tracing::info!("append second event!");

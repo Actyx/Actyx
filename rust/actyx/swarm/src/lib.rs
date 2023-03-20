@@ -127,8 +127,6 @@ pub use trees::StoreParams;
 pub type Block = libipld::Block<StoreParams>;
 pub type Ipfs = ipfs_embed::Ipfs<StoreParams>;
 
-// TODO fix stream nr
-// Was this supposed to be a phf?
 static DEFAULT_STREAM_NR: u64 = 0;
 static DISCOVERY_STREAM_NR: u64 = 1;
 static METRICS_STREAM_NR: u64 = 2;
