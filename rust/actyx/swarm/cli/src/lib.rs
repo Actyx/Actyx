@@ -1,4 +1,4 @@
-use actyx_sdk::{language::Query, Payload, StreamNr, TagSet, Timestamp};
+use actyx_sdk::{language::Query, Payload, TagSet, Timestamp};
 use anyhow::Result;
 use cbor_data::{
     codec::{ReadCbor, WriteCbor},
@@ -197,7 +197,7 @@ impl std::str::FromStr for Command {
             Some(">append") => {
                 let s = s.split_at(8).1;
                 let mut iter = s.splitn(2, ' ');
-                let nr: u64 = iter.next().unwrap().parse()?;
+                let _nr: u64 = iter.next().unwrap().parse()?; // FIXME: change the parsing?
                 let events = serde_json::from_str(iter.next().unwrap())?;
                 Self::Append(events)
             }

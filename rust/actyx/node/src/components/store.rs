@@ -1,8 +1,5 @@
 use super::{Component, ComponentRequest};
-use crate::{
-    node_settings::{EventRouting, Settings},
-    BindTo,
-};
+use crate::{node_settings::Settings, BindTo};
 use acto::ActoRef;
 use actyx_sdk::{service::SwarmState, NodeId};
 use anyhow::Result;
@@ -18,7 +15,7 @@ use std::{convert::TryInto, path::PathBuf, sync::Arc, time::Duration};
 use swarm::{
     blob_store::BlobStore,
     event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
-    BanyanStore, DbPath, GossipMessage, Ipfs, SwarmConfig,
+    BanyanStore, DbPath, EventRoute, GossipMessage, Ipfs, SwarmConfig,
 };
 use tokio::sync::oneshot;
 use tracing::*;
@@ -61,7 +58,6 @@ pub(crate) type StoreTx = Sender<ComponentRequest<StoreRequest>>;
 pub(crate) struct StoreConfig {
     swarm_config: SwarmConfig,
     licensing: Licensing,
-    event_routing: EventRouting,
 }
 
 fn without_peer(addr: &Multiaddr) -> String {
@@ -247,6 +243,12 @@ impl Component<StoreRequest, StoreConfig> for Store {
         let index_store = Some(self.working_dir.join(format!("{}-index", topic)));
         let blob_store = Some(self.working_dir.join(format!("{}-blobs", topic)));
         let read_only = s.api.events.read_only;
+        let event_routes = s
+            .event_routing
+            .routes
+            .into_iter()
+            .map(|e| EventRoute::new(e.from, e.into))
+            .collect();
 
         let swarm_config = SwarmConfig {
             topic,
@@ -282,12 +284,12 @@ impl Component<StoreRequest, StoreConfig> for Store {
             bitswap_timeout: Duration::from_secs(s.swarm.bitswap_timeout),
             branch_cache_size: s.swarm.branch_cache_size,
             cadence_root_map: Duration::from_secs(s.swarm.gossip_interval),
+            event_routes,
             ..SwarmConfig::basic()
         };
         Ok(StoreConfig {
             swarm_config,
             licensing: s.licensing,
-            event_routing: s.event_routing,
         })
     }
 }

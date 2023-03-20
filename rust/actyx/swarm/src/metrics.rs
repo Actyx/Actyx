@@ -3,7 +3,7 @@ use std::io::Write;
 use std::time::Duration;
 
 use crate::{internal_app_id, BanyanStore};
-use actyx_sdk::{tags, Payload, StreamNr};
+use actyx_sdk::{tags, Payload};
 use anyhow::Result;
 use libipld::cbor::cbor::MajorKind;
 use libipld::cbor::encode::{write_u64, write_u8};
