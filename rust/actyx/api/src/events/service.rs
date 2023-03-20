@@ -7,7 +7,7 @@ use actyx_sdk::{
         PublishResponseKey, QueryRequest, QueryResponse, Severity, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    AppId, Event, EventKey, NodeId, OffsetMap, OffsetOrMin, Payload, StreamNr, TagSet, Timestamp,
+    AppId, Event, EventKey, NodeId, OffsetMap, OffsetOrMin, Payload, TagSet, Timestamp,
 };
 use ax_futures_util::{stream::AxStreamExt, ReceiverExt};
 use futures::{
@@ -65,12 +65,7 @@ impl EventService {
         Ok(OffsetsResponse { present, to_replicate })
     }
 
-    pub async fn publish(
-        &self,
-        app_id: AppId,
-        stream_nr: StreamNr, // remove from here and compute the stream number in the banyan store
-        request: PublishRequest,
-    ) -> anyhow::Result<PublishResponse> {
+    pub async fn publish(&self, app_id: AppId, request: PublishRequest) -> anyhow::Result<PublishResponse> {
         let events = request
             .data
             .into_iter()
@@ -711,7 +706,6 @@ mod tests {
         let d = service
             .publish(
                 app_id!("me"),
-                stream.into(),
                 PublishRequest {
                     data: vec![evp(tags, data)],
                 },

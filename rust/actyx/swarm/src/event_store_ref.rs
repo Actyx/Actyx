@@ -2,7 +2,7 @@ use crate::{
     event_store::{EventStore, PersistenceMeta},
     BanyanStore, SwarmOffsets,
 };
-use actyx_sdk::{language::TagExpr, AppId, Event, OffsetMap, Payload, StreamNr, TagSet};
+use actyx_sdk::{language::TagExpr, AppId, Event, OffsetMap, Payload, TagSet};
 use futures::{Future, Stream, StreamExt};
 use parking_lot::Mutex;
 use std::{

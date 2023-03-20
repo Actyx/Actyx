@@ -514,20 +514,10 @@ fn inject_events_event(state: &mut State, event: RequestReceived<EventsProtocol>
                         }
                     }
                 }
-                EventsRequest::Publish(request) => {
-                    // stream_nr must be configurable
-                    match events
-                        .publish(
-                            app_id!("com.actyx.cli"),
-                             0.into(),
-                            request,
-                        )
-                        .await
-                    {
-                        Ok(resp) => channel.feed(EventsResponse::Publish(resp)).await?,
-                        Err(e) => channel.feed(EventsResponse::Error { message: e.to_string() }).await?,
-                    }
-                }
+                EventsRequest::Publish(request) => match events.publish(app_id!("com.actyx.cli"), request).await {
+                    Ok(resp) => channel.feed(EventsResponse::Publish(resp)).await?,
+                    Err(e) => channel.feed(EventsResponse::Error { message: e.to_string() }).await?,
+                },
             }
             ActyxOSResult::Ok(())
         });

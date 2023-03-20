@@ -27,10 +27,7 @@ pub async fn offsets(_app_id: AppId, event_service: EventService) -> Result<impl
 pub async fn publish(app_id: AppId, request: PublishRequest, event_service: EventService) -> Result<impl Reply> {
     event_service
         // Change the stream_nr to be configurable from the request or similar
-        .publish(
-            app_id,
-            0.into(),
-            request)
+        .publish(app_id, request)
         .await
         .map(|reply| reply::json(&reply))
         .map_err(reject)
