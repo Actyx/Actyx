@@ -78,7 +78,6 @@ pub enum EventStoreRequest {
     #[display(fmt = "Persist({}, {})", app_id, "events.len()")]
     Persist {
         app_id: AppId,
-        stream_nr: StreamNr,
         events: Vec<(TagSet, Payload)>,
         reply: OneShot<Vec<PersistenceMeta>>,
     },
@@ -125,12 +124,7 @@ impl EventStoreRef {
         events: Vec<(TagSet, Payload)>,
     ) -> Result<Vec<PersistenceMeta>, Error> {
         let (reply, rx) = oneshot::channel();
-        (self.tx)(Persist {
-            app_id,
-            events,
-            stream_nr,
-            reply,
-        })?;
+        (self.tx)(Persist { app_id, events, reply })?;
         rx.await.my_err()?
     }
 
@@ -233,12 +227,7 @@ impl EventStoreHandler {
             Offsets { reply } => {
                 let _ = reply.send(Ok(self.store.current_offsets()));
             }
-            Persist {
-                app_id,
-                stream_nr,
-                events,
-                reply,
-            } => {
+            Persist { app_id, events, reply } => {
                 let store = self.store.clone();
                 self.state.persist.fetch_add(1, Ordering::Relaxed);
                 let state = self.state.clone();
