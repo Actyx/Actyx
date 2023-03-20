@@ -38,7 +38,7 @@
 //! while when configuring an external address you are telling other peers how to reach you, given
 //! you have a bootstrap node in common.
 use crate::{internal_app_id, BanyanStore};
-use actyx_sdk::{tag, tags, Payload, StreamNr, Timestamp};
+use actyx_sdk::{tag, tags, Payload, Timestamp};
 use anyhow::Result;
 use fnv::{FnvHashMap, FnvHashSet};
 use futures::stream::{Stream, StreamExt};
@@ -266,7 +266,6 @@ fn is_loopback(addr: &ipfs_embed::Multiaddr) -> bool {
 pub fn discovery_publish(
     store: BanyanStore,
     mut stream: impl Stream<Item = ipfs_embed::Event> + Unpin,
-    nr: StreamNr,
     external: FnvHashSet<ipfs_embed::Multiaddr>,
     enable_discovery: bool,
     to_warn: Vec<ipfs_embed::PeerId>,

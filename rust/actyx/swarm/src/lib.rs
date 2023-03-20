@@ -741,7 +741,7 @@ impl MatchTagSet for Dnf {
             let mut matches = false;
             for tag in tags {
                 match tag {
-                    TagAtom::Tag(tag) => matches |= tag_set.contains(&tag),
+                    TagAtom::Tag(tag) => matches |= tag_set.contains(tag),
                     TagAtom::AllEvents => matches |= true,
                     _ => unreachable!("The validation regex failed."),
                     // TagAtom::AppId(tree_app_id) => matches |= tree_app_id == app_id,
@@ -755,6 +755,7 @@ impl MatchTagSet for Dnf {
     }
 }
 
+#[derive(Default)]
 struct RoutingTable {
     routes: Vec<(Dnf, String)>,
     stream_mapping: HashMap<String, StreamNr>,
@@ -784,7 +785,7 @@ impl RoutingTable {
             }
         } else {
             tracing::info!("Adding stream \"{}\" to the routing table", stream);
-            if let None = self.stream_mapping.get(&stream) {
+            if self.stream_mapping.get(&stream).is_none() {
                 self.max_stream_nr = if let Some(stream_nr) = self.max_stream_nr {
                     Some(stream_nr.succ())
                 } else {
@@ -838,19 +839,6 @@ impl RoutingTable {
 
     fn is_empty(&self) -> bool {
         self.max_stream_nr.is_none()
-    }
-}
-
-impl Default for RoutingTable {
-    fn default() -> Self {
-        Self {
-            routes: Default::default(),
-            // We can't add the "default" stream by default because we need to check
-            // whether we need to publish its map to itself. In other words,
-            // we don't want to "special case" it too much.
-            stream_mapping: Default::default(),
-            max_stream_nr: Default::default(),
-        }
     }
 }
 
@@ -1152,7 +1140,6 @@ impl BanyanStore {
             crate::discovery::discovery_publish(
                 banyan.clone(),
                 swarm_events,
-                0.into(),
                 external_addrs,
                 cfg.enable_discovery,
                 peers,
@@ -1400,7 +1387,7 @@ impl BanyanStore {
 
             // This await MUST happen before locking the store, otherwise,
             // control may be yielded to other code that requires a lock leading to a deadlock/panic
-            let stream = self.get_or_create_own_stream(stream_nr.clone())?;
+            let stream = self.get_or_create_own_stream(stream_nr)?;
             let stream_guard = stream.lock().await;
 
             // We need to keep the store lock to make sure that no other append operations can write
@@ -1449,7 +1436,7 @@ impl BanyanStore {
         let kvs = lamports.iter().zip(events).map(|(lamport, (tags, payload))| {
             let mut tags = ScopedTagSet::from(tags);
             tags.insert(app_id_tag.clone());
-            (AxKey::new(tags, lamport.clone(), timestamp), payload)
+            (AxKey::new(tags, *lamport, timestamp), payload)
         });
         let min_offset = self.transform_stream(&mut guard, |txn, tree| {
             let snapshot = tree.snapshot();
