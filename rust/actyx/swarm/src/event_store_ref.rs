@@ -117,12 +117,7 @@ impl EventStoreRef {
         rx.await.my_err()?
     }
 
-    pub async fn persist(
-        &self,
-        app_id: AppId,
-        stream_nr: StreamNr,
-        events: Vec<(TagSet, Payload)>,
-    ) -> Result<Vec<PersistenceMeta>, Error> {
+    pub async fn persist(&self, app_id: AppId, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>, Error> {
         let (reply, rx) = oneshot::channel();
         (self.tx)(Persist { app_id, events, reply })?;
         rx.await.my_err()?
