@@ -1009,12 +1009,12 @@ ENDPRAGMA
             .unwrap()
             .block_on(async {
                 timeout(Duration::from_secs(1), async {
-                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let store = BanyanStore::test("from_array").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
-                    publish(&service, 0, tags!("a1"), 2).await;
-                    publish(&service, 0, tags!("a2"), 3).await;
-                    publish(&service, 0, tags!("a3"), 1).await;
+                    publish(&service, 0, tags!("a1", "b"), 2).await;
+                    publish(&service, 0, tags!("a2", "b"), 3).await;
+                    publish(&service, 0, tags!("a3", "b"), 1).await;
 
                     assert_eq!(
                         query(
@@ -1030,7 +1030,7 @@ ENDPRAGMA
                         query(
                             &service,
                             "FEATURES(zøg subQuery interpolation fromArray) \
-                            FROM allEvents FILTER _ < 3 SELECT FROM [`a{_}`, 'b']"
+                            FROM 'b' FILTER _ < 3 SELECT FROM [`a{_}`, 'b']"
                         )
                         .await,
                         vec!["[\"a2\",\"b\"]", "[\"a1\",\"b\"]", "offsets"]
