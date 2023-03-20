@@ -134,6 +134,9 @@ static FILES_STREAM_NR: u64 = 3;
 const MAX_TREE_LEVEL: i32 = 512;
 
 const DEFAULT_STREAM_NAME: &str = "default";
+const DISCOVERY_STREAM_NAME: &str = "discovery";
+const METRICS_STREAM_NAME: &str = "metrics";
+const FILES_STREAM_NAME: &str = "files";
 const EVENT_ROUTING_TAG_NAME: &str = "event_routing";
 
 fn internal_app_id() -> AppId {
@@ -729,11 +732,11 @@ pub struct EventRouteMappingEvent {
 }
 
 trait MatchTagSet {
-    fn matches(&self, tag_set: &TagSet) -> bool;
+    fn matches(&self, tag_set: &TagSet, app_id: &AppId) -> bool;
 }
 
 impl MatchTagSet for Dnf {
-    fn matches(&self, tag_set: &TagSet) -> bool {
+    fn matches(&self, tag_set: &TagSet, app_id: &AppId) -> bool {
         let and_clauses = &self.0;
         for tags in and_clauses {
             let mut matches = false;
@@ -741,8 +744,8 @@ impl MatchTagSet for Dnf {
                 match tag {
                     TagAtom::Tag(tag) => matches |= tag_set.contains(tag),
                     TagAtom::AllEvents => matches |= true,
+                    TagAtom::AppId(tree_app_id) => matches |= tree_app_id == app_id,
                     _ => unreachable!("The validation regex failed."),
-                    // TagAtom::AppId(tree_app_id) => matches |= tree_app_id == app_id,
                 }
             }
             if matches {
@@ -770,17 +773,21 @@ impl RoutingTable {
                 u64::from(stream_nr)
             );
             if let Some(nr) = self.stream_mapping.get(&stream) {
-                Err(anyhow::anyhow!("Stream {} is already mapped to {}", stream, nr))
-            } else {
-                self.stream_mapping.insert(stream.clone(), stream_nr);
-                tracing::info!(
-                    "Stream \"{}\" was added to the routing table as #{:?}",
+                tracing::warn!(
+                    "Stream {} was previously mapped to {}, replacing with {}.",
                     stream,
-                    u64::from(stream_nr)
+                    nr,
+                    stream_nr
                 );
-                self.max_stream_nr = std::cmp::max(self.max_stream_nr, stream_nr.into());
-                Ok(stream_nr.into())
             }
+            self.stream_mapping.insert(stream.clone(), stream_nr);
+            tracing::info!(
+                "Stream \"{}\" was added to the routing table as #{:?}",
+                stream,
+                u64::from(stream_nr)
+            );
+            self.max_stream_nr = std::cmp::max(self.max_stream_nr, stream_nr.into());
+            Ok(stream_nr.into())
         } else {
             tracing::info!("Adding stream \"{}\" to the routing table", stream);
             if self.stream_mapping.get(&stream).is_none() {
@@ -820,10 +827,10 @@ impl RoutingTable {
 
     /// "Routes" a provided [TagSet] to the corresponding [StreamNr].
     /// If it is not able to match the [TagSet], it will return `StreamNr::default()`.
-    fn get_matching_stream_nr(&self, tag_set: &TagSet) -> StreamNr {
+    fn get_matching_stream_nr(&self, tag_set: &TagSet, app_id: &AppId) -> StreamNr {
         for (dnf, stream_name) in self.routes.iter() {
             tracing::debug!("Trying to match \"{}\" to {:?}", stream_name, tag_set);
-            if dnf.matches(tag_set) {
+            if dnf.matches(tag_set, app_id) {
                 tracing::debug!("{:?} matched \"{}\"", tag_set, stream_name);
                 return *self
                     .stream_mapping
@@ -1070,7 +1077,7 @@ impl BanyanStore {
 
         // Publish the default stream if missing
         if routing_table.is_empty() {
-            tracing::info!("No mappings found, publishing the \"default\" stream.");
+            tracing::info!("No mappings found, publishing the default mappings.");
             banyan
                 .append_stream_mapping_event(DEFAULT_STREAM_NAME.to_string(), DEFAULT_STREAM_NR.into())
                 .await?;
@@ -1079,6 +1086,37 @@ impl BanyanStore {
             routing_table
                 .add_stream(DEFAULT_STREAM_NAME.to_string(), Some(DEFAULT_STREAM_NR.into()))
                 .expect("The default stream should not have been previously added.");
+
+            // Not attributing numbers to the other streams because they are "default"
+            // when migrating a previous instance this
+
+            banyan
+                .append_stream_mapping_event(DISCOVERY_STREAM_NAME.to_string(), DISCOVERY_STREAM_NR.into())
+                .await?;
+            tracing::info!("\"discovery\" stream successfully published.");
+            routing_table.add_route(
+                TagExpr::from_str("'discovery' & appId(com.actyx)").expect("Should be a valid tag expression."),
+                DISCOVERY_STREAM_NAME.to_string(),
+            );
+
+            banyan
+                .append_stream_mapping_event(METRICS_STREAM_NAME.to_string(), METRICS_STREAM_NR.into())
+                .await?;
+            tracing::info!("\"metrics\" stream successfully published.");
+            routing_table.add_route(
+                TagExpr::from_str("'metrics' & appId(com.actyx)").expect("Should be a valid tag expression."),
+                METRICS_STREAM_NAME.to_string(),
+            );
+
+            banyan
+                .append_stream_mapping_event(FILES_STREAM_NAME.to_string(), FILES_STREAM_NR.into())
+                .await?;
+            tracing::info!("\"files\" stream successfully published.");
+            routing_table.add_route(
+                TagExpr::from_str("('files' | 'files:pinned') & appId(com.actyx)")
+                    .expect("Should be a valid tag expression."),
+                FILES_STREAM_NAME.to_string(),
+            );
         }
 
         let unpublished_streams = {
@@ -1381,7 +1419,7 @@ impl BanyanStore {
                 .event_routing_table
                 .as_ref()
                 .expect("Routing table should have been set up already.")
-                .get_matching_stream_nr(&tag_set);
+                .get_matching_stream_nr(&tag_set, &app_id);
 
             // This await MUST happen before locking the store, otherwise,
             // control may be yielded to other code that requires a lock leading to a deadlock/panic
