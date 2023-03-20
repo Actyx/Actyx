@@ -1278,12 +1278,12 @@ ENDPRAGMA
                         .await,
                         vec![
                             format!(
-                                "[[[0,{},0,0]],[{:?}],[\"a1\",\"b\"],[\"me\"]]",
+                                "[[[1,{},0,1]],[{:?}],[\"a1\",\"b\"],[\"me\"]]",
                                 node_bytes,
                                 meta1.1.timestamp.as_i64() as f64 / 1e6
                             ),
                             format!(
-                                "[[[1,{},0,1]],[{:?}],[\"a2\"],[\"me\"]]",
+                                "[[[2,{},0,2]],[{:?}],[\"a2\"],[\"me\"]]",
                                 node_bytes,
                                 meta2.1.timestamp.as_i64() as f64 / 1e6
                             ),
@@ -1301,7 +1301,7 @@ ENDPRAGMA
                         .await,
                         vec![
                             format!(
-                                "[[[0,{},0,0],[2,{},0,2]],[{:?},{:?}],[],[]]",
+                                "[[[1,{},0,1],[3,{},0,3]],[{:?},{:?}],[],[]]",
                                 node_bytes,
                                 node_bytes,
                                 meta1.1.timestamp.as_i64() as f64 / 1e6,
