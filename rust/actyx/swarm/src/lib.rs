@@ -278,6 +278,22 @@ impl SwarmConfig {
             ..SwarmConfig::basic()
         }
     }
+
+    pub fn test_with_routing(node_name: &str, routes: Vec<EventRoute>) -> Self {
+        Self {
+            enable_loopback: true,
+            topic: "topic".into(),
+            enable_mdns: false,
+            node_name: Some(node_name.into()),
+            listen_addresses: Arc::new(Mutex::new("127.0.0.1:0".parse().unwrap())),
+            banyan_config: BanyanConfig {
+                tree: banyan::Config::debug(),
+                ..Default::default()
+            },
+            event_routes: routes,
+            ..SwarmConfig::basic()
+        }
+    }
 }
 
 impl PartialEq for SwarmConfig {
@@ -1086,37 +1102,6 @@ impl BanyanStore {
             routing_table
                 .add_stream(DEFAULT_STREAM_NAME.to_string(), Some(DEFAULT_STREAM_NR.into()))
                 .expect("The default stream should not have been previously added.");
-
-            // Not attributing numbers to the other streams because they are "default"
-            // when migrating a previous instance this
-
-            banyan
-                .append_stream_mapping_event(DISCOVERY_STREAM_NAME.to_string(), DISCOVERY_STREAM_NR.into())
-                .await?;
-            tracing::info!("\"discovery\" stream successfully published.");
-            routing_table.add_route(
-                TagExpr::from_str("'discovery' & appId(com.actyx)").expect("Should be a valid tag expression."),
-                DISCOVERY_STREAM_NAME.to_string(),
-            );
-
-            banyan
-                .append_stream_mapping_event(METRICS_STREAM_NAME.to_string(), METRICS_STREAM_NR.into())
-                .await?;
-            tracing::info!("\"metrics\" stream successfully published.");
-            routing_table.add_route(
-                TagExpr::from_str("'metrics' & appId(com.actyx)").expect("Should be a valid tag expression."),
-                METRICS_STREAM_NAME.to_string(),
-            );
-
-            banyan
-                .append_stream_mapping_event(FILES_STREAM_NAME.to_string(), FILES_STREAM_NR.into())
-                .await?;
-            tracing::info!("\"files\" stream successfully published.");
-            routing_table.add_route(
-                TagExpr::from_str("('files' | 'files:pinned') & appId(com.actyx)")
-                    .expect("Should be a valid tag expression."),
-                FILES_STREAM_NAME.to_string(),
-            );
         }
 
         let unpublished_streams = {
@@ -1233,6 +1218,11 @@ impl BanyanStore {
     /// Creates a new [`BanyanStore`] for testing.
     pub async fn test(node_name: &str) -> Result<Self> {
         Self::new(SwarmConfig::test(node_name), ActoRef::blackhole()).await
+    }
+
+    /// Creates a new [`BanyanStore`] for testing.
+    pub async fn test_with_routing(node_name: &str, routes: Vec<EventRoute>) -> Result<Self> {
+        Self::new(SwarmConfig::test_with_routing(node_name, routes), ActoRef::blackhole()).await
     }
 
     fn lock(&self) -> BanyanStoreGuard<'_> {

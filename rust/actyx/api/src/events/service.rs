@@ -616,18 +616,19 @@ mod tests {
     use super::*;
     use actyx_sdk::{
         app_id,
+        language::TagExpr,
         service::{EventMeta, EventResponse},
-        tags, Metadata, Offset, StreamId, TagSet,
+        tags, Metadata, TagSet,
     };
     use futures::Stream;
     use itertools::Itertools;
     use lazy_static::lazy_static;
     use maplit::btreemap;
     use regex::Regex;
-    use std::{collections::BTreeMap, convert::TryInto, iter::FromIterator, pin::Pin, time::Duration};
+    use std::{collections::BTreeMap, convert::TryInto, pin::Pin, str::FromStr, time::Duration};
     use swarm::{
         event_store_ref::{self, EventStoreHandler},
-        BanyanStore,
+        BanyanStore, EventRoute,
     };
     use tokio::{
         runtime::{Handle, Runtime},
@@ -699,9 +700,7 @@ mod tests {
         let node_id = store.node_id();
         (node_id, EventService::new(event_store, node_id))
     }
-    fn offset(node_id: NodeId, stream: u64, offset: u32) -> (StreamId, Offset) {
-        (node_id.stream(stream.into()), offset.into())
-    }
+
     async fn publish(service: &EventService, stream: u64, tags: TagSet, data: u32) -> PublishResponseKey {
         let d = service
             .publish(
@@ -791,13 +790,24 @@ mod tests {
             .unwrap()
             .block_on(async {
                 timeout(Duration::from_secs(1), async {
-                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let store = BanyanStore::test_with_routing(
+                        "lower_bound",
+                        vec![EventRoute::new(
+                            TagExpr::from_str("'a'").unwrap(),
+                            "stream_a".to_string(),
+                        )],
+                    )
+                    .await
+                    .unwrap();
                     let (node_id, service) = setup(&store);
+
+                    // config the event routing such that the test passes
 
                     let _pub0 = publish(&service, 0, tags!("a"), 0).await;
 
-                    let present = OffsetMap::from_iter(vec![offset(node_id, 0, 0)]);
-                    let lower_bound = OffsetMap::from_iter(vec![offset(node_id, 0, 0), offset(node_id, 1, 0)]);
+                    let present = service.offsets().await.unwrap().present;
+                    let mut lower_bound = present.clone();
+                    lower_bound.update(node_id.stream(1.into()), 1.into());
 
                     let mut stream = service
                         .subscribe(
