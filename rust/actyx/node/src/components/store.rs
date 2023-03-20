@@ -14,7 +14,15 @@ use crypto::KeyStoreRef;
 use ipfs_embed::{Direction, PeerId};
 use libp2p::{multiaddr::Protocol, Multiaddr};
 use parking_lot::Mutex;
-use std::{convert::TryInto, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    convert::TryInto,
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 use swarm::{
     blob_store::BlobStore,
     event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
@@ -186,6 +194,11 @@ impl Component<StoreRequest, StoreConfig> for Store {
         debug_assert!(self.state.is_none());
         if let Some(cfg) = self.store_config.clone() {
             let rt = tokio::runtime::Builder::new_multi_thread()
+                .thread_name_fn(|| {
+                    static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+                    let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+                    format!("store-worker-{}", id)
+                })
                 .worker_threads(self.number_of_threads.unwrap_or(2))
                 .enable_all()
                 .build()?;

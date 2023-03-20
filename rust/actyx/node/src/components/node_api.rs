@@ -9,7 +9,13 @@ use anyhow::Result;
 use crossbeam::channel::{Receiver, Sender};
 use libp2p::PeerId;
 use parking_lot::Mutex;
-use std::{path::PathBuf, sync::Arc};
+use std::{
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+};
 use util::SocketAddrHelper;
 
 impl NodeApi {
@@ -73,6 +79,11 @@ impl Component<(), NodeApiSettings> for NodeApi {
     fn start(&mut self, snd: Sender<anyhow::Result<()>>) -> Result<()> {
         debug_assert!(self.rt.is_none());
         let rt = tokio::runtime::Builder::new_multi_thread()
+            .thread_name_fn(|| {
+                static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+                let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+                format!("node-api-worker-{}", id)
+            })
             .worker_threads(2)
             .enable_all()
             .build()?;
