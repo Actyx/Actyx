@@ -1513,7 +1513,7 @@ ENDPRAGMA
                 .unwrap();
 
             assert_eq!(SResp::next(q.as_mut()).await, SResp::event("synthetic: 3"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 0}));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
 
             publish(&service, 0, tags!("b"), 2).await;
             assert_eq!(
