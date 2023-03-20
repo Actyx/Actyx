@@ -1030,7 +1030,7 @@ ENDPRAGMA
                         query(
                             &service,
                             "FEATURES(zøg subQuery interpolation fromArray) \
-                            FROM 'b' FILTER _ < 3 SELECT FROM [`a{_}`, 'b']"
+                            FROM appId(me) FILTER _ < 3 SELECT FROM [`a{_}`, 'b']"
                         )
                         .await,
                         vec!["[\"a2\",\"b\"]", "[\"a1\",\"b\"]", "offsets"]
