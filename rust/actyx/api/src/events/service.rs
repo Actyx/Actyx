@@ -840,7 +840,7 @@ mod tests {
             .unwrap()
             .block_on(async {
                 timeout(Duration::from_secs(1), async {
-                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let store = BanyanStore::test("limit").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
                     publish(&service, 0, tags!("a"), 1).await;
@@ -850,7 +850,7 @@ mod tests {
                     assert_eq!(
                         query(
                             &service,
-                            "FEATURES(limit zøg aggregate) FROM allEvents LIMIT 2 AGGREGATE FIRST(
+                            "FEATURES(limit zøg aggregate) FROM appId(me) LIMIT 2 AGGREGATE FIRST(
                                 CASE _ = 2 => _ ENDCASE
                             )"
                         )
@@ -860,7 +860,7 @@ mod tests {
                     assert_eq!(
                         query(
                             &service,
-                            "FEATURES(limit zøg aggregate) FROM allEvents LIMIT 2 AGGREGATE FIRST(
+                            "FEATURES(limit zøg aggregate) FROM appId(me) LIMIT 2 AGGREGATE FIRST(
                                 CASE _ = 3 => _ ENDCASE
                             )"
                         )
@@ -870,7 +870,7 @@ mod tests {
                     assert_eq!(
                         query(
                             &service,
-                            "FEATURES(limit zøg aggregate) FROM allEvents LIMIT 2 AGGREGATE LAST(
+                            "FEATURES(limit zøg aggregate) FROM appId(me) LIMIT 2 AGGREGATE LAST(
                                 CASE _ = 1 => _ ENDCASE
                             )"
                         )
@@ -880,7 +880,7 @@ mod tests {
                     assert_eq!(
                         query(
                             &service,
-                            "FEATURES(limit zøg aggregate) FROM allEvents ORDER DESC LIMIT 2 AGGREGATE FIRST(
+                            "FEATURES(limit zøg aggregate) FROM appId(me) ORDER DESC LIMIT 2 AGGREGATE FIRST(
                                 CASE _ = 3 => _ ENDCASE
                             )"
                         )
@@ -890,7 +890,7 @@ mod tests {
                     assert_eq!(
                         query(
                             &service,
-                            "FEATURES(limit zøg aggregate) FROM allEvents ORDER ASC LIMIT 2 AGGREGATE LAST(
+                            "FEATURES(limit zøg aggregate) FROM appId(me) ORDER ASC LIMIT 2 AGGREGATE LAST(
                                 CASE _ = 1 => _ ENDCASE
                             )"
                         )
