@@ -801,13 +801,11 @@ mod tests {
                     .unwrap();
                     let (node_id, service) = setup(&store);
 
-                    // config the event routing such that the test passes
-
-                    let _pub0 = publish(&service, 0, tags!("a"), 0).await;
+                    let _pub0 = publish(&service, 0, tags!("b"), 0).await;
 
                     let present = service.offsets().await.unwrap().present;
                     let mut lower_bound = present.clone();
-                    lower_bound.update(node_id.stream(1.into()), 1.into());
+                    lower_bound.update(node_id.stream(1.into()), 0.into());
 
                     let mut stream = service
                         .subscribe(
