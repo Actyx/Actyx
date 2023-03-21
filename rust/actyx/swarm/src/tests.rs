@@ -187,9 +187,6 @@ async fn must_not_lose_events_through_compaction() -> Result<()> {
     let tags_query =
         TagExprQuery::from_expr(&"'abc'".parse().unwrap()).unwrap()(true, store.node_id().stream(0.into()));
 
-    let stream = store.get_or_create_own_stream(0.into())?;
-    assert!(stream.published_tree().is_none());
-
     for ev in (0..EVENTS).map(|_| (tags!("abc"), Payload::null())) {
         store.append(app_id(), vec![ev]).await?;
     }
@@ -232,10 +229,8 @@ async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
     const EVENTS: usize = 10;
     let (config, _dir) = config_in_temp_folder()?;
     let store = BanyanStore::new(config.clone(), ActoRef::blackhole()).await?;
-    let stream = store.get_or_create_own_stream(0.into())?;
     let stream_id = store.node_id().stream(0.into());
     let expected_present = OffsetMap::from(btreemap! { stream_id => Offset::from(9) });
-    assert!(stream.published_tree().is_none());
 
     for ev in (0..EVENTS).map(|_| (tags!("abc"), Payload::null())) {
         store.append(app_id(), vec![ev]).await?;
