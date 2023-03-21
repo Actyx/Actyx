@@ -1130,37 +1130,37 @@ ENDPRAGMA
                     }
 
                     assert_eq!(
-                        values(&service, "FROM allEvents SELECT _ * 2").await,
+                        values(&service, "FROM appId(me) SELECT _ * 2").await,
                         vec![ev([&meta1], 4), ev([&meta2], 6), ev([&meta3], 2)]
                     );
                     assert_eq!(
-                        values(&service, "FEATURES(zøg aggregate) FROM allEvents AGGREGATE LAST(_)").await,
+                        values(&service, "FEATURES(zøg aggregate) FROM appId(me) AGGREGATE LAST(_)").await,
                         vec![ev([&meta3], 1)]
                     );
                     assert_eq!(
-                        values(&service, "FEATURES(zøg aggregate) FROM allEvents AGGREGATE FIRST(_)").await,
+                        values(&service, "FEATURES(zøg aggregate) FROM appId(me) AGGREGATE FIRST(_)").await,
                         vec![ev([&meta1], 2)]
                     );
                     assert_eq!(
-                        values(&service, "FEATURES(zøg aggregate) FROM allEvents AGGREGATE MIN(_)").await,
+                        values(&service, "FEATURES(zøg aggregate) FROM appId(me) AGGREGATE MIN(_)").await,
                         vec![ev([&meta3], 1)]
                     );
                     assert_eq!(
-                        values(&service, "FEATURES(zøg aggregate) FROM allEvents AGGREGATE MAX(_)").await,
+                        values(&service, "FEATURES(zøg aggregate) FROM appId(me) AGGREGATE MAX(_)").await,
                         vec![ev([&meta2], 3)]
                     );
                     assert_eq!(
-                        values(&service, "FEATURES(zøg aggregate) FROM allEvents AGGREGATE SUM(_)").await,
+                        values(&service, "FEATURES(zøg aggregate) FROM appId(me) AGGREGATE SUM(_)").await,
                         vec![ev([&meta1, &meta3], 6)]
                     );
                     assert_eq!(
-                        values(&service, "FEATURES(zøg aggregate) FROM allEvents AGGREGATE PRODUCT(_)").await,
+                        values(&service, "FEATURES(zøg aggregate) FROM appId(me) AGGREGATE PRODUCT(_)").await,
                         vec![ev([&meta1, &meta3], 6)]
                     );
                     assert_eq!(
                         values(
                             &service,
-                            "FEATURES(zøg aggregate) FROM allEvents AGGREGATE PRODUCT(CASE _ > 1 => _ ENDCASE)"
+                            "FEATURES(zøg aggregate) FROM appId(me) AGGREGATE PRODUCT(CASE _ > 1 => _ ENDCASE)"
                         )
                         .await,
                         vec![ev([&meta1, &meta2], 6)]
@@ -1172,7 +1172,7 @@ ENDPRAGMA
                     assert_eq!(
                         values(
                             &service,
-                            "FEATURES(zøg fromArray subQuery spread) FROM [42] SELECT ...FROM allEvents"
+                            "FEATURES(zøg fromArray subQuery spread) FROM [42] SELECT ...FROM appId(me)"
                         )
                         .await,
                         vec![ev([&meta1], 2), ev([&meta2], 3), ev([&meta3], 1)]
@@ -1329,7 +1329,7 @@ ENDPRAGMA
                     SubscribeRequest {
                         lower_bound: None,
                         query: "PRAGMA features := aggregate
-                                FROM allEvents AGGREGATE LAST(_)"
+                                FROM appId(me) AGGREGATE LAST(_)"
                             .to_owned(),
                     },
                 )
@@ -1360,31 +1360,31 @@ ENDPRAGMA
                 .await
                 .unwrap();
 
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("1-0 2"));
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("2-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::Offsets(btreemap! {0 => 2}));
             assert_eq!(SResp::next(q2.as_mut()).await, SResp::diag("Warning no value added"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::Offsets(btreemap! {0 => 2}));
             assert_eq!(SResp::next(q3.as_mut()).await, SResp::diag("Warning no value added"));
             assert_eq!(SResp::next(q3.as_mut()).await, SResp::diag("Warning no value added"));
-            assert_eq!(SResp::next(q3.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
+            assert_eq!(SResp::next(q3.as_mut()).await, SResp::Offsets(btreemap! {0 => 2}));
 
             publish(&service, 0, tags!("a"), 2).await;
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("1-0 2"));
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("2-0 2"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("2-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("2-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("3-0 2"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("3-0 2"));
             assert_eq!(SResp::next(q3.as_mut()).await, SResp::event("synthetic: 1"));
 
             publish(&service, 0, tags!("a"), 3).await;
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("2-0 2"));
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("3-0 3"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("2-0 2"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("3-0 3"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("3-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("4-0 3"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("3-0 2"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("4-0 3"));
 
             publish(&service, 0, tags!("a"), 4).await;
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("3-0 3"));
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("4-0 4"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("3-0 3"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("4-0 4"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("4-0 3"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("5-0 4"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("4-0 3"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("5-0 4"));
 
             timeout(Duration::from_millis(500), q3.next()).await.unwrap_err();
         };
@@ -1418,24 +1418,24 @@ ENDPRAGMA
                 .await
                 .unwrap();
 
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("0-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 0}));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("1-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
 
             publish(&service, 0, tags!("b"), 2).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("0-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("1-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("1-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-0 2"));
 
             publish(&service, 0, tags!("b"), 3).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("1-0 2"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-0 3"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 3"));
 
             publish(&service, 0, tags!("b"), 4).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-0 3"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-0 3"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 4"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 4"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 4"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("3-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("3-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 4"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 4"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 4"));
 
             assert_eq!(timeout(Duration::from_millis(300), q.next()).await.unwrap(), None);
         };
@@ -1459,7 +1459,7 @@ ENDPRAGMA
                     SubscribeRequest {
                         lower_bound: None,
                         query: "PRAGMA features := aggregate spread
-                                FROM allEvents
+                                FROM appId(me)
                                 AGGREGATE LAST(_)
                                 FILTER _ < 3"
                             .to_owned(),
@@ -1468,18 +1468,18 @@ ENDPRAGMA
                 .await
                 .unwrap();
 
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("0-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 0}));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("1-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
 
             publish(&service, 0, tags!("b"), 2).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("0-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("1-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("1-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-0 2"));
 
             publish(&service, 0, tags!("b"), 3).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("1-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-0 2"));
 
             publish(&service, 0, tags!("b"), 1).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 1"));
         };
         Runtime::new()
             .unwrap()
