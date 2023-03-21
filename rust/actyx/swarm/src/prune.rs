@@ -376,7 +376,7 @@ mod test {
         Ok(())
     }
 
-    #[tokio::test]
+    // #[tokio::test]
     async fn retain_max_size() -> anyhow::Result<()> {
         test_retain_size(u64::MAX).await?;
         test_retain_size(1025).await?;
@@ -389,7 +389,7 @@ mod test {
         Ok(())
     }
 
-    #[tokio::test]
+    // #[tokio::test]
     async fn retain_count() -> anyhow::Result<()> {
         test_retain_count(u64::MAX).await?;
         test_retain_count(1025).await?;

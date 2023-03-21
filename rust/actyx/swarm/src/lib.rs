@@ -753,16 +753,17 @@ trait MatchTagSet {
 
 impl MatchTagSet for Dnf {
     fn matches(&self, tag_set: &TagSet, app_id: &AppId) -> bool {
+        // DNF IS (A & B) | (C & D) ...
         let and_clauses = &self.0;
         for tags in and_clauses {
-            let mut matches = false;
+            let mut matches = true;
             for tag in tags {
-                match tag {
-                    TagAtom::Tag(tag) => matches |= tag_set.contains(tag),
-                    TagAtom::AllEvents => matches |= true,
-                    TagAtom::AppId(tree_app_id) => matches |= tree_app_id == app_id,
+                matches &= match tag {
+                    TagAtom::Tag(tag) => tag_set.contains(tag),
+                    TagAtom::AllEvents => true,
+                    TagAtom::AppId(tree_app_id) => tree_app_id == app_id,
                     _ => unreachable!("The validation regex failed."),
-                }
+                };
             }
             if matches {
                 return true;
@@ -1183,10 +1184,7 @@ impl BanyanStore {
     /// Loads the default stream, reading all [RouteMappingEvents] from it and returning
     /// the respective route mapping.
     async fn get_published_mappings(&self, node_id: NodeId) -> Result<HashMap<String, StreamNr>> {
-        let stream_id = StreamId {
-            node_id,
-            stream_nr: DEFAULT_STREAM_NR.into(),
-        };
+        let stream_id = node_id.stream(DEFAULT_STREAM_NR.into());
 
         let tag_expr = format!("'{}' & appId({})", EVENT_ROUTING_TAG_NAME, internal_app_id());
         let tag_expr = TagExpr::from_str(&tag_expr).expect("The tag expression should be valid.");
