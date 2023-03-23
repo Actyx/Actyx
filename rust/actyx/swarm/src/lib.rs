@@ -31,10 +31,9 @@ use crate::event_store::PersistenceMeta;
 pub use crate::sqlite::{StorageServiceStore, StorageServiceStoreWrite};
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
-use actyx_sdk::app_id;
 use actyx_sdk::language::{TagAtom, TagExpr};
+use actyx_sdk::{app_id, tag};
 pub use banyan::{store::BlockWriter, Forest as BanyanForest, StreamBuilder, Transaction as BanyanTransaction};
-use futures::future::ok;
 use futures::{future, stream, Future, FutureExt, Stream, StreamExt, TryStreamExt};
 pub use ipfs_embed::{Executor as IpfsEmbedExecutor, StorageConfig, StorageService};
 pub use libipld::codec::Codec as IpldCodec;
@@ -135,9 +134,6 @@ static FILES_STREAM_NR: u64 = 3;
 const MAX_TREE_LEVEL: i32 = 512;
 
 const DEFAULT_STREAM_NAME: &str = "default";
-const DISCOVERY_STREAM_NAME: &str = "discovery";
-const METRICS_STREAM_NAME: &str = "metrics";
-const FILES_STREAM_NAME: &str = "files";
 const EVENT_ROUTING_TAG_NAME: &str = "event_routing";
 
 fn internal_app_id() -> AppId {
@@ -717,154 +713,6 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 }
 
-/// The "dual" for the event route configuration in the node.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EventRoute {
-    from: TagExpr,
-    into: String,
-}
-
-impl EventRoute {
-    pub fn new(from: TagExpr, into: String) -> Self {
-        Self { from, into }
-    }
-}
-
-impl Default for EventRoute {
-    fn default() -> Self {
-        Self {
-            from: TagExpr::from_str("allEvents").expect("Valid tag expression."),
-            into: DEFAULT_STREAM_NAME.to_string(),
-        }
-    }
-}
-
-/// A mapping between a stream's name and its number.
-/// Should be extracted as an [Event].
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EventRouteMappingEvent {
-    stream_name: String,
-    stream_nr: StreamNr,
-}
-
-trait MatchTagSet {
-    fn matches(&self, tag_set: &TagSet, app_id: &AppId) -> bool;
-}
-
-impl MatchTagSet for Dnf {
-    fn matches(&self, tag_set: &TagSet, app_id: &AppId) -> bool {
-        // DNF IS (A & B) | (C & D) ...
-        let and_clauses = &self.0;
-        for tags in and_clauses {
-            let mut matches = true;
-            for tag in tags {
-                matches &= match tag {
-                    TagAtom::Tag(tag) => tag_set.contains(tag),
-                    TagAtom::AllEvents => true,
-                    TagAtom::AppId(tree_app_id) => tree_app_id == app_id,
-                    _ => unreachable!("The validation regex failed."),
-                };
-            }
-            if matches {
-                return true;
-            }
-        }
-        false
-    }
-}
-
-#[derive(Default)]
-struct RoutingTable {
-    routes: Vec<(Dnf, String)>,
-    stream_mapping: HashMap<String, StreamNr>,
-    max_stream_nr: Option<StreamNr>,
-}
-
-impl RoutingTable {
-    /// Add a new stream to the routing table.
-    fn add_stream(&mut self, stream: String, stream_nr: Option<StreamNr>) -> Result<Option<StreamNr>> {
-        if let Some(stream_nr) = stream_nr {
-            tracing::info!(
-                "Adding stream \"{}\" as #{:?} to the routing table",
-                stream,
-                u64::from(stream_nr)
-            );
-            if let Some(nr) = self.stream_mapping.get(&stream) {
-                tracing::warn!(
-                    "Stream {} was previously mapped to {}, replacing with {}.",
-                    stream,
-                    nr,
-                    stream_nr
-                );
-            }
-            self.stream_mapping.insert(stream.clone(), stream_nr);
-            tracing::info!(
-                "Stream \"{}\" was added to the routing table as #{:?}",
-                stream,
-                u64::from(stream_nr)
-            );
-            self.max_stream_nr = std::cmp::max(self.max_stream_nr, stream_nr.into());
-            Ok(stream_nr.into())
-        } else {
-            tracing::info!("Adding stream \"{}\" to the routing table", stream);
-            if self.stream_mapping.get(&stream).is_none() {
-                self.max_stream_nr = if let Some(stream_nr) = self.max_stream_nr {
-                    Some(stream_nr.succ())
-                } else {
-                    Some(0.into())
-                };
-                let max_stream_nr = self
-                    .max_stream_nr
-                    .expect("The maximum stream number can only be None when the structure is initialized.");
-                self.stream_mapping.insert(stream.clone(), max_stream_nr);
-                tracing::info!("Stream \"{}\" was attributed #{:?}", stream, u64::from(max_stream_nr));
-                Ok(self
-                    .max_stream_nr
-                    .expect("The stream number should have already been inserted.")
-                    .into())
-            } else {
-                Ok(None)
-            }
-        }
-    }
-
-    /// Add a new route to the routing table. Attempts to add the target stream as well.
-    ///
-    /// Warning: _Does not check for duplicate routes._
-    fn add_route(&mut self, matcher: TagExpr, stream: String) -> Option<StreamNr> {
-        // Routes should only be added after all existing streams were added to the table,
-        // otherwise, stream numbers may be incorrect.
-        let stream_nr = self
-            .add_stream(stream.clone(), None)
-            .expect("Adding a stream without a stream number should never fail.");
-        let dnf = Dnf::from(&matcher);
-        self.routes.push((dnf, stream));
-        stream_nr
-    }
-
-    /// "Routes" a provided [TagSet] to the corresponding [StreamNr].
-    /// If it is not able to match the [TagSet], it will return `StreamNr::default()`.
-    fn get_matching_stream_nr(&self, tag_set: &TagSet, app_id: &AppId) -> StreamNr {
-        for (dnf, stream_name) in self.routes.iter() {
-            tracing::trace!("Trying to match \"{}\" to {:?}", stream_name, tag_set);
-            if dnf.matches(tag_set, app_id) {
-                tracing::trace!("{:?} matched \"{}\"", tag_set, stream_name);
-                return *self
-                    .stream_mapping
-                    .get(stream_name)
-                    .expect("Stream name should have been placed in the mapping.");
-            }
-        }
-        tracing::trace!("{:?} did not match a stream, sending off to the default", tag_set);
-        StreamNr::default()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.max_stream_nr.is_none()
-    }
-}
-
 impl BanyanStore {
     /// Creates a new [`BanyanStore`] from a [`SwarmConfig`].
     pub async fn new(cfg: SwarmConfig, swarm_observer: ActoRef<(PeerId, GossipMessage)>) -> Result<Self> {
@@ -1085,7 +933,7 @@ impl BanyanStore {
         tracing::info!("validating event streams");
         banyan.validate_known_streams().await?;
 
-        tracing::info!("Initializing routing table.");
+        let routing_table_span = tracing::debug_span!("Initializing routing table.");
         let mut routing_table = RoutingTable::default();
 
         let mappings = banyan.get_published_mappings(node_id).await?; // LOCK INSIDE
@@ -1095,11 +943,11 @@ impl BanyanStore {
 
         // Publish the default stream if missing
         if routing_table.is_empty() {
-            tracing::info!("No mappings found, publishing the default mappings.");
+            tracing::info!("No stream mappings found, publishing the default mapping.");
             banyan
                 .append_stream_mapping_event(DEFAULT_STREAM_NAME.to_string(), DEFAULT_STREAM_NR.into())
                 .await?;
-            tracing::info!("\"default\" stream successfully published.");
+            tracing::debug!("\"default\" stream successfully published.");
             // If publishing went ok, we can move on with adding the stream to the table
             routing_table
                 .add_stream(DEFAULT_STREAM_NAME.to_string(), Some(DEFAULT_STREAM_NR.into()))
@@ -1108,10 +956,9 @@ impl BanyanStore {
 
         let unpublished_streams = {
             let mut streams = HashMap::new();
-            for route in cfg.event_routes.clone() {
-                let nr = routing_table.add_route(route.from, route.into.clone());
-                if let Some(nr) = nr {
-                    streams.insert(route.into, nr);
+            for route in &cfg.event_routes {
+                if let Some(nr) = routing_table.add_route(route.from.clone(), route.into.clone()) {
+                    streams.insert(route.into.clone(), nr);
                 }
             }
             streams
@@ -1122,7 +969,8 @@ impl BanyanStore {
         }
 
         banyan.lock().guard.event_routing_table = Some(routing_table);
-        tracing::info!("Finished setting up routing.");
+        tracing::debug!("Finished setting up routing.");
+        drop(routing_table_span);
 
         tracing::info!("starting maintenance tasks");
         banyan.spawn_task("cache_debug".to_owned(), async move {
@@ -1196,7 +1044,6 @@ impl BanyanStore {
         let published_tree = self.lock().published_tree(stream_id);
         if let Some(tree) = published_tree {
             let offset = tree.offset().into();
-            // If we couldn't read the routing table from the stream, should we read it ONLY from the config?
             self.stream_filtered_chunked(stream_id, 0..=offset, query)
                 .map_ok(|chunk| {
                     stream::iter(chunk.data).map(|(_, _, payload)| {
@@ -1445,12 +1292,10 @@ impl BanyanStore {
         lamport: LamportTimestamp,
         event: (TagSet, Event),
     ) -> Result<AppendMeta> {
-        let app_id_tag = ScopedTag::new(
-            trees::tags::TagScope::Internal,
-            Tag::try_from(format!("app_id:{}", app_id).as_str()).unwrap(),
-        );
+        let app_id_tag = tag!("app_id:") + app_id.as_str();
+        let scoped_app_id_tag = ScopedTag::new(trees::tags::TagScope::Internal, app_id_tag);
         let mut tags = ScopedTagSet::from(event.0);
-        tags.insert(app_id_tag);
+        tags.insert(scoped_app_id_tag);
         let key = AxKey::new(tags, lamport, timestamp);
         let offset = self
             .transform_stream(&mut guard, |transaction, tree| {
@@ -1503,13 +1348,11 @@ impl BanyanStore {
         // the streams.
 
         let min_lamport = *lamports.peek().unwrap();
-        let app_id_tag = ScopedTag::new(
-            trees::tags::TagScope::Internal,
-            Tag::try_from(format!("app_id:{}", app_id).as_str()).unwrap(),
-        );
+        let app_id_tag = tag!("app_id:") + app_id.as_str();
+        let scoped_app_id_tag = ScopedTag::new(trees::tags::TagScope::Internal, app_id_tag);
         let kvs = lamports.zip(events).map(|(lamport, (tags, payload))| {
             let mut tags = ScopedTagSet::from(tags);
-            tags.insert(app_id_tag.clone());
+            tags.insert(scoped_app_id_tag.clone());
             (AxKey::new(tags, lamport, timestamp), payload)
         });
         let min_offset = self.transform_stream(&mut guard, |txn, tree| {
@@ -1929,4 +1772,297 @@ pub enum FileNode {
         #[serde(with = "::util::serde_str")]
         cid: Cid,
     },
+}
+
+/// The "dual" for the event route configuration in the node.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EventRoute {
+    from: TagExpr,
+    into: String,
+}
+
+impl EventRoute {
+    pub fn new(from: TagExpr, into: String) -> Self {
+        Self { from, into }
+    }
+
+    pub fn discovery() -> Self {
+        Self::new(TagExpr::from_str("'discovery'").unwrap(), "discovery".to_string())
+    }
+
+    pub fn metrics() -> Self {
+        Self::new(TagExpr::from_str("'metrics'").unwrap(), "metrics".to_string())
+    }
+
+    pub fn files() -> Self {
+        Self::new(
+            TagExpr::from_str("'files' | 'files:pinned'").unwrap(),
+            "files".to_string(),
+        )
+    }
+}
+
+impl Default for EventRoute {
+    fn default() -> Self {
+        Self {
+            from: TagExpr::from_str("allEvents").expect("Valid tag expression."),
+            into: DEFAULT_STREAM_NAME.to_string(),
+        }
+    }
+}
+
+/// A mapping between a stream's name and its number.
+/// Should be extracted as an [Event].
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EventRouteMappingEvent {
+    stream_name: String,
+    stream_nr: StreamNr,
+}
+
+trait MatchTagSet {
+    fn matches(&self, tag_set: &TagSet, app_id: &AppId) -> bool;
+}
+
+impl MatchTagSet for Dnf {
+    fn matches(&self, tag_set: &TagSet, app_id: &AppId) -> bool {
+        let and_clauses = &self.0;
+        for tags in and_clauses {
+            let mut matches = true;
+            for tag in tags {
+                matches &= match tag {
+                    TagAtom::Tag(tag) => tag_set.contains(tag),
+                    TagAtom::AllEvents => true,
+                    TagAtom::AppId(tree_app_id) => tree_app_id == app_id,
+                    _ => unreachable!("The validation regex failed."),
+                };
+            }
+            if matches {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+#[cfg(test)]
+mod test_match_tag_set {
+    use std::str::FromStr;
+
+    use actyx_sdk::{language::TagExpr, tags, AppId};
+    use trees::dnf::Dnf;
+
+    use crate::{internal_app_id, MatchTagSet};
+
+    #[test]
+    fn tag() {
+        let dnf = Dnf::from(&TagExpr::from_str("'a'").unwrap());
+        assert!(dnf.matches(&tags!("a"), &internal_app_id()));
+        assert!(!dnf.matches(&tags!("b"), &internal_app_id()));
+    }
+
+    #[test]
+    fn or_tags() {
+        let dnf = Dnf::from(&TagExpr::from_str("'a' | 'b'").unwrap());
+        assert!(dnf.matches(&tags!("b"), &internal_app_id()));
+        assert!(!dnf.matches(&tags!("c"), &internal_app_id()));
+    }
+
+    #[test]
+    fn and_tags() {
+        let dnf = Dnf::from(&TagExpr::from_str("'a' & 'b'").unwrap());
+        assert!(dnf.matches(&tags!("a", "b"), &internal_app_id()));
+        assert!(!dnf.matches(&tags!("c"), &internal_app_id()));
+    }
+
+    #[test]
+    fn app_id() {
+        let dnf = Dnf::from(&TagExpr::from_str("appId(com.actyx)").unwrap());
+        assert!(dnf.matches(&tags!(), &internal_app_id()));
+        assert!(!dnf.matches(&tags!(), &AppId::from_str("me").unwrap()));
+    }
+
+    #[test]
+    fn all_events() {
+        let dnf = Dnf::from(&TagExpr::from_str("allEvents").unwrap());
+        assert!(dnf.matches(&tags!(), &internal_app_id()));
+    }
+
+    #[test]
+    fn and_all_events() {
+        let dnf = Dnf::from(&TagExpr::from_str("'a' & allEvents").unwrap());
+        assert!(dnf.matches(&tags!("a"), &internal_app_id()));
+        assert!(!dnf.matches(&tags!("b"), &internal_app_id()));
+    }
+}
+
+#[derive(Default)]
+struct RoutingTable {
+    routes: Vec<(Dnf, StreamNr)>,
+    stream_mapping: HashMap<String, StreamNr>,
+    max_stream_nr: Option<StreamNr>,
+}
+
+impl RoutingTable {
+    /// Add a new stream to the routing table. Returns the allocated stream number.
+    fn add_stream(&mut self, stream: String, stream_nr: Option<StreamNr>) -> Result<Option<StreamNr>> {
+        if let Some(stream_nr) = stream_nr {
+            tracing::trace!(
+                "Adding stream \"{}\" as #{:?} to the routing table",
+                stream,
+                u64::from(stream_nr)
+            );
+            if let Some(nr) = self.stream_mapping.get(&stream) {
+                tracing::warn!(
+                    "Stream {} was previously mapped to {}, replacing with {}.",
+                    stream,
+                    nr,
+                    stream_nr
+                );
+            }
+            self.stream_mapping.insert(stream.clone(), stream_nr);
+            tracing::trace!(
+                "Stream \"{}\" was added to the routing table as #{:?}",
+                stream,
+                u64::from(stream_nr)
+            );
+            self.max_stream_nr = std::cmp::max(self.max_stream_nr, stream_nr.into());
+            Ok(Some(stream_nr))
+        } else {
+            tracing::trace!("Adding stream \"{}\" to the routing table", stream);
+            if self.stream_mapping.get(&stream).is_none() {
+                self.max_stream_nr = if let Some(stream_nr) = self.max_stream_nr {
+                    Some(stream_nr.succ())
+                } else {
+                    Some(StreamNr::from(0))
+                };
+                let max_stream_nr = self
+                    .max_stream_nr
+                    .expect("The maximum stream number can only be None when the structure is initialized.");
+                self.stream_mapping.insert(stream.clone(), max_stream_nr);
+                tracing::trace!("Stream \"{}\" was attributed #{:?}", stream, u64::from(max_stream_nr));
+                Ok(Some(
+                    self.max_stream_nr
+                        .expect("The stream number should have already been inserted."),
+                ))
+            } else {
+                Ok(None)
+            }
+        }
+    }
+
+    /// Add a new route to the routing table. Attempts to add the target stream as well.
+    /// If a new stream number is allocated returns it.
+    ///
+    /// Warning: _Does not check for duplicate routes._
+    fn add_route(&mut self, matcher: TagExpr, stream: String) -> Option<StreamNr> {
+        // Routes should only be added after all existing streams were added to the table,
+        // otherwise, stream numbers may be incorrect.
+        let stream_nr = self
+            .add_stream(stream.clone(), None)
+            .expect("Adding a stream without a stream number should never fail.");
+        let dnf = Dnf::from(&matcher);
+
+        let nr = if let Some(nr) = stream_nr {
+            nr
+        } else {
+            // This case is triggered when several routes pointing to the same stream are added
+            // Such as:
+            // match: 'a' & 'b' -> stream_1
+            // match: 'a' -> stream_2
+            // match: 'b' -> stream_1
+            // Even though there are other (and better) ways of expressing this
+            *self
+                .stream_mapping
+                .get(&stream)
+                .expect("Stream number must exist here.")
+        };
+        self.routes.push((dnf, nr));
+        stream_nr
+    }
+
+    /// "Routes" a provided [TagSet] to the corresponding [StreamNr].
+    /// If it is not able to match the [TagSet], it will return `StreamNr::default()`.
+    fn get_matching_stream_nr(&self, tag_set: &TagSet, app_id: &AppId) -> StreamNr {
+        for (dnf, stream_nr) in self.routes.iter() {
+            if dnf.matches(tag_set, app_id) {
+                return *stream_nr;
+            }
+        }
+        tracing::trace!("{:?} did not match a stream, sending off to the default", tag_set);
+        StreamNr::default()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.max_stream_nr.is_none()
+    }
+}
+
+#[cfg(test)]
+mod test_routing_table {
+    use std::str::FromStr;
+
+    use actyx_sdk::{language::TagExpr, tags, StreamNr};
+
+    use crate::{internal_app_id, RoutingTable};
+
+    #[test]
+    fn empty() {
+        assert!(RoutingTable::default().is_empty());
+    }
+
+    #[test]
+    fn add_stream() {
+        let mut table = RoutingTable::default();
+        table.add_stream("stream_1".to_string(), None).unwrap();
+        table.add_stream("stream_2".to_string(), None).unwrap();
+        assert_eq!(*table.stream_mapping.get("stream_1").unwrap(), StreamNr::from(0));
+        assert_eq!(*table.stream_mapping.get("stream_2").unwrap(), StreamNr::from(1));
+        table
+            .add_stream("stream_2".to_string(), Some(StreamNr::from(10)))
+            .unwrap();
+        assert_eq!(*table.stream_mapping.get("stream_2").unwrap(), StreamNr::from(10));
+    }
+
+    #[test]
+    fn add_route() {
+        let mut table = RoutingTable::default();
+        table.add_route(TagExpr::from_str("'test'").unwrap(), "stream_1".to_string());
+        table.add_route(TagExpr::from_str("'test'").unwrap(), "stream_2".to_string());
+        assert_eq!(*table.stream_mapping.get("stream_1").unwrap(), StreamNr::from(0));
+        assert_eq!(*table.stream_mapping.get("stream_2").unwrap(), StreamNr::from(1));
+        assert_eq!(table.routes[0].1, StreamNr::from(0));
+        assert_eq!(table.routes[1].1, StreamNr::from(1));
+    }
+
+    #[test]
+    fn get_matching_stream_nr() {
+        let mut table = RoutingTable::default();
+        table.add_route(TagExpr::from_str("'test_1'").unwrap(), "stream_1".to_string());
+        table.add_route(TagExpr::from_str("'test_2'").unwrap(), "stream_2".to_string());
+        assert_eq!(
+            table.get_matching_stream_nr(&tags!("test_1"), &internal_app_id()),
+            StreamNr::from(0)
+        );
+        assert_eq!(
+            table.get_matching_stream_nr(&tags!("test_2"), &internal_app_id()),
+            StreamNr::from(1)
+        );
+        assert_eq!(
+            table.get_matching_stream_nr(&tags!("non_existing_tag"), &internal_app_id()),
+            StreamNr::from(0)
+        );
+    }
+
+    #[test]
+    fn get_matching_stream_nr_with_duplicates() {
+        let mut table = RoutingTable::default();
+        table.add_route(TagExpr::from_str("'test_0'").unwrap(), "stream_1".to_string());
+        table.add_route(TagExpr::from_str("'test_1'").unwrap(), "stream_2".to_string());
+        table.add_route(TagExpr::from_str("'test_1'").unwrap(), "stream_3".to_string());
+        assert_eq!(
+            table.get_matching_stream_nr(&tags!("test_1"), &internal_app_id()),
+            StreamNr::from(1)
+        );
+    }
 }

@@ -1,7 +1,7 @@
 use super::{Component, ComponentRequest};
 use crate::{node_settings::Settings, BindTo};
 use acto::ActoRef;
-use actyx_sdk::{service::SwarmState, NodeId};
+use actyx_sdk::{language::TagExpr, service::SwarmState, NodeId};
 use anyhow::Result;
 use api::formats::Licensing;
 use api::NodeInfo;
@@ -11,7 +11,7 @@ use crypto::KeyStoreRef;
 use ipfs_embed::{Direction, PeerId};
 use libp2p::{multiaddr::Protocol, Multiaddr};
 use parking_lot::Mutex;
-use std::{convert::TryInto, path::PathBuf, sync::Arc, time::Duration};
+use std::{convert::TryInto, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use swarm::{
     blob_store::BlobStore,
     event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
@@ -243,12 +243,19 @@ impl Component<StoreRequest, StoreConfig> for Store {
         let index_store = Some(self.working_dir.join(format!("{}-index", topic)));
         let blob_store = Some(self.working_dir.join(format!("{}-blobs", topic)));
         let read_only = s.api.events.read_only;
-        let event_routes = s
-            .event_routing
-            .routes
-            .into_iter()
-            .map(|e| EventRoute::new(e.from, e.into))
-            .collect();
+        let routes = s.event_routing.routes;
+        let event_routes = if routes.is_empty() {
+            // This is of course, order sensitive,
+            // should match swarm/src/lib.rs::*_STREAM_NR
+            vec![
+                EventRoute::default(),
+                EventRoute::discovery(),
+                EventRoute::metrics(),
+                EventRoute::files(),
+            ]
+        } else {
+            routes.into_iter().map(|e| EventRoute::new(e.from, e.into)).collect()
+        };
 
         let swarm_config = SwarmConfig {
             topic,
