@@ -1,5 +1,4 @@
 use actyx_sdk::{app_id, tags, AppId, Payload};
-use anyhow::Result;
 use futures::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use swarm::BanyanStore;

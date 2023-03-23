@@ -120,10 +120,6 @@ impl EventStore {
         if events.is_empty() {
             return Ok(vec![]);
         }
-        let n = events.len();
-        if n == 0 {
-            return Ok(vec![]);
-        }
         self.banyan_store.append(app_id, events).await
     }
 
@@ -248,7 +244,10 @@ fn events_from_chunk_rev(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::{
+        collections::{BTreeMap, BTreeSet},
+        str::FromStr,
+    };
 
     use actyx_sdk::{
         app_id,
@@ -263,7 +262,7 @@ mod tests {
     use rand::{thread_rng, Rng};
 
     use super::*;
-    use crate::{selection::EventSelection, BanyanStore};
+    use crate::{selection::EventSelection, BanyanStore, EventRoute};
     use chrono::{DateTime, SecondsFormat, Utc};
     use trees::query::{LamportQuery, TimeQuery};
 
@@ -624,12 +623,21 @@ mod tests {
         }
 
         let offsets: Vec<(Offset, TagSet)> = (0..n).into_iter().map(|i| (i.into(), mk_tag(i))).collect();
-        let store = mk_store("pubsub").await;
-        let stream_id = store.node_id().stream(0.into());
+        let banyan_store = BanyanStore::test_with_routing(
+            "pubsub",
+            vec![EventRoute::new(
+                TagExpr::from_str("'evn' | 'odd'").unwrap(),
+                "test_stream".to_string(),
+            )],
+        )
+        .await
+        .unwrap();
+        let store = EventStore::new(banyan_store);
+        let stream_id = store.node_id().stream(1.into());
 
         let mut handles = Vec::new();
         // Shifted 1 because of the default mapping event
-        for i in 1..n + 1 {
+        for i in 0..n + 1 {
             let (_, offset, _, _) = store
                 .persist(app_id(), vec![(mk_tag(i), Payload::null())])
                 .await

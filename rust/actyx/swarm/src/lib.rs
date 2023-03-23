@@ -34,6 +34,7 @@ pub use crate::streams::StreamAlias;
 use actyx_sdk::app_id;
 use actyx_sdk::language::{TagAtom, TagExpr};
 pub use banyan::{store::BlockWriter, Forest as BanyanForest, StreamBuilder, Transaction as BanyanTransaction};
+use futures::future::ok;
 use futures::{future, stream, Future, FutureExt, Stream, StreamExt, TryStreamExt};
 pub use ipfs_embed::{Executor as IpfsEmbedExecutor, StorageConfig, StorageService};
 pub use libipld::codec::Codec as IpldCodec;
@@ -846,16 +847,16 @@ impl RoutingTable {
     /// If it is not able to match the [TagSet], it will return `StreamNr::default()`.
     fn get_matching_stream_nr(&self, tag_set: &TagSet, app_id: &AppId) -> StreamNr {
         for (dnf, stream_name) in self.routes.iter() {
-            tracing::debug!("Trying to match \"{}\" to {:?}", stream_name, tag_set);
+            tracing::trace!("Trying to match \"{}\" to {:?}", stream_name, tag_set);
             if dnf.matches(tag_set, app_id) {
-                tracing::debug!("{:?} matched \"{}\"", tag_set, stream_name);
+                tracing::trace!("{:?} matched \"{}\"", tag_set, stream_name);
                 return *self
                     .stream_mapping
                     .get(stream_name)
                     .expect("Stream name should have been placed in the mapping.");
             }
         }
-        tracing::debug!("{:?} did not match a stream, sending off to the default", tag_set);
+        tracing::trace!("{:?} did not match a stream, sending off to the default", tag_set);
         StreamNr::default()
     }
 
@@ -1399,7 +1400,6 @@ impl BanyanStore {
 
         let mut event_metas = vec![];
         for (tag_set, payload) in events {
-            // TODO: check if the lock is send + sync (it shouldnt)
             // Lock must be obtained and dropped right after
             // The table can (BUT SHOULD NOT) be mutated in the meantime
             let stream_nr = self
@@ -1423,16 +1423,8 @@ impl BanyanStore {
                 .next()
                 .expect("If the reservation failed, it should have short circuited before.");
 
-            let append_metas = self.append_reserved_events(
-                stream_guard,
-                app_id.clone(),
-                timestamp,
-                vec![lamport],
-                vec![(tag_set, payload)],
-            )?;
-            let event_meta = append_metas
-                .first()
-                .expect("There should be a single element in the vector.");
+            let event_meta =
+                self.append_reserved_event(stream_guard, app_id.clone(), timestamp, lamport, (tag_set, payload))?;
 
             event_metas.push((
                 event_meta.min_lamport,
@@ -1445,41 +1437,34 @@ impl BanyanStore {
         Ok(event_metas)
     }
 
-    fn append_reserved_events(
+    fn append_reserved_event(
         &self,
         mut guard: OwnStreamGuard<'_>,
         app_id: AppId,
         timestamp: Timestamp,
-        lamports: Vec<LamportTimestamp>,
-        events: Vec<(TagSet, Event)>,
-    ) -> Result<Vec<AppendMeta>> {
+        lamport: LamportTimestamp,
+        event: (TagSet, Event),
+    ) -> Result<AppendMeta> {
         let app_id_tag = ScopedTag::new(
             trees::tags::TagScope::Internal,
             Tag::try_from(format!("app_id:{}", app_id).as_str()).unwrap(),
         );
-        let kvs = lamports.iter().zip(events).map(|(lamport, (tags, payload))| {
-            let mut tags = ScopedTagSet::from(tags);
-            tags.insert(app_id_tag.clone());
-            (AxKey::new(tags, *lamport, timestamp), payload)
-        });
-        let min_offset = self.transform_stream(&mut guard, |txn, tree| {
-            let snapshot = tree.snapshot();
-            txn.extend_unpacked(tree, kvs)?;
-            if tree.level() > MAX_TREE_LEVEL {
-                txn.pack(tree)?;
-            }
-            Ok(snapshot.offset())
-        })?;
-        let min_offset = min_offset.map(|o| o + 1).unwrap_or(Offset::ZERO);
-
-        Ok(lamports
-            .into_iter()
-            .map(|lamport| AppendMeta {
-                min_lamport: lamport,
-                min_offset,
-                timestamp,
-            })
-            .collect())
+        let mut tags = ScopedTagSet::from(event.0);
+        tags.insert(app_id_tag);
+        let key = AxKey::new(tags, lamport, timestamp);
+        let offset = self
+            .transform_stream(&mut guard, |transaction, tree| {
+                let snapshot = tree.snapshot();
+                transaction.push(tree, key, event.1)?;
+                Ok(snapshot.offset())
+            })?
+            .map(|o| o + 1)
+            .unwrap_or(Offset::ZERO);
+        Ok(AppendMeta {
+            min_lamport: lamport,
+            min_offset: offset,
+            timestamp,
+        })
     }
 
     async fn append_stream_mapping_event(&self, name: String, number: StreamNr) -> Result<()> {

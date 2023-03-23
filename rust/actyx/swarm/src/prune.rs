@@ -155,15 +155,16 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
 
 #[cfg(test)]
 mod test {
-    use std::{collections::BTreeMap, sync::Arc};
+    use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
-    use actyx_sdk::{app_id, tags, AppId, Payload, StreamNr};
+    use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Payload, StreamNr};
     use ax_futures_util::prelude::AxStreamExt;
     use futures::{future, StreamExt};
     use maplit::btreemap;
+    use trees::query::TagExprQuery;
 
     use super::*;
-    use crate::{BanyanConfig, SwarmConfig};
+    use crate::{BanyanConfig, EventRoute, SwarmConfig};
     use acto::ActoRef;
     use parking_lot::Mutex;
 
@@ -172,7 +173,7 @@ mod test {
     }
 
     async fn create_store() -> anyhow::Result<BanyanStore> {
-        util::setup_logger();
+        // util::setup_logger();
         let cfg: SwarmConfig = SwarmConfig {
             node_name: Some("ephemeral".to_owned()),
             topic: "topic".into(),
@@ -187,6 +188,10 @@ mod test {
                 tree: banyan::Config::debug(),
                 ..Default::default()
             },
+            event_routes: vec![EventRoute::new(
+                TagExpr::from_str("'test'").unwrap(),
+                "test_stream".to_string(),
+            )],
             ..SwarmConfig::basic()
         };
         BanyanStore::new(cfg, ActoRef::blackhole()).await
@@ -202,12 +207,14 @@ mod test {
 
         Ok(store)
     }
-    async fn test_retain_count(events_to_retain: u64) -> anyhow::Result<()> {
+
+    async fn test_retain_count(events_to_retain: u64) {
+        tracing::error!("events to retain: {}", events_to_retain);
         let event_count = 1024;
         util::setup_logger();
-        let test_stream = 42.into();
+        let test_stream = StreamNr::from(1);
 
-        let store = publish_events(event_count).await?;
+        let store = publish_events(event_count).await.unwrap();
 
         let config = EphemeralEventsConfig {
             interval: Duration::from_micros(1),
@@ -216,34 +223,55 @@ mod test {
             },
         };
         let eph = super::prune(store.clone(), config);
-        let _ = tokio::time::timeout(Duration::from_micros(10), eph).await;
+        // Timeout is required because "prune" is an "always on" task
+        let _ = tokio::time::timeout(Duration::from_millis(10), eph).await;
 
+        let stream_id = store.node_id().stream(test_stream);
+        let query = OffsetQuery::from(0..);
         let round_tripped = store
-            .stream_filtered_chunked(
-                store.node_id().stream(test_stream),
-                0..=u64::MAX,
-                OffsetQuery::from(0..),
-            )
+            .stream_filtered_chunked(stream_id, 0..=u64::MAX, query)
+            // print the range of the chunk
             .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= event_count))
             .collect::<Vec<_>>()
             .await
             .into_iter()
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
         for chunk in round_tripped {
             if chunk.range.end < event_count.saturating_sub(events_to_retain) {
-                assert!(chunk.data.is_empty());
+                assert!(
+                    chunk.data.is_empty(),
+                    "Expected chunk data to be empty but it has data: {:?}",
+                    chunk.data
+                );
             } else {
-                assert_eq!(chunk.data.len(), chunk.range.count());
+                assert_eq!(
+                    chunk.data.len(),
+                    chunk.range.count(),
+                    "Expected the same range, data: {:?}",
+                    chunk.data
+                );
             }
         }
-        Ok(())
     }
 
-    async fn test_retain_size(max_size: u64) -> anyhow::Result<()> {
-        let upper_bound = 1024;
-        let test_stream = 42.into();
+    #[tokio::test]
+    async fn retain_count() {
+        test_retain_count(u64::MAX).await;
+        test_retain_count(1025).await;
+        test_retain_count(1024).await;
+        test_retain_count(1023).await;
+        test_retain_count(512).await;
+        test_retain_count(256).await;
+        test_retain_count(1).await;
+        test_retain_count(0).await;
+    }
 
-        let store = publish_events(upper_bound).await?;
+    async fn test_retain_size(max_size: u64) {
+        let upper_bound = 1024;
+        let test_stream = StreamNr::from(1);
+
+        let store = publish_events(upper_bound).await.unwrap();
 
         let config = EphemeralEventsConfig {
             interval: Duration::from_micros(1),
@@ -254,18 +282,16 @@ mod test {
         let eph = super::prune(store.clone(), config);
         let _ = tokio::time::timeout(Duration::from_micros(20), eph).await;
 
+        let query = OffsetQuery::from(0..);
         let round_tripped = store
-            .stream_filtered_chunked(
-                store.node_id().stream(test_stream),
-                0..=u64::MAX,
-                OffsetQuery::from(0..),
-            )
+            .stream_filtered_chunked(store.node_id().stream(test_stream), 0..=u64::MAX, query)
             .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= upper_bound))
             .collect::<Vec<_>>()
             .await
             .into_iter()
             .rev()
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
         let mut bytes = 0u64;
         for chunk in round_tripped {
             tracing::debug!(
@@ -283,7 +309,18 @@ mod test {
                 assert_eq!(chunk.data.len(), chunk.range.count());
             }
         }
-        Ok(())
+    }
+
+    #[tokio::test]
+    async fn retain_max_size() {
+        test_retain_size(u64::MAX).await;
+        test_retain_size(1025).await;
+        test_retain_size(1024).await;
+        test_retain_size(1023).await;
+        test_retain_size(512).await;
+        test_retain_size(256).await;
+        test_retain_size(1).await;
+        test_retain_size(0).await;
     }
 
     /// Publishes `event_count` events, and waits some time between each chunk.
@@ -306,14 +343,14 @@ mod test {
         Ok(store)
     }
 
-    async fn test_retain_age(percentage_to_keep: usize) -> anyhow::Result<()> {
+    async fn test_retain_age(percentage_to_keep: usize) {
         let event_count = 1024;
         let max_leaf_count = SwarmConfig::test("..").banyan_config.tree.max_leaf_count as usize;
         util::setup_logger();
-        let test_stream = 42.into();
+        let test_stream = StreamNr::from(0);
 
         let now = Timestamp::now();
-        let store = publish_events_chunked(test_stream, event_count, now).await?;
+        let store = publish_events_chunked(test_stream, event_count, now).await.unwrap();
 
         // Get actual timestamps from chunks
         let all_events = store
@@ -326,7 +363,8 @@ mod test {
             .collect::<Vec<_>>()
             .await
             .into_iter()
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
 
         let cut_off = {
             let first = all_events.first().map(|c| c.data.first().unwrap().1.time()).unwrap();
@@ -344,9 +382,9 @@ mod test {
         });
 
         // Test this fn directly in order to avoid messing around with the `SystemTime`
-        let stream = store.get_or_create_own_stream(test_stream)?;
+        let stream = store.get_or_create_own_stream(test_stream).unwrap();
         let mut guard = stream.lock().await;
-        super::retain_events_after(&store, &mut guard, cut_off)?;
+        super::retain_events_after(&store, &mut guard, cut_off).unwrap();
 
         let round_tripped = store
             .stream_filtered_chunked(
@@ -358,7 +396,8 @@ mod test {
             .collect::<Vec<_>>()
             .await
             .into_iter()
-            .collect::<Result<Vec<_>, _>>()?
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
             .into_iter()
             .flat_map(|chunk| chunk.data)
             .collect::<Vec<_>>();
@@ -373,43 +412,16 @@ mod test {
 
         assert_eq!(expected.len(), round_tripped.len());
         assert_eq!(expected, round_tripped);
-        Ok(())
     }
 
-    // #[tokio::test]
-    async fn retain_max_size() -> anyhow::Result<()> {
-        test_retain_size(u64::MAX).await?;
-        test_retain_size(1025).await?;
-        test_retain_size(1024).await?;
-        test_retain_size(1023).await?;
-        test_retain_size(512).await?;
-        test_retain_size(256).await?;
-        test_retain_size(1).await?;
-        test_retain_size(0).await?;
-        Ok(())
-    }
-
-    // #[tokio::test]
-    async fn retain_count() -> anyhow::Result<()> {
-        test_retain_count(u64::MAX).await?;
-        test_retain_count(1025).await?;
-        test_retain_count(1024).await?;
-        test_retain_count(1023).await?;
-        test_retain_count(512).await?;
-        test_retain_count(256).await?;
-        test_retain_count(1).await?;
-        test_retain_count(0).await?;
-        Ok(())
-    }
     #[tokio::test]
-    async fn retain_age() -> anyhow::Result<()> {
-        test_retain_age(0).await?;
-        test_retain_age(25).await?;
-        test_retain_age(50).await?;
-        test_retain_age(75).await?;
-        test_retain_age(99).await?;
-        test_retain_age(100).await?;
-        test_retain_age(200).await?;
-        Ok(())
+    async fn retain_age() {
+        test_retain_age(0).await;
+        test_retain_age(25).await;
+        test_retain_age(50).await;
+        test_retain_age(75).await;
+        test_retain_age(99).await;
+        test_retain_age(100).await;
+        test_retain_age(200).await;
     }
 }
