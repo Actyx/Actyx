@@ -1,7 +1,7 @@
 use super::{Component, ComponentRequest};
 use crate::{node_settings::Settings, BindTo};
 use acto::ActoRef;
-use actyx_sdk::{language::TagExpr, service::SwarmState, NodeId};
+use actyx_sdk::{service::SwarmState, NodeId};
 use anyhow::Result;
 use api::formats::Licensing;
 use api::NodeInfo;
@@ -11,7 +11,7 @@ use crypto::KeyStoreRef;
 use ipfs_embed::{Direction, PeerId};
 use libp2p::{multiaddr::Protocol, Multiaddr};
 use parking_lot::Mutex;
-use std::{convert::TryInto, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use std::{convert::TryInto, path::PathBuf, sync::Arc, time::Duration};
 use swarm::{
     blob_store::BlobStore,
     event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},

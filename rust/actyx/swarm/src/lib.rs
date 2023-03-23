@@ -50,9 +50,7 @@ use crate::gossip::Gossip;
 pub use crate::gossip_protocol::{GossipMessage, RootMap, RootUpdate};
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::streams::{OwnStream, PublishedTree, ReplicatedStream};
-use actyx_sdk::{
-    AppId, LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, Tag, TagSet, Timestamp,
-};
+use actyx_sdk::{AppId, LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, TagSet, Timestamp};
 use anyhow::{Context, Result};
 use ax_futures_util::{
     prelude::*,
