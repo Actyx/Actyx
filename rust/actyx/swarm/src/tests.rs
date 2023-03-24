@@ -117,8 +117,7 @@ async fn should_compact() {
         store.append(app_id(), chunk.to_vec()).await.unwrap();
     }
     let tree_after_append = last_item(&mut tree_stream).unwrap();
-    // NOTE: Since we started using push/extend instead of extend_unpacked, this is false
-    // assert!(!store.data.forest.is_packed(&tree_after_append).unwrap());
+    assert!(!store.data.forest.is_packed(&tree_after_append).unwrap());
 
     // get the events back
     let evs = store
@@ -171,9 +170,8 @@ async fn should_extend_packed_when_hitting_max_tree_depth() {
         store.append(app_id(), vec![ev]).await.unwrap();
     }
     let tree_after_append = last_item(&mut tree_stream).unwrap();
-    // NOTE: Since we started using push/extend instead of extend_unpacked, this is false
-    // assert!(!store.data.forest.is_packed(&tree_after_append).unwrap());
-    // assert_eq!(tree_after_append.level(), MAX_TREE_LEVEL);
+    assert!(!store.data.forest.is_packed(&tree_after_append).unwrap());
+    assert_eq!(tree_after_append.level(), MAX_TREE_LEVEL);
     assert_eq!(
         tree_after_append.offset(),
         Some(Offset::try_from((MAX_TREE_LEVEL - 1) as i64).unwrap())

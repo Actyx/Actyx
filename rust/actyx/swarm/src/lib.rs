@@ -1242,8 +1242,8 @@ impl BanyanStore {
     /// Append events to a stream, publishing the new data.
     pub async fn append(&self, app_id: AppId, events: Vec<(TagSet, Event)>) -> Result<Vec<PersistenceMeta>> {
         let timestamp = Timestamp::now();
-
         let mut event_metas = vec![];
+
         for (tag_set, payload) in events {
             // Lock must be obtained and dropped right after
             // The table can (BUT SHOULD NOT) be mutated in the meantime
@@ -1294,11 +1294,14 @@ impl BanyanStore {
         let scoped_app_id_tag = ScopedTag::new(trees::tags::TagScope::Internal, app_id_tag);
         let mut tags = ScopedTagSet::from(event.0);
         tags.insert(scoped_app_id_tag);
-        let key = AxKey::new(tags, lamport, timestamp);
+        let key_once = std::iter::once((AxKey::new(tags, lamport, timestamp), event.1));
         let offset = self
             .transform_stream(&mut guard, |transaction, tree| {
                 let snapshot = tree.snapshot();
-                transaction.push(tree, key, event.1)?;
+                transaction.extend_unpacked(tree, key_once)?;
+                if tree.level() > MAX_TREE_LEVEL {
+                    transaction.pack(tree)?;
+                }
                 Ok(snapshot.offset())
             })?
             .map(|o| o + 1)

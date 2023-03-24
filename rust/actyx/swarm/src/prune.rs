@@ -27,6 +27,7 @@ pub enum RetainConfig {
 fn retain_last_events(store: &BanyanStore, stream: &mut OwnStreamGuard<'_>, keep: u64) -> anyhow::Result<Option<Link>> {
     let stream_nr = stream.stream_nr();
     store.transform_stream(stream, |txn, tree| {
+        txn.pack(tree)?;
         let max = tree.count();
         let lower_bound = max.saturating_sub(keep);
         if lower_bound > 0 {
@@ -46,6 +47,7 @@ fn retain_events_after(
 ) -> anyhow::Result<Option<Link>> {
     let stream_nr = stream.stream_nr();
     store.transform_stream(stream, |txn, tree| {
+        txn.pack(tree)?;
         let query = TimeQuery::from(emit_after..);
         tracing::debug!("Prune events on {}; retain {:?}", stream_nr, query);
         txn.retain(tree, &query)
@@ -59,6 +61,9 @@ fn retain_events_up_to(
     target_bytes: u64,
 ) -> anyhow::Result<Option<Link>> {
     let stream_nr = stream.stream_nr();
+
+    store.transform_stream(stream, |txn, tree| txn.pack(tree))?;
+
     let emit_from = {
         let tree = stream.snapshot();
         let mut iter = store.data.forest.iter_index_reverse(&tree, banyan::query::AllQuery);
