@@ -701,7 +701,7 @@ mod tests {
         (node_id, EventService::new(event_store, node_id))
     }
 
-    async fn publish(service: &EventService, stream: u64, tags: TagSet, data: u32) -> PublishResponseKey {
+    async fn publish(service: &EventService, tags: TagSet, data: u32) -> PublishResponseKey {
         let d = service
             .publish(
                 app_id!("me"),
@@ -801,7 +801,7 @@ mod tests {
                     .unwrap();
                     let (node_id, service) = setup(&store);
 
-                    let _pub0 = publish(&service, 0, tags!("b"), 0).await;
+                    let _pub0 = publish(&service, tags!("b"), 0).await;
 
                     let present = service.offsets().await.unwrap().present;
                     let mut lower_bound = present.clone();
@@ -822,9 +822,9 @@ mod tests {
 
                     // this event shall not be delivered, even though it is “newer than present”
                     // because lower_bound contains it
-                    let _pub1 = publish(&service, 1, tags!("a"), 1).await;
+                    let _pub1 = publish(&service, tags!("a"), 1).await;
                     // but this is fine
-                    let pub2 = publish(&service, 1, tags!("a"), 2).await;
+                    let pub2 = publish(&service, tags!("a"), 2).await;
                     assert_eq!(stream.next().await, Some(evr(pub2, tags!("a"), 2)));
                 })
                 .await
@@ -841,9 +841,9 @@ mod tests {
                     let store = BanyanStore::test("limit").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
-                    publish(&service, 0, tags!("a"), 1).await;
-                    publish(&service, 0, tags!("a"), 2).await;
-                    publish(&service, 0, tags!("a"), 3).await;
+                    publish(&service, tags!("a"), 1).await;
+                    publish(&service, tags!("a"), 2).await;
+                    publish(&service, tags!("a"), 3).await;
 
                     assert_eq!(
                         query(
@@ -910,9 +910,9 @@ mod tests {
                     let store = BanyanStore::test("lower_bound").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
-                    publish(&service, 0, tags!("a"), 1).await;
-                    publish(&service, 0, tags!("a"), 2).await;
-                    publish(&service, 0, tags!("a"), 3).await;
+                    publish(&service, tags!("a"), 1).await;
+                    publish(&service, tags!("a"), 2).await;
+                    publish(&service, tags!("a"), 3).await;
 
                     assert_eq!(
                         query(
@@ -937,9 +937,9 @@ mod tests {
                     let store = BanyanStore::test("lower_bound").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
-                    publish(&service, 0, tags!("a", "b"), 1).await;
-                    publish(&service, 0, tags!("a", "b"), 2).await;
-                    publish(&service, 0, tags!("a", "b"), 3).await;
+                    publish(&service, tags!("a", "b"), 1).await;
+                    publish(&service, tags!("a", "b"), 2).await;
+                    publish(&service, tags!("a", "b"), 3).await;
 
                     assert_eq!(
                         query(
@@ -966,9 +966,9 @@ mod tests {
                     let store = BanyanStore::test("lower_bound").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
-                    publish(&service, 0, tags!("a1"), 2).await;
-                    publish(&service, 0, tags!("a2"), 3).await;
-                    publish(&service, 0, tags!("a3"), 1).await;
+                    publish(&service, tags!("a1"), 2).await;
+                    publish(&service, tags!("a2"), 3).await;
+                    publish(&service, tags!("a3"), 1).await;
 
                     assert_eq!(
                         query(
@@ -1010,9 +1010,9 @@ ENDPRAGMA
                     let store = BanyanStore::test("from_array").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
-                    publish(&service, 0, tags!("a1", "b"), 2).await;
-                    publish(&service, 0, tags!("a2", "b"), 3).await;
-                    publish(&service, 0, tags!("a3", "b"), 1).await;
+                    publish(&service, tags!("a1", "b"), 2).await;
+                    publish(&service, tags!("a2", "b"), 3).await;
+                    publish(&service, tags!("a3", "b"), 1).await;
 
                     assert_eq!(
                         query(
@@ -1114,11 +1114,11 @@ ENDPRAGMA
                             },
                         }
                     }
-                    let pub1 = publish(&service, 0, tags!("a1"), 2).await;
+                    let pub1 = publish(&service, tags!("a1"), 2).await;
                     let meta1 = meta(pub1, "a1");
-                    let pub2 = publish(&service, 0, tags!("a2"), 3).await;
+                    let pub2 = publish(&service, tags!("a2"), 3).await;
                     let meta2 = meta(pub2, "a2");
-                    let pub3 = publish(&service, 0, tags!("a3"), 1).await;
+                    let pub3 = publish(&service, tags!("a3"), 1).await;
                     let meta3 = meta(pub3, "a3");
 
                     fn ev<'a>(m: impl IntoIterator<Item = &'a EventMeta>, payload: u64) -> EventResponse<u64> {
@@ -1246,11 +1246,11 @@ ENDPRAGMA
                         )
                     }
 
-                    let pub1 = publish(&service, 0, tags!("a1", "b"), 2).await;
+                    let pub1 = publish(&service, tags!("a1", "b"), 2).await;
                     let meta1 = meta(pub1, "a1");
-                    let pub2 = publish(&service, 0, tags!("a2"), 3).await;
+                    let pub2 = publish(&service, tags!("a2"), 3).await;
                     let meta2 = meta(pub2, "a2");
-                    let pub3 = publish(&service, 0, tags!("a3"), 1).await;
+                    let pub3 = publish(&service, tags!("a3"), 1).await;
                     let meta3 = meta(pub3, "a3");
 
                     let mut node_bytes = String::from("[");
@@ -1320,8 +1320,8 @@ ENDPRAGMA
             let store = BanyanStore::test("subscribe_aggregate").await.unwrap();
             let (_node_id, service) = setup(&store);
 
-            publish(&service, 0, tags!("b"), 1).await;
-            publish(&service, 0, tags!("b"), 2).await;
+            publish(&service, tags!("b"), 1).await;
+            publish(&service, tags!("b"), 2).await;
 
             let mut q1 = service
                 .subscribe(
@@ -1368,19 +1368,19 @@ ENDPRAGMA
             assert_eq!(SResp::next(q3.as_mut()).await, SResp::diag("Warning no value added"));
             assert_eq!(SResp::next(q3.as_mut()).await, SResp::Offsets(btreemap! {0 => 2}));
 
-            publish(&service, 0, tags!("a"), 2).await;
+            publish(&service, tags!("a"), 2).await;
             assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("2-0 2"));
             assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("3-0 2"));
             assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("3-0 2"));
             assert_eq!(SResp::next(q3.as_mut()).await, SResp::event("synthetic: 1"));
 
-            publish(&service, 0, tags!("a"), 3).await;
+            publish(&service, tags!("a"), 3).await;
             assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("3-0 2"));
             assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("4-0 3"));
             assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("3-0 2"));
             assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("4-0 3"));
 
-            publish(&service, 0, tags!("a"), 4).await;
+            publish(&service, tags!("a"), 4).await;
             assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("4-0 3"));
             assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("5-0 4"));
             assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("4-0 3"));
@@ -1400,7 +1400,7 @@ ENDPRAGMA
             let store = BanyanStore::test("subscribe_aggregate").await.unwrap();
             let (_node_id, service) = setup(&store);
 
-            publish(&service, 0, tags!("b"), 1).await;
+            publish(&service, tags!("b"), 1).await;
 
             let mut q = service
                 .subscribe(
@@ -1421,16 +1421,16 @@ ENDPRAGMA
             assert_eq!(SResp::next(q.as_mut()).await, SResp::event("1-0 1"));
             assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
 
-            publish(&service, 0, tags!("b"), 2).await;
+            publish(&service, tags!("b"), 2).await;
             assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("1-0 1"));
             assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-0 2"));
 
-            publish(&service, 0, tags!("b"), 3).await;
+            publish(&service, tags!("b"), 3).await;
             assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-0 2"));
             assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 3"));
             assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 3"));
 
-            publish(&service, 0, tags!("b"), 4).await;
+            publish(&service, tags!("b"), 4).await;
             assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("3-0 3"));
             assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("3-0 3"));
             assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 4"));
@@ -1451,7 +1451,7 @@ ENDPRAGMA
             let store = BanyanStore::test("subscribe_aggregate").await.unwrap();
             let (_node_id, service) = setup(&store);
 
-            publish(&service, 0, tags!("b"), 1).await;
+            publish(&service, tags!("b"), 1).await;
 
             let mut q = service
                 .subscribe(
@@ -1471,14 +1471,14 @@ ENDPRAGMA
             assert_eq!(SResp::next(q.as_mut()).await, SResp::event("1-0 1"));
             assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
 
-            publish(&service, 0, tags!("b"), 2).await;
+            publish(&service, tags!("b"), 2).await;
             assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("1-0 1"));
             assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-0 2"));
 
-            publish(&service, 0, tags!("b"), 3).await;
+            publish(&service, tags!("b"), 3).await;
             assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-0 2"));
 
-            publish(&service, 0, tags!("b"), 1).await;
+            publish(&service, tags!("b"), 1).await;
             assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 1"));
         };
         Runtime::new()
@@ -1493,7 +1493,7 @@ ENDPRAGMA
             let store = BanyanStore::test("subscribe_aggregate").await.unwrap();
             let (_node_id, service) = setup(&store);
 
-            publish(&service, 0, tags!("b"), 1).await;
+            publish(&service, tags!("b"), 1).await;
 
             let mut q = service
                 .subscribe(
@@ -1513,7 +1513,7 @@ ENDPRAGMA
             assert_eq!(SResp::next(q.as_mut()).await, SResp::event("synthetic: 3"));
             assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
 
-            publish(&service, 0, tags!("b"), 2).await;
+            publish(&service, tags!("b"), 2).await;
             assert_eq!(
                 SResp::next(q.as_mut()).await,
                 SResp::diag("Error anti-input cannot be processed in MAX()")
