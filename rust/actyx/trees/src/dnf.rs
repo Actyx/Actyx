@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use actyx_sdk::language::{self, TagAtom};
 
 // invariant: none of the sets are ever empty
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Dnf(pub BTreeSet<BTreeSet<language::TagAtom>>);
 
 impl Dnf {
