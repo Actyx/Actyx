@@ -166,7 +166,6 @@ mod test {
     use ax_futures_util::prelude::AxStreamExt;
     use futures::{future, StreamExt};
     use maplit::btreemap;
-    use trees::query::TagExprQuery;
 
     use super::*;
     use crate::{BanyanConfig, EventRoute, SwarmConfig};

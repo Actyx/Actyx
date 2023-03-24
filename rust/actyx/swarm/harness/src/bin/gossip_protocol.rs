@@ -31,7 +31,7 @@ fn main() -> anyhow::Result<()> {
             .collect();
 
         let (first, rest) = sim.machines_mut().split_first_mut().unwrap();
-        first.send(Command::Append(0.into(), events));
+        first.send(Command::Append(events));
 
         let start = Instant::now();
         for m in rest.iter_mut() {

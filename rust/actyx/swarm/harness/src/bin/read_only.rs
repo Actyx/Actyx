@@ -60,13 +60,10 @@ fn main() -> anyhow::Result<()> {
         }
 
         for machine in sim.machines_mut() {
-            machine.send(Command::Append(
-                0.into(),
-                vec![(
-                    tags!("a"),
-                    Payload::from_json_str(&format!("\"{}\"", machine.peer_id())).unwrap(),
-                )],
-            ));
+            machine.send(Command::Append(vec![(
+                tags!("a"),
+                Payload::from_json_str(&format!("\"{}\"", machine.peer_id())).unwrap(),
+            )]));
         }
 
         let gossip_per_peer: Arc<Mutex<BTreeMap<_, usize>>> = Default::default();
