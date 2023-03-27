@@ -73,7 +73,6 @@ impl NodeStorage {
 
     pub fn migrate(conn: &mut Connection, version: u32) -> anyhow::Result<()> {
         match version {
-            0 | 1 => Self::migrate_v1(version, conn),
             2 => Ok(conn.execute_batch(
                 "DROP TABLE IF EXISTS meta;
                     DROP TABLE IF EXISTS streams;
@@ -82,12 +81,6 @@ impl NodeStorage {
             CURRENT_VERSION => Ok(()),
             _ => unreachable!(),
         }
-    }
-
-    fn migrate_v1(_version: u32, _conn: &mut Connection) -> anyhow::Result<()> {
-        Err(anyhow::anyhow!(
-            "migration from ActyxOS v1 was deprecated in version ..., please use version ... to migrate"
-        ))
     }
 
     fn initialize_db(conn: &mut Connection) -> anyhow::Result<()> {

@@ -80,7 +80,9 @@ pub fn migrate_if_necessary(working_dir: impl AsRef<Path>) -> anyhow::Result<()>
         // check the db version
         let db_version = get_node_version(&node_db)?;
         match db_version {
-            0 | 1 => anyhow::bail!("Migrating from versions 0.x and 1.x was deprecated"),
+            0 | 1 => {
+                anyhow::bail!("Migrating from versions 0.x and 1.x is only possible in Actyx versions up to 2.15.0")
+            }
             2 => {
                 tracing::info!(target:"MIGRATION", "Migrating data from an earlier version (2 to 3) ..");
                 tracing::debug!("Opening database {}", node_db.display());
