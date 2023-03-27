@@ -9,6 +9,7 @@
 //! ## BanyanStoreGuard
 //! temporary struct that is created when acquiring mutable access to the state.
 //! inside this you have mutable access to the state - but if you lock again you will deadlock.
+#![deny(clippy::future_not_send)]
 pub mod blob_store;
 pub mod convert;
 mod discovery;
@@ -932,9 +933,12 @@ impl BanyanStore {
         banyan.validate_known_streams().await?;
 
         let routing_table_span = tracing::debug_span!("Initializing routing table.");
+        let routing_table_span_entered = routing_table_span.enter();
         let mut routing_table = RoutingTable::default();
 
+        drop(routing_table_span_entered);
         let mappings = banyan.get_published_mappings(node_id).await?; // LOCK INSIDE
+        let routing_table_span_entered = routing_table_span.enter();
         for (name, nr) in mappings {
             routing_table.add_stream(name, nr.into())?;
         }
@@ -962,12 +966,15 @@ impl BanyanStore {
             streams
         };
 
+        drop(routing_table_span_entered);
         for (name, number) in unpublished_streams {
             banyan.append_stream_mapping_event(name, number).await?;
         }
+        let routing_table_span_entered = routing_table_span.enter();
 
         banyan.lock().guard.event_routing_table = Some(routing_table);
         tracing::debug!("Finished setting up routing.");
+        drop(routing_table_span_entered);
         drop(routing_table_span);
 
         tracing::info!("starting maintenance tasks");

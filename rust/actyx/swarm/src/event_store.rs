@@ -547,6 +547,7 @@ mod tests {
             .await
             .unwrap();
 
+        #[allow(clippy::future_not_send)]
         async fn assert_unbounded<'a>(
             node_id: NodeId,
             stream: impl Stream<Item = Event<Payload>> + 'static,
