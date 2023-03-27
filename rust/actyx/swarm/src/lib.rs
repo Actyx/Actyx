@@ -10,7 +10,6 @@
 //! temporary struct that is created when acquiring mutable access to the state.
 //! inside this you have mutable access to the state - but if you lock again you will deadlock.
 pub mod blob_store;
-pub mod convert;
 mod discovery;
 pub mod event_store;
 pub mod event_store_ref;
