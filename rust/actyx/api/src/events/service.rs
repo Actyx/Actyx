@@ -93,14 +93,14 @@ impl EventService {
 
     pub async fn query(
         &self,
-        _app_id: AppId,
+        app_id: AppId,
         request: QueryRequest,
     ) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
         let query = language::Query::parse(&request.query).map_err(|e| ApiError::BadRequest {
             cause: format!("{:#}", e),
         })?;
 
-        let (query, pragmas) = Query::from(query);
+        let (query, pragmas) = Query::from(query, app_id);
         let features = Features::from_query(&query);
         let enabled = query.enabled_features(&pragmas);
         features.validate(&enabled, Endpoint::Query)?;
@@ -253,12 +253,14 @@ impl EventService {
 
     pub async fn subscribe(
         &self,
-        _app_id: AppId,
+        app_id: AppId,
         request: SubscribeRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
         let query = language::Query::parse(&request.query).map_err(|e| ApiError::BadRequest {
             cause: format!("{:#}", e),
         })?;
+
+        let (query, pragmas) = Query::from(query, app_id);
         let tag_expr = match &query.source {
             language::Source::Events { from, .. } => from.clone(),
             language::Source::Array(_) => {
@@ -272,7 +274,6 @@ impl EventService {
         let present = self.store.offsets().await?.present();
         let mut lower_bound = request.lower_bound.unwrap_or_default();
 
-        let (query, pragmas) = Query::from(query);
         let features = Features::from_query(&query);
         let enabled = query.enabled_features(&pragmas);
         features.validate(&enabled, Endpoint::Subscribe)?;
@@ -380,12 +381,14 @@ impl EventService {
 
     pub async fn subscribe_monotonic(
         &self,
-        _app_id: AppId,
+        app_id: AppId,
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
         let query = language::Query::parse(&request.query).map_err(|e| ApiError::BadRequest {
             cause: format!("{:#}", e),
         })?;
+
+        let (query, pragmas) = Query::from(query, app_id);
         let tag_expr = match &query.source {
             language::Source::Events { from, .. } => from.clone(),
             language::Source::Array(_) => {
@@ -402,7 +405,6 @@ impl EventService {
         let mut present = self.store.offsets().await?.present();
         present.union_with(&lower_bound);
 
-        let (query, pragmas) = Query::from(query);
         let features = Features::from_query(&query);
         let enabled = query.enabled_features(&pragmas);
         features.validate(&enabled, Endpoint::SubscribeMonotonic)?;
@@ -621,7 +623,7 @@ mod tests {
     use super::*;
     use actyx_sdk::{
         app_id,
-        service::{EventMeta, EventResponse},
+        service::{EventMeta, EventResponse, SessionId},
         tags, Metadata, Offset, StreamId, TagSet,
     };
     use futures::Stream;
@@ -710,7 +712,7 @@ mod tests {
     async fn publish(service: &EventService, stream: u64, tags: TagSet, data: u32) -> PublishResponseKey {
         let d = service
             .publish(
-                app_id!("me"),
+                app_id!("test"),
                 stream.into(),
                 PublishRequest {
                     data: vec![evp(tags, data)],
@@ -739,7 +741,7 @@ mod tests {
                 meta: Metadata {
                     timestamp: publ.timestamp,
                     tags,
-                    app_id: app_id!("me"),
+                    app_id: app_id!("test"),
                 },
             },
             payload: Payload::from_json_str(&format!("{:?}", n)).unwrap(),
@@ -751,7 +753,7 @@ mod tests {
     async fn query(service: &EventService, q: &str) -> Vec<String> {
         service
             .query(
-                app_id!("me"),
+                app_id!("test"),
                 QueryRequest {
                     lower_bound: None,
                     upper_bound: None,
@@ -770,10 +772,55 @@ mod tests {
             .collect()
             .await
     }
+    async fn subscribe(service: &EventService, q: &str) -> Vec<String> {
+        service
+            .subscribe(
+                app_id!("test"),
+                SubscribeRequest {
+                    lower_bound: None,
+                    query: q.to_owned(),
+                },
+            )
+            .await
+            .unwrap()
+            .take_while(|x| ready(!matches!(x, SubscribeResponse::Offsets(_))))
+            .map(|x| match x {
+                SubscribeResponse::Event(e) => e.payload.json_string(),
+                SubscribeResponse::AntiEvent(e) => format!("-{}", e.payload.json_string()),
+                SubscribeResponse::Offsets(_) => "offsets".to_owned(),
+                SubscribeResponse::Diagnostic(d) => d.message,
+                SubscribeResponse::FutureCompat => unreachable!(),
+            })
+            .collect()
+            .await
+    }
+    async fn subscribe_monotonic(service: &EventService, q: &str) -> Vec<String> {
+        service
+            .subscribe_monotonic(
+                app_id!("test"),
+                SubscribeMonotonicRequest {
+                    query: q.to_owned(),
+                    session: SessionId::from("wat"),
+                    from: StartFrom::LowerBound(OffsetMap::empty()),
+                },
+            )
+            .await
+            .unwrap()
+            .take_while(|x| ready(!matches!(x, SubscribeMonotonicResponse::Offsets(_))))
+            .map(|x| match x {
+                SubscribeMonotonicResponse::Event { event, .. } => event.payload.json_string(),
+                SubscribeMonotonicResponse::Offsets(_) => "offsets".to_owned(),
+                SubscribeMonotonicResponse::TimeTravel { .. } => "timeTravel".to_owned(),
+                SubscribeMonotonicResponse::Diagnostic(d) => d.message,
+                SubscribeMonotonicResponse::FutureCompat => unreachable!(),
+            })
+            .collect()
+            .await
+    }
     async fn values(service: &EventService, q: &str) -> Vec<EventResponse<u64>> {
         service
             .query(
-                app_id!("me"),
+                app_id!("test"),
                 QueryRequest {
                     lower_bound: None,
                     upper_bound: None,
@@ -807,7 +854,7 @@ mod tests {
 
                     let mut stream = service
                         .subscribe(
-                            app_id!("me"),
+                            app_id!("test"),
                             SubscribeRequest {
                                 lower_bound: Some(lower_bound.clone()),
                                 query: "FROM allEvents".to_owned(),
@@ -1108,7 +1155,7 @@ ENDPRAGMA
                             meta: Metadata {
                                 timestamp: publ.timestamp,
                                 tags: TagSet::from([t.try_into().unwrap()].as_slice()),
-                                app_id: app_id!("me"),
+                                app_id: app_id!("test"),
                             },
                         }
                     }
@@ -1239,7 +1286,7 @@ ENDPRAGMA
                             Metadata {
                                 timestamp: publ.timestamp,
                                 tags: TagSet::from([t.try_into().unwrap()].as_slice()),
-                                app_id: app_id!("me"),
+                                app_id: app_id!("test"),
                             },
                         )
                     }
@@ -1323,7 +1370,7 @@ ENDPRAGMA
 
             let mut q1 = service
                 .subscribe(
-                    app_id!("me"),
+                    app_id!("test"),
                     SubscribeRequest {
                         lower_bound: None,
                         query: "PRAGMA features := aggregate
@@ -1402,7 +1449,7 @@ ENDPRAGMA
 
             let mut q = service
                 .subscribe(
-                    app_id!("me"),
+                    app_id!("test"),
                     SubscribeRequest {
                         lower_bound: None,
                         query: "PRAGMA features := aggregate spread
@@ -1453,7 +1500,7 @@ ENDPRAGMA
 
             let mut q = service
                 .subscribe(
-                    app_id!("me"),
+                    app_id!("test"),
                     SubscribeRequest {
                         lower_bound: None,
                         query: "PRAGMA features := aggregate spread
@@ -1495,7 +1542,7 @@ ENDPRAGMA
 
             let mut q = service
                 .subscribe(
-                    app_id!("me"),
+                    app_id!("test"),
                     SubscribeRequest {
                         lower_bound: None,
                         query: "PRAGMA features := aggregate spread
@@ -1517,6 +1564,24 @@ ENDPRAGMA
                 SResp::diag("Error anti-input cannot be processed in MAX()")
             );
             assert_eq!(timeout(Duration::from_millis(300), q.next()).await.unwrap(), None);
+        };
+        Runtime::new()
+            .unwrap()
+            .block_on(async { timeout(Duration::from_secs(10), f).await })
+            .unwrap();
+    }
+
+    #[test]
+    fn app_id_me() {
+        let f = async {
+            let store = BanyanStore::test("subscribe_aggregate").await.unwrap();
+            let (_node_id, service) = setup(&store);
+
+            publish(&service, 0, tags!(), 42).await;
+
+            assert_eq!(query(&service, "FROM appId(me)").await, vec!["42", "offsets"]);
+            assert_eq!(subscribe(&service, "FROM appId(me)").await, vec!["42"]);
+            assert_eq!(subscribe_monotonic(&service, "FROM appId(me)").await, vec!["42"]);
         };
         Runtime::new()
             .unwrap()

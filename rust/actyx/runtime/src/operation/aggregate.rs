@@ -424,7 +424,7 @@ mod tests {
 
     fn a(s: &str) -> Box<dyn Processor> {
         let s = format!("FROM 'x' AGGREGATE {}", s);
-        let q = Query::from(language::Query::parse(&s).unwrap()).0;
+        let q = Query::from(language::Query::parse(&s).unwrap(), app_id!("com.actyx.test")).0;
         match q.stages.into_iter().next().unwrap() {
             Operation::Aggregate(a) => aggregate(&a),
             _ => panic!(),

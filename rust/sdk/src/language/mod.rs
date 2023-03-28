@@ -80,6 +80,17 @@ impl TagExpr {
     pub fn or(self, other: TagExpr) -> Self {
         TagExpr::Or(Arc::new((self, other)))
     }
+    /// considers two TagExpr the same if
+    /// - they are and/or combined and use the same Arc allocation
+    /// - they are equal TagAtoms
+    pub fn ptr_eq(&self, other: &TagExpr) -> bool {
+        match (self, other) {
+            (TagExpr::Or(l), TagExpr::Or(r)) => Arc::ptr_eq(l, r),
+            (TagExpr::And(l), TagExpr::And(r)) => Arc::ptr_eq(l, r),
+            (TagExpr::Atom(l), TagExpr::Atom(r)) => l == r,
+            _ => false,
+        }
+    }
 }
 
 impl std::fmt::Display for TagExpr {

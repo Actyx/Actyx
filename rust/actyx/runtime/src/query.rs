@@ -4,11 +4,13 @@ use crate::{
     value::Value,
 };
 use actyx_sdk::{
-    language::{self, Arr},
+    language::{self, Arr, Source, TagAtom, TagExpr},
     service::Order,
+    AppId,
 };
 use ax_futures_util::ReceiverExt;
 use futures::{stream, StreamExt};
+use std::sync::Arc;
 
 pub struct Pragmas<'a>(Vec<(&'a str, &'a str)>);
 
@@ -31,10 +33,10 @@ pub struct Query {
 }
 
 impl Query {
-    pub fn from(q: language::Query<'_>) -> (Self, Pragmas<'_>) {
+    pub fn from(q: language::Query<'_>, app_id: AppId) -> (Self, Pragmas<'_>) {
         let pragmas = Pragmas(q.pragmas);
         let stages = q.ops.into_iter().map(Operation::from).collect();
-        let source = q.source;
+        let source = rewrite_source(&q.source, app_id);
         let features = q.features;
         (
             Self {
@@ -135,6 +137,51 @@ impl Query {
     }
 }
 
+/// replace appId(me) with the caller’s appId
+fn rewrite_source(source: &Source, app_id: AppId) -> Source {
+    fn rec(expr: &TagExpr, app_id: &AppId) -> TagExpr {
+        match expr {
+            TagExpr::Or(x) => {
+                let l = rec(&x.0, app_id);
+                let r = rec(&x.1, app_id);
+                if l.ptr_eq(&x.0) && r.ptr_eq(&x.1) {
+                    TagExpr::Or(x.clone())
+                } else {
+                    TagExpr::Or(Arc::new((l, r)))
+                }
+            }
+            TagExpr::And(x) => {
+                let l = rec(&x.0, app_id);
+                let r = rec(&x.1, app_id);
+                if l.ptr_eq(&x.0) && r.ptr_eq(&x.1) {
+                    TagExpr::And(x.clone())
+                } else {
+                    TagExpr::And(Arc::new((l, r)))
+                }
+            }
+            TagExpr::Atom(a) => {
+                if let TagAtom::AppId(id) = a {
+                    if &**id == "me" {
+                        TagExpr::Atom(TagAtom::AppId(app_id.clone()))
+                    } else {
+                        TagExpr::Atom(a.clone())
+                    }
+                } else {
+                    TagExpr::Atom(a.clone())
+                }
+            }
+        }
+    }
+    if let Source::Events { from, order } = source {
+        Source::Events {
+            from: rec(from, &app_id),
+            order: *order,
+        }
+    } else {
+        source.clone()
+    }
+}
+
 pub struct Feeder {
     is_done: bool,
     processors: Vec<Box<dyn Processor>>,
@@ -210,7 +257,7 @@ impl Feeder {
 mod tests {
     use super::*;
     use crate::eval::RootContext;
-    use actyx_sdk::OffsetMap;
+    use actyx_sdk::{app_id, OffsetMap};
     use swarm::event_store_ref::EventStoreRef;
 
     fn store() -> EventStoreRef {
@@ -220,7 +267,9 @@ mod tests {
         Context::root(order, store(), OffsetMap::empty(), OffsetMap::empty())
     }
     fn feeder(q: &str) -> Feeder {
-        Query::from(language::Query::parse(q).unwrap()).0.make_feeder()
+        Query::from(language::Query::parse(q).unwrap(), app_id!("com.actyx.test"))
+            .0
+            .make_feeder()
     }
 
     async fn feed(q: &str, v: &str) -> Vec<String> {
