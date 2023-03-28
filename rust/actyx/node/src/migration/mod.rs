@@ -96,3 +96,12 @@ pub fn migrate_if_necessary(working_dir: impl AsRef<Path>) -> anyhow::Result<()>
     }
     Ok(())
 }
+
+#[test]
+fn test_migrate_if_necessary_fails_on_1_x() {
+    let result = migrate_if_necessary("tests/migration-test-data/1.0.0").unwrap_err();
+    let result_msg = result.to_string();
+    let expected_msg =
+        "Migrating from versions 0.x and 1.x is only possible in Actyx versions up to 2.15.0".to_string();
+    assert_eq!(result_msg, expected_msg);
+}
