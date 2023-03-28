@@ -287,7 +287,7 @@ impl SwarmConfig {
                 ..Default::default()
             },
             event_routes: routes,
-            ..SwarmConfig::basic()
+            ..SwarmConfig::test(node_name)
         }
     }
 }
@@ -1915,7 +1915,7 @@ impl RoutingTable {
     /// Add a new stream to the routing table. Returns the allocated stream number.
     fn add_stream(&mut self, stream: String, stream_nr: Option<StreamNr>) -> Result<Option<StreamNr>> {
         if let Some(stream_nr) = stream_nr {
-            tracing::trace!(
+            tracing::debug!(
                 "Adding stream \"{}\" as #{:?} to the routing table",
                 stream,
                 u64::from(stream_nr)
@@ -2048,13 +2048,14 @@ mod test_routing_table {
         let mut table = RoutingTable::default();
         table.add_route(TagExpr::from_str("'test_1'").unwrap(), "stream_1".to_string());
         table.add_route(TagExpr::from_str("'test_2'").unwrap(), "stream_2".to_string());
+        table.add_route(TagExpr::from_str("allEvents").unwrap(), "default".to_string());
         assert_eq!(
             table.get_matching_stream_nr(&tags!("test_1"), &internal_app_id()),
-            StreamNr::from(0)
+            StreamNr::from(1)
         );
         assert_eq!(
             table.get_matching_stream_nr(&tags!("test_2"), &internal_app_id()),
-            StreamNr::from(1)
+            StreamNr::from(2)
         );
         assert_eq!(
             table.get_matching_stream_nr(&tags!("non_existing_tag"), &internal_app_id()),
@@ -2073,4 +2074,54 @@ mod test_routing_table {
             StreamNr::from(1)
         );
     }
+
+    #[test]
+    fn get_matching_stream_nr_with_expressions() {
+        let mut table = RoutingTable::default();
+        table.add_route(
+            TagExpr::from_str("'test_0' & 'test_1'").unwrap(),
+            "stream_0-0_1".to_string(),
+        );
+        table.add_route(
+            TagExpr::from_str("'test_2' ∧ 'test_3'").unwrap(),
+            "stream_1-2_3".to_string(),
+        );
+        table.add_route(
+            TagExpr::from_str("'test_4' | 'test_5'").unwrap(),
+            "stream_2-4_5".to_string(),
+        );
+        table.add_route(
+            TagExpr::from_str("'test_6' ∨ 'test_7'").unwrap(),
+            "stream_3-6_7".to_string(),
+        );
+        assert_eq!(
+            table.get_matching_stream_nr(&tags!("test_0", "test_1"), &internal_app_id()),
+            StreamNr::from(0)
+        );
+        assert_eq!(
+            table.get_matching_stream_nr(&tags!("test_2", "test_3"), &internal_app_id()),
+            StreamNr::from(1)
+        );
+        assert_eq!(
+            table.get_matching_stream_nr(&tags!("test_4"), &internal_app_id()),
+            StreamNr::from(2)
+        );
+        assert_eq!(
+            table.get_matching_stream_nr(&tags!("test_5"), &internal_app_id()),
+            StreamNr::from(2)
+        );
+        assert_eq!(
+            table.get_matching_stream_nr(&tags!("test_6"), &internal_app_id()),
+            StreamNr::from(3)
+        );
+        assert_eq!(
+            table.get_matching_stream_nr(&tags!("test_7"), &internal_app_id()),
+            StreamNr::from(3)
+        );
+    }
+}
+
+#[test]
+fn enforce_default_stream_nr_to_be_zero() {
+    assert_eq!(StreamNr::default(), StreamNr::from(DEFAULT_STREAM_NR));
 }
