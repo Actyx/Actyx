@@ -177,7 +177,7 @@ mod test {
     }
 
     async fn create_store() -> anyhow::Result<BanyanStore> {
-        // util::setup_logger();
+        util::setup_logger();
         let cfg: SwarmConfig = SwarmConfig {
             node_name: Some("ephemeral".to_owned()),
             topic: "topic".into(),
@@ -228,13 +228,12 @@ mod test {
         };
         let eph = super::prune(store.clone(), config);
         // Timeout is required because "prune" is an "always on" task
-        let _ = tokio::time::timeout(Duration::from_millis(10), eph).await;
+        let _ = tokio::time::timeout(Duration::from_micros(10), eph).await;
 
         let stream_id = store.node_id().stream(test_stream);
         let query = OffsetQuery::from(0..);
         let round_tripped = store
             .stream_filtered_chunked(stream_id, 0..=u64::MAX, query)
-            // print the range of the chunk
             .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= event_count))
             .collect::<Vec<_>>()
             .await
