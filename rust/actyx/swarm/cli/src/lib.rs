@@ -195,9 +195,7 @@ impl std::str::FromStr for Command {
             }
             Some(">query") => Self::SubscribeQuery(Query::parse(s.split_at(7).1)?.forget_pragmas()),
             Some(">append") => {
-                let s = s.split_at(8).1;
-                let mut iter = s.splitn(2, ' ');
-                let events = serde_json::from_str(iter.next().unwrap())?;
+                let events = serde_json::from_str(s.split_at(8).1).unwrap();
                 Self::Append(events)
             }
             Some(">api-port") => Self::ApiPort,
