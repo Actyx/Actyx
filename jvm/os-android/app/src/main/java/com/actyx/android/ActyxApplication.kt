@@ -12,23 +12,6 @@ import kotlin.system.exitProcess
 class ActyxApplication : Application() {
   private lateinit var log: Logger
 
-  fun migrateFromV1(): Boolean {
-    // Asserting that a file exists works even without `android.permission.READ_EXTERNAL_STORAGE`
-    val v1bundle =
-      File(Environment.getExternalStorageDirectory(), V1MigrationActivity.V1BundleFileName).exists()
-    val dataDirPopulated = File(baseContext.getExternalFilesDir(null), "node.sqlite").exists()
-
-    if (!dataDirPopulated && v1bundle) {
-      log.info("Found ActyxOS v1")
-      val intent = Intent(this, V1MigrationActivity::class.java)
-      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-      startActivity(intent)
-      return true
-    } else {
-      return false
-    }
-  }
-
   override fun onCreate() {
     super.onCreate()
     // calling getExternalFilesDir also creates it making sure logback can write there
@@ -40,14 +23,6 @@ class ActyxApplication : Application() {
     Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
       log.error("Unhandled exception thrown from thread $thread", throwable)
       exitProcess(2)
-    }
-
-    if (!migrateFromV1()) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-          startForegroundService(Intent(this, AxNodeService::class.java))
-        } else {
-          startService(Intent(this, AxNodeService::class.java))
-        }
     }
   }
 
