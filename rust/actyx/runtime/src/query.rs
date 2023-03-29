@@ -159,17 +159,8 @@ fn rewrite_source(source: &Source, app_id: AppId) -> Source {
                     TagExpr::And(Arc::new((l, r)))
                 }
             }
-            TagExpr::Atom(a) => {
-                if let TagAtom::AppId(id) = a {
-                    if &**id == "me" {
-                        TagExpr::Atom(TagAtom::AppId(app_id.clone()))
-                    } else {
-                        TagExpr::Atom(a.clone())
-                    }
-                } else {
-                    TagExpr::Atom(a.clone())
-                }
-            }
+            TagExpr::Atom(TagAtom::AppId(id)) if &**id == "me" => TagExpr::Atom(TagAtom::AppId(app_id.clone())),
+            TagExpr::Atom(a) => TagExpr::Atom(a.clone()),
         }
     }
     if let Source::Events { from, order } = source {
