@@ -38,6 +38,7 @@ pub use banyan::{store::BlockWriter, Forest as BanyanForest, StreamBuilder, Tran
 use futures::{future, stream, Future, FutureExt, Stream, StreamExt, TryStreamExt};
 pub use ipfs_embed::{Executor as IpfsEmbedExecutor, StorageConfig, StorageService};
 pub use libipld::codec::Codec as IpldCodec;
+use once_cell::sync::Lazy;
 pub use prune::RetainConfig;
 use streams::{OwnStreamGuard, RemoteNodeInner};
 use trees::dnf::Dnf;
@@ -402,6 +403,8 @@ struct BanyanStoreData {
     offsets: Variable<SwarmOffsets>,
     /// lamport timestamp for publishing to internal streams
     lamport: Observer<LamportTimestamp>,
+    /// Routing table
+    routing_table: Lazy<RoutingTable, Box<dyn FnOnce() -> RoutingTable + Send>>,
 }
 
 /// Internal mutable state of the stream manager
@@ -425,8 +428,6 @@ struct BanyanStoreState {
 
     /// Banyan related config
     banyan_config: BanyanConfig,
-
-    event_routing_table: Option<RoutingTable>,
 }
 
 impl Drop for BanyanStoreState {
@@ -907,6 +908,8 @@ impl BanyanStore {
             cfg.enable_slow_path,
             swarm_observer.clone(),
         );
+        let routing_table_writer = Arc::new(Mutex::new(None));
+        let routing_table_reader = routing_table_writer.clone();
         let banyan = Self {
             data: Arc::new(BanyanStoreData {
                 node_id,
@@ -915,6 +918,7 @@ impl BanyanStore {
                 forest,
                 lamport: index_store.observe_lamport(),
                 offsets: Default::default(),
+                routing_table: Lazy::new(Box::new(move || routing_table_reader.lock().take().unwrap())),
             }),
             state: Arc::new(ReentrantSafeMutex::new(BanyanStoreState {
                 index_store,
@@ -923,7 +927,6 @@ impl BanyanStore {
                 known_streams: Default::default(),
                 tasks: Default::default(),
                 banyan_config: cfg.banyan_config,
-                event_routing_table: Default::default(),
             })),
         };
         tracing::info!("loading event streams");
@@ -934,11 +937,11 @@ impl BanyanStore {
 
         let routing_table_span = tracing::debug_span!("Initializing routing table.");
         let routing_table_span_entered = routing_table_span.enter();
-        let mut routing_table = RoutingTable::default();
 
         drop(routing_table_span_entered);
-        let mappings = banyan.get_published_mappings(node_id).await?; // LOCK INSIDE
+        let mappings = banyan.get_published_mappings(node_id).await?;
         let routing_table_span_entered = routing_table_span.enter();
+        let mut routing_table = RoutingTable::default();
         for (name, nr) in mappings {
             routing_table.add_stream(name, nr.into())?;
         }
@@ -971,8 +974,8 @@ impl BanyanStore {
             banyan.append_stream_mapping_event(name, number).await?;
         }
         let routing_table_span_entered = routing_table_span.enter();
+        *routing_table_writer.lock() = Some(routing_table);
 
-        banyan.lock().guard.event_routing_table = Some(routing_table);
         tracing::debug!("Finished setting up routing.");
         drop(routing_table_span_entered);
         drop(routing_table_span);
@@ -1249,75 +1252,37 @@ impl BanyanStore {
     /// Append events to a stream, publishing the new data.
     pub async fn append(&self, app_id: AppId, events: Vec<(TagSet, Event)>) -> Result<Vec<PersistenceMeta>> {
         let timestamp = Timestamp::now();
-        let mut event_metas = vec![];
 
-        for (tag_set, payload) in events {
-            // Lock must be obtained and dropped right after
-            // The table can (BUT SHOULD NOT) be mutated in the meantime
-            let stream_nr = self
-                .lock()
-                .event_routing_table
-                .as_ref()
-                .expect("Routing table should have been set up already.")
-                .get_matching_stream_nr(&tag_set, &app_id);
+        let mut metas = Vec::with_capacity(events.len());
+        let mut grouped_events: Vec<(StreamNr, Vec<_>)> = vec![];
 
-            // This await MUST happen before locking the store, otherwise,
-            // control may be yielded to other code that requires a lock leading to a deadlock/panic
-            let stream = self.get_or_create_own_stream(stream_nr)?;
-            let stream_guard = stream.lock().await;
-
-            // We need to keep the store lock to make sure that no other append operations can write
-            // to the streams before we are done, because that might break lamport ordering within
-            // the streams.
-            let mut store_guard = self.lock();
-            let lamport = store_guard
-                .reserve_lamports(1)?
-                .next()
-                .expect("If the reservation failed, it should have short circuited before.");
-
-            let event_meta =
-                self.append_reserved_event(stream_guard, app_id.clone(), timestamp, lamport, (tag_set, payload))?;
-
-            event_metas.push((
-                event_meta.min_lamport,
-                event_meta.min_offset,
-                stream_nr,
-                event_meta.timestamp,
-            ));
+        for (tags, payload) in events {
+            let stream_nr = self.data.routing_table.get_matching_stream_nr(&tags, &app_id);
+            let last_entry = grouped_events.last_mut();
+            if let Some((last_stream_nr, events)) = last_entry {
+                if *last_stream_nr == stream_nr {
+                    events.push((tags, payload));
+                    continue;
+                }
+            }
+            grouped_events.push((stream_nr, vec![(tags, payload)]));
         }
 
-        Ok(event_metas)
-    }
+        for (stream_nr, events) in grouped_events {
+            let n_events = events.len();
+            let append_meta = self.append0(stream_nr, app_id.clone(), timestamp, events).await?;
+            metas.extend((0..n_events).map(|n| {
+                let n = n as u64;
+                (
+                    append_meta.min_lamport + n,
+                    append_meta.min_offset.increase(n).unwrap(),
+                    stream_nr,
+                    append_meta.timestamp,
+                )
+            }));
+        }
 
-    fn append_reserved_event(
-        &self,
-        mut guard: OwnStreamGuard<'_>,
-        app_id: AppId,
-        timestamp: Timestamp,
-        lamport: LamportTimestamp,
-        event: (TagSet, Event),
-    ) -> Result<AppendMeta> {
-        let app_id_tag = tag!("app_id:") + app_id.as_str();
-        let scoped_app_id_tag = ScopedTag::new(trees::tags::TagScope::Internal, app_id_tag);
-        let mut tags = ScopedTagSet::from(event.0);
-        tags.insert(scoped_app_id_tag);
-        let key_once = std::iter::once((AxKey::new(tags, lamport, timestamp), event.1));
-        let offset = self
-            .transform_stream(&mut guard, |transaction, tree| {
-                let snapshot = tree.snapshot();
-                transaction.extend_unpacked(tree, key_once)?;
-                if tree.level() > MAX_TREE_LEVEL {
-                    transaction.pack(tree)?;
-                }
-                Ok(snapshot.offset())
-            })?
-            .map(|o| o + 1)
-            .unwrap_or(Offset::ZERO);
-        Ok(AppendMeta {
-            min_lamport: lamport,
-            min_offset: offset,
-            timestamp,
-        })
+        Ok(metas)
     }
 
     async fn append_stream_mapping_event(&self, name: String, number: StreamNr) -> Result<()> {
@@ -1349,11 +1314,11 @@ impl BanyanStore {
         let _s = tracing::trace_span!("append", stream_nr = display(stream_nr), timestamp = debug(timestamp));
         let _s = _s.enter();
 
-        let mut store = self.lock();
-        let mut lamports = store.reserve_lamports(events.len())?.peekable();
         // We need to keep the store lock to make sure that no other append operations can write
         // to the streams before we are done, because that might break lamport ordering within
         // the streams.
+        let mut store = self.lock();
+        let mut lamports = store.reserve_lamports(events.len())?.peekable();
 
         let min_lamport = *lamports.peek().unwrap();
         let app_id_tag = tag!("app_id:") + app_id.as_str();
@@ -2046,9 +2011,9 @@ mod test_routing_table {
     #[test]
     fn get_matching_stream_nr() {
         let mut table = RoutingTable::default();
+        table.add_stream("default".to_string(), None).unwrap();
         table.add_route(TagExpr::from_str("'test_1'").unwrap(), "stream_1".to_string());
         table.add_route(TagExpr::from_str("'test_2'").unwrap(), "stream_2".to_string());
-        table.add_route(TagExpr::from_str("allEvents").unwrap(), "default".to_string());
         assert_eq!(
             table.get_matching_stream_nr(&tags!("test_1"), &internal_app_id()),
             StreamNr::from(1)
