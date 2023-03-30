@@ -109,7 +109,10 @@ fn main() {
                                             QueryResponse::Event(EventResponse {
                                                 meta: EventMeta::Event { key, meta },
                                                 payload,
-                                            }) if !meta.tags.contains(&tag!("files")) => {
+                                            }) if !meta.tags.contains(&tag!("files"))
+                                                && !meta.tags.contains(&tag!("event_routing"))
+                                                && !meta.tags.contains(&tag!("discovery")) =>
+                                            {
                                                 Some((key.stream, (meta.tags, payload)))
                                             }
                                             _ => None,
