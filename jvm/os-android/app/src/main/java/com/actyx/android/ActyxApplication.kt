@@ -1,9 +1,6 @@
 package com.actyx.android
 
 import android.app.Application
-import android.content.Intent
-import android.os.Build
-import android.os.Environment
 import com.actyx.android.util.Logger
 import org.slf4j.Logger
 import java.io.File
