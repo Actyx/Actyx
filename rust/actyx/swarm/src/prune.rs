@@ -62,7 +62,7 @@ fn retain_events_up_to(
 ) -> anyhow::Result<Option<Link>> {
     let stream_nr = stream.stream_nr();
 
-    store.transform_stream(stream, |txn, tree| txn.pack(tree))?;
+    // store.transform_stream(stream, |txn, tree| txn.pack(tree))?;
 
     let emit_from = {
         let tree = stream.snapshot();
@@ -107,6 +107,7 @@ fn retain_events_up_to(
         // lower bound is inclusive, so increment
         let query = OffsetQuery::from(emit_from..);
         store.transform_stream(stream, |txn, tree| {
+            txn.pack(tree)?;
             tracing::debug!("Prune events on {}; retain {:?}", stream_nr, query);
             txn.retain(tree, &query)
         })?;
