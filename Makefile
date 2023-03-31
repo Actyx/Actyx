@@ -57,6 +57,7 @@ android-bins = actyx.apk actyx.aab
 
 CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
+CARGO_BUILD_ARGS ?= ""
 
 export BUILD_RUST_TOOLCHAIN ?= 1.65.0
 
@@ -146,7 +147,7 @@ all-ANDROID := $(android-bins)
 all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t macos-aarch64/$t)
 
 docker-platforms = $(foreach arch,$(architectures),$(docker-platform-$(arch)))
-docker-build-args = ${AXP_DOCKER} ${AXV_DOCKER} --build-arg GIT_COMMIT=$(GIT_COMMIT)
+docker-build-args = ${AXP_DOCKER} ${AXV_DOCKER} --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg CARGO_BUILD_ARGS="$(CARGO_BUILD_ARGS)"
 docker-multiarch-build-args = $(docker-build-args) --platform $(shell echo $(docker-platforms) | sed 's/ /,/g')
 
 export CARGO_HOME ?= $(HOME)/.cargo
@@ -507,7 +508,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
-	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*) --target $(TARGET)
+	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --bin $$(basename $$*) --target $(TARGET)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 
@@ -528,7 +529,7 @@ $(soTargetPatterns): cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) --target $(TARGET)
+	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --target $(TARGET)
 
 $(soTargetPatterns6): TARGET = $(word 4,$(subst /, ,$@))
 $(soTargetPatterns6): cargo-init make-always
@@ -543,7 +544,7 @@ $(soTargetPatterns6): cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) --target $(TARGET)
+	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --target $(TARGET)
 	mv $(patsubst %6,%,$@) $@
 
 # create this with permissions for everyone so that `builder` inside docker can use it
