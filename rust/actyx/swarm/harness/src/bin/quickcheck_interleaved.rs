@@ -227,6 +227,7 @@ fn main() {
             enable_api: Some("0.0.0.0:30001".parse().unwrap()),
             ephemeral_events: None,
             max_leaf_count: None,
+            event_routes: Default::default(),
         };
 
         let t = run_netsim::<_, _, Event>(opts, move |mut sim| async move {

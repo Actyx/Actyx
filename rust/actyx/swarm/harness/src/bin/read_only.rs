@@ -36,6 +36,7 @@ fn main() -> anyhow::Result<()> {
             enable_api: None,
             ephemeral_events: None,
             max_leaf_count: None,
+            event_routes: Default::default(),
         };
         let machine = sim.spawn_machine(config.into(), None).await;
         sim.plug(machine, net, None).await;

@@ -1750,8 +1750,8 @@ pub enum FileNode {
 /// The "dual" for the event route configuration in the node.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EventRoute {
-    from: TagExpr,
-    into: String,
+    pub from: TagExpr,
+    pub into: String,
 }
 
 impl EventRoute {
@@ -1781,6 +1781,18 @@ impl Default for EventRoute {
             from: TagExpr::from_str("allEvents").expect("Valid tag expression."),
             into: DEFAULT_STREAM_NAME.to_string(),
         }
+    }
+}
+
+impl FromStr for EventRoute {
+    type Err = anyhow::Error;
+
+    /// The expected string has form ["tag_expression", "stream_name"].
+    /// This is only expected to be used when parsing command line arguments.
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let tuple: (String, String) = serde_json::from_str(s)?;
+        let expr = TagExpr::from_str(&tuple.0)?;
+        Ok(Self::new(expr, tuple.1))
     }
 }
 

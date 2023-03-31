@@ -11,7 +11,7 @@ use parking_lot::Mutex;
 use std::{borrow::Borrow, convert::TryFrom, net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc};
 use structopt::StructOpt;
 use swarm::{BanyanConfig, SwarmConfig};
-pub use swarm::{EphemeralEventsConfig, GossipMessage, RetainConfig, RootMap, RootUpdate};
+pub use swarm::{EphemeralEventsConfig, EventRoute, GossipMessage, RetainConfig, RootMap, RootUpdate};
 use trees::axtrees::AxKey;
 use util::SocketAddrHelper;
 
@@ -47,6 +47,8 @@ pub struct Config {
     pub ephemeral_events: Option<EphemeralEventsConfigWrapper>,
     #[structopt(long)]
     pub max_leaf_count: Option<usize>,
+    #[structopt(long, number_of_values = 1)]
+    pub event_routes: Vec<EventRoute>,
 }
 #[derive(Clone, Debug)]
 pub struct EphemeralEventsConfigWrapper(pub EphemeralEventsConfig);
@@ -109,7 +111,10 @@ impl From<Config> for async_process::Command {
         if let Some(x) = config.max_leaf_count {
             cmd.arg("--max-leaf-count").arg(x.to_string());
         }
-
+        for route in config.event_routes {
+            cmd.arg("--event-routes")
+                .arg(format!("[\"{}\", \"{}\"]", route.from, route.into));
+        }
         cmd
     }
 }
@@ -149,6 +154,7 @@ impl From<Config> for SwarmConfig {
                 .map(|e| e.0)
                 .unwrap_or_else(EphemeralEventsConfig::disable),
             banyan_config,
+            event_routes: config.event_routes,
             ..SwarmConfig::basic()
         }
     }

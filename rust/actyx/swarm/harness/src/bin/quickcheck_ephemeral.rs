@@ -127,6 +127,7 @@ fn main() {
             ))),
             // Force single event per leaf
             max_leaf_count: Some(1),
+            event_routes: Default::default(),
         };
 
         match run_netsim(opts, move |mut sim| async move {
