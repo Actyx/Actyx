@@ -4,9 +4,6 @@ authors = ["Actyx AG"]
 name = "node"
 version = "0.1.0"
 
-[features]
-migration-v1 = ["crypto/legacy"]
-
 [build-dependencies]
 prost-build = "0.9.0"
 util = { path = "../util" }

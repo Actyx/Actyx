@@ -73,7 +73,6 @@ impl NodeStorage {
 
     pub fn migrate(conn: &mut Connection, version: u32) -> anyhow::Result<()> {
         match version {
-            0 | 1 => Self::migrate_v1(version, conn),
             2 => Ok(conn.execute_batch(
                 "DROP TABLE IF EXISTS meta;
                     DROP TABLE IF EXISTS streams;
@@ -81,49 +80,6 @@ impl NodeStorage {
             )?),
             CURRENT_VERSION => Ok(()),
             _ => unreachable!(),
-        }
-    }
-
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "migration-v1")] {
-            fn migrate_v1(version: u32, conn: &mut Connection) -> anyhow::Result<()> {
-                let ks = Self::query_keystore(conn)?
-                    .map(|dump| crypto::KeyStore::restore(std::io::Cursor::new(dump)))
-                    .unwrap()?;
-
-                if version == 0 {
-                    let v0_key_id = crypto::LegacyKeyId::from_str(&conn.query_row(
-                        "SELECT value FROM node WHERE name='node_id'",
-                        [],
-                        |row| row.get::<_, String>(0),
-                    )?)?;
-
-                    let node_id_pubkey = ks.get_public_for_keyid(v0_key_id).ok_or_else(|| {
-                        anyhow::anyhow!("Did not find suitable public key for v0 node id {}", v0_key_id)
-                    })?;
-                    let id: NodeId = node_id_pubkey.into();
-                    conn.execute("DELETE FROM node where name = 'node_id'", [])?;
-                    Self::persist_node_id(conn, id)?;
-                }
-
-                conn.execute(
-                    "INSERT OR REPLACE INTO node VALUES('database_version', ?)",
-                    [2],
-                )?;
-                conn.execute("DROP TABLE apps", [])?;
-
-                // keystore is migrated during restoration
-                {
-                    let mut ks_bytes = vec![];
-                    ks.dump(&mut ks_bytes)?;
-                    Self::persist_keystore(conn, ks_bytes.into_boxed_slice())?;
-                }
-                Ok(())
-            }
-        } else {
-            fn migrate_v1(_version: u32, _conn: &mut Connection) -> anyhow::Result<()> {
-                Err(anyhow::anyhow!("migration from ActyxOS v1 not built in, please use official binaries"))
-            }
         }
     }
 
@@ -274,78 +230,5 @@ mod test {
 
         assert_eq!(node_id, stored_node_id);
         Ok(())
-    }
-
-    #[test]
-    #[cfg(feature = "migration-v1")]
-    fn should_migrate_v0() -> anyhow::Result<()> {
-        // assert error
-        let mem = load_test_db("tests/node_v0.sqlite")?;
-        assert_eq!(NodeStorage::version(&mem).unwrap(), 0);
-        if let Err(e) = NodeStorage::from_conn(mem) {
-            e.downcast_ref::<WrongVersionV0>().unwrap();
-        } else {
-            panic!()
-        };
-
-        // now migrate
-        let mut mem = load_test_db("tests/node_v0.sqlite")?;
-        NodeStorage::migrate(&mut mem, 0)?;
-        assert_eq!(NodeStorage::version(&mem).unwrap(), 2);
-        NodeStorage::migrate(&mut mem, 2)?;
-        let storage = NodeStorage::from_conn(mem).unwrap();
-        let expected_node_id: NodeId = "Zg/1L3Tm5xWNV94nFsjaIO8s3kW6Sj1y4fzQR5zcVeo".parse().unwrap();
-        assert_eq!(NodeStorage::version(&storage.connection.lock()).unwrap(), 3);
-        assert_eq!(NodeStorage::get_node_key(&storage).unwrap(), Some(expected_node_id));
-
-        let ks = storage
-            .get_keystore()?
-            .map(|dump| crypto::KeyStore::restore(std::io::Cursor::new(dump)))
-            .unwrap()?;
-        let node_id: NodeId = ks.get_pair(expected_node_id.into()).unwrap().pub_key().into();
-        assert_eq!(node_id, expected_node_id);
-        Ok(())
-    }
-
-    #[test]
-    #[cfg(feature = "migration-v1")]
-    fn should_migrate_v1() -> anyhow::Result<()> {
-        // assert error
-        let mem = load_test_db("tests/node_v1.sqlite")?;
-        assert_eq!(NodeStorage::version(&mem).unwrap(), 1);
-        if let Err(e) = NodeStorage::from_conn(mem) {
-            e.downcast_ref::<WrongVersionV1>().unwrap();
-        } else {
-            panic!()
-        };
-
-        // now migrate
-        let mut mem = load_test_db("tests/node_v1.sqlite")?;
-        NodeStorage::migrate(&mut mem, 1)?;
-        assert_eq!(NodeStorage::version(&mem).unwrap(), 2);
-        NodeStorage::migrate(&mut mem, 2)?;
-        let storage = NodeStorage::from_conn(mem).unwrap();
-        let expected_node_id: NodeId = "lBkGGmqD2X/mmtpxnC2KWobZw4g1IWCJSPCdjdB1gCI".parse().unwrap();
-        assert_eq!(NodeStorage::version(&storage.connection.lock()).unwrap(), 3);
-        assert_eq!(NodeStorage::get_node_key(&storage).unwrap(), Some(expected_node_id));
-
-        let ks = storage
-            .get_keystore()?
-            .map(|dump| crypto::KeyStore::restore(std::io::Cursor::new(dump)))
-            .unwrap()?;
-        let node_id: NodeId = ks.get_pair(expected_node_id.into()).unwrap().pub_key().into();
-        assert_eq!(node_id, expected_node_id);
-        Ok(())
-    }
-
-    /// Load a sqlite database into a mutable in-memory database
-    #[cfg(feature = "migration-v1")]
-    fn load_test_db(path: &str) -> anyhow::Result<Connection> {
-        let mut mem = Connection::open_in_memory()?;
-        let v0 = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
-        let backup = rusqlite::backup::Backup::new(&v0, &mut mem)?;
-        backup.run_to_completion(1000, std::time::Duration::from_secs(1), None)?;
-        std::mem::drop(backup);
-        Ok(mem)
     }
 }

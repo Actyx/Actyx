@@ -3,181 +3,80 @@ title: Query events with AQL
 id: query-events-with-aql
 hide_title: false
 hide_table_of_contents: false
-image: /images/defaults/default.svg
 ---
 
-The Actyx Query Language (AQL) allows you to query, filter, transform, and soon aggregate events in a structured fashion.
+The Actyx Query Language (AQL) allows you to query, filter, transform, and aggregate events in a structured fashion.
+For a quickstart please refer to [the tutorial](../../tutorials/aql.mdx) whereas all details are documented in [the reference](../../reference/aql.mdx).
+In this section we take a look at how Actyx helps you access exactly those events you need and why that is important.
+As we will see, this has implications on how events should be tagged when they are emitted; best practices for this are discussed in the next section.
 
-## Features
+## AQL evaluation explained
 
-AQL currently has the following features:
+When you send a query to one of the [API endpoints](../../reference/events-api.mdx) Actyx will — after a syntax check — do two things:
+first it will instruct the local event store to retrieve all events matching the `FROM` clause, and second it will create an evaluation engine for the following query steps.
+Then, matching events will be streamed into that engine, always completing all steps before continuing with the next event.
+Whenever an output emerges from the last query step it is serialised to JSON and sent to your app.
 
-- **Query** events by source, tags, app ID, timestamp, event key
-- **Filter** by event payload to discard events
-- **Select** event payload contents
-- **Transform** event payloads using arithmetic operations and case expressions
+Assuming you model some entities — like TODO items — with a lifecycle we might store events for creating, editing, progress tracking, and completing them.
+If you want to get the IDs of all items created within the past month you might do the following:
 
-Currently, AQL queries (or subscriptions) always return events. The ability to aggregate (e.g. SUM) events is being worked on.
-
-## Run AQL queries
-
-import Tabs from '@theme/Tabs'
-import TabItem from '@theme/TabItem'
-
-You can run AQL queries using the CLI, the Node Manager or any of the SDKs.
-Here are examples how to use AQL in each one:
-
-<Tabs
-  groupId="method"
-  defaultValue={"cli"}
-  values={[
-    { label: 'CLI', value: 'cli' },
-    { label: 'Node Manager', value: 'node-manager' },
-    { label: 'Typescript SDK', value: 'ts-sdk' },
-    { label: 'C#/.NET SDK', value: 'csharp-sdk' },
-    { label: 'Rust SDK', value: 'rust-sdk' },
-  ]}
->
-
-<TabItem value="cli">
-
-Use the Actyx CLI's `events query` subcommand to run AQL queries:
-
-```bash
-ax events query localhost "FROM 'discovery'"
+```sql
+FROM 'item' & TIME > 1M ago -- get all item events
+FILTER _.type = 'created'   -- skip all but creations
+SELECT _.id                 -- pick out the ID
 ```
 
-This will return a list of JSON objects which are either events or errors/warnings if the query is invalid or cannot be executed.
+Assuming a couple of edits and lots of progress tracking it may well be that the filter step throws away >90% of the work done by the local event store for streaming the events.
+This can be avoided by tagging the creation events with an additional tag, so that we can write:
 
-</TabItem>
+```sql
+FROM 'item' & 'created' & TIME > 1M ago
+SELECT _.id
+```
 
-<TabItem value="node-manager">
+The performance difference between these can be quite noticeable.
+This is doubly relevant when the query isn’t crafted by you but sent indirectly, e.g. via the Actyx Pond library:
+in this case the filtering would need to be done inside your `onEvent` function in TypeScript, which wastes not only the work inside the Actyx event store but also the much more costly serialisation and deserialisation of the events on their path towards `onEvent`.
 
-The _Query_ screen in the Node Manager allows you to perform AQL queries:
+:::info take notice!
+Excessive event retrieval is the #1 performance sin in Actyx, comparable to full table scans in relational databases.
+Event tagging fulfils the same function as indexing in those databases.
+:::
 
-![AQL query using the Actyx Node Manager](/images/how-to/structured-queries/structured-queries-node-manager.png)
+## Queries sent from TypeScript apps
 
-</TabItem>
+When you’re using the [Actyx Pond](../../conceptual/pond.mdx) you are using AQL queries under the hood:
+a [fish](https://developer.actyx.com/docs/reference/pond/modules#fish)’s `where` property directly corresponds to a query with only a `FROM` clause.
+The same goes for the SDK methods like [`Actyx.queryAllKnown`](../../reference/pond/interfaces/EventFns#queryallknown), which take a [`Where`](../../reference/pond/interfaces/Where) instance to select events.
 
-<TabItem value="ts-sdk">
-
-Install the Typescript/Javascript SDK using `npm install @actyx/sdk` and then run AQL queries as follows:
-
+<!-- prettier-ignore -->
 ```ts
-import { Actyx } from '@actyx/sdk'
-;(async () => {
-  // Connect to the local Actyx process
-  const actyx = await Actyx.of({
-    appId: 'com.example.app',
-    displayName: 'Example App',
-    version: '1.0.0',
-  })
+const itemTag = Tag<ItemEvent>('item') // entity type tag for “Items”
+const createdTag = Tag('created')      // additional tag, can be attached elsewhere
 
-  // Run AQL query
-  const results = await actyx.queryAql("FROM 'discovery'")
+itemTag                 // corresponds to `FROM 'item'`
+itemTag.withId('1234')  // corresponds to `FROM 'item' & 'item:1234'`
+itemTag.and(createdTag) // corresponds to `FROM 'item' & 'created'`
 
-  // Do something with the results
-  results.forEach((result) => {
-    if (result.type === 'event') {
-      console.log(JSON.stringify(result.payload))
-    }
-  })
-})()
+const item1 = itemTag.withId('1')
+const item2 = itemTag.withId('2')
+item1.or(item2) // corresponds to `FROM 'item' & 'item:1' | 'item' & 'item:2'`
+                // which is the same as `FROM 'item' & ('item:1' | 'item:2')`
+
+const userTag = Tag<UserEvent>('user')
+const myItem = itemTag.id('1234')  // note that `.id()` omits the 'item' tag and doesn’t
+                                   // require matching events to be of type `ItemEvent`
+userTag.withId('Fred').and(myItem) // => `FROM 'user' & 'user:Fred' & 'item:1234'`
 ```
 
-</TabItem>
+Note the different roles of tags:
 
-<TabItem value="csharp-sdk">C# SDK</TabItem>
+- `'item'` marks events emitted by an “item” entity and constrains the event type
+- `'item:1234'` is an additional tag that marks one particular “item” entity; it can be created with `itemTag.id('1234')` and does not by itself constrain the event type
+- `'created'` marks the occasion and could be combined with items, users, etc.
 
-<TabItem value="rust-sdk">Rust SDK</TabItem>
-
-</Tabs>
-
-## Query events by time
-
-:::info Beta features
-If a query begins with `FEATURES()` it uses beta functionality. Please refer to the [AQL reference guide](../../reference/aql.mdx) for a detailed specification of AQL and its features.
-:::
-
-You can query events by their timestamp. This is an example of a query for events between 14:09 and 14:11 on 06 August 2021:
-
-```text
-FEATURES(timeRange)
-FROM from(2021-08-06T14:09:00Z) & to(2021-08-06T14:11:00Z)
-```
-
-## Query events by tags
-
-In addition to a specific time, you could also add a query for specific tags:
-
-```text
-FEATURES(timeRange)
-FROM from(2021-08-06T14:09:00Z) & to(2021-08-06T14:11:00Z)
-& 'machine2512'
-```
-
-:::info Usage of tags
-When published, each event can be tagged with an arbitrary number of tags. Check out [conceptual guide on tags](../../conceptual/tags.mdx) or our [how-to guides for business logic](../overview.mdx#business-logic) for more info.
-:::
-
-:::info Tags with IDs
-By convention, events corresponding to a specific instance of a domain entity are tagged with `<entity>:<id>`.
-When using [Actyx Pond](../../how-to/business-logic/business-process.mdx), you will have come across [the `Tag.withId()` helper](../../reference/pond/interfaces/Tag#withid).
-It uses this convention as well.
-So, e.g., you'd use `FROM 'machine:42'` to select events that have been tagged with `Tag<MachineEvent>('machine').withId(42)`.
-:::
-
-## Query events by app ID
-
-You could add also use a query such as the following to get the events for a specific appId and tag:
-
-```text
-FROM 'machine2512' & appId(com.actyx.example)
-```
-
-## Transform data
-
-With AQL, you can write down the transformation from events into query results in an incremental fashion, doing one step at a time.
-
-For the following example, we assume that our event payload is structured as follows:
-
-```json
-{
-    "byUser": {
-        "name": "<string>",
-        "id": "<string>"
-    },
-    "type": "<string>",
-    ...
-}
-```
-
-### Filter events
-
-If one of the above examples was not be specific enough, you can also filter out certain results:
-
-```
-FEATURES(timeRange)
-FROM from(2021-08-06T14:09:00Z) & to(2021-08-06T14:11:00Z)
-FILTER _.type = "Started"
-```
-
-The above query only returns events that have a property "type" with value "Started".
-
-### Transform events
-
-For the returned events, you can also modify the format of the payload:
-
-```
-FEATURES(timeRange)
-FROM from(2021-08-06T14:09:00Z) & to(2021-08-06T14:11:00Z)
-FILTER _.type = "Started"
-SELECT _["byUser"].name    <--- As the property is camelCase, you have to use a specific syntax
-```
-
-The above query only returns the value of the property "name" within the property "byUser".
-
-If you have any questions, comments, or suggestions, we very much welcome you to our [forum](https://community.actyx.com/) or [discord chat](https://discord.gg/262yJhc)!
+Note that the `createdTag` could be declared as `Tag<{ id: string }>('created')` to constrain its application to events that do have an `id` property of type `string`.
+The `Where` interface correctly tracks these constraints through `.and()` and `.or()` combinations of tags.
 
 :::info Full reference documentation
 Check out our [reference documentation on AQL](../../reference/aql.mdx) for more info on expressions and data transformations!
