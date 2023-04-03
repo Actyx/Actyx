@@ -277,15 +277,6 @@ impl SwarmConfig {
 
     pub fn test_with_routing(node_name: &str, routes: Vec<EventRoute>) -> Self {
         Self {
-            enable_loopback: true,
-            topic: "topic".into(),
-            enable_mdns: false,
-            node_name: Some(node_name.into()),
-            listen_addresses: Arc::new(Mutex::new("127.0.0.1:0".parse().unwrap())),
-            banyan_config: BanyanConfig {
-                tree: banyan::Config::debug(),
-                ..Default::default()
-            },
             event_routes: routes,
             ..SwarmConfig::test(node_name)
         }
@@ -935,9 +926,6 @@ impl BanyanStore {
         banyan.validate_known_streams().await?;
 
         let routing_table_span = tracing::debug_span!("Initializing routing table.");
-        let routing_table_span_entered = routing_table_span.enter();
-
-        drop(routing_table_span_entered);
         let mappings = banyan.get_published_mappings(node_id).await?;
         let routing_table_span_entered = routing_table_span.enter();
         let mut routing_table = RoutingTable::default();
@@ -1264,6 +1252,9 @@ impl BanyanStore {
                     continue;
                 }
             }
+            // NOTE: should this become a performance bottleneck (probably not now, but I haven’t measured)
+            // then this can also be done without allocating additional vectors, by unifying both loops
+            // (and taking a slice in append0 instead of the Vec)
             grouped_events.push((stream_nr, vec![(tags, payload)]));
         }
 

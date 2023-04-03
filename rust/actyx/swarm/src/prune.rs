@@ -61,9 +61,6 @@ fn retain_events_up_to(
     target_bytes: u64,
 ) -> anyhow::Result<Option<Link>> {
     let stream_nr = stream.stream_nr();
-
-    // store.transform_stream(stream, |txn, tree| txn.pack(tree))?;
-
     let emit_from = {
         let tree = stream.snapshot();
         let mut iter = store.data.forest.iter_index_reverse(&tree, banyan::query::AllQuery);
@@ -228,7 +225,6 @@ mod test {
             },
         };
         let eph = super::prune(store.clone(), config);
-        // Timeout is required because "prune" is an "always on" task
         let _ = tokio::time::timeout(Duration::from_micros(10), eph).await;
 
         let stream_id = store.node_id().stream(test_stream);

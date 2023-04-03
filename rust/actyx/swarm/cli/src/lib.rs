@@ -47,7 +47,7 @@ pub struct Config {
     pub ephemeral_events: Option<EphemeralEventsConfigWrapper>,
     #[structopt(long)]
     pub max_leaf_count: Option<usize>,
-    #[structopt(long, number_of_values = 1)]
+    #[structopt(long)]
     pub event_routes: Vec<EventRoute>,
 }
 #[derive(Clone, Debug)]
