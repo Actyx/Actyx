@@ -9,19 +9,52 @@ use std::{
 };
 use trees::query::{OffsetQuery, TimeQuery};
 
-#[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+// #[allow(dead_code)]
+// #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 /// Note: Events are kept on a best-effort basis, potentially violating the
 /// constraints expressed by this config.
-pub enum RetainConfig {
-    /// Retains the last n events
-    Events(u64),
-    /// Retain all events between `now - duration` and `now`
-    Age(Duration),
-    /// Retain the last events up to the provided size in bytes. Note that only
-    /// the value bytes are taken into account, no overhead from keys, indexes,
-    /// etc.
-    Size(u64),
+// pub enum RetainConfig {
+//     /// Retains the last n events
+//     Events(u64),
+//     /// Retain all events between `now - duration` and `now`
+//     Age(Duration),
+//     /// Retain the last events up to the provided size in bytes. Note that only
+//     /// the value bytes are taken into account, no overhead from keys, indexes,
+//     /// etc.
+//     Size(u64),
+// }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RetainConfig {
+    events: Option<u64>,
+    age: Option<Duration>,
+    size: Option<u64>,
+}
+
+impl RetainConfig {
+    pub fn events(events: u64) -> Self {
+        Self {
+            events: Some(events),
+            age: None,
+            size: None,
+        }
+    }
+
+    pub fn age(age: Duration) -> Self {
+        Self {
+            events: None,
+            age: Some(age),
+            size: None,
+        }
+    }
+
+    pub fn size(size: u64) -> Self {
+        Self {
+            events: None,
+            age: None,
+            size: Some(size),
+        }
+    }
 }
 
 fn retain_last_events(store: &BanyanStore, stream: &mut OwnStreamGuard<'_>, keep: u64) -> anyhow::Result<Option<Link>> {
@@ -130,17 +163,21 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
             let fut = async move {
                 let stream = store.get_or_create_own_stream(*stream_nr).unwrap();
                 let mut guard = stream.lock().await;
-                match cfg {
-                    RetainConfig::Events(keep) => retain_last_events(&store, &mut guard, *keep),
-                    RetainConfig::Age(duration) => {
-                        let emit_after: Timestamp = SystemTime::now()
-                            .checked_sub(*duration)
-                            .with_context(|| format!("Invalid duration configured for {}: {:?}", stream_nr, duration))?
-                            .try_into()?;
-                        retain_events_after(&store, &mut guard, emit_after)
-                    }
-                    RetainConfig::Size(max_retain_size) => retain_events_up_to(&store, &mut guard, *max_retain_size),
+                let mut result = Ok(None);
+                if let Some(keep) = cfg.events {
+                    result = retain_last_events(&store, &mut guard, keep);
                 }
+                if let Some(duration) = cfg.age {
+                    let emit_after: Timestamp = SystemTime::now()
+                        .checked_sub(duration)
+                        .with_context(|| format!("Invalid duration configured for {}: {:?}", stream_nr, duration))?
+                        .try_into()?;
+                    result = retain_events_after(&store, &mut guard, emit_after);
+                }
+                if let Some(max_retain_size) = cfg.size {
+                    result = retain_events_up_to(&store, &mut guard, max_retain_size);
+                }
+                result
             };
             fut.map(move |res| match res {
                 Ok(Some(new_root)) => {

@@ -160,9 +160,9 @@ impl Default for EphemeralEventsConfig {
         Self {
             interval: Duration::from_secs(30 * 60),
             streams: btreemap! {
-                DISCOVERY_STREAM_NR.into() => RetainConfig::Events(1000),
-                METRICS_STREAM_NR.into() => RetainConfig::Events(1000),
-                FILES_STREAM_NR.into() => RetainConfig::Age(Duration::from_secs(60 * 60 * 24 * 14))
+                DISCOVERY_STREAM_NR.into() => RetainConfig::events(1000),
+                METRICS_STREAM_NR.into() => RetainConfig::events(1000),
+                FILES_STREAM_NR.into() => RetainConfig::age(Duration::from_secs(60 * 60 * 24 * 14))
             },
         }
     }
