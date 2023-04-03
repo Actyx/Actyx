@@ -1,6 +1,8 @@
 use actyx_sdk::language::TagExpr;
 use api::formats::Licensing;
 use crypto::PublicKey;
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use util::formats::LogSeverity;
@@ -56,6 +58,131 @@ pub struct Api {
 #[serde(rename_all = "camelCase")]
 pub struct LogLevels {
     pub node: LogSeverity,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub enum StreamSize {
+    Byte(u64),
+    KiloByte(u64),
+    MegaByte(u64),
+    GigaByte(u64),
+}
+
+impl From<u64> for StreamSize {
+    /// Assumes that the value is in bytes.
+    fn from(b: u64) -> Self {
+        StreamSize::Byte(b)
+    }
+}
+
+impl Into<u64> for StreamSize {
+    fn into(self) -> u64 {
+        match self {
+            StreamSize::Byte(v) => v,
+            StreamSize::KiloByte(v) => v * 1000,
+            StreamSize::MegaByte(v) => v * 1000 * 1000,
+            StreamSize::GigaByte(v) => v * 1000 * 1000 * 1000,
+        }
+    }
+}
+
+impl FromStr for StreamSize {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new("([1-9][0-9]*)(B|kB|MB|GB)?").unwrap();
+        }
+        let captures = RE.captures(s).ok_or(anyhow::anyhow!("Failed to parse string."))?;
+        let value = captures.get(0).map(|v| v.as_str()).unwrap_or("0").parse::<u64>()?;
+        let unit = captures.get(1).map(|u| u.as_str());
+        Ok(match unit {
+            None | Some("B") => Self::Byte(value),
+            Some("kB") => Self::KiloByte(value),
+            Some("MB") => Self::MegaByte(value),
+            Some("GB") => Self::GigaByte(value),
+            _ => unreachable!("This should've been covered by the regex."),
+        })
+    }
+}
+
+#[cfg(test)]
+mod test_stream_size {
+    use std::str::FromStr;
+
+    use crate::node_settings::StreamSize;
+
+    #[test]
+    fn test_from_kb() {
+        assert_eq!(StreamSize::from_str("1kB").unwrap(), StreamSize::KiloByte(1));
+        assert_eq!(StreamSize::from_str("1190kB").unwrap(), StreamSize::KiloByte(1190));
+        assert_eq!(
+            StreamSize::from_str("9340123kB").unwrap(),
+            StreamSize::KiloByte(9340123)
+        );
+    }
+
+    #[test]
+    fn test_from_mb() {
+        assert_eq!(StreamSize::from_str("1MB").unwrap(), StreamSize::MegaByte(1));
+        assert_eq!(StreamSize::from_str("1190MB").unwrap(), StreamSize::MegaByte(1190));
+        assert_eq!(
+            StreamSize::from_str("9340123MB").unwrap(),
+            StreamSize::MegaByte(9340123)
+        );
+    }
+
+    #[test]
+    fn test_from_gb() {
+        assert_eq!(StreamSize::from_str("1GB").unwrap(), StreamSize::GigaByte(1));
+        assert_eq!(StreamSize::from_str("1190GB").unwrap(), StreamSize::GigaByte(1190));
+        assert_eq!(
+            StreamSize::from_str("9340123GB").unwrap(),
+            StreamSize::GigaByte(9340123)
+        );
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub enum StreamAge {
+    Seconds(u64),
+    Minutes(u64),
+    Hours(u64),
+    Days(u64),
+}
+
+impl FromStr for StreamAge {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new("([1-9][0-9]*)(s|m|h|D)").unwrap();
+        }
+        let captures = RE.captures(s).ok_or(anyhow::anyhow!("Failed to parse string."))?;
+        let value = captures.get(0).map(|v| v.as_str()).unwrap_or("0").parse::<u64>()?;
+        let unit = captures.get(1).map(|u| u.as_str()).unwrap_or("s");
+        Ok(match unit {
+            "s" => Self::Seconds(value),
+            "m" => Self::Minutes(value),
+            "h" => Self::Hours(value),
+            "D" => Self::Days(value),
+            _ => unreachable!("This should've been covered by the regex."),
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Stream {
+    /// Number of maximum events to keep
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_events: Option<u64>,
+    /// Maximum size (in bytes) the stream occupy
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_size: Option<StreamSize>,
+    /// Maximum event age (in seconds)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_age: Option<StreamAge>,
 }
 
 mod tag_expr {

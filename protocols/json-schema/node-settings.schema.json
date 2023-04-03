@@ -91,6 +91,14 @@
             "const": "testing"
           }
         ]
+      },
+      "SizeUnit": {
+        "type": "string",
+        "pattern": "[1-9][0-9]+(kB|MB|GB)"
+      },
+      "AgeUnit": {
+        "type": "string",
+        "pattern": "[1-9][0-9]+(s|m|h|D)"
       }
     },
     "Swarm": {
@@ -267,21 +275,19 @@
             "properties": {
               "maxEvents": {
                 "type": "integer",
-                "description": "The maximum number of events to store",
+                "description": "The maximum number of events to store.",
                 "minimum": 0,
                 "default": 0
               },
               "maxSize": {
-                "type": "integer",
-                "description": "The maximum total size for the stream, in bytes",
-                "minimum": 0,
-                "default": 0
+                "$ref": "#/definitions/Composite/SizeUnit",
+                "description": "The maximum total size for the stream. Can be B (bytes), kB (Kilobytes), MB (Megabytes), GB (Gigabytes). If no unit is provided, the unit is considered to be bytes.",
+                "default": "0"
               },
               "maxAge": {
-                "type": "integer",
-                "description": "The maximum age for stream events, in seconds",
-                "minimum": 0,
-                "default": 0
+                "$ref": "#/definitions/Composite/AgeUnit",
+                "description": "The maximum age for stream events.",
+                "default": null
               }
             }
           },
