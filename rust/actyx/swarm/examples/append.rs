@@ -27,7 +27,7 @@ async fn main() -> anyhow::Result<()> {
     let n: usize = 1000;
     let t0 = Instant::now();
     for (i, tags, payload) in (0..n).map(|i| (i, tags!("abc"), Payload::null())) {
-        store.append(0.into(), app_id(), vec![(tags, payload)]).await?;
+        store.append(app_id(), vec![(tags, payload)]).await?;
         println!("{} {}", i, t0.elapsed().as_millis());
     }
     println!("{:?}", dir);

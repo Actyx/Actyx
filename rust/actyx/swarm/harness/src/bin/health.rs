@@ -134,6 +134,7 @@ fn main() {
                 enable_api: None,
                 ephemeral_events: None,
                 max_leaf_count: None,
+                event_routes: Default::default(),
             };
             let machine = sim.spawn_machine(cfg.into(), None).await;
             tracing::info!("{} is {}", machine, peer_id);
@@ -169,6 +170,7 @@ fn main() {
                 enable_api: None,
                 ephemeral_events: None,
                 max_leaf_count: None,
+                event_routes: Default::default(),
             };
             let machine = sim.spawn_machine(cfg.into(), None).await;
             tracing::info!("{} is {}", machine, peer_id);

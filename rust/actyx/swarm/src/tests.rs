@@ -1,12 +1,13 @@
-use crate::{AxTreeExt, BanyanStore, SwarmConfig, MAX_TREE_LEVEL};
+use crate::{AxTreeExt, BanyanStore, EventRoute, SwarmConfig, MAX_TREE_LEVEL};
 use acto::ActoRef;
-use actyx_sdk::{app_id, tags, AppId, Offset, OffsetMap, Payload, StreamNr, Tag, TagSet};
+use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Offset, OffsetMap, Payload, StreamNr, Tag, TagSet};
 use anyhow::Result;
 use ax_futures_util::{
     prelude::AxStreamExt,
     stream::{interval, Drainer},
 };
 use banyan::query::AllQuery;
+use crypto::KeyPair;
 use futures::{pin_mut, prelude::*, StreamExt};
 use libipld::Cid;
 use maplit::btreemap;
@@ -54,16 +55,15 @@ async fn smoke() -> Result<()> {
         tracing::info!("got event {:?}", x);
         future::ready(())
     }));
-    let stream_nr = StreamNr::try_from(1)?;
     tracing::info!("append first event!");
-    let _ = store.append(stream_nr, app_id(), vec![ev("a")]).await?;
+    let _ = store.append(app_id(), vec![ev("a")]).await?;
     tracing::info!("append second event!");
     tokio::task::spawn(interval(Duration::from_secs(1)).for_each(move |_| {
         let store = store.clone();
         let mut tagger = Tagger::new();
         let mut ev = move |tag| (tagger.tags(&[tag]), Payload::null());
         async move {
-            let _ = store.append(stream_nr, app_id(), vec![ev("a")]).await.unwrap();
+            let _ = store.append(app_id(), vec![ev("a")]).await.unwrap();
         }
     }));
     tokio::task::spawn(async move {
@@ -86,20 +86,27 @@ fn last_item<T: Clone>(drainer: &mut Drainer<T>) -> anyhow::Result<T> {
 }
 
 #[tokio::test]
-async fn should_compact() -> Result<()> {
+async fn should_compact() {
     // this will take 1010 chunks, so it will hit the MAX_TREE_LEVEL limit once
     const EVENTS: usize = 10100;
-    let mut config = SwarmConfig::test("compaction_interval");
+    let stream_nr = StreamNr::from(1);
+    let mut config = SwarmConfig::test_with_routing(
+        "compaction_interval",
+        vec![EventRoute::new(
+            TagExpr::from_str("'abc'").unwrap(),
+            "test_stream".to_string(),
+        )],
+    );
     config.cadence_compact = Duration::from_secs(100000);
-    let store = BanyanStore::new(config, ActoRef::blackhole()).await?;
+    let store = BanyanStore::new(config, ActoRef::blackhole()).await.unwrap();
 
     // Wait for the first compaction loop to pass.
     tokio::time::sleep(Duration::from_millis(500)).await;
 
-    let stream = store.get_or_create_own_stream(0.into())?;
+    let stream = store.get_or_create_own_stream(stream_nr).unwrap();
     let tree_stream = stream.tree_stream();
     let mut tree_stream = Drainer::new(tree_stream);
-    assert_eq!(last_item(&mut tree_stream)?.count(), 0);
+    assert_eq!(last_item(&mut tree_stream).unwrap().count(), 0);
 
     // Chunk to force creation of new branches
     for chunk in (0..EVENTS)
@@ -107,19 +114,20 @@ async fn should_compact() -> Result<()> {
         .collect::<Vec<_>>()
         .chunks(10)
     {
-        store.append(0.into(), app_id(), chunk.to_vec()).await?;
+        store.append(app_id(), chunk.to_vec()).await.unwrap();
     }
-    let tree_after_append = last_item(&mut tree_stream)?;
-    assert!(!store.data.forest.is_packed(&tree_after_append)?);
+    let tree_after_append = last_item(&mut tree_stream).unwrap();
+    assert!(!store.data.forest.is_packed(&tree_after_append).unwrap());
 
     // get the events back
     let evs = store
-        .stream_filtered_chunked(store.node_id().stream(0.into()), 0..=u64::MAX, AllQuery)
+        .stream_filtered_chunked(store.node_id().stream(stream_nr), 0..=u64::MAX, AllQuery)
         .take_until_signaled(tokio::time::sleep(Duration::from_secs(2)))
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .collect::<anyhow::Result<Vec<_>>>()?
+        .collect::<anyhow::Result<Vec<_>>>()
+        .unwrap()
         .into_iter()
         .flat_map(|c| c.data);
     assert_eq!(evs.count(), EVENTS);
@@ -129,32 +137,40 @@ async fn should_compact() -> Result<()> {
 
     // running compaction manually here to make the test deterministic
     let mut guard = stream.lock().await;
-    store.transform_stream(&mut guard, |txn, tree| txn.pack(tree))?;
+    store.transform_stream(&mut guard, |txn, tree| txn.pack(tree)).unwrap();
     drop(guard);
 
-    let tree_after_compaction = last_item(&mut tree_stream)?;
+    let tree_after_compaction = last_item(&mut tree_stream).unwrap();
     assert_ne!(tree_after_append.root(), tree_after_compaction.root());
-    assert!(store.data.forest.is_packed(&tree_after_compaction)?);
-    Ok(())
+    assert!(store.data.forest.is_packed(&tree_after_compaction).unwrap());
 }
 
 #[tokio::test]
-async fn should_extend_packed_when_hitting_max_tree_depth() -> Result<()> {
-    let store = BanyanStore::test("compaction_max_tree").await?;
+async fn should_extend_packed_when_hitting_max_tree_depth() {
+    let store = BanyanStore::test_with_routing(
+        "compaction_max_tree",
+        vec![EventRoute::new(
+            TagExpr::from_str("'abc'").unwrap(),
+            "test_stream".to_string(),
+        )],
+    )
+    .await
+    .unwrap();
 
     // Wait for the first compaction loop to pass.
     tokio::time::sleep(Duration::from_millis(500)).await;
 
-    let tree_stream = store.get_or_create_own_stream(0.into())?.tree_stream();
+    let tree_stream = store.get_or_create_own_stream(1.into()).unwrap().tree_stream();
     let mut tree_stream = Drainer::new(tree_stream);
-    assert_eq!(last_item(&mut tree_stream)?.count(), 0);
+    assert_eq!(last_item(&mut tree_stream).unwrap().count(), 0);
 
     // Append individually to force creation of new branches
+    // -1 because of the `default` mapping event
     for ev in (0..MAX_TREE_LEVEL).map(|_| (tags!("abc"), Payload::null())) {
-        store.append(0.into(), app_id(), vec![ev]).await?;
+        store.append(app_id(), vec![ev]).await.unwrap();
     }
-    let tree_after_append = last_item(&mut tree_stream)?;
-    assert!(!store.data.forest.is_packed(&tree_after_append)?);
+    let tree_after_append = last_item(&mut tree_stream).unwrap();
+    assert!(!store.data.forest.is_packed(&tree_after_append).unwrap());
     assert_eq!(tree_after_append.level(), MAX_TREE_LEVEL);
     assert_eq!(
         tree_after_append.offset(),
@@ -163,18 +179,18 @@ async fn should_extend_packed_when_hitting_max_tree_depth() -> Result<()> {
 
     // packing will be triggered when the existing tree's level is MAX_TREE_LEVEL + 1
     store
-        .append(0.into(), app_id(), vec![(tags!("abc"), Payload::null())])
-        .await?;
-    let tree_after_pack = last_item(&mut tree_stream)?;
+        .append(app_id(), vec![(tags!("abc"), Payload::null())])
+        .await
+        .unwrap();
+    let tree_after_pack = last_item(&mut tree_stream).unwrap();
     // the tree is not packed
-    assert!(store.data.forest.is_packed(&tree_after_pack)?);
+    assert!(store.data.forest.is_packed(&tree_after_pack).unwrap());
     // but the max level remains constant now
     assert_eq!(tree_after_pack.level(), 3);
     assert_eq!(
         tree_after_pack.offset(),
         Some(Offset::try_from(MAX_TREE_LEVEL as i64).unwrap())
     );
-    Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -190,11 +206,8 @@ async fn must_not_lose_events_through_compaction() -> Result<()> {
     let tags_query =
         TagExprQuery::from_expr(&"'abc'".parse().unwrap()).unwrap()(true, store.node_id().stream(0.into()));
 
-    let stream = store.get_or_create_own_stream(0.into())?;
-    assert!(stream.published_tree().is_none());
-
     for ev in (0..EVENTS).map(|_| (tags!("abc"), Payload::null())) {
-        store.append(0.into(), app_id(), vec![ev]).await?;
+        store.append(app_id(), vec![ev]).await?;
     }
 
     let evs = store
@@ -225,23 +238,29 @@ fn config_in_temp_folder() -> anyhow::Result<(SwarmConfig, tempfile::TempDir)> {
         index_store: Some(index),
         node_name: Some("must_report_proper_initial_offsets".to_owned()),
         db_path: Some(db),
+        enable_mdns: false,
+        keypair: Some(KeyPair::generate()),
         ..SwarmConfig::basic()
     };
     Ok((config, dir))
 }
 
 #[tokio::test]
-async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
+async fn must_report_proper_initial_offsets() {
     const EVENTS: usize = 10;
-    let (config, _dir) = config_in_temp_folder()?;
-    let store = BanyanStore::new(config.clone(), ActoRef::blackhole()).await?;
-    let stream = store.get_or_create_own_stream(0.into())?;
-    let stream_id = store.node_id().stream(0.into());
-    let expected_present = OffsetMap::from(btreemap! { stream_id => Offset::from(9) });
-    assert!(stream.published_tree().is_none());
+    let (mut config, _dir) = config_in_temp_folder().unwrap();
+    config.event_routes = vec![EventRoute::new(
+        TagExpr::from_str("'abc'").unwrap(),
+        "extra".to_string(),
+    )];
+    let store = BanyanStore::new(config.clone(), ActoRef::blackhole()).await.unwrap();
+    let expected_present = OffsetMap::from(btreemap! {
+        store.node_id().stream(0.into()) => Offset::from(1),
+        store.node_id().stream(1.into()) => Offset::from(9)
+    });
 
     for ev in (0..EVENTS).map(|_| (tags!("abc"), Payload::null())) {
-        store.append(0.into(), app_id(), vec![ev]).await?;
+        store.append(app_id(), vec![ev]).await.unwrap();
     }
 
     let present = store.data.offsets.project(|x| x.present.clone());
@@ -249,13 +268,11 @@ async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
     drop(store);
 
     // load non-empty store from disk and check that the offsets are correctly computed
-    let store = BanyanStore::new(config, ActoRef::blackhole()).await?;
+    let store = BanyanStore::new(config, ActoRef::blackhole()).await.unwrap();
     let swarm_offsets = store.data.offsets.project(Clone::clone);
     assert_eq!(swarm_offsets.present, expected_present);
     // replication_target should be equal to the present. is nulled in the event service API
     assert_eq!(swarm_offsets.replication_target, expected_present);
-
-    Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

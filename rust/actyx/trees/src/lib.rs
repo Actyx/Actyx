@@ -2,7 +2,10 @@
 #[cfg(any(test, feature = "arb"))]
 mod arb;
 pub mod axtrees;
-mod dnf;
+// Using some traits or similar the DNF module could be extracted into a separated crate
+// This way I wouldn't need to make it pub here and could just be imported on demand
+// But the overhead of maintaining it :/
+pub mod dnf;
 mod header;
 pub mod query;
 pub mod tags;

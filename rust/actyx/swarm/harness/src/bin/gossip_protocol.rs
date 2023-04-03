@@ -31,7 +31,7 @@ fn main() -> anyhow::Result<()> {
             .collect();
 
         let (first, rest) = sim.machines_mut().split_first_mut().unwrap();
-        first.send(Command::Append(0.into(), events));
+        first.send(Command::Append(events));
 
         let start = Instant::now();
         for m in rest.iter_mut() {
@@ -48,8 +48,8 @@ fn main() -> anyhow::Result<()> {
                         }) if stream.stream_nr() == 0.into() => {
                             // RootUpdates only from `first`!
                             assert_eq!(sender, first.peer_id());
-                            assert_eq!(lamport, EVENTS.into());
-                            assert_eq!(offset.unwrap(), Offset::from(EVENTS as u32 - 1));
+                            assert_eq!(lamport, (EVENTS + 1).into());
+                            assert_eq!(offset.unwrap(), Offset::from(EVENTS as u32));
                             received_root_update = true;
                         }
                         GossipMessage::RootMap(RootMap {
@@ -66,8 +66,8 @@ fn main() -> anyhow::Result<()> {
                                 .find_map(|(idx, stream)| if *stream == s { Some(idx) } else { None })
                                 .unwrap();
                             let (offset, lamport_for_root) = offsets[idx];
-                            assert_eq!(lamport_for_root, EVENTS.into());
-                            assert_eq!(offset, Offset::from(EVENTS as u32 - 1));
+                            assert_eq!(lamport_for_root, (EVENTS + 1).into());
+                            assert_eq!(offset, Offset::from(EVENTS as u32));
                             received_root_map = true;
                         }
                         _ => {}

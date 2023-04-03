@@ -1,4 +1,4 @@
-use actyx_sdk::{language::Query, Payload, StreamNr, TagSet, Timestamp};
+use actyx_sdk::{language::Query, Payload, TagSet, Timestamp};
 use anyhow::Result;
 use cbor_data::{
     codec::{ReadCbor, WriteCbor},
@@ -11,7 +11,7 @@ use parking_lot::Mutex;
 use std::{borrow::Borrow, convert::TryFrom, net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc};
 use structopt::StructOpt;
 use swarm::{BanyanConfig, SwarmConfig};
-pub use swarm::{EphemeralEventsConfig, GossipMessage, RetainConfig, RootMap, RootUpdate};
+pub use swarm::{EphemeralEventsConfig, EventRoute, GossipMessage, RetainConfig, RootMap, RootUpdate};
 use trees::axtrees::AxKey;
 use util::SocketAddrHelper;
 
@@ -47,6 +47,8 @@ pub struct Config {
     pub ephemeral_events: Option<EphemeralEventsConfigWrapper>,
     #[structopt(long)]
     pub max_leaf_count: Option<usize>,
+    #[structopt(long, number_of_values = 1)]
+    pub event_routes: Vec<EventRoute>,
 }
 #[derive(Clone, Debug)]
 pub struct EphemeralEventsConfigWrapper(pub EphemeralEventsConfig);
@@ -109,7 +111,10 @@ impl From<Config> for async_process::Command {
         if let Some(x) = config.max_leaf_count {
             cmd.arg("--max-leaf-count").arg(x.to_string());
         }
-
+        for route in config.event_routes {
+            cmd.arg("--event-routes")
+                .arg(format!("[\"{}\", \"{}\"]", route.from, route.into));
+        }
         cmd
     }
 }
@@ -149,6 +154,7 @@ impl From<Config> for SwarmConfig {
                 .map(|e| e.0)
                 .unwrap_or_else(EphemeralEventsConfig::disable),
             banyan_config,
+            event_routes: config.event_routes,
             ..SwarmConfig::basic()
         }
     }
@@ -163,7 +169,7 @@ pub fn keypair(i: u64) -> KeyPair {
 #[derive(Debug, Eq, PartialEq)]
 pub enum Command {
     AddAddress(PeerId, Multiaddr),
-    Append(StreamNr, Vec<(TagSet, Payload)>),
+    Append(Vec<(TagSet, Payload)>),
     SubscribeQuery(Query<'static>),
     ApiPort,
     GossipSubscribe(String),
@@ -173,7 +179,7 @@ impl std::fmt::Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::AddAddress(peer, addr) => write!(f, ">add-address {} {}", peer, addr)?,
-            Self::Append(nr, events) => write!(f, ">append {} {}", nr, serde_json::to_string(events).unwrap())?,
+            Self::Append(events) => write!(f, ">append {}", serde_json::to_string(events).unwrap())?,
             Self::SubscribeQuery(expr) => write!(f, ">query {}", expr)?,
             Self::ApiPort => write!(f, ">api-port")?,
             Self::GossipSubscribe(topic) => write!(f, ">gossip-subscribe {}", topic)?,
@@ -195,11 +201,8 @@ impl std::str::FromStr for Command {
             }
             Some(">query") => Self::SubscribeQuery(Query::parse(s.split_at(7).1)?.forget_pragmas()),
             Some(">append") => {
-                let s = s.split_at(8).1;
-                let mut iter = s.splitn(2, ' ');
-                let nr: u64 = iter.next().unwrap().parse()?;
-                let events = serde_json::from_str(iter.next().unwrap())?;
-                Self::Append(nr.into(), events)
+                let events = serde_json::from_str(s.split_at(8).1).unwrap();
+                Self::Append(events)
             }
             Some(">api-port") => Self::ApiPort,
             Some(">gossip-subscribe") => Self::GossipSubscribe(parts.next().unwrap().into()),
@@ -373,10 +376,7 @@ mod tests {
     #[test]
     fn test_command() -> Result<()> {
         let command = &[
-            Command::Append(
-                42.into(),
-                vec![(tags!("a", "b"), Payload::from_json_str("{}").unwrap())],
-            ),
+            Command::Append(vec![(tags!("a", "b"), Payload::from_json_str("{}").unwrap())]),
             Command::SubscribeQuery(Query::parse("FROM 'a' & 'b' | 'c'").unwrap()),
         ];
         for cmd in command.iter() {

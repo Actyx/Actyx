@@ -15,6 +15,7 @@ pub struct ReentrantSafeMutex<T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
+// FIXME: the guard is "safely" held over .await, which may result in deadlocks/panics
 pub struct ReentrantSafeMutexGuard<'a, T> {
     mutex: &'a ReentrantSafeMutex<T>,
 }

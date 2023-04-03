@@ -40,6 +40,7 @@ fn main() {
             enable_api: Some("0.0.0.0:30001".parse().unwrap()),
             ephemeral_events: None,
             max_leaf_count: None,
+            event_routes: Default::default(),
         };
 
         let t = run_netsim(opts, move |mut sim| async move {
@@ -109,7 +110,10 @@ fn main() {
                                             QueryResponse::Event(EventResponse {
                                                 meta: EventMeta::Event { key, meta },
                                                 payload,
-                                            }) if !meta.tags.contains(&tag!("files")) => {
+                                            }) if !meta.tags.contains(&tag!("files"))
+                                                && !meta.tags.contains(&tag!("event_routing"))
+                                                && !meta.tags.contains(&tag!("discovery")) =>
+                                            {
                                                 Some((key.stream, (meta.tags, payload)))
                                             }
                                             _ => None,
