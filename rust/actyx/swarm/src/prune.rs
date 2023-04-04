@@ -9,50 +9,42 @@ use std::{
 };
 use trees::query::{OffsetQuery, TimeQuery};
 
-// #[allow(dead_code)]
-// #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 /// Note: Events are kept on a best-effort basis, potentially violating the
 /// constraints expressed by this config.
-// pub enum RetainConfig {
-//     /// Retains the last n events
-//     Events(u64),
-//     /// Retain all events between `now - duration` and `now`
-//     Age(Duration),
-//     /// Retain the last events up to the provided size in bytes. Note that only
-//     /// the value bytes are taken into account, no overhead from keys, indexes,
-//     /// etc.
-//     Size(u64),
-// }
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RetainConfig {
-    events: Option<u64>,
-    age: Option<Duration>,
-    size: Option<u64>,
+    /// Retains the last n events
+    max_events: Option<u64>,
+    /// Retain all events between `now - duration` and `now`
+    max_age: Option<Duration>,
+    /// Retain the last events up to the provided size in bytes. Note that only
+    /// the value bytes are taken into account, no overhead from keys, indexes,
+    /// etc.
+    max_size: Option<u64>,
 }
 
 impl RetainConfig {
     pub fn events(events: u64) -> Self {
         Self {
-            events: Some(events),
-            age: None,
-            size: None,
+            max_events: Some(events),
+            max_age: None,
+            max_size: None,
         }
     }
 
     pub fn age(age: Duration) -> Self {
         Self {
-            events: None,
-            age: Some(age),
-            size: None,
+            max_events: None,
+            max_age: Some(age),
+            max_size: None,
         }
     }
 
     pub fn size(size: u64) -> Self {
         Self {
-            events: None,
-            age: None,
-            size: Some(size),
+            max_events: None,
+            max_age: None,
+            max_size: Some(size),
         }
     }
 }
@@ -164,17 +156,17 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
                 let stream = store.get_or_create_own_stream(*stream_nr).unwrap();
                 let mut guard = stream.lock().await;
                 let mut result = Ok(None);
-                if let Some(keep) = cfg.events {
+                if let Some(keep) = cfg.max_events {
                     result = retain_last_events(&store, &mut guard, keep);
                 }
-                if let Some(duration) = cfg.age {
+                if let Some(duration) = cfg.max_age {
                     let emit_after: Timestamp = SystemTime::now()
                         .checked_sub(duration)
                         .with_context(|| format!("Invalid duration configured for {}: {:?}", stream_nr, duration))?
                         .try_into()?;
                     result = retain_events_after(&store, &mut guard, emit_after);
                 }
-                if let Some(max_retain_size) = cfg.size {
+                if let Some(max_retain_size) = cfg.max_size {
                     result = retain_events_up_to(&store, &mut guard, max_retain_size);
                 }
                 result
