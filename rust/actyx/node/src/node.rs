@@ -409,12 +409,12 @@ impl NodeWrapper {
 
 #[cfg(test)]
 mod test {
-    use std::{collections::HashMap, str::FromStr};
+    use std::{collections::BTreeMap, str::FromStr};
 
     use super::*;
     use crate::{
         components::Component,
-        node_settings::{EventRouting, Route, Settings, Stream},
+        node_settings::{EventRouting, Route, Settings},
     };
     use actyx_sdk::language::TagExpr;
     use anyhow::Result;
@@ -643,18 +643,18 @@ mod test {
         });
         assert_eq!(json, rx.await.unwrap().unwrap());
         let expected_event_routing = EventRouting {
-            streams: HashMap::from([
+            streams: BTreeMap::from([
                 (
                     "logs".to_string(),
-                    Stream {
+                    swarm::RetainConfig {
                         max_events: 1024.into(),
                         ..Default::default()
                     },
                 ),
                 (
                     "metrics".to_string(),
-                    Stream {
-                        max_age: 3600.into(),
+                    swarm::RetainConfig {
+                        max_age: Duration::from_secs(3600).into(),
                         ..Default::default()
                     },
                 ),

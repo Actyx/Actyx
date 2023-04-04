@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use crypto::{KeyPair, PrivateKey};
 pub use libp2p::{multiaddr, Multiaddr, PeerId};
 use parking_lot::Mutex;
-use std::{borrow::Borrow, convert::TryFrom, net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc};
+use std::{borrow::Borrow, convert::TryFrom, net::SocketAddr, path::PathBuf, sync::Arc};
 use structopt::StructOpt;
 use swarm::{BanyanConfig, SwarmConfig};
 pub use swarm::{EphemeralEventsConfig, EventRoute, GossipMessage, RetainConfig, RootMap, RootUpdate};
@@ -44,19 +44,11 @@ pub struct Config {
     #[structopt(long)]
     pub enable_api: Option<SocketAddr>,
     #[structopt(long)]
-    pub ephemeral_events: Option<EphemeralEventsConfigWrapper>,
+    pub ephemeral_events: Option<EphemeralEventsConfig>,
     #[structopt(long)]
     pub max_leaf_count: Option<usize>,
     #[structopt(long)]
     pub event_routes: Vec<EventRoute>,
-}
-#[derive(Clone, Debug)]
-pub struct EphemeralEventsConfigWrapper(pub EphemeralEventsConfig);
-impl FromStr for EphemeralEventsConfigWrapper {
-    type Err = anyhow::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(serde_json::from_str(s)?))
-    }
 }
 
 impl From<Config> for async_process::Command {
@@ -106,7 +98,7 @@ impl From<Config> for async_process::Command {
             cmd.arg("--enable-api").arg(api.to_string());
         }
         if let Some(e) = config.ephemeral_events {
-            cmd.arg("--ephemeral-events").arg(serde_json::to_string(&e.0).unwrap());
+            cmd.arg("--ephemeral-events").arg(serde_json::to_string(&e).unwrap());
         }
         if let Some(x) = config.max_leaf_count {
             cmd.arg("--max-leaf-count").arg(x.to_string());
@@ -149,10 +141,7 @@ impl From<Config> for SwarmConfig {
             enable_root_map: config.enable_root_map,
             enable_discovery: config.enable_discovery,
             enable_metrics: config.enable_metrics,
-            ephemeral_event_config: config
-                .ephemeral_events
-                .map(|e| e.0)
-                .unwrap_or_else(EphemeralEventsConfig::disable),
+            ephemeral_event_config: config.ephemeral_events.unwrap_or_else(EphemeralEventsConfig::disable),
             banyan_config,
             event_routes: config.event_routes,
             ..SwarmConfig::basic()

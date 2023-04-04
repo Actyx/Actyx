@@ -2,7 +2,7 @@ use actyx_sdk::language::TagExpr;
 use api::formats::Licensing;
 use crypto::PublicKey;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use util::formats::LogSeverity;
 
 // These type definitions need to be kept in sync with the Actyx
@@ -58,20 +58,6 @@ pub struct LogLevels {
     pub node: LogSeverity,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Stream {
-    /// Number of maximum events to keep
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_events: Option<u64>,
-    /// Maximum size (in bytes) the stream occupy
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_size: Option<u64>,
-    /// Maximum event age (in seconds)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_age: Option<u64>,
-}
-
 mod tag_expr {
     use std::str::FromStr;
 
@@ -119,7 +105,7 @@ pub struct Route {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
 pub struct EventRouting {
-    pub streams: HashMap<String, Stream>,
+    pub streams: BTreeMap<String, swarm::RetainConfig>,
     pub routes: Vec<Route>,
 }
 

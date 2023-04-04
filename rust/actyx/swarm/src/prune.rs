@@ -11,16 +11,20 @@ use trees::query::{OffsetQuery, TimeQuery};
 
 /// Note: Events are kept on a best-effort basis, potentially violating the
 /// constraints expressed by this config.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct RetainConfig {
     /// Retains the last n events
-    max_events: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_events: Option<u64>,
     /// Retain all events between `now - duration` and `now`
-    max_age: Option<Duration>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_age: Option<Duration>,
     /// Retain the last events up to the provided size in bytes. Note that only
     /// the value bytes are taken into account, no overhead from keys, indexes,
     /// etc.
-    max_size: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_size: Option<u64>,
 }
 
 impl RetainConfig {
@@ -149,11 +153,19 @@ fn retain_events_up_to(
 pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
     loop {
         tokio::time::sleep(config.interval).await;
-        let tasks = config.streams.iter().map(|(stream_nr, cfg)| {
+        let tasks = config.streams.iter().map(|(stream_name, cfg)| {
             let store = store.clone();
-            tracing::debug!("Checking ephemeral event conditions for {}", stream_nr);
+            tracing::debug!("Checking ephemeral event conditions for {}", stream_name);
+
+            let stream_nr = *store
+                .data
+                .routing_table
+                .stream_mapping
+                .get(stream_name)
+                .expect("The stream should already have been defined and mapped.");
+
             let fut = async move {
-                let stream = store.get_or_create_own_stream(*stream_nr).unwrap();
+                let stream = store.get_or_create_own_stream(stream_nr).unwrap();
                 let mut guard = stream.lock().await;
                 let mut result = Ok(None);
                 if let Some(keep) = cfg.max_events {

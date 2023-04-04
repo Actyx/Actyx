@@ -127,12 +127,12 @@ pub type Block = libipld::Block<StoreParams>;
 pub type Ipfs = ipfs_embed::Ipfs<StoreParams>;
 
 static DEFAULT_STREAM_NR: u64 = 0;
-static DISCOVERY_STREAM_NR: u64 = 1;
-static METRICS_STREAM_NR: u64 = 2;
-static FILES_STREAM_NR: u64 = 3;
 const MAX_TREE_LEVEL: i32 = 512;
 
 const DEFAULT_STREAM_NAME: &str = "default";
+const DISCOVERY_STREAM_NAME: &str = "discovery";
+const FILES_STREAM_NAME: &str = "files";
+const METRICS_STREAM_NAME: &str = "metrics";
 const EVENT_ROUTING_TAG_NAME: &str = "event_routing";
 
 fn internal_app_id() -> AppId {
@@ -142,10 +142,11 @@ fn internal_app_id() -> AppId {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EphemeralEventsConfig {
     interval: Duration,
-    streams: BTreeMap<StreamNr, RetainConfig>,
+    streams: BTreeMap<String, RetainConfig>,
 }
+
 impl EphemeralEventsConfig {
-    pub fn new(interval: Duration, streams: BTreeMap<StreamNr, RetainConfig>) -> Self {
+    pub fn new(interval: Duration, streams: BTreeMap<String, RetainConfig>) -> Self {
         Self { interval, streams }
     }
     pub fn disable() -> Self {
@@ -155,15 +156,32 @@ impl EphemeralEventsConfig {
         }
     }
 }
+
 impl Default for EphemeralEventsConfig {
     fn default() -> Self {
         Self {
             interval: Duration::from_secs(30 * 60),
             streams: btreemap! {
-                DISCOVERY_STREAM_NR.into() => RetainConfig::events(1000),
-                METRICS_STREAM_NR.into() => RetainConfig::events(1000),
-                FILES_STREAM_NR.into() => RetainConfig::age(Duration::from_secs(60 * 60 * 24 * 14))
+                DISCOVERY_STREAM_NAME.to_string() => RetainConfig::events(1000),
+                METRICS_STREAM_NAME.to_string() => RetainConfig::events(1000),
+                FILES_STREAM_NAME.to_string() => RetainConfig::age(Duration::from_secs(60 * 60 * 24 * 14))
             },
+        }
+    }
+}
+
+impl FromStr for EphemeralEventsConfig {
+    type Err = serde_json::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_str(s)
+    }
+}
+
+impl From<BTreeMap<String, RetainConfig>> for EphemeralEventsConfig {
+    fn from(streams: BTreeMap<String, RetainConfig>) -> Self {
+        Self {
+            interval: Duration::from_secs(30 * 60),
+            streams,
         }
     }
 }
