@@ -14,12 +14,12 @@ use trees::query::{OffsetQuery, TimeQuery};
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RetainConfig {
-    /// Retains the last n events
+    /// Retains the last n events.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_events: Option<u64>,
-    /// Retain all events between `now - duration` and `now`
+    /// Retain all events between `now - duration` and `now` (in seconds).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_age: Option<Duration>,
+    pub max_age: Option<u64>,
     /// Retain the last events up to the provided size in bytes. Note that only
     /// the value bytes are taken into account, no overhead from keys, indexes,
     /// etc.
@@ -36,7 +36,7 @@ impl RetainConfig {
         }
     }
 
-    pub fn age(age: Duration) -> Self {
+    pub fn age(age: u64) -> Self {
         Self {
             max_events: None,
             max_age: Some(age),
@@ -173,7 +173,7 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
                 }
                 if let Some(duration) = cfg.max_age {
                     let emit_after: Timestamp = SystemTime::now()
-                        .checked_sub(duration)
+                        .checked_sub(Duration::from_secs(duration))
                         .with_context(|| format!("Invalid duration configured for {}: {:?}", stream_nr, duration))?
                         .try_into()?;
                     result = retain_events_after(&store, &mut guard, emit_after);

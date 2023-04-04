@@ -654,7 +654,7 @@ mod test {
                 (
                     "metrics".to_string(),
                     swarm::RetainConfig {
-                        max_age: Duration::from_secs(3600).into(),
+                        max_age: 3600.into(),
                         ..Default::default()
                     },
                 ),

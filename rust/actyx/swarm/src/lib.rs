@@ -164,7 +164,7 @@ impl Default for EphemeralEventsConfig {
             streams: btreemap! {
                 DISCOVERY_STREAM_NAME.to_string() => RetainConfig::events(1000),
                 METRICS_STREAM_NAME.to_string() => RetainConfig::events(1000),
-                FILES_STREAM_NAME.to_string() => RetainConfig::age(Duration::from_secs(60 * 60 * 24 * 14))
+                FILES_STREAM_NAME.to_string() => RetainConfig::age(60 * 60 * 24 * 14)
             },
         }
     }

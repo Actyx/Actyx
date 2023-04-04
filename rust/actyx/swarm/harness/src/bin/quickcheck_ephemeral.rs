@@ -12,7 +12,7 @@ fn main() {
         io::Read,
         time::{Duration, Instant},
     };
-    use swarm_cli::{EphemeralEventsConfig, EphemeralEventsConfigWrapper, Event, RetainConfig};
+    use swarm_cli::{EphemeralEventsConfig, Event, RetainConfig};
     use swarm_harness::{api::Api, fully_meshed, run_netsim, setup_env, util::app_manifest, HarnessOpts};
 
     #[derive(Clone, Debug)]
@@ -121,10 +121,10 @@ fn main() {
             enable_discovery: true,
             enable_metrics: true,
             enable_api: Some("0.0.0.0:30001".parse().unwrap()),
-            ephemeral_events: Some(EphemeralEventsConfigWrapper(EphemeralEventsConfig::new(
+            ephemeral_events: Some(EphemeralEventsConfig::new(
                 Duration::from_millis(100),
-                maplit::btreemap! { 0.into() => retain_config },
-            ))),
+                maplit::btreemap! { "default".to_string() => retain_config },
+            )),
             // Force single event per leaf
             max_leaf_count: Some(1),
             event_routes: Default::default(),
@@ -241,7 +241,7 @@ fn main() {
 
     fn ephemeral_pruning_size_based(input: SizeTest) -> quickcheck::TestResult {
         tracing::info!("TestInput {:?}", input);
-        let retain_config = RetainConfig::Size(input.retain_kbytes as u64 * 1024);
+        let retain_config = RetainConfig::size(input.retain_kbytes as u64 * 1024);
         let events = make_events(input.events);
         let bytes_per_event_uncompressed = if let Some(f) = events.first().as_ref() {
             f.payload.as_bytes().len()
@@ -265,7 +265,7 @@ fn main() {
 
     fn ephemeral_pruning_count_based(input: CountTest) -> quickcheck::TestResult {
         tracing::info!("TestInput {:?}", input);
-        let retain_config = RetainConfig::Events(input.retain_last_events as u64);
+        let retain_config = RetainConfig::events(input.retain_last_events as u64);
         let events = make_events(input.events);
         let expected = input.retain_last_events.min(input.events);
 
