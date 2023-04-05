@@ -1,15 +1,16 @@
 #[cfg(target_os = "linux")]
 fn main() {
-    use std::time::Duration;
+    use std::{str::FromStr, time::Duration};
 
     use actyx_sdk::{
+        language::TagExpr,
         service::{EventMeta, EventResponse, EventService, SubscribeRequest, SubscribeResponse},
         tags, Offset, Url,
     };
     use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
     use quickcheck::{empty_shrinker, Arbitrary, Gen};
     use quickcheck::{QuickCheck, TestResult};
-    use swarm_cli::Event;
+    use swarm_cli::{Event, EventRoute};
     use swarm_harness::{
         api::ApiClient,
         m, run_netsim, setup_env,
@@ -64,6 +65,10 @@ fn main() {
             enable_api: Some("0.0.0.0:30001".parse().unwrap()),
             ephemeral_events: None,
             max_leaf_count: None,
+            event_routes: vec![EventRoute::new(
+                TagExpr::from_str("'my_test'").unwrap(),
+                "test_stream".to_string(),
+            )],
         };
 
         let t = run_netsim::<_, _, Event>(opts, move |mut sim| async move {
@@ -94,7 +99,7 @@ fn main() {
                 .map(|_| ApiClient::new(origin.clone(), app_manifest(), namespace))
                 .collect::<Vec<_>>();
 
-            let stream_0 = publish_clients[0].node_id().await.stream(0.into());
+            let stream_1 = publish_clients[0].node_id().await.stream(1.into());
 
             let mut futs = publish_clients
                 .iter()
@@ -167,7 +172,7 @@ fn main() {
             }
 
             let present = publish_clients[0].offsets().await?;
-            let actual = present.present.get(stream_0);
+            let actual = present.present.get(stream_1);
             if actual != Some(max_offset) {
                 anyhow::bail!("{:?} != {:?}", actual, max_offset)
             } else {

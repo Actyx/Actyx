@@ -43,14 +43,11 @@ use crate::{
 use ::util::variable::Writer;
 use ::util::SocketAddrHelper;
 use acto::ActoRuntime;
-use actyx_sdk::{legacy::SourceId, service::SwarmState};
+use actyx_sdk::service::SwarmState;
 use anyhow::Context;
 use crossbeam::channel::{bounded, Receiver, Sender};
 use std::net::ToSocketAddrs;
-use std::{
-    collections::BTreeSet,
-    net::{IpAddr, Ipv4Addr},
-};
+use std::net::{IpAddr, Ipv4Addr};
 use std::{convert::TryInto, path::PathBuf, thread};
 use structopt::StructOpt;
 use swarm::event_store_ref::{self, EventStoreRef};
@@ -92,7 +89,6 @@ fn spawn(
     bind_to: BindTo,
     log_no_color: bool,
     log_as_json: bool,
-    migrate_sources_filter: Option<BTreeSet<SourceId>>,
 ) -> anyhow::Result<ApplicationState> {
     #[cfg(not(target_os = "android"))]
     let _lock = crate::host::lock_working_dir(&working_dir)?;
@@ -138,8 +134,7 @@ fn spawn(
     .ok();
     log::set_max_level(log::LevelFilter::max());
 
-    let emit_own_source = migrate_sources_filter.as_ref().map(|s| s.is_empty()).unwrap_or(false);
-    migration::migrate_if_necessary(&working_dir, emit_own_source, migrate_sources_filter, false)?;
+    migration::migrate_if_necessary(&working_dir)?;
 
     // Host interface
     let host = Host::new(working_dir.clone()).context("creating host interface")?;
@@ -375,17 +370,8 @@ impl ApplicationState {
         bind_to: BindTo,
         log_no_color: bool,
         log_as_json: bool,
-        migrate_sources_filter: Option<BTreeSet<SourceId>>,
     ) -> anyhow::Result<Self> {
-        spawn(
-            base_dir,
-            runtime,
-            bind_to,
-            log_no_color,
-            log_as_json,
-            migrate_sources_filter,
-        )
-        .context("spawning core infrastructure")
+        spawn(base_dir, runtime, bind_to, log_no_color, log_as_json).context("spawning core infrastructure")
     }
 
     pub fn handle_settings_request(&self, message: SettingsRequest) {

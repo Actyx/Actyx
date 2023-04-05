@@ -47,10 +47,10 @@ fn main() -> anyhow::Result<()> {
         for machine in r.iter_mut() {
             machine.send(Command::SubscribeQuery(Query::parse("FROM 'a'").unwrap()));
         }
-        s.send(Command::Append(
-            0.into(),
-            vec![(tags!("a"), Payload::from_json_str("\"hello world\"").unwrap())],
-        ));
+        s.send(Command::Append(vec![(
+            tags!("a"),
+            Payload::from_json_str("\"hello world\"").unwrap(),
+        )]));
         tracing::info!("waiting for events");
         for machine in &mut network.machines_mut()[1..] {
             loop {

@@ -19,7 +19,7 @@ use std::{
     time::{Duration, Instant},
 };
 use structopt::StructOpt;
-use swarm_cli::{multiaddr, Command, Config, EphemeralEventsConfigWrapper, Event, Multiaddr, PeerId};
+use swarm_cli::{multiaddr, Command, Config, EphemeralEventsConfigWrapper, Event, EventRoute, Multiaddr, PeerId};
 use tempdir::TempDir;
 
 pub mod util;
@@ -61,6 +61,9 @@ pub struct HarnessOpts {
 
     #[structopt(long)]
     pub max_leaf_count: Option<usize>,
+
+    #[structopt(long)]
+    pub event_routes: Vec<EventRoute>,
 }
 
 pub trait MachineExt {
@@ -141,6 +144,7 @@ where
                 enable_api: opts.enable_api,
                 ephemeral_events: opts.ephemeral_events.clone(),
                 max_leaf_count: opts.max_leaf_count,
+                event_routes: opts.event_routes.clone(),
             };
             let mut delay = DelayBuffer::new();
             delay.set_delay(Duration::from_millis(opts.delay_ms));

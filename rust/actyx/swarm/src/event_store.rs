@@ -1,6 +1,6 @@
 use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
-use crate::{selection::StreamEventSelection, AppendMeta, BanyanStore, SwarmOffsets};
+use crate::{selection::StreamEventSelection, BanyanStore, SwarmOffsets};
 use actyx_sdk::{
     language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
     Payload, StreamId, StreamNr, TagSet, Timestamp,
@@ -116,34 +116,11 @@ impl EventStore {
         self.banyan_store.data.offsets.get_cloned()
     }
 
-    pub async fn persist(
-        &self,
-        app_id: AppId,
-        stream_nr: StreamNr,
-        events: Vec<(TagSet, Payload)>,
-    ) -> anyhow::Result<Vec<PersistenceMeta>> {
+    pub async fn persist(&self, app_id: AppId, events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
         if events.is_empty() {
             return Ok(vec![]);
         }
-        let n = events.len();
-        if n == 0 {
-            return Ok(vec![]);
-        }
-        let AppendMeta {
-            min_lamport,
-            min_offset,
-            timestamp,
-            ..
-        } = self.banyan_store.append(stream_nr, app_id, events).await?;
-        let keys = (0..n)
-            .map(|i| {
-                let i = i as u64;
-                let lamport = min_lamport + i;
-                let offset = min_offset.increase(i).unwrap();
-                (lamport, offset, stream_nr, timestamp)
-            })
-            .collect();
-        Ok(keys)
+        self.banyan_store.append(app_id, events).await
     }
 
     pub async fn bounded_forward(
@@ -267,7 +244,10 @@ fn events_from_chunk_rev(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::{
+        collections::{BTreeMap, BTreeSet},
+        str::FromStr,
+    };
 
     use actyx_sdk::{
         app_id,
@@ -282,7 +262,7 @@ mod tests {
     use rand::{thread_rng, Rng};
 
     use super::*;
-    use crate::{selection::EventSelection, BanyanStore};
+    use crate::{selection::EventSelection, BanyanStore, EventRoute};
     use chrono::{DateTime, SecondsFormat, Utc};
     use trees::query::{LamportQuery, TimeQuery};
 
@@ -371,7 +351,7 @@ mod tests {
         let app_id = app_id!("test-forward-stream");
 
         store
-            .persist(app_id.clone(), 0.into(), vec![(tags!(), Payload::null())])
+            .persist(app_id.clone(), vec![(tags!(), Payload::null())])
             .await
             .unwrap();
 
@@ -395,8 +375,8 @@ mod tests {
 
         let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
             stream_id,
-            from_exclusive: OffsetOrMin::MIN,
-            to_inclusive: OffsetOrMin::ZERO,
+            from_exclusive: OffsetOrMin::ZERO,
+            to_inclusive: OffsetOrMin::ZERO + 1,
             tags_query: TagExprQuery::all(),
         }));
         let res = stream.next().unwrap();
@@ -406,7 +386,7 @@ mod tests {
 
         let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
             stream_id,
-            from_exclusive: OffsetOrMin::MIN,
+            from_exclusive: OffsetOrMin::ZERO,
             to_inclusive: OffsetOrMin::MAX,
             tags_query: TagExprQuery::all(),
         }));
@@ -422,14 +402,14 @@ mod tests {
         let app_id = app_id!("test-backward-stream");
 
         store
-            .persist(app_id.clone(), 0.into(), vec![(tags!(), Payload::null())])
+            .persist(app_id.clone(), vec![(tags!(), Payload::null())])
             .await
             .unwrap();
 
         let mut stream = Drainer::new(store.backward_stream(StreamEventSelection {
             stream_id,
-            from_exclusive: OffsetOrMin::MIN,
-            to_inclusive: OffsetOrMin::ZERO,
+            from_exclusive: OffsetOrMin::ZERO,
+            to_inclusive: OffsetOrMin::from(1i64),
             tags_query: TagExprQuery::all(),
         }));
         let res = stream.next().unwrap();
@@ -457,7 +437,6 @@ mod tests {
         store1
             .persist(
                 app_id(),
-                0.into(),
                 vec![
                     (tags!("test", "test:stream1"), Payload::null()),
                     (tags!("test", "test:stream1"), Payload::null()),
@@ -469,7 +448,6 @@ mod tests {
         store2
             .persist(
                 app_id(),
-                0.into(),
                 vec![
                     (tags!("test", "test:stream2"), Payload::null()),
                     (tags!("test", "test:stream2"), Payload::null()),
@@ -503,8 +481,8 @@ mod tests {
         }
 
         let max = btreemap! {
-          stream_id1 => 2,
-          stream_id2 => 2,
+          stream_id1 => 3,
+          stream_id2 => 3,
         };
         await_stream_offsets(&store1, &[&store2], &max).await;
 
@@ -512,25 +490,25 @@ mod tests {
         assert_bounded(&store1, "'test'", None, &max, 6).await;
 
         // stream1
-        assert_bounded(&store1, "isLocal", None, &max, 3).await;
-        assert_bounded(&store1, "'test'", None, &btreemap! { stream_id1 => 2 }, 3).await;
+        assert_bounded(&store1, "isLocal & 'test'", None, &max, 3).await;
+        assert_bounded(&store1, "'test'", None, &btreemap! { stream_id1 => 3 }, 3).await;
         assert_bounded(
             &store1,
             "'test'",
-            Some(&btreemap! { stream_id1 => 0u32 }),
-            &btreemap! { stream_id1 => 1u32 },
+            Some(&btreemap! { stream_id1 => 1u32 }),
+            &btreemap! { stream_id1 => 2u32 },
             1,
         )
         .await;
 
         // stream2
         assert_bounded(&store1, "'test:stream2'", None, &max, 3).await;
-        assert_bounded(&store1, "'test'", None, &btreemap! { stream_id2 => 2 }, 3).await;
+        assert_bounded(&store1, "'test'", None, &btreemap! { stream_id2 => 3 }, 3).await;
         assert_bounded(
             &store1,
             "'test'",
-            Some(&btreemap! { stream_id2 => 0u32 }),
-            &btreemap! { stream_id2 => 1u32 },
+            Some(&btreemap! { stream_id2 => 1u32 }),
+            &btreemap! { stream_id2 => 2u32 },
             1,
         )
         .await;
@@ -565,14 +543,11 @@ mod tests {
         let stream_id2 = store2.node_id().stream(0.into());
 
         store1
-            .persist(
-                app_id(),
-                0.into(),
-                vec![(tags!("test:unbounded:forward"), Payload::null())],
-            )
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::null())])
             .await
             .unwrap();
 
+        #[allow(clippy::future_not_send)]
         async fn assert_unbounded<'a>(
             node_id: NodeId,
             stream: impl Stream<Item = Event<Payload>> + 'static,
@@ -601,7 +576,7 @@ mod tests {
         let handle = tokio::spawn(async move {
             let store_rx = mk_store("swarm_test_rx").await;
             let tag_expr = &TagExpr::Atom(TagAtom::Tag(tag!("test:unbounded:forward")));
-            let from = offset_map(&btreemap! { stream_id1 => 0 });
+            let from = offset_map(&btreemap! { stream_id1 => 1 });
             let to = offset_map(&btreemap! { stream_id1 => u32::MAX, stream_id2 => u32::MAX });
             // stream1 is below range and stream2 non-existant at this point
             let stream = store_rx.unbounded_forward_per_stream(tag_expr, from.clone()).unwrap();
@@ -615,19 +590,11 @@ mod tests {
         });
 
         store1
-            .persist(
-                app_id(),
-                0.into(),
-                vec![(tags!("test:unbounded:forward"), Payload::null())],
-            )
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::null())])
             .await
             .unwrap();
         store2
-            .persist(
-                app_id(),
-                0.into(),
-                vec![(tags!("test:unbounded:forward"), Payload::null())],
-            )
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::null())])
             .await
             .unwrap();
 
@@ -657,13 +624,23 @@ mod tests {
         }
 
         let offsets: Vec<(Offset, TagSet)> = (0..n).into_iter().map(|i| (i.into(), mk_tag(i))).collect();
-        let store = mk_store("pubsub").await;
-        let stream_id = store.node_id().stream(0.into());
+        let banyan_store = BanyanStore::test_with_routing(
+            "pubsub",
+            vec![EventRoute::new(
+                TagExpr::from_str("'evn' | 'odd'").unwrap(),
+                "test_stream".to_string(),
+            )],
+        )
+        .await
+        .unwrap();
+        let store = EventStore::new(banyan_store);
+        let stream_id = store.node_id().stream(1.into());
 
         let mut handles = Vec::new();
-        for i in 0..n {
+        // Shifted 1 because of the default mapping event
+        for i in 0..n + 1 {
             let (_, offset, _, _) = store
-                .persist(app_id(), 0.into(), vec![(mk_tag(i), Payload::null())])
+                .persist(app_id(), vec![(mk_tag(i), Payload::null())])
                 .await
                 .unwrap()[0];
             assert_eq!(offset, Offset::from(i as u32));
@@ -715,7 +692,6 @@ mod tests {
             let x = store
                 .persist(
                     app_id!("test"),
-                    0.into(),
                     vec![(tags, Payload::from_json_str(&format!("{}", i)).unwrap())],
                 )
                 .await?[0];

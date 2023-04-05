@@ -395,7 +395,6 @@ fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
                 let (root, event) = output.context("No files provided")?;
                 store
                     .append(
-                        0.into(),
                         app_id!("com.actyx"),
                         vec![(
                             tags!("files", "files:created"),

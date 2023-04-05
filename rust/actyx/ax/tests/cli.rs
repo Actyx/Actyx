@@ -144,7 +144,6 @@ fn version() {
         vec!["events", "dump"] => Leaf,
         vec!["events", "restore"] => Leaf,
         vec!["internal"] => Branch,
-        vec!["internal", "convert"] => Leaf,
         vec!["internal", "trees"] => Branch,
         vec!["internal", "trees", "dump"] => Leaf,
         vec!["internal", "trees", "explore"] => Leaf,

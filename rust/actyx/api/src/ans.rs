@@ -133,7 +133,6 @@ impl ActyxNamingService {
         };
         self.store
             .append(
-                0.into(),
                 app_id!("com.actyx"),
                 vec![(
                     tags!("ans"),
@@ -154,7 +153,6 @@ impl ActyxNamingService {
         let record = NameRecordEvent::Remove { name: name.clone() };
         self.store
             .append(
-                0.into(),
                 app_id!("com.actyx"),
                 vec![(
                     tags!("ans"),

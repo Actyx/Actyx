@@ -57,7 +57,8 @@ android-bins = actyx.apk actyx.aab
 
 CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
-CARGO_BUILD_ARGS ?= --features migration-v1
+# Previously used for migrations, kept as placeholder for future use
+CARGO_BUILD_ARGS ?=
 
 export BUILD_RUST_TOOLCHAIN ?= 1.65.0
 

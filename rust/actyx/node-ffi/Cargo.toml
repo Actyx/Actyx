@@ -4,9 +4,6 @@ name = "node-ffi"
 version = "0.1.0"
 authors = ["Actyx AG"]
 
-[features]
-migration-v1 = ["node/migration-v1"]
-
 [dependencies]
 settings = { path = "../settings" }
 node = { path = "../node" }

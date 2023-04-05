@@ -12,10 +12,10 @@ fn main() -> anyhow::Result<()> {
         let (s, r) = network.machines_mut().split_at_mut(1);
         let s = &mut s[0];
 
-        s.send(Command::Append(
-            0.into(),
-            vec![(tags!("a"), Payload::from_json_str("\"hello world\"").unwrap())],
-        ));
+        s.send(Command::Append(vec![(
+            tags!("a"),
+            Payload::from_json_str("\"hello world\"").unwrap(),
+        )]));
 
         for machine in r.iter_mut() {
             loop {

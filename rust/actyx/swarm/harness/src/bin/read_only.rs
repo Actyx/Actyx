@@ -36,6 +36,7 @@ fn main() -> anyhow::Result<()> {
             enable_api: None,
             ephemeral_events: None,
             max_leaf_count: None,
+            event_routes: Default::default(),
         };
         let machine = sim.spawn_machine(config.into(), None).await;
         sim.plug(machine, net, None).await;
@@ -60,13 +61,10 @@ fn main() -> anyhow::Result<()> {
         }
 
         for machine in sim.machines_mut() {
-            machine.send(Command::Append(
-                0.into(),
-                vec![(
-                    tags!("a"),
-                    Payload::from_json_str(&format!("\"{}\"", machine.peer_id())).unwrap(),
-                )],
-            ));
+            machine.send(Command::Append(vec![(
+                tags!("a"),
+                Payload::from_json_str(&format!("\"{}\"", machine.peer_id())).unwrap(),
+            )]));
         }
 
         let gossip_per_peer: Arc<Mutex<BTreeMap<_, usize>>> = Default::default();
