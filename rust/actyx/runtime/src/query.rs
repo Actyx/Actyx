@@ -4,7 +4,7 @@ use crate::{
     value::Value,
 };
 use actyx_sdk::{
-    language::{self, Arr, Source, TagAtom, TagExpr},
+    language::{self, Arr, SimpleExpr, Source, SpreadExpr, TagAtom, TagExpr},
     service::Order,
     AppId,
 };
@@ -35,7 +35,11 @@ pub struct Query {
 impl Query {
     pub fn from(q: language::Query<'_>, app_id: AppId) -> (Self, Pragmas<'_>) {
         let pragmas = Pragmas(q.pragmas);
-        let stages = q.ops.into_iter().map(Operation::from).collect();
+        let stages = q
+            .ops
+            .into_iter()
+            .map(|op| rewrite_op(Operation::from(op), &app_id))
+            .collect();
         let source = rewrite_source(&q.source, app_id);
         let features = q.features;
         (
@@ -160,6 +164,9 @@ fn rewrite_source(source: &Source, app_id: AppId) -> Source {
                 }
             }
             TagExpr::Atom(TagAtom::AppId(id)) if &**id == "me" => TagExpr::Atom(TagAtom::AppId(app_id.clone())),
+            TagExpr::Atom(TagAtom::Interpolation(exprs)) => TagExpr::Atom(TagAtom::Interpolation(
+                exprs.iter().map(|e| rewrite_expr(e, app_id)).collect(),
+            )),
             TagExpr::Atom(a) => TagExpr::Atom(a.clone()),
         }
     }
@@ -171,6 +178,23 @@ fn rewrite_source(source: &Source, app_id: AppId) -> Source {
     } else {
         source.clone()
     }
+}
+
+fn rewrite_op(op: Operation, app_id: &AppId) -> Operation {
+    match op {
+        Operation::Filter(x) => Operation::Filter(rewrite_expr(&x, app_id)),
+        Operation::Select(x) => Operation::Select(x.map(|expr| SpreadExpr {
+            expr: rewrite_expr(&expr.expr, app_id),
+            ..*expr
+        })),
+        Operation::Aggregate(x) => Operation::Aggregate(rewrite_expr(&x, app_id)),
+        Operation::Limit(x) => Operation::Limit(x),
+        Operation::Binding(x, y) => Operation::Binding(x, rewrite_expr(&y, app_id)),
+    }
+}
+
+fn rewrite_expr(expr: &SimpleExpr, app_id: &AppId) -> SimpleExpr {
+    expr.rewrite()
 }
 
 pub struct Feeder {

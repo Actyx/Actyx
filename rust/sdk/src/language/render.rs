@@ -73,7 +73,7 @@ fn render_object(w: &mut impl Write, e: &Obj) -> Result {
     w.write_str(" }")
 }
 
-fn render_array(w: &mut impl Write, e: &Arr) -> Result {
+fn render_array(w: &mut impl Write, e: &Arr<SpreadExpr>) -> Result {
     w.write_char('[')?;
     for (i, x) in e.items.iter().enumerate() {
         if i > 0 {
@@ -239,7 +239,7 @@ fn render_timestamp(w: &mut impl Write, e: Timestamp) -> Result {
 fn render_tag_atom(w: &mut impl Write, e: &TagAtom) -> Result {
     match e {
         TagAtom::Tag(t) => render_string(w, t.as_ref()),
-        TagAtom::Interpolation(s) => render_interpolation(w, s),
+        TagAtom::Interpolation(s) => render_interpolation(w, &s.items),
         TagAtom::AllEvents => w.write_str("allEvents"),
         TagAtom::IsLocal => w.write_str("isLocal"),
         TagAtom::FromTime(ft, incl) => {

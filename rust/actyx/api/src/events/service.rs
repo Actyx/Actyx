@@ -620,7 +620,7 @@ mod tests {
         app_id,
         language::TagExpr,
         service::{EventMeta, EventResponse, SessionId},
-        tags, Metadata, Offset, StreamId, TagSet,
+        tags, Metadata, TagSet,
     };
     use futures::Stream;
     use itertools::Itertools;

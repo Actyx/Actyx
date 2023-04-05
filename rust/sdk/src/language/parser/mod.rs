@@ -97,7 +97,8 @@ fn r_tag(p: P, ctx: Context) -> Result<TagExpr> {
         }
         Rule::interpolation => {
             let expr = r_interpolation(tag, ctx)?;
-            Ok(TagExpr::Atom(TagAtom::Interpolation(expr)))
+            let arr = Arr { items: expr.into() };
+            Ok(TagExpr::Atom(TagAtom::Interpolation(arr)))
         }
         x => bail!("unexpected token: {:?}", x),
     }
@@ -394,7 +395,7 @@ fn r_object(p: P, ctx: Context) -> Result<Obj> {
     Ok(Obj { props: props.into() })
 }
 
-fn r_array(p: P, ctx: Context) -> Result<Arr> {
+fn r_array(p: P, ctx: Context) -> Result<Arr<SpreadExpr>> {
     let mut p = p.inner()?;
     let mut items = Vec::new();
     while let Some(candidate) = p.next() {
@@ -1138,21 +1139,24 @@ mod tests {
     fn interpolation() {
         use TagAtom::*;
         use TagExpr::*;
+        fn arr(v: Vec<SimpleExpr>) -> Arr<SimpleExpr> {
+            Arr { items: v.into() }
+        }
 
         let q = Query::parse("FROM `a{U+1e}b`").unwrap();
-        assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1eb")])));
+        assert_eq!(from(q), Atom(Interpolation(arr(vec![s("a\x1eb")]))));
 
         let q = Query::parse("FROM `a{U+1e}`").unwrap();
-        assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1e")])));
+        assert_eq!(from(q), Atom(Interpolation(arr(vec![s("a\x1e")]))));
 
         let q = Query::parse("FROM `{U+1e}b`").unwrap();
-        assert_eq!(from(q), Atom(Interpolation(vec![s("\x1eb")])));
+        assert_eq!(from(q), Atom(Interpolation(arr(vec![s("\x1eb")]))));
 
         let q = Query::parse("FROM `a{U+1e}b{U+1f}`").unwrap();
-        assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1eb\x1f")])));
+        assert_eq!(from(q), Atom(Interpolation(arr(vec![s("a\x1eb\x1f")]))));
 
         let q = Query::parse("FROM `a{U+1e}{U+1f}b`").unwrap();
-        assert_eq!(from(q), Atom(Interpolation(vec![s("a\x1e\x1fb")])));
+        assert_eq!(from(q), Atom(Interpolation(arr(vec![s("a\x1e\x1fb")]))));
 
         let q = Query::parse("FROM `a{U+110000}`").unwrap_err();
         assert_eq!(q.to_string(), "invalid unicode scalar value `U+110000`");

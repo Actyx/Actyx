@@ -4,6 +4,16 @@ use std::{convert::TryFrom, ops::Deref, sync::Arc};
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NonEmptyVec<T>(Arc<[T]>);
 
+impl<T> NonEmptyVec<T> {
+    pub fn map<U>(&self, mut f: impl FnMut(&T) -> U) -> NonEmptyVec<U> {
+        let mut v = Vec::with_capacity(self.len());
+        for elem in self.iter() {
+            v.push(f(elem));
+        }
+        NonEmptyVec(Arc::from(v))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct NoElements;
 impl std::error::Error for NoElements {}
