@@ -482,7 +482,7 @@ mod test {
                   "maxEvents": 1024
                 },
                 "metrics": {
-                  "maxAge": 3600
+                  "maxAge": "1d"
                 }
               },
               "routes": [
@@ -623,7 +623,7 @@ mod test {
                       "maxEvents": 1024
                     },
                     "metrics": {
-                      "maxAge": 3600
+                      "maxAge": "1h"
                     }
                 },
                 "routes": [
@@ -654,7 +654,7 @@ mod test {
                 (
                     "metrics".to_string(),
                     swarm::RetainConfig {
-                        max_age: 3600.into(),
+                        max_age: Some(swarm::StreamAge::Hours(1)),
                         ..Default::default()
                     },
                 ),

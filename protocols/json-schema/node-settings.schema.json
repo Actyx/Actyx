@@ -98,7 +98,7 @@
       },
       "AgeUnit": {
         "type": "string",
-        "pattern": "[1-9][0-9]+(s|m|h|D)"
+        "pattern": "[1-9][0-9]+(s|m|h|d|w)"
       }
     },
     "Swarm": {

@@ -2,13 +2,308 @@ use crate::{streams::OwnStreamGuard, BanyanStore, EphemeralEventsConfig, Link};
 use actyx_sdk::Timestamp;
 use anyhow::Context;
 use futures::future::{join_all, FutureExt};
-use serde::{Deserialize, Serialize};
+use lazy_static::lazy_static;
+use regex::Regex;
+use serde::{de::Visitor, Deserialize, Serialize};
 use std::{
     convert::TryInto,
     future,
+    str::FromStr,
     time::{Duration, SystemTime},
 };
 use trees::query::{OffsetQuery, TimeQuery};
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum StreamSize {
+    Bytes(u64),
+    KiloBytes(u64),
+    MegaBytes(u64),
+    GigaBytes(u64),
+    KibiBytes(u64),
+    MebiBytes(u64),
+    GibiBytes(u64),
+}
+
+impl Serialize for StreamSize {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            StreamSize::Bytes(value) => serializer.serialize_str(&format!("{}B", value)),
+            StreamSize::KiloBytes(value) => serializer.serialize_str(&format!("{}kB", value)),
+            StreamSize::MegaBytes(value) => serializer.serialize_str(&format!("{}MB", value)),
+            StreamSize::GigaBytes(value) => serializer.serialize_str(&format!("{}GB", value)),
+            StreamSize::KibiBytes(value) => serializer.serialize_str(&format!("{}KiB", value)),
+            StreamSize::MebiBytes(value) => serializer.serialize_str(&format!("{}MiB", value)),
+            StreamSize::GibiBytes(value) => serializer.serialize_str(&format!("{}GiB", value)),
+        }
+    }
+}
+
+struct StreamSizeVisitor;
+
+impl Visitor<'_> for StreamSizeVisitor {
+    type Value = StreamSize;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a string containing a non-zero positive number, suffixed by one of the following: B, kB, MB, GB, KiB, MiB, GiB")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        StreamSize::from_str(v).map_err(E::custom)
+    }
+}
+
+impl<'de> Deserialize<'de> for StreamSize {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(StreamSizeVisitor)
+    }
+}
+
+impl From<u64> for StreamSize {
+    /// Assumes that the value is in bytes.
+    fn from(b: u64) -> Self {
+        StreamSize::Bytes(b)
+    }
+}
+
+impl Into<u64> for StreamSize {
+    fn into(self) -> u64 {
+        match self {
+            StreamSize::Bytes(v) => v,
+            StreamSize::KiloBytes(v) => v * 1000,
+            StreamSize::MegaBytes(v) => v * 1000 * 1000,
+            StreamSize::GigaBytes(v) => v * 1000 * 1000 * 1000,
+            StreamSize::KibiBytes(v) => v * 1024,
+            StreamSize::MebiBytes(v) => v * 1024 * 1024,
+            StreamSize::GibiBytes(v) => v * 1024 * 1024 * 1024,
+        }
+    }
+}
+
+impl FromStr for StreamSize {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"([1-9][0-9]*)(B|kB|MB|GB|KiB|MiB|GiB)").unwrap();
+        }
+        let captures = RE.captures(s).ok_or(anyhow::anyhow!("Failed to parse string."))?;
+        let value = captures.get(1).map(|v| v.as_str()).unwrap_or("0").parse::<u64>()?;
+        let unit = captures.get(2).map(|u| u.as_str());
+        Ok(match unit {
+            None | Some("B") => Self::Bytes(value),
+            Some("kB") => Self::KiloBytes(value),
+            Some("MB") => Self::MegaBytes(value),
+            Some("GB") => Self::GigaBytes(value),
+            Some("KiB") => Self::KibiBytes(value),
+            Some("MiB") => Self::MebiBytes(value),
+            Some("GiB") => Self::GibiBytes(value),
+            _ => unreachable!("This should've been covered by the regex."),
+        })
+    }
+}
+
+#[cfg(test)]
+mod test_stream_size {
+    use std::str::FromStr;
+
+    use crate::prune::StreamSize;
+
+    #[test]
+    fn test_from_kb() {
+        assert_eq!(StreamSize::from_str("1kB").unwrap(), StreamSize::KiloBytes(1));
+        assert_eq!(StreamSize::from_str("1190kB").unwrap(), StreamSize::KiloBytes(1190));
+        assert_eq!(
+            StreamSize::from_str("9340123kB").unwrap(),
+            StreamSize::KiloBytes(9340123)
+        );
+    }
+
+    #[test]
+    fn test_from_mb() {
+        assert_eq!(StreamSize::from_str("1MB").unwrap(), StreamSize::MegaBytes(1));
+        assert_eq!(StreamSize::from_str("1190MB").unwrap(), StreamSize::MegaBytes(1190));
+        assert_eq!(
+            StreamSize::from_str("9340123MB").unwrap(),
+            StreamSize::MegaBytes(9340123)
+        );
+    }
+
+    #[test]
+    fn test_from_gb() {
+        assert_eq!(StreamSize::from_str("1GB").unwrap(), StreamSize::GigaBytes(1));
+        assert_eq!(StreamSize::from_str("1190GB").unwrap(), StreamSize::GigaBytes(1190));
+        assert_eq!(
+            StreamSize::from_str("9340123GB").unwrap(),
+            StreamSize::GigaBytes(9340123)
+        );
+    }
+
+    #[test]
+    fn test_from_kib() {
+        assert_eq!(StreamSize::from_str("1KiB").unwrap(), StreamSize::KibiBytes(1));
+        assert_eq!(StreamSize::from_str("1190KiB").unwrap(), StreamSize::KibiBytes(1190));
+        assert_eq!(
+            StreamSize::from_str("9340123KiB").unwrap(),
+            StreamSize::KibiBytes(9340123)
+        );
+    }
+
+    #[test]
+    fn test_from_mib() {
+        assert_eq!(StreamSize::from_str("1MiB").unwrap(), StreamSize::MebiBytes(1));
+        assert_eq!(StreamSize::from_str("1190MiB").unwrap(), StreamSize::MebiBytes(1190));
+        assert_eq!(
+            StreamSize::from_str("9340123MiB").unwrap(),
+            StreamSize::MebiBytes(9340123)
+        );
+    }
+
+    #[test]
+    fn test_from_gib() {
+        assert_eq!(StreamSize::from_str("1GiB").unwrap(), StreamSize::GibiBytes(1));
+        assert_eq!(StreamSize::from_str("1190GiB").unwrap(), StreamSize::GibiBytes(1190));
+        assert_eq!(
+            StreamSize::from_str("9340123GiB").unwrap(),
+            StreamSize::GibiBytes(9340123)
+        );
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum StreamAge {
+    Seconds(u64),
+    Minutes(u64),
+    Hours(u64),
+    Days(u64),
+    Weeks(u64),
+}
+
+impl Serialize for StreamAge {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            StreamAge::Seconds(value) => serializer.serialize_str(&format!("{}s", value)),
+            StreamAge::Minutes(value) => serializer.serialize_str(&format!("{}m", value)),
+            StreamAge::Hours(value) => serializer.serialize_str(&format!("{}h", value)),
+            StreamAge::Days(value) => serializer.serialize_str(&format!("{}d", value)),
+            StreamAge::Weeks(value) => serializer.serialize_str(&format!("{}w", value)),
+        }
+    }
+}
+
+struct StreamAgeVisitor;
+
+impl Visitor<'_> for StreamAgeVisitor {
+    type Value = StreamAge;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str(
+            "a string containing a non-zero positive number, suffixed by one of the following: s, m, h, d, w",
+        )
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        StreamAge::from_str(v).map_err(E::custom)
+    }
+}
+
+impl<'de> Deserialize<'de> for StreamAge {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(StreamAgeVisitor)
+    }
+}
+
+impl Into<u64> for StreamAge {
+    fn into(self) -> u64 {
+        match self {
+            StreamAge::Seconds(value) => value,
+            StreamAge::Minutes(value) => value * 60,
+            StreamAge::Hours(value) => value * 60 * 60,
+            StreamAge::Days(value) => value * 24 * 60 * 60,
+            StreamAge::Weeks(value) => value * 7 * 24 * 60 * 60,
+        }
+    }
+}
+
+impl FromStr for StreamAge {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new("([1-9][0-9]*)(s|m|h|d|w)").unwrap();
+        }
+        let captures = RE.captures(s).ok_or(anyhow::anyhow!("Failed to parse string."))?;
+        let value = captures.get(1).map(|v| v.as_str()).unwrap_or("0").parse::<u64>()?;
+        let unit = captures.get(2).map(|u| u.as_str()).unwrap_or("s");
+        Ok(match unit {
+            "s" => Self::Seconds(value),
+            "m" => Self::Minutes(value),
+            "h" => Self::Hours(value),
+            "d" => Self::Days(value),
+            "w" => Self::Weeks(value),
+            _ => unreachable!("This should've been covered by the regex."),
+        })
+    }
+}
+
+#[cfg(test)]
+mod test_stream_age {
+    use std::str::FromStr;
+
+    use crate::prune::StreamAge;
+
+    #[test]
+    fn test_from_seconds() {
+        assert_eq!(StreamAge::from_str("1s").unwrap(), StreamAge::Seconds(1));
+        assert_eq!(StreamAge::from_str("100s").unwrap(), StreamAge::Seconds(100));
+        assert_eq!(StreamAge::from_str("9010s").unwrap(), StreamAge::Seconds(9010));
+    }
+
+    #[test]
+    fn test_from_minutes() {
+        assert_eq!(StreamAge::from_str("1m").unwrap(), StreamAge::Minutes(1));
+        assert_eq!(StreamAge::from_str("100m").unwrap(), StreamAge::Minutes(100));
+        assert_eq!(StreamAge::from_str("9010m").unwrap(), StreamAge::Minutes(9010));
+    }
+
+    #[test]
+    fn test_from_hours() {
+        assert_eq!(StreamAge::from_str("1h").unwrap(), StreamAge::Hours(1));
+        assert_eq!(StreamAge::from_str("100h").unwrap(), StreamAge::Hours(100));
+        assert_eq!(StreamAge::from_str("9010h").unwrap(), StreamAge::Hours(9010));
+    }
+
+    #[test]
+    fn test_from_days() {
+        assert_eq!(StreamAge::from_str("1d").unwrap(), StreamAge::Days(1));
+        assert_eq!(StreamAge::from_str("100d").unwrap(), StreamAge::Days(100));
+        assert_eq!(StreamAge::from_str("9010d").unwrap(), StreamAge::Days(9010));
+    }
+
+    #[test]
+    fn test_from_weeks() {
+        assert_eq!(StreamAge::from_str("1w").unwrap(), StreamAge::Weeks(1));
+        assert_eq!(StreamAge::from_str("100w").unwrap(), StreamAge::Weeks(100));
+        assert_eq!(StreamAge::from_str("9010w").unwrap(), StreamAge::Weeks(9010));
+    }
+}
 
 /// Note: Events are kept on a best-effort basis, potentially violating the
 /// constraints expressed by this config.
@@ -20,12 +315,12 @@ pub struct RetainConfig {
     pub max_events: Option<u64>,
     /// Retain all events between `now - duration` and `now` (in seconds).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_age: Option<u64>,
+    pub max_age: Option<StreamAge>,
     /// Retain the last events up to the provided size in bytes. Note that only
     /// the value bytes are taken into account, no overhead from keys, indexes,
     /// etc.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_size: Option<u64>,
+    pub max_size: Option<StreamSize>,
 }
 
 impl RetainConfig {
@@ -42,7 +337,7 @@ impl RetainConfig {
     pub fn age(age: u64) -> Self {
         Self {
             max_events: None,
-            max_age: Some(age),
+            max_age: Some(StreamAge::Seconds(age)),
             max_size: None,
         }
     }
@@ -52,7 +347,7 @@ impl RetainConfig {
         Self {
             max_events: None,
             max_age: None,
-            max_size: Some(size),
+            max_size: Some(StreamSize::Bytes(size)),
         }
     }
 }
@@ -176,13 +471,13 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
                 }
                 if let Some(duration) = cfg.max_age {
                     let emit_after: Timestamp = SystemTime::now()
-                        .checked_sub(Duration::from_secs(duration))
+                        .checked_sub(Duration::from_secs(duration.into()))
                         .with_context(|| format!("Invalid duration configured for {}: {:?}", stream_nr, duration))?
                         .try_into()?;
                     result = retain_events_after(&store, &mut guard, emit_after);
                 }
                 if let Some(max_retain_size) = cfg.max_size {
-                    result = retain_events_up_to(&store, &mut guard, max_retain_size);
+                    result = retain_events_up_to(&store, &mut guard, max_retain_size.into());
                 }
                 result
             };
