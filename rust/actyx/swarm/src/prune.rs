@@ -61,9 +61,6 @@ fn retain_events_up_to(
     target_bytes: u64,
 ) -> anyhow::Result<Option<Link>> {
     let stream_nr = stream.stream_nr();
-
-    // store.transform_stream(stream, |txn, tree| txn.pack(tree))?;
-
     let emit_from = {
         let tree = stream.snapshot();
         let mut iter = store.data.forest.iter_index_reverse(&tree, banyan::query::AllQuery);
@@ -166,7 +163,6 @@ mod test {
     use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Payload, StreamNr};
     use ax_futures_util::prelude::AxStreamExt;
     use futures::{future, StreamExt};
-    use maplit::btreemap;
 
     use super::*;
     use crate::{BanyanConfig, EventRoute, SwarmConfig};
@@ -220,18 +216,12 @@ mod test {
         let test_stream = StreamNr::from(1);
 
         let store = publish_events(event_count).await.unwrap();
-
-        let config = EphemeralEventsConfig {
-            interval: Duration::from_micros(1),
-            streams: btreemap! {
-                test_stream => RetainConfig::Events(events_to_retain)
-            },
-        };
-        let eph = super::prune(store.clone(), config);
-        // Timeout is required because "prune" is an "always on" task
-        let _ = tokio::time::timeout(Duration::from_micros(10), eph).await;
-
         let stream_id = store.node_id().stream(test_stream);
+
+        let stream = store.get_or_create_own_stream(test_stream).unwrap();
+        let mut guard = stream.lock().await;
+        super::retain_last_events(&store, &mut guard, events_to_retain).unwrap();
+
         let query = OffsetQuery::from(0..);
         let round_tripped = store
             .stream_filtered_chunked(stream_id, 0..=u64::MAX, query)
@@ -277,14 +267,9 @@ mod test {
 
         let store = publish_events(upper_bound).await.unwrap();
 
-        let config = EphemeralEventsConfig {
-            interval: Duration::from_micros(1),
-            streams: btreemap! {
-                test_stream => RetainConfig::Size(max_size)
-            },
-        };
-        let eph = super::prune(store.clone(), config);
-        let _ = tokio::time::timeout(Duration::from_micros(20), eph).await;
+        let stream = store.get_or_create_own_stream(test_stream).unwrap();
+        let mut guard = stream.lock().await;
+        super::retain_events_up_to(&store, &mut guard, max_size).unwrap();
 
         let query = OffsetQuery::from(0..);
         let round_tripped = store
