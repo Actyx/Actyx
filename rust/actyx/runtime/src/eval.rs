@@ -171,7 +171,7 @@ impl<'a> Context<'a> {
                 TagExpr::Atom(a) => match a {
                     TagAtom::Interpolation(s) => {
                         let mut buf = String::new();
-                        for e in s {
+                        for e in s.items.iter() {
                             buf.push_str(&self.eval(e).await?.print());
                         }
                         Ok(Cow::Owned(TagExpr::Atom(TagAtom::Tag(Tag::try_from(&*buf)?))))

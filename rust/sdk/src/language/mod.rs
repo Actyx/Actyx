@@ -3,6 +3,8 @@ mod parser;
 mod render;
 
 pub use self::non_empty::NonEmptyVec;
+pub use self::rewrite_impl::{Galactus, Tactic};
+
 use self::render::render_tag_expr;
 use crate::{service::Order, tags::Tag, AppId, EventKey, LamportTimestamp, StreamId, Timestamp};
 use std::{fmt::Display, num::NonZeroU64, ops::Deref, sync::Arc};

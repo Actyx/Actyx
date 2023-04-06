@@ -216,7 +216,7 @@ fn features_tag(feat: &mut Features, expr: &TagExpr) {
             TagAtom::AppId(_) => {}
             TagAtom::Interpolation(e) => {
                 feat.add(interpolation);
-                for e in e {
+                for e in e.items.iter() {
                     features_simple(feat, e);
                 }
             }

@@ -1034,9 +1034,9 @@ mod tests {
                             &service,
                             r#"PRAGMA features := interpolation
 PRAGMA events
-{"time":"2011-06-17T18:30+02:00","appId":"me","payload":null}
+{"time":"2011-06-17T18:30+02:00","appId":"test","payload":null}
 ENDPRAGMA
-                            FROM appId(me) SELECT `{(TIME(_))[0]}`
+                            FROM appId(test) SELECT `{(TIME(_))[0]}`
                             "#
                         )
                         .await,

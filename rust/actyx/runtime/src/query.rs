@@ -4,13 +4,12 @@ use crate::{
     value::Value,
 };
 use actyx_sdk::{
-    language::{self, Arr, SimpleExpr, Source, SpreadExpr, TagAtom, TagExpr},
+    language::{self, Arr, Galactus, Tactic, TagAtom},
     service::Order,
     AppId,
 };
 use ax_futures_util::ReceiverExt;
 use futures::{stream, StreamExt};
-use std::sync::Arc;
 
 pub struct Pragmas<'a>(Vec<(&'a str, &'a str)>);
 
@@ -34,18 +33,29 @@ pub struct Query {
 
 impl Query {
     pub fn from(q: language::Query<'_>, app_id: AppId) -> (Self, Pragmas<'_>) {
+        struct Q(AppId);
+        impl Galactus for Q {
+            fn visit_tag_atom(&mut self, tag: &TagAtom) -> Tactic<TagAtom, Self> {
+                match tag {
+                    TagAtom::AppId(id) if &**id == "me" => Tactic::Devour(TagAtom::AppId(self.0.clone())),
+                    _ => Tactic::Scrutinise,
+                }
+            }
+        }
+
         let pragmas = Pragmas(q.pragmas);
-        let stages = q
-            .ops
-            .into_iter()
-            .map(|op| rewrite_op(Operation::from(op), &app_id))
-            .collect();
-        let source = rewrite_source(&q.source, app_id);
         let features = q.features;
+        let q = language::Query {
+            pragmas: vec![],
+            features: vec![],
+            ..q
+        };
+        let q = q.rewrite(&mut Q(app_id)).0;
+        let stages = q.ops.into_iter().map(Operation::from).collect();
         (
             Self {
                 features,
-                source,
+                source: q.source,
                 stages,
             },
             pragmas,
@@ -139,62 +149,6 @@ impl Query {
             .collect();
         Feeder::new(processors)
     }
-}
-
-/// replace appId(me) with the caller’s appId
-fn rewrite_source(source: &Source, app_id: AppId) -> Source {
-    fn rec(expr: &TagExpr, app_id: &AppId) -> TagExpr {
-        match expr {
-            TagExpr::Or(x) => {
-                let l = rec(&x.0, app_id);
-                let r = rec(&x.1, app_id);
-                if l.ptr_eq(&x.0) && r.ptr_eq(&x.1) {
-                    TagExpr::Or(x.clone())
-                } else {
-                    TagExpr::Or(Arc::new((l, r)))
-                }
-            }
-            TagExpr::And(x) => {
-                let l = rec(&x.0, app_id);
-                let r = rec(&x.1, app_id);
-                if l.ptr_eq(&x.0) && r.ptr_eq(&x.1) {
-                    TagExpr::And(x.clone())
-                } else {
-                    TagExpr::And(Arc::new((l, r)))
-                }
-            }
-            TagExpr::Atom(TagAtom::AppId(id)) if &**id == "me" => TagExpr::Atom(TagAtom::AppId(app_id.clone())),
-            TagExpr::Atom(TagAtom::Interpolation(exprs)) => TagExpr::Atom(TagAtom::Interpolation(
-                exprs.iter().map(|e| rewrite_expr(e, app_id)).collect(),
-            )),
-            TagExpr::Atom(a) => TagExpr::Atom(a.clone()),
-        }
-    }
-    if let Source::Events { from, order } = source {
-        Source::Events {
-            from: rec(from, &app_id),
-            order: *order,
-        }
-    } else {
-        source.clone()
-    }
-}
-
-fn rewrite_op(op: Operation, app_id: &AppId) -> Operation {
-    match op {
-        Operation::Filter(x) => Operation::Filter(rewrite_expr(&x, app_id)),
-        Operation::Select(x) => Operation::Select(x.map(|expr| SpreadExpr {
-            expr: rewrite_expr(&expr.expr, app_id),
-            ..*expr
-        })),
-        Operation::Aggregate(x) => Operation::Aggregate(rewrite_expr(&x, app_id)),
-        Operation::Limit(x) => Operation::Limit(x),
-        Operation::Binding(x, y) => Operation::Binding(x, rewrite_expr(&y, app_id)),
-    }
-}
-
-fn rewrite_expr(expr: &SimpleExpr, app_id: &AppId) -> SimpleExpr {
-    expr.rewrite()
 }
 
 pub struct Feeder {

@@ -4,7 +4,7 @@ use crate::{
     value::Value,
 };
 use actyx_sdk::{
-    language::{AggrOp, Num, SimpleExpr, Var},
+    language::{AggrOp, Galactus, Num, SimpleExpr, Tactic, Var},
     service::{EventMeta, Order},
 };
 use anyhow::anyhow;
@@ -342,41 +342,49 @@ impl super::Processor for Aggregate {
 }
 
 pub(super) fn aggregate(expr: &SimpleExpr) -> Box<dyn super::Processor> {
+    struct G<'a>(&'a mut Vec<AggrState>, &'a mut u32);
+    impl<'a> Galactus for G<'a> {
+        fn visit_expr(&mut self, expr: &SimpleExpr) -> Tactic<SimpleExpr, Self> {
+            match expr {
+                SimpleExpr::AggrOp(a) => {
+                    let name = match self.0.binary_search_by_key(&a, |x| &x.key) {
+                        Ok(found) => self.0[found].variable,
+                        Err(idx) => {
+                            let aggregator: Box<dyn Aggregator + Send + Sync> = match a.0 {
+                                AggrOp::Sum => Box::new(Sum::<AddOp>::default()),
+                                AggrOp::Prod => Box::new(Sum::<MulOp>::default()),
+                                AggrOp::Min => Box::new(Min(None)),
+                                AggrOp::Max => Box::new(Max(None)),
+                                AggrOp::First => Box::new(First(None)),
+                                AggrOp::Last => Box::new(Last(None)),
+                            };
+                            *self.1 += 1;
+                            self.0.insert(
+                                idx,
+                                AggrState {
+                                    key: a.clone(),
+                                    aggregator,
+                                    variable: *self.1,
+                                },
+                            );
+                            *self.1
+                        }
+                    };
+                    // it is important that these internal variables are not legal in user queries,
+                    // hence the exclamation mark
+                    Tactic::Devour(SimpleExpr::Variable(Var::internal(format!("!{}", name))))
+                }
+                // leave sub-queries alone
+                SimpleExpr::SubQuery(_) => Tactic::KeepAsIs,
+                _ => Tactic::Scrutinise,
+            }
+        }
+    }
+
     let mut state = Vec::<AggrState>::new();
     let mut counter: u32 = 0;
-    let expr = expr.rewrite(&mut |e| match e {
-        SimpleExpr::AggrOp(a) => {
-            let name = match state.binary_search_by_key(&a, |x| &x.key) {
-                Ok(found) => state[found].variable,
-                Err(idx) => {
-                    let aggregator: Box<dyn Aggregator + Send + Sync> = match a.0 {
-                        AggrOp::Sum => Box::new(Sum::<AddOp>::default()),
-                        AggrOp::Prod => Box::new(Sum::<MulOp>::default()),
-                        AggrOp::Min => Box::new(Min(None)),
-                        AggrOp::Max => Box::new(Max(None)),
-                        AggrOp::First => Box::new(First(None)),
-                        AggrOp::Last => Box::new(Last(None)),
-                    };
-                    counter += 1;
-                    state.insert(
-                        idx,
-                        AggrState {
-                            key: a.clone(),
-                            aggregator,
-                            variable: counter,
-                        },
-                    );
-                    counter
-                }
-            };
-            // it is important that these internal variables are not legal in user queries,
-            // hence the exclamation mark
-            Some(SimpleExpr::Variable(Var::internal(format!("!{}", name))))
-        }
-        // leave sub-queries alone
-        SimpleExpr::SubQuery(_) => Some(e.clone()),
-        _ => None,
-    });
+
+    let expr = expr.rewrite(&mut G(&mut state, &mut counter)).0;
 
     let order = {
         let mut first = false;

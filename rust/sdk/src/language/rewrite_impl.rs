@@ -13,13 +13,18 @@ use super::*;
 pub enum Tactic<T, D: ?Sized> {
     KeepAsIs,
     Scrutinise,
-    Replace(T),
-    ReplaceLater(fn(&mut D, T) -> (T, bool)),
+    Devour(T),
+    DevourLater(fn(&mut D, T) -> (T, bool)),
 }
 
+#[allow(unused_variables)]
 pub trait Galactus {
-    fn visit_tag_atom(&mut self, tag: &TagAtom) -> Tactic<TagAtom, Self>;
-    fn visit_expr(&mut self, expr: &SimpleExpr) -> Tactic<SimpleExpr, Self>;
+    fn visit_tag_atom(&mut self, tag: &TagAtom) -> Tactic<TagAtom, Self> {
+        Tactic::Scrutinise
+    }
+    fn visit_expr(&mut self, expr: &SimpleExpr) -> Tactic<SimpleExpr, Self> {
+        Tactic::Scrutinise
+    }
 }
 
 impl<'a> Query<'a> {
@@ -96,8 +101,8 @@ impl TagExpr {
             TagExpr::Atom(x) => match surfer.visit_tag_atom(x) {
                 Tactic::KeepAsIs => (self.clone(), false),
                 Tactic::Scrutinise => map(x.rewrite(surfer), TagExpr::Atom),
-                Tactic::Replace(atom) => (TagExpr::Atom(atom), true),
-                Tactic::ReplaceLater(f) => {
+                Tactic::Devour(atom) => (TagExpr::Atom(atom), true),
+                Tactic::DevourLater(f) => {
                     let (atom, mut changed) = x.rewrite(surfer);
                     let atom = shed((f)(surfer, atom), &mut changed);
                     emit(|| TagExpr::Atom(atom), changed, self)
@@ -151,8 +156,8 @@ impl SimpleExpr {
         match surfer.visit_expr(self) {
             Tactic::KeepAsIs => (self.clone(), false),
             Tactic::Scrutinise => self.rewrite0(surfer),
-            Tactic::Replace(expr) => (expr, true),
-            Tactic::ReplaceLater(f) => {
+            Tactic::Devour(expr) => (expr, true),
+            Tactic::DevourLater(f) => {
                 let (expr, mut changed) = self.rewrite0(surfer);
                 let expr = shed((f)(surfer, expr), &mut changed);
                 emit(|| expr, changed, self)
