@@ -129,10 +129,10 @@ pub type Ipfs = ipfs_embed::Ipfs<StoreParams>;
 static DEFAULT_STREAM_NR: u64 = 0;
 const MAX_TREE_LEVEL: i32 = 512;
 
-const DEFAULT_STREAM_NAME: &str = "default";
-const DISCOVERY_STREAM_NAME: &str = "discovery";
-const FILES_STREAM_NAME: &str = "files";
-const METRICS_STREAM_NAME: &str = "metrics";
+const DEFAULT_STREAM_NAME: &str = "default"; // 0
+const DISCOVERY_STREAM_NAME: &str = "discovery"; // 1
+const METRICS_STREAM_NAME: &str = "metrics"; // 2
+const FILES_STREAM_NAME: &str = "files"; // 3
 const EVENT_ROUTING_TAG_NAME: &str = "event_routing";
 
 fn internal_app_id() -> AppId {
@@ -696,12 +696,16 @@ impl<'a> BanyanStoreGuard<'a> {
         }
     }
 
-    fn load_known_streams(&mut self) -> Result<()> {
+    fn load_known_streams(&mut self) -> Result<u64> {
         let known_streams = self.index_store.get_observed_streams()?;
         let mut max_lamport = None;
+        let mut local_streams = 0;
         for stream_id in known_streams {
             // just trigger loading of the stream from the alias
+            // NOTE: I can return the number of local streams and then use it to check if I need to write the mappings
+            // happens when no mappings are present + the number of streams is bigger than 1
             let lamport = if self.is_local(stream_id) {
+                local_streams += 1;
                 self.get_or_create_own_stream(stream_id.stream_nr())?
                     .infos()
                     .map(|x| x.2)
@@ -717,7 +721,7 @@ impl<'a> BanyanStoreGuard<'a> {
             self.received_lamport(lamport)?;
         }
         self.data.offsets.set(self.compute_swarm_offsets());
-        Ok(())
+        Ok(local_streams)
     }
 }
 
@@ -938,44 +942,61 @@ impl BanyanStore {
             })),
         };
         tracing::info!("loading event streams");
-        banyan.lock().load_known_streams()?;
+        let local_streams = banyan.lock().load_known_streams()?;
+        tracing::error!("n local streams: {}", local_streams);
         // check that all known streams are indeed completely present
         tracing::info!("validating event streams");
         banyan.validate_known_streams().await?;
 
         let routing_table_span = tracing::debug_span!("Initializing routing table.");
-        let mappings = banyan.get_published_mappings(node_id).await?;
+        let known_mappings = banyan.get_published_mappings(node_id).await?;
+
         let routing_table_span_entered = routing_table_span.enter();
         let mut routing_table = RoutingTable::default();
-        for (name, nr) in mappings {
-            routing_table.add_stream(name, nr.into())?;
-        }
 
-        // Publish the default stream if missing
-        if routing_table.is_empty() {
-            tracing::info!("No stream mappings found, publishing the default mapping.");
-            banyan
-                .append_stream_mapping_event(DEFAULT_STREAM_NAME.to_string(), DEFAULT_STREAM_NR.into())
-                .await?;
-            tracing::debug!("\"default\" stream successfully published.");
-            // If publishing went ok, we can move on with adding the stream to the table
-            routing_table
-                .add_stream(DEFAULT_STREAM_NAME.to_string(), Some(DEFAULT_STREAM_NR.into()))
-                .expect("The default stream should not have been previously added.");
-        }
-
-        let unpublished_streams = {
-            let mut streams = HashMap::new();
-            for route in &cfg.event_routes {
-                if let Some(nr) = routing_table.add_route(route.from.clone(), route.into.clone()) {
-                    streams.insert(route.into.clone(), nr);
+        if known_mappings.is_empty() {
+            let default_streams = [
+                DEFAULT_STREAM_NAME,
+                DISCOVERY_STREAM_NAME,
+                METRICS_STREAM_NAME,
+                FILES_STREAM_NAME,
+            ];
+            if (cfg.event_routes.is_empty() && cfg.ephemeral_event_config.streams.is_empty()) || local_streams > 1 {
+                for (idx, name) in default_streams.into_iter().enumerate() {
+                    tracing::info!("No stream mappings found, publishing the default mapping.");
+                    banyan
+                        .append_stream_mapping_event(name.to_string(), (idx as u64).into())
+                        .await?;
+                    tracing::debug!("\"default\" stream successfully published.");
+                    // If publishing went ok, we can move on with adding the stream to the table
+                    routing_table
+                        .add_stream(name, Some((idx as u64).into()))
+                        .expect("The default stream should not have been previously added.");
                 }
             }
-            streams
+        } else {
+            for (name, nr) in known_mappings {
+                routing_table.add_stream(&name, nr.into())?;
+            }
+        }
+
+        let unpublished_mappings = {
+            let mut unpublished_mappings = HashMap::new();
+            for stream in cfg.ephemeral_event_config.streams.iter().map(|t| t.0) {
+                if let Some(stream_nr) = routing_table.add_stream(stream, None)? {
+                    unpublished_mappings.insert(stream.clone(), stream_nr);
+                }
+            }
+            for route in cfg.event_routes {
+                if let Some(stream_nr) = routing_table.add_route(route.from, route.into.clone()) {
+                    unpublished_mappings.insert(route.into, stream_nr);
+                }
+            }
+            unpublished_mappings
         };
 
         drop(routing_table_span_entered);
-        for (name, number) in unpublished_streams {
+        for (name, number) in unpublished_mappings {
             banyan.append_stream_mapping_event(name, number).await?;
         }
         let routing_table_span_entered = routing_table_span.enter();
@@ -1898,14 +1919,14 @@ struct RoutingTable {
 
 impl RoutingTable {
     /// Add a new stream to the routing table. Returns the allocated stream number.
-    fn add_stream(&mut self, stream: String, stream_nr: Option<StreamNr>) -> Result<Option<StreamNr>> {
+    fn add_stream(&mut self, stream: &str, stream_nr: Option<StreamNr>) -> Result<Option<StreamNr>> {
         if let Some(stream_nr) = stream_nr {
             tracing::debug!(
                 "Adding stream \"{}\" as #{:?} to the routing table",
                 stream,
                 u64::from(stream_nr)
             );
-            if let Some(nr) = self.stream_mapping.get(&stream) {
+            if let Some(nr) = self.stream_mapping.get(stream) {
                 tracing::warn!(
                     "Stream {} was previously mapped to {}, replacing with {}.",
                     stream,
@@ -1913,7 +1934,7 @@ impl RoutingTable {
                     stream_nr
                 );
             }
-            self.stream_mapping.insert(stream.clone(), stream_nr);
+            self.stream_mapping.insert(stream.to_string(), stream_nr);
             tracing::trace!(
                 "Stream \"{}\" was added to the routing table as #{:?}",
                 stream,
@@ -1923,7 +1944,7 @@ impl RoutingTable {
             Ok(Some(stream_nr))
         } else {
             tracing::trace!("Adding stream \"{}\" to the routing table", stream);
-            if self.stream_mapping.get(&stream).is_none() {
+            if self.stream_mapping.get(stream).is_none() {
                 self.max_stream_nr = if let Some(stream_nr) = self.max_stream_nr {
                     Some(stream_nr.succ())
                 } else {
@@ -1932,7 +1953,7 @@ impl RoutingTable {
                 let max_stream_nr = self
                     .max_stream_nr
                     .expect("The maximum stream number can only be None when the structure is initialized.");
-                self.stream_mapping.insert(stream.clone(), max_stream_nr);
+                self.stream_mapping.insert(stream.to_string(), max_stream_nr);
                 tracing::trace!("Stream \"{}\" was attributed #{:?}", stream, u64::from(max_stream_nr));
                 Ok(Some(
                     self.max_stream_nr
@@ -1952,7 +1973,7 @@ impl RoutingTable {
         // Routes should only be added after all existing streams were added to the table,
         // otherwise, stream numbers may be incorrect.
         let stream_nr = self
-            .add_stream(stream.clone(), None)
+            .add_stream(&stream, None)
             .expect("Adding a stream without a stream number should never fail.");
         let dnf = Dnf::from(&matcher);
 
@@ -1985,10 +2006,6 @@ impl RoutingTable {
         tracing::trace!("{:?} did not match a stream, sending off to the default", tag_set);
         StreamNr::default()
     }
-
-    fn is_empty(&self) -> bool {
-        self.max_stream_nr.is_none()
-    }
 }
 
 #[cfg(test)]
@@ -2007,13 +2024,11 @@ mod test_routing_table {
     #[test]
     fn add_stream() {
         let mut table = RoutingTable::default();
-        table.add_stream("stream_1".to_string(), None).unwrap();
-        table.add_stream("stream_2".to_string(), None).unwrap();
+        table.add_stream("stream_1", None).unwrap();
+        table.add_stream("stream_2", None).unwrap();
         assert_eq!(*table.stream_mapping.get("stream_1").unwrap(), StreamNr::from(0));
         assert_eq!(*table.stream_mapping.get("stream_2").unwrap(), StreamNr::from(1));
-        table
-            .add_stream("stream_2".to_string(), Some(StreamNr::from(10)))
-            .unwrap();
+        table.add_stream("stream_2", Some(StreamNr::from(10))).unwrap();
         assert_eq!(*table.stream_mapping.get("stream_2").unwrap(), StreamNr::from(10));
     }
 
@@ -2031,7 +2046,7 @@ mod test_routing_table {
     #[test]
     fn get_matching_stream_nr() {
         let mut table = RoutingTable::default();
-        table.add_stream("default".to_string(), None).unwrap();
+        table.add_stream("default", None).unwrap();
         table.add_route(TagExpr::from_str("'test_1'").unwrap(), "stream_1".to_string());
         table.add_route(TagExpr::from_str("'test_2'").unwrap(), "stream_2".to_string());
         assert_eq!(
