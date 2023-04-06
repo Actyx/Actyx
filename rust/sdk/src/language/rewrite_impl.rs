@@ -10,10 +10,16 @@
 //! be for naught.
 use super::*;
 
+/// Instruct Galactus how to continue
 pub enum Tactic<T, D: ?Sized> {
+    /// Keep the current AST node and its sub-tree as is, do not visit it
     KeepAsIs,
+    /// Keep the current AST node as is but visit its child nodes
     Scrutinise,
+    /// Replace this AST node with the provided value, do not visit its children
     Devour(T),
+    /// First visit the child nodes, then transform the current AST node using the
+    /// provided function (where the first parameter refers to the Galactus instance)
     DevourLater(fn(&mut D, T) -> (T, bool)),
 }
 
@@ -56,12 +62,13 @@ impl Source {
                 (Source::Events { from, order: *order }, changed)
             }
             Source::Array(arr) => {
-                let mut items = Vec::with_capacity(arr.items.len());
                 let mut changed = false;
-                for item in arr.items.iter() {
-                    items.push(shed(item.rewrite_spread(surfer), &mut changed));
-                }
-                emit(|| Source::Array(Arr { items: items.into() }), changed, self)
+                let items = arr
+                    .items
+                    .iter()
+                    .map(|item| shed(item.rewrite_spread(surfer), &mut changed))
+                    .collect();
+                emit(|| Source::Array(Arr { items }), changed, self)
             }
         }
     }
@@ -181,8 +188,12 @@ impl SimpleExpr {
                 )
             }
             SimpleExpr::Interpolation(x) => {
-                let v = x.iter().map(|expr| shed(expr.rewrite(surfer), &mut changed)).collect();
-                (SimpleExpr::Interpolation(v), changed)
+                let items = x
+                    .items
+                    .iter()
+                    .map(|expr| shed(expr.rewrite(surfer), &mut changed))
+                    .collect();
+                emit(|| SimpleExpr::Interpolation(Arr { items }), changed, self)
             }
             SimpleExpr::Object(Obj { props }) => {
                 let props = props

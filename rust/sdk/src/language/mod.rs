@@ -269,7 +269,7 @@ pub enum SimpleExpr {
     Indexing(Ind),
     Number(Num),
     String(String),
-    Interpolation(Vec<SimpleExpr>),
+    Interpolation(Arr<SimpleExpr>),
     Object(Obj),
     Array(Arr<SpreadExpr>),
     Null,
@@ -317,7 +317,7 @@ impl SimpleExpr {
                 SimpleExpr::Number(_) => {}
                 SimpleExpr::String(_) => {}
                 SimpleExpr::Interpolation(e) => {
-                    for expr in e.iter() {
+                    for expr in e.items.iter() {
                         expr.traverse(f);
                     }
                 }

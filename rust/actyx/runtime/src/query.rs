@@ -43,13 +43,7 @@ impl Query {
             }
         }
 
-        let pragmas = Pragmas(q.pragmas);
-        let features = q.features;
-        let q = language::Query {
-            pragmas: vec![],
-            features: vec![],
-            ..q
-        };
+        let (q, features, pragmas) = q.decompose();
         let q = q.rewrite(&mut Q(app_id)).0;
         let stages = q.ops.into_iter().map(Operation::from).collect();
         (
@@ -58,7 +52,7 @@ impl Query {
                 source: q.source,
                 stages,
             },
-            pragmas,
+            Pragmas(pragmas),
         )
     }
 

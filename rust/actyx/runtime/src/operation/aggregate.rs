@@ -342,13 +342,16 @@ impl super::Processor for Aggregate {
 }
 
 pub(super) fn aggregate(expr: &SimpleExpr) -> Box<dyn super::Processor> {
-    struct G<'a>(&'a mut Vec<AggrState>, &'a mut u32);
+    struct G<'a> {
+        state: &'a mut Vec<AggrState>,
+        counter: &'a mut u32,
+    }
     impl<'a> Galactus for G<'a> {
         fn visit_expr(&mut self, expr: &SimpleExpr) -> Tactic<SimpleExpr, Self> {
             match expr {
                 SimpleExpr::AggrOp(a) => {
-                    let name = match self.0.binary_search_by_key(&a, |x| &x.key) {
-                        Ok(found) => self.0[found].variable,
+                    let name = match self.state.binary_search_by_key(&a, |x| &x.key) {
+                        Ok(found) => self.state[found].variable,
                         Err(idx) => {
                             let aggregator: Box<dyn Aggregator + Send + Sync> = match a.0 {
                                 AggrOp::Sum => Box::new(Sum::<AddOp>::default()),
@@ -358,16 +361,16 @@ pub(super) fn aggregate(expr: &SimpleExpr) -> Box<dyn super::Processor> {
                                 AggrOp::First => Box::new(First(None)),
                                 AggrOp::Last => Box::new(Last(None)),
                             };
-                            *self.1 += 1;
-                            self.0.insert(
+                            *self.counter += 1;
+                            self.state.insert(
                                 idx,
                                 AggrState {
                                     key: a.clone(),
                                     aggregator,
-                                    variable: *self.1,
+                                    variable: *self.counter,
                                 },
                             );
-                            *self.1
+                            *self.counter
                         }
                     };
                     // it is important that these internal variables are not legal in user queries,
@@ -375,6 +378,12 @@ pub(super) fn aggregate(expr: &SimpleExpr) -> Box<dyn super::Processor> {
                     Tactic::Devour(SimpleExpr::Variable(Var::internal(format!("!{}", name))))
                 }
                 // leave sub-queries alone
+                //
+                // This is about delineated contexts: an AGGREGATE expression treats the AggrOps
+                // (like LAST()) specially, but the expression may also include sub-queries that
+                // run once the aggregation is finished. Inside those sub-queries there might be
+                // an AGGREGATE step, but it is not our place to touch that — it will be treated
+                // properly when its evaluation time comes.
                 SimpleExpr::SubQuery(_) => Tactic::KeepAsIs,
                 _ => Tactic::Scrutinise,
             }
@@ -384,7 +393,12 @@ pub(super) fn aggregate(expr: &SimpleExpr) -> Box<dyn super::Processor> {
     let mut state = Vec::<AggrState>::new();
     let mut counter: u32 = 0;
 
-    let expr = expr.rewrite(&mut G(&mut state, &mut counter)).0;
+    let expr = expr
+        .rewrite(&mut G {
+            state: &mut state,
+            counter: &mut counter,
+        })
+        .0;
 
     let order = {
         let mut first = false;

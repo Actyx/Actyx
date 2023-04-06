@@ -93,9 +93,9 @@ pub(crate) fn render_string(w: &mut impl Write, e: &str) -> Result {
     w.write_char('\'')
 }
 
-pub(crate) fn render_interpolation(w: &mut impl Write, e: &[SimpleExpr]) -> Result {
+pub(crate) fn render_interpolation(w: &mut impl Write, e: &Arr<SimpleExpr>) -> Result {
     w.write_char('`')?;
-    for e in e {
+    for e in e.items.iter() {
         w.write_char('{')?;
         render_simple_expr(w, e)?;
         w.write_char('}')?;
@@ -239,7 +239,7 @@ fn render_timestamp(w: &mut impl Write, e: Timestamp) -> Result {
 fn render_tag_atom(w: &mut impl Write, e: &TagAtom) -> Result {
     match e {
         TagAtom::Tag(t) => render_string(w, t.as_ref()),
-        TagAtom::Interpolation(s) => render_interpolation(w, &s.items),
+        TagAtom::Interpolation(s) => render_interpolation(w, s),
         TagAtom::AllEvents => w.write_str("allEvents"),
         TagAtom::IsLocal => w.write_str("isLocal"),
         TagAtom::FromTime(ft, incl) => {

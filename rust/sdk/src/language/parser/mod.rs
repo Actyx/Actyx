@@ -95,16 +95,12 @@ fn r_tag(p: P, ctx: Context) -> Result<TagExpr> {
                 x => bail!("unexpected token: {:?}", x),
             }
         }
-        Rule::interpolation => {
-            let expr = r_interpolation(tag, ctx)?;
-            let arr = Arr { items: expr.into() };
-            Ok(TagExpr::Atom(TagAtom::Interpolation(arr)))
-        }
+        Rule::interpolation => Ok(TagExpr::Atom(TagAtom::Interpolation(r_interpolation(tag, ctx)?))),
         x => bail!("unexpected token: {:?}", x),
     }
 }
 
-fn r_interpolation(p: P, ctx: Context) -> Result<Vec<SimpleExpr>> {
+fn r_interpolation(p: P, ctx: Context) -> Result<Arr<SimpleExpr>> {
     let all = p.as_str();
     let mut e = p.inner()?;
     let mut pos = 1;
@@ -142,7 +138,8 @@ fn r_interpolation(p: P, ctx: Context) -> Result<Vec<SimpleExpr>> {
     if !buffer.is_empty() {
         expr.push(SimpleExpr::String(buffer));
     }
-    Ok(expr)
+    let arr = Arr { items: expr.into() };
+    Ok(arr)
 }
 
 enum FromTo {

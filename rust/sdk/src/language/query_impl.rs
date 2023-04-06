@@ -17,6 +17,17 @@ impl<'a> Query<'a> {
             ops,
         }
     }
+
+    pub fn decompose(self) -> (Query<'static>, Vec<String>, Vec<(&'a str, &'a str)>) {
+        let features = self.features;
+        let pragmas = self.pragmas;
+        let q = Query {
+            pragmas: vec![],
+            features: vec![],
+            ..self
+        };
+        (q, features, pragmas)
+    }
 }
 
 impl<'de> Deserialize<'de> for Query<'de> {

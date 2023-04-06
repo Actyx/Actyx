@@ -233,7 +233,7 @@ impl<'a> Context<'a> {
                 SimpleExpr::Interpolation(s) => {
                     let mut buf = String::new();
                     let mut meta = EventMeta::Synthetic;
-                    for e in s {
+                    for e in s.items.iter() {
                         let v = self.eval(e).await?;
                         meta += v.meta();
                         buf.push_str(&v.print());

@@ -5,12 +5,8 @@ use std::{convert::TryFrom, ops::Deref, sync::Arc};
 pub struct NonEmptyVec<T>(Arc<[T]>);
 
 impl<T> NonEmptyVec<T> {
-    pub fn map<U>(&self, mut f: impl FnMut(&T) -> U) -> NonEmptyVec<U> {
-        let mut v = Vec::with_capacity(self.len());
-        for elem in self.iter() {
-            v.push(f(elem));
-        }
-        NonEmptyVec(Arc::from(v))
+    pub fn map<U>(&self, f: impl FnMut(&T) -> U) -> NonEmptyVec<U> {
+        NonEmptyVec(self.iter().map(f).collect())
     }
 }
 
