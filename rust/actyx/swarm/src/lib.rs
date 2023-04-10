@@ -967,10 +967,7 @@ impl BanyanStore {
             // If publishing went ok, we can move on with adding the stream to the table
             routing_table
                 .add_stream(DEFAULT_STREAM_NAME, Some(0.into()))
-                .expect(&format!(
-                    "The {} stream should not have been previously added.",
-                    DEFAULT_STREAM_NAME,
-                ));
+                .expect("The stream should not have been previously added.");
 
             let default_streams = [
                 (DISCOVERY_STREAM_NAME, RetainConfig::events(1000)),
@@ -986,10 +983,9 @@ impl BanyanStore {
                         .await?;
                     tracing::debug!("\"{}\" stream successfully published.", stream_name);
                     // If publishing went ok, we can move on with adding the stream to the table
-                    routing_table.add_stream(stream_name, Some(stream_nr)).expect(&format!(
-                        "The \"{}\" stream should not have been previously added.",
-                        stream_name
-                    ));
+                    routing_table
+                        .add_stream(stream_name, Some(stream_nr))
+                        .expect("The stream should not have been previously added.");
 
                     cfg.ephemeral_event_config
                         .streams

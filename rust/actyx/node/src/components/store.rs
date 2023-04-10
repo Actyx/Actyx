@@ -297,7 +297,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 .event_routing
                 .routes
                 .into_iter()
-                .map(|e| EventRoute::new(e.from.clone(), e.into.clone()))
+                .map(|e| EventRoute::new(e.from, e.into))
                 .collect(),
             ephemeral_event_config,
             ..SwarmConfig::basic()
