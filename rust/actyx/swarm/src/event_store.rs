@@ -375,8 +375,8 @@ mod tests {
 
         let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
             stream_id,
-            from_exclusive: OffsetOrMin::ZERO,
-            to_inclusive: OffsetOrMin::ZERO + 1,
+            from_exclusive: OffsetOrMin::ZERO + 3,
+            to_inclusive: OffsetOrMin::ZERO + 4,
             tags_query: TagExprQuery::all(),
         }));
         let res = stream.next().unwrap();
@@ -391,7 +391,7 @@ mod tests {
             tags_query: TagExprQuery::all(),
         }));
         let res = stream.next().unwrap();
-        assert_eq!(res.len(), 1);
+        assert_eq!(res.len(), 4);
         assert_eq!(stream.next(), Some(vec![])); // unbounded -> keep running
     }
 
@@ -406,10 +406,11 @@ mod tests {
             .await
             .unwrap();
 
+        // Skips the default mapping events (0-3)
         let mut stream = Drainer::new(store.backward_stream(StreamEventSelection {
             stream_id,
-            from_exclusive: OffsetOrMin::ZERO,
-            to_inclusive: OffsetOrMin::from(1i64),
+            from_exclusive: OffsetOrMin::from(3i64),
+            to_inclusive: OffsetOrMin::from(4i64),
             tags_query: TagExprQuery::all(),
         }));
         let res = stream.next().unwrap();
@@ -481,8 +482,8 @@ mod tests {
         }
 
         let max = btreemap! {
-          stream_id1 => 3,
-          stream_id2 => 3,
+          stream_id1 => 6,
+          stream_id2 => 6,
         };
         await_stream_offsets(&store1, &[&store2], &max).await;
 
@@ -491,24 +492,24 @@ mod tests {
 
         // stream1
         assert_bounded(&store1, "isLocal & 'test'", None, &max, 3).await;
-        assert_bounded(&store1, "'test'", None, &btreemap! { stream_id1 => 3 }, 3).await;
+        assert_bounded(&store1, "'test'", None, &btreemap! { stream_id1 => 6 }, 3).await;
         assert_bounded(
             &store1,
             "'test'",
-            Some(&btreemap! { stream_id1 => 1u32 }),
-            &btreemap! { stream_id1 => 2u32 },
+            Some(&btreemap! { stream_id1 => 4u32 }),
+            &btreemap! { stream_id1 => 5u32 },
             1,
         )
         .await;
 
         // stream2
         assert_bounded(&store1, "'test:stream2'", None, &max, 3).await;
-        assert_bounded(&store1, "'test'", None, &btreemap! { stream_id2 => 3 }, 3).await;
+        assert_bounded(&store1, "'test'", None, &btreemap! { stream_id2 => 6 }, 3).await;
         assert_bounded(
             &store1,
             "'test'",
-            Some(&btreemap! { stream_id2 => 1u32 }),
-            &btreemap! { stream_id2 => 2u32 },
+            Some(&btreemap! { stream_id2 => 4u32 }),
+            &btreemap! { stream_id2 => 5u32 },
             1,
         )
         .await;
@@ -576,7 +577,7 @@ mod tests {
         let handle = tokio::spawn(async move {
             let store_rx = mk_store("swarm_test_rx").await;
             let tag_expr = &TagExpr::Atom(TagAtom::Tag(tag!("test:unbounded:forward")));
-            let from = offset_map(&btreemap! { stream_id1 => 1 });
+            let from = offset_map(&btreemap! { stream_id1 => 4 });
             let to = offset_map(&btreemap! { stream_id1 => u32::MAX, stream_id2 => u32::MAX });
             // stream1 is below range and stream2 non-existant at this point
             let stream = store_rx.unbounded_forward_per_stream(tag_expr, from.clone()).unwrap();

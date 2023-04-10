@@ -37,11 +37,11 @@ async fn banyan_multi_node() {
         let mut stream = s2.stream_filtered_stream_ordered(query);
         let (i1, k1, e1) = stream.next().await.unwrap().unwrap();
         tracing::info!("{:?}", k1);
-        assert_eq!(i1, 1);
+        assert_eq!(i1, 4);
         assert_eq!(e1, payload);
         let (i2, k2, e2) = stream.next().await.unwrap().unwrap();
         tracing::info!("{:?}", k2);
-        assert_eq!(i2, 2);
+        assert_eq!(i2, 5);
         assert_eq!(e2, payload);
     });
 

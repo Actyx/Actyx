@@ -251,7 +251,6 @@ mod test {
     }
 
     async fn test_retain_count(events_to_retain: u64) {
-        tracing::error!("events to retain: {}", events_to_retain);
         let event_count = 1024;
         util::setup_logger();
         let test_stream = StreamNr::from(1);

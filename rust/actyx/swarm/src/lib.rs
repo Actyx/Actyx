@@ -129,10 +129,15 @@ pub type Ipfs = ipfs_embed::Ipfs<StoreParams>;
 static DEFAULT_STREAM_NR: u64 = 0;
 const MAX_TREE_LEVEL: i32 = 512;
 
-const DEFAULT_STREAM_NAME: &str = "default"; // 0
-const DISCOVERY_STREAM_NAME: &str = "discovery"; // 1
-const METRICS_STREAM_NAME: &str = "metrics"; // 2
-const FILES_STREAM_NAME: &str = "files"; // 3
+/// Stream Number 0
+const DEFAULT_STREAM_NAME: &str = "default";
+/// Stream Number 1
+const DISCOVERY_STREAM_NAME: &str = "discovery";
+/// Stream Number 2
+const METRICS_STREAM_NAME: &str = "metrics";
+/// Stream Number 3
+const FILES_STREAM_NAME: &str = "files";
+
 const EVENT_ROUTING_TAG_NAME: &str = "event_routing";
 
 fn internal_app_id() -> AppId {
@@ -162,9 +167,9 @@ impl Default for EphemeralEventsConfig {
         Self {
             interval: Duration::from_secs(30 * 60),
             streams: btreemap! {
-                DISCOVERY_STREAM_NAME.to_string() => RetainConfig::events(1000),
-                METRICS_STREAM_NAME.to_string() => RetainConfig::events(1000),
-                FILES_STREAM_NAME.to_string() => RetainConfig::age(60 * 60 * 24 * 14)
+                // DISCOVERY_STREAM_NAME.to_string() => RetainConfig::events(1000),
+                // METRICS_STREAM_NAME.to_string() => RetainConfig::events(1000),
+                // FILES_STREAM_NAME.to_string() => RetainConfig::age(60 * 60 * 24 * 14)
             },
         }
     }
@@ -727,7 +732,7 @@ impl<'a> BanyanStoreGuard<'a> {
 
 impl BanyanStore {
     /// Creates a new [`BanyanStore`] from a [`SwarmConfig`].
-    pub async fn new(cfg: SwarmConfig, swarm_observer: ActoRef<(PeerId, GossipMessage)>) -> Result<Self> {
+    pub async fn new(mut cfg: SwarmConfig, swarm_observer: ActoRef<(PeerId, GossipMessage)>) -> Result<Self> {
         tracing::debug!("client_from_config({:?})", cfg);
         tracing::debug!("Start listening on topic '{}'", &cfg.topic);
 
@@ -943,7 +948,6 @@ impl BanyanStore {
         };
         tracing::info!("loading event streams");
         let local_streams = banyan.lock().load_known_streams()?;
-        tracing::error!("n local streams: {}", local_streams);
         // check that all known streams are indeed completely present
         tracing::info!("validating event streams");
         banyan.validate_known_streams().await?;
@@ -955,23 +959,41 @@ impl BanyanStore {
         let mut routing_table = RoutingTable::default();
 
         if known_mappings.is_empty() {
+            tracing::info!("No stream mappings found, publishing the default mapping.");
+            banyan
+                .append_stream_mapping_event(DEFAULT_STREAM_NAME.to_string(), 0.into())
+                .await?;
+            tracing::debug!("\"{}\" stream successfully published.", DEFAULT_STREAM_NAME);
+            // If publishing went ok, we can move on with adding the stream to the table
+            routing_table
+                .add_stream(DEFAULT_STREAM_NAME, Some(0.into()))
+                .expect(&format!(
+                    "The {} stream should not have been previously added.",
+                    DEFAULT_STREAM_NAME,
+                ));
+
             let default_streams = [
-                DEFAULT_STREAM_NAME,
-                DISCOVERY_STREAM_NAME,
-                METRICS_STREAM_NAME,
-                FILES_STREAM_NAME,
+                (DISCOVERY_STREAM_NAME, RetainConfig::events(1000)),
+                (METRICS_STREAM_NAME, RetainConfig::events(1000)),
+                (FILES_STREAM_NAME, RetainConfig::age(60 * 60 * 24 * 14)),
             ];
             if (cfg.event_routes.is_empty() && cfg.ephemeral_event_config.streams.is_empty()) || local_streams > 1 {
-                for (idx, name) in default_streams.into_iter().enumerate() {
-                    tracing::info!("No stream mappings found, publishing the default mapping.");
+                for ((stream_name, retain_cfg), stream_nr) in
+                    default_streams.into_iter().zip((1..=3).map(StreamNr::from))
+                {
                     banyan
-                        .append_stream_mapping_event(name.to_string(), (idx as u64).into())
+                        .append_stream_mapping_event(stream_name.to_string(), stream_nr)
                         .await?;
-                    tracing::debug!("\"default\" stream successfully published.");
+                    tracing::debug!("\"{}\" stream successfully published.", stream_name);
                     // If publishing went ok, we can move on with adding the stream to the table
-                    routing_table
-                        .add_stream(name, Some((idx as u64).into()))
-                        .expect("The default stream should not have been previously added.");
+                    routing_table.add_stream(stream_name, Some(stream_nr)).expect(&format!(
+                        "The \"{}\" stream should not have been previously added.",
+                        stream_name
+                    ));
+
+                    cfg.ephemeral_event_config
+                        .streams
+                        .insert(stream_name.to_string(), retain_cfg);
                 }
             }
         } else {
@@ -1827,7 +1849,7 @@ impl FromStr for EventRoute {
 
 /// A mapping between a stream's name and its number.
 /// Should be extracted as an [Event].
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct EventRouteMappingEvent {
     stream_name: String,
@@ -1910,7 +1932,7 @@ mod test_match_tag_set {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct RoutingTable {
     routes: Vec<(Dnf, StreamNr)>,
     stream_mapping: HashMap<String, StreamNr>,
@@ -2018,7 +2040,7 @@ mod test_routing_table {
 
     #[test]
     fn empty() {
-        assert!(RoutingTable::default().is_empty());
+        assert!(RoutingTable::default().max_stream_nr.is_none());
     }
 
     #[test]

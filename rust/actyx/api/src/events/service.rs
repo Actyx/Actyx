@@ -1323,12 +1323,12 @@ ENDPRAGMA
                         .await,
                         vec![
                             format!(
-                                "[[[1,{},0,1]],[{:?}],[\"a1\",\"b\"],[\"test\"]]",
+                                "[[[4,{},0,4]],[{:?}],[\"a1\",\"b\"],[\"me\"]]",
                                 node_bytes,
                                 meta1.1.timestamp.as_i64() as f64 / 1e6
                             ),
                             format!(
-                                "[[[2,{},0,2]],[{:?}],[\"a2\"],[\"test\"]]",
+                                "[[[5,{},0,5]],[{:?}],[\"a2\"],[\"me\"]]",
                                 node_bytes,
                                 meta2.1.timestamp.as_i64() as f64 / 1e6
                             ),
@@ -1346,7 +1346,7 @@ ENDPRAGMA
                         .await,
                         vec![
                             format!(
-                                "[[[1,{},0,1],[3,{},0,3]],[{:?},{:?}],[],[]]",
+                                "[[[4,{},0,4],[6,{},0,6]],[{:?},{:?}],[],[]]",
                                 node_bytes,
                                 node_bytes,
                                 meta1.1.timestamp.as_i64() as f64 / 1e6,
@@ -1407,31 +1407,31 @@ ENDPRAGMA
                 .await
                 .unwrap();
 
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("2-0 2"));
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::Offsets(btreemap! {0 => 2}));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("5-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::Offsets(btreemap! {0 => 5}));
             assert_eq!(SResp::next(q2.as_mut()).await, SResp::diag("Warning no value added"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::Offsets(btreemap! {0 => 2}));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::Offsets(btreemap! {0 => 5}));
             assert_eq!(SResp::next(q3.as_mut()).await, SResp::diag("Warning no value added"));
             assert_eq!(SResp::next(q3.as_mut()).await, SResp::diag("Warning no value added"));
-            assert_eq!(SResp::next(q3.as_mut()).await, SResp::Offsets(btreemap! {0 => 2}));
+            assert_eq!(SResp::next(q3.as_mut()).await, SResp::Offsets(btreemap! {0 => 5}));
 
             publish(&service, tags!("a"), 2).await;
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("2-0 2"));
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("3-0 2"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("3-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("5-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("6-0 2"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("6-0 2"));
             assert_eq!(SResp::next(q3.as_mut()).await, SResp::event("synthetic: 1"));
 
             publish(&service, tags!("a"), 3).await;
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("3-0 2"));
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("4-0 3"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("3-0 2"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("4-0 3"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("6-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("7-0 3"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("6-0 2"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("7-0 3"));
 
             publish(&service, tags!("a"), 4).await;
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("4-0 3"));
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("5-0 4"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("4-0 3"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("5-0 4"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("7-0 3"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("8-0 4"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("7-0 3"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("8-0 4"));
 
             timeout(Duration::from_millis(500), q3.next()).await.unwrap_err();
         };
@@ -1465,24 +1465,24 @@ ENDPRAGMA
                 .await
                 .unwrap();
 
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("1-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 4}));
 
             publish(&service, tags!("b"), 2).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("1-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("4-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("5-0 2"));
 
             publish(&service, tags!("b"), 3).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-0 2"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 3"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("5-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("6-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("6-0 3"));
 
             publish(&service, tags!("b"), 4).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("3-0 3"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("3-0 3"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 4"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 4"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 4"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("6-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("6-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("7-0 4"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("7-0 4"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("7-0 4"));
 
             assert_eq!(timeout(Duration::from_millis(300), q.next()).await.unwrap(), None);
         };
@@ -1515,18 +1515,18 @@ ENDPRAGMA
                 .await
                 .unwrap();
 
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("1-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 4}));
 
             publish(&service, tags!("b"), 2).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("1-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("4-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("5-0 2"));
 
             publish(&service, tags!("b"), 3).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("5-0 2"));
 
             publish(&service, tags!("b"), 1).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("7-0 1"));
         };
         Runtime::new()
             .unwrap()
@@ -1558,7 +1558,7 @@ ENDPRAGMA
                 .unwrap();
 
             assert_eq!(SResp::next(q.as_mut()).await, SResp::event("synthetic: 3"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 4}));
 
             publish(&service, tags!("b"), 2).await;
             assert_eq!(
