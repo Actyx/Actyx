@@ -5,6 +5,7 @@ use futures::future::{join_all, FutureExt};
 use serde::{Deserialize, Serialize};
 use std::{
     convert::TryInto,
+    future,
     time::{Duration, SystemTime},
 };
 use trees::query::{OffsetQuery, TimeQuery};
@@ -157,12 +158,11 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
             let store = store.clone();
             tracing::debug!("Checking ephemeral event conditions for {}", stream_name);
 
-            let stream_nr = *store
-                .data
-                .routing_table
-                .stream_mapping
-                .get(stream_name)
-                .expect("The stream should already have been defined and mapped.");
+            let stream_nr = store.data.routing_table.stream_mapping.get(stream_name).copied();
+
+            let Some(stream_nr) = stream_nr else {
+                return future::ready(()).left_future();
+            };
 
             let fut = async move {
                 let stream = store.get_or_create_own_stream(stream_nr).unwrap();
@@ -183,6 +183,7 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
                 }
                 result
             };
+
             fut.map(move |res| match res {
                 Ok(Some(new_root)) => {
                     tracing::debug!("Ephemeral events on {}: New root {}", stream_nr, new_root);
@@ -192,6 +193,7 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
                 }
                 _ => {}
             })
+            .right_future()
         });
         join_all(tasks).await;
     }

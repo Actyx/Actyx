@@ -457,6 +457,11 @@ async fn existing_swarm_config() {
             },
             ..Default::default()
         },
+        event_routes: vec![
+            EventRoute::new(TagExpr::from_str("allEvents").unwrap(), "default".to_string()),
+            EventRoute::new(TagExpr::from_str("'stream_1'").unwrap(), "stream_1".to_string()),
+            EventRoute::new(TagExpr::from_str("'stream_2'").unwrap(), "stream_2".to_string()),
+        ],
         ..SwarmConfig::basic()
     };
     let store = BanyanStore::new(config, ActoRef::blackhole()).await.unwrap();

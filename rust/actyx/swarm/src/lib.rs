@@ -1000,11 +1000,7 @@ impl BanyanStore {
 
         let unpublished_mappings = {
             let mut unpublished_mappings = HashMap::new();
-            for stream in cfg.ephemeral_event_config.streams.iter().map(|t| t.0) {
-                if let Some(stream_nr) = routing_table.add_stream(stream, None)? {
-                    unpublished_mappings.insert(stream.clone(), stream_nr);
-                }
-            }
+
             for route in cfg.event_routes {
                 if let Some(stream_nr) = routing_table.add_route(route.from, route.into.clone()) {
                     unpublished_mappings.insert(route.into, stream_nr);
@@ -1012,6 +1008,11 @@ impl BanyanStore {
             }
             unpublished_mappings
         };
+        for stream in cfg.ephemeral_event_config.streams.iter().map(|t| t.0) {
+            if routing_table.stream_mapping.get(stream).is_none() {
+                tracing::warn!("Stream \"{}\" does not have a mapping.", stream);
+            }
+        }
 
         drop(routing_table_span_entered);
         for (name, number) in unpublished_mappings {

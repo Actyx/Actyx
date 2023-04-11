@@ -257,6 +257,12 @@ impl Component<StoreRequest, StoreConfig> for Store {
         let blob_store = Some(self.working_dir.join(format!("{}-blobs", topic)));
         let read_only = s.api.events.read_only;
 
+        let event_routes = s
+            .event_routing
+            .routes
+            .into_iter()
+            .map(|e| EventRoute::new(e.from, e.into))
+            .collect();
         let ephemeral_event_config = EphemeralEventsConfig::from(s.event_routing.streams);
 
         let swarm_config = SwarmConfig {
@@ -293,12 +299,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             bitswap_timeout: Duration::from_secs(s.swarm.bitswap_timeout),
             branch_cache_size: s.swarm.branch_cache_size,
             cadence_root_map: Duration::from_secs(s.swarm.gossip_interval),
-            event_routes: s
-                .event_routing
-                .routes
-                .into_iter()
-                .map(|e| EventRoute::new(e.from, e.into))
-                .collect(),
+            event_routes,
             ephemeral_event_config,
             ..SwarmConfig::basic()
         };
