@@ -17,7 +17,6 @@ use maplit::btreemap;
 use std::{collections::BTreeMap, convert::TryFrom, path::PathBuf, str::FromStr, time::Duration};
 use tokio::runtime::Runtime;
 use trees::query::TagExprQuery;
-
 struct Tagger(BTreeMap<&'static str, Tag>);
 
 impl Tagger {
@@ -356,19 +355,27 @@ async fn non_existing_swarm_config() {
         },
     ];
 
+    let tree_level = store
+        .get_or_create_own_stream(0.into())
+        .unwrap()
+        .tree_stream()
+        .next()
+        .await
+        .unwrap()
+        .level();
+
     let mut round_tripped = store
         .stream_filtered_chunked(store.node_id().stream(0.into()), 0..=u64::MAX, AllQuery)
-        .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= expected_mappings.len() as u64))
+        .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= tree_level as u64))
+        .map(|chunk| chunk.unwrap().data)
+        .flat_map(|a| {
+            stream::iter(
+                a.into_iter()
+                    .map(|(_, _, event)| event.extract::<EventRouteMappingEvent>().unwrap()),
+            )
+        })
         .collect::<Vec<_>>()
-        .await
-        .into_iter()
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap()
-        .into_iter()
-        .flat_map(|chunk| chunk.data)
-        .map(|(_, _, event)| event.extract::<EventRouteMappingEvent>())
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+        .await;
     round_tripped.sort_by_key(|event| event.stream_nr);
 
     assert_eq!(round_tripped.len(), expected_mappings.len());
