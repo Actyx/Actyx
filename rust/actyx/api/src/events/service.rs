@@ -1269,96 +1269,99 @@ ENDPRAGMA
             .unwrap();
     }
 
-    #[test]
-    fn metadata_access() {
-        Runtime::new()
-            .unwrap()
-            .block_on(async {
-                timeout(Duration::from_secs(1), async {
-                    let store = BanyanStore::test("lower_bound").await.unwrap();
-                    let (_node_id, service) = setup(&store);
+    #[tokio::test]
+    async fn metadata_access() {
+        timeout(Duration::from_secs(1), async {
+            // The test requires setting up a new route to avoid counting offsets from N,
+            // although lamport numbers work across streams, meaning we still need to count them
+            // In this case, we expect two "implicit" events - the mappings for "default" and "lower_bound"
+            let routes = vec![EventRoute::new(
+                TagExpr::from_str("'a1' | 'a2' | 'a3'").unwrap(),
+                "lower_bound".to_string(),
+            )];
+            let store = BanyanStore::test_with_routing("lower_bound", routes).await.unwrap();
+            let (_node_id, service) = setup(&store);
 
-                    fn meta(publ: PublishResponseKey, t: &str) -> (EventKey, Metadata) {
-                        (
-                            EventKey {
-                                lamport: publ.lamport,
-                                stream: publ.stream,
-                                offset: publ.offset,
-                            },
-                            Metadata {
-                                timestamp: publ.timestamp,
-                                tags: TagSet::from([t.try_into().unwrap()].as_slice()),
-                                app_id: app_id!("test"),
-                            },
-                        )
-                    }
+            fn meta(publ: PublishResponseKey, t: &str) -> (EventKey, Metadata) {
+                (
+                    EventKey {
+                        lamport: publ.lamport,
+                        stream: publ.stream,
+                        offset: publ.offset,
+                    },
+                    Metadata {
+                        timestamp: publ.timestamp,
+                        tags: TagSet::from([t.try_into().unwrap()].as_slice()),
+                        app_id: app_id!("test"),
+                    },
+                )
+            }
 
-                    let pub1 = publish(&service, tags!("a1", "b"), 2).await;
-                    let meta1 = meta(pub1, "a1");
-                    let pub2 = publish(&service, tags!("a2"), 3).await;
-                    let meta2 = meta(pub2, "a2");
-                    let pub3 = publish(&service, tags!("a3"), 1).await;
-                    let meta3 = meta(pub3, "a3");
+            let pub1 = publish(&service, tags!("a1", "b"), 2).await;
+            let meta1 = meta(pub1, "a1");
+            let pub2 = publish(&service, tags!("a2"), 3).await;
+            let meta2 = meta(pub2, "a2");
+            let pub3 = publish(&service, tags!("a3"), 1).await;
+            let meta3 = meta(pub3, "a3");
 
-                    let mut node_bytes = String::from("[");
-                    node_bytes.push_str(
-                        &meta1
-                            .0
-                            .stream
-                            .node_id
-                            .as_ref()
-                            .iter()
-                            .map(ToString::to_string)
-                            .join(","),
-                    );
-                    node_bytes.push(']');
+            let mut node_bytes = String::from("[");
+            node_bytes.push_str(
+                &meta1
+                    .0
+                    .stream
+                    .node_id
+                    .as_ref()
+                    .iter()
+                    .map(ToString::to_string)
+                    .join(","),
+            );
+            node_bytes.push(']');
 
-                    assert_eq!(
-                        query(
-                            &service,
-                            r#"PRAGMA features :=
-                            FROM 'a1' | 'a2' SELECT [KEY(_), TIME(_), TAGS(_), APP(_)]
-                            "#
-                        )
-                        .await,
-                        vec![
-                            format!(
-                                "[[[4,{},0,4]],[{:?}],[\"a1\",\"b\"],[\"me\"]]",
-                                node_bytes,
-                                meta1.1.timestamp.as_i64() as f64 / 1e6
-                            ),
-                            format!(
-                                "[[[5,{},0,5]],[{:?}],[\"a2\"],[\"me\"]]",
-                                node_bytes,
-                                meta2.1.timestamp.as_i64() as f64 / 1e6
-                            ),
-                            "offsets".to_owned()
-                        ]
-                    );
+            assert_eq!(
+                query(
+                    &service,
+                    r#"PRAGMA features :=
+                    FROM 'a1' | 'a2' SELECT [KEY(_), TIME(_), TAGS(_), APP(_)]
+                    "#
+                )
+                .await,
+                vec![
+                    format!(
+                        "[[[2,{},1,0]],[{:?}],[\"a1\",\"b\"],[\"me\"]]",
+                        node_bytes,
+                        meta1.1.timestamp.as_i64() as f64 / 1e6
+                    ),
+                    format!(
+                        "[[[3,{},1,1]],[{:?}],[\"a2\"],[\"me\"]]",
+                        node_bytes,
+                        meta2.1.timestamp.as_i64() as f64 / 1e6
+                    ),
+                    "offsets".to_owned()
+                ]
+            );
 
-                    assert_eq!(
-                        query(
-                            &service,
-                            r#"PRAGMA features := zøg subQuery interpolation fromArray aggregate
-                            FROM 'a1' | 'a3' AGGREGATE SUM(_) SELECT [KEY(_), TIME(_), TAGS(_), APP(_)]
-                            "#
-                        )
-                        .await,
-                        vec![
-                            format!(
-                                "[[[4,{},0,4],[6,{},0,6]],[{:?},{:?}],[],[]]",
-                                node_bytes,
-                                node_bytes,
-                                meta1.1.timestamp.as_i64() as f64 / 1e6,
-                                meta3.1.timestamp.as_i64() as f64 / 1e6
-                            ),
-                            "offsets".to_owned()
-                        ]
-                    );
-                })
-                .await
-            })
-            .unwrap();
+            assert_eq!(
+                query(
+                    &service,
+                    r#"PRAGMA features := zøg subQuery interpolation fromArray aggregate
+                    FROM 'a1' | 'a3' AGGREGATE SUM(_) SELECT [KEY(_), TIME(_), TAGS(_), APP(_)]
+                    "#
+                )
+                .await,
+                vec![
+                    format!(
+                        "[[[2,{},1,0],[4,{},1,2]],[{:?},{:?}],[],[]]",
+                        node_bytes,
+                        node_bytes,
+                        meta1.1.timestamp.as_i64() as f64 / 1e6,
+                        meta3.1.timestamp.as_i64() as f64 / 1e6
+                    ),
+                    "offsets".to_owned()
+                ]
+            );
+        })
+        .await
+        .unwrap();
     }
 
     #[test]
@@ -1407,31 +1410,31 @@ ENDPRAGMA
                 .await
                 .unwrap();
 
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("5-0 2"));
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::Offsets(btreemap! {0 => 5}));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("2-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::Offsets(btreemap! {0 => 2}));
             assert_eq!(SResp::next(q2.as_mut()).await, SResp::diag("Warning no value added"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::Offsets(btreemap! {0 => 5}));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::Offsets(btreemap! {0 => 2}));
             assert_eq!(SResp::next(q3.as_mut()).await, SResp::diag("Warning no value added"));
             assert_eq!(SResp::next(q3.as_mut()).await, SResp::diag("Warning no value added"));
-            assert_eq!(SResp::next(q3.as_mut()).await, SResp::Offsets(btreemap! {0 => 5}));
+            assert_eq!(SResp::next(q3.as_mut()).await, SResp::Offsets(btreemap! {0 => 2}));
 
             publish(&service, tags!("a"), 2).await;
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("5-0 2"));
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("6-0 2"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("6-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("2-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("3-0 2"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("3-0 2"));
             assert_eq!(SResp::next(q3.as_mut()).await, SResp::event("synthetic: 1"));
 
             publish(&service, tags!("a"), 3).await;
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("6-0 2"));
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("7-0 3"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("6-0 2"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("7-0 3"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("3-0 2"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("4-0 3"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("3-0 2"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("4-0 3"));
 
             publish(&service, tags!("a"), 4).await;
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("7-0 3"));
-            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("8-0 4"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("7-0 3"));
-            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("8-0 4"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::anti("4-0 3"));
+            assert_eq!(SResp::next(q1.as_mut()).await, SResp::event("5-0 4"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::anti("4-0 3"));
+            assert_eq!(SResp::next(q2.as_mut()).await, SResp::event("5-0 4"));
 
             timeout(Duration::from_millis(500), q3.next()).await.unwrap_err();
         };
@@ -1465,24 +1468,24 @@ ENDPRAGMA
                 .await
                 .unwrap();
 
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 4}));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("1-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
 
             publish(&service, tags!("b"), 2).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("4-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("5-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("1-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-0 2"));
 
             publish(&service, tags!("b"), 3).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("5-0 2"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("6-0 3"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("6-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-0 3"));
 
             publish(&service, tags!("b"), 4).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("6-0 3"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("6-0 3"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("7-0 4"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("7-0 4"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("7-0 4"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("3-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("3-0 3"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 4"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 4"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 4"));
 
             assert_eq!(timeout(Duration::from_millis(300), q.next()).await.unwrap(), None);
         };
@@ -1515,18 +1518,18 @@ ENDPRAGMA
                 .await
                 .unwrap();
 
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 4}));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("1-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
 
             publish(&service, tags!("b"), 2).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("4-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("5-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("1-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-0 2"));
 
             publish(&service, tags!("b"), 3).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("5-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-0 2"));
 
             publish(&service, tags!("b"), 1).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("7-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 1"));
         };
         Runtime::new()
             .unwrap()
@@ -1558,7 +1561,7 @@ ENDPRAGMA
                 .unwrap();
 
             assert_eq!(SResp::next(q.as_mut()).await, SResp::event("synthetic: 3"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 4}));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
 
             publish(&service, tags!("b"), 2).await;
             assert_eq!(
