@@ -93,7 +93,7 @@ impl FromStr for StreamSize {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"([1-9][0-9]*)(B|kB|MB|GB|KiB|MiB|GiB)").unwrap();
+            static ref RE: Regex = Regex::new(r"^([1-9][0-9]*)(B|kB|MB|GB|KiB|MiB|GiB)$").unwrap();
         }
         let captures = RE.captures(s).ok_or(anyhow::anyhow!("Failed to parse string."))?;
         let value = captures.get(1).map(|v| v.as_str()).unwrap_or("0").parse::<u64>()?;
@@ -247,7 +247,7 @@ impl FromStr for StreamAge {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         lazy_static! {
-            static ref RE: Regex = Regex::new("([1-9][0-9]*)(s|m|h|d|w)").unwrap();
+            static ref RE: Regex = Regex::new("^([1-9][0-9]*)(s|m|h|d|w)$").unwrap();
         }
         let captures = RE.captures(s).ok_or(anyhow::anyhow!("Failed to parse string."))?;
         let value = captures.get(1).map(|v| v.as_str()).unwrap_or("0").parse::<u64>()?;
