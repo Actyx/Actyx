@@ -1578,7 +1578,13 @@ ENDPRAGMA
     #[test]
     fn subscribe_aggregate_error() {
         let f = async {
-            let store = BanyanStore::test("subscribe_aggregate").await.unwrap();
+            let routes = vec![EventRoute::new(
+                TagExpr::from_str("appId(me)").unwrap(),
+                "subscribe_aggregate_error".to_string(),
+            )];
+            let store = BanyanStore::test_with_routing("subscribe_aggregate", routes)
+                .await
+                .unwrap();
             let (_node_id, service) = setup(&store);
 
             publish(&service, tags!("b"), 1).await;
@@ -1589,7 +1595,7 @@ ENDPRAGMA
                     SubscribeRequest {
                         lower_bound: None,
                         query: "PRAGMA features := aggregate spread
-                                FROM allEvents
+                                FROM appId(me)
                                 AGGREGATE LAST(_)
                                 AGGREGATE MAX(3)"
                             .to_owned(),
@@ -1599,7 +1605,10 @@ ENDPRAGMA
                 .unwrap();
 
             assert_eq!(SResp::next(q.as_mut()).await, SResp::event("synthetic: 3"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
+            assert_eq!(
+                SResp::next(q.as_mut()).await,
+                SResp::Offsets(btreemap! {0 => 1, 1 => 0})
+            );
 
             publish(&service, tags!("b"), 2).await;
             assert_eq!(
