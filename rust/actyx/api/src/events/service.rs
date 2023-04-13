@@ -1527,7 +1527,13 @@ ENDPRAGMA
     #[test]
     fn subscribe_aggregate_filter() {
         let f = async {
-            let store = BanyanStore::test("subscribe_aggregate").await.unwrap();
+            let routes = vec![EventRoute::new(
+                TagExpr::from_str("appId(me)").unwrap(),
+                "subscribe_aggregate".to_string(),
+            )];
+            let store = BanyanStore::test_with_routing("subscribe_aggregate", routes)
+                .await
+                .unwrap();
             let (_node_id, service) = setup(&store);
 
             publish(&service, tags!("b"), 1).await;
@@ -1547,18 +1553,21 @@ ENDPRAGMA
                 .await
                 .unwrap();
 
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("1-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::Offsets(btreemap! {0 => 1}));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-1 1"));
+            assert_eq!(
+                SResp::next(q.as_mut()).await,
+                SResp::Offsets(btreemap! {0 => 1, 1 => 0})
+            );
 
             publish(&service, tags!("b"), 2).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("1-0 1"));
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("2-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-1 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("3-1 2"));
 
             publish(&service, tags!("b"), 3).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("2-0 2"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::anti("3-1 2"));
 
             publish(&service, tags!("b"), 1).await;
-            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("4-0 1"));
+            assert_eq!(SResp::next(q.as_mut()).await, SResp::event("5-1 1"));
         };
         Runtime::new()
             .unwrap()
