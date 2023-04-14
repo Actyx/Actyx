@@ -980,7 +980,7 @@ impl BanyanStore {
                 (
                     StreamNr::from(FILES_STREAM_NUMBER),
                     FILES_STREAM_NAME,
-                    RetainConfig::age(60 * 60 * 24 * 14),
+                    RetainConfig::age_from_seconds(60 * 60 * 24 * 14),
                 ),
             ];
             // Only consider the event routes because the retain configs do not publish streams
