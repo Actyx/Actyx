@@ -201,15 +201,16 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
 
 #[cfg(test)]
 mod test {
-    use std::{collections::BTreeMap, str::FromStr, sync::Arc};
+    use std::{collections::BTreeMap, iter::once, str::FromStr, sync::Arc};
 
     use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Payload, StreamNr};
     use ax_futures_util::prelude::AxStreamExt;
-    use futures::{future, StreamExt};
+    use futures::{future, StreamExt, TryStreamExt};
 
     use super::*;
     use crate::{BanyanConfig, EventRoute, SwarmConfig};
     use acto::ActoRef;
+    use itertools::Either;
     use parking_lot::Mutex;
 
     fn app_id() -> AppId {
@@ -391,10 +392,8 @@ mod test {
                 OffsetQuery::from(0..),
             )
             .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= event_count))
-            .collect::<Vec<_>>()
+            .try_collect::<Vec<_>>()
             .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()
             .unwrap();
 
         let cut_off = {
@@ -424,14 +423,15 @@ mod test {
                 OffsetQuery::from(0..),
             )
             .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= event_count))
-            .collect::<Vec<_>>()
+            .flat_map(|chunk| {
+                futures::stream::iter(match chunk {
+                    Ok(chunk) => Either::Left(chunk.data.into_iter().map(Ok)),
+                    Err(err) => Either::Right(once(Err(err))),
+                })
+            })
+            .try_collect::<Vec<_>>()
             .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap()
-            .into_iter()
-            .flat_map(|chunk| chunk.data)
-            .collect::<Vec<_>>();
+            .unwrap();
 
         let mut expected = all_events
             .into_iter()
