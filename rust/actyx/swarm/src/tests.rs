@@ -392,7 +392,7 @@ async fn non_existing_swarm_config() {
     }
 }
 
-/// Emulates changing the topic, where a previous swarm configuration existed.
+/// Emulates changing to a new topic, using an existing configuration.
 /// Expected streams should be the default one and any additional streams.
 #[tokio::test]
 async fn existing_swarm_config() {
