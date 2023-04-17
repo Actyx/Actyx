@@ -37,6 +37,7 @@ pub use banyan::{store::BlockWriter, Forest as BanyanForest, StreamBuilder, Tran
 use futures::{future, stream, Future, FutureExt, Stream, StreamExt, TryStreamExt};
 pub use ipfs_embed::{Executor as IpfsEmbedExecutor, StorageConfig, StorageService};
 pub use libipld::codec::Codec as IpldCodec;
+use maplit::btreemap;
 use once_cell::sync::Lazy;
 pub use prune::RetainConfig;
 use streams::{OwnStreamGuard, RemoteNodeInner};
@@ -78,7 +79,6 @@ use libp2p::{
     multiaddr::Protocol,
     ping,
 };
-use maplit::btreemap;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use sqlite_index_store::SqliteIndexStore;
@@ -126,17 +126,19 @@ pub use trees::StoreParams;
 pub type Block = libipld::Block<StoreParams>;
 pub type Ipfs = ipfs_embed::Ipfs<StoreParams>;
 
-static DEFAULT_STREAM_NR: u64 = 0;
 const MAX_TREE_LEVEL: i32 = 512;
 
-/// Stream Number 0
 const DEFAULT_STREAM_NAME: &str = "default";
-/// Stream Number 1
+const DEFAULT_STREAM_NUMBER: u64 = 0;
+
 const DISCOVERY_STREAM_NAME: &str = "discovery";
-/// Stream Number 2
+const DISCOVERY_STREAM_NUMBER: u64 = 1;
+
 const METRICS_STREAM_NAME: &str = "metrics";
-/// Stream Number 3
+const METRICS_STREAM_NUMBER: u64 = 2;
+
 const FILES_STREAM_NAME: &str = "files";
+const FILES_STREAM_NUMBER: u64 = 3;
 
 const EVENT_ROUTING_TAG_NAME: &str = "event_routing";
 
@@ -970,14 +972,26 @@ impl BanyanStore {
                 .expect("The stream should not have been previously added.");
 
             let default_streams = [
-                (DISCOVERY_STREAM_NAME, RetainConfig::events(1000)),
-                (METRICS_STREAM_NAME, RetainConfig::events(1000)),
-                (FILES_STREAM_NAME, RetainConfig::age(60 * 60 * 24 * 14)),
+                (
+                    StreamNr::from(DISCOVERY_STREAM_NUMBER),
+                    DISCOVERY_STREAM_NAME,
+                    RetainConfig::events(1000),
+                ),
+                (
+                    StreamNr::from(METRICS_STREAM_NUMBER),
+                    METRICS_STREAM_NAME,
+                    RetainConfig::events(1000),
+                ),
+                (
+                    StreamNr::from(FILES_STREAM_NUMBER),
+                    FILES_STREAM_NAME,
+                    RetainConfig::age(60 * 60 * 24 * 14),
+                ),
             ];
-            if (cfg.event_routes.is_empty() && cfg.ephemeral_event_config.streams.is_empty()) || local_streams > 1 {
-                for ((stream_name, retain_cfg), stream_nr) in
-                    default_streams.into_iter().zip((1..=3).map(StreamNr::from))
-                {
+            // Only consider the event routes because the retain configs do not publish streams
+            // and we should be able to configure retain policies for the old default mappings
+            if cfg.event_routes.is_empty() || local_streams > 1 {
+                for (stream_nr, stream_name, retain_cfg) in default_streams {
                     banyan
                         .append_stream_mapping_event(stream_name.to_string(), stream_nr)
                         .await?;
@@ -1010,7 +1024,10 @@ impl BanyanStore {
         };
         for stream in cfg.ephemeral_event_config.streams.iter().map(|t| t.0) {
             if routing_table.stream_mapping.get(stream).is_none() {
-                tracing::warn!("Stream \"{}\" does not have a mapping.", stream);
+                tracing::warn!(
+                    "The stream \"{}\" does not have a mapping, its retention configuration will be ignored.",
+                    stream
+                );
             }
         }
 
@@ -1075,6 +1092,11 @@ impl BanyanStore {
                 crate::metrics::metrics(banyan.clone(), cfg.metrics_interval)?,
             );
         }
+
+        if cfg.ephemeral_event_config.streams.remove("default").is_some() {
+            tracing::warn!("The \"default\" stream cannot be configured. Ignoring configuration.")
+        };
+
         banyan.spawn_task(
             "prune_events".to_owned(),
             crate::prune::prune(banyan.clone(), cfg.ephemeral_event_config),
@@ -1086,7 +1108,7 @@ impl BanyanStore {
     /// Loads the default stream, reading all [RouteMappingEvents] from it and returning
     /// the respective route mapping.
     async fn get_published_mappings(&self, node_id: NodeId) -> Result<HashMap<String, StreamNr>> {
-        let stream_id = node_id.stream(DEFAULT_STREAM_NR.into());
+        let stream_id = node_id.stream(DEFAULT_STREAM_NUMBER.into());
 
         let tag_expr = format!("'{}' & appId({})", EVENT_ROUTING_TAG_NAME, internal_app_id());
         let tag_expr = TagExpr::from_str(&tag_expr).expect("The tag expression should be valid.");
@@ -1342,8 +1364,13 @@ impl BanyanStore {
             actyx_sdk::tags!("event_routing"),
             Event::compact(&event).expect("Should be a valid event."),
         )];
-        self.append0(DEFAULT_STREAM_NR.into(), internal_app_id(), Timestamp::now(), events)
-            .await?;
+        self.append0(
+            DEFAULT_STREAM_NUMBER.into(),
+            internal_app_id(),
+            Timestamp::now(),
+            events,
+        )
+        .await?;
         Ok(())
     }
 

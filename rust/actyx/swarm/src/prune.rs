@@ -15,7 +15,7 @@ use trees::query::{OffsetQuery, TimeQuery};
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RetainConfig {
-    /// Retains the last n events.
+    /// Retains the last `n` events.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_events: Option<u64>,
     /// Retain all events between `now - duration` and `now` (in seconds).
@@ -29,6 +29,7 @@ pub struct RetainConfig {
 }
 
 impl RetainConfig {
+    /// Limit the number of events to keep.
     pub fn events(events: u64) -> Self {
         Self {
             max_events: Some(events),
@@ -37,6 +38,7 @@ impl RetainConfig {
         }
     }
 
+    /// Limit the age of the events to keep (in seconds).
     pub fn age(age: u64) -> Self {
         Self {
             max_events: None,
@@ -45,6 +47,7 @@ impl RetainConfig {
         }
     }
 
+    /// Limit the total size of the events to keep (in bytes).
     pub fn size(size: u64) -> Self {
         Self {
             max_events: None,
