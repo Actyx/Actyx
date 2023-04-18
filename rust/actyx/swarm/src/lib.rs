@@ -2169,5 +2169,5 @@ mod test_routing_table {
 
 #[test]
 fn enforce_default_stream_nr_to_be_zero() {
-    assert_eq!(StreamNr::default(), StreamNr::from(DEFAULT_STREAM_NR));
+    assert_eq!(StreamNr::default(), StreamNr::from(DEFAULT_STREAM_NUMBER));
 }
