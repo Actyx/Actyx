@@ -963,15 +963,15 @@ impl BanyanStore {
         if known_mappings.is_empty() {
             tracing::info!("No stream mappings found, publishing the default mapping.");
             banyan
-                .append_stream_mapping_event(DEFAULT_STREAM_NAME.to_string(), 0.into())
+                .append_stream_mapping_event(DEFAULT_STREAM_NAME.to_string(), DEFAULT_STREAM_NUMBER.into())
                 .await?;
             tracing::debug!("\"{}\" stream successfully published.", DEFAULT_STREAM_NAME);
             // If publishing went ok, we can move on with adding the stream to the table
             routing_table
-                .add_stream(DEFAULT_STREAM_NAME, Some(0.into()))
+                .add_stream(DEFAULT_STREAM_NAME, Some(DEFAULT_STREAM_NUMBER.into()))
                 .expect("The stream should not have been previously added.");
 
-            let default_streams = [
+            let extended_default_streams = [
                 (
                     StreamNr::from(DISCOVERY_STREAM_NUMBER),
                     DISCOVERY_STREAM_NAME,
@@ -991,7 +991,7 @@ impl BanyanStore {
             // Only consider the event routes because the retain configs do not publish streams
             // and we should be able to configure retain policies for the old default mappings
             if cfg.event_routes.is_empty() || local_streams > 1 {
-                for (stream_nr, stream_name, retain_cfg) in default_streams {
+                for (stream_nr, stream_name, retain_cfg) in extended_default_streams {
                     banyan
                         .append_stream_mapping_event(stream_name.to_string(), stream_nr)
                         .await?;

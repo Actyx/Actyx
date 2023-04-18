@@ -326,7 +326,7 @@ fn test_add_zero_bytes() -> Result<()> {
 }
 
 /// Emulates a fresh swarm launch from an empty config (i.e. nodes after 2.15).
-/// Expected stream should be the default one only.
+/// Expected streams should be "default", "metrics", "discovery", "files".
 #[tokio::test]
 async fn non_existing_swarm_config() {
     util::setup_logger();
@@ -408,6 +408,8 @@ async fn existing_swarm_config() {
             streams: btreemap! {
                 "stream_1".to_string() => Default::default(),
                 "stream_2".to_string() => Default::default(),
+                // Stream 3 should not be allocated and generate a warning instead
+                "stream_3".to_string() => Default::default(),
             },
             ..Default::default()
         },
@@ -615,5 +617,160 @@ async fn non_existing_swarm_config_existing_streams() {
     assert_eq!(round_tripped.len(), expected_mappings.len());
     for i in 0..expected_mappings.len() {
         assert_eq!(expected_mappings[i], round_tripped[i]);
+    }
+}
+
+/// Emulates a swarm launch from a node previous to 2.15 using a configuration for the second topic.
+/// Expected streams are the "default", "discovery", "metrics" and "files".
+#[tokio::test]
+async fn existing_swarm_config_existing_streams() {
+    use tempfile::TempDir;
+
+    util::setup_logger();
+    println!("{:?}", std::env::current_dir().unwrap());
+    // Copy the test data to a temporary directory because the tests modify the stores
+    let dir = PathBuf::from_str("test-data/v2.15").unwrap();
+    let temp_dir = TempDir::new().unwrap();
+    copy_dir_recursive(dir, temp_dir.path()).unwrap();
+
+    let expected_default_mappings = vec![
+        EventRouteMappingEvent {
+            stream_name: "default".to_string(),
+            stream_nr: 0.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "discovery".to_string(),
+            stream_nr: 1.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "metrics".to_string(),
+            stream_nr: 2.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "files".to_string(),
+            stream_nr: 3.into(),
+        },
+    ];
+
+    let blobs = PathBuf::from(
+        temp_dir
+            .path()
+            .join("store/test-blobs.sqlite")
+            .to_str()
+            .expect("illegal filename"),
+    );
+    let index = PathBuf::from(
+        temp_dir
+            .path()
+            .join("store/test-index.sqlite")
+            .to_str()
+            .expect("illegal filename"),
+    );
+    let db = PathBuf::from(temp_dir.path().join("node.sqlite").to_str().expect("illegal filename"));
+
+    let default_topic_config = SwarmConfig {
+        keypair: Some(get_keypair()),
+        index_store: Some(index.clone()),
+        blob_store: Some(blobs.clone()),
+        db_path: Some(db.clone()),
+        ..SwarmConfig::basic()
+    };
+
+    let store = BanyanStore::new(default_topic_config, ActoRef::blackhole())
+        .await
+        .unwrap();
+
+    let offset = store
+        .get_or_create_own_stream(0.into())
+        .unwrap()
+        .published_tree()
+        .unwrap()
+        .offset();
+
+    let mut round_tripped = store
+        .stream_filtered_chunked(store.node_id().stream(0.into()), 0..=offset.into(), AllQuery)
+        .map(|chunk| chunk.unwrap().data)
+        .flat_map(|a| {
+            stream::iter(
+                a.into_iter()
+                    .map(|(_, _, event)| event.extract::<EventRouteMappingEvent>().map_err(anyhow::Error::from)),
+            )
+        })
+        .try_collect::<Vec<_>>()
+        .await
+        .unwrap();
+    round_tripped.sort_by_key(|event| event.stream_nr);
+    tracing::error!("{:?}", round_tripped);
+    assert_eq!(round_tripped.len(), expected_default_mappings.len());
+    for i in 0..expected_default_mappings.len() {
+        assert_eq!(expected_default_mappings[i], round_tripped[i]);
+    }
+
+    drop(store);
+
+    let other_topic_config = SwarmConfig {
+        keypair: Some(get_keypair()),
+        topic: "other-topic".to_string(),
+        index_store: Some(index),
+        blob_store: Some(blobs),
+        db_path: Some(db),
+        event_routes: vec![EventRoute::new(
+            TagExpr::from_str("'a'").unwrap(),
+            "other-stream".to_string(),
+        )],
+        ..SwarmConfig::basic()
+    };
+
+    let expected_other_mappings = vec![
+        EventRouteMappingEvent {
+            stream_name: "default".to_string(),
+            stream_nr: 0.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "discovery".to_string(),
+            stream_nr: 1.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "metrics".to_string(),
+            stream_nr: 2.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "files".to_string(),
+            stream_nr: 3.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "other-stream".to_string(),
+            stream_nr: 4.into(),
+        },
+    ];
+
+    let store = BanyanStore::new(other_topic_config, ActoRef::blackhole())
+        .await
+        .unwrap();
+
+    let offset = store
+        .get_or_create_own_stream(0.into())
+        .unwrap()
+        .published_tree()
+        .unwrap()
+        .offset();
+
+    let mut round_tripped = store
+        .stream_filtered_chunked(store.node_id().stream(0.into()), 0..=offset.into(), AllQuery)
+        .map(|chunk| chunk.unwrap().data)
+        .flat_map(|a| {
+            stream::iter(
+                a.into_iter()
+                    .map(|(_, _, event)| event.extract::<EventRouteMappingEvent>().map_err(anyhow::Error::from)),
+            )
+        })
+        .try_collect::<Vec<_>>()
+        .await
+        .unwrap();
+    round_tripped.sort_by_key(|event| event.stream_nr);
+    tracing::error!("{:?}", round_tripped);
+    assert_eq!(round_tripped.len(), expected_other_mappings.len());
+    for i in 0..expected_other_mappings.len() {
+        assert_eq!(expected_other_mappings[i], round_tripped[i]);
     }
 }
