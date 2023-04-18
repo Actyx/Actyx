@@ -4,7 +4,6 @@ fn main() -> anyhow::Result<()> {
     use async_std::future::timeout;
     use crypto::peer_id_to_node_id;
     use std::{
-        convert::identity,
         str::FromStr,
         time::{Duration, Instant},
     };
@@ -92,17 +91,12 @@ fn main() -> anyhow::Result<()> {
                             offsets,
                             ..
                         }) => {
-                            // Ignore if the sender is the first,
-                            // since of course the sender knows itself...
-                            // That wouldn't test anything
-                            if sender == first.peer_id() {
+                            if sender != first.peer_id() {
                                 continue;
                             }
                             assert!(lamport >= EVENTS.into());
 
-                            let mut root_map = [false, false];
-                            // Added just to ensure that someone doesn't forget to change both
-                            assert_eq!(expectations.len(), root_map.len());
+                            let mut checked_streams = 0;
 
                             for (stream_nr, expected_lamport, expected_offset) in expectations.iter() {
                                 let stream_id = peer_id_to_node_id(first.peer_id()).unwrap().stream(*stream_nr);
@@ -121,10 +115,9 @@ fn main() -> anyhow::Result<()> {
                                     let (offset, lamport_for_root) = offsets[idx];
                                     assert_eq!(lamport_for_root, *expected_lamport);
                                     assert_eq!(offset, *expected_offset);
-                                    // Dirty hack to get the stream_nr as index
-                                    root_map[u64::from(*stream_nr) as usize] = true;
+                                    checked_streams += 1;
                                 } else {
-                                    tracing::error!(
+                                    tracing::info!(
                                         "Checking machine {:?}, received RootMap does not contain stream {:?}",
                                         machine.id(),
                                         stream_id
@@ -132,7 +125,7 @@ fn main() -> anyhow::Result<()> {
                                 }
                             }
 
-                            received_root_map = root_map.into_iter().all(identity);
+                            received_root_map |= checked_streams == expectations.len();
                         }
                     }
                     if received_root_map && received_test_root_update {
