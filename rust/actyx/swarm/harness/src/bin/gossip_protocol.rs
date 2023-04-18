@@ -105,8 +105,7 @@ fn main() -> anyhow::Result<()> {
                             assert_eq!(expectations.len(), root_map.len());
 
                             for (stream_nr, expected_lamport, expected_offset) in expectations.iter() {
-                                let stream_id =
-                                    peer_id_to_node_id(first.peer_id()).unwrap().stream((*stream_nr).into());
+                                let stream_id = peer_id_to_node_id(first.peer_id()).unwrap().stream(*stream_nr);
 
                                 let idx = entries.keys().enumerate().find_map(|(idx, stream)| {
                                     if *stream == stream_id {
