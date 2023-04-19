@@ -74,9 +74,9 @@ impl From<u64> for StreamSize {
     }
 }
 
-impl Into<u64> for StreamSize {
-    fn into(self) -> u64 {
-        match self {
+impl From<StreamSize> for u64 {
+    fn from(stream_size: StreamSize) -> Self {
+        match stream_size {
             StreamSize::Bytes(v) => v,
             StreamSize::KiloBytes(v) => v * 1000,
             StreamSize::MegaBytes(v) => v * 1000 * 1000,
@@ -95,7 +95,9 @@ impl FromStr for StreamSize {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"^([1-9][0-9]*)(B|kB|MB|GB|KiB|MiB|GiB)$").unwrap();
         }
-        let captures = RE.captures(s).ok_or(anyhow::anyhow!("Failed to parse string."))?;
+        let captures = RE
+            .captures(s)
+            .ok_or_else(|| anyhow::anyhow!("Failed to parse string."))?;
         let value = captures.get(1).map(|v| v.as_str()).unwrap_or("0").parse::<u64>()?;
         let unit = captures.get(2).map(|u| u.as_str());
         Ok(match unit {
@@ -230,9 +232,9 @@ impl<'de> Deserialize<'de> for StreamAge {
     }
 }
 
-impl Into<u64> for StreamAge {
-    fn into(self) -> u64 {
-        match self {
+impl From<StreamAge> for u64 {
+    fn from(stream_age: StreamAge) -> Self {
+        match stream_age {
             StreamAge::Seconds(value) => value,
             StreamAge::Minutes(value) => value * 60,
             StreamAge::Hours(value) => value * 60 * 60,
@@ -249,7 +251,9 @@ impl FromStr for StreamAge {
         lazy_static! {
             static ref RE: Regex = Regex::new("^([1-9][0-9]*)(s|m|h|d|w)$").unwrap();
         }
-        let captures = RE.captures(s).ok_or(anyhow::anyhow!("Failed to parse string."))?;
+        let captures = RE
+            .captures(s)
+            .ok_or_else(|| anyhow::anyhow!("Failed to parse string."))?;
         let value = captures.get(1).map(|v| v.as_str()).unwrap_or("0").parse::<u64>()?;
         let unit = captures.get(2).map(|u| u.as_str()).unwrap_or("s");
         Ok(match unit {
