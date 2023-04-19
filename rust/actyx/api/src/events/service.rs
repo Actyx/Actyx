@@ -1327,12 +1327,12 @@ ENDPRAGMA
                 .await,
                 vec![
                     format!(
-                        "[[[2,{},1,0]],[{:?}],[\"a1\",\"b\"],[\"me\"]]",
+                        "[[[2,{},1,0]],[{:?}],[\"a1\",\"b\"],[\"test\"]]",
                         node_bytes,
                         meta1.1.timestamp.as_i64() as f64 / 1e6
                     ),
                     format!(
-                        "[[[3,{},1,1]],[{:?}],[\"a2\"],[\"me\"]]",
+                        "[[[3,{},1,1]],[{:?}],[\"a2\"],[\"test\"]]",
                         node_bytes,
                         meta2.1.timestamp.as_i64() as f64 / 1e6
                     ),
@@ -1368,7 +1368,7 @@ ENDPRAGMA
     fn subscribe_aggregate() {
         let f = async {
             let routes = vec![EventRoute::new(
-                TagExpr::from_str("appId(me)").unwrap(),
+                TagExpr::from_str("appId(test)").unwrap(),
                 "subscribe_aggregate_stream".to_string(),
             )];
             let store = BanyanStore::test_with_routing("subscribe_aggregate", routes)
@@ -1528,7 +1528,7 @@ ENDPRAGMA
     fn subscribe_aggregate_filter() {
         let f = async {
             let routes = vec![EventRoute::new(
-                TagExpr::from_str("appId(me)").unwrap(),
+                TagExpr::from_str("appId(test)").unwrap(),
                 "subscribe_aggregate".to_string(),
             )];
             let store = BanyanStore::test_with_routing("subscribe_aggregate", routes)
@@ -1579,7 +1579,7 @@ ENDPRAGMA
     fn subscribe_aggregate_error() {
         let f = async {
             let routes = vec![EventRoute::new(
-                TagExpr::from_str("appId(me)").unwrap(),
+                TagExpr::from_str("appId(test)").unwrap(),
                 "subscribe_aggregate_error".to_string(),
             )];
             let store = BanyanStore::test_with_routing("subscribe_aggregate", routes)
