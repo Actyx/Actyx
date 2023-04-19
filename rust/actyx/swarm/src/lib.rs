@@ -37,7 +37,6 @@ pub use banyan::{store::BlockWriter, Forest as BanyanForest, StreamBuilder, Tran
 use futures::{future, stream, Future, FutureExt, Stream, StreamExt, TryStreamExt};
 pub use ipfs_embed::{Executor as IpfsEmbedExecutor, StorageConfig, StorageService};
 pub use libipld::codec::Codec as IpldCodec;
-use maplit::btreemap;
 use once_cell::sync::Lazy;
 pub use prune::RetainConfig;
 use streams::{OwnStreamGuard, RemoteNodeInner};
