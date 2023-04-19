@@ -5,23 +5,56 @@ use futures::future::{join_all, FutureExt};
 use serde::{Deserialize, Serialize};
 use std::{
     convert::TryInto,
+    future,
     time::{Duration, SystemTime},
 };
 use trees::query::{OffsetQuery, TimeQuery};
 
-#[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 /// Note: Events are kept on a best-effort basis, potentially violating the
 /// constraints expressed by this config.
-pub enum RetainConfig {
-    /// Retains the last n events
-    Events(u64),
-    /// Retain all events between `now - duration` and `now`
-    Age(Duration),
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct RetainConfig {
+    /// Retains the last `n` events.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_events: Option<u64>,
+    /// Retain all events between `now - duration` and `now` (in seconds).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_age: Option<u64>,
     /// Retain the last events up to the provided size in bytes. Note that only
     /// the value bytes are taken into account, no overhead from keys, indexes,
     /// etc.
-    Size(u64),
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_size: Option<u64>,
+}
+
+impl RetainConfig {
+    /// Limit the number of events to keep.
+    pub fn events(events: u64) -> Self {
+        Self {
+            max_events: Some(events),
+            max_age: None,
+            max_size: None,
+        }
+    }
+
+    /// Limit the age of the events to keep (in seconds).
+    pub fn age(age: u64) -> Self {
+        Self {
+            max_events: None,
+            max_age: Some(age),
+            max_size: None,
+        }
+    }
+
+    /// Limit the total size of the events to keep (in bytes).
+    pub fn size(size: u64) -> Self {
+        Self {
+            max_events: None,
+            max_age: None,
+            max_size: Some(size),
+        }
+    }
 }
 
 fn retain_last_events(store: &BanyanStore, stream: &mut OwnStreamGuard<'_>, keep: u64) -> anyhow::Result<Option<Link>> {
@@ -124,24 +157,36 @@ fn retain_events_up_to(
 pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
     loop {
         tokio::time::sleep(config.interval).await;
-        let tasks = config.streams.iter().map(|(stream_nr, cfg)| {
+        let tasks = config.streams.iter().map(|(stream_name, cfg)| {
             let store = store.clone();
-            tracing::debug!("Checking ephemeral event conditions for {}", stream_nr);
-            let fut = async move {
-                let stream = store.get_or_create_own_stream(*stream_nr).unwrap();
-                let mut guard = stream.lock().await;
-                match cfg {
-                    RetainConfig::Events(keep) => retain_last_events(&store, &mut guard, *keep),
-                    RetainConfig::Age(duration) => {
-                        let emit_after: Timestamp = SystemTime::now()
-                            .checked_sub(*duration)
-                            .with_context(|| format!("Invalid duration configured for {}: {:?}", stream_nr, duration))?
-                            .try_into()?;
-                        retain_events_after(&store, &mut guard, emit_after)
-                    }
-                    RetainConfig::Size(max_retain_size) => retain_events_up_to(&store, &mut guard, *max_retain_size),
-                }
+            tracing::debug!("Checking ephemeral event conditions for {}", stream_name);
+
+            let stream_nr = store.data.routing_table.stream_mapping.get(stream_name).copied();
+
+            let Some(stream_nr) = stream_nr else {
+                return future::ready(()).left_future();
             };
+
+            let fut = async move {
+                let stream = store.get_or_create_own_stream(stream_nr).unwrap();
+                let mut guard = stream.lock().await;
+                let mut result = Ok(None);
+                if let Some(keep) = cfg.max_events {
+                    result = retain_last_events(&store, &mut guard, keep);
+                }
+                if let Some(duration) = cfg.max_age {
+                    let emit_after: Timestamp = SystemTime::now()
+                        .checked_sub(Duration::from_secs(duration))
+                        .with_context(|| format!("Invalid duration configured for {}: {:?}", stream_nr, duration))?
+                        .try_into()?;
+                    result = retain_events_after(&store, &mut guard, emit_after);
+                }
+                if let Some(max_retain_size) = cfg.max_size {
+                    result = retain_events_up_to(&store, &mut guard, max_retain_size);
+                }
+                result
+            };
+
             fut.map(move |res| match res {
                 Ok(Some(new_root)) => {
                     tracing::debug!("Ephemeral events on {}: New root {}", stream_nr, new_root);
@@ -151,6 +196,7 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
                 }
                 _ => {}
             })
+            .right_future()
         });
         join_all(tasks).await;
     }
@@ -158,15 +204,16 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
 
 #[cfg(test)]
 mod test {
-    use std::{collections::BTreeMap, str::FromStr, sync::Arc};
+    use std::{collections::BTreeMap, iter::once, str::FromStr, sync::Arc};
 
     use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Payload, StreamNr};
     use ax_futures_util::prelude::AxStreamExt;
-    use futures::{future, StreamExt};
+    use futures::{future, StreamExt, TryStreamExt};
 
     use super::*;
     use crate::{BanyanConfig, EventRoute, SwarmConfig};
     use acto::ActoRef;
+    use itertools::Either;
     use parking_lot::Mutex;
 
     fn app_id() -> AppId {
@@ -210,7 +257,6 @@ mod test {
     }
 
     async fn test_retain_count(events_to_retain: u64) {
-        tracing::error!("events to retain: {}", events_to_retain);
         let event_count = 1024;
         util::setup_logger();
         let test_stream = StreamNr::from(1);
@@ -349,10 +395,8 @@ mod test {
                 OffsetQuery::from(0..),
             )
             .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= event_count))
-            .collect::<Vec<_>>()
+            .try_collect::<Vec<_>>()
             .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()
             .unwrap();
 
         let cut_off = {
@@ -382,14 +426,15 @@ mod test {
                 OffsetQuery::from(0..),
             )
             .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= event_count))
-            .collect::<Vec<_>>()
+            .flat_map(|chunk| {
+                futures::stream::iter(match chunk {
+                    Ok(chunk) => Either::Left(chunk.data.into_iter().map(Ok)),
+                    Err(err) => Either::Right(once(Err(err))),
+                })
+            })
+            .try_collect::<Vec<_>>()
             .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap()
-            .into_iter()
-            .flat_map(|chunk| chunk.data)
-            .collect::<Vec<_>>();
+            .unwrap();
 
         let mut expected = all_events
             .into_iter()

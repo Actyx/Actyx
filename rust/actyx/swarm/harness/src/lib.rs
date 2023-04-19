@@ -19,7 +19,7 @@ use std::{
     time::{Duration, Instant},
 };
 use structopt::StructOpt;
-use swarm_cli::{multiaddr, Command, Config, EphemeralEventsConfigWrapper, Event, EventRoute, Multiaddr, PeerId};
+use swarm_cli::{multiaddr, Command, Config, EphemeralEventsConfig, Event, EventRoute, Multiaddr, PeerId};
 use tempdir::TempDir;
 
 pub mod util;
@@ -57,7 +57,7 @@ pub struct HarnessOpts {
     pub enable_api: Option<SocketAddr>,
 
     #[structopt(long)]
-    pub ephemeral_events: Option<EphemeralEventsConfigWrapper>,
+    pub ephemeral_events: Option<EphemeralEventsConfig>,
 
     #[structopt(long)]
     pub max_leaf_count: Option<usize>,

@@ -23,7 +23,7 @@ use std::{
 use swarm::{
     blob_store::BlobStore,
     event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
-    BanyanStore, DbPath, EventRoute, GossipMessage, Ipfs, SwarmConfig,
+    BanyanStore, DbPath, EphemeralEventsConfig, EventRoute, GossipMessage, Ipfs, SwarmConfig,
 };
 use tokio::sync::oneshot;
 use tracing::*;
@@ -256,19 +256,14 @@ impl Component<StoreRequest, StoreConfig> for Store {
         let index_store = Some(self.working_dir.join(format!("{}-index", topic)));
         let blob_store = Some(self.working_dir.join(format!("{}-blobs", topic)));
         let read_only = s.api.events.read_only;
-        let routes = s.event_routing.routes;
-        let event_routes = if routes.is_empty() {
-            // This is of course, order sensitive,
-            // should match swarm/src/lib.rs::*_STREAM_NR
-            vec![
-                EventRoute::default(),
-                EventRoute::discovery(),
-                EventRoute::metrics(),
-                EventRoute::files(),
-            ]
-        } else {
-            routes.into_iter().map(|e| EventRoute::new(e.from, e.into)).collect()
-        };
+
+        let event_routes = s
+            .event_routing
+            .routes
+            .into_iter()
+            .map(|e| EventRoute::new(e.from, e.into))
+            .collect();
+        let ephemeral_event_config = EphemeralEventsConfig::from(s.event_routing.streams);
 
         let swarm_config = SwarmConfig {
             topic,
@@ -305,6 +300,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             branch_cache_size: s.swarm.branch_cache_size,
             cadence_root_map: Duration::from_secs(s.swarm.gossip_interval),
             event_routes,
+            ephemeral_event_config,
             ..SwarmConfig::basic()
         };
         Ok(StoreConfig {

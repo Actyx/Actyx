@@ -6490,6 +6490,7 @@ dependencies = [
  "anyhow",
  "ax-futures-util",
  "banyan",
+ "base64",
  "cbor-data",
  "chrono",
  "crossbeam",

@@ -1,4 +1,7 @@
-use crate::{AxTreeExt, BanyanStore, EventRoute, SwarmConfig, MAX_TREE_LEVEL};
+use crate::{
+    AxTreeExt, BanyanStore, EphemeralEventsConfig, EventRoute, EventRouteMappingEvent, SwarmConfig,
+    DEFAULT_STREAM_NAME, DISCOVERY_STREAM_NAME, FILES_STREAM_NAME, MAX_TREE_LEVEL, METRICS_STREAM_NAME,
+};
 use acto::ActoRef;
 use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Offset, OffsetMap, Payload, StreamNr, Tag, TagSet};
 use anyhow::Result;
@@ -7,14 +10,20 @@ use ax_futures_util::{
     stream::{interval, Drainer},
 };
 use banyan::query::AllQuery;
-use crypto::KeyPair;
+use crypto::{KeyPair, KeyStore, PublicKey};
 use futures::{pin_mut, prelude::*, StreamExt};
 use libipld::Cid;
 use maplit::btreemap;
-use std::{collections::BTreeMap, convert::TryFrom, path::PathBuf, str::FromStr, time::Duration};
+use std::{
+    collections::BTreeMap,
+    convert::TryFrom,
+    fs, io,
+    path::{Path, PathBuf},
+    str::FromStr,
+    time::Duration,
+};
 use tokio::runtime::Runtime;
 use trees::query::TagExprQuery;
-
 struct Tagger(BTreeMap<&'static str, Tag>);
 
 impl Tagger {
@@ -314,4 +323,454 @@ fn test_add_zero_bytes() -> Result<()> {
         tracing::info!("store dropped");
         Ok(())
     })
+}
+
+/// Emulates a fresh swarm launch from an empty config (i.e. nodes after 2.15).
+/// Expected streams should be "default", "metrics", "discovery", "files".
+#[tokio::test]
+async fn non_existing_swarm_config() {
+    util::setup_logger();
+
+    let dir = tempfile::tempdir().unwrap();
+    let db = PathBuf::from(dir.path().join("db").to_str().expect("illegal filename"));
+    let index = PathBuf::from(dir.path().join("index").to_str().expect("illegal filename"));
+
+    let config = SwarmConfig {
+        index_store: Some(index),
+        db_path: Some(db),
+        ..SwarmConfig::basic()
+    };
+
+    let store = BanyanStore::new(config, ActoRef::blackhole()).await.unwrap();
+
+    let expected_mappings = vec![
+        EventRouteMappingEvent {
+            stream_name: DEFAULT_STREAM_NAME.to_string(),
+            stream_nr: 0.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: DISCOVERY_STREAM_NAME.to_string(),
+            stream_nr: 1.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: METRICS_STREAM_NAME.to_string(),
+            stream_nr: 2.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: FILES_STREAM_NAME.to_string(),
+            stream_nr: 3.into(),
+        },
+    ];
+
+    let tree_level = store
+        .get_or_create_own_stream(0.into())
+        .unwrap()
+        .tree_stream()
+        .next()
+        .await
+        .unwrap()
+        .level();
+
+    let mut round_tripped = store
+        .stream_filtered_chunked(store.node_id().stream(0.into()), 0..=u64::MAX, AllQuery)
+        .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= tree_level as u64))
+        .map(|chunk| chunk.unwrap().data)
+        .flat_map(|a| {
+            stream::iter(
+                a.into_iter()
+                    .map(|(_, _, event)| event.extract::<EventRouteMappingEvent>().map_err(anyhow::Error::from)),
+            )
+        })
+        .try_collect::<Vec<_>>()
+        .await
+        .unwrap();
+    round_tripped.sort_by_key(|event| event.stream_nr);
+
+    assert_eq!(round_tripped.len(), expected_mappings.len());
+    for i in 0..expected_mappings.len() {
+        assert_eq!(expected_mappings[i], round_tripped[i]);
+    }
+}
+
+/// Emulates changing to a new topic, using an existing configuration.
+/// Expected streams should be the default one and any additional streams.
+#[tokio::test]
+async fn existing_swarm_config() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = PathBuf::from(dir.path().join("db").to_str().expect("illegal filename"));
+    let index = PathBuf::from(dir.path().join("index").to_str().expect("illegal filename"));
+
+    let config = SwarmConfig {
+        index_store: Some(index),
+        db_path: Some(db),
+        topic: "test-topic".to_string(),
+        ephemeral_event_config: EphemeralEventsConfig {
+            streams: btreemap! {
+                "stream_1".to_string() => Default::default(),
+                "stream_2".to_string() => Default::default(),
+                // Stream 3 should not be allocated and generate a warning instead
+                "stream_3".to_string() => Default::default(),
+            },
+            ..Default::default()
+        },
+        event_routes: vec![
+            EventRoute::new(TagExpr::from_str("allEvents").unwrap(), "default".to_string()),
+            EventRoute::new(TagExpr::from_str("'stream_1'").unwrap(), "stream_1".to_string()),
+            EventRoute::new(TagExpr::from_str("'stream_2'").unwrap(), "stream_2".to_string()),
+        ],
+        ..SwarmConfig::basic()
+    };
+    let store = BanyanStore::new(config, ActoRef::blackhole()).await.unwrap();
+
+    let expected_mappings = vec![
+        EventRouteMappingEvent {
+            stream_name: "default".to_string(),
+            stream_nr: 0.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "stream_1".to_string(),
+            stream_nr: 1.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "stream_2".to_string(),
+            stream_nr: 2.into(),
+        },
+    ];
+
+    let tree_level = store
+        .get_or_create_own_stream(0.into())
+        .unwrap()
+        .tree_stream()
+        .next()
+        .await
+        .unwrap()
+        .level();
+
+    let mut round_tripped = store
+        .stream_filtered_chunked(store.node_id().stream(0.into()), 0..=u64::MAX, AllQuery)
+        .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= tree_level as u64))
+        .map(|chunk| chunk.unwrap().data)
+        .flat_map(|a| {
+            stream::iter(
+                a.into_iter()
+                    .map(|(_, _, event)| event.extract::<EventRouteMappingEvent>().map_err(anyhow::Error::from)),
+            )
+        })
+        .try_collect::<Vec<_>>()
+        .await
+        .unwrap();
+    round_tripped.sort_by_key(|event| event.stream_nr);
+
+    assert_eq!(round_tripped.len(), expected_mappings.len());
+    for i in 0..expected_mappings.len() {
+        assert_eq!(expected_mappings[i], round_tripped[i]);
+    }
+}
+
+fn copy_dir_recursive(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
+    fs::create_dir_all(&dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir_recursive(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
+}
+
+fn get_keypair() -> KeyPair {
+    let keystore_str = "AWcltN48gptE+LELhtwVNV3+yDfu5BkvA+u1cQO6VrHwFDQUBwhVOuD7XZRe5MOlHfCFRh2Ye7TJUAwl8YJSRZLZH/NZxE9ErvHTcDIWdyIvFnenIjJfSukahnBPVdwwOgqBo8QhxneO0z99ug9p54XXtlL87V0leWto2QjIup29KWXne9QanHk4oA==";
+    let keystore = KeyStore::restore(io::Cursor::new(base64::decode(keystore_str).unwrap())).unwrap();
+    let _p = keystore.get_pairs();
+    keystore
+        .get_pair(PublicKey::from_str("01CANwnBSbmTlT3HWrTVZvfTPSeRZuGfcOJnF7Z/X6Nc=").unwrap())
+        .unwrap()
+}
+
+/// Emulates a swarm launch from a node previous to 2.15.
+/// Expected streams are the "default", "discovery", "metrics" and "files".
+#[tokio::test]
+async fn non_existing_swarm_config_existing_streams() {
+    use tempfile::TempDir;
+
+    util::setup_logger();
+
+    let expected_mappings = vec![
+        EventRouteMappingEvent {
+            stream_name: "default".to_string(),
+            stream_nr: 0.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "discovery".to_string(),
+            stream_nr: 1.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "metrics".to_string(),
+            stream_nr: 2.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "files".to_string(),
+            stream_nr: 3.into(),
+        },
+    ];
+
+    let dir = PathBuf::from_str("test-data/v2.15").unwrap();
+    let temp_dir = TempDir::new().unwrap();
+
+    copy_dir_recursive(dir, temp_dir.path()).unwrap();
+
+    let blobs = PathBuf::from(
+        temp_dir
+            .path()
+            .join("store/test-blobs.sqlite")
+            .to_str()
+            .expect("illegal filename"),
+    );
+    let index = PathBuf::from(
+        temp_dir
+            .path()
+            .join("store/test-index.sqlite")
+            .to_str()
+            .expect("illegal filename"),
+    );
+    let db = PathBuf::from(temp_dir.path().join("node.sqlite").to_str().expect("illegal filename"));
+
+    let config = SwarmConfig {
+        keypair: Some(get_keypair()),
+        index_store: Some(index.clone()),
+        blob_store: Some(blobs.clone()),
+        db_path: Some(db.clone()),
+        ..SwarmConfig::basic()
+    };
+
+    let store = BanyanStore::new(config, ActoRef::blackhole()).await.unwrap();
+
+    let tree_level = store
+        .get_or_create_own_stream(0.into())
+        .unwrap()
+        .tree_stream()
+        .next()
+        .await
+        .unwrap()
+        .level();
+
+    let mut round_tripped = store
+        .stream_filtered_chunked(store.node_id().stream(0.into()), 0..=u64::MAX, AllQuery)
+        .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= tree_level as u64))
+        .map(|chunk| chunk.unwrap().data)
+        .flat_map(|a| {
+            stream::iter(
+                a.into_iter()
+                    .map(|(_, _, event)| event.extract::<EventRouteMappingEvent>().map_err(anyhow::Error::from)),
+            )
+        })
+        .try_collect::<Vec<_>>()
+        .await
+        .unwrap();
+    round_tripped.sort_by_key(|event| event.stream_nr);
+    tracing::error!("{:?}", round_tripped);
+    assert_eq!(round_tripped.len(), expected_mappings.len());
+    for i in 0..expected_mappings.len() {
+        assert_eq!(expected_mappings[i], round_tripped[i]);
+    }
+
+    drop(store);
+
+    let config = SwarmConfig {
+        keypair: Some(get_keypair()),
+        topic: "other-topic".to_string(),
+        index_store: Some(index),
+        blob_store: Some(blobs),
+        db_path: Some(db),
+        ..SwarmConfig::basic()
+    };
+
+    let store = BanyanStore::new(config, ActoRef::blackhole()).await.unwrap();
+
+    let tree_level = store
+        .get_or_create_own_stream(0.into())
+        .unwrap()
+        .tree_stream()
+        .next()
+        .await
+        .unwrap()
+        .level();
+
+    let mut round_tripped = store
+        .stream_filtered_chunked(store.node_id().stream(0.into()), 0..=u64::MAX, AllQuery)
+        .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= tree_level as u64))
+        .map(|chunk| chunk.unwrap().data)
+        .flat_map(|a| {
+            stream::iter(
+                a.into_iter()
+                    .map(|(_, _, event)| event.extract::<EventRouteMappingEvent>().map_err(anyhow::Error::from)),
+            )
+        })
+        .try_collect::<Vec<_>>()
+        .await
+        .unwrap();
+    round_tripped.sort_by_key(|event| event.stream_nr);
+    tracing::error!("{:?}", round_tripped);
+    assert_eq!(round_tripped.len(), expected_mappings.len());
+    for i in 0..expected_mappings.len() {
+        assert_eq!(expected_mappings[i], round_tripped[i]);
+    }
+}
+
+/// Emulates a swarm launch from a node previous to 2.15 using a configuration for the second topic.
+/// Expected streams are the "default", "discovery", "metrics" and "files".
+#[tokio::test]
+async fn existing_swarm_config_existing_streams() {
+    use tempfile::TempDir;
+
+    util::setup_logger();
+    println!("{:?}", std::env::current_dir().unwrap());
+    // Copy the test data to a temporary directory because the tests modify the stores
+    let dir = PathBuf::from_str("test-data/v2.15").unwrap();
+    let temp_dir = TempDir::new().unwrap();
+    copy_dir_recursive(dir, temp_dir.path()).unwrap();
+
+    let expected_default_mappings = vec![
+        EventRouteMappingEvent {
+            stream_name: "default".to_string(),
+            stream_nr: 0.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "discovery".to_string(),
+            stream_nr: 1.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "metrics".to_string(),
+            stream_nr: 2.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "files".to_string(),
+            stream_nr: 3.into(),
+        },
+    ];
+
+    let blobs = PathBuf::from(
+        temp_dir
+            .path()
+            .join("store/test-blobs.sqlite")
+            .to_str()
+            .expect("illegal filename"),
+    );
+    let index = PathBuf::from(
+        temp_dir
+            .path()
+            .join("store/test-index.sqlite")
+            .to_str()
+            .expect("illegal filename"),
+    );
+    let db = PathBuf::from(temp_dir.path().join("node.sqlite").to_str().expect("illegal filename"));
+
+    let default_topic_config = SwarmConfig {
+        keypair: Some(get_keypair()),
+        index_store: Some(index.clone()),
+        blob_store: Some(blobs.clone()),
+        db_path: Some(db.clone()),
+        ..SwarmConfig::basic()
+    };
+
+    let store = BanyanStore::new(default_topic_config, ActoRef::blackhole())
+        .await
+        .unwrap();
+
+    let offset = store
+        .get_or_create_own_stream(0.into())
+        .unwrap()
+        .published_tree()
+        .unwrap()
+        .offset();
+
+    let mut round_tripped = store
+        .stream_filtered_chunked(store.node_id().stream(0.into()), 0..=offset.into(), AllQuery)
+        .map(|chunk| chunk.unwrap().data)
+        .flat_map(|a| {
+            stream::iter(
+                a.into_iter()
+                    .map(|(_, _, event)| event.extract::<EventRouteMappingEvent>().map_err(anyhow::Error::from)),
+            )
+        })
+        .try_collect::<Vec<_>>()
+        .await
+        .unwrap();
+    round_tripped.sort_by_key(|event| event.stream_nr);
+    tracing::error!("{:?}", round_tripped);
+    assert_eq!(round_tripped.len(), expected_default_mappings.len());
+    for i in 0..expected_default_mappings.len() {
+        assert_eq!(expected_default_mappings[i], round_tripped[i]);
+    }
+
+    drop(store);
+
+    let other_topic_config = SwarmConfig {
+        keypair: Some(get_keypair()),
+        topic: "other-topic".to_string(),
+        index_store: Some(index),
+        blob_store: Some(blobs),
+        db_path: Some(db),
+        event_routes: vec![EventRoute::new(
+            TagExpr::from_str("'a'").unwrap(),
+            "other-stream".to_string(),
+        )],
+        ..SwarmConfig::basic()
+    };
+
+    let expected_other_mappings = vec![
+        EventRouteMappingEvent {
+            stream_name: "default".to_string(),
+            stream_nr: 0.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "discovery".to_string(),
+            stream_nr: 1.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "metrics".to_string(),
+            stream_nr: 2.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "files".to_string(),
+            stream_nr: 3.into(),
+        },
+        EventRouteMappingEvent {
+            stream_name: "other-stream".to_string(),
+            stream_nr: 4.into(),
+        },
+    ];
+
+    let store = BanyanStore::new(other_topic_config, ActoRef::blackhole())
+        .await
+        .unwrap();
+
+    let offset = store
+        .get_or_create_own_stream(0.into())
+        .unwrap()
+        .published_tree()
+        .unwrap()
+        .offset();
+
+    let mut round_tripped = store
+        .stream_filtered_chunked(store.node_id().stream(0.into()), 0..=offset.into(), AllQuery)
+        .map(|chunk| chunk.unwrap().data)
+        .flat_map(|a| {
+            stream::iter(
+                a.into_iter()
+                    .map(|(_, _, event)| event.extract::<EventRouteMappingEvent>().map_err(anyhow::Error::from)),
+            )
+        })
+        .try_collect::<Vec<_>>()
+        .await
+        .unwrap();
+    round_tripped.sort_by_key(|event| event.stream_nr);
+    tracing::error!("{:?}", round_tripped);
+    assert_eq!(round_tripped.len(), expected_other_mappings.len());
+    for i in 0..expected_other_mappings.len() {
+        assert_eq!(expected_other_mappings[i], round_tripped[i]);
+    }
 }
