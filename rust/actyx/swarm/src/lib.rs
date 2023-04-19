@@ -168,11 +168,7 @@ impl Default for EphemeralEventsConfig {
     fn default() -> Self {
         Self {
             interval: Duration::from_secs(30 * 60),
-            streams: btreemap! {
-                // DISCOVERY_STREAM_NAME.to_string() => RetainConfig::events(1000),
-                // METRICS_STREAM_NAME.to_string() => RetainConfig::events(1000),
-                // FILES_STREAM_NAME.to_string() => RetainConfig::age(60 * 60 * 24 * 14)
-            },
+            streams: BTreeMap::new(),
         }
     }
 }
@@ -1022,14 +1018,29 @@ impl BanyanStore {
             }
             unpublished_mappings
         };
-        for stream in cfg.ephemeral_event_config.streams.iter().map(|t| t.0) {
-            if routing_table.stream_mapping.get(stream).is_none() {
-                tracing::warn!(
-                    "The stream \"{}\" does not have a mapping, its retention configuration will be ignored.",
-                    stream
-                );
-            }
-        }
+
+        cfg.ephemeral_event_config.streams = cfg
+            .ephemeral_event_config
+            .streams
+            .into_iter()
+            .filter(|(stream, _)| {
+                if stream == "default" {
+                    tracing::warn!(
+                        "The \"default\" stream cannot be configured, its retention configuration will be ignored."
+                    );
+                    return false;
+                }
+
+                let is_stream_mapped = routing_table.stream_mapping.get(stream).is_some();
+                if !is_stream_mapped {
+                    tracing::warn!(
+                        "The stream \"{}\" does not have a mapping, its retention configuration will be ignored.",
+                        stream
+                    );
+                }
+                is_stream_mapped
+            })
+            .collect::<_>();
 
         drop(routing_table_span_entered);
         for (name, number) in unpublished_mappings {
@@ -1092,10 +1103,6 @@ impl BanyanStore {
                 crate::metrics::metrics(banyan.clone(), cfg.metrics_interval)?,
             );
         }
-
-        if cfg.ephemeral_event_config.streams.remove("default").is_some() {
-            tracing::warn!("The \"default\" stream cannot be configured. Ignoring configuration.")
-        };
 
         banyan.spawn_task(
             "prune_events".to_owned(),
