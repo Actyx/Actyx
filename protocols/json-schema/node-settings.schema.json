@@ -275,18 +275,18 @@
             "properties": {
               "maxEvents": {
                 "type": "integer",
-                "description": "The maximum number of events to store.",
+                "description": "The number of most recent events to keep.",
                 "minimum": 0,
                 "default": 0
               },
               "maxSize": {
                 "$ref": "#/definitions/Composite/StreamSize",
-                "description": "The maximum total size for the stream. Can be B (bytes), kB (Kilobytes), MB (Megabytes), GB (Gigabytes). If no unit is provided, the unit is considered to be bytes.",
+                "description": "Streams will be pruned when occupying storage beyond the provided limit. Can be B (bytes), kB (Kilobytes), MB (Megabytes), GB (Gigabytes). If no unit is provided, the unit is considered to be bytes.",
                 "default": "0"
               },
               "maxAge": {
                 "$ref": "#/definitions/Composite/StreamAge",
-                "description": "The maximum age for stream events.",
+                "description": "The maximum age for stream events. Can be s (seconds), m (minutes), h (hours), d (days) or w (weeks).",
                 "default": null
               }
             }

@@ -482,7 +482,7 @@ mod test {
                   "maxEvents": 1024
                 },
                 "metrics": {
-                  "maxAge": "1d"
+                  "maxAge": "1h"
                 }
               },
               "routes": [
