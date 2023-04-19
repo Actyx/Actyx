@@ -1,17 +1,11 @@
 use crate::{streams::OwnStreamGuard, BanyanStore, EphemeralEventsConfig, Link};
 use actyx_sdk::{Payload, Timestamp};
-use anyhow::Context;
 use banyan::Tree;
 use futures::future::{join_all, FutureExt};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{de::Visitor, Deserialize, Serialize};
-use std::{
-    convert::TryInto,
-    future,
-    str::FromStr,
-    time::{Duration, SystemTime},
-};
+use std::{future, str::FromStr, time::Duration};
 use trees::{
     axtrees::AxTrees,
     query::{OffsetQuery, TimeQuery},
