@@ -4,8 +4,9 @@ use crate::{
     value::Value,
 };
 use actyx_sdk::{
-    language::{self, Arr},
+    language::{self, Arr, Galactus, Tactic, TagAtom},
     service::Order,
+    AppId,
 };
 use ax_futures_util::ReceiverExt;
 use futures::{stream, StreamExt};
@@ -31,18 +32,27 @@ pub struct Query {
 }
 
 impl Query {
-    pub fn from(q: language::Query<'_>) -> (Self, Pragmas<'_>) {
-        let pragmas = Pragmas(q.pragmas);
+    pub fn from(q: language::Query<'_>, app_id: AppId) -> (Self, Pragmas<'_>) {
+        struct Q(AppId);
+        impl Galactus for Q {
+            fn visit_tag_atom(&mut self, tag: &TagAtom) -> Tactic<TagAtom, Self> {
+                match tag {
+                    TagAtom::AppId(id) if &**id == "me" => Tactic::Devour(TagAtom::AppId(self.0.clone())),
+                    _ => Tactic::Scrutinise,
+                }
+            }
+        }
+
+        let (q, features, pragmas) = q.decompose();
+        let q = q.rewrite(&mut Q(app_id)).0;
         let stages = q.ops.into_iter().map(Operation::from).collect();
-        let source = q.source;
-        let features = q.features;
         (
             Self {
                 features,
-                source,
+                source: q.source,
                 stages,
             },
-            pragmas,
+            Pragmas(pragmas),
         )
     }
 
@@ -210,7 +220,7 @@ impl Feeder {
 mod tests {
     use super::*;
     use crate::eval::RootContext;
-    use actyx_sdk::OffsetMap;
+    use actyx_sdk::{app_id, OffsetMap};
     use swarm::event_store_ref::EventStoreRef;
 
     fn store() -> EventStoreRef {
@@ -220,7 +230,9 @@ mod tests {
         Context::root(order, store(), OffsetMap::empty(), OffsetMap::empty())
     }
     fn feeder(q: &str) -> Feeder {
-        Query::from(language::Query::parse(q).unwrap()).0.make_feeder()
+        Query::from(language::Query::parse(q).unwrap(), app_id!("com.actyx.test"))
+            .0
+            .make_feeder()
     }
 
     async fn feed(q: &str, v: &str) -> Vec<String> {

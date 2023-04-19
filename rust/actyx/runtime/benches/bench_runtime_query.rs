@@ -1,4 +1,4 @@
-use actyx_sdk::language;
+use actyx_sdk::{app_id, language};
 use cbor_data::Encoder;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use futures::executor::block_on;
@@ -29,15 +29,20 @@ const QUERY: &str = "FROM allEvents FILTER _.x > 3 | _.y = 'hello' SELECT [_.x +
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("nnop", |b| {
-        let mut query = Query::from(language::Query::parse("FROM allEvents").unwrap())
-            .0
-            .make_feeder();
+        let mut query = Query::from(
+            language::Query::parse("FROM allEvents").unwrap(),
+            app_id!("com.actyx.test"),
+        )
+        .0
+        .make_feeder();
         let (value, cx) = v();
         let cx = cx.child();
         b.iter(|| black_box(block_on(query.feed(Some(value.clone()), &cx))));
     });
     c.bench_function("feed value", |b| {
-        let mut query = Query::from(language::Query::parse(QUERY).unwrap()).0.make_feeder();
+        let mut query = Query::from(language::Query::parse(QUERY).unwrap(), app_id!("com.actyx.test"))
+            .0
+            .make_feeder();
         let (value, cx) = v();
         let cx = cx.child();
         b.iter(|| black_box(block_on(query.feed(Some(value.clone()), &cx))));

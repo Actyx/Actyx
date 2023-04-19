@@ -73,7 +73,7 @@ fn render_object(w: &mut impl Write, e: &Obj) -> Result {
     w.write_str(" }")
 }
 
-fn render_array(w: &mut impl Write, e: &Arr) -> Result {
+fn render_array(w: &mut impl Write, e: &Arr<SpreadExpr>) -> Result {
     w.write_char('[')?;
     for (i, x) in e.items.iter().enumerate() {
         if i > 0 {
@@ -93,9 +93,9 @@ pub(crate) fn render_string(w: &mut impl Write, e: &str) -> Result {
     w.write_char('\'')
 }
 
-pub(crate) fn render_interpolation(w: &mut impl Write, e: &[SimpleExpr]) -> Result {
+pub(crate) fn render_interpolation(w: &mut impl Write, e: &Arr<SimpleExpr>) -> Result {
     w.write_char('`')?;
-    for e in e {
+    for e in e.items.iter() {
         w.write_char('{')?;
         render_simple_expr(w, e)?;
         w.write_char('}')?;
