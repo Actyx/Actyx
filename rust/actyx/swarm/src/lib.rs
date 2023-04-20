@@ -38,7 +38,7 @@ use futures::{future, stream, Future, FutureExt, Stream, StreamExt, TryStreamExt
 pub use ipfs_embed::{Executor as IpfsEmbedExecutor, StorageConfig, StorageService};
 pub use libipld::codec::Codec as IpldCodec;
 use once_cell::sync::Lazy;
-pub use prune::RetainConfig;
+pub use prune::{RetainConfig, StreamAge, StreamSize};
 use streams::{OwnStreamGuard, RemoteNodeInner};
 use trees::dnf::Dnf;
 use trees::query::TagExprQuery;
