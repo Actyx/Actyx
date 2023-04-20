@@ -378,10 +378,10 @@ impl RetainConfig {
 }
 
 fn calculate_emit_from(store: &BanyanStore, tree: Tree<AxTrees, Payload>, size: u64) -> u64 {
-    let mut iter = store.data.forest.iter_index_reverse(&tree, banyan::query::AllQuery);
+    let iter = store.data.forest.iter_index_reverse(&tree, banyan::query::AllQuery);
     let mut bytes = 0u64;
     let mut current_offset = tree.count();
-    while let Some(maybe_index) = iter.next() {
+    for maybe_index in iter {
         let index = maybe_index.unwrap();
         // If we want to be a bit smarter here, we need to extend
         // `banyan` for a more elaborated traversal API. For now a plain
