@@ -1,6 +1,6 @@
 use crate::{streams::OwnStreamGuard, BanyanStore, EphemeralEventsConfig, Link};
 use actyx_sdk::{Payload, Timestamp};
-use banyan::Tree;
+use banyan::{query::AndQuery, Tree};
 use futures::future::{join_all, FutureExt};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -422,28 +422,29 @@ fn prune_stream(
     store.transform_stream(&mut stream, |transaction, tree| {
         let _ = tracing::debug_span!("prune", stream_nr = u64::from(stream_nr)).entered();
         transaction.pack(tree)?;
-        if let Some(age) = config.max_age {
+
+        let time_query = config.max_age.map_or_else(TimeQuery::all, |age| {
             let emit_after = timestamp - Duration::from(age);
-            let query = TimeQuery::from(emit_after..);
-            tracing::debug!("Age: events on {}; retain {:?}", stream_nr, query);
-            transaction.retain(tree, &query)?;
-        }
-        if let Some(count) = config.max_events {
-            let max = tree.count();
-            let lower_bound = max.saturating_sub(count);
-            let query = OffsetQuery::from(lower_bound..);
-            tracing::debug!("Count: events on {}; retain {:?}", stream_nr, query);
-            transaction.retain(tree, &query)?;
-        }
-        if let Some(size) = config.max_size {
-            let emit_from = calculate_emit_from(store, tree.snapshot(), size.into());
-            if emit_from > 0 {
-                let query = OffsetQuery::from(emit_from..);
-                tracing::debug!("Size: events on {}; retain {:?}", stream_nr, query);
-                transaction.retain(tree, &query)?;
-            }
-        }
-        Ok(())
+            TimeQuery::from(emit_after..)
+        });
+
+        let events_lower_bound = config
+            .max_events
+            .map(|count| tree.count().saturating_sub(count))
+            .unwrap_or_default();
+
+        let size_lower_bound = config
+            .max_size
+            .map(|size| calculate_emit_from(store, tree.snapshot(), size.into()))
+            .unwrap_or_default();
+
+        let query = AndQuery(
+            time_query,
+            OffsetQuery::from(events_lower_bound.max(size_lower_bound)..),
+        );
+
+        tracing::debug!("Pruning: events on {}; retain {:?}", stream_nr, query);
+        transaction.retain(tree, &query)
     })?;
     Ok(stream.snapshot().link())
 }
@@ -493,7 +494,7 @@ mod test {
 
     use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Payload, StreamNr};
     use ax_futures_util::prelude::AxStreamExt;
-    use futures::{future, stream, StreamExt, TryStreamExt};
+    use futures::{future, StreamExt, TryStreamExt};
 
     use super::*;
     use crate::{BanyanConfig, EventRoute, SwarmConfig};
