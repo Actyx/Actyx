@@ -381,62 +381,53 @@ fn calculate_emit_from(store: &BanyanStore, tree: Tree<AxTrees, Payload>, size: 
     let mut iter = store.data.forest.iter_index_reverse(&tree, banyan::query::AllQuery);
     let mut bytes = 0u64;
     let mut current_offset = tree.count();
-    loop {
-        if let Some(maybe_index) = iter.next() {
-            let index = maybe_index.unwrap();
-            // If we want to be a bit smarter here, we need to extend
-            // `banyan` for a more elaborated traversal API. For now a plain
-            // iterator is enough, and will be for a long time.
-            if let banyan::index::Index::Leaf(l) = index {
-                // Only the value bytes are taken into account
-                bytes += l.value_bytes;
-                current_offset -= l.keys().count() as u64;
-                if bytes >= size {
-                    tracing::debug!(
-                        "Hitting size target {} > {}. \
+    while let Some(maybe_index) = iter.next() {
+        let index = maybe_index.unwrap();
+        // If we want to be a bit smarter here, we need to extend
+        // `banyan` for a more elaborated traversal API. For now a plain
+        // iterator is enough, and will be for a long time.
+        if let banyan::index::Index::Leaf(l) = index {
+            // Only the value bytes are taken into account
+            bytes += l.value_bytes;
+            current_offset -= l.keys().count() as u64;
+            if bytes >= size {
+                tracing::debug!(
+                    "Hitting size target {} > {}. \
                             Results in min offset (non-inclusive) {}",
-                        bytes + l.value_bytes,
-                        size,
-                        current_offset
-                    );
-                    break current_offset;
-                }
+                    bytes + l.value_bytes,
+                    size,
+                    current_offset
+                );
+                return current_offset;
             }
-        } else {
-            tracing::debug!("No change needed as tree size {} < {}", bytes, size);
-            break 0u64;
         }
     }
+    0
 }
 
 // The timestamp parameter is used has an hack around having to use a fake system clock
 // to make testing this function deterministic
-// FIXME: use the a clock instead
 fn prune_stream(
     store: &BanyanStore,
     mut stream: OwnStreamGuard<'_>,
     config: &RetainConfig,
-    timestamp: Timestamp,
+    now: Timestamp,
 ) -> anyhow::Result<Option<Link>> {
     let stream_nr = stream.stream_nr();
     store.transform_stream(&mut stream, |transaction, tree| {
-        let _ = tracing::debug_span!("prune", stream_nr = u64::from(stream_nr)).entered();
+        let _span = tracing::debug_span!("prune", stream_nr = u64::from(stream_nr)).entered();
         transaction.pack(tree)?;
 
         let time_query = config.max_age.map_or_else(TimeQuery::all, |age| {
-            let emit_after = timestamp - Duration::from(age);
+            let emit_after = now - Duration::from(age);
             TimeQuery::from(emit_after..)
         });
 
-        let events_lower_bound = config
-            .max_events
-            .map(|count| tree.count().saturating_sub(count))
-            .unwrap_or_default();
+        let events_lower_bound = config.max_events.map_or(0, |count| tree.count().saturating_sub(count));
 
         let size_lower_bound = config
             .max_size
-            .map(|size| calculate_emit_from(store, tree.snapshot(), size.into()))
-            .unwrap_or_default();
+            .map_or(0, |size| calculate_emit_from(store, tree.snapshot(), size.into()));
 
         let query = AndQuery(
             time_query,
