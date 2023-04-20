@@ -52,7 +52,7 @@ fn main() -> anyhow::Result<()> {
             Payload::from_json_str("\"hello world\"").unwrap(),
         )]));
         tracing::info!("waiting for events");
-        for machine in &mut network.machines_mut()[1..] {
+        for machine in r.iter_mut() {
             loop {
                 if let Some(Event::Result(ev)) = timeout(Duration::from_secs(20), machine.recv()).await? {
                     println!("{:?}", ev);

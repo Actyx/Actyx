@@ -74,6 +74,11 @@ tokio = { version = "1.15.0", features = ["rt-multi-thread", "macros", "fs"] }
 tokio-util = { version = "0.6.9", features = ["compat"] }
 
 [[example]]
+name = "files"
+path = "examples/files.rs"
+required-features = ["client"]
+
+[[example]]
 name = "query"
 path = "examples/query.rs"
 required-features = ["client"]
