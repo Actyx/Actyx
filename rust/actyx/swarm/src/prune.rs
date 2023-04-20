@@ -232,19 +232,6 @@ impl<'de> Deserialize<'de> for StreamAge {
     }
 }
 
-impl From<StreamAge> for u64 {
-    fn from(age: StreamAge) -> Self {
-        match age {
-            StreamAge::Milliseconds(value) => value,
-            StreamAge::Seconds(value) => value * 1000,
-            StreamAge::Minutes(value) => value * 1000 * 60,
-            StreamAge::Hours(value) => value * 1000 * 60 * 60,
-            StreamAge::Days(value) => value * 1000 * 24 * 60 * 60,
-            StreamAge::Weeks(value) => value * 1000 * 7 * 24 * 60 * 60,
-        }
-    }
-}
-
 impl From<StreamAge> for Duration {
     fn from(age: StreamAge) -> Self {
         match age {
