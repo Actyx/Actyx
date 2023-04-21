@@ -1,17 +1,15 @@
 use crate::{streams::OwnStreamGuard, BanyanStore, EphemeralEventsConfig, Link};
-use actyx_sdk::Timestamp;
-use anyhow::Context;
+use actyx_sdk::{Payload, Timestamp};
+use banyan::{query::AndQuery, Tree};
 use futures::future::{join_all, FutureExt};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{de::Visitor, Deserialize, Serialize};
-use std::{
-    convert::TryInto,
-    future,
-    str::FromStr,
-    time::{Duration, SystemTime},
+use std::{future, str::FromStr, time::Duration};
+use trees::{
+    axtrees::AxTrees,
+    query::{OffsetQuery, TimeQuery},
 };
-use trees::query::{OffsetQuery, TimeQuery};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum StreamSize {
@@ -182,6 +180,7 @@ mod test_stream_size {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum StreamAge {
+    Milliseconds(u64),
     Seconds(u64),
     Minutes(u64),
     Hours(u64),
@@ -195,6 +194,7 @@ impl Serialize for StreamAge {
         S: serde::Serializer,
     {
         match self {
+            StreamAge::Milliseconds(value) => serializer.serialize_str(&format!("{}ms", value)),
             StreamAge::Seconds(value) => serializer.serialize_str(&format!("{}s", value)),
             StreamAge::Minutes(value) => serializer.serialize_str(&format!("{}m", value)),
             StreamAge::Hours(value) => serializer.serialize_str(&format!("{}h", value)),
@@ -232,14 +232,15 @@ impl<'de> Deserialize<'de> for StreamAge {
     }
 }
 
-impl From<StreamAge> for u64 {
-    fn from(stream_age: StreamAge) -> Self {
-        match stream_age {
-            StreamAge::Seconds(value) => value,
-            StreamAge::Minutes(value) => value * 60,
-            StreamAge::Hours(value) => value * 60 * 60,
-            StreamAge::Days(value) => value * 24 * 60 * 60,
-            StreamAge::Weeks(value) => value * 7 * 24 * 60 * 60,
+impl From<StreamAge> for Duration {
+    fn from(age: StreamAge) -> Self {
+        match age {
+            StreamAge::Milliseconds(value) => Duration::from_millis(value),
+            StreamAge::Seconds(value) => Duration::from_secs(value),
+            StreamAge::Minutes(value) => Duration::from_secs(value * 60),
+            StreamAge::Hours(value) => Duration::from_secs(value * 60 * 60),
+            StreamAge::Days(value) => Duration::from_secs(value * 24 * 60 * 60),
+            StreamAge::Weeks(value) => Duration::from_secs(value * 7 * 24 * 60 * 60),
         }
     }
 }
@@ -317,7 +318,7 @@ pub struct RetainConfig {
     /// Retains the last `n` events.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_events: Option<u64>,
-    /// Retain all events between `now - duration` and `now` (in seconds).
+    /// Retain all events between `now - duration` and `now` (in milliseconds).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_age: Option<StreamAge>,
     /// Retain the last events up to the provided size in bytes. Note that only
@@ -337,8 +338,15 @@ impl RetainConfig {
         }
     }
 
-    /// Limit the age of the events to keep (in seconds).
-    pub fn age(age: u64) -> Self {
+    pub fn age_from_millis(age: u64) -> Self {
+        Self {
+            max_events: None,
+            max_age: Some(StreamAge::Milliseconds(age)),
+            max_size: None,
+        }
+    }
+
+    pub fn age_from_seconds(age: u64) -> Self {
         Self {
             max_events: None,
             max_age: Some(StreamAge::Seconds(age)),
@@ -356,96 +364,67 @@ impl RetainConfig {
     }
 }
 
-fn retain_last_events(store: &BanyanStore, stream: &mut OwnStreamGuard<'_>, keep: u64) -> anyhow::Result<Option<Link>> {
-    let stream_nr = stream.stream_nr();
-    store.transform_stream(stream, |txn, tree| {
-        txn.pack(tree)?;
-        let max = tree.count();
-        let lower_bound = max.saturating_sub(keep);
-        if lower_bound > 0 {
-            let query = OffsetQuery::from(lower_bound..);
-            tracing::debug!("Ephemeral events on {}; retain {:?}", stream_nr, query);
-            txn.retain(tree, &query)?;
-        }
-        Ok(())
-    })?;
-    Ok(stream.snapshot().link())
-}
-
-fn retain_events_after(
-    store: &BanyanStore,
-    stream: &mut OwnStreamGuard<'_>,
-    emit_after: Timestamp,
-) -> anyhow::Result<Option<Link>> {
-    let stream_nr = stream.stream_nr();
-    store.transform_stream(stream, |txn, tree| {
-        txn.pack(tree)?;
-        let query = TimeQuery::from(emit_after..);
-        tracing::debug!("Prune events on {}; retain {:?}", stream_nr, query);
-        txn.retain(tree, &query)
-    })?;
-    Ok(stream.snapshot().link())
-}
-
-fn retain_events_up_to(
-    store: &BanyanStore,
-    stream: &mut OwnStreamGuard<'_>,
-    target_bytes: u64,
-) -> anyhow::Result<Option<Link>> {
-    let stream_nr = stream.stream_nr();
-    let emit_from = {
-        let tree = stream.snapshot();
-        let mut iter = store.data.forest.iter_index_reverse(&tree, banyan::query::AllQuery);
-        let mut bytes = 0u64;
-        let mut current_offset = tree.count();
-        loop {
-            if let Some(maybe_index) = iter.next() {
-                let index = maybe_index?;
-                // If we want to be a bit smarter here, we need to extend
-                // `banyan` for a more elaborated traversal API. For now a plain
-                // iterator is enough, and will be for a long time.
-                if let banyan::index::Index::Leaf(l) = index {
-                    // Only the value bytes are taken into account
-                    bytes += l.value_bytes;
-                    current_offset -= l.keys().count() as u64;
-                    if bytes >= target_bytes {
-                        tracing::debug!(
-                            "Prune events on {}; hitting size target {} > {}. \
-                            Results in min offset (non-inclusive) {}",
-                            stream_nr,
-                            bytes + l.value_bytes,
-                            target_bytes,
-                            current_offset
-                        );
-                        break current_offset;
-                    }
-                }
-            } else {
+fn calculate_emit_from(store: &BanyanStore, tree: Tree<AxTrees, Payload>, size: u64) -> u64 {
+    let iter = store.data.forest.iter_index_reverse(&tree, banyan::query::AllQuery);
+    let mut bytes = 0u64;
+    let mut current_offset = tree.count();
+    for maybe_index in iter {
+        let index = maybe_index.unwrap();
+        // If we want to be a bit smarter here, we need to extend
+        // `banyan` for a more elaborated traversal API. For now a plain
+        // iterator is enough, and will be for a long time.
+        if let banyan::index::Index::Leaf(l) = index {
+            // Only the value bytes are taken into account
+            bytes += l.value_bytes;
+            current_offset -= l.keys().count() as u64;
+            if bytes >= size {
                 tracing::debug!(
-                    "Prune events on {}; no change needed as tree size {} < {}",
-                    stream_nr,
-                    bytes,
-                    target_bytes
+                    "Hitting size target {} > {}. \
+                            Results in min offset (non-inclusive) {}",
+                    bytes + l.value_bytes,
+                    size,
+                    current_offset
                 );
-                break 0u64;
+                return current_offset;
             }
         }
-    };
-
-    if emit_from > 0u64 {
-        // lower bound is inclusive, so increment
-        let query = OffsetQuery::from(emit_from..);
-        store.transform_stream(stream, |txn, tree| {
-            txn.pack(tree)?;
-            tracing::debug!("Prune events on {}; retain {:?}", stream_nr, query);
-            txn.retain(tree, &query)
-        })?;
-        Ok(stream.snapshot().link())
-    } else {
-        // No need to update the tree.
-        // (Returned digest is not evaluated anyway)
-        Ok(None)
     }
+    0
+}
+
+// The timestamp parameter is used has an hack around having to use a fake system clock
+// to make testing this function deterministic
+fn prune_stream(
+    store: &BanyanStore,
+    mut stream: OwnStreamGuard<'_>,
+    config: &RetainConfig,
+    now: Timestamp,
+) -> anyhow::Result<Option<Link>> {
+    let stream_nr = stream.stream_nr();
+    store.transform_stream(&mut stream, |transaction, tree| {
+        let _span = tracing::debug_span!("prune", stream_nr = u64::from(stream_nr)).entered();
+        transaction.pack(tree)?;
+
+        let time_query = config.max_age.map_or_else(TimeQuery::all, |age| {
+            let emit_after = now - Duration::from(age);
+            TimeQuery::from(emit_after..)
+        });
+
+        let events_lower_bound = config.max_events.map_or(0, |count| tree.count().saturating_sub(count));
+
+        let size_lower_bound = config
+            .max_size
+            .map_or(0, |size| calculate_emit_from(store, tree.snapshot(), size.into()));
+
+        let query = AndQuery(
+            time_query,
+            OffsetQuery::from(events_lower_bound.max(size_lower_bound)..),
+        );
+
+        tracing::debug!("Pruning: events on {}; retain {:?}", stream_nr, query);
+        transaction.retain(tree, &query)
+    })?;
+    Ok(stream.snapshot().link())
 }
 
 /// Prunes all ephemeral events for the streams configured via the respective
@@ -468,22 +447,8 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
 
             let fut = async move {
                 let stream = store.get_or_create_own_stream(stream_nr).unwrap();
-                let mut guard = stream.lock().await;
-                let mut result = Ok(None);
-                if let Some(keep) = cfg.max_events {
-                    result = retain_last_events(&store, &mut guard, keep);
-                }
-                if let Some(duration) = cfg.max_age {
-                    let emit_after: Timestamp = SystemTime::now()
-                        .checked_sub(Duration::from_secs(duration.into()))
-                        .with_context(|| format!("Invalid duration configured for {}: {:?}", stream_nr, duration))?
-                        .try_into()?;
-                    result = retain_events_after(&store, &mut guard, emit_after);
-                }
-                if let Some(max_retain_size) = cfg.max_size {
-                    result = retain_events_up_to(&store, &mut guard, max_retain_size.into());
-                }
-                result
+                let guard = stream.lock().await;
+                prune_stream(&store, guard, cfg, Timestamp::now())
             };
 
             fut.map(move |res| match res {
@@ -564,8 +529,8 @@ mod test {
         let stream_id = store.node_id().stream(test_stream);
 
         let stream = store.get_or_create_own_stream(test_stream).unwrap();
-        let mut guard = stream.lock().await;
-        super::retain_last_events(&store, &mut guard, events_to_retain).unwrap();
+        let guard = stream.lock().await;
+        super::prune_stream(&store, guard, &RetainConfig::events(events_to_retain), Timestamp::now()).unwrap();
 
         let query = OffsetQuery::from(0..);
         let round_tripped = store
@@ -613,8 +578,8 @@ mod test {
         let store = publish_events(upper_bound).await.unwrap();
 
         let stream = store.get_or_create_own_stream(test_stream).unwrap();
-        let mut guard = stream.lock().await;
-        super::retain_events_up_to(&store, &mut guard, max_size).unwrap();
+        let guard = stream.lock().await;
+        super::prune_stream(&store, guard, &RetainConfig::size(max_size), Timestamp::now()).unwrap();
 
         let query = OffsetQuery::from(0..);
         let round_tripped = store
@@ -678,10 +643,10 @@ mod test {
     }
 
     async fn test_retain_age(percentage_to_keep: usize) {
+        util::setup_logger();
         let event_count = 1024;
         let max_leaf_count = SwarmConfig::test("..").banyan_config.tree.max_leaf_count as usize;
-        util::setup_logger();
-        let test_stream = StreamNr::from(0);
+        let test_stream = StreamNr::from(1);
 
         let now = Timestamp::now();
         let store = publish_events_chunked(test_stream, event_count, now).await.unwrap();
@@ -698,12 +663,11 @@ mod test {
             .await
             .unwrap();
 
-        let cut_off = {
-            let first = all_events.first().map(|c| c.data.first().unwrap().1.time()).unwrap();
-            let last = all_events.last().map(|c| c.data.first().unwrap().1.time()).unwrap();
-            let dur = Duration::from_micros((percentage_to_keep * (last - first) as usize / 100) as u64);
-            now - dur - Duration::from_micros(1)
-        };
+        let first = all_events.first().map(|c| c.data.first().unwrap().1.time()).unwrap();
+        let last = all_events.last().map(|c| c.data.first().unwrap().1.time()).unwrap();
+        let dur = Duration::from_micros((percentage_to_keep * (last - first) as usize / 100) as u64);
+        let cut_off = last - dur - Duration::from_micros(1);
+
         let events_to_keep = all_events.iter().fold(0, |acc, chunk| {
             let is_sealed = chunk.data.len() == max_leaf_count;
             if is_sealed && chunk.data.last().unwrap().1.time() <= cut_off {
@@ -715,8 +679,14 @@ mod test {
 
         // Test this fn directly in order to avoid messing around with the `SystemTime`
         let stream = store.get_or_create_own_stream(test_stream).unwrap();
-        let mut guard = stream.lock().await;
-        super::retain_events_after(&store, &mut guard, cut_off).unwrap();
+        let guard = stream.lock().await;
+        super::prune_stream(
+            &store,
+            guard,
+            &RetainConfig::age_from_millis(dur.as_millis() as u64),
+            last,
+        )
+        .unwrap();
 
         let round_tripped = store
             .stream_filtered_chunked(
