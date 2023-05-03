@@ -141,18 +141,18 @@ All events tagged will be placed in the `info_or_debug` stream, not making it in
 
 :::info Migration from pre-2.15 versions
 Migration is done automatically, if you have an existing node, the routes for the existing Actyx streams will be performed automatically.
-Similarly, if you do not have an `eventRouting` configuration in place, when launching a new node, the same streams (`discovery`, `metrics`, `files`) will be created.
+Similarly, if you do not have an `eventRouting` configuration in place, when launching a new node, the same streams as previously (1–`discovery`, 2–`metrics`, 3–`files`) will be created in addition to the default stream zero.
 :::
 
 The `streams` section is an object, mapping stream names to policies, it allows the administrator to configure retention policies for the streams declared in `routes`, these policies are kept on a best effort basis:
-- **maxEvents:** the maximum number of most recent events to keep. For example, if you set `maxEvents` to 1000 and currently have 1024 events store, the oldest 24 events will be deleted.
+- **maxEvents:** the number of most recent events to keep. For example, if you set `maxEvents` to 1000 and currently have 1024 events store, the oldest 24 events may be deleted.
 - **maxSize:** the size beyond which streams will start being pruned. For example, if you set `maxSize` to `1GB` and your stream occupies `1500MB` the oldest events will be removed until `1GB` is reached again.
 This setting supports the following units - `B` (Bytes), `kB` (Kilobytes), `KiB` (Kibibytes), `MB` (Megabytes), `MiB` (Mebibytes), `GB` (Gigabytes) or `GiB` (Gibibytes).
 - **maxAge:** the age beyond which events will start being removed. For example if you set this setting to `1h`, all events older than 1 hour at the time of pruning will be removed.
 This setting supports the following units: `s` (seconds), `m` (minutes), `h` (hours), `d` (days) or `w` (weeks).
 
 :::caution
-The `default` stream **does not** support retention policies.
+The `default` stream **does not** support retention policies, it will always be permanent.
 The `streams` section will not create a new stream, and will throw a warning instead.
 :::
 
