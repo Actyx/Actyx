@@ -372,6 +372,13 @@ blockCacheCount
 blockCacheSize
 blockGcInterval
 branchCacheSize
+pre-2
+maxEvents
+maxSize
+Kibibytes
+Mebibytes
+Gibibytes
+maxAge
 - ./docs/tutorials/advanced-tutorial/business-logic.mdx
 statemachine.svg
 orderfish.svg
