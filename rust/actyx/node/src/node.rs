@@ -680,8 +680,8 @@ mod test {
         fn handle_request(&mut self, _: ()) -> Result<()> {
             Ok(())
         }
-        fn extract_settings(&self, _: Settings) -> Result<()> {
-            Ok(())
+        fn extract_settings(&self, _: Settings) -> Result<((), Vec<anyhow::Error>), anyhow::Error> {
+            Ok(((), vec![]))
         }
         fn set_up(&mut self, _: ()) -> bool {
             true

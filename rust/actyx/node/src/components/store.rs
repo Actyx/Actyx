@@ -242,7 +242,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
         }
         Ok(())
     }
-    fn extract_settings(&self, s: Settings) -> Result<StoreConfig> {
+    fn extract_settings(&self, s: Settings) -> Result<(StoreConfig, Vec<anyhow::Error>), anyhow::Error> {
         let keypair = self
             .keystore
             .read()
@@ -303,10 +303,13 @@ impl Component<StoreRequest, StoreConfig> for Store {
             ephemeral_event_config,
             ..SwarmConfig::basic()
         };
-        Ok(StoreConfig {
-            swarm_config,
-            licensing: s.licensing,
-        })
+        Ok((
+            StoreConfig {
+                swarm_config,
+                licensing: s.licensing,
+            },
+            vec![],
+        ))
     }
 }
 struct InternalStoreState {

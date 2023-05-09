@@ -4,6 +4,7 @@ use actyx_sdk::{
     service::{PeerStatus, SwarmState},
     NodeId, Offset, OffsetMap, StreamId, Timestamp,
 };
+use crypto::node_id_to_peer_id;
 use im::OrdMap;
 use ipfs_embed::PeerId;
 use std::collections::HashMap;
@@ -99,8 +100,11 @@ pub async fn swarm_observer(
                     // keep track of who is who
                     for (stream_id, _) in offsets.stream_iter() {
                         let node_id = stream_id.node_id();
-                        let peer_id = PeerId::from(crypto::PublicKey::from(node_id));
-                        peer_map.insert(node_id, peer_id);
+                        // NOTE: might break something if assumed:
+                        // peer_map.size === offsets.stream_iter().length
+                        if let Ok(peer_id) = node_id_to_peer_id(node_id) {
+                            peer_map.insert(node_id, peer_id);
+                        }
                     }
 
                     // store latest gossip from this node

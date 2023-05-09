@@ -80,9 +80,9 @@ impl PublicKey {
     }
 }
 
-pub fn node_id_to_peer_id(node_id: NodeId) -> libp2p::core::PeerId {
+pub fn node_id_to_peer_id(node_id: NodeId) -> anyhow::Result<libp2p::core::PeerId> {
     let public: PublicKey = node_id.into();
-    public.into()
+    Ok(public.try_into()?)
 }
 
 pub fn peer_id_to_node_id(peer_id: libp2p::core::PeerId) -> anyhow::Result<NodeId> {
@@ -90,10 +90,12 @@ pub fn peer_id_to_node_id(peer_id: libp2p::core::PeerId) -> anyhow::Result<NodeI
     Ok(public.into())
 }
 
-impl From<PublicKey> for libp2p::core::PeerId {
-    fn from(pb: PublicKey) -> libp2p::core::PeerId {
-        let public = pb.into();
-        libp2p::core::PeerId::from_public_key(&public)
+impl TryFrom<PublicKey> for libp2p::core::PeerId {
+    type Error = anyhow::Error;
+
+    fn try_from(pb: PublicKey) -> Result<libp2p::core::PeerId> {
+        let public = pb.try_into()?;
+        Ok(libp2p::core::PeerId::from_public_key(&public))
     }
 }
 
@@ -137,12 +139,12 @@ impl TryFrom<&libp2p::identity::PublicKey> for PublicKey {
     }
 }
 
-impl From<PublicKey> for libp2p::core::identity::PublicKey {
-    fn from(pk: PublicKey) -> libp2p::core::identity::PublicKey {
-        libp2p::core::identity::PublicKey::Ed25519(
-            libp2p::core::identity::ed25519::PublicKey::decode(&pk.0)
-                .expect("ed25519 encoding format changed between libp2p and crypto"),
-        )
+impl TryFrom<PublicKey> for libp2p::core::identity::PublicKey {
+    type Error = anyhow::Error;
+
+    fn try_from(pk: PublicKey) -> Result<libp2p::core::identity::PublicKey, anyhow::Error> {
+        let decoded = libp2p::core::identity::ed25519::PublicKey::decode(&pk.0)?;
+        Ok(libp2p::core::identity::PublicKey::Ed25519(decoded))
     }
 }
 

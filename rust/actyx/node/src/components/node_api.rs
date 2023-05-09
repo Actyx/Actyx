@@ -16,6 +16,7 @@ use std::{
         Arc,
     },
 };
+use thiserror::Error;
 use util::SocketAddrHelper;
 
 impl NodeApi {
@@ -53,6 +54,13 @@ pub struct NodeApi {
     store_dir: PathBuf,
     store: StoreTx,
 }
+
+#[derive(Error, Debug)]
+pub enum NodeAPISettingsError {
+    #[error("Invalid authorizedUsers entry found in index {index}: {detail:?}")]
+    InvalidPublicKey { index: usize, detail: anyhow::Error },
+}
+
 #[derive(Default, PartialEq, Eq, Clone)]
 pub struct NodeApiSettings {
     pub authorized_keys: Vec<PeerId>,
@@ -64,9 +72,23 @@ impl Component<(), NodeApiSettings> for NodeApi {
     fn get_rx(&self) -> &Receiver<ComponentRequest<()>> {
         &self.rx
     }
-    fn extract_settings(&self, s: Settings) -> Result<NodeApiSettings> {
-        let authorized_keys = s.admin.authorized_users.iter().cloned().map(Into::into).collect();
-        Ok(NodeApiSettings { authorized_keys })
+    fn extract_settings(&self, s: Settings) -> Result<(NodeApiSettings, Vec<anyhow::Error>), anyhow::Error> {
+        let mut authorized_keys = vec![];
+        let mut warnings: Vec<anyhow::Error> = vec![];
+
+        s.admin.authorized_users.iter().enumerate().for_each(|(index, key)| {
+            let peer_id = match key.clone().try_into() {
+                Ok(peer_id) => peer_id,
+                Err(err) => {
+                    warnings.push((NodeAPISettingsError::InvalidPublicKey { index, detail: err }).into());
+                    return;
+                }
+            };
+
+            authorized_keys.push(peer_id);
+        });
+
+        Ok((NodeApiSettings { authorized_keys }, warnings))
     }
     fn handle_request(&mut self, _: ()) -> Result<()> {
         Ok(())

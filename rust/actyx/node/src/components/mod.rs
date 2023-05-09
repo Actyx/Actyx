@@ -104,7 +104,7 @@ where
     /// Transform a complete `Settings` object into component specific
     /// `ComponentSettings`. In some cases a simple `Into` might not be
     /// sufficient, and access to self is necessary.
-    fn extract_settings(&self, s: Settings) -> Result<ComponentSettings>;
+    fn extract_settings(&self, s: Settings) -> Result<(ComponentSettings, Vec<anyhow::Error>)>;
 
     /// New component specific `ComponentSettings`. Returned bool indicates
     /// whether a restart of the component is required.
@@ -160,7 +160,16 @@ where
                                 }
                             }
                             ComponentRequest::SettingsChanged(settings) => {
-                                let s = continue_on_error!(Self::get_type(), self.extract_settings(*settings));
+                                let (s, warnings) = continue_on_error!(Self::get_type(), self.extract_settings(*settings));
+                                if warnings.len() > 0 {
+                                    for warning in warnings {
+                                        // warning is encoded in json_string to avoid new line in actyx log
+                                        let warning_string = format!("{:?}", warning);
+                                        if let Ok(warning_text_encoded_in_json_string) = serde_json::to_string(&warning_string){
+                                            tracing::warn!("{:?}", warning_text_encoded_in_json_string);
+                                        }
+                                    }
+                                }
                                 let config_changed = !last_settings.iter().any(|c| *c == s);
                                 if config_changed {
                                     tracing::debug!("Component \"{}\": Settings changed.", Self::get_type());
@@ -294,12 +303,15 @@ mod test {
             let _ = self.notifier.lock().unwrap().take();
             Ok(())
         }
-        fn extract_settings(&self, _: Settings) -> Result<SimpleSettings> {
-            if self.random_config {
-                Ok(SimpleSettings { cnt: self.last_cnt + 1 })
-            } else {
-                Ok(SimpleSettings { cnt: self.last_cnt })
-            }
+        fn extract_settings(&self, _: Settings) -> Result<(SimpleSettings, Vec<anyhow::Error>), anyhow::Error> {
+            Ok((
+                if self.random_config {
+                    SimpleSettings { cnt: self.last_cnt + 1 }
+                } else {
+                    SimpleSettings { cnt: self.last_cnt }
+                },
+                vec![],
+            ))
         }
     }
 

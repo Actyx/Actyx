@@ -23,8 +23,8 @@ impl Component<(), LogSeverity> for Logging {
     fn handle_request(&mut self, _: ()) -> Result<()> {
         Ok(())
     }
-    fn extract_settings(&self, settings: Settings) -> Result<LogSeverity> {
-        Ok(settings.admin.log_levels.node)
+    fn extract_settings(&self, settings: Settings) -> Result<(LogSeverity, Vec<anyhow::Error>), anyhow::Error> {
+        Ok((settings.admin.log_levels.node, vec![]))
     }
     fn set_up(&mut self, settings: LogSeverity) -> bool {
         if let Err(e) = self.logging_sink.lock().set_level(settings) {

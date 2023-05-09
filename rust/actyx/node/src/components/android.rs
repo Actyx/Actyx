@@ -101,10 +101,10 @@ impl Component<(), ()> for Android {
         // this component. So this function is never called.
         Ok(())
     }
-    fn extract_settings(&self, _: Settings) -> Result<()> {
+    fn extract_settings(&self, _: Settings) -> Result<((), Vec<anyhow::Error>), anyhow::Error> {
         // Note: The default implementation of `loop_on_rx` is overridden within
         // this component. So this function is never called.
-        Ok(())
+        Ok(((), vec![]))
     }
     fn start(&mut self, _: Sender<anyhow::Result<()>>) -> Result<()> {
         // Note: The default implementation of `loop_on_rx` is overridden within
