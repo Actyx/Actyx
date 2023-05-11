@@ -73,7 +73,7 @@ where
 
         Ok(iter_res.filter_map(|x| x.ok()).collect())
     } else {
-        Err(serde::de::Error::custom("Expected an array of string"))
+        Err(serde::de::Error::custom("Expected an array of strings"))
     }
 }
 
