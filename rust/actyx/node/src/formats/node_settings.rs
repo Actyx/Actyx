@@ -67,7 +67,7 @@ where
             .join(",");
 
         tracing::warn!(
-            "found invalid entries in config/admin/authorizedUsers at index: {}",
+            "Found invalid entries in config/admin/authorizedUsers at index: {}",
             index_of_errors
         );
 
