@@ -49,9 +49,14 @@ impl std::str::FromStr for PublicKey {
                 v.len()
             );
         }
+
         let mut res = [0u8; ed25519_dalek::PUBLIC_KEY_LENGTH];
         res.copy_from_slice(&v[..]);
-        Ok(Self(res))
+
+        // validate if bytes are decompressable into EdwardPoints
+        ed25519_dalek::PublicKey::from_bytes(&res)
+            .map(|_| Self(res))
+            .map_err(|err| anyhow!(err))
     }
 }
 
