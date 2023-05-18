@@ -155,15 +155,16 @@ The `streams` section is an object which maps stream names to policies. It allow
 - **maxAge:** the age beyond which events will start being removed. _E.g._ if you set this setting to `1h`, all events older than 1 hour at the time of pruning may be removed.
   This setting supports the following units: `s` (seconds), `m` (minutes), `h` (hours), `d` (days) or `w` (weeks).
 
-:::info
-These policies are kept in a best effort manner. This is because, under the hood, events are held in blocks, the smallest unit Actyx is able to delete.
+:::info Policies are kept in a best effort manner.
+Under the hood, events are held in blocks — the smallest unit Actyx is able to delete.
 If a block is not completely filled with events or if not every event in the block has expired, the block will not be deleted.
 :::
 
 :::caution
-The `default` stream **does not** support retention policies, it will always be permanent.
-Streams are only created by routing events to them, this means that if you configure a stream but no routing rule points to it, it will not be created.
+- The `default` stream **does not** support retention policies, it will always be permanent.
+- Streams are only created by routing events to them, this means that if you configure a stream but no routing rule points to it, it will not be created.
 In this case, a warning will be raised.
+- Event expiration should be configured with a safety margin beyond the expected per-fish usage duration.
 :::
 
 Here's an example of the complete configuration for the `eventRouting`:
