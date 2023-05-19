@@ -161,10 +161,12 @@ If a block is not completely filled with events or if not every event in the blo
 :::
 
 :::caution
+
 - The `default` stream **does not** support retention policies, it will always be permanent.
 - Streams are only created by routing events to them, this means that if you configure a stream but no routing rule points to it, it will not be created.
 In this case, a warning will be raised.
 - Event expiration should be configured with a safety margin beyond the expected per-fish usage duration.
+
 :::
 
 Here's an example of the complete configuration for the `eventRouting`:
