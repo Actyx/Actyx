@@ -10,7 +10,7 @@ GitHub Actions Runner can only run once per user, to address that simply create 
 sudo ./setup_agents.sh <ACCESS_TOKEN> <REPO_OWNER> [<N_AGENTS>]
 ```
 
-- `ACCESS_TOKEN` is GitHub's Personal Access Token.
+- `ACCESS_TOKEN` is GitHub's Personal Access Token — [it requires the `repo` scope](https://docs.github.com/en/rest/actions/self-hosted-runners?apiVersion=2022-11-28#about-self-hosted-runners-in-github-actions).
     - For users: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token
     - For organizations: https://docs.github.com/en/organizations/managing-programmatic-access-to-your-organization/setting-a-personal-access-token-policy-for-your-organization#restricting-access-by-personal-access-tokens-classic
 - `REPO_OWNER` is the name of the owner of the repository.
