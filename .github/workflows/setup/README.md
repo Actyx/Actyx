@@ -26,3 +26,11 @@ sudo ./setup_agents.sh <ACCESS_TOKEN> <REPO_OWNER> [<N_AGENTS>]
 sudo ./clear_agents.sh <N_AGENTS>
 ```
 
+## Development
+
+To setup a development environment, you need to:
+
+- Fork [`Actyx`](https://github.com/Actyx/Actyx)
+- Change the setup scripts to target a different Linux user (i.e. `USERNAME="gha"` in `setup.sh`)
+    - If you're running this in your own computer, this step is optional
+- Run the setup scripts
