@@ -1,0 +1,82 @@
+# Pull request check and validation workflow
+name: Validate PR
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - 'master'
+
+env:
+  RUST_BACKTRACE: 1
+
+jobs:
+  check:
+    runs-on: self-hosted
+
+    strategy:
+      matrix:
+        product: [release, rust, js, node-manager-bindings]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Validate ${{matrix.product}}
+        run: make validate-${{matrix.product}} assert-clean
+
+  check-android:
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Validate Android
+        run: |
+          set -e
+          ./jvm/os-android/bin/create-dummy-keystore.sh
+          cat jvm/os-android/actyx-local/actyx.properties
+          make validate-os-android assert-clean
+
+  validate:
+    runs-on: self-hosted
+    needs: check
+    timeout-minutes: 60
+
+    strategy:
+      matrix:
+        product: [os, netsim]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Validate ${{matrix.product}}
+        run: make validate-${{matrix.product}} assert-clean
+
+  validate-docs:
+    runs-on: self-hosted
+
+    env:
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      NETLIFY_ACCESS_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+
+    steps:
+      # Unlimited fetch depth so the release tool works
+      # ALL actions using the release tool NEED this
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Validate docs
+        run: |
+          set -e
+          echo "Building cosmos-release"
+          cd rust/release
+          cargo test --locked --release --all-features
+          echo "Building docs"
+          cd ../../web/developer.actyx.com/
+          source ~/.nvm/nvm.sh
+          nvm install
+          npm ci
+          npm run build
+          npm run deploy:draft "Validation pipeline"
+          make -C ../.. assert-clean

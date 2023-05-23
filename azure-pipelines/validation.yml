@@ -2,17 +2,18 @@
 #
 # For general remarks, see ../README.md
 
-trigger:
-  branches:
-    include:
-      - master
-      - proj/*
-pr:
-  autoCancel: true
-  branches:
-    include:
-      - master
-      - proj/*
+# Disabled in favor of GitHub Actions
+# trigger:
+#   branches:
+#     include:
+#       - master
+#       - proj/*
+# pr:
+#   autoCancel: true
+#   branches:
+#     include:
+#       - master
+#       - proj/*
 
 stages:
   - stage: validation
