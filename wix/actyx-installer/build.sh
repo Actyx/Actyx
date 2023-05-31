@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Build the Windows Actyx Installer using the Wix Toolset (https://wixtoolset.org/)
+#
+# Commented out code handled the signing of binaries.
+# When times to sign binaries again, uncomment and provide the required variables in CI.
+
 set -e
 
 if [ -z "$1" ]; then
@@ -12,15 +17,15 @@ if [ -z "$2" ]; then
     exit 1
 fi
 
-if [ -z "$WIN_CODESIGN_CERTIFICATE" ]; then
-    echo "WIN_CODESIGN_CERTIFICATE not set; please set"
-    exit 1
-fi
+# if [ -z "$WIN_CODESIGN_CERTIFICATE" ]; then
+#     echo "WIN_CODESIGN_CERTIFICATE not set; please set"
+#     exit 1
+# fi
 
-if [ -z "$WIN_CODESIGN_PASSWORD" ]; then
-    echo "WIN_CODESIGN_PASSWORD not set; please set"
-    exit 1
-fi
+# if [ -z "$WIN_CODESIGN_PASSWORD" ]; then
+#     echo "WIN_CODESIGN_PASSWORD not set; please set"
+#     exit 1
+# fi
 
 VERSION=$(echo "$1" | sed 's/^\([0-9]*\.[0-9]*\.[0-9]*\).*$/\1/')
 echo ": VERSION: $VERSION"
@@ -79,28 +84,29 @@ fi
 
 chmod +r "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME"
 
-echo "$WIN_CODESIGN_CERTIFICATE" | base64 -di > cert.pfx
+# echo "$WIN_CODESIGN_CERTIFICATE" | base64 -di > cert.pfx
 
-echo "Extracting key"
-openssl pkcs12 -in cert.pfx -nocerts -nodes -out key.pem -password pass:"$WIN_CODESIGN_PASSWORD"
-echo "Extracting certificate"
-openssl pkcs12 -in cert.pfx -nokeys -nodes -out cert.pem -password pass:"$WIN_CODESIGN_PASSWORD"
-echo "Creating RSA key"
-openssl rsa -in key.pem -outform DER -out authenticode.key
-echo "Creating cert"
-openssl crl2pkcs7 -nocrl -certfile cert.pem -outform DER -out authenticode.spc
-echo "Signing MSI"
-osslsigncode sign \
-	-certs authenticode.spc \
-	-key authenticode.key \
-	-n "Actyx" \
-	-i "http://www.actyx.com/" \
-	-t "http://timestamp.digicert.com" \
-	-in "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME" \
-	-out "$INSTALLER_SRC/$INSTALLER_NAME"
+# echo "Extracting key"
+# openssl pkcs12 -in cert.pfx -nocerts -nodes -out key.pem -password pass:"$WIN_CODESIGN_PASSWORD"
+# echo "Extracting certificate"
+# openssl pkcs12 -in cert.pfx -nokeys -nodes -out cert.pem -password pass:"$WIN_CODESIGN_PASSWORD"
+# echo "Creating RSA key"
+# openssl rsa -in key.pem -outform DER -out authenticode.key
+# echo "Creating cert"
+# openssl crl2pkcs7 -nocrl -certfile cert.pem -outform DER -out authenticode.spc
+# echo "Signing MSI"
+# osslsigncode sign \
+# 	-certs authenticode.spc \
+# 	-key authenticode.key \
+# 	-n "Actyx" \
+# 	-i "http://www.actyx.com/" \
+# 	-t "http://timestamp.digicert.com" \
+# 	-in "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME" \
+# 	-out "$INSTALLER_SRC/$INSTALLER_NAME"
 
 mkdir -p "$DIST_DIR"
 ls -lap "$DIST_DIR"
-cp "$INSTALLER_SRC/$INSTALLER_NAME" "$DIST_DIR"
+# cp "$INSTALLER_SRC/$INSTALLER_NAME" "$DIST_DIR"
+cp "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME" "$DIST_DIR"
 
 exit 0

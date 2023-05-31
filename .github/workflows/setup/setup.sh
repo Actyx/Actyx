@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -e
 
 # Setup everything needed to launch GitHub Actions Runner Agents.
 
@@ -7,12 +7,18 @@ USERNAME="gha"
 GROUP_NAME="gh-runners"
 REPO_NAME="Actyx"
 
-SCRIPT_DIR="$(dirname "$(readlink -e "$0")")"
+# readlink's -e flag is not supported on MacOS
+if [[ $OSTYPE = "linux-gnu"* ]]; then
+    SCRIPT_DIR="$(dirname "$(readlink -e "$0")")"
+else
+    echo "This script only supports Linux"
+    exit 1
+fi
 
 help() {
     echo "Usage:"
-    echo "  sudo ./setup.sh <ACCESS_TOKEN> <REPO_OWNER> [<N_AGENTS>]"
-    exit
+    echo "  sudo ./setup.sh [-f <RUNNERS_FOLDER_PREFIX>] <ACCESS_TOKEN> <REPO_OWNER> <N_AGENTS>"
+    exit 1
 }
 
 # Copy the setup scripts and fix the permissions
@@ -45,39 +51,40 @@ if id "$USERNAME" &>/dev/null; then
     help
 fi
 
-# The script only supports 2 or 3 arguments
-if [[ ! ($# -eq 2 || $# -eq 3) ]]; then
+RUNNERS_FOLDER_PREFIX="gh-runner"
+while getopts 'f:' flag; do
+  case "${flag}" in
+    f) RUNNERS_FOLDER_PREFIX="${OPTARG}" ;;
+    *) error "Unexpected option ${flag}" ;;
+  esac
+done
+# https://stackoverflow.com/a/26295865
+shift $((OPTIND-1))
+
+# The script only supports 3 arguments
+if [[ $# -ne 3 ]]; then
     help
 fi
 
-# Take (removing) the first two arguments (required)
-if [[ $# -ge 2 ]]; then
-    ACCESS_TOKEN=$1
-    REPO_OWNER=$2
-    shift 2
+ACCESS_TOKEN=$1
+REPO_OWNER=$2
+N_AGENTS=$3
+if [[ $N_AGENTS -lt 0 ]]; then
+    echo "N_AGENTS must be bigger than 0!"
+    exit
 fi
+# Shift arguments out to avoid picking it up further in the script
+shift 3
 
-# Provide a default for the number of agents
-# (better ergonomics for just an small bit of extra complexity)
-if [[ $# -eq 0 ]]; then
-    echo "Number of agents not defined, using 1 as default..."
-    N_AGENTS=1
-else
-    N_AGENTS="$1"
-    if [[ $N_AGENTS -lt 0 ]]; then
-        echo "N_AGENTS must be bigger than 0!"
-        exit
-    fi
-    # Shift the last argument out to avoid picking it up further in the script
-    shift
-fi
 
 # NOTE: The group was originally created to use along with several users
 echo "Setting up group $GROUP_NAME"
 getent group $GROUP_NAME >/dev/null || groupadd -g 1997 $GROUP_NAME
 
 # Create a user for the actions as ./config.sh cannot be run from root
+# For permissions to (mostly) work properly, the user id needs to be 1000
 useradd \
+    --uid 1000 \
     -m \
     -g gh-runners \
     -G docker \
@@ -100,9 +107,9 @@ REGISTRATION_TOKEN=$(curl -L \
 
 # Setup each agent individually, details provided in ./setup_agent.sh
 for ((I=1;I<=N_AGENTS;I++)) ; do
-    su -c "./setup_agent.sh $I $REPO_OWNER $REPO_NAME $REGISTRATION_TOKEN" "$USERNAME"
+    su -c "./setup_agent.sh -f $RUNNERS_FOLDER_PREFIX $I $REPO_OWNER $REPO_NAME $REGISTRATION_TOKEN" "$USERNAME"
 
-    cd "/home/$USERNAME/gh-runner-$I"
+    cd "/home/$USERNAME/$RUNNERS_FOLDER_PREFIX-$I"
 
     # Ensure that the environment snapshot is fresh
     # For more information: https://learn.microsoft.com/en-us/azure/devops/pipelines/agents/linux-agent?view=azure-devops#service-update-environment-variables

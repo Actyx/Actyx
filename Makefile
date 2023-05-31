@@ -410,8 +410,8 @@ node-manager-win:
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  -w /src/js/node-manager \
 	  --rm \
-	  actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
-	  bash -c "source /root/.nvm/nvm.sh --no-use && nvm install && npm ci && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
+	  actyx/util:node-manager-win-builder-test \
+	  bash -c "source /home/builder/.nvm/nvm.sh --no-use && nvm install && npm ci && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
 
 node-manager-mac-linux:
 	cd js/node-manager && \
@@ -583,10 +583,12 @@ dist/bin/actyx.apk: jvm/os-android/app/build/outputs/bundle/release/app-release.
       java -jar /usr/local/lib/bundletool.jar build-apks \
 				--bundle /src/$< \
 				--output=/src/dist/bin/actyx.apks \
-				--ks=/src/jvm/os-android/actyx-local/axosandroid.jks \
-				--ks-key-alias=axosandroid \
-				--ks-pass=pass:$(shell grep actyxKeyPassword jvm/os-android/actyx-local/actyx.properties|cut -f2 -d\") \
 				--mode=universal
+				# Disable signing, for more information refer to:
+				# https://developer.android.com/tools/bundletool#generate_apks
+				# --ks=/src/jvm/os-android/actyx-local/axosandroid.jks \
+				# --ks-key-alias=axosandroid \
+				# --ks-pass=pass:$(shell grep actyxKeyPassword jvm/os-android/actyx-local/actyx.properties|cut -f2 -d\") \
 	unzip -o dist/bin/actyx.apks universal.apk
 	mv -f universal.apk dist/bin/actyx.apk
 
