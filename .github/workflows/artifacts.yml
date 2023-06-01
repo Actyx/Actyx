@@ -47,7 +47,7 @@ jobs:
         working-directory: rust/release/target/release
         run: |
           set -e
-          echo "ACTYX_VERSION_ACTYX=$(./cosmos-release get-actyx-version actyx)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION=$(./cosmos-release get-actyx-version actyx)" >> "$GITHUB_OUTPUT"
           echo "ACTYX_VERSION_CLI=$(./cosmos-release get-actyx-version cli)" >> "$GITHUB_OUTPUT"
           echo "ACTYX_VERSION_NODEMANAGER=$(./cosmos-release get-actyx-version node-manager)" >> "$GITHUB_OUTPUT"
           echo "ACTYX_VERSION_POND=$(./cosmos-release get-actyx-version pond)" >> "$GITHUB_OUTPUT"
@@ -55,7 +55,7 @@ jobs:
           echo "ACTYX_VERSION_RUSTSDK=$(./cosmos-release get-actyx-version rust-sdk)" >> "$GITHUB_OUTPUT"
 
     outputs:
-      ACTYX_VERSION_ACTYX: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_ACTYX }}
+      ACTYX_VERSION: ${{ steps.calculate-versions.outputs.ACTYX_VERSION }}
       ACTYX_VERSION_CLI: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_POND: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_POND }}
@@ -67,7 +67,7 @@ jobs:
     needs: calculate-actyx-version
 
     env:
-      ACTYX_VERSION_ACTYX: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_ACTYX }}
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
       ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
@@ -92,7 +92,7 @@ jobs:
     needs: calculate-actyx-version
 
     env:
-      ACTYX_VERSION_ACTYX: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_ACTYX }}
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
       ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
@@ -117,7 +117,7 @@ jobs:
     needs: calculate-actyx-version
 
     env:
-      ACTYX_VERSION_ACTYX: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_ACTYX }}
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
       ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
@@ -144,7 +144,7 @@ jobs:
     needs: calculate-actyx-version
 
     env:
-      ACTYX_VERSION_ACTYX: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_ACTYX }}
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
       ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
@@ -170,7 +170,7 @@ jobs:
   #   needs: calculate-actyx-version
 
   #   env:
-  #     ACTYX_VERSION_ACTYX: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_ACTYX }}
+  #     ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
   #     ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
   #     ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
   #     ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
@@ -199,7 +199,7 @@ jobs:
     needs: calculate-actyx-version
 
     env:
-      ACTYX_VERSION_ACTYX: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_ACTYX }}
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
       ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
@@ -227,7 +227,7 @@ jobs:
     needs: calculate-actyx-version
 
     env:
-      ACTYX_VERSION_ACTYX: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_ACTYX }}
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
       ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
@@ -252,7 +252,7 @@ jobs:
     needs: calculate-actyx-version
 
     env:
-      ACTYX_VERSION_ACTYX: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_ACTYX }}
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
       ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
@@ -281,7 +281,7 @@ jobs:
   #   env:
   #     PYTHON_PATH: /usr/local/bin/python3
 
-  #     ACTYX_VERSION_ACTYX: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_ACTYX }}
+  #     ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
   #     ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
   #     ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
   #     ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
@@ -318,7 +318,7 @@ jobs:
       - make-node-manager-windows
       # - make-node-manager-macos
     env:
-      ACTYX_VERSION_ACTYX: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_ACTYX }}
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
 
     steps:
       - uses: actions/checkout@v3
