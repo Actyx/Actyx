@@ -54,9 +54,9 @@ impl std::str::FromStr for PublicKey {
         res.copy_from_slice(&v[..]);
 
         // validate if bytes are decompressable into EdwardPoints
-        ed25519_dalek::PublicKey::from_bytes(&res)
-            .map(|_| Self(res))
-            .map_err(|err| anyhow!(err))
+        ed25519_dalek::PublicKey::from_bytes(&res).map_err(|err| anyhow!(err))?;
+
+        Ok(Self(res))
     }
 }
 

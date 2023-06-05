@@ -56,22 +56,17 @@ where
     let maybe_array = Value::deserialize(deserializer)?;
 
     if let Value::Array(items) = maybe_array {
-        let iter_res = items.into_iter().map(serde_json::from_value::<PublicKey>);
-
-        let index_of_errors = iter_res
-            .clone()
+        Ok(items
+            .into_iter()
             .enumerate()
-            .filter(|(_, item)| item.is_err())
-            .map(|(index, _)| index.to_string())
-            .collect::<Vec<_>>()
-            .join(",");
-
-        tracing::warn!(
-            "Found invalid entries in config/admin/authorizedUsers at index: {}",
-            index_of_errors
-        );
-
-        Ok(iter_res.filter_map(|x| x.ok()).collect())
+            .filter_map(|(i, pk)| match serde_json::from_value::<PublicKey>(pk) {
+                Ok(pk) => Some(pk),
+                Err(_err) => {
+                    tracing::warn!("Found invalid entries in config/admin/authorizedUsers at index: {}", i);
+                    None
+                }
+            })
+            .collect::<Vec<_>>())
     } else {
         Err(serde::de::Error::custom("Expected an array of strings"))
     }
@@ -205,7 +200,11 @@ mod tests {
                 authorized_users_as_array.push("0OAapA3dk0KzFVJrEEYwvP3CLKY/UEYImE+B8oV+19EU=".into());
                 // invalid
                 authorized_users_as_array.push("0FtjBTIiGoM3LlS4xJcFnUxkPItCBWWlOmNnJgmTtTLQ=".into());
+            } else {
+                panic!("Settings::sample().admin.authorizedUsers is not an array");
             }
+        } else {
+            panic!("Settings::sample().admin is not an object");
         }
 
         let admin = serde_json::from_str::<Admin>(sample_json.to_string().as_str()).unwrap();
