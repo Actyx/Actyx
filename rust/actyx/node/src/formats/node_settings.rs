@@ -1,7 +1,6 @@
 use actyx_sdk::language::TagExpr;
 use api::formats::Licensing;
-use crypto::PublicKey;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use util::formats::LogSeverity;
 
@@ -43,33 +42,8 @@ pub struct Swarm {
 #[serde(rename_all = "camelCase")]
 pub struct Admin {
     pub display_name: String,
-    #[serde(deserialize_with = "deserialize_authorized_users")]
-    pub authorized_users: Vec<PublicKey>,
+    pub authorized_users: Vec<String>,
     pub log_levels: LogLevels,
-}
-
-fn deserialize_authorized_users<'de, D>(deserializer: D) -> Result<Vec<PublicKey>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    use serde_json::Value;
-    let maybe_array = Value::deserialize(deserializer)?;
-
-    if let Value::Array(items) = maybe_array {
-        Ok(items
-            .into_iter()
-            .enumerate()
-            .filter_map(|(i, pk)| match serde_json::from_value::<PublicKey>(pk) {
-                Ok(pk) => Some(pk),
-                Err(_err) => {
-                    tracing::warn!("Found invalid entries in config/admin/authorizedUsers at index: {}", i);
-                    None
-                }
-            })
-            .collect::<Vec<_>>())
-    } else {
-        Err(serde::de::Error::custom("Expected an array of strings"))
-    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
@@ -181,33 +155,5 @@ impl Settings {
             },
             event_routing: Default::default(),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    pub fn sample_with_invalid_authorized_users() {
-        use super::Admin;
-        use super::Settings;
-        let mut sample_json = serde_json::to_value(Settings::sample().admin).unwrap();
-        if let serde_json::Value::Object(admin_settings) = &mut sample_json {
-            let authorized_users = admin_settings.get_mut("authorizedUsers").unwrap();
-            if let serde_json::Value::Array(authorized_users_as_array) = authorized_users {
-                // valid
-                authorized_users_as_array.push("0BvjSPuvSFnxeJu+PWfFtZBpnfcrjh6pcz1e6kQjxNhg=".into());
-                authorized_users_as_array.push("0OAapA3dk0KzFVJrEEYwvP3CLKY/UEYImE+B8oV+19EU=".into());
-                // invalid
-                authorized_users_as_array.push("0FtjBTIiGoM3LlS4xJcFnUxkPItCBWWlOmNnJgmTtTLQ=".into());
-            } else {
-                panic!("Settings::sample().admin.authorizedUsers is not an array");
-            }
-        } else {
-            panic!("Settings::sample().admin is not an object");
-        }
-
-        let admin = serde_json::from_str::<Admin>(sample_json.to_string().as_str()).unwrap();
-        assert_eq!(admin.authorized_users.len(), 2);
     }
 }
