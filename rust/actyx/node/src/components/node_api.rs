@@ -121,7 +121,7 @@ fn extract_settings_into_node_settings(s: Settings) -> Result<NodeApiSettings> {
         .filter_map(|(i, pk)| match crypto::PublicKey::from_str(pk) {
             Ok(pk) => Some(PeerId::from(pk)),
             Err(_) => {
-                tracing::warn!("Found invalid entries in config/admin/authorizedUsers at index: {}", i);
+                tracing::warn!("Found invalid entry in config/admin/authorizedUsers at index: {}", i);
                 None
             }
         })
