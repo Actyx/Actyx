@@ -1,6 +1,5 @@
 use actyx_sdk::language::TagExpr;
 use api::formats::Licensing;
-use crypto::PublicKey;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use util::formats::LogSeverity;
@@ -43,9 +42,10 @@ pub struct Swarm {
 #[serde(rename_all = "camelCase")]
 pub struct Admin {
     pub display_name: String,
-    pub authorized_users: Vec<PublicKey>,
+    pub authorized_users: Vec<String>,
     pub log_levels: LogLevels,
 }
+
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Api {

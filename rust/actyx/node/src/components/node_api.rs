@@ -11,6 +11,7 @@ use libp2p::PeerId;
 use parking_lot::Mutex;
 use std::{
     path::PathBuf,
+    str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -65,8 +66,7 @@ impl Component<(), NodeApiSettings> for NodeApi {
         &self.rx
     }
     fn extract_settings(&self, s: Settings) -> Result<NodeApiSettings> {
-        let authorized_keys = s.admin.authorized_users.iter().cloned().map(Into::into).collect();
-        Ok(NodeApiSettings { authorized_keys })
+        extract_settings_into_node_settings(s)
     }
     fn handle_request(&mut self, _: ()) -> Result<()> {
         Ok(())
@@ -109,5 +109,53 @@ impl Component<(), NodeApiSettings> for NodeApi {
             drop(rt)
         }
         Ok(())
+    }
+}
+
+fn extract_settings_into_node_settings(s: Settings) -> Result<NodeApiSettings> {
+    let authorized_keys: Vec<PeerId> = s
+        .admin
+        .authorized_users
+        .iter()
+        .enumerate()
+        .filter_map(|(i, pk)| match crypto::PublicKey::from_str(pk) {
+            Ok(pk) => Some(PeerId::from(pk)),
+            Err(_) => {
+                tracing::warn!("Found invalid entry in config/admin/authorizedUsers at index: {}", i);
+                None
+            }
+        })
+        .collect();
+    Ok(NodeApiSettings { authorized_keys })
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{components::node_api::extract_settings_into_node_settings, node_settings::Settings};
+
+    #[test]
+    pub fn sample_with_invalid_authorized_users() {
+        let mut sample_json = serde_json::to_value(Settings::sample()).unwrap();
+        if let serde_json::Value::Object(sample) = &mut sample_json {
+            let admin_json = sample.get_mut("admin").expect("Settings::sample().admin undefined");
+            let authorized_users = admin_json
+                .get_mut("authorizedUsers")
+                .expect("Settings::sample().admin.authorized_users is undefined");
+            if let serde_json::Value::Array(authorized_users_as_array) = authorized_users {
+                // valid
+                authorized_users_as_array.push("0BvjSPuvSFnxeJu+PWfFtZBpnfcrjh6pcz1e6kQjxNhg=".into());
+                authorized_users_as_array.push("0OAapA3dk0KzFVJrEEYwvP3CLKY/UEYImE+B8oV+19EU=".into());
+                // invalid
+                authorized_users_as_array.push("0FtjBTIiGoM3LlS4xJcFnUxkPItCBWWlOmNnJgmTtTLQ=".into());
+            } else {
+                panic!("Settings::sample().admin.authorizedUsers is not an array");
+            }
+        } else {
+            panic!("Settings::sample() is not an object");
+        }
+
+        let settings = serde_json::from_str::<Settings>(sample_json.to_string().as_str()).unwrap();
+        let node_api_settings = extract_settings_into_node_settings(settings).unwrap();
+        assert_eq!(node_api_settings.authorized_keys.len(), 2);
     }
 }
