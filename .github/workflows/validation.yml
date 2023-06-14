@@ -92,7 +92,7 @@ jobs:
       - validate-docs
 
     steps:
-      - uses: jmg-duarte/discord-webhook@master
+      - uses: jmg-duarte/discord-workflow-status@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}
