@@ -656,8 +656,8 @@ docker-push-actyx:
 docker-build-and-push: assert-clean
 	git rev-parse HEAD
 	cd docker/buildrs
-	bash build_and_push.sh
+	bash ./build_and_push.sh
 	cd ../musl
-	bash build_and_push.sh
+	bash ./build_and_push.sh
 	cd ../node-manager-win-builder
-	bash build_and_push.sh
+	bash ./build_and_push.sh
