@@ -655,7 +655,7 @@ docker-push-actyx:
 .PHONY: docker-build-and-push
 docker-build-and-push: assert-clean
 	git rev-parse HEAD
-	cd docker/actyx/buildrs
+	cd docker/buildrs
 	bash build_and_push.sh
 	cd ../musl
 	bash build_and_push.sh
