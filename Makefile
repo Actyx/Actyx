@@ -648,3 +648,16 @@ docker-push-actyx:
 		--tag actyx/actyx-ci:actyx-$(GIT_COMMIT) $(ADDITIONAL_DOCKER_ARGS) \
 		-f docker/actyx/Dockerfile \
 		.
+
+# Previous docker recipes are a bit too complex due to the use of loops etc,
+# the following recipe aims to be dead simple, with the following goal:
+# Build and push the images with build_and_push.sh scripts
+.PHONY: docker-build-and-push
+docker-build-and-push: assert-clean
+	git rev-parse HEAD
+	cd docker/actyx/buildrs
+	bash build_and_push.sh
+	cd ../musl
+	bash build_and_push.sh
+	cd ../node-manager-win-builder
+	bash build_and_push.sh
