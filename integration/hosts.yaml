@@ -71,17 +71,17 @@ hosts:
       user: Administrator
     install:
       type: windows
-  - name: x86_64-android-emulator
-    prepare:
-      type: create-aws-ec2
-      # ubuntu 22.04 LTS. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
-      ami: ami-0a750371997a814a7
-      # cheapest aws bare metal instance
-      # needed to have direct access to /dev/kvm
-      instance: c5.metal
-      user: ubuntu
-    install:
-      type: android
+  # - name: x86_64-android-emulator
+  #   prepare:
+  #     type: create-aws-ec2
+  #     # ubuntu 22.04 LTS. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+  #     ami: ami-0a750371997a814a7
+  #     # cheapest aws bare metal instance
+  #     # needed to have direct access to /dev/kvm
+  #     instance: c5.metal
+  #     user: ubuntu
+  #   install:
+  #     type: android
 settings:
   # Where folders and files will be created during a test run.
   tempDir: temp
