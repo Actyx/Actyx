@@ -348,6 +348,19 @@ jobs:
           nvm use
           npm install
           npm run test:ci
+        env:
+          AWS_ACCESS_KEY_ID:  ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AUTH_TEST_SIGNATURE: ${{ secrets.AUTH_TEST_SIGNATURE }}
+          AUTH_TEST_LICENSE: ${{ secrets.AUTH_TEST_LICENSE }}
+          AUTH_TEST_NODE_LICENSE: ${{ secrets.AUTH_TEST_NODE_LICENSE }}
+      - uses: fixpoint/azblob-upload-artifact@v4
+        if: failure()
+        with:
+          connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
+          container: test-logs
+          name: ${{github.sha}}/logs
+          path: integration/logs
 
   notify-discord:
     runs-on: [self-hosted, Linux]
