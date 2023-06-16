@@ -66,7 +66,7 @@ export BUILD_RUST_TOOLCHAIN ?= 1.65.0
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := a1d06897bfcb83cb99d49fb452a87f236489cc93
+export LATEST_STABLE_IMAGE_VERSION := acb1b2cecff97ad3d192fd1e649eabdbb73ebbd5
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -410,7 +410,7 @@ node-manager-win:
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  -w /src/js/node-manager \
 	  --rm \
-	  actyx/util:node-manager-win-builder-test \
+	  actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
 	  bash -c "source /home/builder/.nvm/nvm.sh --no-use && nvm install && npm ci && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
 
 node-manager-mac-linux:
