@@ -655,9 +655,6 @@ docker-push-actyx:
 .PHONY: docker-build-and-push
 docker-build-and-push: assert-clean
 	git rev-parse HEAD
-	cd docker/buildrs || exit 1
-	bash ./build_and_push.sh
-	cd ../musl
-	bash ./build_and_push.sh
-	cd ../node-manager-win-builder
-	bash ./build_and_push.sh
+	cd docker/buildrs && bash ./build_and_push.sh
+	cd docker/musl && bash ./build_and_push.sh
+	cd docker/node-manager-win-builder && bash ./build_and_push.sh
