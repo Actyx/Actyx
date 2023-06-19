@@ -116,7 +116,7 @@ export const createInstance = async (
 
   // this is the main thing
   console.log('creating instance', withTags)
-  let instance = (await retry(() => ec2.send(new RunInstancesCommand(withTags)), 3)).Instances?.[0]
+  let instance = (await ec2.send(new RunInstancesCommand(withTags))).Instances?.[0]
 
   if (instance === undefined) {
     console.error('cannot start instance')
