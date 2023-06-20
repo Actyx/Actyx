@@ -4,6 +4,7 @@
  *   - Create nodes as separate ec2 instances or locally
  *   - Bootstrap all nodes in the same swarm
  */
+import { AWS } from '@aws-sdk'
 import { EC2Client } from '@aws-sdk/client-ec2'
 import { execaCommand } from 'execa'
 import { promises as fs } from 'fs'
@@ -16,6 +17,8 @@ import { rightOrThrow } from '../infrastructure/rightOrThrow'
 import { ActyxNode, AwsKey, printTarget } from '../infrastructure/types'
 import { retryTimes } from '../retry'
 import { Config, Settings } from './types'
+
+AWS.config.logger = console
 
 export type LogEntry = {
   time: Date
