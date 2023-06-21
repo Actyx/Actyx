@@ -74,15 +74,15 @@ export const mkNodeSshDocker = async (
     await awaitCloudInitSetup(ssh)
   }
   await ensureDocker(ssh, nodeName, target.arch)
-  const userPass = await execa('vault', [
-    'kv',
-    'get',
-    '--format=json',
-    'secret/ops.actyx.dockerhub.deployUser',
-  ])
-  if (userPass.exitCode !== 0) {
-    throw new Error('cannot get dockerhub credentials - you need to be authenticated to vault')
-  }
+  // const userPass = await execa('vault', [
+  //   'kv',
+  //   'get',
+  //   '--format=json',
+  //   'secret/ops.actyx.dockerhub.deployUser',
+  // ])
+  // if (userPass.exitCode !== 0) {
+  //   throw new Error('cannot get dockerhub credentials - you need to be authenticated to vault')
+  // }
   const user = process.env["DOCKER_USERNAME"]
   const pass = process.env["DOCKER_PASSWORD"]
   //const { user, pass } = JSON.parse(userPass.stdout).data.data
