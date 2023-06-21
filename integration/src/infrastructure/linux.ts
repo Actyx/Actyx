@@ -83,7 +83,9 @@ export const mkNodeSshDocker = async (
   if (userPass.exitCode !== 0) {
     throw new Error('cannot get dockerhub credentials - you need to be authenticated to vault')
   }
-  const { user, pass } = JSON.parse(userPass.stdout).data.data
+  const user = process.env["DOCKER_USERNAME"]
+  const pass = process.env["DOCKER_PASSWORD"]
+  //const { user, pass } = JSON.parse(userPass.stdout).data.data
   await execSsh(ssh)(`docker login -u ${user} -p ${pass}`)
   console.log('node %s Docker login successful', nodeName)
 
