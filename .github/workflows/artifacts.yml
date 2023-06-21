@@ -302,6 +302,7 @@ jobs:
   integration:
     runs-on: [self-hosted, Linux]
     needs:
+      - calculate-actyx-version # To get the env var
       - make-all-js
       - make-all-linux
       - make-all-windows
@@ -309,9 +310,15 @@ jobs:
       - make-all-android
       - make-node-manager-linux
       - make-node-manager-windows
+      - make-docker
       # - make-node-manager-macos
     env:
       ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
+      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
+      ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
+      ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
+      ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
+      ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
 
     steps:
       - uses: actions/checkout@v3
