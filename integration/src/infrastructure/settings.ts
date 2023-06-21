@@ -112,9 +112,7 @@ const ensureBinaryExists = async (os: OS, p: string): Promise<string> => {
         }
         return p
       }
-      const key =
-        process.env['ACTYX_PUBLIC_KEY'] ||
-        (await execaCommand('vault kv get -field=public secret/sec.actyx/signing/actyx')).stdout
+      const key = process.env['ACTYX_PUBLIC_KEY'] // || (await execaCommand('vault kv get -field=public secret/sec.actyx/signing/actyx')).stdout
       const env = { ACTYX_PUBLIC_KEY: key }
       const cmd = `make ${path.relative('..', p)}`
       const cwd = path.resolve('..')

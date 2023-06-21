@@ -354,6 +354,7 @@ jobs:
           AUTH_TEST_SIGNATURE: ${{ secrets.AUTH_TEST_SIGNATURE }}
           AUTH_TEST_LICENSE: ${{ secrets.AUTH_TEST_LICENSE }}
           AUTH_TEST_NODE_LICENSE: ${{ secrets.AUTH_TEST_NODE_LICENSE }}
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
       - uses: fixpoint/azblob-upload-artifact@v4
         if: failure()
         with:
