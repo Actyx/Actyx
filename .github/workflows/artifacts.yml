@@ -164,35 +164,28 @@ jobs:
           path: dist/bin
       - run: make clean
 
-  # NOTE: eats up a lot of storage
-  # make-docker:
-  #   runs-on: [self-hosted, Linux]
-  #   needs: calculate-actyx-version
+  make-docker:
+    runs-on: [self-hosted, Linux]
+    needs: calculate-actyx-version
 
-  #   env:
-  #     ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
-  #     ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
-  #     ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
-  #     ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
-  #     ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
-  #     ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
+    env:
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
+      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
+      ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
+      ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
+      ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
+      ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
 
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Make Docker
-  #       run: |
-  #         set -e
-  #         GIT_COMMIT=`git rev-parse HEAD`
-  #         head_of_master=`git rev-parse origin/master`
-  #         MASTER_TAG=""
-  #         if [ "$GIT_COMMIT" == "$head_of_master" ]; then
-  #             echo "Running on HEAD of master ($head_of_master), tagging image as latest"
-  #             make -e ADDITIONAL_DOCKER_ARGS="--tag actyx/actyx-ci:actyx-latest" docker-push-actyx
-  #         else
-  #             make docker-push-actyx
-  #         fi
-  #         make assert-clean
-
+    steps:
+      - uses: actions/checkout@v3
+      - name: Make Docker
+        run: |
+          set -e
+          GIT_COMMIT=`git rev-parse HEAD`
+          head_of_master=`git rev-parse origin/master`
+          MASTER_TAG=""
+          make docker-push-actyx
+          make assert-clean
 
   make-all-android:
     runs-on: [self-hosted, Linux]
