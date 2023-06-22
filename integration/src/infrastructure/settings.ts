@@ -108,7 +108,7 @@ const ensureBinaryExists = async (os: OS, p: string): Promise<string> => {
     const build = (async () => {
       if (os === 'windows') {
         if (!fs.existsSync(p)) {
-          throw new Error('unable to make on Windows')
+          throw new Error(`unable to make on Windows (${p} was not found)`)
         }
         return p
       }

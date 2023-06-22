@@ -106,7 +106,11 @@ chmod +r "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME"
 
 mkdir -p "$DIST_DIR"
 ls -lap "$DIST_DIR"
+
 # cp "$INSTALLER_SRC/$INSTALLER_NAME" "$DIST_DIR"
-cp "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME" "$DIST_DIR"
+
+# We're using the normal name because it is simpler to change the code here rather than
+# at the integration tests level
+cp "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME" "$DIST_DIR/$INSTALLER_NAME"
 
 exit 0
