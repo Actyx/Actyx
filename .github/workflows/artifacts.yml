@@ -73,6 +73,7 @@ jobs:
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
+      ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
 
     steps:
       - uses: actions/checkout@v3
@@ -98,6 +99,7 @@ jobs:
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
+      ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
 
     steps:
       - uses: actions/checkout@v3
@@ -123,6 +125,7 @@ jobs:
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
+      ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
 
     steps:
       - uses: actions/checkout@v3
@@ -150,6 +153,7 @@ jobs:
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
+      ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
 
     steps:
       - uses: actions/checkout@v3
@@ -175,6 +179,7 @@ jobs:
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
+      ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
 
     steps:
       - uses: actions/checkout@v3
@@ -198,6 +203,7 @@ jobs:
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
+      ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
 
     steps:
       - uses: actions/checkout@v3
