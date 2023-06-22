@@ -202,10 +202,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Make All Android
-        run: |
-          set -e
-          ./jvm/os-android/bin/get-keystore.sh
-          make all-android assert-clean
+        run: make all-android assert-clean
       - uses: fixpoint/azblob-upload-artifact@v4
         if: success()
         with:
