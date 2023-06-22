@@ -622,6 +622,7 @@ mod tests {
         service::{EventMeta, EventResponse, SessionId},
         tags, Metadata, TagSet,
     };
+    use chrono::{DateTime, SecondsFormat};
     use futures::Stream;
     use itertools::Itertools;
     use lazy_static::lazy_static;
@@ -877,6 +878,84 @@ mod tests {
                 .await
             })
             .unwrap();
+    }
+
+    #[test]
+    fn time() {
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+        rt.block_on(timeout(Duration::from_secs(1), async {
+            let store = BanyanStore::test("time").await.unwrap();
+            let (_node_id, service) = setup(&store);
+
+            publish(&service, tags!("a"), 1).await;
+            let meta = publish(&service, tags!("a"), 2).await;
+            publish(&service, tags!("a"), 3).await;
+
+            let t = DateTime::from(meta.timestamp).to_rfc3339_opts(SecondsFormat::Micros, false);
+
+            // tests for correctly parsing `TIME > 7s ago` are in SDK (language/mod.rs)
+            assert_eq!(
+                query(&service, &format!("FROM 'a' & TIME > {t}")).await,
+                vec!["3", "offsets"]
+            );
+            assert_eq!(
+                query(&service, &format!("FROM 'a' & TIME < {t}")).await,
+                vec!["1", "offsets"]
+            );
+            assert_eq!(
+                query(&service, &format!("FROM 'a' & TIME ≥ {t}")).await,
+                vec!["2", "3", "offsets"]
+            );
+            assert_eq!(
+                query(&service, &format!("FROM 'a' & TIME ≤ {t}")).await,
+                vec!["1", "2", "offsets"]
+            );
+        }))
+        .unwrap();
+    }
+
+    #[test]
+    fn key() {
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+        rt.block_on(timeout(Duration::from_secs(1), async {
+            let store = BanyanStore::test("key").await.unwrap();
+            let (_node_id, service) = setup(&store);
+
+            publish(&service, tags!("a"), 1).await;
+            let meta = publish(&service, tags!("a"), 2).await;
+            publish(&service, tags!("a"), 3).await;
+
+            let t = meta.lamport.as_i64().to_string();
+            let s = meta.stream.to_string();
+
+            assert_eq!(
+                query(&service, &format!("FROM 'a' & KEY > {t}")).await,
+                vec!["2", "3", "offsets"]
+            );
+            assert_eq!(
+                query(&service, &format!("FROM 'a' & KEY < {t}")).await,
+                vec!["1", "offsets"]
+            );
+            assert_eq!(
+                query(&service, &format!("FROM 'a' & KEY > {t}/{s}")).await,
+                vec!["3", "offsets"]
+            );
+            assert_eq!(
+                query(&service, &format!("FROM 'a' & KEY < {t}/{s}")).await,
+                vec!["1", "offsets"]
+            );
+            assert_eq!(
+                query(&service, &format!("FROM 'a' & KEY ≥ {t}/{s}")).await,
+                vec!["2", "3", "offsets"]
+            );
+            assert_eq!(
+                query(&service, &format!("FROM 'a' & KEY ≤ {t}/{s}")).await,
+                vec!["1", "2", "offsets"]
+            );
+        }))
+        .unwrap();
     }
 
     #[test]

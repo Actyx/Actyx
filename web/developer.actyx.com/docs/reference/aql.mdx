@@ -2,7 +2,7 @@
 title: Actyx Query Language (AQL)
 ---
 
-The Actyx Query Language (AQL) allows you to select precisely which information you want to extract from the query or subscribe endpoints of the [Events API](./events-api.mdx).
+The Actyx Query Language (AQL) allows you to select precisely which information you want to extract from the `query` or `subscribe` endpoints of the [Events API](./events-api.mdx).
 In its most basic form it selects events based on their tags.
 This section gives you all the gory details of how that works and what else you can express.
 
@@ -10,7 +10,7 @@ This section gives you all the gory details of how that works and what else you 
 If you find Actyx behavior differing from the description below, then you have found a bug. Please tell us about it!
 
 If you discover some behavior that is not documented below, then you have wandered into unspecified territory — the observed behavior may change in future releases.
-In these cases we very much welcome your questions, comments, and suggestions in the [forum](https://community.actyx.com/)!
+In these cases we very much welcome your questions, comments, and suggestions in the [forum](https://groups.google.com/a/actyx.io/g/developers)!
 :::
 
 ## General structure
@@ -47,7 +47,7 @@ Alpha features are not documented, are expected to change, and are only revealed
 If you have questions or ideas, you are always welcome to let us know, perhaps it is easy to add or already on its way.
 
 Beta features are documented and are expected to be more stable, although we reserve the right to change them at any time even during the Actyx 2.x series.
-You are very welcome to try them out and discuss about them, for example in the [forum](https://community.actyx.com/).
+You are very welcome to try them out and discuss about them, for example in the [forum](https://groups.google.com/a/actyx.io/g/developers).
 
 If your query uses a feature that is not yet released, you’ll have to enable this feature using the `PRAGMA features := <words>` syntax.
 Each feature’s name is a single word and you can put any number of words after the equals sign, separated by whitespace.
@@ -63,26 +63,24 @@ Hereby, `<tag_expr>` is a boolean expression composed from the following basic a
   Tags are arbitrary non-empty Unicode strings.
   Quoting is only needed for the used delimiter: if your tag is enclosed in single quotes, single quotes within the tag need to be repeated, e.g. `'o''clock'`.
   The analogue goes for double quotes.
-  Tags containing IDs that where created using an Actyx SDK can be queried as `mytag:myid`.
+  Tags containing IDs that where created using an Actyx SDK can be queried like `mytag:myid`.
 
 - `isLocal` matches all events that were emitted by the local Actyx node.
 
 - `allEvents` matches all events.
 
-- _[timeRange]_ `from(<time>)` matches all events whose timestamp is greater or equal to the provided one.
+- `TIME > <time>` matches all events whose timestamp is greater than the given one.
   Timestamps can be given in UTC using the suffix `+00:00` or `Z`, or they can use a numeric time zone offset (like `+02:00` for CEST).
-  Valid formats are `2021-07-20T09:53:07.462Z`, or without milliseconds, seconds, or just the date.
+  Valid formats are `2021-07-20T09:53:07.462Z`, or with microseconds, just seconds, or just the date.
   Omitted components are treated as zero, so `2021-07-20+04:30` marks the beginning of that day in Afghanistan.
 
-- _[timeRange]_ `to(<time>)` matches all events whose timestamp is less than the provided one, i.e. `to(<x>)` and `from(<x>)` seamlessly cover the timeline around time _x_ without overlap.
-  The time formats are exactly the same as for `from(<time>)`.
+  The comparison can analogously be done with `TIME >= <time>` (or `≥`), `TIME < <time>`, or `TIME <= <time>` (or `≤`).
 
-- _[eventKeyRange]_ `from(<event ID>)` matches all events whose event ID is greater or equal to the provided one.
+- `KEY > <event ID>` matches all events whose event ID is greater then the provided one.
   An event ID consists of `<lamport timestamp>/<node ID>-<stream nr>` and has the same sort order as the corresponding event.
   You may specify only the lamport timestamp, in which case node ID and stream number are treated as zero.
 
-- _[eventKeyRange]_ `to(<event ID>)` matches all events whose event ID is less than the provided one.
-  The syntax rules are the same as for `from(<event ID>)`.
+  The comparison can analogously be done with `KEY >= <event ID>` (or `≥`), `KEY < <event ID>`, or `KEY <= <event ID>` (or `≤`).
 
 - `appId(<app ID>)` matches all events from the given app ID.
   No whitespace is allowed between the parentheses.
@@ -142,6 +140,11 @@ The first step will receive the events selected by the event query as input �
 Each of the outputs is fed into the following step — again bound to the variable `_` — where the same principle applies, etc.
 This allows you to write down the transformation from events into query results in an incremental fashion, doing one step at a time.
 
+:::note
+The processing described above is exactly how Actyx evaluates your query.
+This means that the order in which you write the steps is significant and affects the performance of your query.
+:::
+
 ### Discarding inputs with FILTER
 
 Whenever an event query is not specific enough, e.g. because not all relevant properties are available as tags, you can filter out undesirable results within Actyx.
@@ -194,20 +197,24 @@ AGGREGATE <aggregate_expr>
 
 The given expression can only refer to variables (including the current input `_`) inside one of the the following operators:
 
-- `LAST(<expr>)` yields the input with the latest event key
-- `FIRST(<expr>)` yields the input with the earliest event key
-- `MIN(<expr>)` yields the minimum value encountered among the inputs (works only for boolean and numbers)
-- `MAX(<expr>)` yields the maximum value encountered among the inputs (works only for boolean and numbers)
-- `SUM(<expr>)` yields the sum of all encountered inputs (works only for boolean and numbers)
-- `PRODUCT(<expr>)` yields the product of all encountered inputs (works only for boolean and numbers)
+- `LAST(<expr>)` yields the expression result with the latest event key
+- `FIRST(<expr>)` yields the expression result with the earliest event key
+- `MIN(<expr>)` yields the minimum value computed by the expression (works only for boolean and numbers)
+- `MAX(<expr>)` yields the maximum value computed by the expression (works only for boolean and numbers)
+- `SUM(<expr>)` yields the sum of all expression results (works only for boolean and numbers)
+- `PRODUCT(<expr>)` yields the product of all expression results (works only for boolean and numbers)
 
-The result yielded by these operators are then assembled into the final result using the rules for [simple expressions](#simple-expressions).
+The results yielded by these operators are then assembled into the final result using the rules for [simple expressions](#simple-expressions).
 Usage of only `LAST` operators indicates that descending event key order is desired; in this case processing will stop immediately when the first value is found.
 Usage of only `FIRST` works analogously.
 
-### _[limit]_ Discarding excess inputs
+:::tip
+You can use `AGGREGATE LAST(...)` to efficiently retrieve the latest event about something.
+:::
 
-If you need only the three newest events for some query you should use the `LIMIT` clause:
+### Discarding excess inputs
+
+If you need only the three first events for some query you should use the `LIMIT` clause:
 
 ```text
 LIMIT <number>
@@ -216,7 +223,7 @@ LIMIT <number>
 The given positive number indicates the number of events that may at most pass through this stage, stopping the input event stream immediately upon reaching this number.
 It is significant where you place this stage: if you place `LIMIT 3` before a `FILTER`, then at most three inputs are presented to the filter, while placing it after the `FILTER` only stops once three inputs have passed the filter.
 
-### _[binding]_ Variable bindings
+### Variable bindings
 
 Like in your favorite programming language you can bind a computed value to a name so that you can later refer to it, e.g. to reuse it in multiple places or to build up your final result in a nicely structured fashion.
 
@@ -255,7 +262,7 @@ Whenever the description says that an error is generated, the evaluation of the 
   Natural numbers (64bit integers) are converted to floating point when combined with floating point numbers.
   All operations yield an error upon overflow or underflow.
 
-- `<expr1> ?? <expr2>` evaluates to the result of `expr1` if that is not an error, otherwise it evaluates `expr2`.
+- `<expr1> ?? <expr2>` evaluates to the result of `expr1` if that is not an error, otherwise it evaluates to `expr2`.
 - Arrays are constructed with `[<expr>, ...]`.
   The contents of another array can be copied into a fresh array by using _[spread]_ syntax `[<expr1>, ...<expr2>, <expr3>]`, in which case `expr2` must evaluate to an array, otherwise an error is raised.
 
