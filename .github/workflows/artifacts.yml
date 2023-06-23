@@ -190,7 +190,8 @@ jobs:
       - name: Make Docker
         run: |
           MAIN_REPO="Actyx/Actyx"
-          CHECK_FORK=`git remote get-url origin | grep -o "$MAIN_REPO"`
+          # The shell GitHub uses is already "-e" hence we need to avoid termination
+          CHECK_FORK=`git remote get-url origin | grep -o "$MAIN_REPO" || echo ""`
 
           GIT_COMMIT=`git rev-parse HEAD`
           HEAD_OF_MASTER=`git rev-parse origin/master`
