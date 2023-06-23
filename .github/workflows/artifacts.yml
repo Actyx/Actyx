@@ -73,19 +73,20 @@ jobs:
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
-      ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
 
     steps:
       - uses: actions/checkout@v3
       - name: Make All JavaScript
         run: make all-js assert-clean
-      - uses: fixpoint/azblob-upload-artifact@v4
-        if: success()
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
           container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{github.sha}}/js-packages
           path: dist/js
+        env:
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
       - run: make clean
 
   make-all-linux:
@@ -99,19 +100,20 @@ jobs:
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
-      ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
 
     steps:
       - uses: actions/checkout@v3
       - name: Make All Linux
         run: make all-linux assert-clean
-      - uses: fixpoint/azblob-upload-artifact@v4
-        if: success()
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
           container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{github.sha}}/linux-binaries
           path: dist/bin
+        env:
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
       - run: make clean
 
   make-all-windows:
@@ -125,7 +127,6 @@ jobs:
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
-      ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
 
     steps:
       - uses: actions/checkout@v3
@@ -133,13 +134,15 @@ jobs:
         run: |
           mkdir -p dist/bin/ &&
           make all-windows assert-clean
-      - uses: fixpoint/azblob-upload-artifact@v4
-        if: success()
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
           container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{github.sha}}/windows-binaries
           path: dist/bin
+        env:
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
       - run: make clean
 
   make-all-macos:
@@ -153,19 +156,21 @@ jobs:
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
-      ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
+
 
     steps:
       - uses: actions/checkout@v3
       - name: Make All MacOS
         run: make all-macos assert-clean
-      - uses: fixpoint/azblob-upload-artifact@v4
-        if: success()
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
           container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{github.sha}}/macos-binaries
           path: dist/bin
+        env:
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
       - run: make clean
 
   make-docker:
@@ -179,18 +184,29 @@ jobs:
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
-      ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
 
     steps:
       - uses: actions/checkout@v3
       - name: Make Docker
         run: |
-          set -e
+          MAIN_REPO="Actyx/Actyx"
+          CHECK_FORK=`git remote get-url origin | grep -o "$MAIN_REPO"`
+
           GIT_COMMIT=`git rev-parse HEAD`
-          head_of_master=`git rev-parse origin/master`
-          MASTER_TAG=""
-          make docker-push-actyx
+          HEAD_OF_MASTER=`git rev-parse origin/master`
+
+          # Check if we're running on the main repo as well
+          # This stops forks from pushing using "latest" by default
+          if [ "$CHECK_FORK" == "Actyx/Actyx" && "$GIT_COMMIT" == "$HEAD_OF_MASTER"]; then
+            echo "Running on Actyx/Actyx HEAD of master ($(HEAD_OF_MASTER)), tagging image as latest"
+            make -e ADDITIONAL_DOCKER_ARGS="--tag actyx/actyx-ci:actyx-latest" docker-push-actyx
+          else
+            make docker-push-actyx
+          fi
+
           make assert-clean
+        env:
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
 
   make-all-android:
     runs-on: [self-hosted, Linux]
@@ -203,20 +219,22 @@ jobs:
       ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
-      ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
 
     steps:
       - uses: actions/checkout@v3
       - name: Make All Android
         run: make all-android assert-clean
-      - uses: fixpoint/azblob-upload-artifact@v4
-        if: success()
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
           container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{github.sha}}/android-binaries
           path: dist/bin
+        env:
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
       - run: make clean
+
 
   make-node-manager-linux:
     runs-on: [self-hosted, Linux]
@@ -234,8 +252,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Make Node Manager Linux
         run: make node-manager-mac-linux
-      - uses: fixpoint/azblob-upload-artifact@v4
-        if: success()
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
           container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
@@ -261,8 +279,8 @@ jobs:
           fetch-depth: 0
       - name: Make Node Manager Windows
         run: make node-manager-win
-      - uses: fixpoint/azblob-upload-artifact@v4
-        if: success()
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
           container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
@@ -294,18 +312,20 @@ jobs:
   #       run: brew install make protobuf
   #     - name: Make Node Manager Mac
   #       run: gmake node-manager-mac-linux
-  #     - uses: fixpoint/azblob-upload-artifact@v4
-  #       if: success()
+  #     - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+  #       if: ${{ success() }}
   #       with:
   #         connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
   #         container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
   #         name: node-manager-mac
   #         path: js/node-manager/dist/artifacts
 
+
   integration:
     runs-on: [self-hosted, Linux]
     needs:
-      - calculate-actyx-version # To get the env var
+      # We need to depend on this one to be able to access the "needs" context
+      - calculate-actyx-version
       - make-all-js
       - make-all-linux
       - make-all-windows
@@ -315,6 +335,7 @@ jobs:
       - make-node-manager-windows
       - make-docker
       # - make-node-manager-macos
+
     env:
       ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
       ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
@@ -327,13 +348,13 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: fixpoint/azblob-download-artifact@v3
+      - uses: fixpoint/azblob-download-artifact@7a08e6efcdcaf918c897a5b9a4a9011d30ddeb38
         with:
           connection-string: ${{ secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING }}
           container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{ github.sha }}
           path: pipeline-artifacts
-      - name: Massage artifact directory structure
+      - name: Setup the binaries directory structure
         run: |
           set -e
           mkdir -p dist/bin
@@ -342,7 +363,7 @@ jobs:
           cd ../dist
           find -type f -exec chmod +x {} \;
           cp -r bin/linux-x86_64 bin/current
-      - name: npm test
+      - name: Run the integration tests (npm run test:ci)
         run: |
           set -e
           make prepare-js all-js
@@ -352,25 +373,47 @@ jobs:
           npm install
           npm run test:ci
         env:
+          # To launch the AWS instances
           AWS_ACCESS_KEY_ID:  ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # For the integration tests
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
           AUTH_TEST_SIGNATURE: ${{ secrets.AUTH_TEST_SIGNATURE }}
           AUTH_TEST_LICENSE: ${{ secrets.AUTH_TEST_LICENSE }}
           AUTH_TEST_NODE_LICENSE: ${{ secrets.AUTH_TEST_NODE_LICENSE }}
-          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
+          # To download the private images from DockerHub
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      - uses: fixpoint/azblob-upload-artifact@v4
-        if: failure()
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        if: ${{ failure() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
           container: test-logs
           name: ${{github.sha}}/logs
           path: integration/logs
 
+  integration-cleanup:
+    runs-on: [self-hosted, Linux]
+    needs:
+      - integration
+    if: ${{ always() }}
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          set -e
+          make prepare-js all-js
+          cd integration
+          source ~/.nvm/nvm.sh
+          nvm use
+          npm install
+          npm run cleanup 43200
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
   notify-discord:
     runs-on: [self-hosted, Linux]
-    if: always()
+    if: ${{ always() }}
 
     needs:
       - make-all-js
@@ -382,9 +425,10 @@ jobs:
       - make-node-manager-windows
       # - make-node-manager-macos
       - integration
+      - integration-cleanup
 
     steps:
-      - uses: jmg-duarte/discord-workflow-status@v0.0.1
+      - uses: jmg-duarte/discord-workflow-status@v0.0.2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}
