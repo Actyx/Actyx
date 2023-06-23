@@ -169,7 +169,6 @@ jobs:
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
 
-
     steps:
       - uses: actions/checkout@v3
       - name: Make All MacOS
@@ -346,8 +345,8 @@ jobs:
       - make-all-android
       - make-node-manager-linux
       - make-node-manager-windows
+      - make-node-manager-macos
       - make-docker
-      # - make-node-manager-macos
 
     env:
       ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
