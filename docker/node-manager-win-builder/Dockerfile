@@ -12,9 +12,7 @@ RUN useradd --uid 1000 -m -s /bin/bash builder && usermod -L builder && \
     # The original image downloads the wine binaries into /root/.wine,
     # this is incompatible with our "rootless" setup so we need to move it to our user
     # https://askubuntu.com/a/637802
-
-    # TODO: test move
-    cp -R /root/.wine /home/builder/.wine && \
+    mv /root/.wine /home/builder/.wine && \
     chown -R builder /home/builder/.wine
 
 USER builder
