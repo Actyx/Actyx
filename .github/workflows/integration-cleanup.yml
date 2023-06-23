@@ -1,0 +1,37 @@
+name: Periodic AWS instance cleanup
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+
+jobs:
+  integration-cleanup:
+    runs-on: [self-hosted, Linux]
+
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          set -e
+          make prepare-js all-js
+          cd integration
+          source ~/.nvm/nvm.sh
+          nvm use
+          npm install
+          npm run cleanup 43200
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  notify-discord:
+    runs-on: [self-hosted, Linux]
+    if: ${{ always() }}
+
+    needs:
+      - integration-cleanup
+
+    steps:
+      - uses: jmg-duarte/discord-workflow-status@v0.0.2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}
+

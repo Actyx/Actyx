@@ -1,35 +1,47 @@
 name: Generate Artifacts
 
 # This workflow assumes we are using a single PC for most of the tasks.
-# When scaling, it might be the case that this works out of the box, or not,
-# I have no clue how the GitHub runners handle the `needs` dependency between workers.
+
+# Summary of the required secrets:
+# - Integration tests
+#   - ACTYX_PUBLIC_KEY
+#   - AUTH_TEST_LICENSE
+#   - AUTH_TEST_NODE_LICENSE
+#   - AUTH_TEST_SIGNATURE
+# - AWS Instance Management
+#   - AWS_ACCESS_KEY_ID
+#   - AWS_SECRET_ACCESS_KEY
+# - Artifact Upload
+#   - AZURE_BLOB_STORAGE_CONNECTION_STRING
+#   - DOCKER_PASSWORD
+#   - DOCKER_USERNAME
+# - Build Notifications
+#   - DISCORD_WEBHOOK
+# - Documentation Build
+#   - NETLIFY_SITE_ID
+#   - NETLIFY_TOKEN
+
+# Summary of the required variables:
+# - Artifact upload
+#   - BLOB_STORAGE_CONTAINER_CI
+
+# Additional note:
+# Actions of "untrusted" sources should be added along with the respective commit hash
+# this avoids tag switching, etc.
+# See the following link for more information:
+# - https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions
 
 on:
-  # - push
+  push:
+    branches:
+      - master
   workflow_dispatch:
-    # inputs:
-      # NOTE(duarte): Maybe add this option
-      # release:
-      #   description: Generate and publish artifacts
-      #   type: boolean
-      #   default: false
-      # NOTE(duarte): Some cost analysis needs to be made for the MacOS case
-      # buildMacOS:
-      #   description: Whether to run the Actyx MacOS build process (runs on GitHub's infrastructure)
-      #   type: boolean
-      #   default: false
-
-  # schedule:
-  #   - cron: "0 */6 * * *"
-  # TODO(duarte): figure out why push-branches-master isnt working
 
 env:
-  # IMAGE_VERSION: a1d06897bfcb83cb99d49fb452a87f236489cc93
   BASH_ENV: "~/.bashrc"
   NVM_VERSION: 0.39.3
   RUST_VERSION: 1.65.0
-  # This one could probably belong to the vars context (?)
-  BLOB_STORAGE_CONTAINER_CI: test
+
 
 jobs:
   calculate-actyx-version:
@@ -84,7 +96,7 @@ jobs:
         if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
-          container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{github.sha}}/js-packages
           path: dist/js
       - run: make clean
@@ -111,7 +123,7 @@ jobs:
         if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
-          container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{github.sha}}/linux-binaries
           path: dist/bin
       - run: make clean
@@ -140,7 +152,7 @@ jobs:
         if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
-          container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{github.sha}}/windows-binaries
           path: dist/bin
       - run: make clean
@@ -168,7 +180,7 @@ jobs:
         if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
-          container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{github.sha}}/macos-binaries
           path: dist/bin
       - run: make clean
@@ -231,7 +243,7 @@ jobs:
         if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
-          container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{github.sha}}/android-binaries
           path: dist/bin
       - run: make clean
@@ -257,7 +269,7 @@ jobs:
         if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
-          container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{github.sha}}/node-manager-linux
           path: js/node-manager/dist/artifacts
       - run: make clean
@@ -284,42 +296,42 @@ jobs:
         if: ${{ success() }}
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
-          container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{github.sha}}/node-manager-windows
           path: js/node-manager/dist/artifacts
       - run: make clean
 
-  # make-node-manager-macos:
-  #   runs-on: macos-12
-  #   needs: calculate-actyx-version
+  make-node-manager-macos:
+    runs-on: macos-12
+    needs: calculate-actyx-version
 
-  #   env:
-  #     PYTHON_PATH: /usr/local/bin/python3
+    env:
+      PYTHON_PATH: /usr/local/bin/python3
 
-  #     ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
-  #     ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
-  #     ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
-  #     ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
-  #     ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
-  #     ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
+      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
+      ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
+      ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
+      ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
+      ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
 
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Setup NVM
-  #       run: curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/v$NVM_VERSION/install.sh" | bash
-  #     - name: Setup Rust
-  #       run: curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain "$RUST_VERSION" -y
-  #     - name: Install make & protobuf
-  #       run: brew install make protobuf
-  #     - name: Make Node Manager Mac
-  #       run: gmake node-manager-mac-linux
-  #     - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
-  #       if: ${{ success() }}
-  #       with:
-  #         connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
-  #         container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
-  #         name: node-manager-mac
-  #         path: js/node-manager/dist/artifacts
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup NVM
+        run: curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/v$NVM_VERSION/install.sh" | bash
+      - name: Setup Rust
+        run: curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain "$RUST_VERSION" -y
+      - name: Install make & protobuf
+        run: brew install make protobuf
+      - name: Make Node Manager Mac
+        run: gmake node-manager-mac-linux
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        if: ${{ success() }}
+        with:
+          connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
+          name: node-manager-mac
+          path: js/node-manager/dist/artifacts
 
 
   integration:
@@ -352,7 +364,7 @@ jobs:
       - uses: fixpoint/azblob-download-artifact@7a08e6efcdcaf918c897a5b9a4a9011d30ddeb38
         with:
           connection-string: ${{ secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING }}
-          container: ${{ env.BLOB_STORAGE_CONTAINER_CI }}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{ github.sha }}
           path: pipeline-artifacts
       - name: Setup the binaries directory structure
@@ -393,24 +405,6 @@ jobs:
           name: ${{github.sha}}/logs
           path: integration/logs
 
-  integration-cleanup:
-    runs-on: [self-hosted, Linux]
-    needs:
-      - integration
-    if: ${{ always() }}
-    steps:
-      - uses: actions/checkout@v3
-      - run: |
-          set -e
-          make prepare-js all-js
-          cd integration
-          source ~/.nvm/nvm.sh
-          nvm use
-          npm install
-          npm run cleanup 43200
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   notify-discord:
     runs-on: [self-hosted, Linux]
@@ -424,9 +418,8 @@ jobs:
       - make-all-android
       - make-node-manager-linux
       - make-node-manager-windows
-      # - make-node-manager-macos
+      - make-node-manager-macos
       - integration
-      - integration-cleanup
 
     steps:
       - uses: jmg-duarte/discord-workflow-status@v0.0.2
