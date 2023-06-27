@@ -356,3 +356,79 @@ ENDPRAGMA
 
 All properties apart from `payload` are optional, `timestamp` has higher priority than `time` (which has the same syntax as `TIME()` values shown above).
 Note how this lets you test code that depends on specific timestamps.
+
+
+## Optimizing Query Performance
+
+AQL execution, just like any other computation system, is not magical.
+A command is bound to perform better than the other.
+However, figuring out a command's performance in a domain-specific language such as AQL is not as obvious as that of a general-purpose language such as C++, JavaScript, Rust, etc.
+
+This guide provides insight into how AQL queries affect performance without delving too much into the internal details.
+
+### Prioritize Filter by Tags
+
+There are two ways to filter events in Actyx:
+
+- `FROM`: filters by tags
+- `FILTER`: filters by content 
+
+As a rule of thumb, the filter should be written in a way that **as many events as possible are filtered out with tags before those are filtered out with contents** for the best performance.
+The reason is that tag expressions are evaluated solely on the event stream indexes while filtering based on content requires the actual event data to be read, decrypted, decompressed, and decoded.
+
+Examine the example below: querying purchase order events emitted by a certain user in a certain price range.
+
+```text
+FROM 'purchase-order'
+FILTER _.issuedBy = 'my_id' & _.price >= 1000 & _.price < 2000
+```
+
+Imagine that at the time of the query, `FROM 'purchase-order'` yields 10000 events, only 300 of which meet the `issuedBy` criterion.
+Optimization by reducing the number of events read, decrypted, decompressed, and decoded.
+`.issuedBy` is a string compared with `=` operator, an opportunity to use tags.
+Simply publish the event with an accompanying tag `purchase-order:issued-by:[some_id]`; this allows you to write this AQL to replace the tag filter as follows.
+
+```text
+FROM 'purchase-order' & 'purchase-order:issued-by:my_id'
+FILTER _.price >= 1000 & _.price < 2000
+```
+
+The new AQL above yields the same result, but the decoding before the `FILTER` line only occurs to the 300 events. 
+
+:::note The Effect of the Events' Expected Lifetime to the Migration Strategy
+
+Improvements of this kind require changes in the published tags and the AQL.
+Changing the AQL may prevent the new version of the application code to read the old events that are not affected by the new accompanying tag.
+
+If the events in question are short-lived (e.g. 1 day at max),  new tag can be added first.
+Later, after all, old events are expected to be discarded, the new AQL can be rolled out.
+
+If the events in question are intended to be persisted long-term, the application needs to be able to query both the old events and the new events.
+Therefore, retaining the old code is necessary.
+Appending a version number in the tag (e.g. an event is simultaneously tagged with 'purchase-order' and 'purchase-order:v1') may be necessary, therefore the old query does not accidentally query the new events, and vice versa. 
+
+:::
+
+### Discard Most Possible Events Before Sub-Queries
+
+[A Sub-Query](#subquery-sub-queries) in an AQL is executed for each event found by the previous commands.
+
+```text
+FROM 'purchase-order' & 'purchase-order:issued-by:some_id'
+LET revocations := FROM `purchase-order:{_.id}` FILTER _.type = 'revoked' END
+LET revoked := IsDefined(revocations[0])
+FILTER _.price >= 1000 & _.price < 2000 & !revoked
+```
+
+The line "LET revocations ..." invoke the sub-query as many as the number of events found in the `FROM` line.
+Optimization can be done by splitting the FILTER into two parts.
+
+```text
+FROM 'purchase-order' & 'purchase-order:issued-by:some_id'
+FILTER _.price >= 1000 & _.price < 2000
+LET revocations := FROM `purchase-order:{_.id}` FILTER _.type = 'revoked' END
+LET revoked := IsDefined(revocations[0])
+FILTER !revoked
+```
+
+With the above AQL, the `LET revocation ...` line will have a reduced number of events, consequently, a reduced number of sub-queries too.
