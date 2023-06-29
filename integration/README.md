@@ -17,8 +17,6 @@ You can provide a dedicated git hash to test as an environment variable
 
 ## Dev
 
-<!-- TODO: test:debug -->
-
 | Scripts            | Description                                              |
 |--------------------|----------------------------------------------------------|
 | npm run test       | Run test suites EC2 instances and local Docker           |

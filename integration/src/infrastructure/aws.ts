@@ -119,14 +119,14 @@ export const createInstance = async (
   // dirty hack to try and rotate the availability zone if we can't allocate instances
   // on the default one, required because RunInstances does not allow setting a VPC
   // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_RunInstances.html
-  let instance;
-  try{
+  let instance
+  try {
     console.log(`[${Date.now().toLocaleString('en-US')}] Executing run instances command`)
     instance = (await ec2.send(new RunInstancesCommand(withTags))).Instances?.[0]
   } catch (e) {
     if ((e as any).code === 'InsufficientInstanceCapacity') {
-      console.log("Rotating to the subnet in eu-central-1c")
-      withTags["SubnetId"] = "subnet-0f6bd6dc4ce64810e"
+      console.log('Rotating to the subnet in eu-central-1c')
+      withTags['SubnetId'] = 'subnet-0f6bd6dc4ce64810e'
       instance = (await ec2.send(new RunInstancesCommand(withTags))).Instances?.[0]
     } else {
       throw e
@@ -208,8 +208,8 @@ export const cleanUpInstances = async (ec2: EC2, cutoff: number): Promise<void> 
   const idList = old.flatMap((reservation) =>
     (reservation.Instances || []).flatMap((instance) =>
       instance.InstanceId !== undefined &&
-      instance.LaunchTime !== undefined &&
-      instance.LaunchTime.getTime() < cutoff
+        instance.LaunchTime !== undefined &&
+        instance.LaunchTime.getTime() < cutoff
         ? [instance.InstanceId]
         : [],
     ),
