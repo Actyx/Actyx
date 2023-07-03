@@ -289,36 +289,36 @@ jobs:
           path: js/node-manager/dist/artifacts
       - run: make clean
 
-  # make-node-manager-macos:
-  #   runs-on: macos-12
-  #   needs: calculate-actyx-version
+  make-node-manager-macos:
+    runs-on: macos-12
+    needs: calculate-actyx-version
 
-  #   env:
-  #     PYTHON_PATH: /usr/local/bin/python3
+    env:
+      PYTHON_PATH: /usr/local/bin/python3
 
-  #     ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
-  #     ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
-  #     ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
-  #     ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
-  #     ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
-  #     ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
+      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
+      ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
+      ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
+      ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
+      ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
 
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Setup NVM
-  #       run: curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/v$NVM_VERSION/install.sh" | bash
-  #     - name: Setup Rust
-  #       run: curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain "$RUST_VERSION" -y
-  #     - name: Install make & protobuf
-  #       run: brew install make protobuf
-  #     - name: Make Node Manager Mac
-  #       run: gmake node-manager-mac-linux
-  #     - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
-  #       with:
-  #         connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
-  #         container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
-  #         name: node-manager-mac
-  #         path: js/node-manager/dist/artifacts
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup NVM
+        run: curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/v$NVM_VERSION/install.sh" | bash
+      - name: Setup Rust
+        run: curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain "$RUST_VERSION" -y
+      - name: Install make & protobuf
+        run: brew install make protobuf
+      - name: Make Node Manager Mac
+        run: gmake node-manager-mac-linux
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        with:
+          connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
+          name: node-manager-mac
+          path: js/node-manager/dist/artifacts
 
 
   integration:
@@ -398,14 +398,6 @@ jobs:
     if: ${{ always() }}
 
     needs:
-      # - make-all-js
-      # - make-all-linux
-      # - make-all-windows
-      # - make-all-macos
-      # - make-all-android
-      # - make-node-manager-linux
-      # - make-node-manager-windows
-      # - make-node-manager-macos
       - integration
 
     steps:
