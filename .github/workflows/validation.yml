@@ -87,10 +87,9 @@ jobs:
 
   notify-discord:
     runs-on: [self-hosted, Linux]
-    if: always()
+    if: ${{ always() }}
 
     needs:
-      - check
       - check-android
       - validate
       - validate-docs
