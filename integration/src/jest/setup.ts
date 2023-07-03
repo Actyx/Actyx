@@ -243,7 +243,7 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   let key: AwsKey | undefined = undefined
   let runIdentifier = 'local-run'
   try {
-    ec2 = new EC2Client({ region: 'eu-central-1' })
+    ec2 = new EC2Client({ region: 'eu-central-1', logger: console, retryMode: "adaptive" })
     key = await createKey(config, ec2)
     runIdentifier = key.keyName
   } catch (e) {
@@ -279,7 +279,13 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
    * Create all the nodes as described in the settings.
    */
   try {
-    for (const node of await Promise.all(config.hosts.map(createNode))) {
+    let nodePromises = []
+    for (const host of config.hosts) {
+      nodePromises.push(createNode(host))
+      // Poor man's sleep
+      await (new Promise(r => setTimeout(r, 1000)))
+    }
+    for (const node of await Promise.all(nodePromises)) {
       axNodeSetup.nodes.push(node)
     }
   } catch (e) {

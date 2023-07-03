@@ -24,6 +24,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Validate ${{matrix.product}}
         run: make validate-${{matrix.product}} assert-clean
+      - run: make clean
 
   check-android:
     runs-on: [self-hosted, Linux]
@@ -36,6 +37,7 @@ jobs:
           ./jvm/os-android/bin/create-dummy-keystore.sh
           cat jvm/os-android/actyx-local/actyx.properties
           make validate-os-android assert-clean
+      - run: make clean
 
   validate:
     runs-on: [self-hosted, Linux]
@@ -51,6 +53,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Validate ${{matrix.product}}
         run: make validate-${{matrix.product}} assert-clean
+      - run: make clean
 
   validate-docs:
     runs-on: [self-hosted, Linux]
@@ -80,19 +83,19 @@ jobs:
           npm run build
           npm run deploy:draft "Validation pipeline"
           make -C ../.. assert-clean
+      - run: make clean
 
   notify-discord:
     runs-on: [self-hosted, Linux]
-    if: always()
+    if: ${{ always() }}
 
     needs:
-      - check
       - check-android
       - validate
       - validate-docs
 
     steps:
-      - uses: jmg-duarte/discord-workflow-status@v0.0.2
+      - uses: jmg-duarte/discord-workflow-status@5a826a3e649f9d1157507494d35811ec2f84380c
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}

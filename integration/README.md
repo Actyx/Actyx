@@ -17,11 +17,11 @@ You can provide a dedicated git hash to test as an environment variable
 
 ## Dev
 
-| Scripts          | Description                                              |
-|------------------|----------------------------------------------------------|
-| npm test         | Run test suites EC2 instances and local Docker           |
-| npm test:debug   | Run test suites using debugging support built into Node. |
-| npm run lint:fix | Automatically fix lint issues                            |
+| Scripts            | Description                                              |
+|--------------------|----------------------------------------------------------|
+| npm run test       | Run test suites EC2 instances and local Docker           |
+| npm run test:debug | Run test suites using debugging support built into Node. |
+| npm run lint:fix   | Automatically fix lint issues                            |
 
 Use bash script `./docker-build-tag.sh` to automatically build Docker container with latest git hash commit and appropriate tag.
 

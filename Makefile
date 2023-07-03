@@ -66,7 +66,7 @@ export BUILD_RUST_TOOLCHAIN ?= 1.65.0
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := a1d06897bfcb83cb99d49fb452a87f236489cc93
+export LATEST_STABLE_IMAGE_VERSION := dfd0ff4c17c563c8c92739e40b3ff838e1ce8c2b
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -411,7 +411,7 @@ node-manager-win:
 	  -w /src/js/node-manager \
 	  --rm \
 	  actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
-	  bash -c "source /root/.nvm/nvm.sh --no-use && nvm install && npm ci && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
+	  bash -c "source /home/builder/.nvm/nvm.sh --no-use && nvm install && npm ci && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
 
 node-manager-mac-linux:
 	cd js/node-manager && \
@@ -583,10 +583,12 @@ dist/bin/actyx.apk: jvm/os-android/app/build/outputs/bundle/release/app-release.
       java -jar /usr/local/lib/bundletool.jar build-apks \
 				--bundle /src/$< \
 				--output=/src/dist/bin/actyx.apks \
-				--ks=/src/jvm/os-android/actyx-local/axosandroid.jks \
-				--ks-key-alias=axosandroid \
-				--ks-pass=pass:$(shell grep actyxKeyPassword jvm/os-android/actyx-local/actyx.properties|cut -f2 -d\") \
 				--mode=universal
+				# Disable signing, for more information refer to:
+				# https://developer.android.com/tools/bundletool#generate_apks
+				# --ks=/src/jvm/os-android/actyx-local/axosandroid.jks \
+				# --ks-key-alias=axosandroid \
+				# --ks-pass=pass:$(shell grep actyxKeyPassword jvm/os-android/actyx-local/actyx.properties|cut -f2 -d\") \
 	unzip -o dist/bin/actyx.apks universal.apk
 	mv -f universal.apk dist/bin/actyx.apk
 
@@ -646,3 +648,13 @@ docker-push-actyx:
 		--tag actyx/actyx-ci:actyx-$(GIT_COMMIT) $(ADDITIONAL_DOCKER_ARGS) \
 		-f docker/actyx/Dockerfile \
 		.
+
+# Previous docker recipes are a bit too complex due to the use of loops etc,
+# the following recipe aims to be dead simple, with the following goal:
+# Build and push the images with build_and_push.sh scripts
+.PHONY: docker-build-and-push
+docker-build-and-push: assert-clean
+	git rev-parse HEAD
+	cd docker/buildrs && bash ./build_and_push.sh
+	cd docker/musl && bash ./build_and_push.sh
+	cd docker/node-manager-win-builder && bash ./build_and_push.sh

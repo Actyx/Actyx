@@ -6,14 +6,24 @@ set -ex
 
 help() {
     echo "Usage: "
-    echo "  ./setup_agent.sh <AGENT_N> <REPO_OWNER> <REPO_NAME> <REGISTRATION_TOKEN>"
-    exit
+    echo "  ./setup_agent.sh [-f <RUNNERS_FOLDER_PREFIX>] <AGENT_N> <REPO_OWNER> <REPO_NAME> <REGISTRATION_TOKEN>"
+    exit 1
 }
 
 if [ "${EUID:-$(id -u)}" -eq 0 ]; then
     echo "This script cannot be run as root!"
     help
 fi
+
+RUNNERS_FOLDER_PREFIX="gh-runner"
+while getopts 'f:' flag; do
+  case "${flag}" in
+    f) RUNNERS_FOLDER_PREFIX="${OPTARG}" ;;
+    *) error "Unexpected option ${flag}" ;;
+  esac
+done
+# https://stackoverflow.com/a/26295865
+shift $((OPTIND-1))
 
 if [[ $# -ne 4 ]]; then
     help
@@ -25,7 +35,7 @@ REPO_OWNER=$2
 REPO_NAME=$3
 REGISTRATION_TOKEN=$4
 
-RUNNER_FOLDER="gh-runner-$AGENT_N"
+RUNNER_FOLDER="$RUNNERS_FOLDER_PREFIX-$AGENT_N"
 
 mkdir "$HOME/$RUNNER_FOLDER"
 # Change directory to the runner folder, keeping track of the previous one
@@ -42,9 +52,6 @@ wget -qO- "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION
     --name gha-"$AGENT_N" \
     --url "https://github.com/${REPO_OWNER}/${REPO_NAME}" \
     --token "${REGISTRATION_TOKEN}"
-
-# shellcheck source=/dev/null
-# . "$HOME"/.nvm/nvm.sh
 
 # shellcheck source=/dev/null
 source "$HOME/.cargo/env"

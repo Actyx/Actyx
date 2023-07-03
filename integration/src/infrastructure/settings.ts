@@ -108,13 +108,14 @@ const ensureBinaryExists = async (os: OS, p: string): Promise<string> => {
     const build = (async () => {
       if (os === 'windows') {
         if (!fs.existsSync(p)) {
-          throw new Error('unable to make on Windows')
+          throw new Error(`unable to make on Windows (${p} was not found)`)
         }
         return p
       }
-      const key =
-        process.env['ACTYX_PUBLIC_KEY'] ||
-        (await execaCommand('vault kv get -field=public secret/sec.actyx/signing/actyx')).stdout
+      const key = process.env['ACTYX_PUBLIC_KEY']
+      if (key === undefined) {
+        throw new Error('environment variable "ACTYX_PUBLIC_KEY" is not set')
+      }
       const env = { ACTYX_PUBLIC_KEY: key }
       const cmd = `make ${path.relative('..', p)}`
       const cwd = path.resolve('..')
