@@ -30,7 +30,7 @@ jobs:
       - integration-cleanup
 
     steps:
-      - uses: jmg-duarte/discord-workflow-status@v0.0.2
+      - uses: jmg-duarte/discord-workflow-status@5a826a3e649f9d1157507494d35811ec2f84380c
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}

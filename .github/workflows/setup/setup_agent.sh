@@ -57,8 +57,6 @@ wget -qO- "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION
 source "$HOME/.cargo/env"
 
 ./env.sh
-# https://learn.microsoft.com/en-us/azure/devops/pipelines/agents/linux-agent?view=azure-devops#service-update-environment-variables
-echo "VAULT_ADDR=https://vault.actyx.net" >> .env
 
 # Restore the original directory
 cd -
