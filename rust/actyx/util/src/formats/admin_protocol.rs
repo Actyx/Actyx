@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::version::NodeVersion;
 
 use super::ActyxOSResult;
@@ -54,6 +56,10 @@ pub enum AdminRequest {
     SettingsUnset {
         scope: settings::Scope,
     },
+    TopicLs,
+    TopicDelete {
+        name: String,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -65,6 +71,8 @@ pub enum AdminResponse {
     SettingsSchemaResponse(serde_json::Value),
     SettingsScopesResponse(Vec<String>),
     SettingsUnsetResponse,
+    TopicLsResponse(TopicLsResponse),
+    TopicDeleteResponse(TopicDeleteResponse),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -146,3 +154,31 @@ pub struct PingStats {
     pub failures: u32,
     pub failure_rate: u32,
 }
+
+type TopicName = String;
+type TopicSize = i64;
+
+/// Request for the list of topics in a node.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TopicLsRequest;
+
+/// Response for the list of topics in a node.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TopicLsResponse {
+    pub node_id: NodeId,
+    pub topics: HashMap<TopicName, TopicSize>,
+}
+
+/// Request to delete a given topic in a node.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TopicDeleteRequest {
+    pub topic: String,
+}
+
+/// Response to the deletion of a topic in a node.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TopicDeleteResponse;

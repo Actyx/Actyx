@@ -420,6 +420,8 @@ fn inject_admin_event(state: &mut State, event: RequestReceived<AdminProtocol>) 
                 |tx| ExternalEvent::SettingsRequest(SettingsRequest::UnsetSettings { scope, response: tx }),
                 |_| AdminResponse::SettingsUnsetResponse,
             ),
+            AdminRequest::TopicLs => todo!(),
+            AdminRequest::TopicDelete { name } => todo!(),
         };
     }
 }
