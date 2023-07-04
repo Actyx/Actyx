@@ -74,6 +74,7 @@ jobs:
       ACTYX_VERSION_TSSDK: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_RUSTSDK }}
 
+
   make-all-js:
     runs-on: [self-hosted, Linux]
     needs: calculate-actyx-version
@@ -99,6 +100,7 @@ jobs:
           name: ${{github.sha}}/js-packages
           path: dist/js
       - run: make clean
+
 
   make-all-linux:
     runs-on: [self-hosted, Linux]
@@ -126,6 +128,7 @@ jobs:
           path: dist/bin
       - run: make clean
 
+
   make-all-windows:
     runs-on: [self-hosted, Linux]
     needs: calculate-actyx-version
@@ -152,6 +155,7 @@ jobs:
           path: dist/bin
       - run: make clean
 
+
   make-all-macos:
     runs-on: [self-hosted, Linux]
     needs: calculate-actyx-version
@@ -177,6 +181,7 @@ jobs:
           name: ${{github.sha}}/macos-binaries
           path: dist/bin
       - run: make clean
+
 
   make-docker:
     runs-on: [self-hosted, Linux]
@@ -213,6 +218,7 @@ jobs:
           make assert-clean
         env:
           ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
+
 
   make-all-android:
     runs-on: [self-hosted, Linux]
@@ -265,6 +271,7 @@ jobs:
           path: js/node-manager/dist/artifacts
       - run: make clean
 
+
   make-node-manager-windows:
     runs-on: [self-hosted, Linux]
     needs: calculate-actyx-version
@@ -288,6 +295,7 @@ jobs:
           name: ${{github.sha}}/node-manager-windows
           path: js/node-manager/dist/artifacts
       - run: make clean
+
 
   make-node-manager-macos:
     runs-on: macos-12
@@ -393,6 +401,22 @@ jobs:
           path: integration/logs
 
 
+  create-release-candidate:
+    runs-on: [self-hosted, Linux]
+    if: ${{ github.ref == 'refs/heads/master' }}
+
+    needs:
+      - integration
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Create a release candidate
+        run: cargo run --release -- release
+        working-directory: rust/release
+
+
   notify-discord:
     runs-on: [self-hosted, Linux]
     if: ${{ always() }}
@@ -405,3 +429,4 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}
+
