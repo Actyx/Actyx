@@ -422,7 +422,7 @@ jobs:
         # Requires the `gh` tool (duh!)
         # https://github.com/cli/cli/blob/trunk/docs/install_linux.md
         # Explanation - create a PR from master to RELEASE_BRANCH with the provided title
-        run: gh pr create --base master --head ${{steps.create-rc.outputs.RELEASE_BRANCH}} --title "Actyx Release"
+        run: gh pr create --base master --head ${{steps.create-rc.outputs.RELEASE_BRANCH}} --fill
         # The GitHub CLI reads this value to login automatically
         # https://cli.github.com/manual/gh_auth_login
         env:
