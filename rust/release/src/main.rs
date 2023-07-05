@@ -4,7 +4,9 @@ use clap::Parser;
 use repo::RepoWrapper;
 use semver::Version;
 use std::{
+    env,
     fmt::Write,
+    fs::OpenOptions,
     path::PathBuf,
     sync::atomic::{AtomicBool, Ordering},
 };
@@ -322,6 +324,18 @@ Overview:"#
                 eprint!("4) git push origin/{} ... ", branch_name);
                 repo.push("origin", &branch_name)?;
                 eprintln!("Done.");
+
+                // This is used in GitHub Actions to create a new output
+                // https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-output-parameter
+                if let Ok(env_file) = env::var("GITHUB_OUTPUT") {
+                    use std::io::Write;
+                    let mut file = OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(env_file)
+                        .expect("The file should be able to be created, opened and written to");
+                    writeln!(file, "RELEASE_BRANCH={}", branch_name).expect("The file should be writeable");
+                }
             }
         }
         #[cfg(not(windows))]

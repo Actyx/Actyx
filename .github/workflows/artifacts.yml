@@ -1,4 +1,4 @@
-name: Generate Artifacts
+name: Generate Artifacts and Release Candidate
 
 # This workflow assumes we are using a single PC for most of the tasks.
 
@@ -413,8 +413,20 @@ jobs:
         with:
           fetch-depth: 0
       - name: Create a release candidate
+        id: create-rc
         run: cargo run --release -- release
         working-directory: rust/release
+        # If everything works, it creates a RELEASE_BRANCH output
+      - name: Create a PR
+        if: ${{steps.create-rc.outputs.RELEASE_BRANCH != ''}}
+        # Requires the `gh` tool (duh!)
+        # https://github.com/cli/cli/blob/trunk/docs/install_linux.md
+        # Explanation - create a PR from master to RELEASE_BRANCH with the provided title
+        run: gh pr create --base master --head ${{steps.create-rc.outputs.RELEASE_BRANCH}} --title "Actyx Release"
+        # The GitHub CLI reads this value to login automatically
+        # https://cli.github.com/manual/gh_auth_login
+        env:
+          GH_TOKEN: ${{ github.token }}
 
 
   notify-discord:
