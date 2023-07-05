@@ -332,9 +332,13 @@ Overview:"#
                     let mut file = OpenOptions::new()
                         .create(true)
                         .append(true)
-                        .open(env_file)
-                        .expect("The file should be able to be created, opened and written to");
-                    writeln!(file, "RELEASE_BRANCH={}", branch_name).expect("The file should be writeable");
+                        .open(&env_file)
+                        .expect(&format!(
+                            "The file \"{}\" should be able to be created, opened and written to",
+                            &env_file
+                        ));
+                    writeln!(file, "RELEASE_BRANCH={}", branch_name)
+                        .expect(&format!("The file \"{}\" should be writeable", &env_file));
                 }
             }
         }
