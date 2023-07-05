@@ -1,0 +1,180 @@
+# Validation pipeline
+#
+# For general remarks, see ../README.md
+
+# Disabled in favor of GitHub Actions
+# trigger:
+#   branches:
+#     include:
+#       - master
+#       - proj/*
+# pr:
+#   autoCancel: true
+#   branches:
+#     include:
+#       - master
+#       - proj/*
+
+stages:
+  - stage: validation
+    dependsOn: []
+    displayName: Validation
+    jobs:
+      - job:
+        displayName: validate-js
+        pool:
+          name: Native
+        steps:
+          - checkout: self
+            clean: true
+            path: "s"
+          - bash: |
+              set -e
+              make validate-js assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+      - job:
+        displayName: validate-dotnet
+        pool:
+          name: Native
+        steps:
+          - checkout: self
+            clean: true
+            path: "s"
+          - bash: |
+              set -e
+              make validate-dotnet assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+      - job:
+        displayName: validate-rust
+        pool:
+          name: Native
+        steps:
+          - checkout: self
+            clean: true
+            path: "s"
+          - bash: |
+              set -e
+              make validate-rust assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+      - job:
+        displayName: validate-release
+        pool:
+          name: Native
+        steps:
+          - checkout: self
+            clean: true
+            path: "s"
+          - bash: |
+              set -e
+              make validate-release assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+      - job:
+        displayName: validate-os
+        pool:
+          name: Native
+        steps:
+          - checkout: self
+            clean: true
+            path: "s"
+          - bash: |
+              set -e
+              make validate-os assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+      - job:
+        displayName: validate-netsim
+        pool:
+          name: Native
+        steps:
+          - checkout: self
+            clean: true
+            path: "s"
+          - bash: |
+              set -e
+              make validate-netsim assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+      - job:
+        displayName: validate-os-android
+        pool:
+          name: Native
+        steps:
+          - checkout: self
+            clean: true
+            path: "s"
+          - bash: |
+              set -e
+              azure-pipelines/bin/install-vault.sh
+              chmod -R o+w .
+              ./jvm/os-android/bin/get-keystore.sh
+              cat jvm/os-android/actyx-local/actyx.properties
+              make validate-os-android assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+      - job:
+        displayName: validate node-manager-bindings
+        pool:
+          name: Native
+        steps:
+          - checkout: self
+            clean: true
+            path: "s"
+          - bash: |
+              set -e
+              make validate-node-manager-bindings assert-clean
+            env:
+              BASH_ENV: "~/.bashrc"
+      - job:
+        displayName: make docs
+        pool:
+          name: Native
+        steps:
+          - checkout: self
+            clean: true
+            path: "s"
+          - bash: |
+              set -ex
+              echo "Building cosmos-release"
+              cd rust/release
+              strace -f -e trace=%process cargo test --locked --release --all-features
+              echo "Building docs"
+              cd ../../web/developer.actyx.com/
+              source ~/.nvm/nvm.sh
+              nvm install
+              npm ci
+              npm run build
+              npm run deploy:draft "Validation pipeline"
+              make -C ../.. assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+              NETLIFY_SITE_ID: $(SECRET_NETLIFY_SITE)
+              NETLIFY_ACCESS_TOKEN: $(SECRET_NETLIFY_TOKEN)
+              NETLIFY_AUTH_TOKEN: $(SECRET_NETLIFY_TOKEN)
