@@ -422,6 +422,9 @@ jobs:
         # Requires the `gh` tool (duh!)
         # https://github.com/cli/cli/blob/trunk/docs/install_linux.md
         # Explanation - create a PR from master to RELEASE_BRANCH with the provided title
+        # Relevant code in gh pr create:
+        # - https://github.com/cli/cli/blob/343896fdac9ee1aeee7152f66765832c31cc87f6/pkg/cmd/pr/create/create.go#L284-L290
+        # - https://github.com/cli/cli/blob/343896fdac9ee1aeee7152f66765832c31cc87f6/pkg/cmd/pr/create/create.go#L395-L423
         run: gh pr create --base master --head ${{steps.create-rc.outputs.RELEASE_BRANCH}} --fill
         # The GitHub CLI reads this value to login automatically
         # https://cli.github.com/manual/gh_auth_login
