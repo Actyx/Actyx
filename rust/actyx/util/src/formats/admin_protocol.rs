@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::version::NodeVersion;
 
 use super::ActyxOSResult;
@@ -156,7 +154,7 @@ pub struct PingStats {
 }
 
 type TopicName = String;
-type TopicSize = i64;
+type TopicSize = u64;
 
 /// Request for the list of topics in a node.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -168,7 +166,7 @@ pub struct TopicLsRequest;
 #[serde(rename_all = "camelCase")]
 pub struct TopicLsResponse {
     pub node_id: NodeId,
-    pub topics: HashMap<TopicName, TopicSize>,
+    pub topics: Vec<(TopicName, TopicSize)>,
 }
 
 /// Request to delete a given topic in a node.

@@ -4,7 +4,7 @@ mod private_key;
 
 use cmd::{
     apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
-    swarms::SwarmsOpts, users::UsersOpts,
+    swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
 };
 use std::process::exit;
 use structopt::{
@@ -41,6 +41,7 @@ enum CommandsOpt {
     Users(UsersOpts),
     Internal(InternalOpts),
     Events(EventsOpts),
+    Topics(TopicsOpts),
 }
 
 impl StructOpt for CommandsOpt {
@@ -64,6 +65,7 @@ impl StructOptInternal for CommandsOpt {
             NodesOpts::augment_clap(SubCommand::with_name("nodes")).setting(AppSettings::SubcommandRequiredElseHelp),
             UsersOpts::augment_clap(SubCommand::with_name("users")).setting(AppSettings::SubcommandRequiredElseHelp),
             EventsOpts::augment_clap(SubCommand::with_name("events")).setting(AppSettings::SubcommandRequiredElseHelp),
+            TopicsOpts::augment_clap(SubCommand::with_name("topics").setting(AppSettings::SubcommandRequiredElseHelp)),
         ]);
         if superpowers() {
             app.subcommand(
@@ -89,6 +91,7 @@ impl StructOptInternal for CommandsOpt {
                 Some(CommandsOpt::Internal(InternalOpts::from_clap(matches)))
             }
             ("events", Some(matches)) => Some(CommandsOpt::Events(EventsOpts::from_clap(matches))),
+            ("topics", Some(matches)) => Some(CommandsOpt::Topics(TopicsOpts::from_clap(matches))),
             _ => None,
         }
     }
@@ -130,5 +133,6 @@ async fn main() {
         CommandsOpt::Users(opts) => cmd::users::run(opts, json).await,
         CommandsOpt::Internal(opts) => cmd::internal::run(opts, json).await,
         CommandsOpt::Events(opts) => cmd::events::run(opts, json).await,
+        CommandsOpt::Topics(opts) => cmd::topics::run(opts, json).await,
     }
 }

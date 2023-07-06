@@ -44,6 +44,7 @@ use parking_lot::Mutex;
 use serde_json::json;
 use std::{
     collections::{BTreeMap, BTreeSet},
+    fs::{self, FileType},
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
     sync::Arc,
@@ -68,7 +69,8 @@ use util::formats::{
         decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse,
     },
     events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-    ActyxOSCode, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
+    ActyxOSCode, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse, NodesLsResponse,
+    TopicLsRequest, TopicLsResponse,
 };
 use util::{version::NodeVersion, SocketAddrHelper};
 use zstd::stream::write::Decoder;
@@ -420,10 +422,93 @@ fn inject_admin_event(state: &mut State, event: RequestReceived<AdminProtocol>) 
                 |tx| ExternalEvent::SettingsRequest(SettingsRequest::UnsetSettings { scope, response: tx }),
                 |_| AdminResponse::SettingsUnsetResponse,
             ),
-            AdminRequest::TopicLs => todo!(),
+            AdminRequest::TopicLs => {
+                let topics = list_existing_topics(&state.store_dir);
+
+                let topic_sizes: Vec<_> = topics
+                    .into_iter()
+                    .map(|topic| {
+                        let topic_size = topic_store_size(&state.store_dir, &topic);
+                        (topic, topic_size)
+                    })
+                    .collect();
+                let node_id = state.node_id;
+                // We try to send the response, if the receiver has disconnected
+                // it means no one cares to listen and so we "ignore"
+                channel
+                    .try_send(Ok(AdminResponse::TopicLsResponse(TopicLsResponse {
+                        node_id,
+                        topics: topic_sizes,
+                    })))
+                    .ok();
+            }
             AdminRequest::TopicDelete { name } => todo!(),
         };
     }
+}
+
+fn list_existing_topics(store_dir: &PathBuf) -> Vec<String> {
+    const SQLITE: &str = ".sqlite";
+    const BLOBS: &str = "-blobs";
+    const INDEX: &str = "-index";
+    fs::read_dir(store_dir)
+        .expect("The directory should exist")
+        // Only care for non-errors
+        .filter_map(|entry| entry.ok())
+        // Get the file names - topics can only be utf8, so the lossy conversion should be ok
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        // Filter out the files that do not have the topic
+        .filter_map(|name| {
+            if name.ends_with(SQLITE) {
+                let name = name.split_at(name.len() - SQLITE.len()).0;
+                // This fails on topics actually ending with -blobs or -index
+                // if push comes to shove, instead of returning None,
+                // just collect everything into a set
+                if name.ends_with(BLOBS) || name.ends_with(INDEX) {
+                    None
+                } else {
+                    Some(name.to_owned())
+                }
+            } else {
+                None
+            }
+        })
+        .map(|name| name.to_string())
+        .collect()
+}
+
+fn topic_store_size(store_dir: &PathBuf, store_name: &str) -> u64 {
+    let mut store_size = 0;
+    let topic_files = fs::read_dir(store_dir)
+        .expect("The directory should exist")
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| {
+            // The `file_name` is separate due to being dropped after assignment on:
+            // entry.file_name().to_string_lossy()
+            let file_name = entry.file_name();
+            let name = file_name.to_string_lossy();
+            name.starts_with(store_name)
+        });
+    for path in topic_files {
+        if let Ok(file_type) = path.file_type() {
+            if file_type.is_dir() {
+                // Recursing further is not necessary (at the time of writing)
+                // because we don't expect it to be deeper than this
+                let directory_size: u64 = fs::read_dir(path.path())
+                    .expect("The directory should be valid")
+                    .filter_map(|entry| entry.ok())
+                    .filter_map(|entry| entry.metadata().ok().map(|metadata| metadata.len()))
+                    .sum();
+                tracing::error!("{:?}", directory_size);
+                store_size += directory_size;
+            } else if file_type.is_file() {
+                let file_size = path.metadata().map(|metadata| metadata.len()).unwrap();
+                store_size += file_size;
+            }
+            // We don't need to consider symlinks
+        }
+    }
+    store_size
 }
 
 fn inject_events_event(state: &mut State, event: RequestReceived<EventsProtocol>) {
