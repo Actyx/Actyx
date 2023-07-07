@@ -166,6 +166,7 @@ pub struct TopicLsRequest;
 #[serde(rename_all = "camelCase")]
 pub struct TopicLsResponse {
     pub node_id: NodeId,
+    pub active_topic: TopicName,
     pub topics: Vec<(TopicName, TopicSize)>,
 }
 

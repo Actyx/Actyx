@@ -36,6 +36,7 @@ use util::{
 pub(crate) enum StoreRequest {
     NodesInspect(oneshot::Sender<Result<InspectResponse>>),
     EventsV2(EventStoreRequest),
+    ActiveTopic(oneshot::Sender<String>),
 }
 
 impl std::fmt::Debug for StoreRequest {
@@ -46,6 +47,7 @@ impl std::fmt::Debug for StoreRequest {
                 let req = arg0.to_string();
                 f.debug_tuple("EventsV2").field(&req.as_str()).finish()
             }
+            Self::ActiveTopic(_) => f.debug_tuple("ActiveTopic").finish(),
         }
     }
 }
@@ -178,6 +180,10 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 if let Some(InternalStoreState { rt, events, .. }) = self.state.as_mut() {
                     events.handle(request, rt.handle());
                 }
+            }
+            StoreRequest::ActiveTopic(tx) => {
+                let state = self.state.as_ref().expect("Internal store state should be valid.");
+                let _ = tx.send(state.store.get_topic());
             }
         }
         Ok(())

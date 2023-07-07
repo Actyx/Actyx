@@ -84,12 +84,13 @@ impl AxCliCommand for TopicsList {
     fn pretty(result: Self::Output) -> String {
         let mut table = Table::new();
         table.set_format(*TABLE_FORMAT);
-        table.set_titles(row!["NODE ID", "HOST", "TOPIC", "SIZE"]);
+        table.set_titles(row!["NODE ID", "HOST", "TOPIC", "SIZE", "ACTIVE"]);
         for row in result {
             match row {
                 LsOutput::Reachable { host, response } => {
                     for (name, size) in response.topics {
-                        table.add_row(row![response.node_id, host, name, size]);
+                        let active = if response.active_topic == name { "*" } else { "" };
+                        table.add_row(row![response.node_id, host, name, size, active]);
                     }
                 }
                 LsOutput::Unreachable { host } => {

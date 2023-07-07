@@ -44,7 +44,7 @@ use parking_lot::Mutex;
 use serde_json::json;
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fs::{self, FileType},
+    fs::{self},
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
     sync::Arc,
@@ -69,8 +69,8 @@ use util::formats::{
         decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse,
     },
     events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-    ActyxOSCode, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse, NodesLsResponse,
-    TopicLsRequest, TopicLsResponse,
+    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
+    NodesLsResponse, TopicLsRequest, TopicLsResponse,
 };
 use util::{version::NodeVersion, SocketAddrHelper};
 use zstd::stream::write::Decoder;
@@ -422,28 +422,52 @@ fn inject_admin_event(state: &mut State, event: RequestReceived<AdminProtocol>) 
                 |tx| ExternalEvent::SettingsRequest(SettingsRequest::UnsetSettings { scope, response: tx }),
                 |_| AdminResponse::SettingsUnsetResponse,
             ),
-            AdminRequest::TopicLs => {
-                let topics = list_existing_topics(&state.store_dir);
-
-                let topic_sizes: Vec<_> = topics
-                    .into_iter()
-                    .map(|topic| {
-                        let topic_size = topic_store_size(&state.store_dir, &topic);
-                        (topic, topic_size)
-                    })
-                    .collect();
-                let node_id = state.node_id;
-                // We try to send the response, if the receiver has disconnected
-                // it means no one cares to listen and so we "ignore"
-                channel
-                    .try_send(Ok(AdminResponse::TopicLsResponse(TopicLsResponse {
-                        node_id,
-                        topics: topic_sizes,
-                    })))
-                    .ok();
-            }
+            AdminRequest::TopicLs => handle_topic_ls(state, channel),
             AdminRequest::TopicDelete { name } => todo!(),
         };
+    }
+}
+
+fn handle_topic_ls(state: &mut State, mut channel: mpsc::Sender<Result<AdminResponse, ActyxOSError>>) {
+    let (tx, rx) = oneshot::channel();
+    let send_result = state
+        .store
+        .send(ComponentRequest::Individual(StoreRequest::ActiveTopic(tx)));
+
+    if let Err(error) = send_result {
+        let _ = channel.try_send(Err(ActyxOSError::from(error)));
+    } else {
+        let node_id = state.node_id;
+        let store_dir = state.store_dir.clone();
+        tokio::spawn(async move {
+            let response = match rx.await {
+                Ok(topic) => {
+                    // TODO: this now needs a "respond" like operation where we chain the result of the request
+                    let topics = list_existing_topics(&store_dir);
+                    let topic_sizes: Vec<_> = topics
+                        .into_iter()
+                        .map(|topic| {
+                            let topic_size = topic_store_size(&store_dir, &topic);
+                            (topic, topic_size)
+                        })
+                        .collect();
+                    Ok(AdminResponse::TopicLsResponse(TopicLsResponse {
+                        node_id,
+                        active_topic: topic,
+                        topics: topic_sizes,
+                    }))
+                }
+                Err(error) => {
+                    // From<oneshot::error::RecvError> for ActyxOSError is not implemented
+                    // and implementing it requires adding tokio as a dep to util
+                    // to keep things simple, we just write the code "inline"
+                    Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("Error waiting on channel: {}", error)))
+                }
+            };
+            // We try to send the response, if the receiver has disconnected
+            // it means no one cares to listen and so we "ignore"
+            let _ = channel.try_send(response);
+        });
     }
 }
 
