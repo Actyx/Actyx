@@ -180,4 +180,6 @@ pub struct TopicDeleteRequest {
 /// Response to the deletion of a topic in a node.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct TopicDeleteResponse;
+pub struct TopicDeleteResponse {
+    pub node_id: NodeId,
+}

@@ -4,55 +4,70 @@ use futures::{channel::mpsc, future::join_all, stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicLsResponse};
+use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicDeleteResponse};
 
 use crate::{
-    cmd::consts::TABLE_FORMAT,
+    cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand, KeyPathWrapper},
     node_connection::{connect, mk_swarm, request_single, Task},
     private_key::AxPrivateKey,
 };
 
-use super::{Authority, AxCliCommand, KeyPathWrapper};
+pub struct TopicsDelete;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "connection")]
-pub enum LsOutput {
-    Reachable { host: String, response: TopicLsResponse },
-    Unreachable { host: String },
-    Unauthorized { host: String },
-    Error { host: String, error: ActyxOSError },
+pub enum DeleteOutput {
+    Reachable {
+        host: String,
+        response: TopicDeleteResponse,
+    },
+    Unreachable {
+        host: String,
+    },
+    Unauthorized {
+        host: String,
+    },
+    Error {
+        host: String,
+        error: ActyxOSError,
+    },
 }
 
 // This code is mostly duplicated from `ax/src/cmd/nodes/ls.rs`
-async fn request(timeout: u8, mut conn: mpsc::Sender<Task>, authority: Authority) -> LsOutput {
+async fn request(timeout: u8, mut conn: mpsc::Sender<Task>, authority: Authority, topic_name: String) -> DeleteOutput {
     let host = authority.original.clone();
     let response = tokio::time::timeout(Duration::from_secs(timeout.into()), async move {
         let peer = connect(&mut conn, authority).await?;
-        request_single(&mut conn, move |tx| Task::Admin(peer, AdminRequest::TopicLs, tx), Ok).await
+        request_single(
+            &mut conn,
+            move |tx| Task::Admin(peer, AdminRequest::TopicDelete { name: topic_name }, tx),
+            Ok,
+        )
+        .await
     })
     .await;
     if let Ok(response) = response {
         match response {
-            Ok(AdminResponse::TopicLsResponse(response)) => LsOutput::Reachable { host, response },
-            Ok(response) => LsOutput::Error {
+            Ok(AdminResponse::TopicDeleteResponse(response)) => DeleteOutput::Reachable { host, response },
+            Ok(response) => DeleteOutput::Error {
                 host,
                 error: ActyxOSError::internal(format!("Unexpected response from node: {:?}", response)),
             },
-            Err(error) if error.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => LsOutput::Unreachable { host },
-            Err(error) if error.code() == ActyxOSCode::ERR_UNAUTHORIZED => LsOutput::Unauthorized { host },
-            Err(error) => LsOutput::Error { host, error },
+            Err(error) if error.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => DeleteOutput::Unreachable { host },
+            Err(error) if error.code() == ActyxOSCode::ERR_UNAUTHORIZED => DeleteOutput::Unauthorized { host },
+            Err(error) => DeleteOutput::Error { host, error },
         }
     } else {
         // The difference between this unreachable and the previous lies on the timeout
         // here `ax` is "giving up" and on the previous, the node is actually unreachable
-        LsOutput::Error {
+        DeleteOutput::Error {
             host,
             error: ActyxOSError::new(util::formats::ActyxOSCode::ERR_NODE_UNREACHABLE, "timeout"),
         }
     }
 }
 
-async fn ls_run(opts: LsOpts) -> ActyxOSResult<Vec<LsOutput>> {
+async fn delete_run(opts: DeleteOpts) -> ActyxOSResult<Vec<DeleteOutput>> {
     // Get the auth and timeout parameters
     let identity: AxPrivateKey = (&opts.identity).try_into()?;
     let timeout = opts.timeout;
@@ -63,43 +78,38 @@ async fn ls_run(opts: LsOpts) -> ActyxOSResult<Vec<LsOutput>> {
     Ok(join_all(
         opts.authority
             .into_iter()
-            .map(|a| request(timeout, channel.clone(), a))
+            .map(|a| request(timeout, channel.clone(), a, opts.topic.clone()))
             .collect::<Vec<_>>(),
     )
     .await)
 }
 
-pub struct TopicsList;
+impl AxCliCommand for TopicsDelete {
+    type Opt = DeleteOpts;
 
-impl AxCliCommand for TopicsList {
-    type Opt = LsOpts;
-
-    type Output = Vec<LsOutput>;
+    type Output = Vec<DeleteOutput>;
 
     fn run(opts: Self::Opt) -> Box<dyn futures::Stream<Item = util::formats::ActyxOSResult<Self::Output>> + Unpin> {
-        let requests = Box::pin(ls_run(opts));
+        let requests = Box::pin(delete_run(opts));
         Box::new(stream::once(requests))
     }
 
     fn pretty(result: Self::Output) -> String {
         let mut table = Table::new();
         table.set_format(*TABLE_FORMAT);
-        table.set_titles(row!["NODE ID", "HOST", "TOPIC", "SIZE", "ACTIVE"]);
+        table.set_titles(row!["NODE ID", "HOST", "DELETED"]);
         for output in result {
             match output {
-                LsOutput::Reachable { host, response } => {
-                    for (topic_name, topic_size) in response.topics {
-                        let active = if response.active_topic == topic_name { "*" } else { "" };
-                        table.add_row(row![response.node_id, host, topic_name, topic_size, active]);
-                    }
+                DeleteOutput::Reachable { host, response } => {
+                    table.add_row(row![response.node_id, host, "Y"]);
                 }
-                LsOutput::Unreachable { host } => {
+                DeleteOutput::Unreachable { host } => {
                     table.add_row(row!["Actyx was unreachable on host", host]);
                 }
-                LsOutput::Unauthorized { host } => {
+                DeleteOutput::Unauthorized { host } => {
                     table.add_row(row!["Unauthorized on host", host]);
                 }
-                LsOutput::Error { host, error } => {
+                DeleteOutput::Error { host, error } => {
                     table.add_row(row![format!("Received error \"{}\" from host", error), host]);
                 }
             }
@@ -108,13 +118,16 @@ impl AxCliCommand for TopicsList {
     }
 }
 
-/// List all topics
+/// Delete selected topic
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
-pub struct LsOpts {
+pub struct DeleteOpts {
     /// The IP addresses or <host>:<admin port> of the target nodes.
     #[structopt(name = "NODE", required = true)]
     authority: Vec<Authority>,
+
+    #[structopt(required = true)]
+    topic: String,
     /// The private key file to use for authentication.
     #[structopt(short, long)]
     identity: Option<KeyPathWrapper>,

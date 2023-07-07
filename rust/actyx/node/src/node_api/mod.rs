@@ -44,7 +44,7 @@ use parking_lot::Mutex;
 use serde_json::json;
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fs::{self},
+    fs::{self, read_dir, remove_dir_all},
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
     sync::Arc,
@@ -70,7 +70,7 @@ use util::formats::{
     },
     events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
     ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
-    NodesLsResponse, TopicLsRequest, TopicLsResponse,
+    NodesLsResponse, TopicDeleteResponse, TopicLsRequest, TopicLsResponse,
 };
 use util::{version::NodeVersion, SocketAddrHelper};
 use zstd::stream::write::Decoder;
@@ -423,9 +423,69 @@ fn inject_admin_event(state: &mut State, event: RequestReceived<AdminProtocol>) 
                 |_| AdminResponse::SettingsUnsetResponse,
             ),
             AdminRequest::TopicLs => handle_topic_ls(state, channel),
-            AdminRequest::TopicDelete { name } => todo!(),
+            AdminRequest::TopicDelete { name } => handle_topic_delete(state, channel, name),
         };
     }
+}
+
+fn delete_topic<P: AsRef<Path>>(store_dir: P, topic_name: &str) -> std::io::Result<()> {
+    for entry in fs::read_dir(store_dir)
+        .expect("The directory should exist")
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.file_name().to_string_lossy().starts_with(topic_name))
+    {
+        if let Ok(file_type) = entry.file_type() {
+            if file_type.is_dir() {
+                fs::remove_dir_all(entry.path())?;
+            } else if file_type.is_file() {
+                fs::remove_file(entry.path())?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn handle_topic_delete(
+    state: &mut State,
+    mut channel: mpsc::Sender<Result<AdminResponse, ActyxOSError>>,
+    topic_name: String,
+) {
+    let (tx, rx) = oneshot::channel();
+    let send_result = state
+        .store
+        .send(ComponentRequest::Individual(StoreRequest::ActiveTopic(tx)));
+
+    if let Err(error) = send_result {
+        let _ = channel.try_send(Err(ActyxOSError::from(error)));
+        return;
+    }
+
+    let store_dir = state.store_dir.clone();
+    let node_id = state.node_id;
+
+    tokio::spawn(async move {
+        let response = match rx.await {
+            Ok(active_topic) => {
+                if active_topic == topic_name {
+                    Err(ActyxOSCode::ERR_UNAUTHORIZED.with_message(format!(
+                        "The topic \"{}\" is currently active and cannot be deleted",
+                        active_topic
+                    )))
+                } else {
+                    if let Err(error) = delete_topic(store_dir, &topic_name) {
+                        Err(ActyxOSCode::ERR_INTERNAL_ERROR
+                            .with_message(format!("Failed to delete the topic \"{}\": {}", &topic_name, error)))
+                    } else {
+                        Ok(AdminResponse::TopicDeleteResponse(TopicDeleteResponse { node_id }))
+                    }
+                }
+            }
+            Err(error) => {
+                Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("Error waiting on channel: {}", error)))
+            }
+        };
+        let _ = channel.try_send(response);
+    });
 }
 
 fn handle_topic_ls(state: &mut State, mut channel: mpsc::Sender<Result<AdminResponse, ActyxOSError>>) {
@@ -436,39 +496,40 @@ fn handle_topic_ls(state: &mut State, mut channel: mpsc::Sender<Result<AdminResp
 
     if let Err(error) = send_result {
         let _ = channel.try_send(Err(ActyxOSError::from(error)));
-    } else {
-        let node_id = state.node_id;
-        let store_dir = state.store_dir.clone();
-        tokio::spawn(async move {
-            let response = match rx.await {
-                Ok(topic) => {
-                    // TODO: this now needs a "respond" like operation where we chain the result of the request
-                    let topics = list_existing_topics(&store_dir);
-                    let topic_sizes: Vec<_> = topics
-                        .into_iter()
-                        .map(|topic| {
-                            let topic_size = topic_store_size(&store_dir, &topic);
-                            (topic, topic_size)
-                        })
-                        .collect();
-                    Ok(AdminResponse::TopicLsResponse(TopicLsResponse {
-                        node_id,
-                        active_topic: topic,
-                        topics: topic_sizes,
-                    }))
-                }
-                Err(error) => {
-                    // From<oneshot::error::RecvError> for ActyxOSError is not implemented
-                    // and implementing it requires adding tokio as a dep to util
-                    // to keep things simple, we just write the code "inline"
-                    Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("Error waiting on channel: {}", error)))
-                }
-            };
-            // We try to send the response, if the receiver has disconnected
-            // it means no one cares to listen and so we "ignore"
-            let _ = channel.try_send(response);
-        });
+        return;
     }
+
+    let node_id = state.node_id;
+    let store_dir = state.store_dir.clone();
+    tokio::spawn(async move {
+        let response = match rx.await {
+            Ok(topic) => {
+                // TODO: this now needs a "respond" like operation where we chain the result of the request
+                let topics = list_existing_topics(&store_dir);
+                let topic_sizes: Vec<_> = topics
+                    .into_iter()
+                    .map(|topic| {
+                        let topic_size = topic_store_size(&store_dir, &topic);
+                        (topic, topic_size)
+                    })
+                    .collect();
+                Ok(AdminResponse::TopicLsResponse(TopicLsResponse {
+                    node_id,
+                    active_topic: topic,
+                    topics: topic_sizes,
+                }))
+            }
+            Err(error) => {
+                // From<oneshot::error::RecvError> for ActyxOSError is not implemented
+                // and implementing it requires adding tokio as a dep to util
+                // to keep things simple, we just write the code "inline"
+                Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("Error waiting on channel: {}", error)))
+            }
+        };
+        // We try to send the response, if the receiver has disconnected
+        // it means no one cares to listen and so we "ignore"
+        let _ = channel.try_send(response);
+    });
 }
 
 fn list_existing_topics(store_dir: &PathBuf) -> Vec<String> {
