@@ -44,7 +44,7 @@ use parking_lot::Mutex;
 use serde_json::json;
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fs::{self, read_dir, remove_dir_all},
+    fs,
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
     sync::Arc,
@@ -70,7 +70,7 @@ use util::formats::{
     },
     events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
     ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
-    NodesLsResponse, TopicDeleteResponse, TopicLsRequest, TopicLsResponse,
+    TopicDeleteResponse, TopicLsResponse,
 };
 use util::{version::NodeVersion, SocketAddrHelper};
 use zstd::stream::write::Decoder;
@@ -428,6 +428,7 @@ fn inject_admin_event(state: &mut State, event: RequestReceived<AdminProtocol>) 
     }
 }
 
+/// Delete all topic-related files in the provided store.
 fn delete_topic<P: AsRef<Path>>(store_dir: P, topic_name: &str) -> std::io::Result<()> {
     for entry in fs::read_dir(store_dir)
         .expect("The directory should exist")
@@ -445,6 +446,7 @@ fn delete_topic<P: AsRef<Path>>(store_dir: P, topic_name: &str) -> std::io::Resu
     Ok(())
 }
 
+/// Handle the topic delete admin request.
 fn handle_topic_delete(
     state: &mut State,
     mut channel: mpsc::Sender<Result<AdminResponse, ActyxOSError>>,
@@ -471,13 +473,11 @@ fn handle_topic_delete(
                         "The topic \"{}\" is currently active and cannot be deleted",
                         active_topic
                     )))
+                } else if let Err(error) = delete_topic(store_dir, &topic_name) {
+                    Err(ActyxOSCode::ERR_INTERNAL_ERROR
+                        .with_message(format!("Failed to delete the topic \"{}\": {}", &topic_name, error)))
                 } else {
-                    if let Err(error) = delete_topic(store_dir, &topic_name) {
-                        Err(ActyxOSCode::ERR_INTERNAL_ERROR
-                            .with_message(format!("Failed to delete the topic \"{}\": {}", &topic_name, error)))
-                    } else {
-                        Ok(AdminResponse::TopicDeleteResponse(TopicDeleteResponse { node_id }))
-                    }
+                    Ok(AdminResponse::TopicDeleteResponse(TopicDeleteResponse { node_id }))
                 }
             }
             Err(error) => {
@@ -488,6 +488,7 @@ fn handle_topic_delete(
     });
 }
 
+/// Handle the topic listing admin request.
 fn handle_topic_ls(state: &mut State, mut channel: mpsc::Sender<Result<AdminResponse, ActyxOSError>>) {
     let (tx, rx) = oneshot::channel();
     let send_result = state
@@ -504,7 +505,6 @@ fn handle_topic_ls(state: &mut State, mut channel: mpsc::Sender<Result<AdminResp
     tokio::spawn(async move {
         let response = match rx.await {
             Ok(topic) => {
-                // TODO: this now needs a "respond" like operation where we chain the result of the request
                 let topics = list_existing_topics(&store_dir);
                 let topic_sizes: Vec<_> = topics
                     .into_iter()
@@ -540,9 +540,9 @@ fn list_existing_topics(store_dir: &PathBuf) -> Vec<String> {
         .expect("The directory should exist")
         // Only care for non-errors
         .filter_map(|entry| entry.ok())
-        // Get the file names - topics can only be utf8, so the lossy conversion should be ok
+        // Get the file names - topics can only be utf8, so the lossy conversion should always be ok
         .map(|entry| entry.file_name().to_string_lossy().into_owned())
-        // Filter out the files that do not have the topic
+        // Filter out the files that do not have the topic and return the topic
         .filter_map(|name| {
             if name.ends_with(SQLITE) {
                 let name = name.split_at(name.len() - SQLITE.len()).0;
@@ -558,7 +558,6 @@ fn list_existing_topics(store_dir: &PathBuf) -> Vec<String> {
                 None
             }
         })
-        .map(|name| name.to_string())
         .collect()
 }
 
@@ -578,19 +577,18 @@ fn topic_store_size(store_dir: &PathBuf, store_name: &str) -> u64 {
         if let Ok(file_type) = path.file_type() {
             if file_type.is_dir() {
                 // Recursing further is not necessary (at the time of writing)
-                // because we don't expect it to be deeper than this
+                // because we don't expect it to be deeper than 1 level
                 let directory_size: u64 = fs::read_dir(path.path())
                     .expect("The directory should be valid")
                     .filter_map(|entry| entry.ok())
                     .filter_map(|entry| entry.metadata().ok().map(|metadata| metadata.len()))
                     .sum();
-                tracing::error!("{:?}", directory_size);
                 store_size += directory_size;
             } else if file_type.is_file() {
                 let file_size = path.metadata().map(|metadata| metadata.len()).unwrap();
                 store_size += file_size;
             }
-            // We don't need to consider symlinks
+            // We don't use symlinks so we don't check for them
         }
     }
     store_size

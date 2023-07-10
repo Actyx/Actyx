@@ -54,7 +54,9 @@ pub enum AdminRequest {
     SettingsUnset {
         scope: settings::Scope,
     },
+    /// List all the existing topics in the nodes
     TopicLs,
+    /// Delete the given topic from all nodes
     TopicDelete {
         name: String,
     },
