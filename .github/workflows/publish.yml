@@ -1,0 +1,89 @@
+name: Publish Docs and Releases
+
+on:
+  push:
+    branches:
+      - master
+      - release/*
+    paths-ignore:
+      - 'github/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: [self-hosted, Linux]
+
+    env:
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      NETLIFY_ACCESS_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+
+    defaults:
+      run:
+        working-directory: rust/release
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Prepare publication
+        id: prepare-publication
+        run: |
+          if [[ ${{github.ref }} = refs/heads/master ]]; then
+            echo "Releasing to prod"
+            echo "publication_type=prod" >> "$GITHUB_OUTPUT"
+          elif [[ ${{github.ref }} = refs/heads/release/* ]]; then
+            echo "Releasing a draft"
+            echo "publication_type=draft" >> "$GITHUB_OUTPUT"
+          else
+            echo 'Only "master" and "release/*" branches are allowed'
+            exit 1
+          fi
+
+      - name: Build the release program
+        run: |
+          cargo build --release
+          for p in actyx cli node-manager; do
+            echo "Version history for $p (incl. this release):"
+            ./target/release/cosmos-release versions "$p" --commits
+          done
+
+      - name: Publish the artifacts
+        run: |
+          for p in actyx cli node-manager; do
+            echo "Publishing $p artifacts:"
+            if [[ "${{steps.prepare-publication.outputs.publication_type}}" = public ]]; then
+              RUST_LOG=debug ./target/release/cosmos-release publish "$p"
+            else
+              echo "We are going to do a dry-run of artifact publication since this is DRAFT release"
+              ./target/release/cosmos-release publish "$p" --dry-run
+            fi
+          done
+
+      - name: Publish the documentation
+        working-directory: web/developer.actyx.com
+        run: |
+          source ~/.nvm/nvm.sh
+          echo "Setting up node version"
+          nvm install
+          nvm use
+          echo "Installing doc dependencies"
+          npm ci
+          echo "Building docs"
+          npm run build
+          echo "Deploying docs"
+          npm run deploy:"${{steps.prepare-publication.outputs.publication_type}}" -- "Cosmos publish release for $GITHUB_SHA"
+
+  notify-discord:
+    runs-on: [self-hosted, Linux]
+    if: ${{ always() }}
+
+    needs:
+      - build
+
+    steps:
+      - uses: jmg-duarte/discord-workflow-status@5a826a3e649f9d1157507494d35811ec2f84380c
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}

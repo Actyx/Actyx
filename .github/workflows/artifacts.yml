@@ -17,9 +17,6 @@ name: Generate Artifacts and Release Candidate
 #   - DOCKER_USERNAME
 # - Build Notifications
 #   - DISCORD_WEBHOOK
-# - Documentation Build
-#   - NETLIFY_SITE_ID
-#   - NETLIFY_TOKEN
 
 # Summary of the required variables:
 # - Artifact upload
