@@ -400,7 +400,7 @@ The new AQL above yields the same result, but the decoding before the `FILTER` l
 Improvements of this kind require changes in the published tags and the AQL.
 Changing the AQL may prevent the new version of the application code to read the old events that are not affected by the new accompanying tag.
 
-If the events in question are short-lived (e.g. 1 day at max),  new tag can be added first.
+If the events in question are short-lived (e.g. 1 day at max), new tag can be added first.
 Later, after all, old events are expected to be discarded, the new AQL can be rolled out.
 
 If the events in question are intended to be persisted long-term, the application needs to be able to query both the old events and the new events.
