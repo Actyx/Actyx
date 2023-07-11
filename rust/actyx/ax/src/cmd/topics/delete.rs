@@ -101,7 +101,7 @@ impl AxCliCommand for TopicsDelete {
         for output in result {
             match output {
                 DeleteOutput::Reachable { host, response } => {
-                    table.add_row(row![response.node_id, host, "Y"]);
+                    table.add_row(row![response.node_id, host, if response.deleted { "Y" } else { "" }]);
                 }
                 DeleteOutput::Unreachable { host } => {
                     table.add_row(row!["Actyx was unreachable on host", host]);

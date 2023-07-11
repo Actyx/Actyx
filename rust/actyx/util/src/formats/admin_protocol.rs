@@ -184,4 +184,6 @@ pub struct TopicDeleteRequest {
 #[serde(rename_all = "camelCase")]
 pub struct TopicDeleteResponse {
     pub node_id: NodeId,
+    /// True if any file was deleted.
+    pub deleted: bool,
 }

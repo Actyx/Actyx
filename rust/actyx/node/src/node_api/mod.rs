@@ -429,7 +429,8 @@ fn inject_admin_event(state: &mut State, event: RequestReceived<AdminProtocol>) 
 }
 
 /// Delete all topic-related files in the provided store.
-fn delete_topic<P: AsRef<Path>>(store_dir: P, topic_name: &str) -> std::io::Result<()> {
+fn delete_topic<P: AsRef<Path>>(store_dir: P, topic_name: &str) -> std::io::Result<bool> {
+    let mut deleted = false;
     for entry in fs::read_dir(store_dir)
         .expect("The directory should exist")
         .filter_map(|entry| entry.ok())
@@ -438,12 +439,15 @@ fn delete_topic<P: AsRef<Path>>(store_dir: P, topic_name: &str) -> std::io::Resu
         if let Ok(file_type) = entry.file_type() {
             if file_type.is_dir() {
                 fs::remove_dir_all(entry.path())?;
+                deleted = true;
             } else if file_type.is_file() {
                 fs::remove_file(entry.path())?;
+                deleted = true;
             }
+            // Ignoring symlinks
         }
     }
-    Ok(())
+    Ok(deleted)
 }
 
 /// Handle the topic delete admin request.
@@ -469,15 +473,19 @@ fn handle_topic_delete(
         let response = match rx.await {
             Ok(active_topic) => {
                 if active_topic == topic_name {
-                    Err(ActyxOSCode::ERR_UNAUTHORIZED.with_message(format!(
+                    Err(ActyxOSCode::ERR_INVALID_INPUT.with_message(format!(
                         "The topic \"{}\" is currently active and cannot be deleted",
                         active_topic
                     )))
-                } else if let Err(error) = delete_topic(store_dir, &topic_name) {
-                    Err(ActyxOSCode::ERR_INTERNAL_ERROR
-                        .with_message(format!("Failed to delete the topic \"{}\": {}", &topic_name, error)))
                 } else {
-                    Ok(AdminResponse::TopicDeleteResponse(TopicDeleteResponse { node_id }))
+                    match delete_topic(store_dir, &topic_name) {
+                        Ok(deleted) => Ok(AdminResponse::TopicDeleteResponse(TopicDeleteResponse {
+                            node_id,
+                            deleted,
+                        })),
+                        Err(error) => Err(ActyxOSCode::ERR_INTERNAL_ERROR
+                            .with_message(format!("Failed to delete the topic \"{}\": {}", &topic_name, error))),
+                    }
                 }
             }
             Err(error) => {
