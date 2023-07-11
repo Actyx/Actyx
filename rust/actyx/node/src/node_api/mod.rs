@@ -340,6 +340,13 @@ fn inject_admin_event(state: &mut State, event: RequestReceived<AdminProtocol>) 
             });
         }
         match request {
+            AdminRequest::FutureCompat => {
+                // We try to send the response but if sending fails, it means no one is listening on the other side
+                let _ = channel.try_send(Err(ActyxOSCode::ERR_UNSUPPORTED.with_message(format!(
+                    "Unsupported request, node Actyx version: {}",
+                    NodeVersion::get()
+                ))));
+            }
             AdminRequest::NodesLs => respond(
                 state.node_tx.clone(),
                 channel,

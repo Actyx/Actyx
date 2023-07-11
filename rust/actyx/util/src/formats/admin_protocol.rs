@@ -60,6 +60,9 @@ pub enum AdminRequest {
     TopicDelete {
         name: String,
     },
+    // Without this, the request isn't processed and the client times out
+    #[serde(other)]
+    FutureCompat,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
