@@ -95,13 +95,8 @@ pub trait Codec {
     type Response: Send + Serialize + DeserializeOwned + std::fmt::Debug + 'static;
 
     /// The first protocol name is used for the v2 protocol, the second for v1.
-    fn protocol_info() -> [&'static str; 2];
-    fn info_v1() -> &'static str {
-        Self::protocol_info()[1]
-    }
-    fn info_v2() -> &'static str {
-        Self::protocol_info()[0]
-    }
+    fn info_v1() -> &'static str;
+    fn info_v2() -> &'static [&'static str];
 }
 
 #[derive(

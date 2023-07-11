@@ -15,8 +15,12 @@ impl Codec for EventsProtocol {
     type Request = EventsRequest;
     type Response = EventsResponse;
 
-    fn protocol_info() -> [&'static str; 2] {
-        ["/actyx/events/v3", "/actyx/events/v2"]
+    fn info_v1() -> &'static str {
+        "/actyx/events/v2"
+    }
+
+    fn info_v2() -> &'static [&'static str] {
+        &["/actyx/events/v3"]
     }
 }
 

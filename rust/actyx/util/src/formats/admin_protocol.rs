@@ -28,8 +28,13 @@ pub struct LogQuery {
 impl libp2p_streaming_response::Codec for AdminProtocol {
     type Request = AdminRequest;
     type Response = ActyxOSResult<AdminResponse>;
-    fn protocol_info() -> [&'static str; 2] {
-        ["/actyx/admin/1.1", "/actyx/admin/1.0.0"]
+
+    fn info_v1() -> &'static str {
+        "/actyx/admin/1.0.0"
+    }
+
+    fn info_v2() -> &'static [&'static str] {
+        &["/actyx/admin/1.2", "/actyx/admin/1.1"]
     }
 }
 
