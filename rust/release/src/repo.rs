@@ -61,14 +61,8 @@ impl RepoWrapper {
         Ok(oid)
     }
     pub fn push(&self, remote: &str, branch_name: &str) -> anyhow::Result<()> {
-<<<<<<< Updated upstream
-        if std::env::var("AZURE_HTTP_USER_AGENT").is_ok() || std::env::var("GITHUB_ACTIONS").is_ok() {
-            eprintln!("Running inside Azure Pipelines; shelling out to `git`. Output:");
-            // `git` is properly set up on Azure Pipelines
-=======
         if is_running_in_ci() {
             eprintln!("Running inside CI; shelling out to `git`. Output:");
->>>>>>> Stashed changes
             let mut child = std::process::Command::new("git")
                 .args(["push", remote, branch_name])
                 .spawn()?;
