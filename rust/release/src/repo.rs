@@ -61,9 +61,8 @@ impl RepoWrapper {
         Ok(oid)
     }
     pub fn push(&self, remote: &str, branch_name: &str) -> anyhow::Result<()> {
-        if std::env::var("AZURE_HTTP_USER_AGENT").is_ok() || std::env::var("GITHUB_ACTIONS").is_ok() {
-            eprintln!("Running inside Azure Pipelines; shelling out to `git`. Output:");
-            // `git` is properly set up on Azure Pipelines
+        if is_running_in_ci() {
+            eprintln!("Running inside CI; shelling out to `git`. Output:");
             let mut child = std::process::Command::new("git")
                 .args(["push", remote, branch_name])
                 .spawn()?;
@@ -86,9 +85,8 @@ impl RepoWrapper {
     }
     #[cfg(not(windows))]
     pub fn head_of_origin_master(&self) -> anyhow::Result<Oid> {
-        if std::env::var("AZURE_HTTP_USER_AGENT").is_ok() {
-            eprintln!("Running inside Azure Pipelines; shelling out to `git`. Output:");
-            // `git` is properly set up on Azure Pipelines
+        if is_running_in_ci() {
+            eprintln!("Running inside CI; shelling out to `git`. Output:");
             let mut child = std::process::Command::new("git").args(["remote", "update"]).spawn()?;
             anyhow::ensure!(child.wait()?.success());
             self.0.find_remote("origin")?;
@@ -143,4 +141,8 @@ pub fn get_changes_for_product(
         }
     }
     Ok(changes)
+}
+
+pub fn is_running_in_ci() -> bool {
+    std::env::var("AZURE_HTTP_USER_AGENT").is_ok() || std::env::var("GITHUB_ACTIONS").is_ok()
 }
