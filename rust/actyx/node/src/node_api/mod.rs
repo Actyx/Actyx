@@ -43,7 +43,7 @@ use libp2p_streaming_response::{RequestReceived, StreamingResponse, StreamingRes
 use parking_lot::Mutex;
 use serde_json::json;
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashSet},
     fs,
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
@@ -434,7 +434,12 @@ fn delete_topic<P: AsRef<Path>>(store_dir: P, topic_name: &str) -> std::io::Resu
     for entry in fs::read_dir(store_dir)
         .expect("The directory should exist")
         .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.file_name().to_string_lossy().starts_with(topic_name))
+        .filter(|entry| {
+            let file_name = entry.file_name();
+            let name = file_name.to_string_lossy();
+            // Check if it is one of the expected files otherwise we might delete more than expected
+            is_topic_file(topic_name, &name) || is_topic_blobs(topic_name, &name) || is_topic_index(topic_name, &name)
+        })
     {
         if let Ok(file_type) = entry.file_type() {
             if file_type.is_dir() {
@@ -513,8 +518,10 @@ fn handle_topic_ls(state: &mut State, mut channel: mpsc::Sender<Result<AdminResp
     tokio::spawn(async move {
         let response = match rx.await {
             Ok(topic) => {
-                let topics = list_existing_topics(&store_dir);
-                let topic_sizes: Vec<_> = topics
+                let mut topics = list_existing_topics(&store_dir);
+                // Make list order deterministic, useful for tests and users
+                topics.sort();
+                let topic_sizes = topics
                     .into_iter()
                     .map(|topic| {
                         let topic_size = topic_store_size(&store_dir, &topic);
@@ -540,35 +547,82 @@ fn handle_topic_ls(state: &mut State, mut channel: mpsc::Sender<Result<AdminResp
     });
 }
 
+/// Check if a given file name can be a topic.
+/// Basically, if the file ends in any of the following, it is not a topic:
+/// * `-journal`
+/// * `-shm`
+/// * `-wal`
+/// * `-blobs.sqlite`
+/// * `-index.sqlite`
+/// This works for topics that end
+fn can_be_topic(name: &str) -> bool {
+    !(name.ends_with("-journal")
+        || name.ends_with("-shm")
+        || name.ends_with("-wal")
+        || name.ends_with("-blobs.sqlite")
+        || name.ends_with("-index.sqlite"))
+}
+
 fn list_existing_topics(store_dir: &PathBuf) -> Vec<String> {
-    const SQLITE: &str = ".sqlite";
-    const BLOBS: &str = "-blobs";
-    const INDEX: &str = "-index";
+    const INDEX: &str = "-index.sqlite";
+    const BLOBS: &str = "-blobs.sqlite";
     fs::read_dir(store_dir)
         .expect("The directory should exist")
         // Only care for non-errors
         .filter_map(|entry| entry.ok())
-        // Get the file names - topics can only be utf8, so the lossy conversion should always be ok
-        .map(|entry| entry.file_name().to_string_lossy().into_owned())
-        // Filter out the files that do not have the topic and return the topic
-        .filter_map(|name| {
-            if name.ends_with(SQLITE) {
-                let name = name.split_at(name.len() - SQLITE.len()).0;
-                // This fails on topics actually ending with -blobs or -index
-                // if push comes to shove, instead of returning None,
-                // just collect everything into a set
-                if name.ends_with(BLOBS) || name.ends_with(INDEX) {
-                    None
-                } else {
-                    Some(name.to_owned())
-                }
+        .filter_map(|entry| {
+            let file_name = entry.file_name();
+            let name = file_name.to_string_lossy();
+
+            // Explicitly handle the special case where topic may end in several -blobs
+            if name.ends_with("-blobs-blobs.sqlite") {
+                return Some(name[0..(name.len() - BLOBS.len())].to_string());
+            } else if name.ends_with("-blobs-index.sqlite") {
+                return Some(name[0..(name.len() - INDEX.len())].to_string());
+            }
+
+            // Explicitly handle the special case where topic may end in several -index
+            if name.ends_with("-index-blobs.sqlite") {
+                return Some(name[0..(name.len() - BLOBS.len())].to_string());
+            } else if name.ends_with("-index-index.sqlite") {
+                return Some(name[0..(name.len() - INDEX.len())].to_string());
+            }
+
+            if can_be_topic(&name) {
+                Some(name[0..name.len() - ".sqlite".len()].to_string())
             } else {
                 None
             }
         })
+        // Collecting into a set makes the filter simpler on the -index/-blobs edge case
+        // allowing us to just return duplicated topics without tracking what has been returned or not
+        .collect::<HashSet<_>>()
+        .into_iter()
         .collect()
 }
 
+/// Check if a given file name represents a "main" topic file/folder.
+fn is_topic_file(store_name: &str, file_name: &str) -> bool {
+    file_name == format!("{}.sqlite", store_name)
+}
+
+/// Check if a given file name belongs to a topic's blobs.
+fn is_topic_blobs(store_name: &str, file_name: &str) -> bool {
+    file_name == format!("{}-blobs.sqlite", store_name)
+        || file_name == format!("{}-blobs.sqlite-journal", store_name)
+        || file_name == format!("{}-blobs.sqlite-shm", store_name)
+        || file_name == format!("{}-blobs.sqlite-wal", store_name)
+}
+
+/// Check if a given file name belongs to a topic's index.
+fn is_topic_index(store_name: &str, file_name: &str) -> bool {
+    file_name == format!("{}-index.sqlite", store_name)
+        || file_name == format!("{}-index.sqlite-journal", store_name)
+        || file_name == format!("{}-index.sqlite-shm", store_name)
+        || file_name == format!("{}-index.sqlite-wal", store_name)
+}
+
+/// Gather up the size on disk of a given store.
 fn topic_store_size(store_dir: &PathBuf, store_name: &str) -> u64 {
     let mut store_size = 0;
     let topic_files = fs::read_dir(store_dir)
@@ -579,7 +633,8 @@ fn topic_store_size(store_dir: &PathBuf, store_name: &str) -> u64 {
             // entry.file_name().to_string_lossy()
             let file_name = entry.file_name();
             let name = file_name.to_string_lossy();
-            name.starts_with(store_name)
+            // Here we don't need an "edge case" because we know the topic name & the extensions we're looking for
+            is_topic_file(store_name, &name) || is_topic_blobs(store_name, &name) || is_topic_index(store_name, &name)
         });
     for path in topic_files {
         if let Ok(file_type) = path.file_type() {
