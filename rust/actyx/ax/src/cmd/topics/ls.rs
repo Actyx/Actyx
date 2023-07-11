@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use actyx_sdk::NodeId;
 use futures::{channel::mpsc, future::join_all, stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
@@ -85,12 +86,22 @@ impl AxCliCommand for TopicsList {
         let mut table = Table::new();
         table.set_format(*TABLE_FORMAT);
         table.set_titles(row!["NODE ID", "HOST", "TOPIC", "SIZE", "ACTIVE"]);
+
+        let mut last: Option<NodeId> = None;
         for output in result {
             match output {
                 LsOutput::Reachable { host, response } => {
                     for (topic_name, topic_size) in response.topics {
                         let active = if response.active_topic == topic_name { "*" } else { "" };
-                        table.add_row(row![response.node_id, host, topic_name, topic_size, active]);
+                        match last {
+                            Some(last_node_id) if last_node_id == response.node_id => {
+                                table.add_row(row!["", "", topic_name, topic_size, active]);
+                            }
+                            _ => {
+                                table.add_row(row![response.node_id, host, topic_name, topic_size, active]);
+                                last = Some(response.node_id);
+                            }
+                        }
                     }
                 }
                 LsOutput::Unreachable { host } => {
