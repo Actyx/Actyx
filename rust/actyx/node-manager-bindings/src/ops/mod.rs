@@ -12,6 +12,7 @@ macro_rules! filter {
 
 pub(crate) mod connect;
 pub(crate) mod create_user_key_pair;
+pub(crate) mod delete_topic;
 pub(crate) mod generate_swarm_key;
 pub(crate) mod get_node_details;
 pub(crate) mod on_disconnect;

@@ -46,5 +46,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("shutdown", ops::shutdown_node::js)?;
     cx.export_function("query", ops::query::js)?;
     cx.export_function("onDisconnect", ops::on_disconnect::js)?;
+    cx.export_function("deleteTopic", ops::delete_topic::js)?;
     Ok(())
 }
