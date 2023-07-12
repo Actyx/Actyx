@@ -16,7 +16,9 @@ jobs:
     env:
       NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
       NETLIFY_ACCESS_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_TOKEN }}      
+      AZ_STORAGE_CONNECTION_STRING:  ${{ secrets.AZ_STORAGE_CONNECTION_STRING }}
+      AZ_STORAGE_SAS_TOKEN: ${{ secrets.AZ_STORAGE_SAS_TOKEN }}
 
     defaults:
       run:
@@ -53,7 +55,7 @@ jobs:
         run: |
           for p in actyx cli node-manager; do
             echo "Publishing $p artifacts:"
-            if [[ "${{steps.prepare-publication.outputs.publication_type}}" = public ]]; then
+            if [[ "${{steps.prepare-publication.outputs.publication_type}}" = prod ]]; then
               RUST_LOG=debug ./target/release/cosmos-release publish "$p"
             else
               echo "We are going to do a dry-run of artifact publication since this is DRAFT release"
