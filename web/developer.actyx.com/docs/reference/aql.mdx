@@ -384,16 +384,15 @@ FILTER _.issuedBy = 'my_id' & _.price >= 1000 & _.price < 2000
 ```
 
 Imagine that at the time of the query, `FROM 'purchase-order'` yields 10000 events, only 300 of which meet the `issuedBy` criterion.
-Optimization by reducing the number of events read, decrypted, decompressed, and decoded.
-`.issuedBy` is a string compared with `=` operator, an opportunity to use tags.
-Simply publish the event with an accompanying tag `purchase-order:issued-by:[some_id]`; this allows you to write this AQL to replace the tag filter as follows.
+The fact that the `issuedBy` property is a string to be compared using the `=` operator makes this an opportunity for optimization.
+To do it, publish the event with an accompanying tag `purchase-order:issued-by:[some_id]`; this allows querying using the newly defined tag instead of using the filter directive.
 
 ```text
 FROM 'purchase-order' & 'purchase-order:issued-by:my_id'
 FILTER _.price >= 1000 & _.price < 2000
 ```
 
-The new AQL above yields the same result, but the decoding before the `FILTER` line only occurs to the 300 events. 
+The new AQL above yields the same result, but the decoding before the `FILTER` line only occurs to the 300 events instead of the original 10000. 
 
 :::note The Effect of the Events' Expected Lifetime to the Migration Strategy
 
@@ -411,7 +410,7 @@ Appending a version number in the tag (e.g. an event is simultaneously tagged wi
 
 ### Discard The Most Possible Events Before Sub-Queries
 
-[A Sub-Query](#subquery-sub-queries) in an AQL is executed for each event found by the previous commands.
+[A Sub-Query](#subquery-sub-queries) is a nested AQL query that is executed for each event found by the surrounding AQL query.
 
 ```text
 FROM 'purchase-order' & 'purchase-order:issued-by:some_id'
@@ -420,7 +419,7 @@ LET revoked := IsDefined(revocations[0])
 FILTER _.price >= 1000 & _.price < 2000 & !revoked
 ```
 
-The line "LET revocations ..." invoke the sub-query as many as the number of events found in the `FROM` line.
+The line "LET revocations ..." invokes the sub-query as many as times as the number of events found in the `FROM` line.
 Optimization can be done by splitting the FILTER into two parts.
 
 ```text
@@ -431,4 +430,4 @@ LET revoked := IsDefined(revocations[0])
 FILTER !revoked
 ```
 
-With the above AQL, the `LET revocation ...` line will have a reduced number of events, consequently, a reduced number of sub-queries too.
+With the above AQL, the `LET revocation ...` line will see a reduced number of events, and consequently perform a reduced number of sub-queries, too.
