@@ -1,6 +1,6 @@
 use actyx_sdk::{service::OffsetsResponse, NodeId};
 use serde::{Deserialize, Serialize};
-use util::formats::NodesInspectResponse;
+use util::formats::{NodesInspectResponse, TopicLsResponse};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -19,6 +19,7 @@ pub struct ConnectedNodeDetails {
     pub settings_schema: serde_json::Value,
     pub swarm_state: Option<NodesInspectResponse>,
     pub offsets: Option<OffsetsResponse>,
+    pub topics: Option<TopicLsResponse>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
