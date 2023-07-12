@@ -522,12 +522,10 @@ fn handle_topic_ls(state: &mut State, mut channel: mpsc::Sender<Result<AdminResp
 
     let node_id = state.node_id;
     let store_dir = state.store_dir.clone();
+    let topics = list_existing_topics(&store_dir);
     tokio::spawn(async move {
         let response = match rx.await {
             Ok(topic) => {
-                let mut topics = list_existing_topics(&store_dir);
-                // Make list order deterministic, useful for tests and users
-                topics.sort();
                 let topic_sizes = topics
                     .into_iter()
                     .map(|topic| {
@@ -603,7 +601,8 @@ fn list_existing_topics(store_dir: &PathBuf) -> Vec<String> {
         })
         // Collecting into a set makes the filter simpler on the -index/-blobs edge case
         // allowing us to just return duplicated topics without tracking what has been returned or not
-        .collect::<HashSet<_>>()
+        // furthermore, it returns an already sorted list when collected into one
+        .collect::<BTreeSet<_>>()
         .into_iter()
         .collect()
 }
