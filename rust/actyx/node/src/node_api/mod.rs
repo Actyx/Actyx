@@ -43,7 +43,7 @@ use libp2p_streaming_response::{RequestReceived, StreamingResponse, StreamingRes
 use parking_lot::Mutex;
 use serde_json::json;
 use std::{
-    collections::{BTreeMap, BTreeSet, HashSet},
+    collections::{BTreeMap, BTreeSet},
     fs,
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
