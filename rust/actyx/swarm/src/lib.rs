@@ -405,6 +405,7 @@ fn root_path_is_ordered() {
 
 /// All immutable or internally mutable parts of the banyan store
 struct BanyanStoreData {
+    topic: String,
     gossip: Gossip,
     forest: Forest,
     ipfs: Ipfs,
@@ -926,6 +927,7 @@ impl BanyanStore {
         let routing_table_reader = routing_table_writer.clone();
         let banyan = Self {
             data: Arc::new(BanyanStoreData {
+                topic: cfg.topic.clone(),
                 node_id,
                 ipfs,
                 gossip,
@@ -1109,6 +1111,10 @@ impl BanyanStore {
         );
 
         Ok(banyan)
+    }
+
+    pub fn get_topic(&self) -> String {
+        self.data.topic.clone()
     }
 
     /// Loads the default stream, reading all [RouteMappingEvents] from it and returning

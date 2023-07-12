@@ -300,11 +300,13 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
                             }
                         }
                         Task::Admin(peer_id, request, mut channel) => {
-                            if unsupported_proto(
-                                infos.get(&peer_id),
-                                &["/actyx/admin/1.0.0", "/actyx/admin/1.1"],
-                                &mut channel,
-                            ) {
+                            let required = match &request {
+                                AdminRequest::TopicLs | AdminRequest::TopicDelete { .. } => {
+                                    ["/actyx/admin/1.2"].as_slice()
+                                }
+                                _ => ["/actyx/admin/1.0.0", "/actyx/admin/1.1", "/actyx/admin/1.2"].as_slice(),
+                            };
+                            if unsupported_proto(infos.get(&peer_id), required, &mut channel) {
                                 continue;
                             }
                             let (tx, rx) = mpsc::channel(128);

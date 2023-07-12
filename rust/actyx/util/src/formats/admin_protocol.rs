@@ -28,8 +28,13 @@ pub struct LogQuery {
 impl libp2p_streaming_response::Codec for AdminProtocol {
     type Request = AdminRequest;
     type Response = ActyxOSResult<AdminResponse>;
-    fn protocol_info() -> [&'static str; 2] {
-        ["/actyx/admin/1.1", "/actyx/admin/1.0.0"]
+
+    fn info_v1() -> &'static str {
+        "/actyx/admin/1.0.0"
+    }
+
+    fn info_v2() -> &'static [&'static str] {
+        &["/actyx/admin/1.2", "/actyx/admin/1.1"]
     }
 }
 
@@ -54,6 +59,15 @@ pub enum AdminRequest {
     SettingsUnset {
         scope: settings::Scope,
     },
+    /// List all the existing topics in the nodes
+    TopicLs,
+    /// Delete the given topic from all nodes
+    TopicDelete {
+        name: String,
+    },
+    // Without this, the request isn't processed and the client times out
+    #[serde(other)]
+    FutureCompat,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -65,6 +79,8 @@ pub enum AdminResponse {
     SettingsSchemaResponse(serde_json::Value),
     SettingsScopesResponse(Vec<String>),
     SettingsUnsetResponse,
+    TopicLsResponse(TopicLsResponse),
+    TopicDeleteResponse(TopicDeleteResponse),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -145,4 +161,37 @@ pub struct PingStats {
     pub decay_10: u32,
     pub failures: u32,
     pub failure_rate: u32,
+}
+
+type TopicName = String;
+type TopicSize = u64;
+
+/// Request for the list of topics in a node.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TopicLsRequest;
+
+/// Response for the list of topics in a node.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TopicLsResponse {
+    pub node_id: NodeId,
+    pub active_topic: TopicName,
+    pub topics: Vec<(TopicName, TopicSize)>,
+}
+
+/// Request to delete a given topic in a node.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TopicDeleteRequest {
+    pub topic: String,
+}
+
+/// Response to the deletion of a topic in a node.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TopicDeleteResponse {
+    pub node_id: NodeId,
+    /// True if any file was deleted.
+    pub deleted: bool,
 }

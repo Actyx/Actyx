@@ -55,8 +55,12 @@ impl Codec for Proto {
     type Request = String;
     type Response = String;
 
-    fn protocol_info() -> [&'static str; 2] {
-        [PROTO_V2, PROTO]
+    fn info_v1() -> &'static str {
+        PROTO
+    }
+
+    fn info_v2() -> &'static [&'static str] {
+        &[PROTO_V2]
     }
 }
 

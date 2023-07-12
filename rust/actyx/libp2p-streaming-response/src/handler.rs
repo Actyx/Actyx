@@ -150,18 +150,18 @@ impl<T: Codec + Send + 'static> IntoConnectionHandler for IntoHandler<T> {
 
 fn upgrade<T: Codec>(only_v1: bool) -> Upgrade {
     if only_v1 {
-        from_fn(T::protocol_info()[1..].into(), |stream, _endpoint, info| {
+        from_fn(SmallVec::from([T::info_v1()].as_slice()), |stream, _endpoint, info| {
             ready(Ok((stream, info)))
         })
     } else {
-        from_fn(T::protocol_info().into(), |stream, _endpoint, info| {
-            ready(Ok((stream, info)))
-        })
+        let mut protocols = SmallVec::from(T::info_v2());
+        protocols.push(T::info_v1());
+        from_fn(protocols, |stream, _endpoint, info| ready(Ok((stream, info))))
     }
 }
 
 type Upgrade = FromFnUpgrade<
-    SmallVec<[&'static str; 2]>,
+    SmallVec<[&'static str; 4]>,
     fn(NegotiatedSubstream, Endpoint, &'static str) -> Ready<Result<(NegotiatedSubstream, &'static str), Void>>,
 >;
 type ProtocolEvent<T> = ConnectionHandlerEvent<
@@ -255,7 +255,7 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
     ) {
         let (stream, proto) = protocol;
         tracing::trace!("handler received request for protocol {}", proto);
-        if proto == T::info_v2() {
+        if T::info_v2().contains(&proto) {
             // use the new stream-based approach
             self.inbound_v2
                 .push(upgrade_inbound::<T>(self.max_message_size, stream, proto).boxed());
@@ -265,7 +265,7 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
                 .push(StreamingResponseConfig::new(self.max_message_size as usize).upgrade_inbound(stream, proto));
         } else {
             tracing::error!(
-                "inbound negotiation result `{}` is not among supported protocols [{}, {}], dropping stream",
+                "inbound negotiation result `{}` is not among supported protocols [{:?}, {}], dropping stream",
                 proto,
                 T::info_v2(),
                 T::info_v1(),
@@ -294,11 +294,11 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
                     .boxed(),
                 );
             }
-            OutboundInfo::V2(request, mut tx) if proto == T::info_v2() => {
+            OutboundInfo::V2(request, mut tx) if T::info_v2().contains(&proto) => {
                 let max_message_size = self.max_message_size;
                 self.streams.push(
                     async move {
-                        let result = upgrade_outbound::<T>(max_message_size, request, stream, T::info_v2()).await;
+                        let result = upgrade_outbound::<T>(max_message_size, request, stream, proto).await;
                         let mut stream = match result {
                             Ok(stream) => stream,
                             Err(err) => {
@@ -307,7 +307,7 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
                                 return Ok(());
                             }
                         };
-                        tracing::trace!("starting receive loop for protocol `{}`", T::info_v2());
+                        tracing::trace!("starting receive loop for protocol `{}`", proto);
                         let mut buffer = Vec::new();
                         loop {
                             match protocol_v2::read_msg(&mut stream, max_message_size, &mut buffer)
@@ -350,7 +350,7 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
             }
             OutboundInfo::V2(_, _) => {
                 tracing::error!(
-                    "inbound negotiation result `{}` is not among supported protocols [{}, {}], dropping stream",
+                    "inbound negotiation result `{}` is not among supported protocols [{:?}, {}], dropping stream",
                     proto,
                     T::info_v2(),
                     T::info_v1(),
@@ -434,7 +434,7 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
                     self.events
                         .push_back(ConnectionHandlerEvent::Custom(RequestReceived { request, channel }));
                 }
-                Err(err) => tracing::debug!("inbound upgrade error for protocol `{}`: {}", T::info_v2(), err),
+                Err(err) => tracing::debug!("inbound upgrade error for protocol `{:?}`: {}", T::info_v2(), err),
             }
         }
 

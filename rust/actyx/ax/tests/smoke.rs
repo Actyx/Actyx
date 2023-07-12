@@ -503,3 +503,216 @@ fn aggregate() -> anyhow::Result<()> {
     }
     result
 }
+
+#[test]
+fn topic_delete() -> anyhow::Result<()> {
+    let log = Log::default();
+    let result = with_api(log.clone(), |api, identity| {
+        // Change the topic
+        let out = run("ax")?
+            .args([
+                o("settings"),
+                o("set"),
+                o("-ji"),
+                identity.as_os_str(),
+                o("/swarm"),
+                o("{\"topic\": \"new_topic\"}"),
+                o(&format!("localhost:{}", api)),
+            ])
+            .env("RUST_LOG", "debug")
+            .output()?;
+        assert!(out.status.success());
+
+        // List both topics
+        let out = run("ax")?
+            .args([
+                o("topics"),
+                o("ls"),
+                o("-ji"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+            ])
+            .env("RUST_LOG", "debug")
+            .output()?;
+        assert!(out.status.success());
+
+        let json = serde_json::from_slice::<Value>(&out.stdout)?;
+        assert!(get(&json, "/code")? == json!("OK"));
+        assert!(get(&json, "/result/0/response/activeTopic")? == json!("new_topic"));
+        assert!(get(&json, "/result/0/response/topics/0/0")? == json!("default-topic"));
+        assert!(get(&json, "/result/0/response/topics/1/0")? == json!("new_topic"));
+
+        // Delete the old topic
+        let out = run("ax")?
+            .args([
+                o("topics"),
+                o("delete"),
+                o(&format!("localhost:{}", api)),
+                o("default-topic"),
+                o("-ji"),
+                identity.as_os_str(),
+            ])
+            .env("RUST_LOG", "debug")
+            .output()?;
+        assert!(out.status.success());
+        let json = serde_json::from_slice::<Value>(&out.stdout)?;
+        assert!(get(&json, "/code")? == json!("OK"));
+        assert!(get(&json, "/result/0/response/deleted")? == json!(true));
+
+        // List again to compare
+        let out = run("ax")?
+            .args([
+                o("topics"),
+                o("ls"),
+                o("-ji"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+            ])
+            .env("RUST_LOG", "debug")
+            .output()?;
+        assert!(out.status.success());
+
+        let json = serde_json::from_slice::<Value>(&out.stdout)?;
+        assert!(get(&json, "/code")? == json!("OK"));
+        assert!(get(&json, "/result/0/response/activeTopic")? == json!("new_topic"));
+        assert!(get(&json, "/result/0/response/topics/0/0")? == json!("new_topic"));
+
+        Ok(())
+    });
+    if result.is_err() {
+        eprintln!("{}", log);
+    }
+    result
+}
+
+#[test]
+fn topic_delete_non_existing() -> anyhow::Result<()> {
+    let log = Log::default();
+    let result = with_api(log.clone(), |api, identity| {
+        // Delete the old topic
+        let out = run("ax")?
+            .args([
+                o("topics"),
+                o("delete"),
+                o(&format!("localhost:{}", api)),
+                o("non-existing-topic"),
+                o("-ji"),
+                identity.as_os_str(),
+            ])
+            .env("RUST_LOG", "debug")
+            .output()?;
+        assert!(out.status.success());
+
+        let json = serde_json::from_slice::<Value>(&out.stdout)?;
+        assert!(get(&json, "/code")? == json!("OK"));
+        assert!(get(&json, "/result/0/response/deleted")? == json!(false));
+        Ok(())
+    });
+    if result.is_err() {
+        eprintln!("{}", log);
+    }
+    result
+}
+
+#[test]
+fn topic_delete_prefix() -> anyhow::Result<()> {
+    let log = Log::default();
+    let result = with_api(log.clone(), |api, identity| {
+        // Change the topic to t-i
+        let out = run("ax")?
+            .args([
+                o("settings"),
+                o("set"),
+                o("-ji"),
+                identity.as_os_str(),
+                o("/swarm"),
+                o("{\"topic\": \"t-i\"}"),
+                o(&format!("localhost:{}", api)),
+            ])
+            .env("RUST_LOG", "debug")
+            .output()?;
+        assert!(out.status.success());
+
+        // Change the topic to t-index
+        let out = run("ax")?
+            .args([
+                o("settings"),
+                o("set"),
+                o("-ji"),
+                identity.as_os_str(),
+                o("/swarm"),
+                o("{\"topic\": \"t-index\"}"),
+                o(&format!("localhost:{}", api)),
+            ])
+            .env("RUST_LOG", "debug")
+            .output()?;
+        assert!(out.status.success());
+
+        // List the topics to gather some info
+        let out = run("ax")?
+            .args([
+                o("topics"),
+                o("ls"),
+                o("-ji"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+            ])
+            .env("RUST_LOG", "debug")
+            .output()?;
+        assert!(out.status.success());
+
+        let json = serde_json::from_slice::<Value>(&out.stdout)?;
+        assert!(get(&json, "/code")? == json!("OK"));
+        assert!(get(&json, "/result/0/response/activeTopic")? == json!("t-index"));
+        assert!(get(&json, "/result/0/response/topics/0/0")? == json!("default-topic"));
+        assert!(get(&json, "/result/0/response/topics/1/0")? == json!("t-i"));
+        assert!(get(&json, "/result/0/response/topics/2/0")? == json!("t-index"));
+
+        // Keep the t-index size around to ensure it doesnt shrink
+        let t_index_size = serde_json::from_value::<u64>(get(&json, "/result/0/response/topics/2/1")?)?;
+
+        // Delete the prefix topic
+        let out = run("ax")?
+            .args([
+                o("topics"),
+                o("delete"),
+                o(&format!("localhost:{}", api)),
+                o("t-i"),
+                o("-ji"),
+                identity.as_os_str(),
+            ])
+            .env("RUST_LOG", "debug")
+            .output()?;
+        assert!(out.status.success());
+        let json = serde_json::from_slice::<Value>(&out.stdout)?;
+        assert!(get(&json, "/code")? == json!("OK"));
+        assert!(get(&json, "/result/0/response/deleted")? == json!(true));
+
+        // List again to compare
+        let out = run("ax")?
+            .args([
+                o("topics"),
+                o("ls"),
+                o("-ji"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+            ])
+            .env("RUST_LOG", "debug")
+            .output()?;
+        assert!(out.status.success());
+
+        let json = serde_json::from_slice::<Value>(&out.stdout)?;
+        assert!(get(&json, "/code")? == json!("OK"));
+        assert!(get(&json, "/result/0/response/activeTopic")? == json!("t-index"));
+        assert!(get(&json, "/result/0/response/topics/0/0")? == json!("default-topic"));
+        assert!(get(&json, "/result/0/response/topics/1/0")? == json!("t-index"));
+        // Ensure the topic size didn't shrink (i.e. we didnt accidentaly delete something "extra")
+        assert!(serde_json::from_value::<u64>(get(&json, "/result/0/response/topics/1/1")?)? >= t_index_size);
+
+        Ok(())
+    });
+    if result.is_err() {
+        eprintln!("{}", log);
+    }
+    result
+}

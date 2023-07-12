@@ -5,6 +5,7 @@ use futures::{
 };
 use libp2p::core::{upgrade, InboundUpgrade, OutboundUpgrade, UpgradeInfo};
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 use std::{
     io::{self, Error, ErrorKind, Result},
     marker::PhantomData,
@@ -80,10 +81,12 @@ where
     TCodec: Codec,
 {
     type Info = &'static str;
-    type InfoIter = core::array::IntoIter<Self::Info, 2>;
+    type InfoIter = smallvec::IntoIter<[Self::Info; 4]>;
 
     fn protocol_info(&self) -> Self::InfoIter {
-        TCodec::protocol_info().into_iter()
+        let mut v = SmallVec::from(TCodec::info_v2());
+        v.push(TCodec::info_v1());
+        v.into_iter()
     }
 }
 
@@ -111,10 +114,12 @@ where
     TCodec: Codec,
 {
     type Info = &'static str;
-    type InfoIter = core::array::IntoIter<Self::Info, 2>;
+    type InfoIter = smallvec::IntoIter<[Self::Info; 4]>;
 
     fn protocol_info(&self) -> Self::InfoIter {
-        TCodec::protocol_info().into_iter()
+        let mut v = SmallVec::from(TCodec::info_v2());
+        v.push(TCodec::info_v1());
+        v.into_iter()
     }
 }
 

@@ -44,6 +44,7 @@ use parking_lot::Mutex;
 use serde_json::json;
 use std::{
     collections::{BTreeMap, BTreeSet},
+    fs,
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
     sync::Arc,
@@ -68,7 +69,8 @@ use util::formats::{
         decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse,
     },
     events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-    ActyxOSCode, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
+    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
+    TopicDeleteResponse, TopicLsResponse,
 };
 use util::{version::NodeVersion, SocketAddrHelper};
 use zstd::stream::write::Decoder;
@@ -338,6 +340,13 @@ fn inject_admin_event(state: &mut State, event: RequestReceived<AdminProtocol>) 
             });
         }
         match request {
+            AdminRequest::FutureCompat => {
+                // We try to send the response but if sending fails, it means no one is listening on the other side
+                let _ = channel.try_send(Err(ActyxOSCode::ERR_UNSUPPORTED.with_message(format!(
+                    "Unsupported request, node Actyx version: {}",
+                    NodeVersion::get()
+                ))));
+            }
             AdminRequest::NodesLs => respond(
                 state.node_tx.clone(),
                 channel,
@@ -420,8 +429,238 @@ fn inject_admin_event(state: &mut State, event: RequestReceived<AdminProtocol>) 
                 |tx| ExternalEvent::SettingsRequest(SettingsRequest::UnsetSettings { scope, response: tx }),
                 |_| AdminResponse::SettingsUnsetResponse,
             ),
+            AdminRequest::TopicLs => handle_topic_ls(state, channel),
+            AdminRequest::TopicDelete { name } => handle_topic_delete(state, channel, name),
         };
     }
+}
+
+/// Delete all topic-related files in the provided store.
+fn delete_topic<P: AsRef<Path>>(store_dir: P, topic_name: &str) -> std::io::Result<bool> {
+    let mut deleted = false;
+    for entry in fs::read_dir(store_dir)
+        .expect("The directory should exist")
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| {
+            let file_name = entry.file_name();
+            let name = file_name.to_string_lossy();
+            // Check if it is one of the expected files otherwise we might delete more than expected
+            is_topic_file(topic_name, &name) || is_topic_blobs(topic_name, &name) || is_topic_index(topic_name, &name)
+        })
+    {
+        if let Ok(file_type) = entry.file_type() {
+            if file_type.is_dir() {
+                fs::remove_dir_all(entry.path())?;
+                deleted = true;
+            } else if file_type.is_file() {
+                fs::remove_file(entry.path())?;
+                deleted = true;
+            }
+            // Ignoring symlinks
+        }
+    }
+    Ok(deleted)
+}
+
+/// Handle the topic delete admin request.
+fn handle_topic_delete(
+    state: &mut State,
+    mut channel: mpsc::Sender<Result<AdminResponse, ActyxOSError>>,
+    topic_name: String,
+) {
+    let (tx, rx) = oneshot::channel();
+    let send_result = state
+        .store
+        .send(ComponentRequest::Individual(StoreRequest::ActiveTopic(tx)));
+
+    if let Err(error) = send_result {
+        let _ = channel.try_send(Err(ActyxOSError::from(error)));
+        return;
+    }
+
+    let store_dir = state.store_dir.clone();
+    let node_id = state.node_id;
+
+    tokio::spawn(async move {
+        let response = match rx.await {
+            Ok(active_topic) => {
+                if active_topic == topic_name {
+                    Err(ActyxOSCode::ERR_INVALID_INPUT.with_message(format!(
+                        "The topic \"{}\" is currently active and cannot be deleted",
+                        active_topic
+                    )))
+                } else {
+                    match delete_topic(store_dir, &topic_name) {
+                        Ok(deleted) => Ok(AdminResponse::TopicDeleteResponse(TopicDeleteResponse {
+                            node_id,
+                            deleted,
+                        })),
+                        Err(error) => Err(ActyxOSCode::ERR_INTERNAL_ERROR
+                            .with_message(format!("Failed to delete the topic \"{}\": {}", &topic_name, error))),
+                    }
+                }
+            }
+            Err(error) => {
+                Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("Error waiting on channel: {}", error)))
+            }
+        };
+        let _ = channel.try_send(response);
+    });
+}
+
+/// Handle the topic listing admin request.
+fn handle_topic_ls(state: &mut State, mut channel: mpsc::Sender<Result<AdminResponse, ActyxOSError>>) {
+    let (tx, rx) = oneshot::channel();
+    let send_result = state
+        .store
+        .send(ComponentRequest::Individual(StoreRequest::ActiveTopic(tx)));
+
+    if let Err(error) = send_result {
+        let _ = channel.try_send(Err(ActyxOSError::from(error)));
+        return;
+    }
+
+    let node_id = state.node_id;
+    let store_dir = state.store_dir.clone();
+    let topics = list_existing_topics(&store_dir);
+    tokio::spawn(async move {
+        let response = match rx.await {
+            Ok(topic) => {
+                let topic_sizes = topics
+                    .into_iter()
+                    .map(|topic| {
+                        let topic_size = topic_store_size(&store_dir, &topic);
+                        (topic, topic_size)
+                    })
+                    .collect();
+                Ok(AdminResponse::TopicLsResponse(TopicLsResponse {
+                    node_id,
+                    active_topic: topic,
+                    topics: topic_sizes,
+                }))
+            }
+            Err(error) => {
+                // From<oneshot::error::RecvError> for ActyxOSError is not implemented
+                // and implementing it requires adding tokio as a dep to util
+                // to keep things simple, we just write the code "inline"
+                Err(ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("Error waiting on channel: {}", error)))
+            }
+        };
+        // We try to send the response, if the receiver has disconnected
+        // it means no one cares to listen and so we "ignore"
+        let _ = channel.try_send(response);
+    });
+}
+
+/// Check if a given file name can be a topic.
+/// Basically, if the file ends in any of the following, it is not a topic:
+/// * `-journal`
+/// * `-shm`
+/// * `-wal`
+/// * `-blobs.sqlite`
+/// * `-index.sqlite`
+/// This works for topics that end
+fn can_be_topic(name: &str) -> bool {
+    !(name.ends_with("-journal")
+        || name.ends_with("-shm")
+        || name.ends_with("-wal")
+        || name.ends_with("-blobs.sqlite")
+        || name.ends_with("-index.sqlite"))
+}
+
+fn list_existing_topics(store_dir: &PathBuf) -> Vec<String> {
+    const INDEX: &str = "-index.sqlite";
+    const BLOBS: &str = "-blobs.sqlite";
+    fs::read_dir(store_dir)
+        .expect("The directory should exist")
+        // Only care for non-errors
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| {
+            let file_name = entry.file_name();
+            let name = file_name.to_string_lossy();
+
+            // Explicitly handle the special case where topic may end in several -blobs
+            if name.ends_with("-blobs-blobs.sqlite") {
+                return Some(name[0..(name.len() - BLOBS.len())].to_string());
+            } else if name.ends_with("-blobs-index.sqlite") {
+                return Some(name[0..(name.len() - INDEX.len())].to_string());
+            }
+
+            // Explicitly handle the special case where topic may end in several -index
+            if name.ends_with("-index-blobs.sqlite") {
+                return Some(name[0..(name.len() - BLOBS.len())].to_string());
+            } else if name.ends_with("-index-index.sqlite") {
+                return Some(name[0..(name.len() - INDEX.len())].to_string());
+            }
+
+            if can_be_topic(&name) {
+                Some(name[0..name.len() - ".sqlite".len()].to_string())
+            } else {
+                None
+            }
+        })
+        // Collecting into a set makes the filter simpler on the -index/-blobs edge case
+        // allowing us to just return duplicated topics without tracking what has been returned or not
+        // furthermore, it returns an already sorted list when collected into one
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+/// Check if a given file name represents a "main" topic file/folder.
+fn is_topic_file(store_name: &str, file_name: &str) -> bool {
+    file_name == format!("{}.sqlite", store_name)
+}
+
+/// Check if a given file name belongs to a topic's blobs.
+fn is_topic_blobs(store_name: &str, file_name: &str) -> bool {
+    file_name == format!("{}-blobs.sqlite", store_name)
+        || file_name == format!("{}-blobs.sqlite-journal", store_name)
+        || file_name == format!("{}-blobs.sqlite-shm", store_name)
+        || file_name == format!("{}-blobs.sqlite-wal", store_name)
+}
+
+/// Check if a given file name belongs to a topic's index.
+fn is_topic_index(store_name: &str, file_name: &str) -> bool {
+    file_name == format!("{}-index.sqlite", store_name)
+        || file_name == format!("{}-index.sqlite-journal", store_name)
+        || file_name == format!("{}-index.sqlite-shm", store_name)
+        || file_name == format!("{}-index.sqlite-wal", store_name)
+}
+
+/// Gather up the size on disk of a given store.
+fn topic_store_size(store_dir: &PathBuf, store_name: &str) -> u64 {
+    let mut store_size = 0;
+    let topic_files = fs::read_dir(store_dir)
+        .expect("The directory should exist")
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| {
+            // The `file_name` is separate due to being dropped after assignment on:
+            // entry.file_name().to_string_lossy()
+            let file_name = entry.file_name();
+            let name = file_name.to_string_lossy();
+            // Here we don't need an "edge case" because we know the topic name & the extensions we're looking for
+            is_topic_file(store_name, &name) || is_topic_blobs(store_name, &name) || is_topic_index(store_name, &name)
+        });
+    for path in topic_files {
+        if let Ok(file_type) = path.file_type() {
+            if file_type.is_dir() {
+                // Recursing further is not necessary (at the time of writing)
+                // because we don't expect it to be deeper than 1 level
+                let directory_size: u64 = fs::read_dir(path.path())
+                    .expect("The directory should be valid")
+                    .filter_map(|entry| entry.ok())
+                    .filter_map(|entry| entry.metadata().ok().map(|metadata| metadata.len()))
+                    .sum();
+                store_size += directory_size;
+            } else if file_type.is_file() {
+                let file_size = path.metadata().map(|metadata| metadata.len()).unwrap();
+                store_size += file_size;
+            }
+            // We don't use symlinks so we don't check for them
+        }
+    }
+    store_size
 }
 
 fn inject_events_event(state: &mut State, event: RequestReceived<EventsProtocol>) {

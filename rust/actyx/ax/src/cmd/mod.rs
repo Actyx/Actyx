@@ -18,6 +18,7 @@ pub(crate) mod internal;
 pub mod nodes;
 pub mod settings;
 pub mod swarms;
+pub mod topics;
 pub mod users;
 
 pub use formats::ActyxCliResult;

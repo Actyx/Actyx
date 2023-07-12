@@ -28,6 +28,7 @@ ffi-support = "0.4.4"
 flate2 = "1.0.22"
 fslock = "=0.1.6"
 futures = { version = "0.3.19", features = ["compat"], package = "futures" }
+glob = "0.3.1"
 hex = "0.4.3"
 im = { version = "15.1.0", features = ["serde"] }
 ipfs-embed = { version = "0.26.0", default-features = false, features = ["tokio"] }
