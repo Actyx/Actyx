@@ -1,3 +1,4 @@
+#![cfg(target_os = "linux")]
 use actyx_sdk::service::OffsetsResponse;
 use anyhow::{anyhow, bail, ensure};
 use axlib::cmd::ActyxCliResult;
@@ -336,7 +337,6 @@ fn o(s: &str) -> &OsStr {
     OsStr::new(s)
 }
 
-#[cfg(target_os = "linux")]
 #[test]
 fn all_ax() -> anyhow::Result<()> {
     let binaries = setup();
@@ -390,7 +390,6 @@ fn all_ax() -> anyhow::Result<()> {
     result
 }
 
-#[cfg(target_os = "linux")]
 #[test]
 fn all_actyx() -> anyhow::Result<()> {
     let binaries = setup();
