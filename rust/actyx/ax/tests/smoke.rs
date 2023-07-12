@@ -507,7 +507,7 @@ fn aggregate() -> anyhow::Result<()> {
 #[test]
 fn topic_delete() -> anyhow::Result<()> {
     let log = Log::default();
-    with_api(log.clone(), |api, identity| {
+    let result = with_api(log.clone(), |api, identity| {
         // Change the topic
         let out = run("ax")?
             .args([
@@ -578,13 +578,17 @@ fn topic_delete() -> anyhow::Result<()> {
         assert!(get(&json, "/result/0/response/topics/0/0")? == json!("new_topic"));
 
         Ok(())
-    })
+    });
+    if result.is_err() {
+        eprintln!("{}", log);
+    }
+    result
 }
 
 #[test]
 fn topic_delete_non_existing() -> anyhow::Result<()> {
     let log = Log::default();
-    with_api(log.clone(), |api, identity| {
+    let result = with_api(log.clone(), |api, identity| {
         // Delete the old topic
         let out = run("ax")?
             .args([
@@ -603,13 +607,17 @@ fn topic_delete_non_existing() -> anyhow::Result<()> {
         assert!(get(&json, "/code")? == json!("OK"));
         assert!(get(&json, "/result/0/response/deleted")? == json!(false));
         Ok(())
-    })
+    });
+    if result.is_err() {
+        eprintln!("{}", log);
+    }
+    result
 }
 
 #[test]
 fn topic_delete_prefix() -> anyhow::Result<()> {
     let log = Log::default();
-    with_api(log.clone(), |api, identity| {
+    let result = with_api(log.clone(), |api, identity| {
         // Change the topic to t-i
         let out = run("ax")?
             .args([
@@ -702,5 +710,9 @@ fn topic_delete_prefix() -> anyhow::Result<()> {
         assert!(serde_json::from_value::<u64>(get(&json, "/result/0/response/topics/1/1")?)? >= t_index_size);
 
         Ok(())
-    })
+    });
+    if result.is_err() {
+        eprintln!("{}", log);
+    }
+    result
 }
