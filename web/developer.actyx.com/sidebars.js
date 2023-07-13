@@ -205,6 +205,8 @@ module.exports = {
         'reference/cli/swarms/keygen',
         'reference/cli/users/keygen',
         'reference/cli/users/add-key',
+        'reference/cli/topics/delete',
+        'reference/cli/topics/ls',
       ],
     },
     'reference/aql',

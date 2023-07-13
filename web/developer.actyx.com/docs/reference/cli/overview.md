@@ -22,3 +22,4 @@ For installation instructions, please refer to [this how-to guide](../../how-to/
 | ax swarms   | Manage swarms        |
 | ax users    | Manage users         |
 | ax events   | Query events         |
+| ax topics   | Manage topics        |
