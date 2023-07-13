@@ -434,7 +434,7 @@ jobs:
         # The GitHub CLI reads this value to login automatically
         # https://cli.github.com/manual/gh_auth_login
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GENIE_GH_TOKEN }}
 
 
   notify-discord:
