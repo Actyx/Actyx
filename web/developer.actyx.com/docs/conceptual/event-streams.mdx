@@ -114,3 +114,10 @@ This algorithm is designed to preserve causal order even when wall clocks on dev
 Note that lamport ordering only guarantees correct event ordering for events that stem from the same logical workflow.
 It is impossible to define a correct order for events within a computer system that are not causally connected when no reliable global clock is available.
 :::
+
+## Event expiration
+
+Events are stored indefinitely by default.
+However, you can configure event expiration on a per-stream basis.
+This is useful for streams that contain events that are only relevant for a limited amount of time, such as sensor data.
+For more information, see the [Actyx reference](../reference/actyx.mdx#ephemeral-event-streams).

@@ -121,7 +121,9 @@ In the `swarm` section you can fine-tune the networking behavior of Actyx:
   This is mainly useful for effectively erasing all events within a swarm by switching all nodes to a new topic.
   The old events will still be in the `actyx-data` folder, you can access them by switching a node back to the old topic; there will be no interference between old and new topic.
 
-The `eventRouting` section (added in version 2.16) is divided in two subsections - `routes` and `streams`.
+### Ephemeral Event Streams
+
+The `eventRouting` section (added in version 2.16) is divided in two subsections – `routes` and `streams`.
 
 The `routes` section is an array of patterns, it allows the administrator to create stream routes based on tag expressions (i.e. most expressions that can be used after `FROM`):
 
@@ -134,9 +136,9 @@ Event matching is done from top to bottom, thus, if you declare the following ro
 ```yaml
 routes:
   - from: "'logs:info' | 'logs:debug'"
-    into: "info_or_debug"
+    into: 'info_or_debug'
   - from: "'logs:info'"
-    into: "info"
+    into: 'info'
 ```
 
 All events tagged will be placed in the `info_or_debug` stream, not making it into the `info` stream.
@@ -164,8 +166,9 @@ If a block is not completely filled with events or if not every event in the blo
 
 - The `default` stream **does not** support retention policies, it will always be permanent.
 - Streams are only created by routing events to them, this means that if you configure a stream but no routing rule points to it, it will not be created.
-In this case, a warning will be raised.
-- Event expiration should be configured with a safety margin beyond the expected per-fish usage duration.
+  In this case, a warning will be raised.
+- Event expiration should be configured with a safety margin beyond the expected per-fish usage duration:
+  waking up a fish whose event history has partially expired will typically result in unusable state.
 
 :::
 
@@ -178,11 +181,10 @@ eventRouting:
       into: logs_warnings
     - from: "'logs:trace' | 'logs:debug'"
       into: logs_debug
-    - from: "logs"
+    - from: 'logs'
       into: logs
   streams:
     logs_debug:
       maxAge: 1d
       maxSize: 100MB
 ```
-
