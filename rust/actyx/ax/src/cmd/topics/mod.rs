@@ -9,6 +9,7 @@ use self::ls::{LsOpts, TopicsList};
 
 use super::{Authority, AxCliCommand, KeyPathWrapper};
 
+/// manage topics
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
 pub enum TopicsOpts {

@@ -122,12 +122,12 @@ impl AxCliCommand for TopicsDelete {
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
 pub struct DeleteOpts {
+    /// The topic to delete.
+    #[structopt(required = true)]
+    topic: String,
     /// The IP addresses or <host>:<admin port> of the target nodes.
     #[structopt(name = "NODE", required = true)]
     authority: Vec<Authority>,
-
-    #[structopt(required = true)]
-    topic: String,
     /// The private key file to use for authentication.
     #[structopt(short, long)]
     identity: Option<KeyPathWrapper>,

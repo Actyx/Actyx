@@ -547,8 +547,8 @@ fn topic_delete() -> anyhow::Result<()> {
             .args([
                 o("topics"),
                 o("delete"),
-                o(&format!("localhost:{}", api)),
                 o("default-topic"),
+                o(&format!("localhost:{}", api)),
                 o("-ji"),
                 identity.as_os_str(),
             ])
@@ -594,8 +594,8 @@ fn topic_delete_non_existing() -> anyhow::Result<()> {
             .args([
                 o("topics"),
                 o("delete"),
-                o(&format!("localhost:{}", api)),
                 o("non-existing-topic"),
+                o(&format!("localhost:{}", api)),
                 o("-ji"),
                 identity.as_os_str(),
             ])
@@ -676,8 +676,8 @@ fn topic_delete_prefix() -> anyhow::Result<()> {
             .args([
                 o("topics"),
                 o("delete"),
-                o(&format!("localhost:{}", api)),
                 o("t-i"),
+                o(&format!("localhost:{}", api)),
                 o("-ji"),
                 identity.as_os_str(),
             ])
