@@ -87,6 +87,8 @@ Hereby, `<tag_expr>` is a boolean expression composed from the following basic a
   App IDs are valid DNS names, i.e. name components consist of lowercase letters, digits, or dashes and are separated by a single dot.
   A valid example is `appId(com.example.my-app)`.
 
+  As a special case `appId(me)` refers to the app ID of the current app, i.e. the app ID in the manifest with which the Actyx connection was made.
+
 Larger expressions are constructed using the _and_ and _or_ combinators:
 
 - `<tag_expr> & <tag_expr>` matches all events that match both the left and the right condition
@@ -357,7 +359,6 @@ ENDPRAGMA
 All properties apart from `payload` are optional, `timestamp` has higher priority than `time` (which has the same syntax as `TIME()` values shown above).
 Note how this lets you test code that depends on specific timestamps.
 
-
 ## Optimizing Query Performance
 
 AQL execution, just like any other computation system, is not magical.
@@ -371,7 +372,7 @@ This guide provides insight into how AQL queries affect performance without delv
 There are two ways to filter events in Actyx:
 
 - `FROM`: filters by tags
-- `FILTER`: filters by content 
+- `FILTER`: filters by content
 
 As a rule of thumb, the filter should be written in a way that **as many events as possible are filtered out with tags before those are filtered out with contents** for the best performance.
 The reason is that tag expressions are evaluated solely on the event stream indexes while filtering based on content requires the actual event data to be read, decrypted, decompressed, and decoded.
@@ -392,7 +393,7 @@ FROM 'purchase-order' & 'purchase-order:issued-by:my_id'
 FILTER _.price >= 1000 & _.price < 2000
 ```
 
-The new AQL above yields the same result, but the decoding before the `FILTER` line only occurs to the 300 events instead of the original 10000. 
+The new AQL above yields the same result, but the decoding before the `FILTER` line only occurs to the 300 events instead of the original 10000.
 
 :::note The Effect of the Events' Expected Lifetime to the Migration Strategy
 
@@ -404,7 +405,7 @@ Later, after all, old events are expected to be discarded, the new AQL can be ro
 
 If the events in question are intended to be persisted long-term, the application needs to be able to query both the old events and the new events.
 Therefore, retaining the old code is necessary.
-Appending a version number in the tag (e.g. an event is simultaneously tagged with 'purchase-order' and 'purchase-order:v1') may be necessary, therefore the old query does not accidentally query the new events, and vice versa. 
+Appending a version number in the tag (e.g. an event is simultaneously tagged with 'purchase-order' and 'purchase-order:v1') may be necessary, therefore the old query does not accidentally query the new events, and vice versa.
 
 :::
 
