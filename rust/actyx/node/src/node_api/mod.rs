@@ -568,7 +568,7 @@ fn can_be_topic(name: &str) -> bool {
         || name.ends_with("-index.sqlite"))
 }
 
-fn list_existing_topics(store_dir: &PathBuf) -> Vec<String> {
+fn list_existing_topics(store_dir: &PathBuf) -> BTreeSet<String> {
     const INDEX: &str = "-index.sqlite";
     const BLOBS: &str = "-blobs.sqlite";
     fs::read_dir(store_dir)
@@ -603,8 +603,6 @@ fn list_existing_topics(store_dir: &PathBuf) -> Vec<String> {
         // allowing us to just return duplicated topics without tracking what has been returned or not
         // furthermore, it returns an already sorted list when collected into one
         .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect()
 }
 
 /// Check if a given file name represents a "main" topic file/folder.

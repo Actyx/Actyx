@@ -3,6 +3,7 @@ use escargot::{format::Message, CargoBuild};
 use parking_lot::Mutex;
 use serde_json::{json, Value};
 use std::{
+    collections::BTreeMap,
     ffi::OsStr,
     fmt::Write,
     io::{BufRead, BufReader},
@@ -539,8 +540,12 @@ fn topic_delete() -> anyhow::Result<()> {
         let json = serde_json::from_slice::<Value>(&out.stdout)?;
         assert!(get(&json, "/code")? == json!("OK"));
         assert!(get(&json, "/result/0/response/activeTopic")? == json!("new_topic"));
-        assert!(get(&json, "/result/0/response/topics/0/0")? == json!("default-topic"));
-        assert!(get(&json, "/result/0/response/topics/1/0")? == json!("new_topic"));
+
+        // Size is not predictable so we're just checking the keys exist in the expected order
+        let topics = serde_json::from_value::<BTreeMap<String, u64>>(get(&json, "/result/0/response/topics")?)?;
+        for (value, expected) in topics.keys().zip(&["default-topic", "new_topic"]) {
+            assert!(value == expected);
+        }
 
         // Delete the old topic
         let out = run("ax")?
@@ -575,7 +580,9 @@ fn topic_delete() -> anyhow::Result<()> {
         let json = serde_json::from_slice::<Value>(&out.stdout)?;
         assert!(get(&json, "/code")? == json!("OK"));
         assert!(get(&json, "/result/0/response/activeTopic")? == json!("new_topic"));
-        assert!(get(&json, "/result/0/response/topics/0/0")? == json!("new_topic"));
+
+        let topics = serde_json::from_value::<BTreeMap<String, u64>>(get(&json, "/result/0/response/topics")?)?;
+        assert!(topics.keys().next().unwrap() == "new_topic");
 
         Ok(())
     });
@@ -664,12 +671,15 @@ fn topic_delete_prefix() -> anyhow::Result<()> {
         let json = serde_json::from_slice::<Value>(&out.stdout)?;
         assert!(get(&json, "/code")? == json!("OK"));
         assert!(get(&json, "/result/0/response/activeTopic")? == json!("t-index"));
-        assert!(get(&json, "/result/0/response/topics/0/0")? == json!("default-topic"));
-        assert!(get(&json, "/result/0/response/topics/1/0")? == json!("t-i"));
-        assert!(get(&json, "/result/0/response/topics/2/0")? == json!("t-index"));
+
+        // Size is not predictable so we're just checking the keys exist in the expected order
+        let topics = serde_json::from_value::<BTreeMap<String, u64>>(get(&json, "/result/0/response/topics")?)?;
+        for (value, expected) in topics.keys().zip(&["default-topic", "t-i", "t-index"]) {
+            assert!(value == expected);
+        }
 
         // Keep the t-index size around to ensure it doesnt shrink
-        let t_index_size = serde_json::from_value::<u64>(get(&json, "/result/0/response/topics/2/1")?)?;
+        let t_index_size = serde_json::from_value::<u64>(get(&json, "/result/0/response/topics/t-index")?)?;
 
         // Delete the prefix topic
         let out = run("ax")?
@@ -704,10 +714,14 @@ fn topic_delete_prefix() -> anyhow::Result<()> {
         let json = serde_json::from_slice::<Value>(&out.stdout)?;
         assert!(get(&json, "/code")? == json!("OK"));
         assert!(get(&json, "/result/0/response/activeTopic")? == json!("t-index"));
-        assert!(get(&json, "/result/0/response/topics/0/0")? == json!("default-topic"));
-        assert!(get(&json, "/result/0/response/topics/1/0")? == json!("t-index"));
+
+        let topics = serde_json::from_value::<BTreeMap<String, u64>>(get(&json, "/result/0/response/topics")?)?;
+        for (value, expected) in topics.keys().zip(&["default-topic", "t-index"]) {
+            assert!(value == expected);
+        }
+
         // Ensure the topic size didn't shrink (i.e. we didnt accidentaly delete something "extra")
-        assert!(serde_json::from_value::<u64>(get(&json, "/result/0/response/topics/1/1")?)? >= t_index_size);
+        assert!(*topics.get("t-index").unwrap() >= t_index_size);
 
         Ok(())
     });

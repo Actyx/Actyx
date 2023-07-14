@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::version::NodeVersion;
 
 use super::ActyxOSResult;
@@ -177,7 +179,7 @@ pub struct TopicLsRequest;
 pub struct TopicLsResponse {
     pub node_id: NodeId,
     pub active_topic: TopicName,
-    pub topics: Vec<(TopicName, TopicSize)>,
+    pub topics: BTreeMap<TopicName, TopicSize>,
 }
 
 /// Request to delete a given topic in a node.
