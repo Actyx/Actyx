@@ -14,7 +14,7 @@
     },
     "win": {
       "target": "msi",
-      "icon": "resources/icon.ico",
+      "icon": "icon.ico",
       "artifactName": "actyx-node-manager-windows-x64.msi"
     },
     "mac": {
@@ -113,7 +113,7 @@
     "cross-env": "^7.0.3",
     "css-loader": "^3.6.0",
     "electron": "^11.4.4",
-    "electron-builder": "^23",
+    "electron-builder": "22.14.10",
     "electron-webpack": "^2.8.2",
     "eslint": "^7.24.0",
     "eslint-config-prettier": "^8.2.0",
