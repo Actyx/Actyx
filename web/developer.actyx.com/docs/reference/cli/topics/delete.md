@@ -23,7 +23,7 @@ ARGS:
 ```
 
 The delete operation does not fail if the topic does not exist, instead,
-the `DELETED` field will be set to `Y` if files were deleted.
+the `DELETED` field will be set to `N` if no files were deleted.
 See the following example of using the `ax topics delete` command:
 
 ```text title="Example usage"
