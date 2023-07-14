@@ -307,7 +307,8 @@ jobs:
     needs: calculate-actyx-version
 
     env:
-      PYTHON_PATH: /usr/local/bin/python3
+      # We need python2 for electron-builder 22.14.13
+      PYTHON_PATH: /usr/bin/python
 
       ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
       ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
