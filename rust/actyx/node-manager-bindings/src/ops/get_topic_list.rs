@@ -9,19 +9,18 @@ use util::formats::{AdminRequest, AdminResponse};
 #[serde(rename_all = "camelCase")]
 struct Args {
     peer: String,
-    name: String,
 }
 pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let ud = cx.undefined();
     run_task::<Args, Nothing>(
         cx,
-        Box::new(|mut tx, Args { peer, name }| {
+        Box::new(|mut tx, Args { peer }| {
             async move {
                 let peer_id = peer.parse()?;
                 request_single(
                     &mut tx,
-                    move |tx| Task::Admin(peer_id, AdminRequest::TopicDelete { name }, tx),
-                    filter!(AdminRequest::TopicDelete => AdminResponse::TopicDeleteResponse),
+                    move |tx| Task::Admin(peer_id, AdminRequest::TopicLs, tx),
+                    filter!(AdminRequest::TopicLs => AdminResponse::TopicLsResponse),
                 )
                 .await?;
                 Ok(Nothing {})
