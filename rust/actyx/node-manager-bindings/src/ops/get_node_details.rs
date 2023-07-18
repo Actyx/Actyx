@@ -72,14 +72,6 @@ async fn get_node_details(mut tx: Sender<Task>, peer: PeerId) -> ActyxOSResult<C
     .await
     .ok();
 
-    let topics = request_single(
-        &mut tx,
-        move |tx| Task::Admin(peer, AdminRequest::TopicLs, tx),
-        filter!(AdminRequest::TopicLs => AdminResponse::TopicLsResponse),
-    )
-    .await
-    .ok();
-
     let addrs = swarm.as_ref().map(|s| s.admin_addrs.join(", "));
     Ok(ConnectedNodeDetails {
         node_id: status.node_id,
@@ -92,7 +84,6 @@ async fn get_node_details(mut tx: Sender<Task>, peer: PeerId) -> ActyxOSResult<C
         settings_schema,
         settings,
         offsets: Some(offsets),
-        topics,
     })
 }
 

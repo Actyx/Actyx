@@ -19,7 +19,6 @@ pub struct ConnectedNodeDetails {
     pub settings_schema: serde_json::Value,
     pub swarm_state: Option<NodesInspectResponse>,
     pub offsets: Option<OffsetsResponse>,
-    pub topics: Option<TopicLsResponse>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
