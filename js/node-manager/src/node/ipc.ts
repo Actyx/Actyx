@@ -13,6 +13,8 @@ import {
   RPC_ShutdownNode,
   RPC_Query,
   RPC_Connect,
+  RPC_TopicLs,
+  RPC_TopicDelete,
 } from '../common/ipc'
 import { readStore, writeStore, storePath } from './store'
 import {
@@ -24,6 +26,8 @@ import {
   shutdownNode,
   query,
   connect,
+  getTopicList,
+  deleteTopic
 } from './tasks'
 import { isLeft, left, right } from 'fp-ts/lib/Either'
 import { ioErrToStr, safeErrorToStr } from '../common/util'
@@ -87,6 +91,8 @@ export const setupIpc = (app: App, browserWindow: BrowserWindow) => {
   setupRpc(browserWindow, RPC_ShutdownNode, shutdownNode)
   setupRpc(browserWindow, RPC_Query, query)
   setupRpc(browserWindow, RPC_Connect, connect)
+  setupRpc(browserWindow, RPC_TopicLs, getTopicList)
+  setupRpc(browserWindow, RPC_TopicDelete, deleteTopic)
 
   onDisconnect((peer) => {
     console.log(`peer ${peer} disconnected`)
@@ -111,9 +117,9 @@ export const setupIpc = (app: App, browserWindow: BrowserWindow) => {
     const ff: FileFilter | undefined = !exts
       ? undefined
       : {
-          extensions: exts,
-          name: '',
-        }
+        extensions: exts,
+        name: '',
+      }
 
     const res = await dialog.showOpenDialog(browserWindow, {
       properties: ['openFile'],

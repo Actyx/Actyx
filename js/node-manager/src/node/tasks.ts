@@ -14,6 +14,10 @@ import {
   ShutdownNodeRequest,
   SignAppManifestRequest,
   SignAppManifestResponse,
+  TopicDeleteRequest,
+  TopicDeleteResponse,
+  TopicLsRequest,
+  TopicLsResponse,
 } from '../common/types'
 import { isLeft } from 'fp-ts/lib/Either'
 import reporter from 'io-ts-reporters'
@@ -85,3 +89,9 @@ export const query = (req: QueryRequest): Promise<QueryResponse> =>
 
 export const shutdownNode = (req: ShutdownNodeRequest): Promise<void> =>
   runWithoutResult(native.shutdown, req)
+
+export const getTopicList = (req: TopicLsRequest): Promise<TopicLsResponse> =>
+  runAndDecode(native.getTopicList, req, TopicLsResponse)
+
+export const deleteTopic = (req: TopicDeleteRequest): Promise<TopicDeleteResponse> =>
+  runAndDecode(native.deleteTopic, req, TopicDeleteResponse)
