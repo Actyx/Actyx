@@ -256,6 +256,13 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
           hidden={hideMenuItems}
         />
         <NavButton
+          onClick={() => dispatch({key: AppActionKey.ShowTopics})}
+          icon={<PreferencesIcon/>}
+          text="Topics"
+          active={state.key===AppStateKey.Topics}
+          hidden={hideMenuItems}
+        />
+        <NavButton
           onClick={() => dispatch({ key: AppActionKey.ShowNodeAuth })}
           icon={<ShieldIcon />}
           text="Node Auth"

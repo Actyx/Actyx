@@ -37,7 +37,7 @@ type RowProps = {
   hoverColor?: BackgroundColor
 }
 
-const Row = ({
+export const Row = ({
   accentColor,
   backgroundColor,
   isChecked,
@@ -68,15 +68,15 @@ const Row = ({
           },
           [
             !!expandableObject &&
-              accentColor &&
-              backgroundColor !== accentColor &&
-              `hover:bg-${accentColor}-100`,
+            accentColor &&
+            backgroundColor !== accentColor &&
+            `hover:bg-${accentColor}-100`,
           ],
           [
             !!expandableObject &&
-              accentColor &&
-              accentColor === backgroundColor &&
-              `hover:bg-${accentColor}-200`,
+            accentColor &&
+            accentColor === backgroundColor &&
+            `hover:bg-${accentColor}-200`,
           ],
           className,
         )}
@@ -120,18 +120,18 @@ const Row = ({
   )
 }
 
-type ColWidth = '1' | '16' | '32' | '40' | '44' | '52' | '56'
+export type ColWidth = '1' | '16' | '32' | '40' | '44' | '52' | '56' | '112'
 const LAMPORT_WIDTH: ColWidth = '16'
 const OFFSET_WIDTH: ColWidth = '16'
 const TIMESTAMP_WIDTH: ColWidth = '40'
 const TAGS_WIDTH: ColWidth = '40'
 const APP_WIDTH: ColWidth = '32'
 
-type RowHeight = '7' | '8' | '9' | '10'
+export type RowHeight = '7' | '8' | '9' | '10'
 const HEADER_HEIGHT: RowHeight = '8'
 const RESULT_HEIGHT: RowHeight = '7'
 
-type Cell = {
+export type Cell = {
   rowIsExpanded: boolean
   onClick?: () => void
   children: React.ReactNode
@@ -142,7 +142,7 @@ type Cell = {
   backgroundColor?: BackgroundColorSpectrum
 }
 
-const Cell = ({ width, height, onClick, children, className, isLast }: Cell) => {
+export const Cell = ({ width, height, onClick, children, className, isLast }: Cell) => {
   return (
     <div
       className={clsx(
@@ -160,7 +160,7 @@ const Cell = ({ width, height, onClick, children, className, isLast }: Cell) => 
   )
 }
 
-const TruncatableString = ({ children }: { children: React.ReactNode }) => (
+export const TruncatableString = ({ children }: { children: React.ReactNode }) => (
   <span className="truncate">{children}</span>
 )
 
@@ -222,7 +222,7 @@ const HeaderRow = (props: Pick<RowProps, 'isChecked' | 'onChecked' | 'onUnchecke
   )
 }
 
-const ResultRow = (
+export const ResultRow = (
   props: Pick<RowProps, 'isChecked' | 'onChecked' | 'onUnchecked' | 'expandableObject'> & {
     event: EventResponse
   },
@@ -539,9 +539,9 @@ const Screen = () => {
                     v
                       ? setQueryState((s) => ({ ...s, node: v.value }))
                       : setQueryState((s) => {
-                          const { node, ...rest } = s
-                          return rest
-                        })
+                        const { node, ...rest } = s
+                        return rest
+                      })
                   }
                   className="flex-grow mr-3"
                   defaultInputValue={defaultOption}

@@ -10,3 +10,4 @@ export { default as SwarmKey } from './SwarmKey'
 export { default as Preferences } from './Preferences'
 export { default as Query } from './Query'
 export { default as Settings } from './Settings'
+export { default as Topics } from "./Topics"
