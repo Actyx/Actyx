@@ -1,7 +1,4 @@
-use crate::{
-    types::{Node, Nothing},
-    util::run_task,
-};
+use crate::util::run_task;
 use axlib::node_connection::{request_single, Task};
 use futures::FutureExt;
 use neon::prelude::*;
