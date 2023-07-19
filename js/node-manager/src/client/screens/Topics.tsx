@@ -1,17 +1,20 @@
 import { Layout } from "../components/Layout"
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { Cell, ColWidth, Row, TruncatableString } from "./Query"
 import { useAppState } from "../app-state"
-import { getTopicList } from "client/util"
-import { TopicLsResponse } from "common/types"
+import { TopicDeleteResponse, TopicLsResponse } from "common/types"
+import clsx from "clsx"
+import { Button } from "../components/basics"
 
+function bytesToMegabytes(bytes: number) {
+    return bytes / 1024 / 1000
+}
 
-const HeaderRow = () => {
-    const cells: [string, ColWidth][] = [
-        ["Node", "112"],
+const DeleteHeaderRow = () => {
+    const cells: [string, ColWidth | undefined][] = [
+        ["Node", "96"],
         ["Topic", "32"],
-        ["Size", "32"],
-        ["Active", "16"]
+        ["Deleted", undefined]
     ]
     return (
         <Row
@@ -27,7 +30,8 @@ const HeaderRow = () => {
                     height="8"
                     width={width}
                     rowIsExpanded={false}
-                    isLast={text === "Active"} >
+                    isLast={text === "Deleted"}
+                >
                     <TruncatableString>{text}</TruncatableString>
                 </Cell>
             ))
@@ -36,42 +40,128 @@ const HeaderRow = () => {
     )
 }
 
-const ResultRow = ({ topic }: { topic: TopicLsResponse }) => {
-    const rows: [string, string, ColWidth][][] = Object.keys(topic.topics).map((topicName) => {
-        return [
-            ["node", topic.nodeId, "112"],
-            ["topic", topicName, "32"],
-            ["size", topic.topics[topicName].toString(), "32"],
-            ["active", topic.activeTopic === topicName ? "✓" : "", "16"]
-        ]
-    })
-
+const LsHeaderRow = () => {
+    const cells: [string, ColWidth | undefined][] = [
+        ["Node", "96"],
+        ["Topic", "32"],
+        ["Size (MB)", "32"],
+        ["Active", undefined]
+    ]
     return (
-        <div>{
-            rows.map((row, ix) => (
-                <React.Fragment key={`row${ix}`}>
-                    <Row height="7" accentColor="blue" expandableObject={false} isChecked={false}>
-                        {(onClick, rowIsExpanded) =>
-                            row.map(([keyPrefix, text, width]) => (
-                                <Cell
-                                    key={`${keyPrefix}+${text}`}
-                                    height="7"
-                                    width={width}
-                                    rowIsExpanded={rowIsExpanded}
-                                    onClick={onClick}
-                                    isLast={text === "active"}>
-                                    <TruncatableString>{text}</TruncatableString>
-                                </Cell>
-                            ))
-                        }
-                    </Row>
-                </React.Fragment>
+        <Row
+            height="8"
+            isChecked={false}
+            backgroundColor="gray"
+            textColor="gray"
+            className="font-bold border-t rounded-t-md"
+        >
+            {() => cells.map(([text, width]) => (
+                <Cell
+                    key={text}
+                    height="8"
+                    width={width}
+                    rowIsExpanded={false}
+                    isLast={text === "Active"}
+                >
+                    <TruncatableString>{text}</TruncatableString>
+                </Cell>
             ))
-        }</div>
+            }
+        </Row >
     )
 }
 
+const LsResultRow = ({ topic, toggle, isChecked }: { topic: FlatTopic, toggle: () => void, isChecked: boolean }) => {
+    const cells: [string, string, ColWidth | undefined][] = [
+        ["node", topic.nodeId, "96"],
+        ["topic", topic.name, "32"],
+        ["size", bytesToMegabytes(topic.size).toFixed(2).toString(), "32"],
+        ["active", topic.isActive ? "✓" : "", undefined]
+    ]
+    const jsxCells = cells.map(([keyPrefix, text, width]) => (
+        <Cell
+            key={`${keyPrefix}+${text}`}
+            height="7"
+            width={width}
+            className={clsx({ 'font-mono': (keyPrefix === 'node' || keyPrefix == "size") })}
+            isLast={keyPrefix === "active"}
+            rowIsExpanded={false}
+        >
+            <TruncatableString>{text}</TruncatableString>
+        </Cell>
+    ))
 
+    if (topic.isActive) {
+        return <Row
+            height="7"
+            isChecked={false}
+        >
+            {() => jsxCells}
+        </Row>
+    } else {
+        return <Row
+            height="7"
+            isChecked={isChecked}
+            onChecked={toggle}
+            onUnchecked={toggle}
+        >
+            {() => jsxCells}
+        </Row>
+    }
+}
+
+type DeletedTopic = { name: string } & TopicDeleteResponse
+
+const DeleteResultRow = ({ deleted }: { deleted: DeletedTopic }) => {
+    const cells: [string, string, ColWidth | undefined][] = [
+        ["node", deleted.nodeId, "96"],
+        ["topic", deleted.name, "32"],
+        ["deleted", deleted.deleted ? "✓" : "", undefined]
+    ]
+    const jsxCells = cells.map(([keyPrefix, text, width]) => (
+        <Cell
+            key={`${keyPrefix}+${text}`}
+            height="7"
+            width={width}
+            className={clsx({ 'font-mono': keyPrefix === 'node' })}
+            isLast={keyPrefix === "active"}
+            rowIsExpanded={false}
+        >
+            <TruncatableString>{text}</TruncatableString>
+        </Cell>
+    ))
+
+    return (
+        <Row
+            height="7"
+            isChecked={false}
+        >
+            {() => jsxCells}
+        </Row>
+    )
+}
+
+type FlatTopic = {
+    nodeAddress: string,
+    nodeId: string,
+    isActive: boolean,
+    name: string,
+    size: number
+}
+
+type TopicLsResponseWithAddress = { nodeAddress: string } & TopicLsResponse
+
+function fromTopicLs(response: TopicLsResponseWithAddress): FlatTopic[] {
+    return Object.entries(response.topics).map(
+        ([name, size]) => ({
+            nodeAddress: response.nodeAddress,
+            nodeId: response.nodeId,
+            isActive: name === response.activeTopic,
+            name,
+            size
+        })
+    )
+}
 
 const Screen: React.FC<{}> = () => {
     const {
@@ -79,34 +169,93 @@ const Screen: React.FC<{}> = () => {
         actions: { getTopicList, deleteTopic }
     } = useAppState()
 
-    const getTopics = async () => {
+    const [checkedIxs, setCheckedIxs] = useState<Set<number>>(new Set())
+    const [topics, setTopics] = useState<FlatTopic[]>([]);
+    const [deletedTopics, setDeletedTopics] = useState<DeletedTopic[]>([])
+
+    const fetchTopics: () => Promise<TopicLsResponseWithAddress[]> = async () => {
         let topics = await Promise.all(
-            nodes.map((node) => {
+            nodes.map(async (node) => {
                 console.log(node.addr)
-                return getTopicList(node.addr)
+                const res = await getTopicList(node.addr)
+                return ({ nodeAddress: node.addr, ...res })
             })
         )
         return topics
     }
 
-    const [topics, setTopics] = useState<null | TopicLsResponse[]>(null);
+    const fetchTopicsAndSet = () => fetchTopics()
+        .then((res) => {
+            let flatTopics: FlatTopic[] = []
+            for (const response of res) {
+                flatTopics = flatTopics.concat(fromTopicLs(response))
+            }
+            setTopics(flatTopics)
+            return res.length
+        })
+
+    const toggle = (ix: number) => {
+        setCheckedIxs((checkedIxs) => {
+            if (checkedIxs.has(ix)) {
+                checkedIxs.delete(ix)
+            } else {
+                checkedIxs.add(ix)
+            }
+            return new Set(checkedIxs)
+        })
+    }
+
+    const deleteTopics = async () => {
+        let deleted = []
+        for (const index of checkedIxs) {
+            let topic = topics[index]
+            let deleteResult = await deleteTopic(topic.nodeAddress, topic.name)
+            deleted.push({ name: topic.name, ...deleteResult })
+        }
+        await fetchTopicsAndSet()
+        setDeletedTopics(deleted)
+    }
 
     useEffect(() => {
-        getTopics()
-            .then((res) => setTopics(res))
+        fetchTopicsAndSet()
     }, [])
 
-
+    useEffect(() => {
+        setCheckedIxs(new Set())
+    }, [topics])
 
     return (
         <Layout title="Topic Management">
             <div className="bg-white rounded p-4 min-h-full w-full min-w-full max-w-full overflow-hidden flex flex-col items-stretch h-full">
-                <HeaderRow></HeaderRow>
-                {topics?.map((topic) => (
-                    <ResultRow topic={topic}></ ResultRow >
-                ))}
+                <div className="flex-grow mt-6 border-b border-l border-r rounded-md mb-1 text-xs flex flex-col">
+                    <LsHeaderRow></LsHeaderRow>
+                    <div className="flex-grow flex-shrink h-1 overflow-y-scroll overflow-x-hidden">
+                        {topics.map((topic, ix) => (
+                            <LsResultRow
+                                topic={topic}
+                                toggle={() => toggle(ix)}
+                                isChecked={checkedIxs.has(ix)}
+                            ></ LsResultRow>
+                        ))}
+                    </div>
+                </div>
+                <Button
+                    color="red"
+                    disabled={checkedIxs.size <= 0}
+                    onClick={deleteTopics}
+                >Delete selected topics</Button>
+                <div className="flex-grow mt-6 border-b border-l border-r rounded-md mb-1 text-xs flex flex-col">
+                    <DeleteHeaderRow></DeleteHeaderRow>
+                    <div className="flex-grow flex-shrink h-1 overflow-y-scroll overflow-x-hidden">
+                        {deletedTopics.map((topic) => (
+                            <DeleteResultRow
+                                deleted={topic}
+                            ></ DeleteResultRow>
+                        ))}
+                    </div>
+                </div>
             </div>
-        </Layout>
+        </Layout >
     )
 }
 

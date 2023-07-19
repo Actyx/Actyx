@@ -120,7 +120,8 @@ export const Row = ({
   )
 }
 
-export type ColWidth = '1' | '16' | '32' | '40' | '44' | '52' | '56' | '112'
+/** For more values see here https://tailwindcss.com/docs/width */
+export type ColWidth = '1' | '16' | '32' | '40' | '44' | '52' | '56' | '96'
 const LAMPORT_WIDTH: ColWidth = '16'
 const OFFSET_WIDTH: ColWidth = '16'
 const TIMESTAMP_WIDTH: ColWidth = '40'

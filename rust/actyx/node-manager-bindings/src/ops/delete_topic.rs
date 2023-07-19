@@ -9,13 +9,13 @@ use util::formats::{ActyxOSCode, AdminRequest, AdminResponse, TopicDeleteRequest
 #[serde(rename_all = "camelCase")]
 struct Args {
     peer: String,
-    name: String,
+    topic: String,
 }
 pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let ud = cx.undefined();
     run_task::<Args, TopicDeleteResponse>(
         cx,
-        Box::new(|mut tx, Args { peer, name }| {
+        Box::new(|mut tx, Args { peer, topic: name }| {
             async move {
                 let peer_id = peer.parse()?;
                 let result = request_single(
