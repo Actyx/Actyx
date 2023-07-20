@@ -1,10 +1,10 @@
 import fetch from 'cross-fetch'
 import { NodeInfo as NodeInfoIo } from './internal_common'
 import * as SV from 'semver'
-import * as E from 'fp-ts/Either'
+import * as E from 'fp-ts/lib/Either'
 import { ActyxOpts, NodeStatus } from '.'
 import log from './internal_common/log'
-import { pipe } from 'fp-ts/function'
+import { pipe } from 'fp-ts/lib/function'
 import { getApiLocation, mkHeaders } from './v2/utils'
 
 let lastInfoTime = 0

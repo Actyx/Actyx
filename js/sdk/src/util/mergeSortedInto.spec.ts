@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { ord } from 'fp-ts'
+import { ord } from 'fp-ts/lib'
 import { mergeSortedInto } from '.'
 
 describe('mergeSortedInto', () => {
