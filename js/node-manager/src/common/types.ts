@@ -264,3 +264,27 @@ export const QueryResponse = io.type({
   events: io.union([io.null, io.array(EventDiagnostic)]),
 })
 export type QueryResponse = io.TypeOf<typeof QueryResponse>
+
+// Topics
+export const TopicLsRequest = io.type({ peer: io.string })
+export type TopicLsRequest = io.TypeOf<typeof TopicLsRequest>
+
+export const TopicLsResponse = io.type({
+  nodeId: io.string,
+  activeTopic: io.string,
+  topics: io.record(io.string, io.number)
+})
+export type TopicLsResponse = io.TypeOf<typeof TopicLsResponse>
+
+export const TopicDeleteRequest = io.type({
+  peer: io.string,
+  topic: io.string,
+})
+export type TopicDeleteRequest = io.TypeOf<typeof TopicDeleteRequest>
+
+export const TopicDeleteResponse = io.type({
+  nodeId: io.string,
+  deleted: io.boolean
+})
+export type TopicDeleteResponse = io.TypeOf<typeof TopicDeleteResponse>
+

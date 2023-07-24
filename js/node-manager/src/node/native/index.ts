@@ -8,4 +8,6 @@ export const signAppManifest = native.signAppManifest.bind(native)
 export const shutdown = native.shutdown.bind(native)
 export const query = native.query.bind(native)
 export const onDisconnect = native.onDisconnect.bind(native)
+export const getTopicList = native.getTopicList.bind(native)
+export const deleteTopic = native.deleteTopic.bind(native)
 export type AsyncTask = native.AsyncTask

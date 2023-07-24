@@ -8,5 +8,7 @@ declare module '*node-manager-bindings.node' {
   export const signAppManifest: AsyncTask
   export const shutdown: AsyncTask
   export const query: AsyncTask
+  export const getTopicList: AsyncTask
+  export const deleteTopic: AsyncTask
   export const onDisconnect: (cb: (peer: string) => void) => undefined
 }

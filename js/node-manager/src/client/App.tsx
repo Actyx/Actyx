@@ -12,6 +12,7 @@ import {
   SwarmKey,
   Preferences,
   Query,
+  Topics,
   Settings,
 } from './screens'
 import { AppStateProvider, useAppState, AppStateKey } from './app-state'
@@ -25,7 +26,7 @@ const Root = () => {
   const [fatalError, setFatalError] = useState<null | FatalErrorT>(null)
 
   useEffect(() => {
-    ;(async () => {
+    ; (async () => {
       setFatalError(await waitForFatalError())
     })()
   }, [])
@@ -87,6 +88,8 @@ const Content: React.FC = () => {
       return <Query />
     case AppStateKey.Settings:
       return <Settings />
+    case AppStateKey.Topics:
+      return <Topics />
   }
 }
 

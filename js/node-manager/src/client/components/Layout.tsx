@@ -11,6 +11,7 @@ import {
   NodeManagerIcon,
   KeyIcon,
   SearchIcon,
+  TopicsIcon
 } from './icons'
 import { ClassName } from '../react'
 import { useAppState, AppActionKey, AppStateKey } from '../app-state'
@@ -253,6 +254,13 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
           onClick={() => dispatch({ key: AppActionKey.ShowSettings })}
           icon={<PreferencesIcon />}
           text="Settings"
+          hidden={hideMenuItems}
+        />
+        <NavButton
+          onClick={() => dispatch({key: AppActionKey.ShowTopics})}
+          icon={<TopicsIcon/>}
+          text="Topics"
+          active={state.key===AppStateKey.Topics}
           hidden={hideMenuItems}
         />
         <NavButton

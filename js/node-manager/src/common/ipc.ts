@@ -16,6 +16,10 @@ import {
   ShutdownNodeResponse,
   QueryRequest,
   QueryResponse,
+  TopicLsRequest,
+  TopicLsResponse,
+  TopicDeleteRequest,
+  TopicDeleteResponse,
 } from './types'
 
 export const enum IpcFromClient {
@@ -90,3 +94,6 @@ export const RPC_SignAppManifest = mkRPC(
 )
 
 export const RPC_Query = mkRPC('Query', QueryRequest, QueryResponse)
+
+export const RPC_TopicLs = mkRPC("TopicLs", TopicLsRequest, TopicLsResponse)
+export const RPC_TopicDelete = mkRPC("TopicDelete", TopicDeleteRequest, TopicDeleteResponse)

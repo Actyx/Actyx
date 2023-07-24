@@ -10,6 +10,7 @@ export const enum AppStateKey {
   Preferences = 'Preferences',
   Query = 'Query',
   Settings = 'Settings',
+  Topics = 'Topics',
 }
 
 interface Overview {
@@ -57,6 +58,10 @@ interface Settings {
   key: AppStateKey.Settings
 }
 
+interface Topics {
+  key: AppStateKey.Topics
+}
+
 export type AppState =
   | Overview
   | NodeDetail
@@ -69,6 +74,7 @@ export type AppState =
   | Preferences
   | Query
   | Settings
+  | Topics
 
 export enum AppActionKey {
   ShowOverview = 'ShowOverview',
@@ -82,7 +88,10 @@ export enum AppActionKey {
   ShowPreferences = 'ShowPreferences',
   ShowQuery = 'ShowQuery',
   ShowSettings = 'ShowSettings',
+  ShowTopics = 'ShowTopics',
 }
+
+
 interface ShowOverview {
   key: AppActionKey.ShowOverview
 }
@@ -127,6 +136,10 @@ interface ShowSettings {
   key: AppActionKey.ShowSettings
 }
 
+interface ShowTopics {
+  key: AppActionKey.ShowTopics
+}
+
 export type AppAction =
   | ShowOverview
   | ShowSetupUserKey
@@ -139,3 +152,4 @@ export type AppAction =
   | ShowPreferences
   | ShowQuery
   | ShowSettings
+  | ShowTopics
