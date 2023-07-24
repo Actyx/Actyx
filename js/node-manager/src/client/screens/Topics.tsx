@@ -9,7 +9,7 @@ import { Either, isLeft, isRight, left, right } from "fp-ts/Either"
 
 
 function bytesToMegabytes(bytes: number) {
-    return bytes / 1024 / 1000
+    return bytes / 1e6
 }
 
 const LsHeaderRow = () => {
@@ -26,6 +26,7 @@ const LsHeaderRow = () => {
             backgroundColor="gray"
             textColor="gray"
             className="font-bold border-t rounded-t-md"
+
         >
             {() => cells.map(([text, width]) => (
                 <Cell
@@ -37,8 +38,7 @@ const LsHeaderRow = () => {
                 >
                     <TruncatableString>{text}</TruncatableString>
                 </Cell>
-            ))
-            }
+            ))}
         </Row >
     )
 }
@@ -47,7 +47,7 @@ const LsResultRow = ({ topic, toggle, isChecked }: { topic: FlatTopic, toggle: (
     const cells: [string, string, ColWidth | undefined][] = [
         ["node", topic.nodeId, "96"],
         ["topic", topic.name, "32"],
-        ["size", bytesToMegabytes(topic.size).toFixed(2).toString(), "32"],
+        ["size", bytesToMegabytes(topic.size).toFixed(2), "32"],
         ["active", topic.isActive ? "✓" : "", undefined]
     ]
     const jsxCells = cells.map(([keyPrefix, text, width]) => (
