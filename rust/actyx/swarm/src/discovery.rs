@@ -208,11 +208,13 @@ pub async fn discovery_ingest(store: BanyanStore) {
             }
         }
     }
+    let mut peer_addresses: Vec<(ipfs_embed::PeerId, ipfs_embed::Multiaddr)> = vec![];
     for (peer, addrs) in addresses {
         for addr in addrs {
-            ipfs.add_address(peer.into(), addr.into());
+            peer_addresses.push((peer.into(), addr.into()));
         }
     }
+    ipfs.add_addresses(peer_addresses);
 
     // then switch to live mode
     tracing::debug!("discovery_ingest switching to live mode");
