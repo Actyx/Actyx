@@ -21,7 +21,11 @@ derive_more = "0.99.17"
 futures = { version = "0.3.19", package = "futures" }
 genawaiter = { version = "0.99.1", features = ["futures03"] }
 http = "0.2.6"
-hyper = { version = "0.14.16", features = ["http1", "server", "tcp"], package = "hyper" }
+hyper = { version = "0.14.16", features = [
+    "http1",
+    "server",
+    "tcp",
+], package = "hyper" }
 itertools = "0.10.3"
 libipld = { version = "0.14.0", default-features = false }
 maplit = "1.0.2"
@@ -42,7 +46,7 @@ tokio-stream = "0.1.8"
 tracing = "0.1.29"
 tree_magic_mini = "3.0.3"
 trees = { path = "../trees" }
-warp = "0.3.2"
+warp = "0.3.5"
 wsrpc = "0.2.0"
 zeroize = "1.2.0"
 
