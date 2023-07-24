@@ -116,7 +116,7 @@ impl Publisher {
         }
     }
     #[cfg(not(windows))]
-    pub fn create_release_artifact(&mut self, in_dir: impl AsRef<Path>) -> anyhow::Result<()> {
+    pub fn create_release_artifact(&mut self, in_dir: impl AsRef<Path>, repo_workdir: PathBuf) -> anyhow::Result<()> {
         match &mut self.target {
             TargetArtifact::Blob {
                 pre_processing,
@@ -182,14 +182,39 @@ impl Publisher {
                     ..
                 } = &self.source
                 {
-                    docker_manifest_create(manifest, registry, source_repository, repository, tag)
+                    let mut dockerfile = repo_workdir.clone();
+                    dockerfile.push("docker/actyx/Dockerfile");
+                    let target = format!("{}/{}:{}", registry, repository, tag);
+                    let args = [
+                        "buildx",
+                        "build",
+                        "--platform",
+                        "linux/arm64/v8,linux/amd64,linux/arm/v7,linux/arm/v6",
+                        "-f",
+                        &dockerfile.to_string_lossy(),
+                        &repo_workdir.to_string_lossy(),
+                    ];
+                    let cmd = Command::new("docker")
+                        .args(&args)
+                        .output()
+                        .context(format!("building multiplatform docker images {:?}", args))?;
+
+                    anyhow::ensure!(
+                        cmd.status.success(),
+                        "Error running `docker {:?}` for {}\nstdout: {}\nstderr: {}",
+                        args,
+                        target,
+                        String::from_utf8(cmd.stdout)?,
+                        String::from_utf8(cmd.stderr)?
+                    );
+                    Ok(())
                 } else {
                     unreachable!()
                 }
             }
         }
     }
-    pub fn publish(&self) -> anyhow::Result<()> {
+    pub fn publish(&self, repo_workdir: PathBuf) -> anyhow::Result<()> {
         match &self.target {
             TargetArtifact::Blob {
                 file_name,
@@ -206,7 +231,39 @@ impl Publisher {
                 registry,
                 repository,
                 ..
-            } => docker_manifest_push(&format!("{}/{}:{}", registry, repository, tag)),
+            } => {
+                let mut dockerfile = repo_workdir.clone();
+                dockerfile.push("docker/actyx/Dockerfile");
+                let target = format!("{}/{}:{}", registry, repository, tag);
+                println!("{:?}", target);
+                let args = [
+                    "buildx",
+                    "build",
+                    "--push",
+                    "--tag",
+                    "jmgd_test",
+                    "--platform",
+                    "linux/arm64/v8,linux/amd64,linux/arm/v7,linux/arm/v6",
+                    "-f",
+                    &dockerfile.to_string_lossy(),
+                    &repo_workdir.to_string_lossy(),
+                ];
+                println!("{:?}", args);
+                // let cmd = Command::new("docker")
+                //     .args(&args)
+                //     .output()
+                //     .context(format!("building multiplatform docker images {:?}", args))?;
+
+                // anyhow::ensure!(
+                //     cmd.status.success(),
+                //     "Error running `docker {:?}` for {}\nstdout: {}\nstderr: {}",
+                //     args,
+                //     target,
+                //     String::from_utf8(cmd.stdout)?,
+                //     String::from_utf8(cmd.stderr)?
+                // );
+                Ok(())
+            }
         }
     }
 }

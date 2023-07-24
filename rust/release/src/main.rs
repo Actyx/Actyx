@@ -353,6 +353,7 @@ Overview:"#
         } => {
             let head_of_origin_master = repo.head_of_origin_master()?;
             let head = repo.head_hash()?;
+            let repo_workdir = repo.workdir()?;
             anyhow::ensure!(
                 dry_run || (head_of_origin_master == head) || force,
                 "Not up to date with origin/master \
@@ -393,15 +394,14 @@ Overview:"#
                                         } else if source_exists {
                                             needed_write.store(true, Ordering::Relaxed);
                                             log::debug!("creating release artifact in dir {}", tmp.path().display());
-                                            p.create_release_artifact(tmp.path()).context(format!(
-                                                "creating release artifact at {}",
-                                                tmp.path().display()
-                                            ))?;
+                                            p.create_release_artifact(tmp.path(), repo_workdir.clone()).context(
+                                                format!("creating release artifact at {}", tmp.path().display()),
+                                            )?;
                                             if dry_run {
                                                 writeln!(&mut out, "    [DRY RUN] Create and publish {}", p.target)?;
                                             } else {
                                                 log::debug!("starting publishing");
-                                                p.publish().context("publishing")?;
+                                                p.publish(repo_workdir.clone()).context("publishing")?;
                                                 log::debug!("finished publishing");
                                                 writeln!(&mut out, "    [NEW] {}", p.target)?;
                                             }
