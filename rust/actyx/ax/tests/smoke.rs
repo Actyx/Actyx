@@ -541,7 +541,7 @@ fn topic_delete() -> anyhow::Result<()> {
         assert!(get(&json, "/code")? == json!("OK"));
         assert!(get(&json, "/result/0/response/activeTopic")? == json!("new_topic"));
 
-        // Size is not predictable so we're just checking the keys exist in the expected order
+        // Size is not predictable so we're just checking the keys
         let topics = serde_json::from_value::<BTreeMap<String, u64>>(get(&json, "/result/0/response/topics")?)?;
         for (value, expected) in topics.keys().zip(&["default-topic", "new_topic"]) {
             assert!(value == expected);
@@ -672,7 +672,7 @@ fn topic_delete_prefix() -> anyhow::Result<()> {
         assert!(get(&json, "/code")? == json!("OK"));
         assert!(get(&json, "/result/0/response/activeTopic")? == json!("t-index"));
 
-        // Size is not predictable so we're just checking the keys exist in the expected order
+        // Size is not predictable so we're just checking the keys
         let topics = serde_json::from_value::<BTreeMap<String, u64>>(get(&json, "/result/0/response/topics")?)?;
         for (value, expected) in topics.keys().zip(&["default-topic", "t-i", "t-index"]) {
             assert!(value == expected);

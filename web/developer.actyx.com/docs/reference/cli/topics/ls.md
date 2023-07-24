@@ -45,20 +45,11 @@ $ ax topics ls localhost --json | jq
       "response": {
         "nodeId": "6WrYWzS/WBsTwXMmMn9ZTHf4zmRTWyPHIoNQuzl7tKY",
         "activeTopic": "running-topic",
-        "topics": [
-          [
-            "default-topic",
-            147456
-          ],
-          [
-            "old-topic",
-            380928
-          ],
-          [
-            "running-topic",
-            6627632
-          ]
-        ]
+        "topics": {
+          "default-topic": 147456,
+          "old-topic": 380928,
+          "running-topic": 6627632
+        }
       }
     }
   ]
