@@ -297,7 +297,7 @@ jobs:
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
           container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
-          name: ${{github.sha}}/node-manager-windows
+          name: ${{github.sha}}/node-manager-win
           path: js/node-manager/dist/artifacts
       - run: make clean
 
@@ -331,7 +331,7 @@ jobs:
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
           container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
-          name: node-manager-mac
+          name: ${{github.sha}}/node-manager-mac
           path: js/node-manager/dist/artifacts
 
 
