@@ -191,7 +191,7 @@ impl Publisher {
                         &repo_workdir.to_string_lossy(),
                     ];
                     let cmd = Command::new("docker")
-                        .args(&args)
+                        .args(args)
                         .output()
                         .context(format!("building multiplatform docker images {:?}", args))?;
 
@@ -244,7 +244,7 @@ impl Publisher {
                     &repo_workdir.to_string_lossy(),
                 ];
                 let cmd = Command::new("docker")
-                    .args(&args)
+                    .args(args)
                     .output()
                     .context(format!("building multiplatform docker images {:?}", args))?;
 
