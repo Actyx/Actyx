@@ -1,6 +1,6 @@
 import crossFetch from 'cross-fetch'
 import * as t from 'io-ts'
-import * as E from 'fp-ts/Either'
+import * as E from 'fp-ts/lib/Either'
 import { lt, gte } from 'semver'
 import { EventKey, Milliseconds, OffsetMap } from '..'
 import {

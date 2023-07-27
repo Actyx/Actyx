@@ -17,7 +17,7 @@ import {
   Where,
 } from '@actyx/sdk'
 import { SnapshotStore } from '@actyx/sdk/lib/snapshotStore'
-import * as O from 'fp-ts/Option'
+import * as O from 'fp-ts/lib/Option'
 import { clone } from 'ramda'
 import { Observable } from '../../node_modules/rxjs'
 import * as Rx from '../../node_modules/rxjs'

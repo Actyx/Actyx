@@ -5,8 +5,8 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { contramap, gt, lt, tuple } from 'fp-ts/lib/Ord'
-import { Ord as StringOrd } from 'fp-ts/string'
-import { Ord as NumberOrd } from 'fp-ts/number'
+import { Ord as StringOrd } from 'fp-ts/lib/string'
+import { Ord as NumberOrd } from 'fp-ts/lib/number'
 import {
   lastValueFrom,
   EMPTY,
