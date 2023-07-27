@@ -473,6 +473,8 @@ mod test {
     use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Payload, StreamNr};
     use ax_futures_util::prelude::AxStreamExt;
     use futures::{future, StreamExt, TryStreamExt};
+    use tokio::time::sleep;
+    use trees::query::TagExprQuery;
 
     use super::*;
     use crate::{BanyanConfig, EventRoute, SwarmConfig};
@@ -491,11 +493,7 @@ mod test {
             topic: "topic".into(),
             enable_mdns: false,
             listen_addresses: Arc::new(Mutex::new("127.0.0.1:0".parse().unwrap())),
-            ephemeral_event_config: EphemeralEventsConfig {
-                // no-op config
-                interval: Duration::from_secs(300_000_000),
-                streams: BTreeMap::default(),
-            },
+            ephemeral_event_config: EphemeralEventsConfig::disable(),
             banyan_config: BanyanConfig {
                 tree: banyan::Config::debug(),
                 ..Default::default()
@@ -726,5 +724,88 @@ mod test {
         test_retain_age(99).await;
         test_retain_age(100).await;
         test_retain_age(200).await;
+    }
+
+    async fn prune_replication_store(store_name: &str, enable_pruning: bool) -> BanyanStore {
+        let banyan_config = BanyanConfig {
+            tree: banyan::Config {
+                max_leaf_count: 1,
+                target_leaf_size: 1000,
+                zstd_level: -7,
+                ..banyan::Config::debug()
+            },
+            ..Default::default()
+        };
+        let swarm_config = SwarmConfig {
+            banyan_config,
+            event_routes: vec![EventRoute::new(
+                TagExpr::from_str("'test'").unwrap(),
+                "test_stream".to_string(),
+            )],
+            ephemeral_event_config: if enable_pruning {
+                EphemeralEventsConfig::new(
+                    // agressive pruning so we don't wait too long
+                    Duration::from_secs(15),
+                    BTreeMap::from([("test_stream".to_string(), RetainConfig::events(1))]),
+                )
+            } else {
+                EphemeralEventsConfig::disable()
+            },
+            ..SwarmConfig::test(store_name)
+        };
+        BanyanStore::new(swarm_config, ActoRef::blackhole()).await.unwrap()
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_prune_replication() {
+        // util::setup_logger();
+
+        let test_stream_nr = StreamNr::from(1);
+
+        // Setup the stores (they need special banyan parameters to ensure this works)
+        let store1 = prune_replication_store("store1", true).await;
+        let store2 = prune_replication_store("store2", false).await;
+
+        // Present the stores to eachother
+        let store2_ipfs = store2.ipfs();
+        store1
+            .ipfs()
+            .clone()
+            .add_address(store2_ipfs.local_peer_id(), store2_ipfs.listeners()[0].clone());
+
+        // Append the payload to store1
+        let payload = Payload::compact(&String::from("Test")).unwrap();
+        store1
+            .append(app_id(), vec![(tags!("test"), payload.clone())])
+            .await
+            .unwrap();
+        store1
+            .append(app_id(), vec![(tags!("test"), payload.clone())])
+            .await
+            .unwrap();
+
+        // From store2, get the stream from store1
+        let replicated_stream_id = store2
+            .stream_known_streams()
+            .filter(|stream_id| {
+                future::ready(stream_id.node_id() == store1.node_id() && stream_id.stream_nr() == test_stream_nr)
+            })
+            .next()
+            .await
+            .unwrap();
+
+        // Query the replicated stream - we're looking for a non-local stream with the replicated_stream_id
+        let query =
+            TagExprQuery::from_expr(&TagExpr::from_str("'test'").unwrap()).unwrap()(false, replicated_stream_id);
+
+        let mut stream = store2.stream_filtered_stream_ordered(query.clone());
+        eprintln!("{:?}", stream.next().await.unwrap());
+        eprintln!("{:?}", stream.next().await.unwrap());
+
+        // Finnicky but I couldn't find a deterministic way of doing this test
+        sleep(Duration::from_secs(15)).await;
+        let mut stream = store2.stream_filtered_stream_ordered(query.clone());
+        let (offset, _, _) = stream.next().await.unwrap().unwrap();
+        assert!(offset > 0);
     }
 }
