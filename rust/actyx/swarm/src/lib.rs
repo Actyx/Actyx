@@ -141,6 +141,9 @@ const FILES_STREAM_NUMBER: u64 = 3;
 
 const EVENT_ROUTING_TAG_NAME: &str = "event_routing";
 
+/// The default pruning interval (in seconds).
+const DEFAULT_PRUNING_INTERVAL: u64 = 30 * 60;
+
 fn internal_app_id() -> AppId {
     app_id!("com.actyx")
 }
@@ -166,7 +169,7 @@ impl EphemeralEventsConfig {
 impl Default for EphemeralEventsConfig {
     fn default() -> Self {
         Self {
-            interval: Duration::from_secs(30 * 60),
+            interval: Duration::from_secs(DEFAULT_PRUNING_INTERVAL),
             streams: BTreeMap::new(),
         }
     }
@@ -182,7 +185,7 @@ impl FromStr for EphemeralEventsConfig {
 impl From<BTreeMap<String, RetainConfig>> for EphemeralEventsConfig {
     fn from(streams: BTreeMap<String, RetainConfig>) -> Self {
         Self {
-            interval: Duration::from_secs(30 * 60),
+            interval: Duration::from_secs(DEFAULT_PRUNING_INTERVAL),
             streams,
         }
     }
