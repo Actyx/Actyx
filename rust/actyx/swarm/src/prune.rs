@@ -473,7 +473,7 @@ mod test {
     use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Payload, StreamNr};
     use ax_futures_util::prelude::AxStreamExt;
     use futures::{future, StreamExt, TryStreamExt};
-    use tokio::time::sleep;
+    use tokio::time::{sleep, timeout};
     use trees::query::TagExprQuery;
 
     use super::*;
@@ -756,14 +756,17 @@ mod test {
         BanyanStore::new(swarm_config, ActoRef::blackhole()).await.unwrap()
     }
 
+    // Test was "stolen" from tests/multi_node.rs
     #[tokio::test(flavor = "multi_thread")]
     async fn test_prune_replication() {
-        // util::setup_logger();
+        util::setup_logger();
 
+        let collect_timeout_duration = Duration::from_secs(5);
         let test_stream_nr = StreamNr::from(1);
 
         // Setup the stores (they need special banyan parameters to ensure this works)
         let store1 = prune_replication_store("store1", true).await;
+        // Store 2 does not need to prune because it's only receiving events
         let store2 = prune_replication_store("store2", false).await;
 
         // Present the stores to eachother
@@ -775,37 +778,51 @@ mod test {
 
         // Append the payload to store1
         let payload = Payload::compact(&String::from("Test")).unwrap();
-        store1
-            .append(app_id(), vec![(tags!("test"), payload.clone())])
-            .await
-            .unwrap();
-        store1
-            .append(app_id(), vec![(tags!("test"), payload.clone())])
-            .await
-            .unwrap();
+        let events = vec![(tags!("test"), payload)];
+        store1.append(app_id(), events.clone()).await.unwrap();
+        store1.append(app_id(), events).await.unwrap();
 
         // From store2, get the stream from store1
-        let replicated_stream_id = store2
-            .stream_known_streams()
-            .filter(|stream_id| {
-                future::ready(stream_id.node_id() == store1.node_id() && stream_id.stream_nr() == test_stream_nr)
-            })
-            .next()
-            .await
-            .unwrap();
+        let replicated_stream_id = timeout(
+            Duration::from_secs(10),
+            store2
+                .stream_known_streams()
+                .filter(|stream_id| {
+                    future::ready(stream_id.node_id() == store1.node_id() && stream_id.stream_nr() == test_stream_nr)
+                })
+                .next(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
 
         // Query the replicated stream - we're looking for a non-local stream with the replicated_stream_id
         let query =
             TagExprQuery::from_expr(&TagExpr::from_str("'test'").unwrap()).unwrap()(false, replicated_stream_id);
 
-        let mut stream = store2.stream_filtered_stream_ordered(query.clone());
-        eprintln!("{:?}", stream.next().await.unwrap());
-        eprintln!("{:?}", stream.next().await.unwrap());
+        // Collect the two published events
+        timeout(
+            collect_timeout_duration,
+            store2
+                .stream_filtered_stream_ordered(query.clone())
+                .take(2)
+                .collect::<Vec<_>>(),
+        )
+        .await
+        .unwrap();
 
         // Finnicky but I couldn't find a deterministic way of doing this test
         sleep(Duration::from_secs(15)).await;
-        let mut stream = store2.stream_filtered_stream_ordered(query.clone());
-        let (offset, _, _) = stream.next().await.unwrap().unwrap();
-        assert!(offset > 0);
+
+        // Collect the after prune event
+        let stream: Vec<_> = timeout(
+            collect_timeout_duration,
+            store2.stream_filtered_stream_ordered(query.clone()).take(1).collect(),
+        )
+        .await
+        .unwrap();
+
+        // Check that the only event we received has offset > 0 (i.e. is not the first)
+        assert!(stream[0].as_ref().unwrap().0 > 0);
     }
 }
