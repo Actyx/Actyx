@@ -57,9 +57,9 @@ As an example, consider that you need to configure the `top-secret` stream to be
 ```yaml
 streams:
   top-secret:
-	maxAge: 41m
-	maxSize: 700MB
-	maxEvents: 9
+    maxAge: 41m
+    maxSize: 700MB
+    maxEvents: 9
 ```
 
 ## Putting it all together
@@ -69,13 +69,13 @@ Everything in this post is encompassed by the `eventRouting` key in the configur
 ```yaml
 eventRouting:
   routes:
-	- from: "'hangar-18' | 'area-42'"
-	- into: top-secret
+    - from: "'hangar-18' | 'area-42'"
+    - into: top-secret
   streams:
-	top-secret:
-	  maxAge: 41m
-	  maxSize: 700MB
-	  maxEvents: 9
+    top-secret:
+      maxAge: 41m
+      maxSize: 700MB
+      maxEvents: 9
 ```
 
 ## Caveats
