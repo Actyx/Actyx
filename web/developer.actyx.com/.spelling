@@ -1,8 +1,13 @@
 # markdown-spellcheck spelling configuration file
+
 # Format - lines beginning # are comments
+
 # global dictionary is at the start, file overrides afterwards
+
 # one word per line, to define a file override use ' - filename'
+
 # where filename is relative to this configuration file
+
 RPi
 Dockerfile
 macOS
@@ -244,206 +249,213 @@ dataset
 mdns
 statelessly
 stateful
+
 - docs/faq/supported-edge-devices.md
-NIOT-E-TPI51-EN-RE
-MXE-1500
-FZ-A2
+  NIOT-E-TPI51-EN-RE
+  MXE-1500
+  FZ-A2
 - ./docs/faq/supported-edge-devices.md
-FZ-A2
+  FZ-A2
 - ./docs/conceptual/apps-in-the-factory-context.mdx
-hide_title
-hide_table_of_contents
-sidebar_label
-default.svg
+  hide_title
+  hide_table_of_contents
+  sidebar_label
+  default.svg
 - ./docs/conceptual/event-sourcing.mdx
-npmjs.org
-TabItem
-defaultValue
-immutable.js
-eventId
-WorkStarted
-tagA
-tagC
-io-ts
+  npmjs.org
+  TabItem
+  defaultValue
+  immutable.js
+  eventId
+  WorkStarted
+  tagA
+  tagC
+  io-ts
 - ./docs/how-to/local-development/install-actyx.mdx
-groupId
-linux
-Autostart
-amd64
-arm64v8
-actyx
+  groupId
+  linux
+  Autostart
+  amd64
+  arm64v8
+  actyx
 - ./docs/how-to/local-development/install-cli-node-manager.mdx
-zsh
-tcsh
-cmd
-aarch64
-armv7
+  zsh
+  tcsh
+  cmd
+  aarch64
+  armv7
 - ./docs/how-to/local-development/set-up-a-new-project.mdx
-ExampleProject
+  ExampleProject
 - ./docs/how-to/local-development/set-up-your-environment.mdx
-Node.js.
-ESLint
+  Node.js.
+  ESLint
 - ./docs/how-to/process-logic/publishing-to-event-streams.mdx
-sdk
+  sdk
 - ./docs/how-to/swarms/connect-nodes.mdx
-cli
+  cli
 - ./docs/reference/actyx.mdx
-https
+  https
 - ./docs/reference/cli-v2.mdx
-CLIRef
-src
-Callout
-com.actyx.os
-displayName
+  CLIRef
+  src
+  Callout
+  com.actyx.os
+  displayName
 - ./docs/reference/event-service-v2.mdx
-jq
+  jq
 - ./docs/reference/event-service.mdx
-nodejs
-csharp
+  nodejs
+  csharp
 - ./docs/reference/node-manager.mdx
-tar.gz
-GeoIP
+  tar.gz
+  GeoIP
 - ./docs/reference/rust-sdk.mdx
-docs.rs
+  docs.rs
 - ./docs/tutorials/advanced-tutorial/explore-the-apps.mdx
-useBaseUrl
-docusaurus
-img
-dx1-tutorial
-statemachine.png
-machinefish.png
-orderfish.png
-Webview
-Wago-connector
+  useBaseUrl
+  docusaurus
+  img
+  dx1-tutorial
+  statemachine.png
+  machinefish.png
+  orderfish.png
+  Webview
+  Wago-connector
 - ./docs/tutorials/advanced-tutorial/get-started.mdx
-DownloadLink
-DownloadLink.tsx
-cta
-erpsimulator.png
-dashboard1.png
+  DownloadLink
+  DownloadLink.tsx
+  cta
+  erpsimulator.png
+  dashboard1.png
 - ./docs/tutorials/advanced-tutorial/introduction.mdx
-tutorial-setup-01
-svg
+  tutorial-setup-01
+  svg
 - ./docs/tutorials/advanced-tutorial/solution-architecture.mdx
-ThreeElementRow
-ThreeElementRow.tsx
-img1
-erp-simulator-icon
-img2
-img3
-title1
-title2
-title3
-body1
-body2
-body3
-showLinks
-tutorial-setup-02
+  ThreeElementRow
+  ThreeElementRow.tsx
+  img1
+  erp-simulator-icon
+  img2
+  img3
+  title1
+  title2
+  title3
+  body1
+  body2
+  body3
+  showLinks
+  tutorial-setup-02
 - ./docs/tutorials/chat.mdx
-http
-actyx.io
+  http
+  actyx.io
 - ./docs/tutorials/advanced-tutorial/architecture.mdx
-img1
-dx1-tutorial
-erp-simulator-icon
-img2
-img3
-title1
-title2
-title3
-body1
-body2
-body3
-showLinks
-img
-tutorial-setup-02
-src
+  img1
+  dx1-tutorial
+  erp-simulator-icon
+  img2
+  img3
+  title1
+  title2
+  title3
+  body1
+  body2
+  body3
+  showLinks
+  img
+  tutorial-setup-02
+  src
 - ./docs/tutorials/advanced-tutorial/the-apps.mdx
-statemachine.png
-machinefish.png
-orderfish.png
+  statemachine.png
+  machinefish.png
+  orderfish.png
 - ./docs/reference/actyx.mdx
-ff02
-fb
-announceAddresses
-bitswapTimeout
-pingTimeout
-blockCacheCount
-blockCacheSize
-blockGcInterval
-branchCacheSize
-pre-2
-maxEvents
-maxSize
-Kibibytes
-Mebibytes
-Gibibytes
-maxAge
+  ff02
+  fb
+  announceAddresses
+  bitswapTimeout
+  pingTimeout
+  blockCacheCount
+  blockCacheSize
+  blockGcInterval
+  branchCacheSize
+  pre-2
+  maxEvents
+  maxSize
+  Kibibytes
+  Mebibytes
+  Gibibytes
+  maxAge
 - ./docs/tutorials/advanced-tutorial/business-logic.mdx
-statemachine.svg
-orderfish.svg
-machinefish.svg
--  ./docs/tutorials/advanced-tutorial/get-started.mdx
-erp-ui
-dashboard-ui
-- ./docs/tutorials/advanced-tutorial/packaging.mdx
-com.actyx.orderManagement
-a-zA-Z0-9_
-wago-connector-amd64
+  statemachine.svg
+  orderfish.svg
+  machinefish.svg
 - ./docs/tutorials/advanced-tutorial/get-started.mdx
-DownloadLink
-DownloadLink.tsx
-erp-ui
-dashboard-ui
+  erp-ui
+  dashboard-ui
+- ./docs/tutorials/advanced-tutorial/packaging.mdx
+  com.actyx.orderManagement
+  a-zA-Z0-9\_
+  wago-connector-amd64
+- ./docs/tutorials/advanced-tutorial/get-started.mdx
+  DownloadLink
+  DownloadLink.tsx
+  erp-ui
+  dashboard-ui
 - ./docs/conceptual/authentication-and-authorization.mdx
-com.example.
-com.example
-namespaces
+  com.example.
+  com.example
+  namespaces
 - ./docs/reference/events-api.mdx
-TabItem
-defaultValue
-json
-tag-01
-tag-02
-tag-03
-lowerBound
-upperBound
-AUTH_TOKEN
-x-ndjson
-tag1
-tag2
-timeTravel
-newStart
-my_session_id
-fooArr
-bar1
-bar2
-caughtUp
-query.json
-1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s
+  TabItem
+  defaultValue
+  json
+  tag-01
+  tag-02
+  tag-03
+  lowerBound
+  upperBound
+  AUTH_TOKEN
+  x-ndjson
+  tag1
+  tag2
+  timeTravel
+  newStart
+  my_session_id
+  fooArr
+  bar1
+  bar2
+  caughtUp
+  query.json
+  1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s
 - ./docs/reference/aql.mdx
-_or_
-timeRange
-_x_
-eventKeyRange
-user_id
-uptime
-Pre-Pragma
-featureName
-multiEmission
-fromArray
-subQuery
+  _or_
+  timeRange
+  _x_
+  eventKeyRange
+  user_id
+  uptime
+  Pre-Pragma
+  featureName
+  multiEmission
+  fromArray
+  subQuery
 - ./docs/reference/files-api.mdx
-Uploader
-inlining
-ing
-ref1
-ex1
-ref2
-ex2
-ref3
-ex3
-ref4
-ex4
-ref5
-ex5
+  Uploader
+  inlining
+  ing
+  ref1
+  ex1
+  ref2
+  ex2
+  ref3
+  ex3
+  ref4
+  ex4
+  ref5
+  ex5
+  decentral
+  centralised
+  RabbitMQ
+  HiveMQ
+  timeframe
+  10s
