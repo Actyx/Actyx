@@ -447,3 +447,10 @@ ref4
 ex4
 ref5
 ex5
+- ./docs/tutorials/ephemeral_streams.mdx
+decentral
+centralised
+RabbitMQ
+HiveMQ
+timeframe
+10s
