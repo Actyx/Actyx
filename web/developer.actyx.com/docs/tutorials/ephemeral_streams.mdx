@@ -1,0 +1,99 @@
+---
+title: 'Ephemeral Streams'
+id: ephemeral_streams
+hide_title: false
+hide_table_of_contents: false
+sidebar_label: Ephemeral Streams
+keywords: [tutorial]
+image: /images/defaults/default.svg
+---
+
+We have recently released Actyx 2.16 with a focus on data management: ephemeral streams allow you to keep storage usage under control in a continually running system, while the new management of inactive topic data allows you to clean up after a swarm reset. This post provides a brief introduction to the former feature.
+
+In Actyx streams are "local" in the sense that each node owns the streams it writes. These are then replicated across other nodes — so you can still read them even if the owner is unreachable. This single-writer many-reader principle is the main difference between the decentral Actyx streams and centralised brokers (like Kafka, RabbitMQ or HiveMQ).
+
+By default, streams are permanent and prior to version 2.16 this was always the case. The new version enables developers to create ephemeral streams — streams that after a certain point delete their events.
+
+Ephemeral streams allow you to "discard" events that have outlived their usefulness. If a given event is only useful for 24 hours after it was emitted, why keep it around for longer?
+After said 24 hours, the event will be deleted (there are caveats, keep reading).
+
+Before you can configure an ephemeral stream, you need to configure a route.
+
+> Without routes, all events are forwarded to the default stream, which is permanent and cannot be configured.
+
+## Routes
+
+Simply put, routes determine which events are placed in which stream.
+
+To route events, you use an AQL expression, which should match the tags of the events you're interested in.
+
+Consider you want to route all events tagged with either `hangar-18` or `area-42` into the stream `top-secret`, the configuration would be:
+
+```yaml
+routes:
+  - from: "'hangar-18' | 'area-42'"
+  - into: top-secret
+```
+
+This configuration does two things:
+
+1. Creates the stream `top-secret` (will only be stored once the first event arrives)
+2. Routes every event with one of the tags `hangar-18` _or_ `area-42` to the `top-secret` stream
+
+## Ephemeral Streams
+
+Now that you've created your first stream, we can configure it, we can do so within 3 parameters:
+
+- Size - after the provided size, older events will be deleted
+- Count - after a given number of events, older events will be deleted
+- Time - after a given timeframe, older events will be deleted
+
+You can use all three parameters, none, or any other combination of the three (you choose, I am just a document, not your boss).
+
+> In case you're wondering, the order under which multiple filters run is not relevant as Actyx will obey all provided constraints at the same time.
+
+As an example, consider that you need to configure the `top-secret` stream to be under 700 MB, 9 events, and 41 minutes old, it would look as follows:
+
+```yaml
+streams:
+  top-secret:
+	maxAge: 41m
+	maxSize: 700MB
+	maxEvents: 9
+```
+
+## Putting it all together
+
+Everything in this post is encompassed by the `eventRouting` key in the configuration, hence, to put everything together, you simply add it as a "parent" key:
+
+```yaml
+eventRouting:
+  routes:
+	- from: "'hangar-18' | 'area-42'"
+	- into: top-secret
+  streams:
+	top-secret:
+	  maxAge: 41m
+	  maxSize: 700MB
+	  maxEvents: 9
+```
+
+## Caveats
+
+As we previously said, there is a small "but" included with these policies.
+
+TL;DR — Actyx does not guarantee that events matching the pruning criteria are deleted immediately.
+
+Down in the machine room, Actyx stores streams as several blocks, each composed of several events; when a block is full, a new block is created to append further events.
+
+Why does this matter? Well, Actyx cannot delete single events, it can only delete blocks, hence there are two rules that cannot be broken when deleting blocks:
+
+- Actyx cannot delete blocks unless they are full.
+  - Consider a stream that is configured to delete events older than 10 seconds, but only receives events once every hour. Until the block is actually full, several events (older than 10s) will persist.
+- Actyx cannot delete blocks if not all events match the conditions.
+  - Consider a block with several events, all with different ages, and a rule stating that events older than 1 hour are to be deleted; if not all events are older than 1 hour, the block (and thus, all events) will not be deleted.
+
+## Conclusion
+
+In this post, we presented ephemeral streams, a new feature present in Actyx 2.16. This feature allows programmers to route events into streams and reclaim storage space by placing constraints on said streams (e.g. how many events to store).
+We've also covered how to create said routes and configure the respective streams.
