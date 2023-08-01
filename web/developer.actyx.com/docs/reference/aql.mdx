@@ -339,7 +339,7 @@ The result is packed into the final object together with the event’s timestamp
 
 ### Error causes
 
-Errors can happen during the execution of an AQL query. The following scenarios are the common triggers for those errors:
+Errors can happen during the execution of an AQL query, common errors may be caused by:
 
 - Undefined property of an event payload is accessed
 - Unbound variable is accessed
@@ -348,8 +348,7 @@ Errors can happen during the execution of an AQL query. The following scenarios 
 
 #### Undefined property of an event payload is accessed
 
-Access to undefined property yields an error.
-This commonly occurs because of an incorrect assumption on the shape of an event payload.
+This error commonly occurs because of an incorrect assumption on the shape of an event payload.
 
 ```text
 FILTER _.count > 0 --- when the 'count' property does not exist in the event payload, this line will err
@@ -366,7 +365,7 @@ FILTER _.count > 0
 #### Unbound variable is accessed
 
 This error is related to the [variable binding](#variable-bindings) feature.
-A common mistake is due to typo that incorrectly refers to the previously declared variable binding.
+A common cause is a typo when referring to a previously declared variable binding.
 
 ```text
 FROM 'some-tag'
@@ -376,7 +375,8 @@ SELECT avalable -- a typo, causing access to unbound variable `avalable`
 
 #### Aggregated data type mismatch
 
-Some aggregation expressions may have a type constraint. For example, `MIN`, `MAX`, `SUM`, and `PRODUCT` only works on boolean and numbers.
+Some aggregation expressions may have a type constraint as described [here](#aggregate-aggregating-inputs).
+For example, `MIN`, `MAX`, `SUM`, and `PRODUCT` only works on boolean and numbers.
 Assigning a data outside the type constraint will yield an error.
 
 ```text
@@ -384,7 +384,9 @@ AGGREGATE SUM(_.some_string) -- _.some_string is not boolean or numbers; This li
 ```
 
 Another case that cause type mismatch is when an aggregation receives values a sequence of values which the type of does not work with each other in regards with the operation done by the aggregation.
-For example, a `MIN` operation accepts boolean and numbers, but it cannot accepts a sequence of a boolean and a number in one pass because a number is incomparable with a boolean.
+Let's see a `MIN` operation for example;
+A `MIN` operation accepts boolean and number values, but it cannot compare a boolean with a number;
+A sequence of a boolean and a number in one `MIN` aggregation will cause an error.
 
 ```text
 AGGREGATE SUM(_.some_number_or_bool) -- May error if in one event the property contains a number and in another a boolean
@@ -400,21 +402,20 @@ FILTER some_variable_that_is_always_false
 AGGREGATE FIRST(_)
 ```
 
-The filter lets zero event pass to the following aggregate command;
-The following aggregate command will err.
+The filter lets zero event pass to the following aggregate command; the following aggregate command will fail.
 
-### Error in subQuery
+### Error in a `subQuery`
 
 An error in a subQuery is propagated upward to its parent's
 
 The example below is a subQuery bound to a variable containing an aggregate.
-An aggregation may yield an error as shown above; When so, the parent query will yield the subQuery's error.
+An aggregation may yield an error as shown above; in that case, the parent query will yield the subQuery's error.
 
 ```text
 LET subquery := FROM ... AGGREGATE LAST(_) ... END 
 ```
 
-### Nullifying Error in subQuery
+### Nullifying Error in a `subQuery`
 
 Sometimes an error in subQuery, such as possible aggregation missing values, is expected.
 In that case, the upward propagation of the error could be nullified using the `??` operator, which provides a fallback mechanism.
@@ -427,8 +428,7 @@ FILTER last_departure ?? NULL
 ```
 
 The AQL has a `last_departure` variable bound to a subQuery
-The subQuery uses a specific tag that could yield no events, in which case would fail the following `AGGREGATE`;
-And this is expected by design. 
+The subQuery uses a specific tag that could yield no events, in which case would fail the following `AGGREGATE`; this is expected by design. 
 At the end of the subQuery is `?? NULL`, which provides fallback to the possibly failing subQuery.
 When the aggregation fails, `last_departure` will be assigned to the value `NULL` instead of raising an error to the parent query.
 
