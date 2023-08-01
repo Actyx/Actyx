@@ -109,6 +109,10 @@ FROM 'myTag' ORDER DESC  -- the other direction is ASC
 
 ### _[interpolation]_ String interpolation
 
+```text
+PRAGMA features := interpolation
+```
+
 The tags given in a tag expression can also be computed using _string interpolation_; this is done most commonly in [sub-queries](#subquery-sub-queries).
 Interpolation is enabled by enclosing the tag in backticks instead of single or double quotes.
 Within the string use `{<expr>}` to insert the string representation of the result of `expr` at this location.
@@ -190,6 +194,10 @@ SELECT ...<array>
 
 ### _[aggregate]_ Aggregating inputs
 
+```text
+PRAGMA features := aggregate
+```
+
 Perhaps the most powerful feature of AQL is the ability to condense a large number of inputs from many events into one output object before transferring this result to your application.
 The syntax is similar to `SELECT`, with some special operators.
 
@@ -226,6 +234,10 @@ The given positive number indicates the number of events that may at most pass t
 It is significant where you place this stage: if you place `LIMIT 3` before a `FILTER`, then at most three inputs are presented to the filter, while placing it after the `FILTER` only stops once three inputs have passed the filter.
 
 ### Variable bindings
+
+```text
+PRAGMA features := binding
+```
 
 Like in your favorite programming language you can bind a computed value to a name so that you can later refer to it, e.g. to reuse it in multiple places or to build up your final result in a nicely structured fashion.
 
@@ -295,6 +307,10 @@ Indexing binds more strongly than negation.
 
 ## _[subQuery]_ Sub-Queries
 
+```text
+PRAGMA features := subQuery
+```
+
 Wherever you can write a simple value (as per the [data model](#the-aql-data-model)) you can also write a complete query `FROM … END`.
 The result of such a sub-query is always an array that contains one item per result returned from the query.
 If you use a sub-query in _array building context_ (i.e. when constructing an array or for [multi-emission](#multiemission-emitting-multiple-results)) then you can use _[spread]_ syntax to pass on the individual results instead of a single array:
@@ -318,6 +334,103 @@ SELECT { user: _.user_id time: time }
 In this example the filter stage checks each incoming event for a type property with string value “started”.
 All matching events are passed on to the transformation step that extracts the value of the “user_id” property from the current event.
 The result is packed into the final object together with the event’s timestamp, which has been bound to the variable `time` in the first processing step.
+
+## Query Error
+
+### Error causes
+
+Errors can happen during the execution of an AQL query. The following scenarios are the common triggers for those errors:
+
+- Undefined property of an event payload is accessed
+- Unbound variable is accessed
+- Aggregated data type mismatch
+- Aggregated data is not found 
+
+#### Undefined property of an event payload is accessed
+
+Access to undefined property yields an error.
+This commonly occurs because of an incorrect assumption on the shape of an event payload.
+
+```text
+FILTER _.count > 0 --- when the 'count' property does not exist in the event payload, this line will err
+FILTER _['count'] > 0 --- is equivalent to the above line
+```
+
+As a safeguard for this error, a preceding filter can be added to determine if a property is defined. For example:
+
+```text
+FILTER IsDefined(_.count)
+FILTER _.count > 0
+```
+
+#### Unbound variable is accessed
+
+This error is related to the [variable binding](#variable-bindings) feature.
+A common mistake is due to typo that incorrectly refers to the previously declared variable binding.
+
+```text
+FROM 'some-tag'
+LET available := FROM ... END -- a variable contains a subQuery
+SELECT avalable -- a typo, causing access to unbound variable `avalable`
+```
+
+#### Aggregated data type mismatch
+
+Some aggregation expressions may have a type constraint. For example, `MIN`, `MAX`, `SUM`, and `PRODUCT` only works on boolean and numbers.
+Assigning a data outside the type constraint will yield an error.
+
+```text
+AGGREGATE SUM(_.some_string) -- _.some_string is not boolean or numbers; This line will yield error.
+```
+
+Another case that cause type mismatch is when an aggregation receives values a sequence of values which the type of does not work with each other in regards with the operation done by the aggregation.
+For example, a `MIN` operation accepts boolean and numbers, but it cannot accepts a sequence of a boolean and a number in one pass because a number is incomparable with a boolean.
+
+```text
+AGGREGATE SUM(_.some_number_or_bool) -- May error if in one event the property contains a number and in another a boolean
+```
+
+#### Aggregated data is not found
+
+An aggregation yields an error if there is no data supplied.
+For example, the AQL below has a filter that is always false;
+
+```text
+FILTER some_variable_that_is_always_false
+AGGREGATE FIRST(_)
+```
+
+The filter lets zero event pass to the following aggregate command;
+The following aggregate command will err.
+
+### Error in subQuery
+
+An error in a subQuery is propagated upward to its parent's
+
+The example below is a subQuery bound to a variable containing an aggregate.
+An aggregation may yield an error as shown above; When so, the parent query will yield the subQuery's error.
+
+```text
+LET subquery := FROM ... AGGREGATE LAST(_) ... END 
+```
+
+### Nullifying Error in subQuery
+
+Sometimes an error in subQuery, such as possible aggregation missing values, is expected.
+In that case, the upward propagation of the error could be nullified using the `??` operator, which provides a fallback mechanism.
+For an example, take a look into the the AQL below.
+
+```text
+FROM 'station-opened'
+LET last_departure := FROM `departure:{_.station_id}` AGGREGATE LAST(_) END ?? NULL
+FILTER last_departure ?? NULL
+```
+
+The AQL has a `last_departure` variable bound to a subQuery
+The subQuery uses a specific tag that could yield no events, in which case would fail the following `AGGREGATE`;
+And this is expected by design. 
+At the end of the subQuery is `?? NULL`, which provides fallback to the possibly failing subQuery.
+When the aggregation fails, `last_departure` will be assigned to the value `NULL` instead of raising an error to the parent query.
 
 ## PRAGMAS
 
