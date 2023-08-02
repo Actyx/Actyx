@@ -165,7 +165,7 @@ mod tests {
         let x = setup();
         let input = DeveloperCertificateInput::new(x.dev_public_key, x.app_domains);
         let dev_cert = ManifestDeveloperCertificate::new(input, x.ax_private_key).unwrap();
-        let serialized = serde_json::to_value(&dev_cert).unwrap();
+        let serialized = serde_json::to_value(dev_cert).unwrap();
         assert_eq!(serialized, x.manifest_dev_cert);
     }
 
@@ -238,7 +238,7 @@ mod tests {
     fn create_and_serialize_developer_certificate() {
         let x = setup();
         let dev_cert = DeveloperCertificate::new(x.dev_private_key, x.app_domains, x.ax_private_key).unwrap();
-        let serialized = serde_json::to_value(&dev_cert).unwrap();
+        let serialized = serde_json::to_value(dev_cert).unwrap();
         assert_eq!(serialized, x.dev_cert);
     }
 

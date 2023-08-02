@@ -1,4 +1,4 @@
-///! Actyx Naming Service
+//! Actyx Naming Service
 use actyx_sdk::{app_id, tag, tags, Payload};
 use derive_more::{Deref, Display, From};
 use futures::{StreamExt, TryFutureExt};

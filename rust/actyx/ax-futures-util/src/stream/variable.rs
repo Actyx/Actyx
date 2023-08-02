@@ -22,8 +22,8 @@ impl<T> Observer<T> {
     }
 }
 
-fn poll_next_impl<'a, T, U>(
-    mut inner: MutexGuard<'a, VariableInner<T>>,
+fn poll_next_impl<T, U>(
+    mut inner: MutexGuard<'_, VariableInner<T>>,
     id: usize,
     cx: &mut Context<'_>,
     f: &impl Fn(&T) -> U,

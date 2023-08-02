@@ -18,7 +18,7 @@ pub fn is_app_id(s: &str) -> bool {
     }
     let mut dot_allowed = false;
     for c in s.chars() {
-        if !('0'..='9').contains(&c) && !('a'..='z').contains(&c) && c != '-' && (!dot_allowed || c != '.') {
+        if !c.is_ascii_digit() && !c.is_ascii_lowercase() && c != '-' && (!dot_allowed || c != '.') {
             return false;
         }
         dot_allowed = c != '.';

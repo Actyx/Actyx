@@ -194,7 +194,7 @@ impl<T: Eq + Hash + Abomonation + 'static + Sized + Unpin + Send + Sync> Abomona
          */
         abomonation::encode(self.deref(), write)
     }
-    unsafe fn exhume<'a, 'b>(&'a mut self, bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
+    unsafe fn exhume<'b>(&mut self, bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
         use std::{mem, ptr};
         /* The idea here is to construct a new Arc<T> from the entombed bytes.
          * The state of this ArcVal upon entry of this function contains only an invalid
@@ -224,7 +224,7 @@ impl Abomonation for ArcVal<str> {
         let buf = std::slice::from_raw_parts(buf, len);
         write.write_all(buf)
     }
-    unsafe fn exhume<'a, 'b>(&'a mut self, bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
+    unsafe fn exhume<'b>(&mut self, bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
         use std::{mem, slice, str};
         let (len, bytes) = abomonation::decode::<usize>(bytes)?;
         if bytes.len() < *len {
@@ -248,7 +248,7 @@ impl Abomonation for ArcVal<[u8]> {
         abomonation::encode(&len, write)?;
         write.write_all(&self.0)
     }
-    unsafe fn exhume<'a, 'b>(&'a mut self, bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
+    unsafe fn exhume<'b>(&mut self, bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
         use std::{mem, slice};
         let (len, bytes) = abomonation::decode::<usize>(bytes)?;
         if bytes.len() < *len {
