@@ -437,7 +437,7 @@ NOTE: Sub-query is a beta feature; the behaviors above MAY be subject to change.
 #### Nullifying Error in a Sub-query
 
 Sometimes an error in sub-query — such as possible aggregation missing values — is expected.
-In that case, the error can be trapped using the `??` operator and the provided fallback value is returned instead.
+In that case, the error can be caught using the `??` operator and the provided fallback value is returned instead.
 
 For example, take a look into the the AQL below.
 
@@ -447,10 +447,11 @@ LET last_departure := FROM `departure:{_.station_id}` AGGREGATE LAST(_) END ?? N
 FILTER last_departure != NULL
 ```
 
-The AQL has a `last_departure` variable bound to a sub-query
-The sub-query uses a specific tag that could yield no events, in which case would fail the following `AGGREGATE`; this is expected by design. 
-At the end of the sub-query is `?? NULL`, which provides fallback to the possibly failing sub-query.
-When the aggregation fails, `last_departure` will be assigned to the value `NULL` instead of raising an error to the parent query.
+The application executes the AQL to list "ONLY `station-opened` events that has at least one corresponding `last_departure` event".
+By design, not every `station-opened` event has a corresponding `last_departure` event.
+Consequently, the `AGGREGATE LAST(_)` expression may fail by design.
+The `?? NULL` prevents upward propagation of errors from the sub-query and, in its place, assign a `NULL` as a fallback value to the `last_departure` variable;
+this covers the path where a `station-opened` event has no corresponding `last_departure` event. 
 
 ## PRAGMAS
 
