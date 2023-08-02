@@ -7,7 +7,7 @@ fn sign(store: KeyStoreRef, n: usize) -> anyhow::Result<SignedMessage> {
     let store = store.read();
     let keys = store.get_pairs();
     let msg = vec![0u8; n];
-    store.sign(&msg, keys.keys().cloned())
+    store.sign(msg, keys.keys().cloned())
 }
 
 fn criterion_benchmark(c: &mut Criterion) {

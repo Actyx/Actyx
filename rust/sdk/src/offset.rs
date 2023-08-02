@@ -204,7 +204,7 @@ impl Encode<DagCborCodec> for OffsetOrMin {
 
 impl Decode<DagCborCodec> for OffsetOrMin {
     fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
-        let p = r.seek(SeekFrom::Current(0))?;
+        let p = r.stream_position()?;
         Ok(if let Ok(value) = u64::decode(c, r) {
             let value = i64::try_from(value)?;
             anyhow::ensure!(value <= MAX_SAFE_INT);

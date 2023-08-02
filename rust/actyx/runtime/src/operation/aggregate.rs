@@ -354,8 +354,8 @@ pub(super) fn aggregate(expr: &SimpleExpr) -> Box<dyn super::Processor> {
                         Ok(found) => self.state[found].variable,
                         Err(idx) => {
                             let aggregator: Box<dyn Aggregator + Send + Sync> = match a.0 {
-                                AggrOp::Sum => Box::new(Sum::<AddOp>::default()),
-                                AggrOp::Prod => Box::new(Sum::<MulOp>::default()),
+                                AggrOp::Sum => Box::<Sum<AddOp>>::default(),
+                                AggrOp::Prod => Box::<Sum<MulOp>>::default(),
                                 AggrOp::Min => Box::new(Min(None)),
                                 AggrOp::Max => Box::new(Max(None)),
                                 AggrOp::First => Box::new(First(None)),

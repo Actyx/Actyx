@@ -624,7 +624,7 @@ mod tests {
             .collect()
         }
 
-        let offsets: Vec<(Offset, TagSet)> = (0..n).into_iter().map(|i| (i.into(), mk_tag(i))).collect();
+        let offsets: Vec<(Offset, TagSet)> = (0..n).map(|i| (i.into(), mk_tag(i))).collect();
         let banyan_store = BanyanStore::test_with_routing(
             "pubsub",
             vec![EventRoute::new(
@@ -644,7 +644,7 @@ mod tests {
                 .persist(app_id(), vec![(mk_tag(i), Payload::null())])
                 .await
                 .unwrap()[0];
-            assert_eq!(offset, Offset::from(i as u32));
+            assert_eq!(offset, Offset::from(i));
 
             let store = store.clone();
             let offsets = offsets.clone();

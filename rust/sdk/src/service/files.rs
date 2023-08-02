@@ -1,6 +1,6 @@
-///! Files API
-///!
-///! Check the examples for a complete example for adding, listing, and retrieving files.
+//! Files API
+//!
+//! Check the examples for a complete example for adding, listing, and retrieving files.
 use std::time::Duration;
 
 pub use libipld::Cid;

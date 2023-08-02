@@ -10,5 +10,7 @@
       "path": "../protocols"
     }
   ],
-  "settings": {}
+  "settings": {
+    "rust-analyzer.showUnlinkedFileNotification": false
+  }
 }

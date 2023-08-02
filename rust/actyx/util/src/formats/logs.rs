@@ -14,11 +14,12 @@ impl From<&tracing::Level> for LogSeverity {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
 #[serde(from = "String", into = "String")]
 pub enum LogSeverity {
     Trace,
     Debug,
+    #[default]
     Info,
     Warn,
     Error,
@@ -48,12 +49,6 @@ impl From<String> for LogSeverity {
 impl From<LogSeverity> for String {
     fn from(ls: LogSeverity) -> Self {
         ls.to_string()
-    }
-}
-
-impl Default for LogSeverity {
-    fn default() -> Self {
-        LogSeverity::Info
     }
 }
 

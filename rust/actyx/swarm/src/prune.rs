@@ -510,7 +510,6 @@ mod test {
     async fn publish_events(event_count: u64) -> anyhow::Result<BanyanStore> {
         let store = create_store().await?;
         let events = (0..event_count)
-            .into_iter()
             .map(|i| (tags!("test"), Payload::from_json_str(&i.to_string()).unwrap()))
             .collect::<Vec<_>>();
         store.append(app_id(), events).await?;
@@ -629,7 +628,6 @@ mod test {
     ) -> anyhow::Result<BanyanStore> {
         let store = create_store().await?;
         let events = (0..event_count)
-            .into_iter()
             .map(|i| (tags!("test"), Payload::from_json_str(&i.to_string()).unwrap()))
             .collect::<Vec<_>>();
         for (i, chunk) in events.chunks((event_count / 100) as usize).enumerate() {
@@ -643,7 +641,7 @@ mod test {
     async fn test_retain_age(percentage_to_keep: usize) {
         util::setup_logger();
         let event_count = 1024;
-        let max_leaf_count = SwarmConfig::test("..").banyan_config.tree.max_leaf_count as usize;
+        let max_leaf_count = SwarmConfig::test("..").banyan_config.tree.max_leaf_count;
         let test_stream = StreamNr::from(1);
 
         let now = Timestamp::now();

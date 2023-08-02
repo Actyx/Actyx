@@ -503,7 +503,7 @@ impl<'a> BanyanStoreGuard<'a> {
         let (builder, latest) = if let Some(root) = self
             .data
             .ipfs
-            .resolve(&StreamAlias::from(stream_id))
+            .resolve(StreamAlias::from(stream_id))
             .context("no alias for stream id")?
         {
             let root = Link::try_from(root).context("wrong link format")?;
@@ -541,7 +541,7 @@ impl<'a> BanyanStoreGuard<'a> {
         if let Some(stream) = self.get_or_create_remote_node(node_id).streams.get(&stream_nr).cloned() {
             return Ok(stream);
         }
-        let state = if let Some(root) = self.data.ipfs.resolve(&StreamAlias::from(stream_id)).unwrap() {
+        let state = if let Some(root) = self.data.ipfs.resolve(StreamAlias::from(stream_id)).unwrap() {
             let root = Link::try_from(root).context("wrong link format")?;
             let header = self.data.forest.store().get(&root).context("header not found")?;
             let header: AxTreeHeader = DagCborCodec.decode(&header).context("invalid header")?;
@@ -1681,7 +1681,7 @@ impl BanyanStore {
         // once sync is successful, permanently move the alias
         tracing::trace!("updating alias {}", root);
         // assign the new root as validated
-        ipfs.alias(&StreamAlias::from(stream_id), Some(&cid))?;
+        ipfs.alias(StreamAlias::from(stream_id), Some(&cid))?;
         let offset = tree.offset().unwrap();
         tracing::trace!("sync_one complete {} => {}", stream_id, offset);
         stream.set_latest(state);

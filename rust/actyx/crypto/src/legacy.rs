@@ -104,14 +104,14 @@ impl KeyStore {
             publics: old_publics,
         } = serde_cbor::from_reader(reader)?;
         let pairs = old_pairs
-            .into_iter()
-            .map(|(_, pair)| {
+            .into_values()
+            .map(|pair| {
                 let private: PrivateKey = pair.private.into();
                 let public: PublicKey = private.into();
                 (public, private)
             })
             .collect();
-        let publics = old_publics.into_iter().map(|(_, p)| p.public).collect();
+        let publics = old_publics.into_values().map(|p| p.public).collect();
         Ok(Self {
             pairs,
             publics,
@@ -121,8 +121,7 @@ impl KeyStore {
 
     pub fn get_public_for_keyid(&self, id: LegacyKeyId) -> Option<PublicKey> {
         self.pairs
-            .iter()
-            .map(|(p, _)| p)
+            .keys()
             .chain(self.publics.iter())
             .find(|p| LegacyKeyId::from(&p.to_ed25519()) == id)
             .copied()

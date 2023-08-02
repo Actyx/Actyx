@@ -77,7 +77,7 @@ impl StructOptInternal for CommandsOpt {
         }
     }
 
-    fn from_subcommand<'a, 'b>(sub: (&'b str, Option<&'b ArgMatches<'a>>)) -> Option<Self>
+    fn from_subcommand<'a>(sub: (&'a str, Option<&'a ArgMatches<'_>>)) -> Option<Self>
     where
         Self: std::marker::Sized,
     {

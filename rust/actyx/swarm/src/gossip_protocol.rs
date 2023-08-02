@@ -339,7 +339,6 @@ mod tests {
             let mut offsets = vec![];
             let len = g.size();
             let entries = (0..len)
-                .into_iter()
                 .map(|_| {
                     offsets.push((Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)));
                     let cid = Cid::new_v1(0x00, Code::Sha2_256.digest(&Vec::<u8>::arbitrary(g)[..]));
@@ -386,7 +385,6 @@ mod tests {
 
             let len = g.size();
             let blocks = (0..len)
-                .into_iter()
                 .map(|_| {
                     let data = Vec::<u8>::arbitrary(g);
                     let cid = Cid::new_v1(0x00, Code::Sha2_256.digest(&data[..]));
