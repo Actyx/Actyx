@@ -305,10 +305,10 @@ Whenever the description says that an error is generated, the evaluation of the 
 Precedence of the binary operators in increasing order is: or, xor, and, equality, ordering, additive, multiplicative, exponential.
 Indexing binds more strongly than negation.
 
-## _[subQuery]_ Sub-Queries
+## _[`subQuery`]_ Sub-Queries
 
 ```text
-PRAGMA features := subQuery
+PRAGMA features := `subQuery`
 ```
 
 Wherever you can write a simple value (as per the [data model](#the-aql-data-model)) you can also write a complete query `FROM … END`.
@@ -341,10 +341,11 @@ The result is packed into the final object together with the event’s timestamp
 
 Errors can happen during the execution of an AQL query, common errors may be caused by:
 
-- Undefined property of an event payload is accessed
-- Unbound variable is accessed
-- Aggregated data type mismatch
-- Aggregated data is not found 
+- [Undefined property of an event payload is accessed](#undefined-property-of-an-event-payload-is-accessed)
+- [Unbound variable is accessed](#unbound-variable-is-accessed)
+- [Binary Operation data type mismatch](#binary-operation-data-type-mismatch)
+- [Aggregated data type mismatch](#aggregated-data-type-mismatch)
+- [Aggregated data is not found](#aggregated-data-is-not-found)
 
 #### Undefined property of an event payload is accessed
 
@@ -362,20 +363,32 @@ FILTER IsDefined(_.count)
 FILTER _.count > 0
 ```
 
-#### Unbound variable is accessed
+NOTE: `FILTER IsDefined(_.count) & _.count > 0` wouldn't work because boolean evaluations are not short circuited.
+
+#### Unbound Variable is Accessed
 
 This error is related to the [variable binding](#variable-bindings) feature.
 A common cause is a typo when referring to a previously declared variable binding.
 
 ```text
 FROM 'some-tag'
-LET available := FROM ... END -- a variable contains a subQuery
+LET available := FROM ... END -- a variable contains a `subQuery`
 SELECT avalable -- a typo, causing access to unbound variable `avalable`
 ```
 
-#### Aggregated data type mismatch
+#### Binary Operation Data Type Mismatch
 
-Some aggregation expressions may have a type constraint as described [here](#aggregate-aggregating-inputs).
+This error arises when a comparative binary operation is applied to two incomparable values.
+
+For example, the AQL below will raise an error because a number (1) is incomparable to a string ("1").
+
+```
+FILTER 1 > "1"
+```
+
+#### Aggregated Data Type Mismatch
+
+Some aggregation expressions have [a type constraint](#aggregate-aggregating-inputs).
 For example, `MIN`, `MAX`, `SUM`, and `PRODUCT` only works on boolean and numbers.
 Assigning a data outside the type constraint will yield an error.
 
@@ -383,53 +396,60 @@ Assigning a data outside the type constraint will yield an error.
 AGGREGATE SUM(_.some_string) -- _.some_string is not boolean or numbers; This line will yield error.
 ```
 
-Another case that cause type mismatch is when an aggregation receives values a sequence of values which the type of does not work with each other in regards with the operation done by the aggregation.
-Let's see a `MIN` operation for example;
-A `MIN` operation accepts boolean and number values, but it cannot compare a boolean with a number;
-A sequence of a boolean and a number in one `MIN` aggregation will cause an error.
+An error also arise when an aggregation receives a sequence of incomparable values.
+
+For example, supplying a boolean and a number into a single `MIN` aggregation causes an error because a `MIN` aggregation cannot compare a boolean with a number.
 
 ```text
 AGGREGATE SUM(_.some_number_or_bool) -- May error if in one event the property contains a number and in another a boolean
 ```
 
-#### Aggregated data is not found
+However, type mismatch error is specific to the aggregation expression. `FIRST` AND `LAST`, for example, have no constraints and can compare any sequence of types passed to it.
+
+#### Aggregated Data is Not Found
 
 An aggregation yields an error if there is no data supplied.
-For example, the AQL below has a filter that is always false;
+For example, the AQL below has a filter that is always false:
 
 ```text
 FILTER some_variable_that_is_always_false
 AGGREGATE FIRST(_)
 ```
 
-The filter lets zero event pass to the following aggregate command; the following aggregate command will fail.
+The filter does not let any event pass. Because of it, the aggregate is not supplied with any value and thus fails.
 
-### Error in a `subQuery`
+### Error in a Sub-query
 
-An error in a subQuery is propagated upward to its parent's
+There is a minor different in how an error behaves in a sub-query compared to one happening in the top-level query, namely:
 
-The example below is a subQuery bound to a variable containing an aggregate.
-An aggregation may yield an error as shown above; in that case, the parent query will yield the subQuery's error.
+1. An error halts the entire sub-query; in contrast, an error in a top-level query is yielded as an entry. 
+2. An error in a sub-query is propagated upwards to its parent query.
+
+For example, the sub-query below is bound to a variable containing an aggregate.
+If the aggregate fails, the parent query will yield the sub-query's error.
 
 ```text
 LET subquery := FROM ... AGGREGATE LAST(_) ... END 
 ```
 
-### Nullifying Error in a `subQuery`
+NOTE: Sub-query is a beta feature; the behaviors above MAY be subject to change.
 
-Sometimes an error in subQuery, such as possible aggregation missing values, is expected.
-In that case, the upward propagation of the error could be nullified using the `??` operator, which provides a fallback mechanism.
-For an example, take a look into the the AQL below.
+#### Nullifying Error in a Sub-query
+
+Sometimes an error in sub-query — such as possible aggregation missing values — is expected.
+In that case, the error can be trapped using the `??` operator and the provided fallback value is returned instead.
+
+For example, take a look into the the AQL below.
 
 ```text
 FROM 'station-opened'
 LET last_departure := FROM `departure:{_.station_id}` AGGREGATE LAST(_) END ?? NULL
-FILTER last_departure ?? NULL
+FILTER last_departure != NULL
 ```
 
-The AQL has a `last_departure` variable bound to a subQuery
-The subQuery uses a specific tag that could yield no events, in which case would fail the following `AGGREGATE`; this is expected by design. 
-At the end of the subQuery is `?? NULL`, which provides fallback to the possibly failing subQuery.
+The AQL has a `last_departure` variable bound to a sub-query
+The sub-query uses a specific tag that could yield no events, in which case would fail the following `AGGREGATE`; this is expected by design. 
+At the end of the sub-query is `?? NULL`, which provides fallback to the possibly failing sub-query.
 When the aggregation fails, `last_departure` will be assigned to the value `NULL` instead of raising an error to the parent query.
 
 ## PRAGMAS
