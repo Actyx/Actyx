@@ -305,7 +305,7 @@ Whenever the description says that an error is generated, the evaluation of the 
 Precedence of the binary operators in increasing order is: or, xor, and, equality, ordering, additive, multiplicative, exponential.
 Indexing binds more strongly than negation.
 
-## _[`subQuery`]_ Sub-Queries
+## _[subQuery]_ Sub-Queries
 
 ```text
 PRAGMA features := `subQuery`
@@ -382,7 +382,7 @@ This error arises when a comparative binary operation is applied to two incompar
 
 For example, the AQL below will raise an error because a number (1) is incomparable to a string ("1").
 
-```
+```text
 FILTER 1 > "1"
 ```
 
