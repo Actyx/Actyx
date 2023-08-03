@@ -451,7 +451,7 @@ FILTER last_departure != NULL
 The application executes the AQL to list "ONLY `station-opened` events that has at least one corresponding `last_departure` event".
 By design, not every `station-opened` event has a corresponding `last_departure` event.
 Consequently, the `AGGREGATE LAST(_)` expression may fail by design.
-The `?? NULL` prevents upward propagation of errors from the sub-query and, in its place, assign a `NULL` as a fallback value to the `last_departure` variable;
+The `?? NULL` prevents upward propagation of errors from the sub-query and, in its place, assigns a `NULL` as a fallback value to the `last_departure` variable;
 this covers the path where a `station-opened` event has no corresponding `last_departure` event. 
 
 ## PRAGMAS
