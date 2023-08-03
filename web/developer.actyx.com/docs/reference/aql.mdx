@@ -29,16 +29,6 @@ END                       -- optional
 
 ### Language features
 
-:::info Pre-Pragma syntax
-In Actyx versions before 2.13.0 features are enabled using a different syntax:
-
-```text
-FEATURES(some features)
-FROM …
-```
-
-:::
-
 The language is growing and will continue to do so.
 Our intention is to keep it backward compatible for as long as we can so that you can keep running your apps also on future Actyx versions of the 2.x series.
 Since we need to try out extensions and get feedback on them before committing to them, new features start out in alpha or beta status and may then graduate to fully released at a later time.
@@ -49,10 +39,28 @@ If you have questions or ideas, you are always welcome to let us know, perhaps i
 Beta features are documented and are expected to be more stable, although we reserve the right to change them at any time even during the Actyx 2.x series.
 You are very welcome to try them out and discuss about them, for example in the [forum](https://groups.google.com/a/actyx.io/g/developers).
 
+:::tip Enabling features
+
 If your query uses a feature that is not yet released, you’ll have to enable this feature using the `PRAGMA features := <words>` syntax.
 Each feature’s name is a single word and you can put any number of words after the equals sign, separated by whitespace.
 
 The names of required features are shown below in the form _[featureName]_.
+
+```text
+PRAGMA features := interpolation subQuery aggregate fromArray multiEmission
+```
+
+:::
+
+:::info Pre-Pragma syntax
+In Actyx versions before 2.13.0 features are enabled using a different syntax:
+
+```text
+FEATURES(some features)
+FROM …
+```
+
+:::
 
 ## Event queries
 
@@ -108,10 +116,6 @@ FROM 'myTag' ORDER DESC  -- the other direction is ASC
 ```
 
 ### _[interpolation]_ String interpolation
-
-```text
-PRAGMA features := interpolation
-```
 
 The tags given in a tag expression can also be computed using _string interpolation_; this is done most commonly in [sub-queries](#subquery-sub-queries).
 Interpolation is enabled by enclosing the tag in backticks instead of single or double quotes.
@@ -194,10 +198,6 @@ SELECT ...<array>
 
 ### _[aggregate]_ Aggregating inputs
 
-```text
-PRAGMA features := aggregate
-```
-
 Perhaps the most powerful feature of AQL is the ability to condense a large number of inputs from many events into one output object before transferring this result to your application.
 The syntax is similar to `SELECT`, with some special operators.
 
@@ -234,10 +234,6 @@ The given positive number indicates the number of events that may at most pass t
 It is significant where you place this stage: if you place `LIMIT 3` before a `FILTER`, then at most three inputs are presented to the filter, while placing it after the `FILTER` only stops once three inputs have passed the filter.
 
 ### Variable bindings
-
-```text
-PRAGMA features := binding
-```
 
 Like in your favorite programming language you can bind a computed value to a name so that you can later refer to it, e.g. to reuse it in multiple places or to build up your final result in a nicely structured fashion.
 
@@ -307,10 +303,6 @@ Indexing binds more strongly than negation.
 
 ## _[subQuery]_ Sub-Queries
 
-```text
-PRAGMA features := `subQuery`
-```
-
 Wherever you can write a simple value (as per the [data model](#the-aql-data-model)) you can also write a complete query `FROM … END`.
 The result of such a sub-query is always an array that contains one item per result returned from the query.
 If you use a sub-query in _array building context_ (i.e. when constructing an array or for [multi-emission](#multiemission-emitting-multiple-results)) then you can use _[spread]_ syntax to pass on the individual results instead of a single array:
@@ -335,7 +327,7 @@ In this example the filter stage checks each incoming event for a type property 
 All matching events are passed on to the transformation step that extracts the value of the “user_id” property from the current event.
 The result is packed into the final object together with the event’s timestamp, which has been bound to the variable `time` in the first processing step.
 
-## Query Error
+## Query Errors
 
 ### Error causes
 
@@ -363,7 +355,12 @@ FILTER IsDefined(_.count)
 FILTER _.count > 0
 ```
 
-NOTE: `FILTER IsDefined(_.count) & _.count > 0` wouldn't work because boolean evaluations are not short circuited.
+:::note
+
+`FILTER IsDefined(_.count) & _.count > 0` wouldn't work because boolean evaluations are not short circuited.
+
+:::
+
 
 #### Unbound Variable is Accessed
 
@@ -432,9 +429,13 @@ If the aggregate fails, the parent query will yield the sub-query's error.
 LET subquery := FROM ... AGGREGATE LAST(_) ... END 
 ```
 
-NOTE: Sub-query is a beta feature; the behaviors above MAY be subject to change.
+:::note
 
-#### Nullifying Error in a Sub-query
+Sub-query is a beta feature; the behaviors above MAY be subject to change.
+
+:::
+
+#### Catching an Error in a Sub-query
 
 Sometimes an error in sub-query — such as possible aggregation missing values — is expected.
 In that case, the error can be caught using the `??` operator and the provided fallback value is returned instead.
