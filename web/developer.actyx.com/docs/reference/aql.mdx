@@ -29,16 +29,6 @@ END                       -- optional
 
 ### Language features
 
-:::info Pre-Pragma syntax
-In Actyx versions before 2.13.0 features are enabled using a different syntax:
-
-```text
-FEATURES(some features)
-FROM …
-```
-
-:::
-
 The language is growing and will continue to do so.
 Our intention is to keep it backward compatible for as long as we can so that you can keep running your apps also on future Actyx versions of the 2.x series.
 Since we need to try out extensions and get feedback on them before committing to them, new features start out in alpha or beta status and may then graduate to fully released at a later time.
@@ -49,10 +39,28 @@ If you have questions or ideas, you are always welcome to let us know, perhaps i
 Beta features are documented and are expected to be more stable, although we reserve the right to change them at any time even during the Actyx 2.x series.
 You are very welcome to try them out and discuss about them, for example in the [forum](https://groups.google.com/a/actyx.io/g/developers).
 
+:::tip Enabling features
+
 If your query uses a feature that is not yet released, you’ll have to enable this feature using the `PRAGMA features := <words>` syntax.
 Each feature’s name is a single word and you can put any number of words after the equals sign, separated by whitespace.
 
 The names of required features are shown below in the form _[featureName]_.
+
+```text
+PRAGMA features := interpolation subQuery aggregate fromArray multiEmission
+```
+
+:::
+
+:::info Pre-Pragma syntax
+In Actyx versions before 2.13.0 features are enabled using a different syntax:
+
+```text
+FEATURES(some features)
+FROM …
+```
+
+:::
 
 ## Event queries
 
@@ -318,6 +326,133 @@ SELECT { user: _.user_id time: time }
 In this example the filter stage checks each incoming event for a type property with string value “started”.
 All matching events are passed on to the transformation step that extracts the value of the “user_id” property from the current event.
 The result is packed into the final object together with the event’s timestamp, which has been bound to the variable `time` in the first processing step.
+
+## Query Errors
+
+### Error causes
+
+Errors can happen during the execution of an AQL query, common errors may be caused by:
+
+- [Undefined property of an event payload is accessed](#undefined-property-of-an-event-payload-is-accessed)
+- [Unbound variable is accessed](#unbound-variable-is-accessed)
+- [Binary Operation data type mismatch](#binary-operation-data-type-mismatch)
+- [Aggregated data type mismatch](#aggregated-data-type-mismatch)
+- [Aggregated data is not found](#aggregated-data-is-not-found)
+
+#### Undefined property of an event payload is accessed
+
+This error commonly occurs because of an incorrect assumption on the shape of an event payload.
+
+```text
+FILTER _.count > 0 --- when the 'count' property does not exist in the event payload, this line will err
+FILTER _['count'] > 0 --- is equivalent to the above line
+```
+
+As a safeguard for this error, a preceding filter can be added to determine if a property is defined. For example:
+
+```text
+FILTER IsDefined(_.count)
+FILTER _.count > 0
+```
+
+:::note
+
+`FILTER IsDefined(_.count) & _.count > 0` wouldn't work because boolean evaluations are not short circuited.
+
+:::
+
+
+#### Unbound Variable is Accessed
+
+This error is related to the [variable binding](#variable-bindings) feature.
+A common cause is a typo when referring to a previously declared variable binding.
+
+```text
+FROM 'some-tag'
+LET available := FROM ... END -- a variable contains a `subQuery`
+SELECT avalable -- a typo, causing access to unbound variable `avalable`
+```
+
+#### Binary Operation Data Type Mismatch
+
+This error arises when a comparative binary operation is applied to two incomparable values.
+
+For example, the AQL below will raise an error because a number (1) is incomparable to a string ("1").
+
+```text
+FILTER 1 > "1"
+```
+
+#### Aggregated Data Type Mismatch
+
+Some aggregation expressions have [a type constraint](#aggregate-aggregating-inputs).
+For example, `MIN`, `MAX`, `SUM`, and `PRODUCT` only works on boolean and numbers.
+Assigning a data outside the type constraint will yield an error.
+
+```text
+AGGREGATE SUM(_.some_string) -- _.some_string is not boolean or numbers; This line will yield error.
+```
+
+An error also arise when an aggregation receives a sequence of incomparable values.
+
+For example, supplying a boolean and a number into a single `MIN` aggregation causes an error because a `MIN` aggregation cannot compare a boolean with a number.
+
+```text
+AGGREGATE SUM(_.some_number_or_bool) -- May error if in one event the property contains a number and in another a boolean
+```
+
+However, type mismatch error is specific to the aggregation expression. `FIRST` AND `LAST`, for example, have no constraints and can compare any sequence of types passed to it.
+
+#### Aggregated Data is Not Found
+
+An aggregation yields an error if there is no data supplied.
+For example, the AQL below has a filter that is always false:
+
+```text
+FILTER some_variable_that_is_always_false
+AGGREGATE FIRST(_)
+```
+
+The filter does not let any event pass. Because of it, the aggregate is not supplied with any value and thus fails.
+
+### Error in a Sub-query
+
+There is a minor different in how an error behaves in a sub-query compared to one happening in the top-level query, namely:
+
+1. An error halts the entire sub-query; in contrast, an error in a top-level query is yielded as an entry. 
+2. An error in a sub-query is propagated upwards to its parent query.
+
+For example, the sub-query below is bound to a variable containing an aggregate.
+If the aggregate fails, the parent query will yield the sub-query's error.
+
+```text
+LET subquery := FROM ... AGGREGATE LAST(_) ... END 
+```
+
+:::note
+
+Sub-query is a beta feature; the behaviors above MAY be subject to change.
+
+:::
+
+#### Catching an Error in a Sub-query
+
+Sometimes an error in sub-query — such as possible aggregation missing values — is expected.
+In that case, the error can be caught using the `??` operator and the provided fallback value is returned instead.
+
+For example, take a look into the the AQL below.
+
+```text
+FROM 'station-opened'
+LET last_departure := FROM `departure:{_.station_id}` AGGREGATE LAST(_) END ?? NULL
+FILTER last_departure != NULL
+```
+
+The application executes the AQL to list "ONLY `station-opened` events that has at least one corresponding `last_departure` event".
+By design, not every `station-opened` event has a corresponding `last_departure` event.
+Consequently, the `AGGREGATE LAST(_)` expression may fail by design.
+The `?? NULL` prevents upward propagation of errors from the sub-query and, in its place, assigns a `NULL` as a fallback value to the `last_departure` variable;
+this covers the path where a `station-opened` event has no corresponding `last_departure` event. 
 
 ## PRAGMAS
 
