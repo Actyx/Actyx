@@ -34,7 +34,7 @@ pub type NodeProcessResult<T> = std::result::Result<T, NodeError>;
 
 #[derive(Error, Debug, Clone)]
 pub enum NodeError {
-    #[error("NODE_STOPPED_BY_NODE\nActyx shut down because Actyx services could not be started. Please contact Actyx support or file a report at https://community.actyx.com/c/support. ({component}: {err:#})")]
+    #[error("NODE_STOPPED_BY_NODE\nActyx shut down because Actyx services could not be started. Please contact Actyx support or file a report at https://groups.google.com/a/actyx.io/g/developers. ({component}: {err:#})")]
     ServicesStartup { component: String, err: Arc<anyhow::Error> },
     #[error("NODE_STOPPED_BY_NODE\nError: internal error. Please contact Actyx support. ({0:#})")]
     InternalError(Arc<anyhow::Error>),
@@ -345,11 +345,11 @@ impl Node {
             ShutdownReason::TriggeredByHost => {
                 info!(target: "NODE_STOPPED_BY_HOST", "Actyx is stopped. \
                     The shutdown was either initiated automatically by the host or intentionally by the user. \
-                    If you have questions about that behavior, please contact Actyx support or file a report at https://community.actyx.com/c/support.");
+                    If you have questions about that behavior, please contact Actyx support or file a report at https://groups.google.com/a/actyx.io/g/developers.");
             }
             ShutdownReason::TriggeredByUser => {
                 info!(target: "NODE_STOPPED_BY_NODEUI", "Actyx is stopped. The shutdown was initiated by the user. \
-                    If you did not initiate shutdown, please contact Actyx support or file a report at https://community.actyx.com/c/support.");
+                    If you did not initiate shutdown, please contact Actyx support or file a report at https://groups.google.com/a/actyx.io/g/developers.");
             }
             ShutdownReason::Internal(ref err) => {
                 error!(target: "NODE_STOPPED_BY_NODE", "{}", err);
