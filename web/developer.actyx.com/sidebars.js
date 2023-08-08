@@ -8,6 +8,7 @@ module.exports = {
       items: [
         'how-to/local-development/install-actyx',
         'how-to/local-development/install-cli-node-manager',
+        'how-to/local-development/add-node-node-manager',
         'how-to/local-development/reset-your-node',
       ],
     },
@@ -215,6 +216,13 @@ module.exports = {
     {
       type: 'doc',
       id: 'tutorials/overview', // string - document id
+    },
+    {
+      type: "category", label: "Getting Started", collapsed: false, items: [
+        "tutorials/getting-started/first-event",
+        "tutorials/getting-started/first-query",
+        "tutorials/getting-started/machine-runner",
+      ]
     },
     {
       type: 'doc',
