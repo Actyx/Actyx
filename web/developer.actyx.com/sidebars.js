@@ -109,32 +109,6 @@ module.exports = {
         'how-to/troubleshooting/node-synchronization',
       ],
     },
-    {
-      type: 'category',
-      label: 'Migration from v1',
-      collapsed: true,
-      items: [
-        'how-to/migration/migration-overview',
-        {
-          type: 'category',
-          label: 'Apps',
-          items: [
-            'how-to/migration/migrate-business-logic',
-            'how-to/migration/migrate-app-manifest',
-            'how-to/migration/migrate-app-logs-and-settings',
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Nodes',
-          items: [
-            'how-to/migration/migrate-bootstrap-nodes',
-            'how-to/migration/migrate-production-nodes',
-            'how-to/migration/migrate-externally-stored-offset-maps',
-          ],
-        },
-      ],
-    },
   ],
   conceptualSidebar: [
     'conceptual/overview',

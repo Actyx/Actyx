@@ -158,27 +158,6 @@ module.exports = {
           ],
         },
         {
-          title: 'Migration',
-          items: [
-            {
-              label: 'Version 1 Docs',
-              to: 'https://60e2cdf227e6fa000855d867--ax-v1-developer.netlify.app/',
-            },
-            {
-              label: 'Version 1 Downloads',
-              to: 'https://6082f864470e5600086ac7cf--ax-v1-downloads-redirect.netlify.app/',
-            },
-            {
-              label: 'Migrating Apps',
-              to: 'docs/how-to/migration/migration-overview#migrating-your-apps',
-            },
-            {
-              label: 'Migrating Nodes',
-              to: 'docs/how-to/migration/migrate-production-nodes',
-            },
-          ],
-        },
-        {
           title: 'Company',
           items: [
             {
