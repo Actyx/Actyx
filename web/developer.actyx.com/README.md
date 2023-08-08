@@ -26,7 +26,7 @@ These <b>information-oriented</b> docs provide technical descriptions of the cod
 
 #### Tutorials
 
-These <b>learning-oriented</b> lessons take the reader by the hand to complete a small project. Note that all the tutorials are located in the Actyx Academy and ownership lies entirely with Developer Advocacy. The responsibility with the rest of the content lies within Product Management.
+These <b>learning-oriented</b> lessons take the reader by the hand to complete a small project.
 
 ### Markdown Pages
 
