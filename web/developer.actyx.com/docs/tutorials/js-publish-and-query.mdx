@@ -1,0 +1,333 @@
+---
+title: '[JS/TS] Events and Queries - Actyx JS SDK'
+id: js-publish-and-query
+hide_title: false
+hide_table_of_contents: false
+sidebar_label: '[JS/TS] Events and Queries - Actyx JS SDK'
+keywords: [tutorial]
+image: /images/defaults/default.svg
+---
+
+### Who's in the room?
+
+Several robots are present and they need to know!
+They need to know who's in the room.
+But they have no eyes, no ears.
+How are they supposed to know?
+
+Fortunately, every one of them has Actyx, and they are interconnected.
+That means, if someone would just write their ID in Actyx, the others would be able to see them.
+
+## Prerequisites
+
+Several things needed before we start:
+
+- Installation of [Actyx](/docs/how-to/local-development/install-actyx)
+- Installation of [Actyx Node Manager](/docs/how-to/local-development/install-cli-node-manager)
+- Installation of [Node JS](https://nodejs.org/en)
+- [Brief introduction to Actyx](#what-is-Actyx)
+
+## What is Actyx? {#what-is-Actyx}
+
+Actyx is a platform for building highly resilient software systems distributed across a swarm of networked devices. Specifically you can:
+
+1. Implement business logic as twins
+1. Include your twins in apps running on devices
+1. Forget about the network and data persistence
+
+Actyx enables a completely decentralized architecture that allows you to **build apps that always runs**. Your apps always run because they run locally on the device and only interact with the locally running Actyx software.
+
+import useBaseUrl from '@docusaurus/useBaseUrl'
+
+<img
+  style={{ marginBottom: '12px', borderRadius: '6px', border: '1px solid #c5cbd3' }}
+  src={useBaseUrl('images/tutorials/chat-tutorial/twins-and-apps.svg')}
+/>
+
+Enough theory! Let's jump right in.
+
+## Setting up the project {#setting-up}
+
+1. Prepare a folder; open a command prompt on the folder.
+  ```bash
+  path/to/project> npm init
+  ```
+
+  This will prompts you several questions, in which you can fill in the details of your project.
+  
+2. Install these dependencies:
+
+  ```bash
+  path/to/project> npm i typescript @actyx/sdk uuid @types/uuid
+  ```
+
+  `uuid` and `@types/uuid` will be relevant at a later point in this article.
+
+3. Now let us setup the compile-and-run script.
+    
+  In `package.json` > `scripts`, add these entries:
+
+  ```json
+  {
+    "scripts": {
+      "compile": "tsc",
+      "start": "npm run compile && node dist/index.js"
+    }
+    // ...the rest of package.json
+  }
+  ```
+
+  In `tsconfig.json` > `compilerOptions`, add this entry:
+
+  ```json
+  {
+    "compilerOptions": {
+      "outDir": "dist"
+      // ...the rest of compilerOptions
+    },
+    "include": ["src/**/*.*"]
+  }
+  ```
+
+4. Create a file in `src/index.ts`
+
+  ```ts
+  // src/index.ts
+
+  console.log("hello world")
+  ```
+
+5. Finally, let's try running the project
+
+  ```bash
+  path/to/project> npm run start
+  ```
+
+## Robot code
+
+Let us make an async function to represent the robot's runtime.
+We will begin with the setup code needed to interact with Actyx.
+
+```typescript
+// src/index.ts
+import { Actyx } from "@actyx/sdk";
+
+const APP_MANIFEST = {
+  appId: "com.example.whosintheroom",
+  displayName: "Who is in the room?",
+  version: "1.0.0",
+}
+
+async function robot(roomId: string) {
+  const selfId = uuid.v4();
+
+  const sdk = await Actyx.of(APP_MANIFEST);
+}
+```
+
+A quick explanation:
+
+- `roomId` is the room the robot is in at the moment.
+- `selfId` is the id of the robot.
+- `APP_MANIFEST` tells `Actyx` the detail of this application. Read more [here](/docs/how-to/app-auth/authenticate-with-app-manifest).
+- `Actyx.of` does the heavy lifting to authenticate the application. The promise it returns will resolve into an `sdk`, a connected  `Actyx` object which the application can interact with.
+
+Now that local Actyx is connected, we can go over the API of Actyx's SDK.
+
+## Operating the SDK
+
+We only need to publish a string (the robot's ID) and querying.
+Actyx has two APIs that fit our case:
+
+```typescript
+// publish
+sdk.publish(taggedData)
+
+// query
+sdk.queryAql(aql)
+```
+
+Let us go over those APIs.
+
+### `sdk.publish`
+
+`sdk.publish` receives a [`TaggedEvent`](https://developer.actyx.com/docs/conceptual/tags).
+To brefly describe the concept of tags, events going into Actyx are labeled with a tag;
+the same events can later be queried with that same tag.
+A tag is a non-empty unicode string.
+
+We will use `sdk.publish` to signal presence.
+Events signaling presence in a room is tagged with `robot-presence:[room_id]`.
+In TypeScript, this will be a function: 
+
+```typescript
+const presenceTagString = (roomId: string) => `robot-presence:${roomId}`
+```
+
+`TaggedEvent` is data that is tagged. Data can be tagged using this function:
+
+```typescript
+import { Tag } from "@actyx/sdk";
+
+const taggedData = Tag(tagString).apply(data)
+```
+
+Now we can send a signal of a robot's presence.
+The robot's ID will be sent as the event's payload---the item that will be tagged.
+The above statements results in the following code:
+
+```typescript
+import { Actyx, Tag } from "@actyx/sdk";
+
+const presenceTagString = (roomId: string) => `robot-presence:${roomId}`;
+
+const publishPresence = (sdk: Actyx, roomId: string, robotId: string) => {
+  const tagString = presenceTagString(roomId)
+  const tagged = Tag(tagString).apply(robotId)
+  return sdk.publish(tagged)
+}
+```
+
+It is important to note that `sdk.publish` returns a promise.
+This promise will be resolved when Actyx confirms the publication of the events.
+Now we are done with publishing.
+Let's move on to the query
+
+### `sdk.queryAql`
+
+`sdk.queryAql` receives an AQL string.
+[AQL](/docs/tutorials/aql) is a Acytx-specific language used to query events.
+AQL has a [complex set of features](https://developer.actyx.com/docs/reference/aql), but for now we will use it for only a simple feature.
+To query, we need the tag string we've defined before and use it in the AQL.
+
+```text
+FROM 'thetagstringwearelookingfor'
+```
+
+So, to query the events, this is our code:
+
+```typescript
+const queryPresence = async (sdk: Actyx, roomId: string) => {
+  const tagString = presenceTagString(roomId)
+  const aql = `FROM '${tagString}'`
+  const result = await sdk.queryAql(aql)
+  // ...
+}
+```
+
+The variable `result` above will be `AqlResponse[]`. 
+An `AqlResponse` is of a [union](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#union-types) type.
+One subtype of `AqlResponse` is `AqlEventMessage`, which contains an event published in Actyx;
+it is the data we're looking for.
+And so, to retrieve the events, we need to filter the result.
+
+```typescript
+import { Actyx, AqlEventMessage, Tag } from "@actyx/sdk";
+
+const queryPresence = async (sdk: Actyx, roomId: string) => {
+  // ...
+  return result
+    .filter((ev): ev is AqlEventMessage => ev.type === "event") // filter for AqlEventMessage by comparing the .type
+    .map(ev => ev.payload as string) // grab the payload---the `robotId` that we applied the Tag to
+}
+```
+
+## Completing the robot's code
+
+Publishing and querying functions are there.
+Those will be the building blocks to the robot code.
+Now let us write the robot.
+
+We want the robot to periodically check for presence in the room and log them.
+
+```typescript
+// async function robot(roomId: string) {
+while (true) {
+  const presentRobotIds = await queryPresence(sdk, roomId);
+  logPresence(selfId, presentRobotIds)
+  
+  // more code goes here...
+
+  await sleep(1000)
+}
+```
+
+Implement `sleep` and `logPresence` as follow:
+
+```typescript
+// pause an async function
+const sleep = (duration: number) => new Promise(res => setTimeout(res, duration))
+
+// log the presence of robots in the room except for self
+const logPresence = (selfId: string, presentRobotIds: string[]) => {
+  const neighboringRobots = presentRobotIds.filter(id => id !== selfId)
+  const neighboringRobotsAsListString = neighboringRobots.map(id => ` - robot/${id}`).join("\n")
+  console.log(`robot/${selfId} sees:`)
+  console.log(neighboringRobotsAsListString)
+}
+```
+
+If the robot is not listed in the presence, publish its presence.
+
+```typescript
+if (!presentRobotIds.includes(selfId)) {
+  await publishPresence(sdk, roomId, selfId)
+}
+```
+
+Add a little bit of logging code and behold, the robot's code!
+
+```typescript
+const APP_MANIFEST = {
+  appId: "com.example.whosintheroom",
+  displayName: "Who is in the room?",
+  version: "1.0.0",
+}
+
+async function robot(roomId: string) {
+  const selfId = uuid.v4();
+  console.log(`robot:${selfId} spawned`)
+
+  const sdk = await Actyx.of(APP_MANIFEST);
+
+  while (true) {
+    const presentRobotIds = await queryPresence(sdk, roomId);
+    logPresence(selfId, presentRobotIds)
+    if (!presentRobotIds.includes(selfId)) {
+      await publishPresence(sdk, roomId, selfId)
+      console.log(`robot/${selfId} sends its presence`)
+    }
+    await sleep(1000)
+  }
+}
+
+// Actyx calls
+const presenceTagString = (roomId: string) => `robot-presence:${roomId}`
+
+const publishPresence = (sdk: Actyx, roomId: string, robotId: string) => {
+  const tagString = presenceTagString(roomId)
+  const tagged = Tag(tagString).apply(robotId)
+  return sdk.publish(tagged)
+}
+
+const queryPresence = async (sdk: Actyx, roomId: string) => {
+  const tagString = presenceTagString(roomId)
+  const aql = `FROM '${tagString}'`
+  const result = await sdk.queryAql(aql)
+  return result.filter((ev): ev is AqlEventMessage => ev.type === "event").map(ev => ev.payload as string)
+}
+
+// utilities
+
+const sleep = (duration: number) => new Promise(res => setTimeout(res, duration))
+
+const logPresence = (selfId: string, presentRobotIds: string[]) => {
+  const neighboringRobots = presentRobotIds.filter(id => id !== selfId)
+  const neighboringRobotsAsListString = neighboringRobots.map(id => ` - robot/${id}`).join("\n")
+  console.log(`robot/${selfId} sees:`)
+  console.log(neighboringRobotsAsListString)
+}
+```
+
+## Simulating the room
+
