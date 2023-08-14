@@ -9,16 +9,17 @@ const APP_MANIFEST = {
 
 async function robot(roomId: string) {
   const selfId = uuid.v4();
-  console.log(`robot:${selfId} spawned`)
+  console.log(`robot/${selfId}: spawned`)
 
   const sdk = await Actyx.of(APP_MANIFEST);
 
   while (true) {
     const presentRobotIds = await queryPresence(sdk, roomId);
-    logPresence(selfId, presentRobotIds)
+    console.log(`robot/${selfId}: see neighbors`)
+    console.log(formatPresence(selfId, presentRobotIds))
     if (!presentRobotIds.includes(selfId)) {
       await publishPresence(sdk, roomId, selfId)
-      console.log(`robot/${selfId} sends its presence`)
+      console.log(`robot/${selfId}: sends presence`)
     }
     await sleep(1000)
   }
@@ -42,24 +43,33 @@ const queryPresence = async (sdk: Actyx, roomId: string) => {
 
 // utilities
 
+// pause an async function
 const sleep = (duration: number) => new Promise(res => setTimeout(res, duration))
 
-const logPresence = (selfId: string, presentRobotIds: string[]) => {
+// format the presence of neighboring robots
+const formatPresence = (selfId: string, presentRobotIds: string[]) => {
   const neighboringRobots = presentRobotIds.filter(id => id !== selfId)
+  if (neighboringRobots.length === 0) {
+    return "- (none)"
+  }
   const neighboringRobotsAsListString = neighboringRobots.map(id => ` - robot/${id}`).join("\n")
-  console.log(`robot/${selfId} sees:`)
-  console.log(neighboringRobotsAsListString)
+  return neighboringRobotsAsListString
 }
 
 // main 
 
 async function main() {
-  // So that every run is unique;
+  // Make sure every run is unique
   const roomId = uuid.v4()
-  console.log(`room/roomId}`)
 
-  // Spawn some robots
+  // Log the roomId
+  console.log(`room/${roomId}`)
+
+  // Spawn robots. Each is a promise that runs concurrently
   const robots = [
+    robot(roomId),
+    robot(roomId),
+    robot(roomId),
     robot(roomId),
     robot(roomId),
   ]

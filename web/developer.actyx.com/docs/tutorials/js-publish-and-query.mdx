@@ -1,22 +1,22 @@
 ---
-title: '[JS/TS] Events and Queries - Actyx JS SDK'
+title: 'Publish and Queries with Actyx JS SDK'
 id: js-publish-and-query
 hide_title: false
 hide_table_of_contents: false
-sidebar_label: '[JS/TS] Events and Queries - Actyx JS SDK'
+sidebar_label: 'Publish and Queries with Actyx JS SDK'
 keywords: [tutorial]
 image: /images/defaults/default.svg
 ---
 
 ### Who's in the room?
 
-Several robots are present and they need to know!
-They need to know who's in the room.
-But they have no eyes, no ears.
+Several robots are put in a room, and they need to know who is in the room!
+But, they have no eyes, no ears.
 How are they supposed to know?
+Fortunately, every one of them runs Actyx, and they are interconnected.
+If someone would just write their ID in Actyx, the others would be able to see them.
 
-Fortunately, every one of them has Actyx, and they are interconnected.
-That means, if someone would just write their ID in Actyx, the others would be able to see them.
+Let's implement a simple mechanism so that every robot knows who is in the room using a publish and query APIs provided by [Actyx JS SDK](https://www.npmjs.com/package/@actyx/sdk)
 
 ## Prerequisites
 
@@ -180,7 +180,7 @@ The above statements results in the following code:
 ```typescript
 import { Actyx, Tag } from "@actyx/sdk";
 
-const presenceTagString = (roomId: string) => `robot-presence:${roomId}`;
+const presenceTagString = (roomId: string) => `robot-presence:${roomId}`
 
 const publishPresence = (sdk: Actyx, roomId: string, robotId: string) => {
   const tagString = presenceTagString(roomId)
@@ -245,7 +245,8 @@ We want the robot to periodically check for presence in the room and log them.
 // async function robot(roomId: string) {
 while (true) {
   const presentRobotIds = await queryPresence(sdk, roomId);
-  logPresence(selfId, presentRobotIds)
+  console.log(`robot/${selfId}: see neighbors`)
+  console.log(formatPresence(selfId, presentRobotIds))
   
   // more code goes here...
 
@@ -253,18 +254,20 @@ while (true) {
 }
 ```
 
-Implement `sleep` and `logPresence` as follow:
+Implement `sleep` and `formatPresence` as follow:
 
 ```typescript
 // pause an async function
 const sleep = (duration: number) => new Promise(res => setTimeout(res, duration))
 
-// log the presence of robots in the room except for self
-const logPresence = (selfId: string, presentRobotIds: string[]) => {
+// format the presence of neighboring robots
+const formatPresence = (selfId: string, presentRobotIds: string[]) => {
   const neighboringRobots = presentRobotIds.filter(id => id !== selfId)
+  if (neighboringRobots.length === 0) {
+    return "- (none)"
+  }
   const neighboringRobotsAsListString = neighboringRobots.map(id => ` - robot/${id}`).join("\n")
-  console.log(`robot/${selfId} sees:`)
-  console.log(neighboringRobotsAsListString)
+  return neighboringRobotsAsListString
 }
 ```
 
@@ -273,6 +276,7 @@ If the robot is not listed in the presence, publish its presence.
 ```typescript
 if (!presentRobotIds.includes(selfId)) {
   await publishPresence(sdk, roomId, selfId)
+  console.log(`robot/${selfId}: sends presence`)
 }
 ```
 
@@ -287,16 +291,17 @@ const APP_MANIFEST = {
 
 async function robot(roomId: string) {
   const selfId = uuid.v4();
-  console.log(`robot:${selfId} spawned`)
+  console.log(`robot/${selfId}: spawned`)
 
   const sdk = await Actyx.of(APP_MANIFEST);
 
   while (true) {
     const presentRobotIds = await queryPresence(sdk, roomId);
-    logPresence(selfId, presentRobotIds)
+    console.log(`robot/${selfId}: see neighbors`)
+    console.log(formatPresence(selfId, presentRobotIds))
     if (!presentRobotIds.includes(selfId)) {
       await publishPresence(sdk, roomId, selfId)
-      console.log(`robot/${selfId} sends its presence`)
+      console.log(`robot/${selfId}: sends presence`)
     }
     await sleep(1000)
   }
@@ -322,14 +327,148 @@ const queryPresence = async (sdk: Actyx, roomId: string) => {
 
 const sleep = (duration: number) => new Promise(res => setTimeout(res, duration))
 
-const logPresence = (selfId: string, presentRobotIds: string[]) => {
+const formatPresence = (selfId: string, presentRobotIds: string[]) => {
   const neighboringRobots = presentRobotIds.filter(id => id !== selfId)
+  if (neighboringRobots.length === 0) {
+    return "- (none)"
+  }
   const neighboringRobotsAsListString = neighboringRobots.map(id => ` - robot/${id}`).join("\n")
-  console.log(`robot/${selfId} sees:`)
-  console.log(neighboringRobotsAsListString)
+  return neighboringRobotsAsListString
 }
 ```
 
 ## Simulating the room
 
-TODO:
+Let us simulate the robots by running several concurrent instances.
+Here is the code:
+
+```typescript
+async function main() {
+  // Make sure every run is unique
+  const roomId = uuid.v4()
+  // Log the roomId
+  console.log(`room/${roomId}`)
+  // Spawn robots. Each is a promise that runs concurrently
+  const robots = [
+    robot(roomId),
+    robot(roomId),
+    robot(roomId),
+    robot(roomId),
+    robot(roomId),
+  ]
+
+  await Promise.all(robots)
+}
+
+main()
+```
+
+Running the code above, we will get log similar to this:
+
+```text
+room/2f199306-face-44c2-94b1-9fdf8cd1757a
+robot/3e26f9af-6691-462d-a958-b55e2b7b0412: spawned
+robot/323c5a81-5b6c-447c-8cef-2171a05ef2cf: spawned
+robot/65f1daed-eb4b-474c-a9bf-0c4b5add5ac4: spawned
+robot/d90071d4-0f3b-4a3a-b652-8360a1e62022: spawned
+robot/fd47d8ae-781e-45f5-b7b3-ee9662e2f0e2: spawned
+robot/323c5a81-5b6c-447c-8cef-2171a05ef2cf: see neighbors
+- (none)
+robot/3e26f9af-6691-462d-a958-b55e2b7b0412: see neighbors
+- (none)
+robot/d90071d4-0f3b-4a3a-b652-8360a1e62022: see neighbors
+- (none)
+robot/fd47d8ae-781e-45f5-b7b3-ee9662e2f0e2: see neighbors
+- (none)
+robot/65f1daed-eb4b-474c-a9bf-0c4b5add5ac4: see neighbors
+- (none)
+robot/323c5a81-5b6c-447c-8cef-2171a05ef2cf: sends presence
+robot/3e26f9af-6691-462d-a958-b55e2b7b0412: sends presence
+robot/d90071d4-0f3b-4a3a-b652-8360a1e62022: sends presence
+robot/fd47d8ae-781e-45f5-b7b3-ee9662e2f0e2: sends presence
+robot/65f1daed-eb4b-474c-a9bf-0c4b5add5ac4: sends presence
+robot/323c5a81-5b6c-447c-8cef-2171a05ef2cf: see neighbors
+ - robot/3e26f9af-6691-462d-a958-b55e2b7b0412
+ - robot/d90071d4-0f3b-4a3a-b652-8360a1e62022
+ - robot/fd47d8ae-781e-45f5-b7b3-ee9662e2f0e2
+ - robot/65f1daed-eb4b-474c-a9bf-0c4b5add5ac4
+robot/3e26f9af-6691-462d-a958-b55e2b7b0412: see neighbors
+ - robot/323c5a81-5b6c-447c-8cef-2171a05ef2cf
+ - robot/d90071d4-0f3b-4a3a-b652-8360a1e62022
+ - robot/fd47d8ae-781e-45f5-b7b3-ee9662e2f0e2
+ - robot/65f1daed-eb4b-474c-a9bf-0c4b5add5ac4
+robot/d90071d4-0f3b-4a3a-b652-8360a1e62022: see neighbors
+ - robot/323c5a81-5b6c-447c-8cef-2171a05ef2cf
+ - robot/3e26f9af-6691-462d-a958-b55e2b7b0412
+ - robot/fd47d8ae-781e-45f5-b7b3-ee9662e2f0e2
+ - robot/65f1daed-eb4b-474c-a9bf-0c4b5add5ac4
+robot/fd47d8ae-781e-45f5-b7b3-ee9662e2f0e2: see neighbors
+ - robot/323c5a81-5b6c-447c-8cef-2171a05ef2cf
+ - robot/3e26f9af-6691-462d-a958-b55e2b7b0412
+ - robot/d90071d4-0f3b-4a3a-b652-8360a1e62022
+ - robot/65f1daed-eb4b-474c-a9bf-0c4b5add5ac4
+robot/65f1daed-eb4b-474c-a9bf-0c4b5add5ac4: see neighbors
+ - robot/323c5a81-5b6c-447c-8cef-2171a05ef2cf
+ - robot/3e26f9af-6691-462d-a958-b55e2b7b0412
+ - robot/d90071d4-0f3b-4a3a-b652-8360a1e62022
+ - robot/fd47d8ae-781e-45f5-b7b3-ee9662e2f0e2
+```
+
+Those are logs coming from all robots.
+Let us pick one robots and see what happens: `3e26f9af-6691-462d-a958-b55e2b7b0412`.
+
+```text
+robot/3e26f9af-6691-462d-a958-b55e2b7b0412: spawned
+robot/323c5a81-5b6c-447c-8cef-2171a05ef2cf: see neighbors
+- (none)
+robot/323c5a81-5b6c-447c-8cef-2171a05ef2cf: sends presence
+robot/323c5a81-5b6c-447c-8cef-2171a05ef2cf: see neighbors
+ - robot/3e26f9af-6691-462d-a958-b55e2b7b0412
+ - robot/d90071d4-0f3b-4a3a-b652-8360a1e62022
+ - robot/fd47d8ae-781e-45f5-b7b3-ee9662e2f0e2
+ - robot/65f1daed-eb4b-474c-a9bf-0c4b5add5ac4
+```
+
+As programmed, the robot logs the first time it is spawned and then goes through a cycle.
+On each cycle, the robot queries for presence of robots in the room.
+If it doesn't find its own presence, it will publish a presence.
+On the first cycle, it does not find any neighbors because they haven't published presence either.
+Then, on the next cycle, all the neighbors are visible.
+This robot's ID is also visible from the other robots' log.
+
+Now all robots can see who is in the room with this simple mechanism.
+
+### Inspecting the events
+
+To see how the mechanism works, we will what is happening under the hood with Actyx Node Manager.
+Follow the steps below:
+
+1. Install and Run [Actyx Node Manager](/docs/how-to/local-development/install-cli-node-manager), if you haven't.
+2. [Connect](/docs/reference/node-manager#nodes-overview) to your node—the default should be `localhost`.
+3. On the left sidebar, go to the `query` menu
+4. On the query text field, write `FROM 'the-tag'`. replace `the-tag` with the string produced by the `presenceTagString` function. In this tutorial's case, the query will be `FROM 'robot-presence:2f199306-face-44c2-94b1-9fdf8cd1757a'`. If you are running the code by yourself, replace the ID after `robot-presence:` with the `roomId` that's logged at the beginning of the main function.
+5. Below the query text field, select the node you're using (which should be the default).
+6. Press the `query` button.
+
+After pressing the `query` button, you will see these events:
+
+![Events as seen in the Node Manager](../../images/tutorials/js-publish-and-query-events.png)
+
+These are the presence events the robot sends.
+Also, these are the same events seen by the robots, since the robots queried the same tag.
+As we can see, the structure of the event we have designed can be seen here:
+
+- A presence event has the tag `robot-presence:[room_id]`
+- The `payload` of a presence event is a string of the robot ids.
+- A presence are published once per robot, as programmed.
+
+At this point we have covered:
+
+- How to use [Actyx JS SDK](https://www.npmjs.com/package/@actyx/sdk) to publish and query events
+- Brief view of the structure of an Actyx event
+
+That concludes the tutorial.
+
+## Download The Code 
+
+The code can be found in [// TODO: add link to sample code]
