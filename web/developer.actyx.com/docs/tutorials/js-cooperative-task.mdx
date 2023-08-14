@@ -37,7 +37,7 @@ Fortunately, [`machine-runner`](https://www.npmjs.com/package/@actyx/machine-run
 
 We are going to help the pump write the protocol on it.
 
-![](../../images/tutorials/js-cooperative-task.png)
+![cooperative task workflow](../../images/tutorials/js-cooperative-task.png)
 
 ## Prerequisites
 
@@ -70,6 +70,7 @@ Enough theory! Let's jump right in.
 ## Setting up the project {#setting-up}
 
 1. Prepare a folder; open a command prompt on the folder.
+
   ```bash
   path/to/project> npm init
   ```
@@ -129,9 +130,7 @@ Enough theory! Let's jump right in.
 Imagine a day of robot's life! A robot stands by, listening for signals from sensors.
 When a signal comes, the robot will start working.
 First, the robot finds a nearby pump, draw water, and then runs to water the plant.
-Let me illustrate that in TypeScript pseudo-code:
-
-_(you don't have to type it in)_
+Let me illustrate that in TypeScript pseudo-code _(you don't have to type it in)_:
 
 ```typescript 
 // A watering robot's life in a day
@@ -181,7 +180,7 @@ Also, if you pay attention, you can see a variable `dockingId`.
 Let us first think how the dock-and-draw-water process happens.
 The robot and the pump should work together sequentially as follows:
 
-```
+```text
 1. robot waits & pump ensures the dock is clear
 2. pump signals: "dock available"
 3. robot docks & pump waits
@@ -195,7 +194,7 @@ The robot and the pump should work together sequentially as follows:
 
 Notice that the steps above are interlaced `states` and `events`.
 
-```
+```text
 States:
 1. robot waits & pump ensures the dock is clear
 3. robot docks & pump waits
@@ -356,12 +355,13 @@ export const _5_DockCleared = machine
 Note that some states calls `command()`, namely, the `Initial` and `Pumping` states.
 Calling the method attach a `command` to the state, allowing the `command` to be invoked when a machine is in that state.
 So, the effect of the code would be:
-  - `WaterPump` in `Initial` state can emit `DockAvailable`
-  - `WaterPump` in `Pumping` state can emit `WaterSupplied`
+
+- `WaterPump` in `Initial` state can emit `DockAvailable`
+- `WaterPump` in `Pumping` state can emit `WaterSupplied`
 
 This maps directly to the [interaction design](#interaction-design).
 
-```
+```text
 1. robot waits & pump ensures the dock is clear <---- This state
 2. pump signals: "dock available"               <---- Allows this command
 3. robot docks & pump waits
@@ -513,6 +513,7 @@ Robot and Pump have `dockAndDrawWater` and `dockAndSupplyWater`.
 We will implement those.
 
 Make two files for each role: 
+
 - `src/consumers/water-pump.ts`
 - `src/consumers/watering-robot.ts`
 
@@ -632,6 +633,7 @@ This concludes The Pump's part of the bargain.
 Local tasks can take place before a `command`.
 All connected machine runners will wait for these local tasks before transitioning to the next state.
 Useful in scenarios such as:
+
 - watering robot needs to move to dock before water pump opens the valve
 - water pump needs to actually provide water before the watering robot moves on to its next task
 
@@ -714,6 +716,7 @@ This concludes The Robot's part of the bargain.
 Local tasks can take place before a `command`.
 All connected machine runners will wait for these local tasks before transitioning to the next state.
 Useful in scenarios such as:
+
 - watering robot needs to move to dock before water pump opens the valve
 - water pump needs to actually provide water before the watering robot moves on to its next task
 
@@ -731,6 +734,7 @@ if (whenWaterPumped) {
   await whenWaterPumped.commands?.undocked();
 }
 ```
+
 :::
 
 ## Simulating The Cooperative Interaction
@@ -830,6 +834,7 @@ main()
 ### Running the simulation
 
 Before running the simulation:
+
 - make sure [Actyx is running](/docs/how-to/local-development/install-actyx)
 - make sure [project setup](#setting-up) is done.
 

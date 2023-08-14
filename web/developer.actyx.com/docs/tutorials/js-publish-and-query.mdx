@@ -49,6 +49,7 @@ Enough theory! Let's jump right in.
 ## Setting up the project {#setting-up}
 
 1. Prepare a folder; open a command prompt on the folder.
+
   ```bash
   path/to/project> npm init
   ```
@@ -152,7 +153,7 @@ Let us go over those APIs.
 ### `sdk.publish`
 
 `sdk.publish` receives a [`TaggedEvent`](https://developer.actyx.com/docs/conceptual/tags).
-To brefly describe the concept of tags, events going into Actyx are labeled with a tag;
+To briefly describe the concept of tags, events going into Actyx are labeled with a tag;
 the same events can later be queried with that same tag.
 A tag is a non-empty unicode string.
 
@@ -196,7 +197,7 @@ Let's move on to the query
 ### `sdk.queryAql`
 
 `sdk.queryAql` receives an AQL string.
-[AQL](/docs/tutorials/aql) is a Acytx-specific language used to query events.
+[AQL](/docs/tutorials/aql) is a query language specific to Actyx.
 AQL has a [complex set of features](https://developer.actyx.com/docs/reference/aql), but for now we will use it for only a simple feature.
 To query, we need the tag string we've defined before and use it in the AQL.
 
@@ -331,3 +332,4 @@ const logPresence = (selfId: string, presentRobotIds: string[]) => {
 
 ## Simulating the room
 
+TODO:
