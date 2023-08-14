@@ -15,21 +15,21 @@ This tutorial is aimed at begginers that have read the previous tutorials about
 Our goal is to develop a simple machine for an imaginary client.
 In this scenario, the client has a flower planted in a smart pot,
 the smart pot keeps track of the water level and if it gets too low, emits a warning;
-the client wants us to develop a robot receives the warning and waters the plant.
+the client wants us to develop a robot that receives the warning and waters the plant.
 
 Along the way, you'll get your feet wet with code that interacts with Actyx.
 
 ## Setup
 
 :::caution Requirements
-Before starting the tutorial, you will need to have `npm` and `npx` installed
-(if they're not installed, you can take a look over their [installation guide](https://github.com/npm/cli#installation)).
+Before starting the tutorial, you will need to have NodeJS installed
+(if it is not installed, you can take a look over the [installation guide](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)).
 :::
 
 Let's start by creating our project folder and adding its dependencies.
 
 Start by initializing the NPM package, we'll use `-y` as the questions NPM asks are not
-relevant for the current project.
+relevant to the current project.
 
 ```bash
 $ npm init -y
@@ -51,9 +51,9 @@ And, we're done with setup! 🎉
 
 ## State Machine
 
-As stated in the start, we are tasked with developing a robot that waters a plant whenever needed.
+As stated at the start, we are tasked with developing a robot that waters a plant whenever needed.
 The idea is as follows — the plant has a sensor that checks the soil humidity level,
-if said level goes bellow a certain threshold, it sends the robot an event requesting water,
+if said level goes below a certain threshold, it sends the robot an event requesting water,
 when the level is restored, the sensor sends an event signaling that it is enough.
 
 <!--
@@ -69,7 +69,7 @@ digraph G {
 ![The watering robot state machine](../../../images/tutorials/getting-started/machine-runner/watering_robot.svg)
 
 :::info
-To further simplify our example, we will not care for the amount of water we're providing to the plant.
+To further simplify our example, we will not care about the amount of water we're providing to the plant.
 Instead, we will focus on the interaction between the machine and events.
 :::
 
@@ -120,7 +120,7 @@ export namespace Events {
 }
 ```
 
-Let's breakdown what is happening:
+Let's break down what is happening:
 
 1. We create a `namespace` for our events to keep everything together and easy to access
 
@@ -166,7 +166,7 @@ takes in the name of the protocol and all events that compose it (this is why `A
 :::info Note on `SwarmProtocol`
 Actyx is designed to support both a single or multiple machines.
 When working with multiple machines, you have a swarm, all machines in the swarm must
-"sync" in a way or another so they can cooperate instead of getting in eachothers way,
+"sync" in a way or another so they can cooperate instead of getting in each others' way,
 that's where the `Swarm` in `SwarmProtocol` comes in.
 :::
 
@@ -349,7 +349,7 @@ $ npm run start-robot
 ```
 
 So yeah, nothing happens, and that is because there is no one publishing events!
-Our mock sensor does not exist yet, so let's write it (I swear its fast).
+Our mock sensor does not exist yet, so let's write it (I swear it's fast).
 
 ### Writing the sensor
 
