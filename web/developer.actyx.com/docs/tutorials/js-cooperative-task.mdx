@@ -22,20 +22,19 @@ The robot had no choice but to join the queue.
 
 That pump had to serve everyone.
 it needs its workspace clean.
-It can't have the robots colliding with each other, "not when I'm in charge!", it said.
+It can't have the robots colliding with each other, "not when I'm in charge!".
 
-The pump had a solution!
-Each robot must dock securely.
-Then, the pump will bring in the water.
-After served, the robot must leave a safe distance.
-Only after that, the next robot can come in.
+Let's make this work.
+To make sure no robots collide on the pump's workspace the following must happen:
+each robot must dock securely;
+then, the pump brings in the water;
+after served, the robots leave a safe distance and signal the pump.
+Only after that sequence is finished, the next robot can come in.
 
-But, a cooperation like this is hard, especially in a farming field where a central coordinator is absent.
-Pumps and robots must agree on a sequence of tasks; who does what. what must not happen [before/after what](https://en.wikipedia.org/wiki/Race_condition).
-In other words, it needs a protocol.
+A cooperation like this is usually hard, especially in a farming field where a central coordinator is absent.
+Pumps and robots must agree on a sequence of tasks, who does what, and what must not happen [when another process is not finished](https://en.wikipedia.org/wiki/Race_condition).
+In other words, we need a protocol.
 Fortunately, [`machine-runner`](https://www.npmjs.com/package/@actyx/machine-runner)-on-Actyx exists exactly to solve this problem.
-
-We are going to help the pump write the protocol on it.
 
 ![cooperative task workflow](../../images/tutorials/js-cooperative-task.png)
 
@@ -46,33 +45,14 @@ Several things needed before we start:
 - Installation of [Actyx](/docs/how-to/local-development/install-actyx)
 - Installation of [Actyx Node Manager](/docs/how-to/local-development/install-cli-node-manager)
 - Installation of [Node JS](https://nodejs.org/en)
-- [Brief introduction to Actyx](#what-is-Actyx)
-
-## What is Actyx? {#what-is-Actyx}
-
-Actyx is a platform for building highly resilient software systems distributed across a swarm of networked devices. Specifically you can:
-
-1. Implement business logic as twins
-1. Include your twins in apps running on devices
-1. Forget about the network and data persistence
-
-Actyx enables a completely decentralized architecture that allows you to **build apps that always runs**. Your apps always run because they run locally on the device and only interact with the locally running Actyx software.
-
-import useBaseUrl from '@docusaurus/useBaseUrl'
-
-<img
-  style={{ marginBottom: '12px', borderRadius: '6px', border: '1px solid #c5cbd3' }}
-  src={useBaseUrl('images/tutorials/chat-tutorial/twins-and-apps.svg')}
-/>
-
-Enough theory! Let's jump right in.
+- [Brief introduction to Actyx](/docs/conceptual/overview)
 
 ## Setting up the project {#setting-up}
 
-1. Prepare a folder; open a command prompt on the folder.
+1. Prepare a folder; open a terminal on the folder.
 
   ```bash
-  path/to/project> npm init
+  $ npm init
   ```
 
   This will prompts you several questions, in which you can fill in the details of your project.
@@ -80,7 +60,7 @@ Enough theory! Let's jump right in.
 2. Install these dependencies:
 
   ```bash
-  path/to/project> npm i typescript @actyx/machine-runner @actyx/sdk uuid @types/uuid
+  $ npm i typescript @actyx/machine-runner @actyx/sdk uuid @types/uuid
   ```
 
   `uuid` and `@types/uuid` will be relevant at a later point in this article.
@@ -122,7 +102,7 @@ Enough theory! Let's jump right in.
 5. Finally, let's try running the project
 
   ```bash
-  path/to/project> npm run start
+  $ npm run start
   ```
 
 ## The Robot and The Pump {#robot-and-pump}
@@ -130,7 +110,7 @@ Enough theory! Let's jump right in.
 Imagine a day of robot's life! A robot stands by, listening for signals from sensors.
 When a signal comes, the robot will start working.
 First, the robot finds a nearby pump, draw water, and then runs to water the plant.
-Let me illustrate that in TypeScript pseudo-code _(you don't have to type it in)_:
+This process, illustrated in pseudo-code, looks like this _(you don't have to type it in)_:
 
 ```typescript 
 // A watering robot's life in a day
@@ -154,9 +134,7 @@ async function waterPlant(taskFromSensor) {
 Now, let us have a look at a water pump's day.
 At a time, a pump can have several robots needing water.
 To prevent collision, the pump serve one request at a time.
-To illustrate that:
-
-(_again, you don't have to type it in_)
+To illustrate (_again, you don't have to type it in_):
 
 ```typescript
 // A water pump's life in a day
@@ -842,7 +820,7 @@ First, [run Actyx](/docs/how-to/local-development/install-actyx) and make sure [
 Then, simply run:
 
 ```bash
-path/to/project> npm run start
+$ npm run start
 ```
 
 After done, the following log will appear; a result of `console.log` calls we have written.

@@ -25,33 +25,14 @@ Several things needed before we start:
 - Installation of [Actyx](/docs/how-to/local-development/install-actyx)
 - Installation of [Actyx Node Manager](/docs/how-to/local-development/install-cli-node-manager)
 - Installation of [Node JS](https://nodejs.org/en)
-- [Brief introduction to Actyx](#what-is-Actyx)
-
-## What is Actyx? {#what-is-Actyx}
-
-Actyx is a platform for building highly resilient software systems distributed across a swarm of networked devices. Specifically you can:
-
-1. Implement business logic as twins
-1. Include your twins in apps running on devices
-1. Forget about the network and data persistence
-
-Actyx enables a completely decentralized architecture that allows you to **build apps that always runs**. Your apps always run because they run locally on the device and only interact with the locally running Actyx software.
-
-import useBaseUrl from '@docusaurus/useBaseUrl'
-
-<img
-  style={{ marginBottom: '12px', borderRadius: '6px', border: '1px solid #c5cbd3' }}
-  src={useBaseUrl('images/tutorials/chat-tutorial/twins-and-apps.svg')}
-/>
-
-Enough theory! Let's jump right in.
+- [Brief introduction to Actyx](/docs/conceptual/overview)
 
 ## Setting up the project {#setting-up}
 
-1. Prepare a folder; open a command prompt on the folder.
+1. Prepare a folder; open a terminal on the folder.
 
   ```bash
-  path/to/project> npm init
+  $ npm init
   ```
 
   This will prompts you several questions, in which you can fill in the details of your project.
@@ -59,7 +40,7 @@ Enough theory! Let's jump right in.
 2. Install these dependencies:
 
   ```bash
-  path/to/project> npm i typescript @actyx/sdk uuid @types/uuid
+  $ npm i typescript @actyx/sdk uuid @types/uuid
   ```
 
   `uuid` and `@types/uuid` will be relevant at a later point in this article.
@@ -101,7 +82,7 @@ Enough theory! Let's jump right in.
 5. Finally, let's try running the project
 
   ```bash
-  path/to/project> npm run start
+  $ npm run start
   ```
 
 ## Robot code
