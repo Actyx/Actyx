@@ -45,11 +45,9 @@ Several things needed before we start:
 
   `uuid` and `@types/uuid` will be relevant at a later point in this article.
 
-3. Now let us setup the compile-and-run script.
+3. Modify `package.json` and `tsconfig.json` with these values:
     
-  In `package.json` > `scripts`, add these entries:
-
-  ```json
+  ```json title="package.json"
   {
     "scripts": {
       "compile": "tsc",
@@ -59,9 +57,7 @@ Several things needed before we start:
   }
   ```
 
-  In `tsconfig.json` > `compilerOptions`, add this entry:
-
-  ```json
+  ```json title="tsconfig.json"
   {
     "compilerOptions": {
       "outDir": "dist"
@@ -73,13 +69,11 @@ Several things needed before we start:
 
 4. Create a file in `src/index.ts`
 
-  ```ts
-  // src/index.ts
-
+  ```ts title="src/index.ts"
   console.log("hello world")
   ```
 
-5. Finally, let's try running the project
+5. Finally, now we should be able to run the project with:
 
   ```bash
   $ npm run start
@@ -90,9 +84,8 @@ Several things needed before we start:
 Let us make an async function to represent the robot's runtime.
 We will begin with the setup code needed to interact with Actyx.
 
-```typescript
-// src/index.ts
-import { Actyx } from "@actyx/sdk";
+```typescript title="src/index.ts"
+import { Actyx, AqlEventMessage, Tag } from "@actyx/sdk";
 
 const APP_MANIFEST = {
   appId: "com.example.whosintheroom",
@@ -142,15 +135,13 @@ We will use `sdk.publish` to signal presence.
 Events signaling presence in a room is tagged with `robot-presence:[room_id]`.
 In TypeScript, this will be a function: 
 
-```typescript
+```typescript title="src/index.ts"
 const presenceTagString = (roomId: string) => `robot-presence:${roomId}`
 ```
 
 `TaggedEvent` is data that is tagged. Data can be tagged using this function:
 
-```typescript
-import { Tag } from "@actyx/sdk";
-
+```typescript title="src/index.ts"
 const taggedData = Tag(tagString).apply(data)
 ```
 
@@ -158,9 +149,7 @@ Now we can send a signal of a robot's presence.
 The robot's ID will be sent as the event's payload---the item that will be tagged.
 The above statements results in the following code:
 
-```typescript
-import { Actyx, Tag } from "@actyx/sdk";
-
+```typescript title="src/index.ts"
 const presenceTagString = (roomId: string) => `robot-presence:${roomId}`
 
 const publishPresence = (sdk: Actyx, roomId: string, robotId: string) => {
@@ -188,7 +177,7 @@ FROM 'thetagstringwearelookingfor'
 
 So, to query the events, this is our code:
 
-```typescript
+```typescript title="src/index.ts"
 const queryPresence = async (sdk: Actyx, roomId: string) => {
   const tagString = presenceTagString(roomId)
   const aql = `FROM '${tagString}'`
@@ -203,9 +192,7 @@ One subtype of `AqlResponse` is `AqlEventMessage`, which contains an event publi
 it is the data we're looking for.
 And so, to retrieve the events, we need to filter the result.
 
-```typescript
-import { Actyx, AqlEventMessage, Tag } from "@actyx/sdk";
-
+```typescript title="src/index.ts"
 const queryPresence = async (sdk: Actyx, roomId: string) => {
   // ...
   return result
@@ -222,8 +209,8 @@ Now let us write the robot.
 
 We want the robot to periodically check for presence in the room and log them.
 
-```typescript
-// async function robot(roomId: string) {
+```typescript title="src/index.ts"
+// within async function robot
 while (true) {
   const presentRobotIds = await queryPresence(sdk, roomId);
   console.log(`robot/${selfId}: see neighbors`)
@@ -237,7 +224,7 @@ while (true) {
 
 Implement `sleep` and `formatPresence` as follow:
 
-```typescript
+```typescript title="src/index.ts"
 // pause an async function
 const sleep = (duration: number) => new Promise(res => setTimeout(res, duration))
 
@@ -254,7 +241,7 @@ const formatPresence = (selfId: string, presentRobotIds: string[]) => {
 
 If the robot is not listed in the presence, publish its presence.
 
-```typescript
+```typescript title="src/index.ts"
 if (!presentRobotIds.includes(selfId)) {
   await publishPresence(sdk, roomId, selfId)
   console.log(`robot/${selfId}: sends presence`)
@@ -263,7 +250,7 @@ if (!presentRobotIds.includes(selfId)) {
 
 Add a little bit of logging code and behold, the robot's code!
 
-```typescript
+```typescript title="src/index.ts"
 const APP_MANIFEST = {
   appId: "com.example.whosintheroom",
   displayName: "Who is in the room?",
@@ -323,7 +310,7 @@ const formatPresence = (selfId: string, presentRobotIds: string[]) => {
 Let us simulate the robots by running several concurrent instances.
 Here is the code:
 
-```typescript
+```typescript title="src/index.ts"
 async function main() {
   // Make sure every run is unique
   const roomId = uuid.v4()

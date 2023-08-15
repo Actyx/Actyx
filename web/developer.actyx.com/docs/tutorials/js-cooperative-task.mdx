@@ -65,11 +65,9 @@ Several things needed before we start:
 
   `uuid` and `@types/uuid` will be relevant at a later point in this article.
 
-3. Now let us setup the compile-and-run script.
+3. Modify `package.json` and `tsconfig.json` with these values:
     
-  In `package.json` > `scripts`, add these entries:
-
-  ```json
+  ```json title="package.json"
   {
     "scripts": {
       "compile": "tsc",
@@ -79,9 +77,7 @@ Several things needed before we start:
   }
   ```
 
-  In `tsconfig.json` > `compilerOptions`, add this entry:
-
-  ```json
+  ```json title="tsconfig.json"
   {
     "compilerOptions": {
       "outDir": "dist"
@@ -93,13 +89,11 @@ Several things needed before we start:
 
 4. Create a file in `src/index.ts`
 
-  ```ts
-  // src/index.ts
-  
+  ```ts title="src/index.ts"
   console.log("hello world")
   ```
 
-5. Finally, let's try running the project
+5. Finally, now we should be able to run the project with:
 
   ```bash
   $ npm run start
@@ -214,17 +208,13 @@ Pardon the fancy words! Let me explain:
 
 Import the tools we need from `@actyx/machine-runner`.
 
-```typescript
-// src/machines/protocol.ts
-
+```typescript title="src/machines/protocol.ts"
 import { MachineEvent, SwarmProtocol } from "@actyx/machine-runner";
 ```
 
 Define the events we have identified; collect inside a namespace.
 
-```typescript
-// src/machines/protocol.ts
-
+```typescript title="src/machines/protocol.ts"
 export namespace ProtocolEvents {
   
   // From the design: pump signals: "dock available"
@@ -256,9 +246,7 @@ export namespace ProtocolEvents {
 
 Create the swarm protocol; name it `water-drawing-exchange`.
 
-```typescript
-// src/machines/protocol.ts
-
+```typescript title="src/machines/protocol.ts"
 export const protocol = SwarmProtocol.make(
   "water-drawing-exchange",
   ProtocolEvents.All
@@ -285,9 +273,7 @@ We will write this in a new file: `src/machines/water-pump.ts`.
 
 First, import the protocol. Then, make a `machine protocol`: `WaterPump`.
 
-```typescript
-// src/machines/water-pump.ts
-
+```typescript title="src/machines/water-pump.ts"
 import { ProtocolEvents, protocol } from "./protocol";
 
 export const machine = protocol.makeMachine("WaterPump");
@@ -295,9 +281,7 @@ export const machine = protocol.makeMachine("WaterPump");
 
 The states a robot goes through the interaction, defined this way:
 
-```typescript
-// src/machines/water-pump.ts
-
+```typescript title="src/machines/water-pump.ts"
 // From the design: robot waits & pump ensures the dock is clear
 export const _1_Initial = machine
   .designEmpty("Initial")
@@ -355,9 +339,7 @@ Moving on.
 Last, we need to define the transitions.
 To define a transition, we call a method in a state: `react()`
 
-```typescript
-// src/machines/water-pump.ts
-
+```typescript title="src/machines/water-pump.ts"
 _1_Initial.react(
   [ProtocolEvents.DockAvailable],
   _2_DockAvailable,
@@ -375,9 +357,7 @@ The code above means: __A machine in `_1_Initial` state, when receiving `[Protoc
 
 For now, let us define the rest of the transitions.
 
-```typescript
-// src/machines/water-pump.ts
-
+```typescript title="src/machines/water-pump.ts"
 _2_DockAvailable.react(
   [ProtocolEvents.RobotIsDocked],
   _3_Pumping,
@@ -422,9 +402,7 @@ In our case, the states and the events don't have payload. Therefore we access n
 For the robot, we will need another file. Let's make another at: `src/machine/watering-robot.ts`.
 The process is similar to The Pump's `machine protocol`.
 
-```typescript
-// src/machine/watering-robot.ts
-
+```typescript title="src/machine/watering-robot.ts"
 import { ProtocolEvents, protocol } from "./protocol";
 
 export const machine = protocol.makeMachine("WateringRobot");
@@ -476,9 +454,7 @@ For convenience, put all `events`, `swarm protocol`, `machine protocol`, and `st
 
 In `src/machines/index.ts`, write this:
 
-```typescript
-// src/machines/index.ts
-
+```typescript title="src/machines/index.ts"
 export * as WaterPump from "./water-pump";
 export * as WateringRobot from "./watering-robot";
 export * as protocol from "./protocol";
@@ -506,9 +482,7 @@ export const dockAndSupplyWater = async (dockingId: string) => {
 One moment, `machine-runner` needs something from `@actyx/sdk` to work.
 Import that, alongside `machine-runner` and the protocol we wrote. 
 
-```typescript
-// src/consumers/water-pump.ts
-
+```typescript title="src/consumers/water-pump.ts"
 import { createMachineRunner } from "@actyx/machine-runner";
 import { Actyx } from "@actyx/sdk";
 import { WaterPump, protocol } from "../machines";
@@ -521,9 +495,7 @@ export const dockAndSupplyWater = async (actyx: Actyx, dockingId: string) => {
 Next we need The Pump to start communicating with a robot.
 For this we utilize `machine-runner`, the protocol, and `dockingId`.
 
-```typescript
-// src/consumers/water-pump.ts
-
+```typescript title="src/consumers/water-pump.ts"
 export const dockAndSupplyWater = async (actyx: Actyx, dockingId: string) => {
   const tag = protocol.protocol.tagWithEntityId(dockingId);
   const machine = createMachineRunner(actyx, tag, WaterPump._1_Initial, undefined);
@@ -544,9 +516,7 @@ then it signals the robot that the dock is available.
 
 With the `MachineRunner`, it is written like this:
 
-```typescript
-// src/consumers/water-pump.ts
-
+```typescript title="src/consumers/water-pump.ts"
 export const dockAndSupplyWater = async (actyx: Actyx, dockingId: string) => {
   const tag = protocol.protocol.tagWithEntityId(dockingId);
   const machine = createMachineRunner(actyx, tag, WaterPump._1_Initial, undefined);
@@ -568,9 +538,7 @@ Complete the code for the rest of the states;
 add logging so that we can see how it behaves;
 this will be the final form of the function:
 
-```typescript
-// src/consumers/water-pump.ts
-
+```typescript title="src/consumers/water-pump.ts"
 export const dockAndSupplyWater = async (actyx: Actyx, dockingId: string) => {
   console.log("pump starts task:", dockingId)
 
@@ -632,9 +600,7 @@ if (whenPumping) {
 The Robot's part will be similar to the Pump's.
 It differs only in the `machine protocol` it uses.
 
-```typescript
-// src/consumers/watering-robot.ts
-
+```typescript title="src/consumers/watering-robot.ts"
 import { createMachineRunner } from "@actyx/machine-runner";
 import { Actyx } from "@actyx/sdk";
 import { WateringRobot, protocol } from "../machines"; // WateringRobot is used instead of WaterPump
@@ -647,9 +613,7 @@ export const dockAndDrawWater = async (actyx: Actyx, dockingId: string) => {
 
 With all states covered and logging code added, we arrive at this:
 
-```typescript
-// src/consumers/watering-robot.ts
-
+```typescript title="src/consumers/watering-robot.ts"
 import { createMachineRunner } from "@actyx/machine-runner";
 import { WateringRobot, protocol } from "../machines";
 import { Actyx } from "@actyx/sdk";
@@ -723,9 +687,7 @@ We are going to prove that the above code works by running both roles concurrent
 
 First, start with a new file `src/index.ts` and import everything we need
 
-```typescript
-// src/index.ts
-
+```typescript title="src/index.ts"
 import { Actyx } from "@actyx/sdk";
 import * as uuid from "uuid";
 import { dockAndSupplyWater } from "./consumers/water-pump";
@@ -741,9 +703,7 @@ main();
 We will need `Actyx` object and `dockingId` string.
 We will use pretend manifest, two pretend `Actyx` objects, and and a pretend `dockingId`.
 
-```typescript
-// src/index.ts
-
+```typescript title="src/index.ts"
 async function main() {
   const APP_MANIFEST = {
     appId: "com.example.tomato-robot",
@@ -759,9 +719,7 @@ async function main() {
 
 Next run the simulation and wait until both are finished.
 
-```typescript
-// src/index.ts
-
+```typescript title="src/index.ts"
 async function main() {
   // ...
   const simulatedPumpPart = dockAndSupplyWater(sdk1, taskId)
@@ -775,9 +733,7 @@ Finally, call `dispose` to the `sdks`.
 This prevents all hanging Actyx connections, ending the process.
 At this point, the final code looks like this:
 
-```typescript
-// src/index.ts
-
+```typescript title="src/index.ts"
 import { Actyx } from "@actyx/sdk";
 import * as uuid from "uuid";
 import { dockAndSupplyWater } from "./consumers/water-pump";
@@ -842,7 +798,7 @@ robot is: DeliveringWaterToPlant
 robot finishes task: a7df8979-cf2b-44a9-996e-1bd93a6fe1ab
 ```
 
-Here, you can see pairs of equivalent states between the roles, such as `Initial&WaitingForDock`, `DockAvailable&Docking`.
+Here, you can see pairs of equivalent states between the roles, such as `Initial & WaitingForDock`, `DockAvailable & Docking`.
 Actyx and `machine-runner` ensure that all connected machine runners are at the equivalent state.
 A pump cannot be in `Initial` state while a connected robot is in `WaterPumped` state at the same time.
 
