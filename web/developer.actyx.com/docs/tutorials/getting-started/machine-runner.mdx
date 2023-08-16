@@ -17,6 +17,8 @@ In this scenario, the client has a flower planted in a smart pot,
 the smart pot keeps track of the water level and if it gets too low, emits a warning;
 the client wants us to develop a robot that receives the warning and waters the plant.
 
+![](../../../images/tutorials/getting-started/machine-runner/sequence.svg)
+
 Along the way, you'll get your feet wet with code that interacts with Actyx.
 
 ## Setup
@@ -49,7 +51,7 @@ $ npm install @actyx/sdk @actyx/machine-runner
 
 And, we're done with setup! 🎉
 
-## State Machine
+## The Robot
 
 As stated at the start, we are tasked with developing a robot that waters a plant whenever needed.
 The idea is as follows — the plant has a sensor that checks the soil humidity level,
@@ -72,8 +74,6 @@ digraph G {
 To further simplify our example, we will not care about the amount of water we're providing to the plant.
 Instead, we will focus on the interaction between the machine and events.
 :::
-
-### Developing the robot
 
 We start by creating its respective source file (`robot.ts`),
 you can do so on your favorite editor or using the following command:
@@ -106,7 +106,7 @@ $ mkdir src && touch src/robot.ts
 
 </Tabs>
 
-#### Creating the events
+### Creating the events
 
 We start by creating the events for the robot to react to:
 
@@ -146,7 +146,7 @@ you finish it off by applying either `withPayload` or `withoutPayload`. For simp
 export const All = [HasWater, NeedsWater] as const
 ```
 
-#### Creating the robot
+### Creating the robot
 
 Our robot is a [state machine](https://en.wikipedia.org/wiki/Finite-state_machine), we've already created the events,
 now we will create the states.
@@ -202,8 +202,6 @@ WateringPlant.react([Events.HasWater], Idle, (_) => Idle.make())
 3. A function that handles the state transition. This function receives the previous state as a parameter;
    in our case, since we're only handling a single state which has no data, there is no need to care for the parameter.
 
-### Running the robot
-
 Our robot needs to be able to run, otherwise, it's a bit useless.
 To do so, we need the classic `main` function:
 
@@ -241,7 +239,7 @@ export const manifest = {
 }
 ```
 
-2. This is your Actyx application instance, it will connect to Actyx and get start running your machine.
+2. This is your Actyx application instance, it will connect to Actyx and authenticate your app.
 
 ```ts
 const app = await Actyx.of(manifest)
@@ -253,7 +251,8 @@ const app = await Actyx.of(manifest)
 const tags = protocol.tagWithEntityId('robot-1')
 ```
 
-4. Your robot's state machine. Its parameters are:
+4. Create your robot's state machine, this step creates the runner that will listen and react to
+   events with the tags defined in the previous step. Its parameters are:
 
 - The application manifest.
 - The machine's tags.
@@ -273,7 +272,7 @@ for await (const state of machine) {
 ```
 
 <details>
-<summary>You full file should look something like this.</summary>
+<summary>Your full file should look something like this.</summary>
 
 ```ts
 import { MachineEvent, SwarmProtocol, createMachineRunner } from '@actyx/machine-runner'
@@ -317,6 +316,8 @@ main()
 
 </details>
 
+### Running the robot
+
 To run your file we recommend adding the following script to your `package.json`:
 
 ```json
@@ -351,7 +352,7 @@ $ npm run start-robot
 So yeah, nothing happens, and that is because there is no one publishing events!
 Our mock sensor does not exist yet, so let's write it (I swear it's fast).
 
-### Writing the sensor
+## The sensor
 
 Just like before, we create a new file:
 
@@ -457,7 +458,7 @@ As a final touch, just like we added an `npm` script for the robot, we should do
 }
 ```
 
-### Running the robot (again)
+## Putting it all together
 
 Now we have everything prepared!
 
@@ -493,3 +494,16 @@ If we take a look into the robot terminal, we should observe the following:
 
 If you notice, the state changes from `Idle` to `WateringPlant` and back,
 which means that the robot successfully watered the plant! 🌱
+
+### In summary
+
+In this tutorial we covered how to get up and running with the Actyx [Machine Runner](https://github.com/Actyx/machines).
+
+We started by [creating a robot](#creating-the-robot) that listens for events pertaining a plant's water level,
+when necessary, the robot will water the plant and stop when an acceptable water level is detected.
+
+Afterwards, we [developed a mock sensor](#the-sensor) which publishes the events to Actyx, which consequently hands them to the robot,
+so it can act on the plant's water needs.
+
+All this runs on top of Actyx (which coordinates all underlying events between the participants),
+the SDK (which we use to publish the events) and the Machine Runner (which allows us to write the state machine for the robot).
