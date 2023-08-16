@@ -28,11 +28,16 @@ module.exports = {
         tsconfig: '../../js/pond/tsconfig.json',
         out: 'reference/pond',
         disableSources: true,
-        //sidebar: {
-        //  categoryLabel: 'Actyx Pond (JS/TS)',
-        //  fullNames: false,
-        //  position: 0,
-        //},
+      },
+    ],
+    [
+      'docusaurus-plugin-typedoc',
+      {
+        id: 'js-ts-sdk',
+        entryPoints: ['../../js/sdk/src/index.ts'],
+        tsconfig: '../../js/sdk/tsconfig.json',
+        out: 'reference/js-ts-sdk',
+        disableSources: true,
       },
     ],
   ],

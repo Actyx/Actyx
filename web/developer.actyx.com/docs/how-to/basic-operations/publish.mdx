@@ -1,0 +1,136 @@
+---
+title: Publish Events
+---
+
+:::info This guide assumes Actyx is installed in the local development environment
+
+If Actyx is not yet installed, [follow this instruction](/docs/how-to/local-development/install-actyx).
+
+:::
+
+Actyx functions primarily to [stream and store events](/docs/conceptual/event-streams), which the application can use to publish events, query events, and subscribe to event streams.
+This guide will explain the various methods to publish events using Actyx SDK, Actyx CLI.
+
+## Using Actyx SDK (JS/TS)
+
+:::info JS/TS knowledge
+
+Follow Actyx SDK installation [instruction here](/docs/how-to/local-development/install-js-libs). The audience is assumed to be familiar with the development of application based on `JS/TS`, `NodeJS`, and `npm`.
+
+:::
+
+With Actyx SDK installed, import all required objects.
+Before using Actyx SDK, prepare a [manifest](/docs/how-to/app-auth/authenticate-with-app-manifest).
+Then, authenticate the manifest using the `Actyx.of` function.
+
+```typescript
+import { Actyx, Tag } from "@actyx/sdk";
+
+const MANIFEST = {
+  "appId": "com.example.app",
+  "displayName": "Example App",
+  "version": "1.0"
+};
+
+const main = async () => {
+  const actyx = await Actyx.of(MANIFEST);
+  
+  // ... tag values
+  // ... publish events
+};
+```
+
+The method returns a promise that resolves into an `Actyx` object.
+The object expose Actyx APIs, one of it is `.publish` which we will use for this guide.
+
+The next step is to prepare an event that will be published, which needs to be [tagged](/docs/conceptual/tags).
+For now, as an example, a value `{ someProperty: "someValue" }` is tagged with 2 tags, "sometag".
+
+```typescript
+const main = async () => {
+  // connect to actyx ...
+
+  const tag = Tag("sometag").and(Tag("sometag2)); // apply 2 tags to the event
+  const data = { someProperty: "someValue" }; // data can be of arbitrary type
+  const taggedData = tag.apply(data);
+
+  // ... publish events
+}
+```
+
+Finally, publish the tagged value using `.publish` method.
+
+```typescript
+const main = async () => {
+  // connect to actyx ...
+  // tag values ...
+
+  await actyx.publish(taggedData)
+}
+```
+
+The method returns a promise that will be resolved once Actyx finished storing the events.
+
+<details>
+<summary><strong>Full code </strong>(click to expand)</summary>
+
+```typescript
+import { Actyx, Tag } from "@actyx/sdk";
+
+const MANIFEST = {
+  "appId": "com.example.app",
+  "displayName": "Example App",
+  "version": "1.0"
+};
+
+const main = async () => {
+  // connect to actyx
+  const actyx = await Actyx.of(MANIFEST);
+  // tag values ...
+  const tag = Tag("sometag").and(Tag("sometag2)); // apply 2 tags to the event
+  const data = { someProperty: "someValue" }; // data can be of arbitrary type
+  const taggedData = tag.apply(data);
+  // publish events
+  await actyx.publish(taggedData)
+}
+```
+
+</details>
+
+## Using Actyx CLI
+
+:::info Actyx CLI is assumed to have been installed correctly
+
+If that is not the case, follow the [instruction on this link](/docs/how-to/local-development/install-cli-node-manager#actyx-cli).
+
+:::
+
+Here is the command used to publish events:
+
+```bash
+USAGE:
+    ax events publish [FLAGS] [OPTIONS] <NODE> <payload>
+
+FLAGS:
+    -h, --help       Prints help information
+    -j, --json       Format output as JSON
+    -V, --version    Prints version information
+    -v               
+
+OPTIONS:
+    -i, --identity <FILE>    File from which the identity (private key) for authentication is read
+    -t, --tag <tag>...       tag (can be given multiple times)
+
+ARGS:
+    <NODE>       the IP address or <host>:<admin port> of the node to perform the operation on
+    <payload>    event payload (JSON)
+```
+
+Assuming Actyx Node is running on `localhost`,
+to publish an event where the payload is `{ "someProperty": "someValue" }`,
+tagged with `sometag` and `sometag2`,
+run the following command:
+
+```bash
+$ ax events publish localhost "{\"someProperty\":\"someValue\"}" --tag "sometag" "sometag2"
+```
