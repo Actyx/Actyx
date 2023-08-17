@@ -367,6 +367,39 @@ $ npm run start-robot
 }
 ```
 
+:::caution
+When re-running the tutorial examples, you should stop Actyx and clear its storage.
+To do so, you can run remove the `actyx-data` folder.
+
+<Tabs>
+
+<Windows>
+
+```bash
+$ rm -R .\actyx-data
+```
+
+</Windows>
+
+<Linux>
+
+```bash
+$ rm -rf ./actyx-data
+```
+
+</Linux>
+
+<Mac>
+
+```bash
+$ rm -rf ./actyx-data
+```
+
+</Mac>
+
+</Tabs>
+:::
+
 So yeah, nothing happens, and that is because there is no one publishing events!
 Our mock sensor does not exist yet, so let's write it (I swear it's fast).
 
