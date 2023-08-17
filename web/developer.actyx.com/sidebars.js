@@ -218,10 +218,16 @@ module.exports = {
       id: 'tutorials/overview', // string - document id
     },
     {
-      type: "category", label: "Getting Started", collapsed: false, items: [
-        "tutorials/getting-started/first-event",
-        "tutorials/getting-started/first-query",
-        "tutorials/getting-started/machine-runner",
+      type: 'category', label: 'Getting Started', collapsed: false, items: [
+        'tutorials/getting-started/first-event',
+        'tutorials/getting-started/first-query',
+        {
+          type: 'category', label: 'Machine Runner', collapsed: false, items: [
+            'tutorials/getting-started/machine-runner/first-machine',
+            'tutorials/getting-started/machine-runner/event-payloads',
+            'tutorials/getting-started/machine-runner/state-payloads',
+          ]
+        }
       ]
     },
     {

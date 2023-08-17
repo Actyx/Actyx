@@ -1,13 +1,14 @@
 ---
-title: Getting started with Machine Runner
+title: Your first machine
+id: first-machine
 hide_title: false
 hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-import { Tabs } from '../../../src/components'
+import { Tabs } from '/src/components'
 
-:::note
+:::info
 This tutorial is aimed at begginers that have read the previous tutorials about
 [publishing](./first-event) and [querying](./first-query) events!
 :::
@@ -17,7 +18,7 @@ In this scenario, the client has a flower planted in a smart pot,
 the smart pot keeps track of the water level and if it gets too low, emits a warning;
 the client wants us to develop a robot that receives the warning and waters the plant.
 
-![](../../../images/tutorials/getting-started/machine-runner/sequence.svg)
+![](/images/tutorials/getting-started/machine-runner/sequence.svg)
 
 Along the way, you'll get your feet wet with code that interacts with Actyx.
 
@@ -61,14 +62,13 @@ when the level is restored, the sensor sends an event signaling that it is enoug
 <!--
 digraph G {
     rankdir="LR";
-    fontname="Comic Sans MS";
 
     Idle -> WateringPlant [label="NeedsWater"];
     WateringPlant -> Idle [label="HasWater"];
 }
 -->
 
-![The watering robot state machine](../../../images/tutorials/getting-started/machine-runner/watering_robot.svg)
+![The watering robot state machine](/images/tutorials/getting-started/machine-runner/watering_robot.svg)
 
 :::info
 To further simplify our example, we will not care about the amount of water we're providing to the plant.
@@ -203,7 +203,7 @@ WateringPlant.react([Events.HasWater], Idle, (_) => Idle.make())
    in our case, since we're only handling a single state which has no data, there is no need to care for the parameter.
 
 Our robot needs to be able to run, otherwise, it's a bit useless.
-To do so, we need the classic `main` function:
+To do so, we need an entrypoint, we'll call it `run_robot`:
 
 ```ts
 import { Actyx } from '@actyx/sdk'
@@ -215,7 +215,7 @@ export const manifest = {
   version: '1.0.0',
 }
 
-async function main() {
+export async function run_robot() {
   const app = await Actyx.of(manifest)
 
   const tags = protocol.tagWithEntityId('robot-1')
@@ -301,7 +301,7 @@ export const manifest = {
   version: '1.0.0',
 }
 
-async function main() {
+export async function run_robot() {
   const app = await Actyx.of(manifest)
   const tags = protocol.tagWithEntityId('robot-1')
   const machine = createMachineRunner(app, tags, Idle, undefined)
@@ -310,19 +310,37 @@ async function main() {
     console.log(state)
   }
 }
-
-main()
 ```
 
 </details>
 
 ### Running the robot
 
-To run your file we recommend adding the following script to your `package.json`:
+Before we proceed, to run the robot, we will need an extra file:
+
+```bash
+$ touch src/index.ts
+```
+
+And inside it, we import and call our robot entrypoint:
+
+```ts
+import { run_robot } from './robot'
+
+run_robot()
+```
+
+:::info
+This extra file is required because JavaScript will execute the module when importing,
+if we called the entrypoint in the `robot.ts` file, everytime we need to import something off of it
+we would be launching a new robot!
+:::
+
+Finally, to run the robot we recommend adding the following script to your `package.json`:
 
 ```json
 "scripts": {
-  "start-robot": "tsc && node src/robot.js"
+  "start-robot": "tsc && node src/index.js"
 }
 ```
 
@@ -395,7 +413,9 @@ async function main() {
   const tags = protocol.tagWithEntityId('robot-1')
 
   await app.publish(tags.apply(Events.NeedsWater.make({})))
+  console.log('Publishing NeedsWater')
   await app.publish(tags.apply(Events.HasWater.make({})))
+  console.log('Publishing HasWater')
 
   app.dispose()
 }
@@ -410,11 +430,14 @@ const app = await Actyx.of(manifest)
 const tags = protocol.tagWithEntityId('robot-1')
 ```
 
-2. Publish the events!
+2. Publish the events (with some logs since `publish` does not print anything to the console)!
 
 ```ts
 await app.publish(tags.apply(Events.NeedsWater.make({})))
+console.log('Publishing NeedsWater')
+
 await app.publish(tags.apply(Events.HasWater.make({})))
+console.log('Publishing HasWater')
 ```
 
 - First, we create a new event with `Events.NeedsWater.make({})`.
@@ -438,8 +461,11 @@ async function main() {
   const sdk = await Actyx.of(manifest)
   const where = protocol.tagWithEntityId('robot-1')
 
-  await sdk.publish(where.apply(Events.NeedsWater.make({})))
-  await sdk.publish(where.apply(Events.HasWater.make({})))
+  await app.publish(tags.apply(Events.NeedsWater.make({})))
+  console.log('Publishing NeedsWater')
+
+  await app.publish(tags.apply(Events.HasWater.make({})))
+  console.log('Publishing HasWater')
 
   sdk.dispose()
 }
@@ -453,7 +479,7 @@ As a final touch, just like we added an `npm` script for the robot, we should do
 
 ```json
 "scripts": {
-  "start-robot": "tsc && node src/robot.js",
+  "start-robot": "tsc && node src/index.js",
   "start-sensor": "tsc && node src/sensor.js"
 }
 ```

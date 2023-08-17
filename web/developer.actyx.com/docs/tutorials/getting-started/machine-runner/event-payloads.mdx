@@ -1,0 +1,200 @@
+---
+title: Using event payloads
+id: event-payloads
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+<!-- TODO: get a repo link -->
+
+:::caution
+This tutorial is a follow-up to the [introduction to the Machine Runner](/docs/tutorials/getting-started/machine-runner/first-machine),
+as such, we recommend that you go through it first.
+In the case you need the code from the previous tutorial, you can get from GitHub.
+:::
+
+In the previous tutorial we ignored the required amount of water by the plant,
+in this tutorial we will address that by introducing _payloads_.
+
+Payloads can be used both in states and events, when used in states,
+payloads may contain data relative to the current state (e.g. the amount of water the robot has used),
+in events, payloads may contain information necessary to compute the next state.
+
+Enough talk, let's dive in!
+
+## Extending the event
+
+Our imaginary company got some funding and your boss upgraded the sensor,
+which can now tell how much water the plant needs,
+rather than just whether the plants needs water or not.
+
+To handle this new sensor, we need to add a field tracking the amount of water to our `NeedsWater` event:
+
+```diff
+- export const NeedsWater = MachineEvent.design("NeedsWater").withoutPayload();
++ export const NeedsWater = MachineEvent.design("NeedsWater").withPayload<NeedsWaterPayload>();
+```
+
+Since we didn't declare the `NeedsWaterPayload` this won't work just yet, so lets add it as well:
+
+```ts
+type NeedsWaterPayload = { requiredWaterMl: number }
+```
+
+We should be ok now, let's try to run our robot:
+
+```bash
+$ npm run start-robot
+
+> tomato-robot@1.0.0 start-robot
+> tsc && node src/index.js
+
+src/sensor.ts:8:56 - error TS2345: Argument of type '{}' is not assignable to parameter of type 'NeedsWaterPayload'.
+  Property 'requiredWaterMl' is missing in type '{}' but required in type 'NeedsWaterPayload'.
+
+8   await sdk.publish(where.apply(Events.NeedsWater.make({})));
+                                                         ~~
+
+  src/robot.ts:9:3
+    9   requiredWaterMl: number;
+        ~~~~~~~~~~~~~~~
+    'requiredWaterMl' is declared here.
+```
+
+We can't run the robot because our sensor has a type mismatch,
+this makes sense since we've changed the payload type!
+
+### Fixing the sensor
+
+To fix the sensor we need to construct the proper type, luckily that's easy enough:
+
+```diff
+- await sdk.publish(tags.apply(Events.NeedsWater.make({})));
++ await sdk.publish(
++   tags.apply(
++     Events.NeedsWater.make({
++       requiredWaterMl: Math.floor(Math.random() * 100),
++     })
++   )
++ );
+```
+
+If we run the robot again:
+
+```bash
+$ npm run start-robot
+
+> tomato-robot@1.0.0 start-robot
+> tsc && node src/robot.js
+
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: undefined,
+  type: 'Idle'
+}
+```
+
+And if we run the sensor:
+
+```bash
+$ npm run start-sensor
+
+> tomato-robot@1.0.0 start-sensor
+> tsc && node src/sensor.js
+
+Published NeedsWater
+Published HasWater
+```
+
+And look back into the robot, we should see the new states:
+
+```bash
+$ npm run start-robot
+
+> tomato-robot@1.0.0 start-robot
+> tsc && node src/index.js
+
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: undefined,
+  type: 'Idle'
+}
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: undefined,
+  type: 'WateringPlant'
+}
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: undefined,
+  type: 'Idle'
+}
+```
+
+This is a bit boring though we (the robot supervisor) don't know how much water was requested.
+
+Let's do a bit better.
+
+### Checking the event payload
+
+To take a peek inside the event, we need to mess with our `Idle.react`,
+since it's the state that reacts to the `NeedsWater` event.
+To be precise, we need to extend the handler function:
+
+```diff
+- Idle.react([Events.NeedsWater], WateringPlant, (_) => WateringPlant.make())
++ Idle.react([Events.NeedsWater], WateringPlant, (_, event) => {
++   console.log(`The plant is requesting ${event.payload.requiredWaterMl} ml of water!`);
++   return WateringPlant.make();
++ });
+```
+
+The main change lies in the change from `(_) => ...` to `(_, event) => ...` which allows us to peek into the event.
+If you're using an editor with TypeScript support, your autocompletion engine might have event shown you options when placing a `.` in front of `event`.
+
+Now, when we run, we will see the required water level:
+
+```bash
+$ npm run start-robot
+
+> tomato-robot@1.0.0 start-robot
+> tsc && node src/index.js
+
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: undefined,
+  type: 'Idle'
+}
+The plant is requesting 86 ml of water!
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: undefined,
+  type: 'WateringPlant'
+}
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: undefined,
+  type: 'Idle'
+}
+```
+
+Tada! 🎉
+
+## Conclusion
+
+In this tutorial, we explored event payloads, namely, how to create them and refactor the required code to use them!

@@ -1,0 +1,288 @@
+---
+title: Using state payloads
+id: state-payloads
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+<!-- TODO: get a repo link -->
+
+:::caution
+This tutorial is a follow-up to the [introduction to event payloads](/docs/tutorials/getting-started/machine-runner/event-payloads),
+as such, we recommend that you go through it first.
+In the case you need the code from the previous tutorial, you can get from GitHub.
+:::
+
+In the previous tutorial we discussed event payloads,
+in this one we will be discussing state payloads.
+
+Once more, consider our imaginary company, where despite the funding helping the sensors,
+we now need to track how much water we're using on the plant!
+
+## Extending the states
+
+To keep track of the spent water, we need to keep it through every state,
+rather than a single one like we did for the event.
+
+We can however use a single type for the payload:
+
+```ts
+type SpentWater = {
+  /// Tracks the latest amount of water used
+  lastMl: number
+  /// Tracks the total amount of water used
+  totalMl: number
+}
+```
+
+As for the states, we will need to stop using `designEmpty` and use `designState` and `withPayload` instead:
+
+```diff
+- export const Idle = machine.designEmpty("Idle").finish()
+- export const WateringPlant = machine.designEmpty("WateringPlant").finish()
++ export const Idle = machine
++   .designState("Idle")
++   .withPayload<SpentWater>()
++   .finish();
++ export const WateringPlant = machine
++   .designState("WateringPlant")
++   .withPayload<SpentWater>()
++   .finish();
+```
+
+Similarly to the previous tutorial, we broke a bunch of other places in the code.
+
+<details>
+<summary>If we try to run it, we'll see a bunch of errors.</summary>
+
+```bash
+$ npm run start-robot
+
+> tomato-robot@1.0.0 start-robot
+> tsc && node src/index.js
+
+src/robot.ts:41:24 - error TS2554: Expected 1 arguments, but got 0.
+
+41   return WateringPlant.make();
+                          ~~~~~~
+
+  node_modules/@actyx/machine-runner/lib/esm/design/state.d.ts:122:12
+    122     make: (payload: StatePayload) => StatePayload;
+                   ~~~~~~~~~~~~~~~~~~~~~
+    An argument for 'payload' was not provided.
+
+src/robot.ts:44:58 - error TS2554: Expected 1 arguments, but got 0.
+
+44 WateringPlant.react([Events.HasWater], Idle, (_) => Idle.make())
+                                                            ~~~~~~
+
+  node_modules/@actyx/machine-runner/lib/esm/design/state.d.ts:122:12
+    122     make: (payload: StatePayload) => StatePayload;
+                   ~~~~~~~~~~~~~~~~~~~~~
+    An argument for 'payload' was not provided.
+
+src/robot.ts:55:50 - error TS2345: Argument of type 'StateFactory<"wateringRobot", "robot", Factory<"HasWater", Record<never, never>> | Factory<"NeedsWater", NeedsWaterPayload>, "Idle", SpentWater, Record<...>>' is not assignable to parameter of type 'StateFactory<"wateringRobot", "robot", Factory<"HasWater", Record<never, never>> | Factory<"NeedsWater", NeedsWaterPayload>, any, SpentWater | undefined, any>'.
+  Types of property 'make' are incompatible.
+    Type '(payload: SpentWater) => SpentWater' is not assignable to type '(payload: SpentWater | undefined) => SpentWater | undefined'.
+      Types of parameters 'payload' and 'payload' are incompatible.
+        Type 'SpentWater | undefined' is not assignable to type 'SpentWater'.
+          Type 'undefined' is not assignable to type 'SpentWater'.
+
+55   const machine = createMachineRunner(sdk, tags, Idle, undefined)
+                                                    ~~~~
+
+
+Found 3 errors in the same file, starting at: src/robot.ts:41
+```
+
+</details>
+
+To fix them, we need to correct the creation of states in our `react` calls.
+
+### Fixing the errors
+
+We'll start by fixing the `Idle.react` call:
+
+```ts
+Idle.react([Events.NeedsWater], WateringPlant, (state, event) => {
+  console.log(`The plant is requesting ${event.payload.requiredWaterMl} ml of water!`)
+  const newStatePayload = {
+    lastMl: event.payload.requiredWaterMl,
+    totalMl: state.self.totalMl + event.payload.requiredWaterMl,
+  }
+  return WateringPlant.make(newStatePayload)
+})
+```
+
+We've replaced the `_` on our handler with `state`,
+we are now returning `WateringPlant.make(newStatePayload)` instead of just `WateringPlant.make()`.
+
+Our `newStatePayload` is also a mix between new properties and the old ones from the previous state,
+we needed to replace the `lastMl` with the new amount from the event, and we needed to increase our spent water consumption
+(and yes, we could do this in the transition from `WateringPlant` to `Idle` but didn't for the sake of simplicity).
+
+Moving on to the transition from `WateringPlant` to `Idle`, we need a simpler change:
+
+```ts
+WateringPlant.react([Events.HasWater], Idle, (state, _) => Idle.make(state.self))
+```
+
+Notice that we're using the first argument of the handler, while for events we have previously used the second.
+The first one is the `ReactionContext` which containts the current state payload (i.e. before the transition happens) under `self`.
+
+We're not applying changes to the state since we've delegated all updates to the previous transition,
+so in this case, we're just keeping the state as is.
+
+The last error on our list is a bit more opaque:
+
+```
+src/robot.ts:55:50 - error TS2345: Argument of type 'StateFactory<"wateringRobot", "robot", Factory<"HasWater", Record<never, never>> | Factory<"NeedsWater", NeedsWaterPayload>, "Idle", SpentWater, Record<...>>' is not assignable to parameter of type 'StateFactory<"wateringRobot", "robot", Factory<"HasWater", Record<never, never>> | Factory<"NeedsWater", NeedsWaterPayload>, any, SpentWater | undefined, any>'.
+  Types of property 'make' are incompatible.
+    Type '(payload: SpentWater) => SpentWater' is not assignable to type '(payload: SpentWater | undefined) => SpentWater | undefined'.
+      Types of parameters 'payload' and 'payload' are incompatible.
+        Type 'SpentWater | undefined' is not assignable to type 'SpentWater'.
+          Type 'undefined' is not assignable to type 'SpentWater'.
+
+55   const machine = createMachineRunner(sdk, tags, Idle, undefined);
+                                                    ~~~~
+```
+
+Notice how it points to `Idle` and it mentions:
+
+> `(payload: SpentWater) => SpentWater` is not assignable to type `(payload: SpentWater | undefined) => SpentWater | undefined`
+
+All this but our handlers return `SpentWater` not `SpentWater | undefined`, nor do they take the latter.
+The fix is simpler than this, and astute readers may have detected the issue already.
+
+It lies in the last parameter of `createMachineRunner` which is the payload for the initial state,
+since we change the `Idle` payload to be `SpentWater` we can't pass it `undefined`.
+
+To fix it, we simply need to pass an initial `SpentWater` payload to it:
+
+```ts
+const machine = createMachineRunner(sdk, tags, Idle, {
+  lastMl: 0,
+  totalMl: 0,
+})
+```
+
+## Running our new robot!
+
+Before we run our robot, let's add some logs to track our progress and request water more than once.
+
+On `robot.ts`:
+
+```diff
+  Idle.react([Events.NeedsWater], WateringPlant, (state, event) => {
+    console.log(
+      `The plant is requesting ${event.payload.requiredWaterMl} ml of water!`
+    )
+    const newStatePayload = {
+      lastMl: event.payload.requiredWaterMl,
+      totalMl: state.self.totalMl + event.payload.requiredWaterMl,
+    }
++   console.log(`Total water consumption: ${newStatePayload.totalMl}`)
+    return WateringPlant.make(newStatePayload)
+  })
+```
+
+And on `sensor.ts`:
+
+```diff
+async function main() {
+  const sdk = await Actyx.of(manifest);
+  const tags = protocol.tagWithEntityId("robot-1");
+
++   for (let i = 0; i < 3; i++) {
+      await sdk.publish(
+        tags.apply(
+          Events.NeedsWater.make({
+            requiredWaterMl: Math.floor(Math.random() * 100),
+          })
+        )
+      );
+      console.log("Published NeedsWater");
+
+      await sdk.publish(tags.apply(Events.HasWater.make({})));
+      console.log("Published HasWater");
++   }
+
+  sdk.dispose();
+}
+```
+
+Now we can run the robot and sensor like we have been doing.
+
+<details>
+<summary>You'll see a similar output on your robot (remember that the amount of water is random).</summary>
+
+```bash
+$ npm run start-robot
+
+> tomato-robot@1.0.0 start-robot
+> tsc && node src/index.js
+
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: { lastMl: 0, totalMl: 0 },
+  type: 'Idle'
+}
+The plant is requesting 45 ml of water!
+Total water consumption: 45
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: { lastMl: 45, totalMl: 45 },
+  type: 'WateringPlant'
+}
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: { lastMl: 45, totalMl: 45 },
+  type: 'Idle'
+}
+The plant is requesting 69 ml of water!
+Total water consumption: 114
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: { lastMl: 69, totalMl: 114 },
+  type: 'WateringPlant'
+}
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: { lastMl: 69, totalMl: 114 },
+  type: 'Idle'
+}
+The plant is requesting 41 ml of water!
+Total water consumption: 155
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: { lastMl: 41, totalMl: 155 },
+  type: 'WateringPlant'
+}
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: { lastMl: 41, totalMl: 155 },
+  type: 'Idle'
+}
+```
+
+</details>
+
+## Conclusion
+
+In this tutorial we have covered state payloads, how to create and use them.
+This concludes the introductory tutorials about Machine Runner!
