@@ -1,0 +1,30 @@
+---
+title: 'Cooperative Task Pt. 2 - Testing'
+id: js-cooperative-task-2-test
+keywords: [tutorial]
+image: /images/defaults/default.svg
+---
+
+:::info
+
+This tutorial immediately follows and uses the code of the [previous tutorial](./js-cooperative-task.mdx).
+It is recommended to complete that before beginning this tutorial.
+
+:::
+
+## The World Runs When You Do Your Part
+
+In the [previous tutorial](./js-cooperative-task.mdx), we have visited the idea of two agents working on one sequential workflow,
+and we have built a protocol which governs the communication between the agents on top of [`machine-runner`](https://www.npmjs.com/package/@actyx/machine-runner) and `Actyx`.
+Such a workflow completes only when all agents must complete their own task in time.
+This tutorial will introduce a mean to prove that a `machine-runner`-based protocol fully facilitate all involved agents so that the overwall workflow completes using [`machine-check`](https://www.npmjs.com/package/@actyx/machine-check).
+
+Concretely, the previous tutorial illustrate the sequential workflow with a process of docking, drawing water, and undocking, involving one robot and one water pump.
+In short the scenario is as follow:
+1.) the pump signals that the dock is available;
+2.) the robot docks, then signals the pump that it is ready for water;
+3.) the pump draws water, and signals on completion;
+4.) the robot leaves, then signals that it has sucessfully undocked and distanced.
+`machine-runner`-based protocol provides interface in which, at a given state of the workflow,
+the robot and the pump can give a crucial signal (i.e. emit events) to move the entire workflow forward.
+

@@ -232,6 +232,10 @@ module.exports = {
       type: 'doc',
       id: 'tutorials/js-cooperative-task', // string - document id
     },
+    {
+      type: 'doc',
+      id: 'tutorials/js-cooperative-task-2-test', // string - document id
+    },
     { type: 'doc', id: 'tutorials/aql' },
     { type: 'doc', id: 'tutorials/ephemeral_streams' },
   ],
