@@ -40,15 +40,14 @@ To handle this new sensor, we need to add a field tracking the amount of water t
 
 Since we didn't declare the `NeedsWaterPayload` this won't work just yet, so lets add it as well:
 
-```ts
-// src/protocol.ts
+```ts title="src/protocol.ts"
 type NeedsWaterPayload = { requiredWaterMl: number }
 ```
 
 <details>
 <summary>Open to see the full contents of <code>protocol.ts</code></summary>
 
-```ts
+```ts title="src/protocol.ts"
 import { MachineEvent, SwarmProtocol } from '@actyx/machine-runner'
 
 export const manifest = {
@@ -115,7 +114,7 @@ To fix the sensor we need to construct the proper type, luckily that's easy enou
     Open to see the full contents of <code>sensor.ts</code>
   </summary>
 
-```ts
+```ts title="src/sensor.ts"
 import { Actyx } from '@actyx/sdk'
 import { Events, manifest, protocol } from './protocol'
 
@@ -231,7 +230,7 @@ If you're using an editor with TypeScript support, your autocompletion engine mi
     Open to see the full contents of <code>robot.ts</code>
   </summary>
 
-```ts
+```ts title="src/robot.ts"
 import { createMachineRunner } from '@actyx/machine-runner'
 import { Actyx } from '@actyx/sdk'
 import { Events, manifest, protocol } from './protocol'

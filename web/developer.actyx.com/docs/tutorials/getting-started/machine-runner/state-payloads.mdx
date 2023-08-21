@@ -29,7 +29,7 @@ rather than a single one like we did for the event.
 
 We can however use a single type for the payload:
 
-```ts
+```ts title="src/robot.ts"
 type SpentWater = {
   /// Tracks the latest amount of water used
   lastMl: number
@@ -106,7 +106,7 @@ To fix them, we need to correct the creation of states in our `react` calls.
 
 We'll start by fixing the `Idle.react` call:
 
-```ts
+```ts title="src/robot.ts"
 Idle.react([Events.NeedsWater], WateringPlant, (state, event) => {
   console.log(`The plant is requesting ${event.payload.requiredWaterMl} ml of water!`)
   const newStatePayload = {
@@ -126,7 +126,7 @@ we needed to replace the `lastMl` with the new amount from the event, and we nee
 
 Moving on to the transition from `WateringPlant` to `Idle`, we need a simpler change:
 
-```ts
+```ts title="src/robot.ts"
 WateringPlant.react([Events.HasWater], Idle, (state, _) => Idle.make(state.self))
 ```
 
@@ -162,7 +162,7 @@ since we change the `Idle` payload to be `SpentWater` we can't pass it `undefine
 
 To fix it, we simply need to pass an initial `SpentWater` payload to it:
 
-```ts
+```ts title="src/robot.ts"
 const machine = createMachineRunner(sdk, tags, Idle, {
   lastMl: 0,
   totalMl: 0,
@@ -174,7 +174,7 @@ const machine = createMachineRunner(sdk, tags, Idle, {
     Open to see the full contents of <code>robot.ts</code>
   </summary>
 
-```ts
+```ts title="src/robot.ts"
 import { createMachineRunner } from '@actyx/machine-runner'
 import { Actyx } from '@actyx/sdk'
 import { Events, manifest, protocol } from './protocol'

@@ -49,8 +49,7 @@ The last command will generate [`tsconfig.json`](https://www.typescriptlang.org/
 of which we will change the [`outDir`](https://www.typescriptlang.org/tsconfig#outDir)
 to `dist/` just so our compiled JavaScript code isn't mixed with the TypeScript code.
 
-```json
-// tsconfig.json
+```json title="tsconfig.json"
 {
   "compilerOptions": {
     // ...
@@ -136,9 +135,7 @@ The application manifest is used by Actyx to authenticate your application
 (you can read more about it in the [how-to guides](./docs/how-to/app-auth/sign-app-manifest) and in the [conceptual guides](./docs/conceptual/authentication-and-authorization)).
 The manifest requires an application ID, a display name and an application version, nothing too out of the ordinary:
 
-```ts
-// src/protcol.ts
-
+```ts title="src/protocol.ts"
 export const manifest = {
   appId: 'com.example.watering-robot',
   displayName: 'watering Robot',
@@ -152,8 +149,7 @@ That's it, with that out of the way, let's move on to the actual procotol.
 
 To define a protocol, we start by creating its events:
 
-```ts
-// protocol.ts
+```ts title="src/protocol.ts"
 import { MachineEvent, SwarmProtocol } from '@actyx/machine-runner'
 
 export namespace Events {
@@ -211,8 +207,7 @@ that's where the `Swarm` in `SwarmProtocol` comes in.
 <details>
 <summary>Open to see the full contents of <code>protocol.ts</code></summary>
 
-```ts
-// src/protocol.ts
+```ts title="src/protocol.ts"
 import { MachineEvent, SwarmProtocol } from '@actyx/machine-runner'
 
 export const manifest = {
@@ -239,8 +234,7 @@ it needs states.
 
 We start by creating the `Machine`, the main abstraction which manages all the states.
 
-```ts
-// src/robot.ts
+```ts title="src/robot.ts"
 import { protocol } from './protocol'
 
 export const machine = protocol.makeMachine('robot')
@@ -248,8 +242,7 @@ export const machine = protocol.makeMachine('robot')
 
 Followed by the machine's states:
 
-```ts
-// src/robot.ts
+```ts title="src/robot.ts"
 export const Idle = machine.designEmpty('Idle').finish()
 export const WateringPlant = machine.designEmpty('WateringPlant').finish()
 ```
@@ -262,8 +255,7 @@ in other words, we need to make our robot react to them.
 
 To do so, we need to describe what each event reacts to using [`react`](https://github.com/Actyx/machines/blob/84feac646166ff102558c8c10d68b6832940ac97/machine-runner/src/design/state.ts#L368-L386):
 
-```ts
-// src/robot.ts
+```ts title="src/robot.ts"
 import { Events } from './protocol'
 
 Idle.react([Events.NeedsWater], WateringPlant, (_) => WateringPlant.make())
@@ -280,8 +272,7 @@ WateringPlant.react([Events.HasWater], Idle, (_) => Idle.make())
 Our robot needs to be able to run, otherwise, it's a bit useless.
 To do so, we need an entrypoint:
 
-```ts
-// src/robot.ts
+```ts title="src/robot.ts"
 import { Actyx } from '@actyx/sdk'
 import { createMachineRunner } from '@actyx/machine-runner'
 import { manifest } from './protocol'
@@ -336,8 +327,7 @@ for await (const state of machine) {
 <details>
 <summary>Open to see the full contents of <code>robot.ts</code></summary>
 
-```ts
-// src/robot.ts
+```ts title="src/robot.ts"
 import { createMachineRunner } from '@actyx/machine-runner'
 import { Actyx } from '@actyx/sdk'
 import { Events, manifest, protocol } from './protocol'
@@ -370,7 +360,7 @@ main()
 To run the robot we need to compile its code and run it using NodeJS,
 to simplify subsequent runs, we'll add a new script to `package.json`:
 
-```json
+```json title="package.json"
 "scripts": {
   "start-robot": "tsc && node dist/index.js"
 }
@@ -443,7 +433,7 @@ Our mock sensor does not exist yet, so let's write it (I swear it's fast).
 The sensor is much simpler, as we're just publishing events,
 we just need to prepare the Actyx SDK and start publishing.
 
-```ts
+```ts title="src/sensor.ts"
 import { Actyx } from '@actyx/sdk'
 import { Events, manifest, protocol } from '.'
 
@@ -492,7 +482,7 @@ app.dispose()
 <details>
 <summary>Open to see the full <code>sensor.ts</code></summary>
 
-```ts
+```ts title="src/sensor.ts"
 import { Actyx } from '@actyx/sdk'
 import { Events, manifest, protocol } from '.'
 
@@ -516,7 +506,7 @@ main()
 
 As a final touch, just like we added an `npm` script for the robot, we should do the same for the sensor:
 
-```json
+```json title="package.json"
 "scripts": {
   "start-robot": "tsc && node dist/index.js",
   "start-sensor": "tsc && node dist/sensor.js"
