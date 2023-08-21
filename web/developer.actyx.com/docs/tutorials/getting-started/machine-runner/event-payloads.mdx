@@ -36,11 +36,41 @@ To handle this new sensor, we need to add a field tracking the amount of water t
 + export const NeedsWater = MachineEvent.design("NeedsWater").withPayload<NeedsWaterPayload>();
 ```
 
+![](/images/tutorials/getting-started/machine-runner/event-payload/watering_robot.svg)
+
 Since we didn't declare the `NeedsWaterPayload` this won't work just yet, so lets add it as well:
 
 ```ts
+// src/protocol.ts
 type NeedsWaterPayload = { requiredWaterMl: number }
 ```
+
+<details>
+<summary>Open to see the full contents of <code>protocol.ts</code></summary>
+
+```ts
+import { MachineEvent, SwarmProtocol } from '@actyx/machine-runner'
+
+export const manifest = {
+  appId: 'com.example.tomato-robot',
+  displayName: 'Tomato Robot',
+  version: '1.0.0',
+}
+
+type NeedsWaterPayload = {
+  requiredWaterMl: number
+}
+
+export namespace Events {
+  export const HasWater = MachineEvent.design('HasWater').withoutPayload()
+  export const NeedsWater = MachineEvent.design('NeedsWater').withPayload<NeedsWaterPayload>()
+  export const All = [HasWater, NeedsWater] as const
+}
+
+export const protocol = SwarmProtocol.make('wateringRobot', Events.All)
+```
+
+</details>
 
 We should be ok now, let's try to run our robot:
 
@@ -48,7 +78,7 @@ We should be ok now, let's try to run our robot:
 $ npm run start-robot
 
 > tomato-robot@1.0.0 start-robot
-> tsc && node src/index.js
+> tsc && node dist/index.js
 
 src/sensor.ts:8:56 - error TS2345: Argument of type '{}' is not assignable to parameter of type 'NeedsWaterPayload'.
   Property 'requiredWaterMl' is missing in type '{}' but required in type 'NeedsWaterPayload'.
@@ -80,13 +110,48 @@ To fix the sensor we need to construct the proper type, luckily that's easy enou
 + );
 ```
 
+<details>
+  <summary>
+    Open to see the full contents of <code>sensor.ts</code>
+  </summary>
+
+```ts
+import { Actyx } from '@actyx/sdk'
+import { Events, manifest, protocol } from './protocol'
+
+async function main() {
+  const sdk = await Actyx.of(manifest)
+  const tags = protocol.tagWithEntityId('robot-1')
+
+  let water = Math.floor(Math.random() * 100)
+  console.log(water)
+  await sdk.publish(
+    tags.apply(
+      Events.NeedsWater.make({
+        requiredWaterMl: water,
+      }),
+    ),
+  )
+  console.log('Published NeedsWater')
+
+  await sdk.publish(tags.apply(Events.HasWater.make({})))
+  console.log('Published HasWater')
+
+  sdk.dispose()
+}
+
+main()
+```
+
+</details>
+
 If we run the robot again:
 
 ```bash
 $ npm run start-robot
 
 > tomato-robot@1.0.0 start-robot
-> tsc && node src/robot.js
+> tsc && node dist/robot.js
 
 {
   is: [Function: is],
@@ -103,7 +168,7 @@ And if we run the sensor:
 $ npm run start-sensor
 
 > tomato-robot@1.0.0 start-sensor
-> tsc && node src/sensor.js
+> tsc && node dist/sensor.js
 
 Published NeedsWater
 Published HasWater
@@ -161,13 +226,50 @@ To be precise, we need to extend the handler function:
 The main change lies in the change from `(_) => ...` to `(_, event) => ...` which allows us to peek into the event.
 If you're using an editor with TypeScript support, your autocompletion engine might have event shown you options when placing a `.` in front of `event`.
 
+<details>
+  <summary>
+    Open to see the full contents of <code>robot.ts</code>
+  </summary>
+
+```ts
+import { createMachineRunner } from '@actyx/machine-runner'
+import { Actyx } from '@actyx/sdk'
+import { Events, manifest, protocol } from './protocol'
+
+const machine = protocol.makeMachine('robot')
+
+export const Idle = machine.designEmpty('Idle').finish()
+export const WateringPlant = machine.designEmpty('WateringPlant').finish()
+
+Idle.react([Events.NeedsWater], WateringPlant, (_, event) => {
+  console.log(`The plant is requesting ${event.payload.requiredWaterMl} ml of water!`)
+  return WateringPlant.make()
+})
+
+WateringPlant.react([Events.HasWater], Idle, (state, _) => Idle.make(state.self))
+
+export async function main() {
+  const sdk = await Actyx.of(manifest)
+  const tags = protocol.tagWithEntityId('robot-1')
+  const machine = createMachineRunner(sdk, tags, Idle, undefined)
+
+  for await (const state of machine) {
+    console.log(state)
+  }
+}
+
+main()
+```
+
+</details>
+
 Now, when we run, we will see the required water level:
 
 ```bash
 $ npm run start-robot
 
 > tomato-robot@1.0.0 start-robot
-> tsc && node src/index.js
+> tsc && node dist/index.js
 
 {
   is: [Function: is],

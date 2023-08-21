@@ -25,6 +25,8 @@ we now need to track how much water we're using on the plant!
 To keep track of the spent water, we need to keep it through every state,
 rather than a single one like we did for the event.
 
+![](/images/tutorials/getting-started/machine-runner/state-payload/watering_robot.svg)
+
 We can however use a single type for the payload:
 
 ```ts
@@ -54,7 +56,7 @@ As for the states, we will need to stop using `designEmpty` and use `designState
 Similarly to the previous tutorial, we broke a bunch of other places in the code.
 
 <details>
-<summary>If we try to run it, we'll see a bunch of errors.</summary>
+<summary>Open to see the expected compilation errors.</summary>
 
 ```bash
 $ npm run start-robot
@@ -166,6 +168,57 @@ const machine = createMachineRunner(sdk, tags, Idle, {
   totalMl: 0,
 })
 ```
+
+<details>
+  <summary>
+    Open to see the full contents of <code>robot.ts</code>
+  </summary>
+
+```ts
+import { createMachineRunner } from '@actyx/machine-runner'
+import { Actyx } from '@actyx/sdk'
+import { Events, manifest, protocol } from './protocol'
+
+type SpentWater = {
+  lastMl: number
+  totalMl: number
+}
+
+const machine = protocol.makeMachine('robot')
+
+export const Idle = machine.designState('Idle').withPayload<SpentWater>().finish()
+
+export const WateringPlant = machine.designState('WateringPlant').withPayload<SpentWater>().finish()
+
+Idle.react([Events.NeedsWater], WateringPlant, (state, event) => {
+  console.log(`The plant is requesting ${event.payload.requiredWaterMl} ml of water!`)
+  const newStatePayload = {
+    lastMl: event.payload.requiredWaterMl,
+    totalMl: state.self.totalMl + event.payload.requiredWaterMl,
+  }
+  console.log(`Total water consumption: ${newStatePayload.totalMl}`)
+  return WateringPlant.make(newStatePayload)
+})
+
+WateringPlant.react([Events.HasWater], Idle, (state, _) => Idle.make(state.self))
+
+export async function main() {
+  const sdk = await Actyx.of(manifest)
+  const tags = protocol.tagWithEntityId('robot-1')
+  const machine = createMachineRunner(sdk, tags, Idle, {
+    lastMl: 0,
+    totalMl: 0,
+  })
+
+  for await (const state of machine) {
+    console.log(state)
+  }
+}
+
+main()
+```
+
+</details>
 
 ## Running our new robot!
 
