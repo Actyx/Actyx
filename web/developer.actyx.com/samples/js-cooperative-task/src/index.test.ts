@@ -4,8 +4,9 @@ import {
   checkSwarmProtocol,
 } from "@actyx/machine-check";
 import { describe } from "@jest/globals";
-import { ProtocolEvents } from "./machines/protocol";
-import { WaterPump, WateringRobot } from "./machines";
+import { WaterPump, WateringRobot, protocol } from "./machines";
+
+const { ProtocolEvents } = protocol
 
 const swarmProtocol: SwarmProtocolType = {
   initial: "Initial",
