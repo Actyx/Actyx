@@ -454,3 +454,28 @@ RabbitMQ
 HiveMQ
 timeframe
 10s
+- ./docs/tutorials/js-cooperative-task.mdx
+ExpandableDiagram
+ExpandableDiagramUtils
+custom-codeblocks
+undocking
+const
+stateDiagram
+presentedCode
+SwarmProtocolType
+DockAvailable
+undocks
+stateDiagram.replace
+- ./docs/tutorials/js-cooperative-task-2-test.mdx
+ExpandableDiagram
+ExpandableDiagramUtils
+custom-codeblocks
+undocks
+undocking
+NodeJS-provided
+NodeJS
+presentedCode
+stateDiagram
+stateDiagram.replace
+const
+SwarmProtocolType

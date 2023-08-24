@@ -1,9 +1,13 @@
 ---
-title: 'Cooperative Task Pt. 2 - Testing'
+title: 'Swarm Workflow Pt. 2 - Testing'
 id: js-cooperative-task-2-test
 keywords: [tutorial]
 image: /images/defaults/default.svg
 ---
+
+import { ExpandableDiagram, ExpandableDiagramUtils } from "/src/components/custom-codeblocks/expandable-diagram"
+
+<!-- markdownlint-disable MD038 MD014 -->
 
 :::info
 
@@ -12,82 +16,73 @@ It is recommended to complete that before beginning this tutorial.
 
 :::
 
+
+[The previous tutorial](./js-cooperative-task.mdx) visits the idea where a swarm (i.e. the robot and the pump) works on one sequential workflow (docking, drawing water, undocking).
+For the problem, we built a protocol based on [`machine-runner`](https://www.npmjs.com/package/@actyx/machine-runner) and `Actyx`.
+The protocol governs the sequence of tasks in terms of `states` (alongside the `commands` and the `reactions`) and `events` while at the same time facilitating the agents the means to communicate according to the workflow.
+
+In this tutorial, we will explore [`machine-check`](https://www.npmjs.com/package/@actyx/machine-check), a library to test the completeness of a `machine-runner`-based protocol.
+
 ## The World Runs When You Do Your Part
 
-In the [previous tutorial](./js-cooperative-task.mdx), we visited the idea where a swarm, a collection of agents, works on one sequential workflow.
-We built a protocol which governs the swarm's communication.
-The protocol is built on top of [`machine-runner`](https://www.npmjs.com/package/@actyx/machine-runner) and `Actyx`.
+`machine-check` tests aspects within `machine-runner`'s scope.
+It checks whether a protocol facilitates an agent (by allowing access to state and exposing commands) so that it can communicate the correct message when required.
+The most important criteria that `machine-check` seeks to prove in a protocol are:
 
-In this tutorial, we will explore [`machine-check`](https://www.npmjs.com/package/@actyx/machine-check) to prove that a `machine-runner`-based protocol fully facilitate all involved agents so that the workflow can complete.
+- For every state, there must be at least one role that can emit an event that moves the workflow forward;
+- An event can only trigger at most one transition (ensuring unambiguous event semantics);
 
-The previous tutorial illustrate the workflow of a swarm of two (one robot and one water pump) executing a sequential task of docking, drawing water, and undocking, detailed as follows:
 
-1. the pump signals that the dock is available;
-1. the robot docks, then signals the pump that it is ready for water;
-1. the pump draws water, and signals on completion;
-1. the robot leaves, then signals that it has sucessfully undocked and distanced.
+:::caution caveat
 
-`machine-runner` protocol enables an agent in the swarm to know the workflow's state, and for each state, the capability to send a relevant signal to the swarm (as Actyx-replicated events).
-For that, the library breaks down the problem into these concepts:
+A workflow completes only when every agent does its part of its work.
+However, `machine-check` only proves the facilities provided by `machine-runner` protocol and not how an agent interacts with the protocol.
 
-- `event` is a message replicated throughtout the swarm (e.g. "robot-docked")
-- `role` is a role of an agent relative to the swarm (e.g. "robot", or "pump")
-- `state` is a state of the workflow from the perspective of a role (e.g. "robot-is-docking", the "pump-waits-robot-to-dock")
-- `transition` is how a state changes to another as a response to an event chain (e.g. "pump-waits-robot-to-dock" turns into "pump-is-drawing-water" in the event of "robot-docked")
-- `command` is a role's conditionally-available and optionally-executable action that yields an event chain (e.g. "robot-docked" can be emitted by "robot" during "robot-is-docking")
+An accompanying test must also be written to make sure that the agent correctly uses the protocol.
 
-A `machine-runner` protocol can facilitate the workflow's completion if:
+:::
 
-- for every state, at least one role must emit a meaningful command (one that emits events that move the workflow forward)
-- an event can only trigger at most one transition, to ensure unambiguous effect to the workflow
-- every role implemention must match the role's part in the overall interaction of the workflow
+Without further ado, let us proceed to illustrate those concepts with practice.
 
-The above statements are the criteria `machine-check` library checks in a `machine-runner`-based protocol.
+## Preparation
 
-Without further ado, let us proceed to illustrating those concepts with a practice.
+:::info No use of testing framework
 
-## Test Setup
+NodeJS-provided [`assert`](https://nodejs.org/api/assert.html) module will be used for the test code.
 
-Install the packages required for running the tests.
+`@actyx/machine-check` is compatible with any testing framework (e.g. mocha, jest, etc)
 
-```bash
-$ npm install jest ts-jest @types/jest @actyx/machine-check
-```
+:::
 
-Create the configuration file for `jest` at `jest.config.ts`.
+1. Create a new test file `src/index.test.ts`
 
-```typescript title="jest.config.ts"
-import type { JestConfigWithTsJest } from 'ts-jest'
-
-const jestConfig: JestConfigWithTsJest = {
-  preset: 'ts-jest',
-  testEnvironment: 'node',
-}
-export default jestConfig
-```
-
-Lastly, the add this script in `package.json`.
+2. Then, add this script to test
 
 ```json title="package.json"
 {
   "scripts": {
     // rest of the script,
-    "test": "jest"
+    "test": "npm run compile && node dist/index.test.js"
   }
 }
 ```
 
-Now you can use this command to run the test:
+3. Now you can use this command to run the test:
 
 ```bash
 $ npm run test
 ```
 
-## Test Script
+4. Install [`machine-check`](https://www.npmjs.com/package/@actyx/machine-check).
 
-First, create file in `src/index.test.ts`.
+```bash
+$ npm install @actyx/machine-check
+```
 
-Within that file, import the essential objects from `machine-check` and the protocol file from the previous tutorial.
+## Testing The Protocol
+
+Import what we need for the test:
+NodeJS's assert, `machine-check` utilities, and the very object we will test the protocol.
 
 ```typescript title="src/index.test.ts"
 import {
@@ -95,53 +90,33 @@ import {
   checkProjection,
   checkSwarmProtocol,
 } from "@actyx/machine-check";
-import { describe } from "@jest/globals";
 import { WaterPump, WateringRobot, protocol } from "./machines";
+import * as assert from "node:assert"
 
 const { ProtocolEvents } = protocol
 ```
 
-Let us revisit the [interaction design from the previous tutorial](/docs/tutorials/js-cooperative-task#interaction-design).
-What we have is an interlaced sequence of `states` and `events`, a useful starting point.
+The previous tutorial illustrates the workflow of a swarm of two (one robot and one water pump) executing a sequential task of docking, drawing water, and undocking. We have an [interaction design](/docs/tutorials/js-cooperative-task#interaction-design) written as a state diagram. 
 
-```text
-1. robot waits & pump ensures the dock is clear
-2. pump signals: "dock available"
+export const stateDiagram = `
+Initial --> Docking: "DockAvailable"\\nby pump
+Docking --> DrawingWater: "RobotIsDocked"\\nby robot
+DrawingWater --> Undocking: "WaterSupplied"\\nby pump
+Undocking --> Done: "RobotIsUndocked"\\nby robot"
+`.trim();
 
-3. robot docks & pump waits
-4. robot signals: "docking successful"
+<ExpandableDiagram 
+  presentedCode={stateDiagram.replace(/\\n/gi, " ")}
+  code={
+`
+stateDiagram-v2
+direction LR
+[*] --> Initial
+${ExpandableDiagramUtils.indent(stateDiagram, 2)}
+`.trim()}
+/>
 
-5. robot waits & pump supplies water
-6. pump signals: water supplied
-
-7. robot undocks & pump waits
-8. robot signals: undock successful
-
-9. done
-```
-
-For this guide, we need to reformat the sequence into the workflow transitions.
-Starting with the first one:
-
-```text
-1. Initial + ("DockAvailable" by pump) => Docking
-```
-
-The above line means: state "Initial", applied with event "DockAvailable" produced by the pump, will transition to "Docking".
-The pump perceives "Initial" as a state when it should clear the dock;
-the robot perceives "Initial" as a state when it should wait for the pump to say it's safe to dock;
-but what's important is that both agents acknowledge the workflow state.
-
-Continuing exercise and we will arrive at this:
-
-```text
-1. Initial + ("DockAvailable" by pump) => Docking
-2. Docking + ("RobotIsDocked" by robot) => DockedAndWaitingForWater
-3. DockedAndWaitingForWater + ("WaterSupplied" by pump) => WaterDrawn
-4. WaterDrawn + ("RobotIsUndocked") => Undocked
-```
-
-Now we will convert the transitions above to data that's understood by `machine-check`.
+This is a useful starting point. We can convert the above diagram to a data type that's understood by `machine-check`.
 
 ```typescript title="index.test.ts"
 
@@ -155,23 +130,23 @@ const swarmProtocol: SwarmProtocolType = {
         logType: [ProtocolEvents.DockAvailable.type],
       },
     },
-    // 2. Docking + ("RobotIsDocked" by robot) => DockedAndWaitingForWater
-    { source: "Docking", target: "DockedAndWaitingForWater", label: {
+    // 2. Docking + ("RobotIsDocked" by robot) => DrawingWater
+    { source: "Docking", target: "DrawingWater", label: {
         cmd: "docked",
         role: "robot",
         logType: [ProtocolEvents.RobotIsDocked.type],
       },
     },
-    // 3. DockedAndWaitingForWater + ("WaterSupplied" by pump) => WaterDrawn
-    { source: "DockedAndWaitingForWater", target: "WaterDrawn", label: {
+    // 3. DrawingWater + ("WaterSupplied" by pump) => Undocking
+    { source: "DrawingWater", target: "Undocking", label: {
         cmd: "waterSupplied",
         role: "pump",
         logType: [ProtocolEvents.WaterSupplied.type],
       },
     },
-    // 4. WaterDrawn + ("RobotIsUndocked") => Undocked
-    { source: "WaterDrawn", target: "Undocked", label: {
-        cmd: "undocked",
+    // 4. Undocking + ("RobotIsUndocked") => Done
+    { source: "Undocking", target: "Done", label: {
+        cmd: "Done",
         role: "robot",
         logType: [ProtocolEvents.RobotIsUndocked.type],
       },
@@ -181,7 +156,7 @@ const swarmProtocol: SwarmProtocolType = {
 
 ```
 
-Pay attention what transition maps to the resulting object, for example in the first transition.
+Pay attention to what transition maps to the resulting object, for example in the first transition.
 
 - `Initial` maps as a `source`
 - `DockAvailable` maps as `logType`
@@ -194,11 +169,11 @@ The data contain the role's state-transition graph.
 
 ```typescript title="src/index.test.ts"
 const waterPumpData = WaterPump.machine.createJSONForAnalysis(
-  WaterPump._1_Initial
+  WaterPump.ClearingDock
 );
 
 const wateringRobotData = WateringRobot.machine.createJSONForAnalysis(
-  WateringRobot._1_WaitingForDock
+  WateringRobot.WaitingForAvailableDock
 );
 
 const subscriptions = {
@@ -207,39 +182,23 @@ const subscriptions = {
 };
 ```
 
-Finally, we now have the data we need, the intended workflow (SwarmProtocolType) and the state-transition graph of each role.
+Finally, we now have the data we need, the intended workflow (SwarmProtocolType), and the state-transition graph of each role.
 Now to verify these data, we can:
 
 ```typescript title="src/index.test.ts"
-describe("protocol", () => {
-  it("is well-formed", () => {
-    expect(checkSwarmProtocol(swarmProtocol, subscriptions)).toEqual({
-      type: "OK",
-    });
-  });
-});
+assert.deepStrictEqual(checkSwarmProtocol(swarmProtocol, subscriptions), {
+  type: "OK"
+}, "protocol is not well-formed")
 
-describe("robot", () => {
-  it("is well-formed", () => {
-    expect(
-      checkProjection(swarmProtocol, subscriptions, "robot", wateringRobotData)
-    ).toEqual({
-      type: "OK",
-    });
-  })
-});
+assert.deepStrictEqual(checkProjection(swarmProtocol, subscriptions, "robot", wateringRobotData), {
+  type: "OK"
+}, "robot is not well-formed")
 
-describe("pump", () => {
-  it("is well-formed", () => {
-    expect(
-      checkProjection(swarmProtocol, subscriptions, "pump", waterPumpData)
-    ).toEqual({
-      type: "OK",
-    });
-  })
-})
+assert.deepStrictEqual(checkProjection(swarmProtocol, subscriptions, "pump", waterPumpData), {
+  type: "OK"
+}, "pump is not well-formed")
 ```
 
-### Explaining the scripts
+### Test Explanation
 
 (TODO: I think there's a lot to be explained)

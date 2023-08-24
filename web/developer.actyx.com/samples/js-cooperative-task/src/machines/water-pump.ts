@@ -2,31 +2,37 @@ import { ProtocolEvents, protocol } from "./protocol";
 
 export const machine = protocol.makeMachine("WaterPump");
 
-export const _1_Initial = machine
-  .designEmpty("Initial")
+export const ClearingDock = machine
+  .designEmpty("ClearingDock")
   .command("dockAvailable", [ProtocolEvents.DockAvailable], () => [{}])
   .finish();
-export const _2_DockAvailable = machine.designEmpty("DockAvailable").finish();
-export const _3_Pumping = machine
-  .designEmpty("Pumping")
+
+export const WaitingForRobotToDock = machine.designEmpty("WaitingForRobotToDock").finish();
+
+export const PumpingWater = machine
+  .designEmpty("PumpingWater")
   .command("waterSupplied", [ProtocolEvents.WaterSupplied], () => [{}])
   .finish();
-export const _4_Pumped = machine.designEmpty("Pumped").finish();
-export const _5_DockCleared = machine.designEmpty("DockCleared").finish();
+export const WaitingForRobotToUndock = machine.designEmpty("WaitingForRobotToUndock").finish();
 
-_1_Initial.react(
+export const Done = machine.designEmpty("Done").finish();
+
+ClearingDock.react(
   [ProtocolEvents.DockAvailable],
-  _2_DockAvailable,
+  WaitingForRobotToDock,
   () => undefined
 );
-_2_DockAvailable.react(
+
+WaitingForRobotToDock.react(
   [ProtocolEvents.RobotIsDocked],
-  _3_Pumping,
+  PumpingWater,
   () => undefined
 );
-_3_Pumping.react([ProtocolEvents.WaterSupplied], _4_Pumped, () => undefined);
-_4_Pumped.react(
+
+PumpingWater.react([ProtocolEvents.WaterSupplied], WaitingForRobotToUndock, () => undefined);
+
+WaitingForRobotToUndock.react(
   [ProtocolEvents.RobotIsUndocked],
-  _5_DockCleared,
+  Done,
   () => undefined
 );

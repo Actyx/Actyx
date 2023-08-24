@@ -9,24 +9,24 @@ export const dockAndDrawWater = async (actyx: Actyx, dockingId: string) => {
   const machine = createMachineRunner(
     actyx,
     tag,
-    WateringRobot._1_WaitingForDock,
+    WateringRobot.WaitingForAvailableDock,
     undefined
   );
 
   for await (const state of machine) {
     console.log("robot is:", state.type)
 
-    const whenDocking = state.as(WateringRobot._2_Docking);
+    const whenDocking = state.as(WateringRobot.Docking);
     if (whenDocking) {
       await whenDocking.commands?.docked();
     }
 
-    const whenWaterPumped = state.as(WateringRobot._4_WaterPumped);
+    const whenWaterPumped = state.as(WateringRobot.Undocking);
     if (whenWaterPumped) {
       await whenWaterPumped.commands?.undocked();
     }
 
-    const whenDone = state.as(WateringRobot._5_DeliveringWaterToPlant);
+    const whenDone = state.as(WateringRobot.Done);
     if (whenDone) {
       break;
     }

@@ -1,6 +1,6 @@
 import { Actyx } from "@actyx/sdk";
 import * as uuid from "uuid";
-import { dockAndSupplyWater } from "./consumers/water-pump";
+import { supplyWater } from "./consumers/water-pump";
 import { dockAndDrawWater } from "./consumers/watering-robot";
 
 async function main() {
@@ -13,11 +13,11 @@ async function main() {
 
   const sdk1 = await Actyx.of(APP_MANIFEST);
   const sdk2 = await Actyx.of(APP_MANIFEST);
-  const taskId = uuid.v4();
+  const dockingId = uuid.v4();
 
   // promises
-  const simulatedPumpPart = dockAndSupplyWater(sdk1, taskId)
-  const simulatedRobotPart = dockAndDrawWater(sdk2, taskId)
+  const simulatedPumpPart = supplyWater(sdk1, dockingId)
+  const simulatedRobotPart = dockAndDrawWater(sdk2, dockingId)
 
   // wait until both processes ends
   await Promise.all([simulatedPumpPart, simulatedRobotPart]);

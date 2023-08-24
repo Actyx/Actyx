@@ -3,8 +3,8 @@ import {
   checkProjection,
   checkSwarmProtocol,
 } from "@actyx/machine-check";
-import { describe } from "@jest/globals";
 import { WaterPump, WateringRobot, protocol } from "./machines";
+import * as assert from "node:assert"
 
 const { ProtocolEvents } = protocol
 
@@ -51,10 +51,10 @@ const swarmProtocol: SwarmProtocolType = {
 };
 
 const waterPumpData = WaterPump.machine.createJSONForAnalysis(
-  WaterPump._1_Initial
+  WaterPump.ClearingDock
 );
 const wateringRobotData = WateringRobot.machine.createJSONForAnalysis(
-  WateringRobot._1_WaitingForDock
+  WateringRobot.WaitingForAvailableDock
 );
 
 const subscriptions = {
@@ -62,30 +62,16 @@ const subscriptions = {
   robot: wateringRobotData.subscriptions,
 };
 
-describe("protocol", () => {
-  it("is well-formed", () => {
-    expect(checkSwarmProtocol(swarmProtocol, subscriptions)).toEqual({
-      type: "OK",
-    });
-  });
-});
+assert.deepStrictEqual(checkSwarmProtocol(swarmProtocol, subscriptions), {
+  type: "OK"
+}, "protocol is not well-formed")
 
-describe("robot", () => {
-  it("is well-formed", () => {
-    expect(
-      checkProjection(swarmProtocol, subscriptions, "robot", wateringRobotData)
-    ).toEqual({
-      type: "OK",
-    });
-  })
-});
+assert.deepStrictEqual(checkProjection(swarmProtocol, subscriptions, "robot", wateringRobotData), {
+  type: "OK"
+}, "robot is not well-formed")
 
-describe("pump", () => {
-  it("is well-formed", () => {
-    expect(
-      checkProjection(swarmProtocol, subscriptions, "pump", waterPumpData)
-    ).toEqual({
-      type: "OK",
-    });
-  })
-})
+assert.deepStrictEqual(checkProjection(swarmProtocol, subscriptions, "pump", waterPumpData), {
+  type: "OK"
+}, "pump is not well-formed")
+
+console.log("all tests passed")

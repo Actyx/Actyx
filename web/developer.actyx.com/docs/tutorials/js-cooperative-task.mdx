@@ -1,17 +1,26 @@
 ---
-title: 'Cooperative Task with MachineRunner'
+title: 'Swarm Workflow Pt. 1 - Implementation'
 id: js-cooperative-task
 hide_title: false
 hide_table_of_contents: false
-sidebar_label: 'Cooperative Task with MachineRunner'
 keywords: [tutorial]
 image: /images/defaults/default.svg
 ---
 
+import { ExpandableDiagram, ExpandableDiagramUtils } from "/src/components/custom-codeblocks/expandable-diagram"
+
+<!-- markdownlint-disable MD038 MD014 -->
+
+:::info
+
+It is recommended to complete the introduction tutorial to machine-runner.
+
+:::
+
 ## The Thirsty Tomato Plant
 
 Today is a hot day.
-On a patch of a farming field, a tomato plants were dry and thirsty.
+On a patch of a farming field, a tomato plant was dry and thirsty.
 Now, this farm is fully automated.
 A sensor sensed the tomato's distress.
 It signaled a robot across the field for water.
@@ -21,26 +30,27 @@ A long queue of other robots!
 The robot had no choice but to join the queue.
 
 That pump had to serve everyone.
-it needs its workspace clean.
+It needs its workspace clean.
 It can't have the robots colliding with each other, "not when I'm in charge!".
 
 Let's make this work.
 To make sure no robots collide on the pump's workspace the following must happen:
 each robot must dock securely;
 then, the pump brings in the water;
-after served, the robots leave a safe distance and signal the pump.
+after being served, the robots leave a safe distance and signal the pump.
 Only after that sequence is finished, the next robot can come in.
 
-A cooperation like this is usually hard, especially in a farming field where a central coordinator is absent.
-Pumps and robots must agree on a sequence of tasks, who does what, and what must not happen [when another process is not finished](https://en.wikipedia.org/wiki/Race_condition).
-In other words, we need a protocol.
+Such cooperation of agents (aka Swarm Workflow) is often hard, especially in a farming field where a central coordinator is absent.
+The agents (the pumps and the robots) must agree on a sequence of tasks.
+[They must know who must do what and when](https://en.wikipedia.org/wiki/Race_condition).
+To coordinate such cooperation, we need a protocol.
 Fortunately, [`machine-runner`](https://www.npmjs.com/package/@actyx/machine-runner)-on-Actyx exists exactly to solve this problem.
 
 ![cooperative task workflow](../../images/tutorials/js-cooperative-task.png)
 
 ## Prerequisites
 
-Several things needed before we start:
+Several things are needed before we start:
 
 - Installation of [Actyx](/docs/how-to/local-development/install-actyx)
 - Installation of [Actyx Node Manager](/docs/how-to/local-development/install-cli-node-manager)
@@ -55,7 +65,7 @@ Several things needed before we start:
   $ npm init
   ```
 
-  This will prompts you several questions, in which you can fill in the details of your project.
+  This will prompt you several questions, in which you can fill in the details of your project.
   
 2. Install these dependencies:
 
@@ -93,7 +103,7 @@ Several things needed before we start:
   console.log("hello world")
   ```
 
-5. Finally, now we should be able to run the project with:
+5. Finally, we should be able to run the project with:
 
   ```bash
   $ npm run start
@@ -101,10 +111,12 @@ Several things needed before we start:
 
 ## The Robot and The Pump {#robot-and-pump}
 
-Imagine a day of robot's life! A robot stands by, listening for signals from sensors.
-When a signal comes, the robot will start working.
-First, the robot finds a nearby pump, draw water, and then runs to water the plant.
-This process, illustrated in pseudo-code, looks like this _(you don't have to type it in)_:
+In a day of a robot's life:
+it is standing by, listening to signals from sensors.
+A sensor sends a signal, that a tomato plant needs water.
+The robot finds a nearby pump, draws water, and then runs to water the plant.
+
+Illustrated in pseudo-code _(no need to type this in)_:
 
 ```typescript 
 // A watering robot's life in a day
@@ -125,10 +137,10 @@ async function waterPlant(taskFromSensor) {
 }
 ```
 
-Now, let us have a look at a water pump's day.
-At a time, a pump can have several robots needing water.
-To prevent collision, the pump serve one request at a time.
-To illustrate (_again, you don't have to type it in_):
+At a given time, a pump can have several robots queuing for water.
+To prevent collisions, the pump serves one request at a time.
+
+To illustrate (_again, no need to type this in_):
 
 ```typescript
 // A water pump's life in a day
@@ -136,24 +148,39 @@ To illustrate (_again, you don't have to type it in_):
 async function main() {
   while (true) {
     const dockingId = await receiveDockingRequestId();
-    await dockAndSupplyWater(dockingId); // <-- the protocol we are working on
+    await supplyWater(dockingId); // <-- the protocol we are working on
   }
 }
 ```
 
-The robot and the pump have `dockAndDrawWater` and `dockAndSupplyWater`, and those needs implementing.
-Also, if you pay attention, you can see a variable `dockingId`.
-`dockingId` identifies the pair of a robot and a pump.
+Within the robot's and the pump's `dockAndDrawWater` and `supplyWater` is a complex workflow.
+The workflow involves several activities that need coordination, which means back-and-forth communication.
+
+:::note
+
+Take note that the code also involves one `dockingId` variable.
+What we need to know right now is that this variable uniquely identifies the instance of the workflow.
+On each occasion the workflow happens, `dockingId` will always be different.
+
+:::
 
 ## Building The Protocol
 
-### 1. Designing the interaction - a high level overview {#interaction-design}
+### Designing the workflow and the interaction {#interaction-design}
 
-Let us first think how the dock-and-draw-water process happens.
-The robot and the pump should work together sequentially as follows:
+First, we want to design how agents coordinate,
+in other words, what happens inside `dockAndDrawWater` and `supplyWater`.
+
+On a high level, both agents go through several states: **docking**, **drawing water**, and **undocking**.
+For convenience, **initial** and **done** envelop those states.
+At one state, a robot may be working while the pump waits;
+in the next state it is the pump's turn to work while the robot waits;
+therefore the agents need to talk to each other between the states.
+
+With that in mind, we will arrive at this sequence of happenings.
 
 ```text
-1. robot waits & pump ensures the dock is clear
+1. robot waits & pump ensures the dock is clear (Initial)
 2. pump signals: "dock available"
 3. robot docks & pump waits
 4. robot signals: "docking successful"
@@ -161,35 +188,48 @@ The robot and the pump should work together sequentially as follows:
 6. pump signals: water supplied
 7. robot undocks & pump waits
 8. robot signals: undock successful
-9. done
+9. (Done)
 ```
 
 Notice that the steps above are interlaced `states` and `events`.
+That is neat because then we can formalize it in a language for state diagrams.
+
+export const stateDiagram = `
+Initial --> Docking: "DockAvailable"\\nby pump
+Docking --> DrawingWater: "RobotIsDocked"\\nby robot
+DrawingWater --> Undocking: "WaterSupplied"\\nby pump
+Undocking --> Done: "RobotIsUndocked"\\nby robot"
+`.trim();
+
+<ExpandableDiagram 
+  presentedCode={stateDiagram.replace(/\\n/gi, " ")}
+  code={
+`
+stateDiagram-v2
+direction LR
+[*] --> Initial
+${ExpandableDiagramUtils.indent(stateDiagram, 2)}
+`.trim()}
+/>
+
+:::tip A brief explanation of mermaid's state diagram syntax.
 
 ```text
-States:
-1. robot waits & pump ensures the dock is clear
-3. robot docks & pump waits
-5. robot waits & pump supplies water
-7. robot undocks & pump waits
-9. done
-
-Events:
-2. pump signals: "dock available"
-4. robot signals: "docking successful"
-6. pump signals: water supplied
-8. robot signals: undock successful
+Initial --> Docking: "DockAvailable" by pump
 ```
 
-This is great.
-Separating the sequence into `states` and `events` is useful; 
-`states` and `events` are the basic building blocks of `machine-runner`.
+The line above uses a [**mermaid's state diagram syntax**](https://mermaid.js.org/syntax/stateDiagram.html).
+
+The meaning of the line: **The "Initial" state will transition to "Docking" whenever "DockAvailable" is received.**
+
+:::
 
 Now that we've figured out the sequence, we can formulate this in `machine-runner`.
 
-### 2. Working with `machine-runner`
+### Working with `machine-runner`
 
-To write a sequence of happenings in `machine-runner` we need to:
+Review how to use `machine-runner` from the previous tutorial (TODO: add link to the previous tutorial),
+what we will need to do is the following:
 
 1. list the events;
 2. make a `swarm protocol`;
@@ -197,39 +237,28 @@ To write a sequence of happenings in `machine-runner` we need to:
 4. for each role, make a `machine protocol`, and then design the states and the transitions;
 5. use the machine
 
-Pardon the fancy words! Let me explain:
+### Listing Events, Making Swarm Protocol
 
-- `swarm protocol` is the high-level overview of the interaction.
-- `role` is distinct party involved in the swarm. Which in this case are: `robot` and `pump`.
-- `state` refers to the state of a role e.g. "robot waits".
-- `transition` is how a change between one state to the other, due to the fact that `machine-runner` is a form of a [state machine](https://en.wikipedia.org/wiki/Finite-state_machine).
-
-### 3. Listing Events, Making Swarm Protocol
-
-Import the tools we need from `@actyx/machine-runner`.
+Create a file to collect all events `src/machines/protocol.ts` and then import everything we need from `@actyx/machine-runner`. 
 
 ```typescript title="src/machines/protocol.ts"
 import { MachineEvent, SwarmProtocol } from "@actyx/machine-runner";
 ```
 
-Define the events we have identified; collect inside a namespace.
+We have identified the events [while we designed the interaction](#interaction-design). Write them in and collect them into a namespace:
 
 ```typescript title="src/machines/protocol.ts"
 export namespace ProtocolEvents {
   
-  // From the design: pump signals: "dock available"
   export const DockAvailable =
     MachineEvent.design("DockAvailable").withoutPayload();
   
-  // From the design: robot signals: "docking successful"
   export const RobotIsDocked =
     MachineEvent.design("RobotIsDocked").withoutPayload();
   
-  // From the design: pump signals: water supplied
   export const WaterSupplied =
     MachineEvent.design("WaterSupplied").withoutPayload();
   
-  // From the design: robot signals: undock successful
   export const RobotIsUndocked =
     MachineEvent.design("RobotIsUndocked").withoutPayload();
   
@@ -253,25 +282,12 @@ export const protocol = SwarmProtocol.make(
 );
 ```
 
-`events` and `protocol` will later be used to write the states.
+For now, we are done with the events and the swarm protocol.
+Let's move to making the machine protocol.
 
-:::note What is "without payload"?
+### Machine Protocol for The Pump
 
-The method is called when creating an event.
-This indicates an alternative exists: `.withPayload()`.
-It allows you to embed additional data onto events aka. the payload.
-
-But now we don't need to worry about it.
-:::
-
-### 4. Machine Protocol for The Pump
-
-In the [interaction design](#interaction-design), we have identified the states.
-Now let us define the state for the water pump.
-
-We will write this in a new file: `src/machines/water-pump.ts`.
-
-First, import the protocol. Then, make a `machine protocol`: `WaterPump`.
+Create a new file `src/machines/water-pump.ts`, import the protocol, and create a machine protocol.
 
 ```typescript title="src/machines/water-pump.ts"
 import { ProtocolEvents, protocol } from "./protocol";
@@ -279,180 +295,127 @@ import { ProtocolEvents, protocol } from "./protocol";
 export const machine = protocol.makeMachine("WaterPump");
 ```
 
-The states a robot goes through the interaction, defined this way:
+An agent has a role in the swarm. For each role, there will be one machine protocol.
+A machine protocol (alongside the states, commands, and reactions) determines how it can communicate with the swarm.
+
+For each state of the workflow from the [interaction design](#interaction-design) create a state.
 
 ```typescript title="src/machines/water-pump.ts"
-// From the design: robot waits & pump ensures the dock is clear
-export const _1_Initial = machine
-  .designEmpty("Initial")
+export const ClearingDock = machine
+  .designEmpty("ClearingDock")
   .command("dockAvailable", [ProtocolEvents.DockAvailable], () => [{}])
   .finish();
 
-// From the design: robot docks & pump waits
-export const _2_DockAvailable = machine
-  .designEmpty("DockAvailable")
+export const WaitingForRobotToDock = machine
+  .designEmpty("WaitingForRobotToDock")
   .finish();
 
-// From the design: robot waits & pump supplies water
-export const _3_Pumping = machine
-  .designEmpty("Pumping")
+export const PumpingWater = machine
+  .designEmpty("PumpingWater")
   .command("waterSupplied", [ProtocolEvents.WaterSupplied], () => [{}])
   .finish();
 
-// From the design: robot undocks & pump waits
-export const _4_Pumped = machine
-  .designEmpty("Pumped")
+export const WaitingForRobotToUndock = machine
+  .designEmpty("WaitingForRobotToUndock")
   .finish();
 
-// From the design: done
-export const _5_DockCleared = machine
-  .designEmpty("DockCleared")
+export const Done = machine
+  .designEmpty("Done")
   .finish();
-
-// Note: 
-//  I prefixed the states with numbers
-//  Easier to walk through the sequence this way
 ```
 
-Note that some states calls `command()`, namely, the `Initial` and `Pumping` states.
-Calling the method attach a `command` to the state, allowing the `command` to be invoked when a machine is in that state.
-So, the effect of the code would be:
+States for the pump are named differently from the workflow counterparts in this tutorial.
+The purpose is to reflect how the role perceives the state.
+For example, from the perspective of the pump `Docking` is `WaitingForRobotToDock`.
+Of course, the naming convention in real use cases will be up to the application programmer.
 
-- `WaterPump` in `Initial` state can emit `DockAvailable`
-- `WaterPump` in `Pumping` state can emit `WaterSupplied`
+Commands are defined for the states `ClearingDock` and `PumpingWater`.
+This is how we declare that the pump has an active role in this state (i.e. can emit events), per the interaction design.
 
-This maps directly to the [interaction design](#interaction-design).
-
-```text
-1. robot waits & pump ensures the dock is clear <---- This state
-2. pump signals: "dock available"               <---- Allows this command
-3. robot docks & pump waits
-4. robot signals: "docking successful"
-5. robot waits & pump supplies water            <---- This state
-6. pump signals: water supplied                 <---- Allows this command
-7. robot undocks & pump waits
-8. robot signals: undock successful
-9. done
-```
-
-Moving on.
 Last, we need to define the transitions.
-To define a transition, we call a method in a state: `react()`
 
 ```typescript title="src/machines/water-pump.ts"
-_1_Initial.react(
+ClearingDock.react(
   [ProtocolEvents.DockAvailable],
-  _2_DockAvailable,
+  WaitingForRobotToDock,
   () => undefined
 );
-```
 
-The code above means: __A machine in `_1_Initial` state, when receiving `[ProtocolEvents.DockAvailable]` events sequence, will transition to `_2_DockAvailable` by calling the transformation function: `() => undefined`.__
-
-`react()` method accepts 3 parameters:
-
-- Triggering event sequence
-- Next state
-- Transformation (this will be explained, but we don't need to worry about it in the moment)
-
-For now, let us define the rest of the transitions.
-
-```typescript title="src/machines/water-pump.ts"
-_2_DockAvailable.react(
+WaitingForRobotToDock.react(
   [ProtocolEvents.RobotIsDocked],
-  _3_Pumping,
+  PumpingWater,
   () => undefined
 );
 
-_3_Pumping.react([ProtocolEvents.WaterSupplied], _4_Pumped, () => undefined);
+PumpingWater.react([ProtocolEvents.WaterSupplied], WaitingForRobotToUndock, () => undefined);
 
-_4_Pumped.react(
+WaitingForRobotToUndock.react(
   [ProtocolEvents.RobotIsUndocked],
-  _5_DockCleared,
+  Done,
   () => undefined
 );
 ```
 
-:::note Payload and Transformation
+### Machine Protocol for The Robot
 
-Similar to events, states can have an optional payload. This is done by calling `.designState(name).withPayload<PayloadType>()` in place of `.designEmpty(name)`.
-
-With payloads, state transformation is more complex. This is where the transformation function plays its role. The transformation function's signature is:
-
-```typescript
-(PreviousStateContext, Event1, Event2, ...) => NextStatePayload
-```
-
-This allows complex calculation on transitions, such as:
-
-```typescript
-(ctx, incomingEvent1, incomingEvent2) => {
-  const previousPayload = ctx.self;
-  const nextPayload = someComplexOperation(previousPayload, incomingEvent1.payload, incomingEvent.payload);
-  return nextPayload;
-}
-```
-
-In our case, the states and the events don't have payload. Therefore we access nothing from the current state and the incoming events, and return `undefined`. Hence `() => undefined`.
-
-:::
-
-### 5. Machine Protocol for The Robot
-
-For the robot, we will need another file. Let's make another at: `src/machine/watering-robot.ts`.
-The process is similar to The Pump's `machine protocol`.
+Create another file for the robot `src/machine/watering-robot.ts` and follow the same process as how we define the pump's machine protocol.
 
 ```typescript title="src/machine/watering-robot.ts"
 import { ProtocolEvents, protocol } from "./protocol";
 
 export const machine = protocol.makeMachine("WateringRobot");
 
-export const _1_WaitingForDock = machine.designEmpty("WaitingForDock").finish();
+export const WaitingForAvailableDock = machine
+  .designEmpty("WaitingForAvailableDock")
+  .finish();
 
-export const _2_Docking = machine
+export const Docking = machine
   .designEmpty("Docking")
   .command("docked", [ProtocolEvents.RobotIsDocked], () => [{}])
   .finish();
 
-export const _3_DockedAndWaitingForWater = machine
-  .designEmpty("DockedAndWaitingForWater")
+export const WaitingForWater = machine
+  .designEmpty("WaitingForWater")
   .finish();
 
-export const _4_WaterPumped = machine
-  .designEmpty("WaterPumped")
-  .command("undocked", [ProtocolEvents.RobotIsUndocked], () => [{}])
+export const Undocking = machine
+  .designEmpty("Undocking")
+  .command("Done", [ProtocolEvents.RobotIsUndocked], () => [{}])
   .finish();
 
-export const _5_DeliveringWaterToPlant = machine
-  .designEmpty("DeliveringWaterToPlant")
+export const Done = machine
+  .designEmpty("Done")
   .finish();
 
-_1_WaitingForDock.react(
+WaitingForAvailableDock.react(
   [ProtocolEvents.DockAvailable],
-  _2_Docking,
+  Docking,
   () => undefined
 );
 
-_2_Docking.react([ProtocolEvents.RobotIsDocked], _3_DockedAndWaitingForWater, () => undefined);
+Docking.react([ProtocolEvents.RobotIsDocked], WaitingForWater, () => undefined);
 
-_3_DockedAndWaitingForWater.react(
+WaitingForWater.react(
   [ProtocolEvents.WaterSupplied],
-  _4_WaterPumped,
+  Undocking,
   () => undefined
 );
 
-_4_WaterPumped.react(
+Undocking.react(
   [ProtocolEvents.RobotIsUndocked],
-  _5_DeliveringWaterToPlant,
+  Done,
   () => undefined
 );
 ```
 
-### 6 Wrapping Up The Protocol
+Pay attention to which states the robot has commands.
+The robot's active states alternate with the pump's active states.
+Notice the robot's and the pump's active states.
+See how it mirrors the [interaction design](#interaction-design)
 
-For convenience, put all `events`, `swarm protocol`, `machine protocol`, and `states` into one file.
+### Wrap The Protocols into one
 
-In `src/machines/index.ts`, write this:
+For convenience, let us put all events, swarm protocol, machine protocol, and states in one file: `src/machines/index.ts`:
 
 ```typescript title="src/machines/index.ts"
 export * as WaterPump from "./water-pump";
@@ -462,11 +425,9 @@ export * as protocol from "./protocol";
 
 ## Using The Machine Protocol
 
-Recall the pseudo-code in [The Robot And The Pump](#robot-and-pump) section.
-Robot and Pump have `dockAndDrawWater` and `dockAndSupplyWater`.
-We will implement those.
-
-Make two files for each role: 
+Recall `dockAndDrawWater` and `supplyWater` in the pseudo-code from [The Robot And The Pump](#robot-and-pump) section.
+Now we will implement those functions.
+For that, we need two files:
 
 - `src/consumers/water-pump.ts`
 - `src/consumers/watering-robot.ts`
@@ -474,55 +435,53 @@ Make two files for each role:
 ### The Pump's Routine
 
 ```typescript
-export const dockAndSupplyWater = async (dockingId: string) => {
-  // now what?
+export const supplyWater = async (dockingId: string) => {
+  // to be implemented
 };
 ```
 
-One moment, `machine-runner` needs something from `@actyx/sdk` to work.
-Import that, alongside `machine-runner` and the protocol we wrote. 
+In those files, import everything we need.
 
 ```typescript title="src/consumers/water-pump.ts"
 import { createMachineRunner } from "@actyx/machine-runner";
-import { Actyx } from "@actyx/sdk";
+import { Actyx } from "@actyx/sdk"; // we need this to receive an instantiated sdk in our function 
 import { WaterPump, protocol } from "../machines";
 
-export const dockAndSupplyWater = async (actyx: Actyx, dockingId: string) => {
-  // now what?
+export const supplyWater = async (actyx: Actyx, dockingId: string) => {
+  // to be implemented
 }
 ```
 
-Next we need The Pump to start communicating with a robot.
-For this we utilize `machine-runner`, the protocol, and `dockingId`.
+Next, create a machine runner.
 
 ```typescript title="src/consumers/water-pump.ts"
-export const dockAndSupplyWater = async (actyx: Actyx, dockingId: string) => {
+export const supplyWater = async (actyx: Actyx, dockingId: string) => {
+  // ...
   const tag = protocol.protocol.tagWithEntityId(dockingId);
-  const machine = createMachineRunner(actyx, tag, WaterPump._1_Initial, undefined);
-
+  const machine = createMachineRunner(actyx, tag, WaterPump.ClearingDock, undefined);
   // ...
 }
 ```
 
-A `MachineRunner` is running now.
-It is "connected in an exclusive channel", marked by the swarm protocol `water-drawing-exchange` and `dockingId`.
-At the other side, a robot will be connected to the same channel.
-And so, the robot and the pump is connected.
+The call `tagWithEntityId(dockingId)` returns a set of tags: `water-drawing-exchange` and `water-drawing-exchange:[dockingId]`;
+all events emitted by the `machine` will be tagged those tags;
+all events subscribed by the `machine` are also ones tagged with those tags.
 
-Let us begin writing the interaction.
-Let's refer to the [interaction design](#interaction-design)
-First, the pump is in the initial state;
-then it signals the robot that the dock is available.
+In other words, two agents who use a `machine` with the same tag will be able to interact with each other.
+This is important, and this will be relevant later.
 
-With the `MachineRunner`, it is written like this:
+Now that the pump has an active machine runner, it can interact with the swarm (i.e. everyone participating in the workflow).
+To use a machine-runner, we'll use a [for-await](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for-await...of)
+First the pump should handle the initial state `ClearingDock`.
+In that state, the pump does its task and then calls the appropriate command to move the state forward for everyone in the swarm.
 
 ```typescript title="src/consumers/water-pump.ts"
-export const dockAndSupplyWater = async (actyx: Actyx, dockingId: string) => {
+export const supplyWater = async (actyx: Actyx, dockingId: string) => {
   const tag = protocol.protocol.tagWithEntityId(dockingId);
-  const machine = createMachineRunner(actyx, tag, WaterPump._1_Initial, undefined);
+  const machine = createMachineRunner(actyx, tag, WaterPump.ClearingDock, undefined);
 
   for await (const state of machine) {
-    const whenInitial = state.as(WaterPump._1_Initial);
+    const whenInitial = state.as(WaterPump.ClearingDock);
     if (whenInitial) {
       // In reality, there will be more code here
       // Notice this command call;
@@ -534,31 +493,32 @@ export const dockAndSupplyWater = async (actyx: Actyx, dockingId: string) => {
 };
 ```
 
-Complete the code for the rest of the states;
-add logging so that we can see how it behaves;
-this will be the final form of the function:
+Now that we've covered all the basics, complete all states handling and add logging code.
+
+<details>
+<summary><strong>Final code `src/consumers/water-pump.ts`</strong></summary>
 
 ```typescript title="src/consumers/water-pump.ts"
-export const dockAndSupplyWater = async (actyx: Actyx, dockingId: string) => {
+export const supplyWater = async (actyx: Actyx, dockingId: string) => {
   console.log("pump starts task:", dockingId)
 
   const tag = protocol.protocol.tagWithEntityId(dockingId);
-  const machine = createMachineRunner(actyx, tag, WaterPump._1_Initial, undefined);
+  const machine = createMachineRunner(actyx, tag, WaterPump.ClearingDock, undefined);
 
   for await (const state of machine) {
     console.log("pump is:", state.type)
 
-    const whenInitial = state.as(WaterPump._1_Initial);
+    const whenInitial = state.as(WaterPump.ClearingDock);
     if (whenInitial) {
       await whenInitial.commands?.dockAvailable();
     }
 
-    const whenPumping = state.as(WaterPump._3_Pumping);
+    const whenPumping = state.as(WaterPump.PumpingWater);
     if (whenPumping) {
       await whenPumping.commands?.waterSupplied();
     }
 
-    const whenCleared = state.as(WaterPump._5_DockCleared);
+    const whenCleared = state.as(WaterPump.Done);
     if (whenCleared) {
       break;
     }
@@ -568,9 +528,12 @@ export const dockAndSupplyWater = async (actyx: Actyx, dockingId: string) => {
 };
 ```
 
-The `for-await` block loops whenever a transition happens.
-With the `command` calls, The Pump sends signal to the "exclusive channel" at the right moment.
-When `break` is reached, the loop stops, the machine is destroyed, the communication with the "exclusive channel" ends.
+</details>
+
+
+The `for-await` loop will iterate every time the machine detects a change (and only after the previous iteration finished executing).
+In one branch, `Done`, the execution breaks out of the `for-await` loop.
+This also turns the `machine` off, cutting its connection from Actyx.
 
 This concludes The Pump's part of the bargain.
 
@@ -580,11 +543,12 @@ Local tasks can take place before a `command`.
 All connected machine runners will wait for these local tasks before transitioning to the next state.
 Useful in scenarios such as:
 
-- watering robot needs to move to dock before water pump opens the valve
-- water pump needs to actually provide water before the watering robot moves on to its next task
+- watering robot needs to move to dock before the water pump opens the valve
+- water pump needs to actually provide water before the robot undocks
 
 ```typescript
-const whenPumping = state.as(WaterPump._3_Pumping);
+// Example
+const whenPumping = state.as(WaterPump.PumpingWater);
 if (whenPumping) {
   // open the valve, let water out, close after `amountOfWater`
   await openValveFor(amountOfWater);
@@ -597,8 +561,8 @@ if (whenPumping) {
 
 ### The Robot's Routine
 
-The Robot's part will be similar to the Pump's.
-It differs only in the `machine protocol` it uses.
+Follow the same pattern as the robot's routine.
+However, instead of importing `WaterPump`'s machine protocol, import `WateringRobot` instead.
 
 ```typescript title="src/consumers/watering-robot.ts"
 import { createMachineRunner } from "@actyx/machine-runner";
@@ -607,11 +571,14 @@ import { WateringRobot, protocol } from "../machines"; // WateringRobot is used 
 
 export const dockAndDrawWater = async (actyx: Actyx, dockingId: string) => {
   const tag = protocol.protocol.tagWithEntityId(dockingId);
-  const machine = createMachineRunner(actyx, tag, WateringRobot._1_WaitingForDock, undefined);
+  const machine = createMachineRunner(actyx, tag, WateringRobot.WaitingForAvailableDock, undefined);
 }
 ```
 
-With all states covered and logging code added, we arrive at this:
+Cover all states and add logging code.
+
+<details>
+<summary><strong>Final code `src/consumers/watering-robot.ts`</strong></summary>
 
 ```typescript title="src/consumers/watering-robot.ts"
 import { createMachineRunner } from "@actyx/machine-runner";
@@ -622,22 +589,22 @@ export const dockAndDrawWater = async (actyx: Actyx, dockingId: string) => {
   console.log("robot starts task:", dockingId)
 
   const tag = protocol.protocol.tagWithEntityId(dockingId);
-  const machine = createMachineRunner(actyx, tag, WateringRobot._1_WaitingForDock, undefined);
+  const machine = createMachineRunner(actyx, tag, WateringRobot.WaitingForAvailableDock, undefined);
 
   for await (const state of machine) {
     console.log("robot is:", state.type)
 
-    const whenDocking = state.as(WateringRobot._2_Docking);
+    const whenDocking = state.as(WateringRobot.Docking);
     if (whenDocking) {
       await whenDocking.commands?.docked();
     }
 
-    const whenWaterPumped = state.as(WateringRobot._4_WaterPumped);
+    const whenWaterPumped = state.as(WateringRobot.Undocking);
     if (whenWaterPumped) {
-      await whenWaterPumped.commands?.undocked();
+      await whenWaterPumped.commands?.Done();
     }
 
-    const whenDone = state.as(WateringRobot._5_DeliveringWaterToPlant);
+    const whenDone = state.as(WateringRobot.Done);
     if (whenDone) {
       break;
     }
@@ -647,37 +614,10 @@ export const dockAndDrawWater = async (actyx: Actyx, dockingId: string) => {
 };
 ```
 
-The `for-await` block loops whenever a transition happens.
-With the `command` calls, The Robot sends signal to the "exclusive channel" at the right moment.
-When `break` is reached, the loop stops, the machine is destroyed, the communication with the "exclusive channel" ends.
+</details>
+
 
 This concludes The Robot's part of the bargain.
-
-:::tip
-
-Local tasks can take place before a `command`.
-All connected machine runners will wait for these local tasks before transitioning to the next state.
-Useful in scenarios such as:
-
-- watering robot needs to move to dock before water pump opens the valve
-- water pump needs to actually provide water before the watering robot moves on to its next task
-
-```typescript
-const whenDocking = state.as(WateringRobot._2_Docking);
-if (whenDocking) {
-  await moveToDock();
-  await prepareBucketForWater();
-  await whenDocking.commands?.docked();
-}
-
-const whenWaterPumped = state.as(WateringRobot._4_WaterPumped);
-if (whenWaterPumped) {
-  await moveAwayFromDock();
-  await whenWaterPumped.commands?.undocked();
-}
-```
-
-:::
 
 ## Simulating The Cooperative Interaction
 
@@ -685,12 +625,12 @@ We are going to prove that the above code works by running both roles concurrent
 
 ### The simulation code
 
-First, start with a new file `src/index.ts` and import everything we need
+First, start with a new file `src/index.ts`, and import everything we need
 
 ```typescript title="src/index.ts"
 import { Actyx } from "@actyx/sdk";
 import * as uuid from "uuid";
-import { dockAndSupplyWater } from "./consumers/water-pump";
+import { supplyWater } from "./consumers/water-pump";
 import { dockAndDrawWater } from "./consumers/watering-robot";
 
 async function main() {
@@ -700,8 +640,9 @@ async function main() {
 main();
 ```
 
-We will need `Actyx` object and `dockingId` string.
-We will use pretend manifest, two pretend `Actyx` objects, and and a pretend `dockingId`.
+Recall that two machine runners with the same tag will be able to interact with each other.
+We need the same `dockingId` which will produce the same tag (in this code `dockingId`).
+We'll also use pretend manifest to produce two pretend `Actyx` objects.
 
 ```typescript title="src/index.ts"
 async function main() {
@@ -713,30 +654,33 @@ async function main() {
 
   const sdk1 = await Actyx.of(APP_MANIFEST);
   const sdk2 = await Actyx.of(APP_MANIFEST);
-  const taskId = uuid.v4();
+  const dockingId = uuid.v4();
 }
 ```
 
-Next run the simulation and wait until both are finished.
+Next, do the simulation.
+Invoke the functions from the robot and the pump with the same `dockingId`, connecting the two.
 
 ```typescript title="src/index.ts"
 async function main() {
   // ...
-  const simulatedPumpPart = dockAndSupplyWater(sdk1, taskId)
-  const simulatedRobotPart = dockAndDrawWater(sdk2, taskId)
+  const simulatedPumpPart = supplyWater(sdk1, dockingId)
+  const simulatedRobotPart = dockAndDrawWater(sdk2, dockingId)
 
   await Promise.all([simulatedPumpPart, simulatedRobotPart]);
 }
 ```
 
-Finally, call `dispose` to the `sdks`.
-This prevents all hanging Actyx connections, ending the process.
-At this point, the final code looks like this:
+At the end call `dispose` of the `sdks`,
+killing all Actyx connections and ending the simulation.
+
+<details>
+<summary><strong>Full simulation code</strong></summary>
 
 ```typescript title="src/index.ts"
 import { Actyx } from "@actyx/sdk";
 import * as uuid from "uuid";
-import { dockAndSupplyWater } from "./consumers/water-pump";
+import { supplyWater } from "./consumers/water-pump";
 import { dockAndDrawWater } from "./consumers/watering-robot";
 
 async function main() {
@@ -749,11 +693,11 @@ async function main() {
 
   const sdk1 = await Actyx.of(APP_MANIFEST);
   const sdk2 = await Actyx.of(APP_MANIFEST);
-  const taskId = uuid.v4();
+  const dockingId = uuid.v4();
 
   // promises
-  const simulatedPumpPart = dockAndSupplyWater(sdk1, taskId)
-  const simulatedRobotPart = dockAndDrawWater(sdk2, taskId)
+  const simulatedPumpPart = supplyWater(sdk1, dockingId)
+  const simulatedRobotPart = dockAndDrawWater(sdk2, dockingId)
 
   // wait until both processes ends
   await Promise.all([simulatedPumpPart, simulatedRobotPart]);
@@ -765,42 +709,44 @@ async function main() {
 main()
 ```
 
+</details>
+
+
 ### Running the simulation
 
 Before running the simulation:
 
-- make sure [Actyx is running](/docs/how-to/local-development/install-actyx)
-- make sure [project setup](#setting-up) is done.
+- Make sure [Actyx is running](/docs/how-to/local-development/install-actyx)
+- Make sure [project setup](#setting-up) is done.
 
-First, [run Actyx](/docs/how-to/local-development/install-actyx) and make sure [project setup](#setting-up) is done.
-Then, simply run:
+When everything is ready, simply run:
 
 ```bash
 $ npm run start
 ```
 
-After done, the following log will appear; a result of `console.log` calls we have written.
+The following log should appear.
+This results from the `console.log` calls we have written.
 
 ```txt
 pump starts task: a7df8979-cf2b-44a9-996e-1bd93a6fe1ab
 robot starts task: a7df8979-cf2b-44a9-996e-1bd93a6fe1ab
-pump is: Initial
-robot is: WaitingForDock
-pump is: DockAvailable
+pump is: ClearingDock
+robot is: WaitingForAvailableDock
+pump is: WaitingForRobotToDock
 robot is: Docking
-pump is: Pumping
-robot is: DockedAndWaitingForWater
-pump is: Pumped
-robot is: WaterPumped
-pump is: DockCleared
+pump is: PumpingWater
+robot is: WaitingForWater
+pump is: WaitingForRobotToUndock
+robot is: Undocking
+pump is: Done
 pump finishes task: a7df8979-cf2b-44a9-996e-1bd93a6fe1ab
-robot is: DeliveringWaterToPlant
+robot is: Done
 robot finishes task: a7df8979-cf2b-44a9-996e-1bd93a6fe1ab
 ```
 
-Here, you can see pairs of equivalent states between the roles, such as `Initial & WaitingForDock`, `DockAvailable & Docking`.
-Actyx and `machine-runner` ensure that all connected machine runners are at the equivalent state.
-A pump cannot be in `Initial` state while a connected robot is in `WaterPumped` state at the same time.
+You can see that different agent sees the same state every time (e.g. `ClearingDock/WaitingForAvailableDock`, `WaitingForRobotToDock/Docking`).
+This is the behavior guaranteed by using `machine-runner` and `Actyx`.
 
 ## Download The Code
 
