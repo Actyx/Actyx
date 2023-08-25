@@ -36,7 +36,12 @@ To handle this new sensor, we need to add a field tracking the amount of water t
 + export const NeedsWater = MachineEvent.design("NeedsWater").withPayload<NeedsWaterPayload>();
 ```
 
-![](/images/tutorials/getting-started/machine-runner/event-payload/watering_robot.svg)
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> WateringPlant: NeedsWater { requiredWaterMl }
+    WateringPlant --> Idle: HasWater
+```
 
 Since we didn't declare the `NeedsWaterPayload` this won't work just yet, so lets add it as well:
 

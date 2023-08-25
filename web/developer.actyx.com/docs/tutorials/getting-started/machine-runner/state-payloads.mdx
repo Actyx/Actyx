@@ -25,7 +25,14 @@ we now need to track how much water we're using on the plant!
 To keep track of the spent water, we need to keep it through every state,
 rather than a single one like we did for the event.
 
-![](/images/tutorials/getting-started/machine-runner/state-payload/watering_robot.svg)
+```mermaid
+stateDiagram-v2
+    state "Idle { lastMl, totalMl }" as Idle
+    state "WateringPlant { lastMl, totalMl }" as WateringPlant
+    [*] --> Idle
+    Idle --> WateringPlant: NeedsWater { requiredWaterMl }
+    WateringPlant --> Idle: HasWater
+```
 
 We can however use a single type for the payload:
 

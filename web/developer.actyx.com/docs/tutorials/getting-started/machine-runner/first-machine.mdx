@@ -7,6 +7,7 @@ image: /images/defaults/default.svg
 ---
 
 import { Tabs } from '/src/components'
+import { ExpendableDiagram } from '/src/components/custom-codeblocks/expendable-diagram'
 
 :::info
 This tutorial is aimed at begginers that have read the previous tutorials about
@@ -20,7 +21,13 @@ In this scenario, the client has a flower planted in a smart pot,
 the smart pot keeps track of the water level and if it gets too low, emits a warning;
 the client wants us to develop a robot that receives the warning and waters the plant.
 
-![](/images/tutorials/getting-started/machine-runner/first-machine/sequence.svg)
+```mermaid
+sequenceDiagram
+    WaterSensor->>Robot: NeedsWater
+    Robot-->>Plant: Watering
+    WaterSensor->Robot: HasWater
+    Robot-->Plant: Stops Watering
+```
 
 ## Setup
 
@@ -72,7 +79,11 @@ Before we start coding, let's (quickly) discuss file structure.
 When developing a protocol, there will be a bunch of code that can be reused throughout the application.
 To smooth things out in the next steps, let me share with you the code structure we will use.
 
-![](/images/tutorials/getting-started/machine-runner/first-machine/file_structure.svg)
+```mermaid
+flowchart TD
+    sensor.ts --> protocol.ts
+    robot.ts --> protocol.ts
+```
 
 As shown in the picture, we will create three files:
 
@@ -119,7 +130,12 @@ The idea is as follows — the plant has a sensor that checks the soil humidity 
 if said level goes below a certain threshold, it sends the robot an event requesting water,
 when the level is restored, the sensor sends an event signaling that the robot can stop.
 
-![The watering robot state machine](/images/tutorials/getting-started/machine-runner/first-machine/watering_robot.svg)
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> WateringPlant: NeedsWater
+    WateringPlant --> Idle: HasWater
+```
 
 :::info
 To further simplify our example, we will not care about the amount of water we're providing to the plant.
