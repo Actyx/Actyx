@@ -40,12 +40,11 @@ We intend to keep a clear commit history to make it easy to track the evolution 
 
 <!-- Do we want to use conventional commits? -->
 This repository uses [Conventional Commit](https://www.conventionalcommits.org/) to keep commit messages consistent and contextual.
-
-In addition, commit message must be concise, meaningful, and readable, and must use an imperative mood.
+In addition, commit message should be concise, meaningful, readable, and use an imperative mood.
 
 ### Pull Requests
 
-To maintain an efficient review process, pull requests must:
+To maintain an efficient review process, pull requests should:
 
 1. Reference an issue: Use GitHub's referencing syntax such as "Resolves #123" to automatically link the PR to the relevant issue to make sure the reviewers understand the context of the change.
 2. Pass an automated check: An automated is set to ensure code quality and stability. This includes past unit tests and linters. Make sure all checks are passed.
