@@ -1,6 +1,7 @@
 # Contributing to Actyx
 
-Welcome! This document outlines the various ways you can contribute to the project.
+Welcome to Actyx!
+This document outlines the various ways you can contribute to the project.
 Take a moment to read through the guidelines before you get started.
 
 ## Questions, Suggestions, and Bug Reports
@@ -36,19 +37,19 @@ A suggestion must include:
 
 ### Quick Start
 
-1. **Clone and Fork the Repository**: Start by forking the repository. Clone your fork to your local machine using the following command:
+1. **Clone and Fork the Repository**:
+    Start by [forking the repository](https://docs.github.com/en/get-started/quickstart/fork-a-repo). 
+    Clone your fork to your local machine using the following command:
 
-    ```
-    TODO: 
-    ```
-
-2. **Ensure Tests Pass**: Before making any changes, make sure that the existing tests are passing. Run the test suite with:
-
-    ```
-    TODO: 
+    ```bash
+    git clone https://github.com/YOUR-USERNAME/Actyx
     ```
 
-3. **Submit a Pull Request (PR)**: Create a fork of Actyx. Commit your changes by following our commit message convention (TODO: link). Open a pull request to the `main` branch of the main repository.
+2. **Work in your fork**:
+    Commit and push your changes to your fork by following our commit message convention <!-- TODO: link -->
+
+3. **Submit a Pull Request (PR)**: 
+    Open a pull request to the `master` branch of the main repository.
 
 ### Commit Message
 
