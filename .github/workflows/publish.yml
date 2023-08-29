@@ -1,12 +1,6 @@
 name: Publish Docs and Releases
 
 on:
-  push:
-    branches:
-      - master
-      - release/*
-    paths-ignore:
-      - 'github/**'
   workflow_dispatch:
 
 jobs:
@@ -16,8 +10,8 @@ jobs:
     env:
       NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
       NETLIFY_ACCESS_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_TOKEN }}      
-      AZ_STORAGE_CONNECTION_STRING:  ${{ secrets.AZ_STORAGE_CONNECTION_STRING }}
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+      AZ_STORAGE_CONNECTION_STRING: ${{ secrets.AZ_STORAGE_CONNECTION_STRING }}
       AZ_STORAGE_SAS_TOKEN: ${{ secrets.AZ_STORAGE_SAS_TOKEN }}
 
     defaults:

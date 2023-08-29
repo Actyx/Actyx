@@ -1,0 +1,306 @@
+name: Generate Artifacts
+
+on:
+  workflow_dispatch:
+
+env:
+  # The Makefile and most of the repo needs to be reviewed because its using 1.65.0
+  RUST_VERSION: 1.65.0
+
+jobs:
+  calculate-actyx-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - run: rustup toolchain install --profile default $RUST_VERSION
+
+      - run: |
+          sudo apt update
+          sudo apt install -y protobuf-compiler
+
+      - working-directory: rust/release
+        run: cargo build --release
+
+      - id: calculate-versions
+        working-directory: rust/release/target/release
+        run: |
+          set -e
+          echo "ACTYX_VERSION=$(./cosmos-release get-actyx-version actyx)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION_CLI=$(./cosmos-release get-actyx-version cli)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION_NODEMANAGER=$(./cosmos-release get-actyx-version node-manager)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION_POND=$(./cosmos-release get-actyx-version pond)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION_TSSDK=$(./cosmos-release get-actyx-version ts-sdk)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION_RUSTSDK=$(./cosmos-release get-actyx-version rust-sdk)" >> "$GITHUB_OUTPUT"
+
+    outputs:
+      ACTYX_VERSION: ${{ steps.calculate-versions.outputs.ACTYX_VERSION }}
+      ACTYX_VERSION_CLI: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_CLI }}
+      ACTYX_VERSION_NODEMANAGER: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_NODEMANAGER }}
+      ACTYX_VERSION_POND: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_POND }}
+      ACTYX_VERSION_TSSDK: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_TSSDK }}
+      ACTYX_VERSION_RUSTSDK: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_RUSTSDK }}
+
+  make-all-js:
+    runs-on: ubuntu-latest
+    needs: calculate-actyx-version
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - run: make all-js
+        env:
+          ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
+          ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
+
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        with:
+          connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
+          name: ${{github.sha}}/js-packages
+          path: dist/js
+
+  make-all-linux:
+    runs-on: ubuntu-latest
+    needs: calculate-actyx-version
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - run: rustup toolchain install --profile default $RUST_VERSION
+
+      - run: |
+          sudo apt update
+          sudo apt install -y protobuf-compiler
+
+      - name: Make All Linux
+        run: make all-linux
+        env:
+          ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
+          ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
+
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        with:
+          connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
+          name: ${{github.sha}}/linux-binaries
+          path: dist/bin
+
+  make-all-windows:
+    runs-on: ubuntu-latest
+    needs: calculate-actyx-version
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Lets check if this is necessary
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - run: make all-windows
+        env:
+          ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
+          ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
+
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        with:
+          connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
+          name: ${{github.sha}}/windows-binaries
+          path: dist/bin
+
+  make-all-macos:
+    runs-on: ubuntu-latest
+    needs: calculate-actyx-version
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - run: rustup toolchain install --profile default $RUST_VERSION
+
+      - run: make all-macos
+        env:
+          ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
+          ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
+
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        with:
+          connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
+          name: ${{github.sha}}/macos-binaries
+          path: dist/bin
+
+  make-docker:
+    runs-on: ubuntu-latest
+    needs: calculate-actyx-version
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # The push probably needs to be replaced with an action for the authentication
+      - name: Make Docker
+        run: |
+          MAIN_REPO="Actyx/Actyx"
+          CHECK_FORK=`git remote get-url origin | grep -o "$MAIN_REPO" || echo ""`
+
+          GIT_COMMIT=`git rev-parse HEAD`
+          HEAD_OF_MASTER=`git rev-parse origin/master`
+
+          # Check if we're running on the main repo as well
+          # This stops forks from pushing using "latest" by default
+          if [ "$CHECK_FORK" == "Actyx/Actyx" && "$GIT_COMMIT" == "$HEAD_OF_MASTER"]; then
+            echo "Running on Actyx/Actyx HEAD of master ($(HEAD_OF_MASTER)), tagging image as latest"
+            make -e ADDITIONAL_DOCKER_ARGS="--tag actyx/actyx-ci:actyx-latest" docker-push-actyx
+          else
+            make docker-push-actyx
+          fi
+        continue-on-error: true
+        env:
+          ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
+          ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
+      - run: sudo df -h
+
+  make-all-android:
+    runs-on: ubuntu-latest
+    needs: calculate-actyx-version
+
+    env:
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
+      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
+      ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
+      ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
+      ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
+      ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - run: rustup toolchain install --profile default $RUST_VERSION
+
+      - name: Make All Android
+        run: make all-android
+        env:
+          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        with:
+          connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
+          name: ${{github.sha}}/android-binaries
+          path: dist/bin
+
+  make-node-manager-linux:
+    runs-on: ubuntu-latest
+    needs: calculate-actyx-version
+
+    env:
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
+      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
+      ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
+      ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
+      ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
+      ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - run: |
+          sudo apt update
+          sudo apt install -y protobuf-compiler
+
+      - run: rustup toolchain install --profile default $RUST_VERSION
+
+      - name: Make Node Manager Linux
+        run: make node-manager-mac-linux
+
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        with:
+          connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
+          name: ${{github.sha}}/node-manager-linux
+          path: js/node-manager/dist/artifacts
+
+  make-node-manager-windows:
+    runs-on: ubuntu-latest
+    needs: calculate-actyx-version
+
+    env:
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
+      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
+      ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
+      ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
+      ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
+      ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Make Node Manager Windows
+        run: make node-manager-win
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        with:
+          connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
+          name: ${{github.sha}}/node-manager-win
+          path: js/node-manager/dist/artifacts
+
+  make-node-manager-macos:
+    runs-on: macos-12
+    needs: calculate-actyx-version
+
+    env:
+      # We need python2 for electron-builder 22.14.13
+      PYTHON_PATH: /usr/local/bin/python
+
+      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
+      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
+      ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
+      ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
+      ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
+      ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup NVM
+        run: curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/v$NVM_VERSION/install.sh" | bash
+
+      - name: Setup Rust
+        run: curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain "$RUST_VERSION" -y
+
+      - name: Install make & protobuf
+        run: brew install make protobuf
+
+      - name: Make Node Manager Mac
+        run: gmake node-manager-mac-linux
+
+      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
+        with:
+          connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
+          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
+          name: ${{github.sha}}/node-manager-mac
+          path: js/node-manager/dist/artifacts

@@ -1,0 +1,107 @@
+name: Run checks
+
+on:
+  workflow_dispatch:
+
+env:
+  RUST_BACKTRACE: 1
+  RUST_VERSION: 1.70.0
+
+jobs:
+  check-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: rustup toolchain install --profile default $RUST_VERSION
+      - run: |
+          sudo apt update
+          sudo apt install -y protobuf-compiler
+      - run: make validate-rust
+
+  check-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: make validate-js
+
+  check-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: rustup toolchain install --profile default $RUST_VERSION
+      - run: make validate-release
+
+  check-node-manager-bindings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: rustup toolchain install --profile default $RUST_VERSION
+      - run: |
+          sudo apt update
+          sudo apt install -y protobuf-compiler
+      - run: make validate-node-manager-bindings
+
+  check-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          ./jvm/os-android/bin/create-dummy-keystore.sh
+          cat jvm/os-android/actyx-local/actyx.properties
+          make validate-os-android
+
+  # NOTE: the default runner isn't beefy enough to run these tests
+  # validate-os:
+  #   needs:
+  #     - check-rust
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - run: rustup toolchain install --profile default $RUST_VERSION
+  #     - run: |
+  #         sudo apt update
+  #         sudo apt install -y protobuf-compiler
+  #     - run: make validate-os
+
+  # NOTE: the default runner isn't beefy enough to run these tests
+  # validate-netsim:
+  #   needs:
+  #     - check-rust
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - run: rustup toolchain install --profile default $RUST_VERSION
+  #     - run: |
+  #         sudo apt update
+  #         sudo apt install -y protobuf-compiler
+  #     - run: make validate-netsim
+
+  validate-docs:
+    runs-on: ubuntu-latest
+
+    env:
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      NETLIFY_ACCESS_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+
+    steps:
+      # Unlimited fetch depth so the release tool works
+      # ALL actions using the release tool NEED this
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Validate docs
+        run: |
+          set -e
+          echo "Building cosmos-release"
+          cd rust/release
+          cargo test --locked --release --all-features
+          echo "Building docs"
+          cd ../../web/developer.actyx.com/
+          source ~/.nvm/nvm.sh
+          nvm install
+          npm ci
+          npm run build
+          npm run deploy:draft "Validation pipeline"
+          make -C ../.. assert-clean
+      - run: make clean

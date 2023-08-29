@@ -66,7 +66,7 @@ export BUILD_RUST_TOOLCHAIN ?= 1.65.0
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := dfd0ff4c17c563c8c92739e40b3ff838e1ce8c2b
+export LATEST_STABLE_IMAGE_VERSION := 809c011c8790f4f2a8daa6bddb625c1eb060a881
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -94,7 +94,7 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/util:osxbuilder-21c53b627e3c4f06514bef593e4ef7f23bb91581
+image-darwin = actyx/util:osxbuilder-6e19fd166b527154c9e61e827eadb05209983941
 
 image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
 
@@ -170,12 +170,25 @@ all-windows: $(patsubst %,dist/bin/%,$(all-WINDOWS))
 
 all-macos: $(patsubst %,dist/bin/%,$(all-MACOS))
 
+# https://makefiletutorial.com/#the-foreach-function
+# Equivalent to:
+# all-linux: linux-aarch64 linux-x86_64 linux-armv7 linux-arm
 all-linux: $(foreach arch,$(architectures),linux-$(arch))
 
+# https://makefiletutorial.com/#list-of-commands-and-define
+# https://www.gnu.org/software/make/manual/html_node/Canned-Recipes.html#Canned-Recipes
+# Equivalent to a bunch of rules depending on dist/bin/linux-architecture/{actyx, ax}
+# Example:
+# - dist/bin/linux-aarch64/actyx
+# - dist/bin/linux-aarch64/ax
+# - dist/bin/linux-x86_64/actyx
+# - dist/bin/linux-x86_64/ax
+# and so on...
 define mkLinuxRule =
 linux-$(1): $(foreach bin,$(unix-bins),dist/bin/linux-$(1)/$(bin))
 endef
 
+# This will create the actual "recipe"
 $(foreach arch,$(architectures),$(eval $(call mkLinuxRule,$(arch))))
 
 current: dist/bin/current/ax dist/bin/current/actyx
@@ -355,7 +368,6 @@ fix-js-sdk:
 		npm run build && \
 		npm run api:accept
 
-
 fix-js-pond:
 	cd js/pond && source ~/.nvm/nvm.sh --no-use && nvm install && \
 		npm install && \
@@ -406,11 +418,9 @@ node-manager-win:
 	docker run \
 	  -e BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  -w /src/js/node-manager \
 	  --rm \
-	  actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
+	  actyx/util:node-manager-win-builder-8b1a6a9fa2a93bfd28df2c06197226534ea5d6ae \
 	  bash -c "source /home/builder/.nvm/nvm.sh --no-use && nvm install && npm ci && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
 
 node-manager-mac-linux:
@@ -603,7 +613,7 @@ dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/actyx.exe make-al
 	  -e WIN_CODESIGN_CERTIFICATE \
 	  -e WIN_CODESIGN_PASSWORD \
 	  --rm \
-	  actyx/util:actyx-win-installer-builder \
+	  actyx/util:actyx-win-installer-builder-43df2519f66d550e405f7a08e65579935342a81f \
 	  bash /src/wix/actyx-installer/build.sh ${ACTYX_VERSION_MSI} "/src/dist/bin/windows-x86_64"
 
 define mkDockerRule =

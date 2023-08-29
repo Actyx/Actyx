@@ -45,10 +45,10 @@ RUN cargo install \
 
 # final prod image
 FROM --platform=$TARGETPLATFORM alpine:3.13
-RUN addgroup -g 1000 -S actyx && \
-    adduser -u 1000 -S actyx -G actyx
+RUN addgroup -g 1001 -S actyx && \
+    adduser -u 1001 -S actyx -G actyx
 
-COPY --from=build --chown=1000:1000 /usr/local/cargo/bin/actyx /usr/bin/actyx
+COPY --from=build --chown=1001:1001 /usr/local/cargo/bin/actyx /usr/bin/actyx
 
 CMD ["actyx", "--working-dir", "/data/actyx-data", "--bind-admin", "0.0.0.0:4458", "--bind-api", "0.0.0.0:4454", "--bind-swarm", "0.0.0.0:4001"]
 
@@ -68,4 +68,4 @@ LABEL org.opencontainers.image.title="Actyx" \
     org.opencontainers.image.revision="${GIT_COMMIT}" \
     org.opencontainers.image.created="TODO" \
     org.opencontainers.image.version="TODO" \
-    org.opencontainers.image.documentation="https://developer.actyx.com" \
+    org.opencontainers.image.documentation="https://developer.actyx.com"

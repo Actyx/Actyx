@@ -9,21 +9,22 @@ ENV RUST_VERSION=1.65.0
 
 ARG BUILD_RUST_TOOLCHAIN
 
-RUN groupadd -g 1000 builder \
-  && useradd -m -u 1000 -g 1000 builder
+RUN groupadd -g 1001 builder \
+  && useradd -m -u 1001 -g 1001 builder
 
 # openjdk-8 for debian buster
 RUN apt-get update && \
-  apt-get install -y wget gnupg software-properties-common && \
-  wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | apt-key add - && \
-  add-apt-repository --yes https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/
+  apt-get install -y wget gnupg apt-transport-https && \
+  mkdir -p /etc/apt/keyrings && \
+  wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | tee /etc/apt/keyrings/adoptium.asc && \
+  echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
 
 RUN apt-get update
 RUN apt-get install -y binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi binutils-arm-linux-gnueabihf binutils-i686-linux-gnu binutils-x86-64-linux-gnu
 RUN apt-get install --no-install-recommends -yq unzip wget cmake \
-  # Install jre (adoptopenjdk-8-hotspot-jre) only, if you only need to cross compile for Android
+  # Install jre (temurin-8-jre) only, if you only need to cross compile for Android
   # We add the JDK here in order to be able to also build the Android app
-  adoptopenjdk-8-hotspot adoptopenjdk-8-hotspot-jre \
+  temurin-8-jdk temurin-8-jre \
   # CI deps
   sudo curl jq autossh sshpass dnsutils zip \
   protobuf-compiler \
@@ -35,7 +36,7 @@ RUN apt-get install --no-install-recommends -yq unzip wget cmake \
   && rm -rf /var/lib/apt/lists/*
 
 # make sure this corresponds to the installed jvm version above
-ENV JAVA_HOME=/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/
+ENV JAVA_HOME=/usr/lib/jvm/temurin-8-jdk-amd64/
 ############################################################################################
 # Install Android SDK
 ENV ANDROID_SDK_ROOT /opt/android-sdk-linux

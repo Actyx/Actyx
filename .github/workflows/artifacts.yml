@@ -29,24 +29,23 @@ name: Generate Artifacts and Release Candidate
 # - https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions
 
 on:
-  push:
-    branches:
-      - master
-    paths-ignore:
-      # Do not run this workflow if the only changes are in the .github directory
-      # this should avoid duplicating releases for changes that don't actually belong
-      # in releases (CI changes are not shipped with the binaries).
-      # If you want to run it anyway, do so manually.
-      # See the following link for more information:
-      # - https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-excluding-paths
-      - '.github/**'
+  # push:
+  #   branches:
+  #     - master
+  #   paths-ignore:
+  # Do not run this workflow if the only changes are in the .github directory
+  # this should avoid duplicating releases for changes that don't actually belong
+  # in releases (CI changes are not shipped with the binaries).
+  # If you want to run it anyway, do so manually.
+  # See the following link for more information:
+  # - https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-excluding-paths
+  # - '.github/**'
   workflow_dispatch:
 
 env:
   BASH_ENV: "~/.bashrc"
   NVM_VERSION: 0.39.3
   RUST_VERSION: 1.65.0
-
 
 jobs:
   calculate-actyx-version:
@@ -79,7 +78,6 @@ jobs:
       ACTYX_VERSION_TSSDK: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_RUSTSDK }}
 
-
   make-all-js:
     runs-on: [self-hosted, Linux]
     needs: calculate-actyx-version
@@ -105,7 +103,6 @@ jobs:
           name: ${{github.sha}}/js-packages
           path: dist/js
       - run: make clean
-
 
   make-all-linux:
     runs-on: [self-hosted, Linux]
@@ -133,7 +130,6 @@ jobs:
           path: dist/bin
       - run: make clean
 
-
   make-all-windows:
     runs-on: [self-hosted, Linux]
     needs: calculate-actyx-version
@@ -160,7 +156,6 @@ jobs:
           path: dist/bin
       - run: make clean
 
-
   make-all-macos:
     runs-on: [self-hosted, Linux]
     needs: calculate-actyx-version
@@ -186,7 +181,6 @@ jobs:
           name: ${{github.sha}}/macos-binaries
           path: dist/bin
       - run: make clean
-
 
   make-docker:
     runs-on: [self-hosted, Linux]
@@ -224,7 +218,6 @@ jobs:
         env:
           ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
 
-
   make-all-android:
     runs-on: [self-hosted, Linux]
     needs: calculate-actyx-version
@@ -251,7 +244,6 @@ jobs:
           path: dist/bin
       - run: make clean
 
-
   make-node-manager-linux:
     runs-on: [self-hosted, Linux]
     needs: calculate-actyx-version
@@ -276,7 +268,6 @@ jobs:
           path: js/node-manager/dist/artifacts
       - run: make clean
 
-
   make-node-manager-windows:
     runs-on: [self-hosted, Linux]
     needs: calculate-actyx-version
@@ -300,7 +291,6 @@ jobs:
           name: ${{github.sha}}/node-manager-win
           path: js/node-manager/dist/artifacts
       - run: make clean
-
 
   make-node-manager-macos:
     runs-on: macos-12
@@ -333,7 +323,6 @@ jobs:
           container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
           name: ${{github.sha}}/node-manager-mac
           path: js/node-manager/dist/artifacts
-
 
   integration:
     runs-on: [self-hosted, Linux]
@@ -388,7 +377,7 @@ jobs:
           npm run test:ci
         env:
           # To launch the AWS instances
-          AWS_ACCESS_KEY_ID:  ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           # For the integration tests
           ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
@@ -405,7 +394,6 @@ jobs:
           container: test-logs
           name: ${{github.sha}}/logs
           path: integration/logs
-
 
   create-release-candidate:
     runs-on: [self-hosted, Linux]
@@ -437,7 +425,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GENIE_GH_TOKEN }}
 
-
   notify-discord:
     runs-on: [self-hosted, Linux]
     if: ${{ always() }}
@@ -450,4 +437,3 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}
-

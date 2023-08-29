@@ -110,7 +110,7 @@ fn get_commits<'a>(
 ) -> anyhow::Result<impl Iterator<Item = anyhow::Result<Commit<'a>>>> {
     let mut walk = repo.revwalk().expect("error creating revwalk");
     walk.push_range(format!("{}..{}", from_excl, to_incl).as_str())?;
-    Ok(walk.into_iter().map(move |x| {
+    Ok(walk.map(move |x| {
         let oid = x?;
         Ok(repo.find_commit(oid)?)
     }))

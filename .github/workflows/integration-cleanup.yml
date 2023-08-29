@@ -1,8 +1,6 @@
 name: Periodic AWS instance cleanup
-
 on:
-  schedule:
-    - cron: "0 */6 * * *"
+  workflow_dispatch:
 
 jobs:
   integration-cleanup:
@@ -34,4 +32,3 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}
-
