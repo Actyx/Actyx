@@ -18,22 +18,6 @@ Before posting an issue, make sure you've searched for a duplicate.
 
 ## Contributing Code
 
-### Quick Start
-
-1. **Clone and Fork the Repository**:
-    Start by [forking the repository](https://docs.github.com/en/get-started/quickstart/fork-a-repo). 
-    Clone your fork to your local machine using the following command:
-
-    ```bash
-    git clone https://github.com/YOUR-USERNAME/Actyx
-    ```
-
-2. **Work in your fork**:
-    Commit and push your changes to your fork by following our commit message convention <!-- TODO: link -->
-
-3. **Submit a Pull Request (PR)**: 
-    Open a pull request to the `master` branch of the main repository.
-
 ### Commit Message
 
 We intend to keep a clear commit history to make it easy to track the evolution of a codebase.
