@@ -13,25 +13,8 @@ For questions and light discussions, we are generally available in:
 - Discord <!-- (TODO: discord link)-->
 - Google groups <!--(TODO: google groups link)-->
 
-However, if you have well-planned suggestions (e.g. features, optimizations, refactors) or discovered bugs, use our github issue tracker (TODO: link). Before posting an issue, make sure you've searched for a duplicate. The following are guidelines for creating issues:
-
-### Bug Reports
-
-A bug report must include:
-
-- Bug summary
-- Expected and Actual Behavior
-- Minimum Code or Steps to Reproduce
-- Environment Details (Actyx version, OS, Device Details, any other relevant information)
-
-### Suggestions
-
-A suggestion must include:
-
-- Suggestion Summary
-- Description
-- Use case
-- If a suggestion involves a change to CI scripts, "Justification" section must be included, detailing the clear benefits and risks for the changes.
+However, if you have well-planned suggestions (e.g. features, optimizations, refactors) or discovered bugs, post them to our github issue tracker <!-- TODO: link -->.
+Before posting an issue, make sure you've searched for a duplicate.
 
 ## Contributing Code
 
@@ -62,8 +45,6 @@ In addition, commit message must be concise, meaningful, and readable, and must 
 
 ### Pull Requests
 
-All changes from a fork must go through a Pull Request before being merged to the main repository.
-This enables peer reviews to ensure that the code quality are upheld.
 To maintain an efficient review process, pull requests must:
 
 1. Reference an issue: Use GitHub's referencing syntax such as "Resolves #123" to automatically link the PR to the relevant issue to make sure the reviewers understand the context of the change.
