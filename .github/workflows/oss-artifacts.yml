@@ -202,7 +202,9 @@ jobs:
       - run: rustup toolchain install --profile default $RUST_VERSION
 
       - name: Make All Android
-        run: make all-android
+        run: |
+          ./jvm/os-android/bin/get-keystore.sh
+          make all-android
         env:
           ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
       - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08

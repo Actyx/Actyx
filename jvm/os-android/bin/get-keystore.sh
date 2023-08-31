@@ -5,7 +5,7 @@
 mkdir -p jvm/os-android/actyx-local app/src/main/assets
 
 # Ask vault for credentials (in JSON format)
-credentials=$(vault kv get --format=json secret/ops.actyx.axosandroid.keystore)
+credentials="$ACTYX_ANDROID_CERTIFICATES"
 
 # Dynamically create the file with de-serialized data
 cat > jvm/os-android/actyx-local/actyx.properties <<EOF
