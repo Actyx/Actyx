@@ -17,9 +17,8 @@ In the case you need the code from the previous tutorial, you can get from GitHu
 In the previous tutorial we ignored the required amount of water by the plant,
 in this tutorial we will address that by introducing _payloads_.
 
-Payloads can be used both in states and events, when used in states,
-payloads may contain data relative to the current state (e.g. the amount of water the robot has used),
-in events, payloads may contain information necessary to compute the next state.
+An event can contain additional information, _a payload_, which is useful to enrich the event's message.
+As an example, which we will use in this guide, a sensor can tell how much water a plant needs by including it as the event payload.
 
 Enough talk, let's dive in!
 

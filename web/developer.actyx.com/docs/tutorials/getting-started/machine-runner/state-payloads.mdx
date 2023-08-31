@@ -138,7 +138,7 @@ WateringPlant.react([Events.HasWater], Idle, (state, _) => Idle.make(state.self)
 ```
 
 Notice that we're using the first argument of the handler, while for events we have previously used the second.
-The first one is the `ReactionContext` which containts the current state payload (i.e. before the transition happens) under `self`.
+The first one is the `ReactionContext` which contains the current state payload (i.e. before the transition happens) under `self`.
 
 We're not applying changes to the state since we've delegated all updates to the previous transition,
 so in this case, we're just keeping the state as is.

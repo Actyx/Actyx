@@ -10,7 +10,7 @@ import { Tabs } from '/src/components'
 import { ExpendableDiagram } from '/src/components/custom-codeblocks/expendable-diagram'
 
 :::info
-This tutorial is aimed at begginers that have read the previous tutorials about
+This tutorial is aimed at beginners that have read previous tutorials about
 [publishing](../first-event) and [querying](../first-query) events!
 :::
 
@@ -89,7 +89,7 @@ As shown in the picture, we will create three files:
 
 - `robot.ts` - our robot's entrypoint
 - `sensor.ts` - our (mock) sensor's entrypoint
-- `protocol.ts` - the procotol that defines the events, etc, that the robot and sensor will use.
+- `protocol.ts` - the protocol that defines the events, etc, that the robot and sensor will use.
 
 <Tabs>
 
@@ -145,11 +145,11 @@ Instead, we will focus on the interaction between the machine and events.
 ### Defining the application manifest
 
 Spoiler alert, this will only be used later on, but we'll need it for both the robot and the sensor,
-so we'll get it out of way now.
+so we'll get it out of the way now.
 
 The application manifest is used by Actyx to authenticate your application
 (you can read more about it in the [how-to guides](./docs/how-to/app-auth/sign-app-manifest) and in the [conceptual guides](./docs/conceptual/authentication-and-authorization)).
-The manifest requires an application ID, a display name and an application version, nothing too out of the ordinary:
+The manifest requires an application ID, a display name, and an application version, nothing too out of the ordinary:
 
 ```ts title="src/protocol.ts"
 export const manifest = {
@@ -159,7 +159,7 @@ export const manifest = {
 }
 ```
 
-That's it, with that out of the way, let's move on to the actual procotol.
+That's it, with that out of the way, let's move on to the actual protocol.
 
 ### Defining the protocol
 
@@ -185,7 +185,7 @@ Let's break down what is happening:
 export namespace Events { ... }
 ```
 
-2. We the declare the protocol events (exporting them so we can actually use them outside the namespace):
+2. We then declare the protocol events (exporting them so we can actually use them outside the namespace):
 
 ```ts
 export const HasWater = MachineEvent.design('HasWater').withoutPayload()
@@ -214,7 +214,7 @@ export const protocol = SwarmProtocol.make('wateringRobot', Events.All)
 takes the name of the protocol and all events that compose it (this is why `All` is useful).
 
 :::info Note on `SwarmProtocol`
-Actyx is designed to support both a single or multiple machines.
+Actyx is designed to support both a single machine or multiple ones.
 When working with multiple machines, you have a swarm, all machines in the swarm must
 "sync" in a way or another so they can cooperate instead of getting in each others' way,
 that's where the `Swarm` in `SwarmProtocol` comes in.
@@ -385,7 +385,7 @@ to simplify subsequent runs, we'll add a new script to `package.json`:
 Which enables you to just run `npm run start-robot`.
 
 :::caution Ensure Actyx is running!
-If you don't know how to start Actyx, refer to the respective [how-to guide](./docs/how-to/local-development/install-actyx#starting-and-stopping-actyx).
+Need a refresher on how to start Actyx? See [how-to guide](./docs/how-to/local-development/install-actyx#starting-and-stopping-actyx).
 :::
 
 So, let's run it!
@@ -573,7 +573,7 @@ In this tutorial we covered how to get up and running with the Actyx [Machine Ru
 We started by [creating a robot](#creating-the-robot) that listens for events pertaining a plant's water level,
 when necessary, the robot will water the plant and stop when an acceptable water level is detected.
 
-Afterwards, we [developed a mock sensor](#the-sensor) which publishes the events to Actyx, which consequently hands them to the robot,
+Afterward, we [developed a mock sensor](#the-sensor) that publishes the events to Actyx, which consequently hands them to the robot,
 so it can act on the plant's water needs.
 
 All this runs on top of Actyx (which coordinates all underlying events between the participants),
