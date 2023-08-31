@@ -217,7 +217,7 @@ const Home = () => (
           styles.card + ' ' + styles.shiftOnHover + ' ' + styles.essentialCommunity + ' dark'
         }
       >
-        <a href="https://community.actyx.com">
+        <a href="https://groups.google.com/a/actyx.io/g/developers">
           <div>
             <h3 className={styles.headline}>Actyx Community</h3>
             <p className={styles.text}>Join our developer community and discover our forum.</p>

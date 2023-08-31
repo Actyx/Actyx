@@ -220,7 +220,7 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
   const menuProps: MenuProps = {
     items: [
       {
-        target: 'https://community.actyx.com/',
+        target: 'https://groups.google.com/a/actyx.io/g/developers/',
         text: 'Get help',
       } as MenuItem,
       {

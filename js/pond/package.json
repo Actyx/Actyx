@@ -1,7 +1,7 @@
 {
   "author": "Actyx AG",
   "bugs": {
-    "url": "https://community.actyx.com/"
+    "url": "https://groups.google.com/a/actyx.io/g/developers/"
   },
   "dependencies": {
     "@actyx/sdk": "0.5.7",
