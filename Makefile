@@ -583,12 +583,10 @@ dist/bin/actyx.apk: jvm/os-android/app/build/outputs/bundle/release/app-release.
       java -jar /usr/local/lib/bundletool.jar build-apks \
 				--bundle /src/$< \
 				--output=/src/dist/bin/actyx.apks \
-				--mode=universal
-				# Disable signing, for more information refer to:
-				# https://developer.android.com/tools/bundletool#generate_apks
-				# --ks=/src/jvm/os-android/actyx-local/axosandroid.jks \
-				# --ks-key-alias=axosandroid \
-				# --ks-pass=pass:$(shell grep actyxKeyPassword jvm/os-android/actyx-local/actyx.properties|cut -f2 -d\") \
+				--mode=universal \
+				--ks=/src/jvm/os-android/actyx-local/axosandroid.jks \
+				--ks-key-alias=axosandroid \
+				--ks-pass=pass:$(shell grep actyxKeyPassword jvm/os-android/actyx-local/actyx.properties|cut -f2 -d\")
 	unzip -o dist/bin/actyx.apks universal.apk
 	mv -f universal.apk dist/bin/actyx.apk
 
