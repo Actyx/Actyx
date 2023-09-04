@@ -22,7 +22,7 @@
 
 Actyx is a **decentralized** event **database**, **streaming** and **processing** engine that allows you to easily build [local-first cooperative](https://www.local-first-cooperation.org/) apps.
 For more information on how to use it, please refer to [developer.actyx.com](https://developer.actyx.com).
-You’re also very welcome to drop us a line in [the forum](https://community.actyx.com/) and watch this space (or give it a ✩)!
+You’re also very welcome to drop us a line in [the forum](https://groups.google.com/a/actyx.io/g/developers/) and watch this space (or give it a ✩)!
 
 ## Features
 

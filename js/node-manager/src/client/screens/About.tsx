@@ -20,7 +20,7 @@ const ForumLink: React.FC = ({ children }) => (
     className="underline text-blue-500"
     target="_blank"
     rel="noopener noreferrer"
-    href="https://community.actyx.com"
+    href="https://groups.google.com/a/actyx.io/g/developers"
   >
     {children}
   </a>
