@@ -8,23 +8,19 @@ Take a moment to read through the guidelines before you get started.
 
 We value your input!
 
-<!-- (what are we doing there when after we open-sourced Actyx repo)? -->
 For questions and light discussions, we are generally available in:
-- Discord <!-- (TODO: discord link)-->
-- Google groups <!--(TODO: google groups link)-->
+- [Discord](https://discord.gg/4RZpTqmPgC)
+- [Github Discussion](https://github.com/Actyx/Actyx/discussions)
 
-However, if you have well-planned suggestions (e.g. features, optimizations, refactors) or discovered bugs, post them to our github issue tracker <!-- TODO: link -->.
-Before posting an issue, make sure you've searched for a duplicate.
+If you have suggestions or encountered bugs, submit them to our [github issue tracker](https://github.com/Actyx/Actyx/issues).
+Make sure you have searched for a duplicate.
 
 ## Contributing Code
 
 ### Commit Message
 
-We intend to keep a clear commit history to make it easy to track the evolution of a codebase.
-
-<!-- Do we want to use conventional commits? -->
-This repository uses [Conventional Commit](https://www.conventionalcommits.org/) to keep commit messages consistent and contextual.
-In addition, commit message should be concise, meaningful, readable, and use an imperative mood.
+We intend to keep it easy to track the evolution of a codebase.
+One rule to follow: A commit message must be a descriptive and concise one-line summary, followed by as much body text as necessary.
 
 ### Pull Requests
 
