@@ -226,7 +226,7 @@ module.exports = {
     },
     {
       type: 'doc',
-      id: 'tutorials/js-cooperative-task', // string - document id
+      id: 'tutorials/js-cooperative-task-1-protocol', // string - document id
     },
     {
       type: 'doc',

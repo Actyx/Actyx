@@ -11,13 +11,13 @@ import { ExpandableDiagram, ExpandableDiagramUtils } from "/src/components/custo
 
 :::info
 
-This tutorial immediately follows and uses the code of the [previous tutorial](./js-cooperative-task.mdx).
+This tutorial immediately follows and uses the code of the [previous tutorial](./js-cooperative-task-1-protocol.mdx).
 It is recommended to complete that before beginning this tutorial.
 
 :::
 
 
-[The previous tutorial](./js-cooperative-task.mdx) visits the idea where a swarm (i.e. the robot and the pump) works on one sequential workflow (docking, drawing water, undocking).
+[The previous tutorial](./js-cooperative-task-1-protocol.mdx) visits the idea where a swarm (i.e. the robot and the pump) works on one sequential workflow (docking, drawing water, undocking).
 For the problem, we built a protocol based on [`machine-runner`](https://www.npmjs.com/package/@actyx/machine-runner) and `Actyx`.
 The protocol governs the sequence of tasks in terms of `states` (alongside the `commands` and the `reactions`) and `events` while at the same time facilitating the agents the means to communicate according to the workflow.
 
@@ -96,7 +96,7 @@ import * as assert from "node:assert"
 const { ProtocolEvents } = protocol
 ```
 
-The previous tutorial illustrates the workflow of a swarm of two (one robot and one water pump) executing a sequential task of docking, drawing water, and undocking. We have an [interaction design](/docs/tutorials/js-cooperative-task#interaction-design) written as a state diagram. 
+The previous tutorial illustrates the workflow of a swarm of two (one robot and one water pump) executing a sequential task of docking, drawing water, and undocking. We have an [interaction design](/docs/tutorials/js-cooperative-task-1-protocol#interaction-design) written as a state diagram. 
 
 export const stateDiagram = `
 Initial --> Docking: "DockAvailable"\\nby pump

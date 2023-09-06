@@ -454,7 +454,7 @@ RabbitMQ
 HiveMQ
 timeframe
 10s
-- ./docs/tutorials/js-cooperative-task.mdx
+- ./docs/tutorials/js-cooperative-task-1-protocol.mdx
 ExpandableDiagram
 ExpandableDiagramUtils
 custom-codeblocks
