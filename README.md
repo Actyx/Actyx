@@ -101,6 +101,6 @@ The [website](https://developer.actyx.com) sources are in the `web` folder, acco
 
 ## Licensing
 
-Actyx, Actyx CLI, Actyx Node Manager, and the SDKs (for Typescript/Javascript, C#, Rust) are available under the [Apache 2.0](LICENSE.Apache_2.0) open-source license. This license and the accompanying [NOTICE](NOTICE) applies to all files in the `dotnet`, `integration`, `js`, `jvm`, `rust`, `third-party`, `wix` directories except where specified otherwise.
+Actyx, Actyx CLI, Actyx Node Manager, and the SDKs (for Typescript/Javascript, Rust) are available under the [Apache 2.0](LICENSE.Apache_2.0) open-source license. This license and the accompanying [NOTICE](NOTICE) applies to all files in the `dotnet`, `integration`, `js`, `jvm`, `rust`, `third-party`, `wix` directories except where specified otherwise.
 
 For commercial licensing please contact [Actyx Support](https://www.actyx.com/enterprise).
