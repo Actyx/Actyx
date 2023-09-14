@@ -68,8 +68,8 @@ Common commands are:
 # compile Actyx and Actyx CLI for your current host system
 make current
 
-# build all Typescript and .Net libraries
-make all-js all-dotnet
+# build all Typescript
+make all-js
 ```
 
 There are provisions in the Makefile for cross-building, but those currently only work for Actyx employees — we’ll fix that soon.
