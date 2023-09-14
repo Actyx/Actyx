@@ -265,6 +265,29 @@ export const QueryResponse = io.type({
 })
 export type QueryResponse = io.TypeOf<typeof QueryResponse>
 
+export const PublishResponseKey = io.type({
+  lamport: io.number,
+  stream: io.string,
+  offset: io.number,
+  timestamp: io.number,
+})
+export type PublishResponseKey = io.TypeOf<typeof PublishResponseKey>
+
+export const PublishRequest = io.type({
+  peer: io.string,
+  events: io.array(
+    io.type({
+      tags: io.array(io.string),
+      payload: io.unknown,
+    }),
+  ),
+})
+export type PublishRequest = io.TypeOf<typeof PublishRequest>
+export const PublishResponse = io.type({
+  data: io.array(PublishResponseKey),
+})
+export type PublishResponse = io.TypeOf<typeof PublishResponse>
+
 // Topics
 export const TopicLsRequest = io.type({ peer: io.string })
 export type TopicLsRequest = io.TypeOf<typeof TopicLsRequest>
@@ -272,7 +295,7 @@ export type TopicLsRequest = io.TypeOf<typeof TopicLsRequest>
 export const TopicLsResponse = io.type({
   nodeId: io.string,
   activeTopic: io.string,
-  topics: io.record(io.string, io.number)
+  topics: io.record(io.string, io.number),
 })
 export type TopicLsResponse = io.TypeOf<typeof TopicLsResponse>
 
@@ -284,7 +307,6 @@ export type TopicDeleteRequest = io.TypeOf<typeof TopicDeleteRequest>
 
 export const TopicDeleteResponse = io.type({
   nodeId: io.string,
-  deleted: io.boolean
+  deleted: io.boolean,
 })
 export type TopicDeleteResponse = io.TypeOf<typeof TopicDeleteResponse>
-

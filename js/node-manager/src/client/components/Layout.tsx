@@ -11,7 +11,7 @@ import {
   NodeManagerIcon,
   KeyIcon,
   SearchIcon,
-  TopicsIcon
+  TopicsIcon,
 } from './icons'
 import { ClassName } from '../react'
 import { useAppState, AppActionKey, AppStateKey } from '../app-state'
@@ -244,6 +244,13 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
           hidden={hideMenuItems}
         />
         <NavButton
+          onClick={() => dispatch({ key: AppActionKey.ShowPublish })}
+          icon={<SearchIcon />}
+          text="Publish"
+          active={state.key === AppStateKey.Publish}
+          hidden={hideMenuItems}
+        />
+        <NavButton
           onClick={() => dispatch({ key: AppActionKey.ShowQuery })}
           icon={<SearchIcon />}
           text="Query"
@@ -257,10 +264,10 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
           hidden={hideMenuItems}
         />
         <NavButton
-          onClick={() => dispatch({key: AppActionKey.ShowTopics})}
-          icon={<TopicsIcon/>}
+          onClick={() => dispatch({ key: AppActionKey.ShowTopics })}
+          icon={<TopicsIcon />}
           text="Topics"
-          active={state.key===AppStateKey.Topics}
+          active={state.key === AppStateKey.Topics}
           hidden={hideMenuItems}
         />
         <NavButton

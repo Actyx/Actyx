@@ -45,6 +45,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("signAppManifest", ops::sign_app_manifest::js)?;
     cx.export_function("shutdown", ops::shutdown_node::js)?;
     cx.export_function("query", ops::query::js)?;
+    cx.export_function("publish", ops::publish::js)?;
     cx.export_function("onDisconnect", ops::on_disconnect::js)?;
     cx.export_function("deleteTopic", ops::delete_topic::js)?;
     cx.export_function("getTopicList", ops::get_topic_list::js)?;

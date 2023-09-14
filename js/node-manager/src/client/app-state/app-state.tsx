@@ -12,11 +12,11 @@ import {
   connect,
   getTopicList,
   deleteTopic,
+  publish,
 } from '../util'
 import {
   CreateUserKeyPairResponse,
   NodeType,
-  Node,
   GenerateSwarmKeyResponse,
   SignAppManifestResponse,
   QueryResponse,
@@ -24,6 +24,8 @@ import {
   EventDiagnostic,
   TopicLsResponse,
   TopicDeleteResponse,
+  PublishRequest,
+  PublishResponse,
 } from '../../common/types'
 import { AppState, AppAction, AppStateKey, AppActionKey } from './types'
 import { useAnalytics } from '../analytics'
@@ -45,81 +47,86 @@ const DEFER_CONNECTING_STATE_MS = 150
 
 export const reducer =
   (analytics: AnalyticsActions | undefined) =>
-    (state: AppState, action: AppAction): AppState => {
-      switch (action.key) {
-        case AppActionKey.ShowOverview: {
-          if (analytics) {
-            analytics.viewedScreen('Overview')
-          }
-          return { ...state, key: AppStateKey.Overview }
+  (state: AppState, action: AppAction): AppState => {
+    switch (action.key) {
+      case AppActionKey.ShowOverview: {
+        if (analytics) {
+          analytics.viewedScreen('Overview')
         }
-        case AppActionKey.ShowSetupUserKey: {
-          if (analytics) {
-            analytics.viewedScreen('SetupUserKey')
-          }
-          return { ...state, key: AppStateKey.SetupUserKey }
+        return { ...state, key: AppStateKey.Overview }
+      }
+      case AppActionKey.ShowSetupUserKey: {
+        if (analytics) {
+          analytics.viewedScreen('SetupUserKey')
         }
-        case AppActionKey.ShowAbout: {
-          if (analytics) {
-            analytics.viewedScreen('About')
-          }
-          return { ...state, key: AppStateKey.About }
+        return { ...state, key: AppStateKey.SetupUserKey }
+      }
+      case AppActionKey.ShowAbout: {
+        if (analytics) {
+          analytics.viewedScreen('About')
         }
-        case AppActionKey.ShowAppSigning: {
-          if (analytics) {
-            analytics.viewedScreen('AppSigning')
-          }
-          return { ...state, key: AppStateKey.AppSigning }
+        return { ...state, key: AppStateKey.About }
+      }
+      case AppActionKey.ShowAppSigning: {
+        if (analytics) {
+          analytics.viewedScreen('AppSigning')
         }
-        case AppActionKey.ShowNodeAuth: {
-          if (analytics) {
-            analytics.viewedScreen('NodeAuth')
-          }
-          return { ...state, key: AppStateKey.NodeAuth }
+        return { ...state, key: AppStateKey.AppSigning }
+      }
+      case AppActionKey.ShowNodeAuth: {
+        if (analytics) {
+          analytics.viewedScreen('NodeAuth')
         }
-        case AppActionKey.ShowDiagnostics: {
-          if (analytics) {
-            analytics.viewedScreen('Diagnostics')
-          }
-          return { ...state, key: AppStateKey.Diagnostics }
+        return { ...state, key: AppStateKey.NodeAuth }
+      }
+      case AppActionKey.ShowDiagnostics: {
+        if (analytics) {
+          analytics.viewedScreen('Diagnostics')
         }
-        case AppActionKey.ShowNodeDetail: {
-          if (analytics) {
-            analytics.viewedScreen('NodeDetail')
-          }
-          return { ...state, ...action, key: AppStateKey.NodeDetail }
+        return { ...state, key: AppStateKey.Diagnostics }
+      }
+      case AppActionKey.ShowNodeDetail: {
+        if (analytics) {
+          analytics.viewedScreen('NodeDetail')
         }
-        case AppActionKey.ShowGenerateSwarmKey: {
-          if (analytics) {
-            analytics.viewedScreen('GenerateSwarmKey')
-          }
-          return { ...state, ...action, key: AppStateKey.SwarmKey }
+        return { ...state, ...action, key: AppStateKey.NodeDetail }
+      }
+      case AppActionKey.ShowGenerateSwarmKey: {
+        if (analytics) {
+          analytics.viewedScreen('GenerateSwarmKey')
         }
-        case AppActionKey.ShowPreferences: {
-          if (analytics) {
-            analytics.viewedScreen('Preferences')
-          }
-          return { ...state, ...action, key: AppStateKey.Preferences }
+        return { ...state, ...action, key: AppStateKey.SwarmKey }
+      }
+      case AppActionKey.ShowPreferences: {
+        if (analytics) {
+          analytics.viewedScreen('Preferences')
         }
-        case AppActionKey.ShowQuery: {
-          if (analytics) {
-            analytics.viewedScreen('Query')
-          }
-          return { ...state, ...action, key: AppStateKey.Query }
+        return { ...state, ...action, key: AppStateKey.Preferences }
+      }
+      case AppActionKey.ShowPublish: {
+        if (analytics) {
+          analytics.viewedScreen('Publish')
         }
-        case AppActionKey.ShowSettings: {
-          if (analytics) analytics.viewedScreen('Settings')
-          return { ...state, ...action, key: AppStateKey.Settings }
+        return { ...state, ...action, key: AppStateKey.Publish }
+      }
+      case AppActionKey.ShowQuery: {
+        if (analytics) {
+          analytics.viewedScreen('Query')
         }
-        case AppActionKey.ShowTopics:
-          {
-            if (analytics) {
-              analytics.viewedScreen("Topics")
-            }
-            return { ...state, ...action, key: AppStateKey.Topics }
-          }
+        return { ...state, ...action, key: AppStateKey.Query }
+      }
+      case AppActionKey.ShowSettings: {
+        if (analytics) analytics.viewedScreen('Settings')
+        return { ...state, ...action, key: AppStateKey.Settings }
+      }
+      case AppActionKey.ShowTopics: {
+        if (analytics) {
+          analytics.viewedScreen('Topics')
+        }
+        return { ...state, ...action, key: AppStateKey.Topics }
       }
     }
+  }
 
 interface Data {
   nodes: UiNode[]
@@ -131,7 +138,7 @@ const getPeer = (addr: string, data: Data) => {
   return n && 'peer' in n ? n.peer : undefined
 }
 
-interface Actions {
+export interface Actions {
   addNodes: (addrs: string[]) => void
   remNodes: (addrs: string[]) => void
   setSettings: (addr: string, settings: object, scope: string[]) => Promise<void>
@@ -145,12 +152,20 @@ interface Actions {
     pathToManifest: string
     pathToCertificate: string
   }) => Promise<SignAppManifestResponse>
+  publish: (args: { addr: string; events: PublishRequest['events'] }) => Promise<PublishResponse>
+  setPublishState: React.Dispatch<React.SetStateAction<PublishState>>
   query: (args: { addr: string; query: string }) => Promise<QueryResponse>
   setQueryState: React.Dispatch<React.SetStateAction<QueryState>>
   setSettingPath: (path: string) => void
   setSettingJson: (json: string | null) => void
   getTopicList: (addr: string) => Promise<TopicLsResponse>
   deleteTopic: (addr: string, topic: string) => Promise<TopicDeleteResponse>
+}
+
+interface PublishState {
+  node?: string
+  tagsField: string
+  payloadField: string
 }
 
 interface QueryState {
@@ -167,13 +182,14 @@ interface SettingsState {
 export type AppDispatch = (action: AppAction) => void
 const AppStateContext = React.createContext<
   | {
-    state: AppState
-    data: Data
-    actions: Actions
-    dispatch: AppDispatch
-    query: QueryState
-    settings: SettingsState
-  }
+      state: AppState
+      data: Data
+      actions: Actions
+      dispatch: AppDispatch
+      query: QueryState
+      publish: PublishState
+      settings: SettingsState
+    }
   | undefined
 >(undefined)
 
@@ -188,6 +204,10 @@ export const AppStateProvider: React.FC<{
   const [data, setData] = useState<Data>({
     nodes: [],
     offsets: none,
+  })
+  const [publishState, setPublishState] = useState<PublishState>({
+    payloadField: '',
+    tagsField: '',
   })
   const [queryState, setQueryState] = useState<QueryState>({ text: 'FROM allEvents', results: [] })
   const [settingsState, setSettingsState] = useState<SettingsState>({ path: '', json: null })
@@ -208,7 +228,7 @@ export const AppStateProvider: React.FC<{
             addrs.map((addr) => ({
               type: NodeType.Fresh,
               addr,
-            }))
+            })),
           ),
         }
       })
@@ -263,6 +283,15 @@ export const AppStateProvider: React.FC<{
         pathToCertificate,
       })
     },
+    publish: ({ addr, events }) => {
+      if (analytics) {
+      }
+      const peer = getPeer(addr, data)
+      return peer === undefined
+        ? Promise.reject(`not connected to ${addr}`)
+        : publish({ peer, events })
+    },
+    setPublishState,
     query: ({ addr, query: q }) => {
       if (analytics) {
         analytics.queriedEvents(q)
@@ -285,16 +314,25 @@ export const AppStateProvider: React.FC<{
         return { ...current, json }
       })
     },
-    getTopicList: function (addr: string): Promise<{ nodeId: string; activeTopic: string; topics: { [x: string]: number } }> {
+    getTopicList: function (
+      addr: string,
+    ): Promise<{ nodeId: string; activeTopic: string; topics: { [x: string]: number } }> {
       // TODO: add analytics
       const peer = getPeer(addr, data)
-      return peer === undefined ? Promise.reject(`not connected to ${addr}`) : getTopicList({ peer })
+      return peer === undefined
+        ? Promise.reject(`not connected to ${addr}`)
+        : getTopicList({ peer })
     },
-    deleteTopic: function (addr: string, topic: string): Promise<{ nodeId: string; deleted: boolean }> {
+    deleteTopic: function (
+      addr: string,
+      topic: string,
+    ): Promise<{ nodeId: string; deleted: boolean }> {
       // TODO: add analytics
       const peer = getPeer(addr, data)
-      return peer === undefined ? Promise.reject(`not connected to ${addr}`) : deleteTopic({ peer, topic: topic })
-    }
+      return peer === undefined
+        ? Promise.reject(`not connected to ${addr}`)
+        : deleteTopic({ peer, topic: topic })
+    },
   }
 
   useEffect(() => {
@@ -314,7 +352,7 @@ export const AppStateProvider: React.FC<{
   }, [])
 
   useEffect(() => {
-    ; (async () => {
+    ;(async () => {
       await waitForNoUserKeysFound()
       dispatch({ key: AppActionKey.ShowSetupUserKey })
     })()
@@ -449,7 +487,15 @@ export const AppStateProvider: React.FC<{
 
   return (
     <AppStateContext.Provider
-      value={{ state, data, actions, dispatch, query: queryState, settings: settingsState }}
+      value={{
+        state,
+        data,
+        actions,
+        dispatch,
+        publish: publishState,
+        query: queryState,
+        settings: settingsState,
+      }}
     >
       {children}
     </AppStateContext.Provider>

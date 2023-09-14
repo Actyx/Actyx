@@ -1,6 +1,6 @@
 use crate::{cmd::Authority, private_key::AxPrivateKey};
 use actyx_sdk::{
-    service::{Diagnostic, EventResponse},
+    service::{Diagnostic, EventResponse, PublishResponse},
     NodeId, Payload,
 };
 use anyhow::anyhow;
@@ -467,6 +467,27 @@ where
         v.push(extract(msg)?);
     }
     Ok(v)
+}
+
+pub async fn publish(
+    task: &mut Sender<Task>,
+    peer_id: PeerId,
+    req: EventsRequest,
+) -> ActyxOSResult<BoxStream<'static, ActyxOSResult<PublishResponse>>> {
+    let (tx, rx) = channel(128);
+    task.feed(Task::Events(peer_id, req, tx)).await?;
+    Ok(rx
+        .filter_map(|m| match m {
+            Ok(EventsResponse::Publish(publish_response)) => ready(Some(Ok(publish_response))),
+            Ok(x @ EventsResponse::FutureCompat) => ready(Some(Err(
+                ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("{:?}", x))
+            ))),
+            Ok(x) => ready(Some(Err(
+                ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("unexpected: {:?}", x))
+            ))),
+            Err(e) => ready(Some(Err(e))),
+        })
+        .boxed())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

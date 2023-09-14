@@ -21,3 +21,4 @@ pub(crate) mod query;
 pub(crate) mod set_settings;
 pub(crate) mod shutdown_node;
 pub(crate) mod sign_app_manifest;
+pub(crate) mod publish;

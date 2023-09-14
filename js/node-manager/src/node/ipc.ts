@@ -15,6 +15,7 @@ import {
   RPC_Connect,
   RPC_TopicLs,
   RPC_TopicDelete,
+  RPC_Publish,
 } from '../common/ipc'
 import { readStore, writeStore, storePath } from './store'
 import {
@@ -27,7 +28,8 @@ import {
   query,
   connect,
   getTopicList,
-  deleteTopic
+  deleteTopic,
+  publish,
 } from './tasks'
 import { isLeft, left, right } from 'fp-ts/lib/Either'
 import { ioErrToStr, safeErrorToStr } from '../common/util'
@@ -90,6 +92,7 @@ export const setupIpc = (app: App, browserWindow: BrowserWindow) => {
   setupRpc(browserWindow, RPC_SignAppManifest, signAppManifest)
   setupRpc(browserWindow, RPC_ShutdownNode, shutdownNode)
   setupRpc(browserWindow, RPC_Query, query)
+  setupRpc(browserWindow, RPC_Publish, publish)
   setupRpc(browserWindow, RPC_Connect, connect)
   setupRpc(browserWindow, RPC_TopicLs, getTopicList)
   setupRpc(browserWindow, RPC_TopicDelete, deleteTopic)
@@ -117,9 +120,9 @@ export const setupIpc = (app: App, browserWindow: BrowserWindow) => {
     const ff: FileFilter | undefined = !exts
       ? undefined
       : {
-        extensions: exts,
-        name: '',
-      }
+          extensions: exts,
+          name: '',
+        }
 
     const res = await dialog.showOpenDialog(browserWindow, {
       properties: ['openFile'],
