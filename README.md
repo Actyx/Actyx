@@ -8,7 +8,6 @@
 
 [![dockerhub](https://img.shields.io/docker/v/actyx/actyx/latest?label=Actyx%20version&style=flat-square)](https://hub.docker.com/repository/docker/actyx/actyx)
 [![Rust SDK](https://img.shields.io/crates/v/actyx_sdk?label=Rust%20SDK&style=flat-square)](https://crates.io/crates/actyx_sdk)
-[![C#/.Net SDK](https://img.shields.io/nuget/v/Actyx.Sdk?label=C%23%2F.Net%20SDK&style=flat-square)](https://www.nuget.org/packages/Actyx.Sdk/)
 [![JS/TS SDK](https://img.shields.io/npm/v/@actyx/sdk?label=JS%2FTS%20SDK&style=flat-square)](https://www.npmjs.com/package/@actyx/sdk)
 [![JS/TS Pond](https://img.shields.io/npm/v/@actyx/pond?label=JS%2FTS%20Pond&style=flat-square)](https://www.npmjs.com/package/@actyx/pond)
 
