@@ -3,14 +3,6 @@ name: Generate Artifacts and Release Candidate
 # This workflow assumes we are using a single PC for most of the tasks.
 
 # Summary of the required secrets:
-# - Integration tests
-#   - ACTYX_PUBLIC_KEY
-#   - AUTH_TEST_LICENSE
-#   - AUTH_TEST_NODE_LICENSE
-#   - AUTH_TEST_SIGNATURE
-# - AWS Instance Management
-#   - AWS_ACCESS_KEY_ID
-#   - AWS_SECRET_ACCESS_KEY
 # - Artifact Upload
 #   - AZURE_BLOB_STORAGE_CONNECTION_STRING
 #   - DOCKER_PASSWORD
@@ -327,8 +319,10 @@ jobs:
           name: ${{github.sha}}/node-manager-mac
           path: js/node-manager/dist/artifacts
 
-  integration:
+  create-release-candidate:
     runs-on: [self-hosted, Linux]
+    if: ${{ github.ref == 'refs/heads/master' }}
+
     needs:
       # We need to depend on this one to be able to access the "needs" context
       - calculate-actyx-version
@@ -341,69 +335,6 @@ jobs:
       - make-node-manager-windows
       - make-node-manager-macos
       - make-docker
-
-    env:
-      ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
-      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
-      ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
-      ACTYX_VERSION_POND: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_POND }}
-      ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
-      ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
-
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: fixpoint/azblob-download-artifact@7a08e6efcdcaf918c897a5b9a4a9011d30ddeb38
-        with:
-          connection-string: ${{ secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING }}
-          container: ${{ vars.BLOB_STORAGE_CONTAINER_CI }}
-          name: ${{ github.sha }}
-          path: pipeline-artifacts
-      - name: Setup the binaries directory structure
-        run: |
-          set -e
-          mkdir -p dist/bin
-          cd pipeline-artifacts
-          for i in `ls`; do mv $i/* ../dist/bin/; done
-          cd ../dist
-          find -type f -exec chmod +x {} \;
-          cp -r bin/linux-x86_64 bin/current
-      - name: Run the integration tests (npm run test:ci)
-        run: |
-          set -e
-          make prepare-js all-js
-          cd integration
-          source ~/.nvm/nvm.sh
-          nvm use
-          npm install
-          npm run test:ci
-        env:
-          # To launch the AWS instances
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          # For the integration tests
-          ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
-          AUTH_TEST_SIGNATURE: ${{ secrets.AUTH_TEST_SIGNATURE }}
-          AUTH_TEST_LICENSE: ${{ secrets.AUTH_TEST_LICENSE }}
-          AUTH_TEST_NODE_LICENSE: ${{ secrets.AUTH_TEST_NODE_LICENSE }}
-          # To download the private images from DockerHub
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
-        if: ${{ failure() }}
-        with:
-          connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
-          container: test-logs
-          name: ${{github.sha}}/logs
-          path: integration/logs
-
-  create-release-candidate:
-    runs-on: [self-hosted, Linux]
-    if: ${{ github.ref == 'refs/heads/master' }}
-
-    needs:
-      - integration
 
     steps:
       - uses: actions/checkout@v3
@@ -433,7 +364,7 @@ jobs:
     if: ${{ always() }}
 
     needs:
-      - integration
+      - create-release-candidate
 
     steps:
       - uses: jmg-duarte/discord-workflow-status@5a826a3e649f9d1157507494d35811ec2f84380c
