@@ -3,6 +3,8 @@ import { Layout } from '../components/Layout'
 import { useAppState } from '../app-state'
 import clsx from 'clsx'
 import { Button } from '../components/basics'
+import { NodeSelector } from '../components/NodeSelector'
+import { useCtrlEnter, useKeydown } from '../components/hooks/use-keycapture'
 import AceEditor from 'react-ace'
 import 'ace-builds/src-noconflict/mode-sql'
 import { EventDiagnostic, Diagnostic, EventResponse } from '../../common/types'
@@ -11,7 +13,6 @@ import { saveToClipboard } from '../util'
 import { ClipboardCheckedIcon, ClipboardIcon } from '../components/icons'
 import { safeErrorToStr } from 'common/util'
 import { BackgroundColor, BackgroundColorSpectrum } from '../tailwind'
-import { NodeSelector } from '../components/NodeSelector'
 
 type RowProps = {
   accentColor?: BackgroundColorSpectrum
@@ -419,16 +420,14 @@ const Screen = () => {
     setWasSavedToClipboard(true)
   }
 
+  const runQueryDisabled = !selectedNodeAddr || !queryStr
+
   const runQuery = async () => {
+    if (runQueryDisabled) return
+
     setQueryRunning(true)
     setQueryState((s) => ({ ...s, results: [] }))
     setCurrentPageIndex(0)
-    if (!selectedNodeAddr) {
-      return
-    }
-    if (!queryStr) {
-      return
-    }
     try {
       const { events } = await query({ addr: selectedNodeAddr, query: queryStr })
       if (!events) {
@@ -447,6 +446,9 @@ const Screen = () => {
       setQueryError(safeErrorToStr(error))
     }
   }
+
+  // Ctrl+Enter to submit
+  useCtrlEnter(runQuery)
 
   return (
     <Layout title={`Query`}>
@@ -483,7 +485,7 @@ const Screen = () => {
                   useWorker: false,
                 }}
               />
-              <div className="flex flex-row justify-end pt-3">
+              <div className="flex flex-row pt-3 justify-stretch items-stretch gap-3">
                 <NodeSelector
                   nodes={nodes}
                   selectedNodeAddr={selectedNodeAddr}
@@ -499,7 +501,7 @@ const Screen = () => {
 
                 <Button
                   color="blue"
-                  disabled={!selectedNodeAddr || !queryStr}
+                  disabled={runQueryDisabled}
                   onClick={runQuery}
                   working={queryRunning}
                 >

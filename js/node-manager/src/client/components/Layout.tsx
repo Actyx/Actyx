@@ -12,6 +12,7 @@ import {
   KeyIcon,
   SearchIcon,
   TopicsIcon,
+  PencilIcon,
 } from './icons'
 import { ClassName } from '../react'
 import { useAppState, AppActionKey, AppStateKey } from '../app-state'
@@ -245,7 +246,7 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
         />
         <NavButton
           onClick={() => dispatch({ key: AppActionKey.ShowPublish })}
-          icon={<SearchIcon />}
+          icon={<PencilIcon />}
           text="Publish"
           active={state.key === AppStateKey.Publish}
           hidden={hideMenuItems}

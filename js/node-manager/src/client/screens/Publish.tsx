@@ -1,9 +1,11 @@
 import * as E from 'fp-ts/Either'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import AceEditor from 'react-ace'
-import { Button } from '../components/basics'
+import { Button, Label } from '../components/basics'
 import { Layout } from '../components/Layout'
 import { NodeSelector } from '../components/NodeSelector'
+import { useDebouncer } from '../components/hooks/use-debouncer'
+import { useCtrlEnter } from '../components/hooks/use-keycapture'
 import { useAppState, Actions } from '../app-state'
 import 'ace-builds/src-noconflict/mode-json'
 import 'ace-builds/src-noconflict/mode-text'
@@ -27,18 +29,6 @@ const Screen = () => {
     .map((x) => x.trim())
     .filter((x) => x)
 
-  useEffect(() => {
-    payloadErrorDebounce.register(() => {
-      setPayloadErrorMessage(() => {
-        const maybeJSON = payloadField.trim()
-        if (!maybeJSON) return null
-        const result = verifyJSON(payloadField)
-        if (E.isRight(result)) return null
-        return String(result.left)
-      })
-    }, 800)
-  }, [payloadField])
-
   const publishButtonDisabled = !selectedNodeAddr || tags.length === 0
   const publishButtonFn = !selectedNodeAddr
     ? undefined
@@ -60,10 +50,51 @@ const Screen = () => {
         setIsPublishing(false)
       }
 
+  // Check for JSON format errors
+  useEffect(() => {
+    payloadErrorDebounce.register(() => {
+      setPayloadErrorMessage(() => {
+        const maybeJSON = payloadField.trim()
+        if (!maybeJSON) return null
+        const result = verifyJSON(payloadField)
+        if (E.isRight(result)) return null
+        return String(result.left)
+      })
+    }, 500)
+  }, [payloadField])
+
+  // Ctrl+Enter to submit
+  useCtrlEnter(publishButtonFn)
+
   return (
     <Layout title={`Publish`}>
-      <div className="bg-white rounded p-4 min-h-full w-full min-w-full max-w-full overflow-hidden flex flex-col items-stretch h-full">
-        <div className="pt-3 z-10">
+      <div className="bg-white rounded p-4 min-h-full w-full min-w-full max-w-full overflow-hidden flex flex-col items-stretch h-full gap-3">
+        <div>
+          <Label htmlFor={TAGS_EDITOR_CONFIG.name}>Tags (comma delimited)</Label>
+          <AceEditor
+            {...TAGS_EDITOR_CONFIG}
+            className="w-full border rounded-md"
+            onChange={(val) =>
+              setPublishState((prev) => ({ ...prev, tagsField: stripNewLines(val) }))
+            }
+            placeholder="created,started,working,finished"
+            width={`100%`}
+            value={tagsField}
+          />
+        </div>
+        <div>
+          <Label htmlFor={PAYLOAD_EDITOR_CONFIG.name}>Payload (JSON)</Label>
+          <AceEditor
+            {...PAYLOAD_EDITOR_CONFIG}
+            className="w-full border rounded-md"
+            placeholder={PAYLOAD_PLACEHOLDER}
+            onChange={(val) => setPublishState((prev) => ({ ...prev, payloadField: val }))}
+            height={`120px`}
+            width={`100%`}
+            value={payloadField}
+          />
+        </div>
+        <div className="z-10 flex flex-row justify-stretch items-stretch gap-3">
           <NodeSelector
             nodes={nodes}
             selectedNodeAddr={selectedNodeAddr}
@@ -71,29 +102,6 @@ const Screen = () => {
               setPublishState((prev) => ({ ...prev, node: node?.value || undefined }))
             }
           />
-        </div>
-        <div className="pt-3">
-          <AceEditor
-            {...TAGS_EDITOR_CONFIG}
-            className="w-full border rounded-md"
-            onChange={(val) => setPublishState((prev) => ({ ...prev, tagsField: val }))}
-            placeholder="Tags | comma delimited | e.g. 'created,started,working,finished'"
-            width={`100%`}
-            value={tagsField}
-          />
-        </div>
-        <div className="pt-3">
-          <AceEditor
-            {...PAYLOAD_EDITOR_CONFIG}
-            className="w-full border rounded-md"
-            placeholder={`Payload | JSON | e.g. '{ "foo": "bar" }'`}
-            onChange={(val) => setPublishState((prev) => ({ ...prev, payloadField: val }))}
-            height={`120px`}
-            width={`100%`}
-            value={payloadField}
-          />
-        </div>
-        <div className="pt-3">
           <Button
             color="blue"
             disabled={publishButtonDisabled}
@@ -103,7 +111,7 @@ const Screen = () => {
             Publish
           </Button>
         </div>
-        <div className="pt-3">
+        <div>
           <ResultReport payloadErrorMessage={payloadErrorMessage} result={lastResult} />
         </div>
       </div>
@@ -118,18 +126,16 @@ const ResultReport = ({
   result: null | E.Either<string, PublishResponse>
   payloadErrorMessage: null | string
 }) => {
-  const successfulResult =
+  const successMessage =
     (result && E.isRight(result) && result.right.data[0] && JSON.stringify(result.right.data[0])) ||
     undefined
-  const failedResult = result && E.isLeft(result) && JSON.stringify(result.left)
+  const failedMessage = result && E.isLeft(result) && JSON.stringify(result.left)
 
   return (
     <div>
       {payloadErrorMessage && <div className="text-yellow-600">{payloadErrorMessage}</div>}
-      {successfulResult && (
-        <div className="text-lime-600">Publish Successful {successfulResult}</div>
-      )}
-      {failedResult && <div className="text-red-600">Error: {failedResult}</div>}
+      {successMessage && <div className="text-lime-600">Publish Successful {successMessage}</div>}
+      {failedMessage && <div className="text-red-600">Error: {failedMessage}</div>}
     </div>
   )
 }
@@ -170,6 +176,12 @@ const PAYLOAD_EDITOR_CONFIG = {
   },
 }
 
+const PAYLOAD_PLACEHOLDER = `{
+  "foo": "bar"
+}`
+
+const stripNewLines = (str: string) => str.replace(/\n/gi, '')
+
 const verifyJSON = (str: string) =>
   E.tryCatch(
     () => JSON.parse(str),
@@ -200,34 +212,4 @@ const publishImpl = ({
   })
     .then((x) => E.right(x))
     .catch((e) => E.left(String(e)))
-}
-
-// ==========
-// Hooks
-// ==========
-
-const makeDebouncer = () => {
-  let storedTimeout: number | undefined = undefined
-
-  const clear = () => clearTimeout(storedTimeout)
-
-  const register = (fn: Function, timeout: number) => {
-    clear()
-    storedTimeout = setTimeout(fn, timeout) as unknown as number
-  }
-
-  return { register, clear }
-}
-
-const useDebouncer = () => {
-  const inner = useMemo(makeDebouncer, [])
-
-  useEffect(() => {
-    // clear when exit
-    return () => {
-      inner.clear()
-    }
-  }, [inner])
-
-  return inner
 }
