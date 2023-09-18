@@ -77,9 +77,9 @@ fi
 	-dupgradecode="$UPGRADE_UUID" \
 	-dactyxexepath="$ACTYX_EXE_PATH" \
 	"$WIX_FILE")
-(cd "$INSTALLER_SRC" && $LIGHT -out "$SIGNED_INSTALLER_NAME" "$WIXOBJ_FILE")
+(cd "$INSTALLER_SRC" && $LIGHT -out "$INSTALLER_NAME" "$WIXOBJ_FILE")
 
-chmod +r "$INSTALLER_SRC/$SIGNED_INSTALLER_NAME"
+chmod +r "$INSTALLER_SRC/$INSTALLER_NAME"
 
 echo "$WIN_CODESIGN_CERTIFICATE" | base64 -di > cert.pfx
 
@@ -98,7 +98,7 @@ osslsigncode sign \
 	-n "Actyx" \
 	-i "http://www.actyx.com/" \
 	-t "http://timestamp.digicert.com" \
-	-in "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME" \
+	-in "$INSTALLER_SRC/$INSTALLER_NAME" \
 	-out "$INSTALLER_SRC/$INSTALLER_NAME"
 
 mkdir -p "$DIST_DIR"
