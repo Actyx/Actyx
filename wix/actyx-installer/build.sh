@@ -63,6 +63,9 @@ echo ": ROOT_UUID: $ROOT_UUID"
 VERSION_UUID=$(python -c "import uuid; print str(uuid.uuid5(uuid.UUID('{$ROOT_UUID}'),'$VERSION')).upper()")
 echo ": VERSION_UUID: $VERSION_UUID"
 
+UNSIGNED_INSTALLER_NAME="actyx-x64-unsigned.msi"
+echo ": UNSIGNED_INSTALLER_NAME: $UNSIGNED_INSTALLER_NAME"
+
 INSTALLER_NAME="actyx-x64.msi"
 echo ": INSTALLER_NAME: $INSTALLER_NAME"
 
@@ -77,9 +80,9 @@ fi
 	-dupgradecode="$UPGRADE_UUID" \
 	-dactyxexepath="$ACTYX_EXE_PATH" \
 	"$WIX_FILE")
-(cd "$INSTALLER_SRC" && $LIGHT -out "$INSTALLER_NAME" "$WIXOBJ_FILE")
+(cd "$INSTALLER_SRC" && $LIGHT -out "$UNSIGNED_INSTALLER_NAME" "$WIXOBJ_FILE")
 
-chmod +r "$INSTALLER_SRC/$INSTALLER_NAME"
+chmod +r "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME"
 
 echo "$WIN_CODESIGN_CERTIFICATE" | base64 -di > cert.pfx
 
@@ -98,7 +101,7 @@ osslsigncode sign \
 	-n "Actyx" \
 	-i "http://www.actyx.com/" \
 	-t "http://timestamp.digicert.com" \
-	-in "$INSTALLER_SRC/$INSTALLER_NAME" \
+	-in "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME" \
 	-out "$INSTALLER_SRC/$INSTALLER_NAME"
 
 mkdir -p "$DIST_DIR"
