@@ -17,15 +17,15 @@ if [ -z "$2" ]; then
     exit 1
 fi
 
-# if [ -z "$WIN_CODESIGN_CERTIFICATE" ]; then
-#     echo "WIN_CODESIGN_CERTIFICATE not set; please set"
-#     exit 1
-# fi
+if [ -z "$WIN_CODESIGN_CERTIFICATE" ]; then
+    echo "WIN_CODESIGN_CERTIFICATE not set; please set"
+    exit 1
+fi
 
-# if [ -z "$WIN_CODESIGN_PASSWORD" ]; then
-#     echo "WIN_CODESIGN_PASSWORD not set; please set"
-#     exit 1
-# fi
+if [ -z "$WIN_CODESIGN_PASSWORD" ]; then
+    echo "WIN_CODESIGN_PASSWORD not set; please set"
+    exit 1
+fi
 
 VERSION=$(echo "$1" | sed 's/^\([0-9]*\.[0-9]*\.[0-9]*\).*$/\1/')
 echo ": VERSION: $VERSION"
@@ -63,9 +63,6 @@ echo ": ROOT_UUID: $ROOT_UUID"
 VERSION_UUID=$(python -c "import uuid; print str(uuid.uuid5(uuid.UUID('{$ROOT_UUID}'),'$VERSION')).upper()")
 echo ": VERSION_UUID: $VERSION_UUID"
 
-UNSIGNED_INSTALLER_NAME="actyx-x64-unsigned.msi"
-echo ": UNSIGNED_INSTALLER_NAME: $UNSIGNED_INSTALLER_NAME"
-
 INSTALLER_NAME="actyx-x64.msi"
 echo ": INSTALLER_NAME: $INSTALLER_NAME"
 
@@ -80,37 +77,37 @@ fi
 	-dupgradecode="$UPGRADE_UUID" \
 	-dactyxexepath="$ACTYX_EXE_PATH" \
 	"$WIX_FILE")
-(cd "$INSTALLER_SRC" && $LIGHT -out "$UNSIGNED_INSTALLER_NAME" "$WIXOBJ_FILE")
+(cd "$INSTALLER_SRC" && $LIGHT -out "$SIGNED_INSTALLER_NAME" "$WIXOBJ_FILE")
 
-chmod +r "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME"
+chmod +r "$INSTALLER_SRC/$SIGNED_INSTALLER_NAME"
 
-# echo "$WIN_CODESIGN_CERTIFICATE" | base64 -di > cert.pfx
+echo "$WIN_CODESIGN_CERTIFICATE" | base64 -di > cert.pfx
 
-# echo "Extracting key"
-# openssl pkcs12 -in cert.pfx -nocerts -nodes -out key.pem -password pass:"$WIN_CODESIGN_PASSWORD"
-# echo "Extracting certificate"
-# openssl pkcs12 -in cert.pfx -nokeys -nodes -out cert.pem -password pass:"$WIN_CODESIGN_PASSWORD"
-# echo "Creating RSA key"
-# openssl rsa -in key.pem -outform DER -out authenticode.key
-# echo "Creating cert"
-# openssl crl2pkcs7 -nocrl -certfile cert.pem -outform DER -out authenticode.spc
-# echo "Signing MSI"
-# osslsigncode sign \
-# 	-certs authenticode.spc \
-# 	-key authenticode.key \
-# 	-n "Actyx" \
-# 	-i "http://www.actyx.com/" \
-# 	-t "http://timestamp.digicert.com" \
-# 	-in "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME" \
-# 	-out "$INSTALLER_SRC/$INSTALLER_NAME"
+echo "Extracting key"
+openssl pkcs12 -in cert.pfx -nocerts -nodes -out key.pem -password pass:"$WIN_CODESIGN_PASSWORD"
+echo "Extracting certificate"
+openssl pkcs12 -in cert.pfx -nokeys -nodes -out cert.pem -password pass:"$WIN_CODESIGN_PASSWORD"
+echo "Creating RSA key"
+openssl rsa -in key.pem -outform DER -out authenticode.key
+echo "Creating cert"
+openssl crl2pkcs7 -nocrl -certfile cert.pem -outform DER -out authenticode.spc
+echo "Signing MSI"
+osslsigncode sign \
+	-certs authenticode.spc \
+	-key authenticode.key \
+	-n "Actyx" \
+	-i "http://www.actyx.com/" \
+	-t "http://timestamp.digicert.com" \
+	-in "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME" \
+	-out "$INSTALLER_SRC/$INSTALLER_NAME"
 
 mkdir -p "$DIST_DIR"
 ls -lap "$DIST_DIR"
 
-# cp "$INSTALLER_SRC/$INSTALLER_NAME" "$DIST_DIR"
+cp "$INSTALLER_SRC/$INSTALLER_NAME" "$DIST_DIR"
 
 # We're using the normal name because it is simpler to change the code here rather than
 # at the integration tests level
-cp "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME" "$DIST_DIR/$INSTALLER_NAME"
+# cp "$INSTALLER_SRC/$UNSIGNED_INSTALLER_NAME" "$DIST_DIR/$INSTALLER_NAME"
 
 exit 0
