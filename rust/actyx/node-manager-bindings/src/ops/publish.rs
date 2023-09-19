@@ -27,7 +27,7 @@ async fn publish(mut tx: Sender<Task>, peer: PeerId, data: Vec<PublishEvent>) ->
                 let Some(result) = stream.next().await else {
                     return ax_err(
                         util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
-                        format!("EventsRequests::Publish returned empty"),
+                        "EventsRequests::Publish returned empty".to_string(),
                     )
                 };
 

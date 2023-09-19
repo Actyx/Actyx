@@ -469,6 +469,7 @@ where
     Ok(v)
 }
 
+#[allow(dead_code)]
 pub async fn publish(
     task: &mut Sender<Task>,
     peer_id: PeerId,
