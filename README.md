@@ -9,7 +9,6 @@
 [![dockerhub](https://img.shields.io/docker/v/actyx/actyx/latest?label=Actyx%20version&style=flat-square)](https://hub.docker.com/repository/docker/actyx/actyx)
 [![Rust SDK](https://img.shields.io/crates/v/actyx_sdk?label=Rust%20SDK&style=flat-square)](https://crates.io/crates/actyx_sdk)
 [![JS/TS SDK](https://img.shields.io/npm/v/@actyx/sdk?label=JS%2FTS%20SDK&style=flat-square)](https://www.npmjs.com/package/@actyx/sdk)
-[![JS/TS Pond](https://img.shields.io/npm/v/@actyx/pond?label=JS%2FTS%20Pond&style=flat-square)](https://www.npmjs.com/package/@actyx/pond)
 
 ![commits](https://img.shields.io/github/commit-activity/m/Actyx/Actyx?style=flat-square)
 ![contributors](https://img.shields.io/github/contributors/Actyx/Actyx?style=flat-square)
@@ -55,7 +54,6 @@ cargo run --bin ax events query localhost 'FROM "discovery" FILTER IsDefined(_.N
 
 The last argument is an [AQL expression](https://developer.actyx.com/docs/reference/aql), you can play around a little bit with the `'discovery'` and (after some time) `'metrics'` events that Actyx emits by itself.
 For emitting events and writing more complex logic, please take a look at [the Typescript SDK](js/sdk/README.md) (C# is on its way).
-Our full-fledged event-sourcing support lives in [the Pond library](js/pond/README.md).
 
 ## How to get Actyx
 
@@ -88,7 +86,7 @@ This is a monorepo, containing all parts that make up the Actyx suite.
 We have structured the parts by programming language:
 
 - `dotnet/Actyx-SDK` contains the [.Net SDK](https://www.nuget.org/packages/Actyx.Sdk/), written in C#
-- `js/sdk` and `js/pond` contain the Typescript/Javascript [SDK](https://www.npmjs.com/package/@actyx/sdk) and [event-sourcing libraries](https://www.npmjs.com/package/@actyx/pond)
+- `js/sdk` contains the Typescript/Javascript [SDK](https://www.npmjs.com/package/@actyx/sdk)
 - `js/node-manager` holds the Electron app _Actyx Node Manager_, a graphical version of the Actyx CLI
 - `jvm/os-android` hosts the Android-specific part of Actyx (written in Kotlin) and the build definition for the APK
 - `rust/actyx` is the **main codebase** containing the native code for Actyx and Actyx CLI
