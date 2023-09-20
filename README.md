@@ -8,7 +8,6 @@
 
 [![dockerhub](https://img.shields.io/docker/v/actyx/actyx/latest?label=Actyx%20version&style=flat-square)](https://hub.docker.com/repository/docker/actyx/actyx)
 [![Rust SDK](https://img.shields.io/crates/v/actyx_sdk?label=Rust%20SDK&style=flat-square)](https://crates.io/crates/actyx_sdk)
-[![C#/.Net SDK](https://img.shields.io/nuget/v/Actyx.Sdk?label=C%23%2F.Net%20SDK&style=flat-square)](https://www.nuget.org/packages/Actyx.Sdk/)
 [![JS/TS SDK](https://img.shields.io/npm/v/@actyx/sdk?label=JS%2FTS%20SDK&style=flat-square)](https://www.npmjs.com/package/@actyx/sdk)
 [![JS/TS Pond](https://img.shields.io/npm/v/@actyx/pond?label=JS%2FTS%20Pond&style=flat-square)](https://www.npmjs.com/package/@actyx/pond)
 
@@ -69,8 +68,8 @@ Common commands are:
 # compile Actyx and Actyx CLI for your current host system
 make current
 
-# build all Typescript and .Net libraries
-make all-js all-dotnet
+# build all Typescript
+make all-js
 ```
 
 There are provisions in the Makefile for cross-building, but those currently only work for Actyx employees — we’ll fix that soon.
@@ -102,6 +101,6 @@ The [website](https://developer.actyx.com) sources are in the `web` folder, acco
 
 ## Licensing
 
-Actyx, Actyx CLI, Actyx Node Manager, and the SDKs (for Typescript/Javascript, C#, Rust) are available under the [Apache 2.0](LICENSE.Apache_2.0) open-source license. This license and the accompanying [NOTICE](NOTICE) applies to all files in the `dotnet`, `integration`, `js`, `jvm`, `rust`, `third-party`, `wix` directories except where specified otherwise.
+Actyx, Actyx CLI, Actyx Node Manager, and the SDKs (for Typescript/Javascript, Rust) are available under the [Apache 2.0](LICENSE.Apache_2.0) open-source license. This license and the accompanying [NOTICE](NOTICE) applies to all files in the `dotnet`, `integration`, `js`, `jvm`, `rust`, `third-party`, `wix` directories except where specified otherwise.
 
 For commercial licensing please contact [Actyx Support](https://www.actyx.com/enterprise).

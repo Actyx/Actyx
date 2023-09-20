@@ -96,8 +96,6 @@ image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
 image-darwin = actyx/util:osxbuilder-21c53b627e3c4f06514bef593e4ef7f23bb91581
 
-image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
-
 # list all os-arch and binary names
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 macos-aarch64
 binaries = ax ax.exe actyx actyx.exe
@@ -182,8 +180,6 @@ current: dist/bin/current/ax dist/bin/current/actyx
 
 all-js: dist/js/pond dist/js/sdk
 
-all-dotnet: dist/dotnet/cli dist/dotnet/sdk-integration
-
 # Create a `make-always` target that always has the current timestamp.
 # Depending on this ensures that the rule is always executed.
 .PHONY: make-always
@@ -244,10 +240,10 @@ prepare-js:
 
 # execute linter, style checker and tests for everything
 # THIS TARGET IS NOT RUN FOR PR VALIDATION — see azure-piplines
-validate: validate-rust validate-os validate-netsim validate-release validate-os-android validate-js validate-dotnet assert-clean
+validate: validate-rust validate-os validate-netsim validate-release validate-os-android validate-js assert-clean
 
 # declare all the validate targets to be phony
-.PHONY: validate-os validate-os-android validate-js validate-dotnet
+.PHONY: validate-os validate-os-android validate-js
 
 .PHONY: diagnostics
 
@@ -381,19 +377,6 @@ dist/js/pond: make-always
 		npm ci && \
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
-
-dist/dotnet/cli: make-always
-	mkdir -p $@
-	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet publish CLI --output /src/$@/
-
-dist/dotnet/sdk-integration: make-always
-	mkdir -p $@
-	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet publish Sdk.IntegrationTests --output /src/$@/
-
-validate-dotnet: validate-dotnet-sdk
-
-validate-dotnet-sdk:
-	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet test Sdk.Tests
 
 validate-node-manager-bindings:
 	cd rust/actyx/node-manager-bindings && \
