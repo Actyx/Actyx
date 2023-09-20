@@ -148,6 +148,8 @@ jobs:
         run: make all-windows assert-clean
         env:
           ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
+          WIN_CODESIGN_CERTIFICATE: ${{ secrets.WIN_CODESIGN_CERTIFICATE }}
+          WIN_CODESIGN_PASSWORD: ${{ secrets.WIN_CODESIGN_PASSWORD }}
       - uses: fixpoint/azblob-upload-artifact@41eaaaa8fa50a5ba144d1d106c0e4ca11ca60c08
         with:
           connection-string: ${{secrets.AZURE_BLOB_STORAGE_CONNECTION_STRING}}
