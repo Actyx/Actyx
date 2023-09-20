@@ -11,6 +11,7 @@ import {
   Diagnostics,
   SwarmKey,
   Preferences,
+  Publish,
   Query,
   Topics,
   Settings,
@@ -26,7 +27,7 @@ const Root = () => {
   const [fatalError, setFatalError] = useState<null | FatalErrorT>(null)
 
   useEffect(() => {
-    ; (async () => {
+    ;(async () => {
       setFatalError(await waitForFatalError())
     })()
   }, [])
@@ -65,6 +66,7 @@ const Content: React.FC = () => {
       })
     }
   }, [analytics, haveLoggedStartup])
+
   switch (state.key) {
     case AppStateKey.Overview:
       return <NodesOverview />
@@ -84,6 +86,8 @@ const Content: React.FC = () => {
       return <Preferences />
     case AppStateKey.SwarmKey:
       return <SwarmKey />
+    case AppStateKey.Publish:
+      return <Publish />
     case AppStateKey.Query:
       return <Query />
     case AppStateKey.Settings:

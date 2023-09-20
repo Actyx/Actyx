@@ -14,6 +14,8 @@ import {
   SetSettingsResponse,
   ShutdownNodeRequest,
   ShutdownNodeResponse,
+  PublishRequest,
+  PublishResponse,
   QueryRequest,
   QueryResponse,
   TopicLsRequest,
@@ -93,7 +95,8 @@ export const RPC_SignAppManifest = mkRPC(
   SignAppManifestResponse,
 )
 
+export const RPC_Publish = mkRPC('Publish', PublishRequest, PublishResponse)
 export const RPC_Query = mkRPC('Query', QueryRequest, QueryResponse)
 
-export const RPC_TopicLs = mkRPC("TopicLs", TopicLsRequest, TopicLsResponse)
-export const RPC_TopicDelete = mkRPC("TopicDelete", TopicDeleteRequest, TopicDeleteResponse)
+export const RPC_TopicLs = mkRPC('TopicLs', TopicLsRequest, TopicLsResponse)
+export const RPC_TopicDelete = mkRPC('TopicDelete', TopicDeleteRequest, TopicDeleteResponse)

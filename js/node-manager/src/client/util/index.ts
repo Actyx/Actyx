@@ -15,6 +15,7 @@ import {
   RPC_Connect,
   RPC_TopicLs,
   RPC_TopicDelete,
+  RPC_Publish,
 } from '../../common/ipc'
 import { isLeft } from 'fp-ts/lib/Either'
 import { ioErrToStr } from '../../common/util'
@@ -94,21 +95,21 @@ export const waitForNoUserKeysFound = (): Promise<void> =>
 
 const mkRpc =
   <Req, Resp>(rpc: RPC<Req, Resp>) =>
-    (req: Req): Promise<Resp> =>
-      ipcRenderer.invoke(rpc.ipcCode, rpc.request.encode(req)).then((arg) => {
-        if (isLeft(arg)) {
-          console.log(`got error: ${JSON.stringify(arg.left)}`)
-          throw arg.left
-        } else {
-          const resp = rpc.response.decode(arg.right)
-          if (isLeft(resp)) {
-            throw new Error(
-              `error decoding response for IPC RPC ${rpc.ipcCode}: ${ioErrToStr(resp.left)}`,
-            )
-          }
-          return resp.right
+  (req: Req): Promise<Resp> =>
+    ipcRenderer.invoke(rpc.ipcCode, rpc.request.encode(req)).then((arg) => {
+      if (isLeft(arg)) {
+        console.log(`got error: ${JSON.stringify(arg.left)}`)
+        throw arg.left
+      } else {
+        const resp = rpc.response.decode(arg.right)
+        if (isLeft(resp)) {
+          throw new Error(
+            `error decoding response for IPC RPC ${rpc.ipcCode}: ${ioErrToStr(resp.left)}`,
+          )
         }
-      })
+        return resp.right
+      }
+    })
 
 export const connect = mkRpc(RPC_Connect)
 export const getNodeDetails = mkRpc(RPC_GetNodeDetails)
@@ -118,6 +119,7 @@ export const createUserKeyPair = mkRpc(RPC_CreateUserKeyPair)
 export const generateSwarmKey = mkRpc(RPC_GenerateSwarmKey)
 export const signAppManifest = mkRpc(RPC_SignAppManifest)
 export const query = mkRpc(RPC_Query)
+export const publish = mkRpc(RPC_Publish)
 export const getTopicList = mkRpc(RPC_TopicLs)
 export const deleteTopic = mkRpc(RPC_TopicDelete)
 

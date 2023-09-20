@@ -17,6 +17,7 @@ pub(crate) mod generate_swarm_key;
 pub(crate) mod get_node_details;
 pub(crate) mod get_topic_list;
 pub(crate) mod on_disconnect;
+pub(crate) mod publish;
 pub(crate) mod query;
 pub(crate) mod set_settings;
 pub(crate) mod shutdown_node;

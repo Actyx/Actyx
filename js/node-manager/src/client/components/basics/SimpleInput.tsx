@@ -1,7 +1,7 @@
 import React from 'react'
 import { ClassName } from '../../react'
 import clsx from 'clsx'
-import { Button } from './'
+import { Button, Label } from './'
 
 interface InputProps {
   disabled?: boolean
@@ -28,9 +28,7 @@ const Input: React.FC<InputProps & ClassName> = ({
   button,
 }) => (
   <div className={clsx(className)}>
-    <label htmlFor={label} className="block text-sm font-medium text-gray-500 mb-1">
-      {label}
-    </label>
+    <Label htmlFor={label}>{label}</Label>
     <div className="flex">
       <input
         type="text"

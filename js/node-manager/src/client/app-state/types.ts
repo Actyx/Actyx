@@ -8,6 +8,7 @@ export const enum AppStateKey {
   SwarmKey = 'SwarmKey',
   NodeDetail = 'NodeDetail',
   Preferences = 'Preferences',
+  Publish = 'Publish',
   Query = 'Query',
   Settings = 'Settings',
   Topics = 'Topics',
@@ -62,6 +63,10 @@ interface Topics {
   key: AppStateKey.Topics
 }
 
+interface Publish {
+  key: AppStateKey.Publish
+}
+
 export type AppState =
   | Overview
   | NodeDetail
@@ -75,6 +80,7 @@ export type AppState =
   | Query
   | Settings
   | Topics
+  | Publish
 
 export enum AppActionKey {
   ShowOverview = 'ShowOverview',
@@ -86,11 +92,11 @@ export enum AppActionKey {
   ShowDiagnostics = 'ShowDiagnostics',
   ShowNodeAuth = 'ShowNodeAuth',
   ShowPreferences = 'ShowPreferences',
+  ShowPublish = 'ShowPublish',
   ShowQuery = 'ShowQuery',
   ShowSettings = 'ShowSettings',
   ShowTopics = 'ShowTopics',
 }
-
 
 interface ShowOverview {
   key: AppActionKey.ShowOverview
@@ -124,6 +130,10 @@ interface ShowDiagnostics {
   key: AppActionKey.ShowDiagnostics
 }
 
+interface ShowPublish {
+  key: AppActionKey.ShowPublish
+}
+
 interface ShowQuery {
   key: AppActionKey.ShowQuery
 }
@@ -153,3 +163,4 @@ export type AppAction =
   | ShowQuery
   | ShowSettings
   | ShowTopics
+  | ShowPublish

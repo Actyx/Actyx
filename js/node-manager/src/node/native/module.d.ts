@@ -7,6 +7,7 @@ declare module '*node-manager-bindings.node' {
   export const generateSwarmKey: AsyncTask
   export const signAppManifest: AsyncTask
   export const shutdown: AsyncTask
+  export const publish: AsyncTask
   export const query: AsyncTask
   export const getTopicList: AsyncTask
   export const deleteTopic: AsyncTask

@@ -1,26 +1,18 @@
-import React, { CSSProperties, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Layout } from '../components/Layout'
 import { useAppState } from '../app-state'
-import { SimpleCanvas } from '../components/SimpleCanvas'
 import clsx from 'clsx'
 import { Button } from '../components/basics'
+import { NodeSelector } from '../components/NodeSelector'
+import { useCtrlEnter, useKeydown } from '../components/hooks/use-keycapture'
 import AceEditor from 'react-ace'
 import 'ace-builds/src-noconflict/mode-sql'
-import Select from 'react-select'
-import {
-  NodeType,
-  ReachableNode,
-  EventDiagnostic,
-  Diagnostic,
-  EventResponse,
-} from '../../common/types'
+import { EventDiagnostic, Diagnostic, EventResponse } from '../../common/types'
 import ReactJson from 'react-json-view'
 import { saveToClipboard } from '../util'
 import { ClipboardCheckedIcon, ClipboardIcon } from '../components/icons'
 import { safeErrorToStr } from 'common/util'
 import { BackgroundColor, BackgroundColorSpectrum } from '../tailwind'
-import semver from 'semver'
-import { optionCSS } from 'react-select/src/components/Option'
 
 type RowProps = {
   accentColor?: BackgroundColorSpectrum
@@ -68,15 +60,15 @@ export const Row = ({
           },
           [
             !!expandableObject &&
-            accentColor &&
-            backgroundColor !== accentColor &&
-            `hover:bg-${accentColor}-100`,
+              accentColor &&
+              backgroundColor !== accentColor &&
+              `hover:bg-${accentColor}-100`,
           ],
           [
             !!expandableObject &&
-            accentColor &&
-            accentColor === backgroundColor &&
-            `hover:bg-${accentColor}-200`,
+              accentColor &&
+              accentColor === backgroundColor &&
+              `hover:bg-${accentColor}-200`,
           ],
           className,
         )}
@@ -428,16 +420,14 @@ const Screen = () => {
     setWasSavedToClipboard(true)
   }
 
+  const runQueryDisabled = !selectedNodeAddr || !queryStr
+
   const runQuery = async () => {
+    if (runQueryDisabled) return
+
     setQueryRunning(true)
     setQueryState((s) => ({ ...s, results: [] }))
     setCurrentPageIndex(0)
-    if (!selectedNodeAddr) {
-      return
-    }
-    if (!queryStr) {
-      return
-    }
     try {
       const { events } = await query({ addr: selectedNodeAddr, query: queryStr })
       if (!events) {
@@ -457,44 +447,8 @@ const Screen = () => {
     }
   }
 
-  const options = nodes.map((n) => {
-    const opt = { value: n.addr }
-    if (n.type !== NodeType.Reachable) {
-      return {
-        ...opt,
-        label: `${n.addr}: node not reachable`,
-        disabled: true,
-      }
-    }
-    /**
-     * Here we check for version 2.2 or below. The reason is that Actyx 2.1 allows
-     * queries, but for some reason doesn't return anything when queried using SELECT.
-     */
-    const version = semver.coerce(n.details.version)
-    if (!semver.valid(version) || version === null || !semver.satisfies(version, '>=2.2.0')) {
-      return {
-        ...opt,
-        label: `${n.details.displayName} (${n.addr}): not supported; upgrade to Actyx 2.2.0 or above`,
-        disabled: true,
-      }
-    }
-    return {
-      ...opt,
-      label: `${n.details.displayName} (${n.addr})`,
-      disabled: false,
-    }
-  })
-  const defaultOption = options.find(
-    (o) => o.value === selectedNodeAddr && o.disabled === false,
-  )?.label
-  console.log('selected', selectedNodeAddr, 'default', defaultOption, 'end')
-  if (defaultOption === undefined && selectedNodeAddr !== undefined) {
-    // recently selected node is no longer available
-    setQueryState((s) => {
-      const { node, ...rest } = s
-      return rest
-    })
-  }
+  // Ctrl+Enter to submit
+  useCtrlEnter(runQuery)
 
   return (
     <Layout title={`Query`}>
@@ -531,26 +485,23 @@ const Screen = () => {
                   useWorker: false,
                 }}
               />
-              <div className="flex flex-row justify-end pt-3">
-                <Select
-                  options={options}
-                  isOptionDisabled={(o) => !!o.disabled}
-                  placeholder="Select node..."
+              <div className="flex flex-row pt-3 justify-stretch items-stretch gap-3">
+                <NodeSelector
+                  nodes={nodes}
+                  selectedNodeAddr={selectedNodeAddr}
                   onChange={(v) =>
                     v
                       ? setQueryState((s) => ({ ...s, node: v.value }))
                       : setQueryState((s) => {
-                        const { node, ...rest } = s
-                        return rest
-                      })
+                          const { node, ...rest } = s
+                          return rest
+                        })
                   }
-                  className="flex-grow mr-3"
-                  defaultInputValue={defaultOption}
                 />
 
                 <Button
                   color="blue"
-                  disabled={!selectedNodeAddr || !queryStr}
+                  disabled={runQueryDisabled}
                   onClick={runQuery}
                   working={queryRunning}
                 >
