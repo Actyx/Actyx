@@ -379,7 +379,9 @@ fn all_ax() -> anyhow::Result<()> {
             );
             ensure!(out.status.success());
             let inspect = serde_json::from_slice::<ActyxCliResult<NodesInspectResponse>>(&out.stdout)?;
-            let ActyxCliResult::OK { result, .. } = inspect else { bail!("cli error: {:?}", inspect) };
+            let ActyxCliResult::OK { result, .. } = inspect else {
+                bail!("cli error: {:?}", inspect)
+            };
             ensure!(result.admin_addrs.contains(&format!("/ip4/127.0.0.1/tcp/{}", port)));
         }
         Ok(())
@@ -420,7 +422,9 @@ fn all_actyx() -> anyhow::Result<()> {
                 );
                 ensure!(out.status.success());
                 let inspect = serde_json::from_slice::<ActyxCliResult<NodesInspectResponse>>(&out.stdout)?;
-                let ActyxCliResult::OK { result, .. } = inspect else { bail!("cli error: {:?}", inspect) };
+                let ActyxCliResult::OK { result, .. } = inspect else {
+                    bail!("cli error: {:?}", inspect)
+                };
                 ensure!(result.admin_addrs.contains(&format!("/ip4/127.0.0.1/tcp/{}", port)));
                 Ok(())
             },

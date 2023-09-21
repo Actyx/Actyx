@@ -60,7 +60,7 @@ CARGO_BUILD_JOBS ?= 8
 # Previously used for migrations, kept as placeholder for future use
 CARGO_BUILD_ARGS ?=
 
-export BUILD_RUST_TOOLCHAIN ?= 1.70.0
+export BUILD_RUST_TOOLCHAIN ?= 1.72.1
 
 # The stable image version is the git commit hash inside `Actyx/Actyx`, with
 # which the respective images was built. Whenever the build images (inside
