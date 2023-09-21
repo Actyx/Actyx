@@ -45,9 +45,9 @@ Event tagging fulfils the same function as indexing in those databases.
 
 ## Queries sent from TypeScript apps
 
-When you’re using the [Actyx Pond](../../conceptual/pond.mdx) you are using AQL queries under the hood:
-a [fish](https://developer.actyx.com/docs/reference/pond/modules#fish)’s `where` property directly corresponds to a query with only a `FROM` clause.
-The same goes for the SDK methods like [`Actyx.queryAllKnown`](../../reference/pond/interfaces/EventFns#queryallknown), which take a [`Where`](../../reference/pond/interfaces/Where) instance to select events.
+When you're using the [machine-runner](https://github.com/Actyx/machines/tree/master/machine-runner) you are using AQL queries under the hood:
+a [machine](https://github.com/Actyx/machines/tree/master/machine-runner#declaring-the-machines)'s `react` `nextFactory` parameter directly corresponds to a query with only a `FROM` clause.
+The same goes for the SDK methods like [`Actyx.queryAllKnown`](https://github.com/Actyx/Actyx/blob/master/js/sdk/src/event-fns.ts#L206), which take a [`Where`](https://github.com/Actyx/Actyx/blob/master/js/sdk/src/types/tags.ts#L53) instance to select events.
 
 <!-- prettier-ignore -->
 ```ts

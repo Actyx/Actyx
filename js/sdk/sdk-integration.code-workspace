@@ -4,9 +4,6 @@
 			"path": "."
 		},
 		{
-			"path": "..\\pond"
-		},
-		{
 			"path": "..\\..\\integration"
 		}
 	],

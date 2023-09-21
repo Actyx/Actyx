@@ -1,8 +1,0 @@
-{
-    "out": "../../web/developer.actyx.com/static/@actyx/pond/",
-    "includeVersion": true,
-    "theme": "minimal",
-    "readme": "none",
-    "disableSources": true	,
-    "listInvalidSymbolLinks": true
-}

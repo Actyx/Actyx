@@ -19,7 +19,7 @@
 #
 #   Validate code (unit tests):
 #     validate
-#     validate-{actyx-win-installer,js,js-pond,js-sdk,wix,os,os-android,website,website-developer,website-downloads}
+#     validate-{actyx-win-installer,js,js-sdk,wix,os,os-android,website,website-developer,website-downloads}
 #
 #   Generate artifacts (stored in dist/):
 #     all (default target)
@@ -178,7 +178,7 @@ $(foreach arch,$(architectures),$(eval $(call mkLinuxRule,$(arch))))
 
 current: dist/bin/current/ax dist/bin/current/actyx
 
-all-js: dist/js/pond dist/js/sdk
+all-js: dist/js/sdk
 
 # Create a `make-always` target that always has the current timestamp.
 # Depending on this ensures that the rule is always executed.
@@ -204,7 +204,6 @@ clean:
 	rm -rf web/downloads.actyx.com/node_modules
 	rm -rf web/developer.actyx.com/node_modules
 	rm -rf js/sdk/node_modules
-	rm -rf js/pond/node_modules
 	rm -rf jvm/os-android/gradle/build
 	rm -rf dist
 
@@ -224,8 +223,6 @@ prepare-docker:
 	docker pull actyx/util:node-manager-win-builder-$(IMAGE_VERSION)
 
 prepare-docker-crosscompile:
-	./bin/check-docker-requirements.sh check_docker_version
-	./bin/check-docker-requirements.sh enable_multi_arch_support
 	for i in `docker buildx ls | awk '{print $$1}'`; do docker buildx rm $$i; done
 	docker buildx create --use
 
@@ -320,7 +317,7 @@ validate-os-android: diagnostics
 	  ./gradlew clean ktlintCheck
 
 # validate all js
-validate-js: diagnostics validate-js-sdk validate-js-pond
+validate-js: diagnostics validate-js-sdk
 
 # validate js sdk
 validate-js-sdk:
@@ -329,27 +326,12 @@ validate-js-sdk:
 		npm run test && \
 		npm run build:prod
 
-# validate js pond
-validate-js-pond:
-	cd js/pond && source ~/.nvm/nvm.sh --no-use && nvm install && \
-		npm ci && \
-		npm run test && \
-		npm run build:prod
 
 # fix and test all js projects
-fix-js: diagnostics fix-js-sdk fix-js-pond
+fix-js: diagnostics fix-js-sdk
 
 fix-js-sdk:
 	cd js/sdk && source ~/.nvm/nvm.sh --no-use && nvm install && \
-		npm install && \
-		npm run lint:fix && \
-		npm run test && \
-		npm run build && \
-		npm run api:accept
-
-
-fix-js-pond:
-	cd js/pond && source ~/.nvm/nvm.sh --no-use && nvm install && \
 		npm install && \
 		npm run lint:fix && \
 		npm run test && \
@@ -361,15 +343,6 @@ fix-js-pond:
 dist/js/sdk: make-always
 	mkdir -p $@
 	cd js/sdk && source ~/.nvm/nvm.sh --no-use && nvm install && \
-		npm ci && \
-		npm run build:prod && \
-		mv `npm pack` ../../$@/
-
-# make js pond
-# this is running directly on the host container, so it needs to have nvm installed
-dist/js/pond: make-always
-	mkdir -p $@
-	cd js/pond && source ~/.nvm/nvm.sh --no-use && nvm install && \
 		npm ci && \
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
