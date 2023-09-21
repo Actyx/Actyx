@@ -11,9 +11,7 @@ on one or more edge devices and have these apps seamlessly communicate and share
 each other.
 
 This crate defines the data types needed for communicating with Actyx and provides Rust
-bindings for the Actyx APIs. It also provides serialization instances for processing the
-events with [`differential-dataflow`](https://docs.rs/differential-dataflow) under the `"dataflow"`
-[feature flag](#feature-flags).
+bindings for the Actyx APIs.
 
 # Examples
 
@@ -72,8 +70,6 @@ The default is to provide only the data types with serialization and deserializa
 for [`serde`](https://docs.rs/serde). The following features can be enabled in addition:
 
 - `client`: include HTTP client bindings using the [`reqwest`](https://docs.rs/reqwest) crate
-- `dataflow`: provide [`Abomonation`](https://docs.rs/abomonation) instances for use with tools
-  like [`Differential Dataflow`](https://docs.rs/differential-dataflow)
 - `arb`: provide
   [`quickcheck::Arbitrary`](https://docs.rs/quickcheck/latest/quickcheck/trait.Arbitrary.html)
   instances for common data types. This is useful for testing.

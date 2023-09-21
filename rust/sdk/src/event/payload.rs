@@ -9,7 +9,6 @@ use cbor_data::{cbor_via, Cbor};
 /// see [`Event::extract`](struct.Event.html#method.extract) for supported ways of using the
 /// data
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Ord, PartialOrd)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct Payload(Opaque);
 
 impl Payload {

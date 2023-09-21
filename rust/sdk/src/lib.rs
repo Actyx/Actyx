@@ -5,9 +5,6 @@
 #![allow(clippy::inconsistent_digit_grouping)]
 
 #[macro_use]
-#[cfg(feature = "dataflow")]
-extern crate abomonation_derive;
-#[macro_use]
 #[cfg(test)]
 extern crate serde_json;
 #[allow(unused_imports)]

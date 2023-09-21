@@ -1,7 +1,5 @@
 use std::{hash::Hash, sync::Arc};
 
-#[cfg(feature = "dataflow")]
-use abomonation::Abomonation;
 use intern_arc::{global::hash_interner, InternedHash};
 use serde::{
     de::{self, Visitor},
@@ -183,88 +181,6 @@ impl quickcheck::Arbitrary for ArcVal<str> {
     }
 }
 
-/// This abomination only works if the underlying bytes are known in number (Sized),
-/// can be moved around in memory (Unpin) and do no hold on to other things than the
-/// underlying bytes ('static).
-#[cfg(feature = "dataflow")]
-impl<T: Eq + Hash + Abomonation + 'static + Sized + Unpin + Send + Sync> Abomonation for ArcVal<T> {
-    unsafe fn entomb<W: std::io::Write>(&self, write: &mut W) -> std::io::Result<()> {
-        /* Since the value T has not yet been seen by abomonate (it is behind a pointer)
-         * we need to fully encode it.
-         */
-        abomonation::encode(self.deref(), write)
-    }
-    unsafe fn exhume<'b>(&mut self, bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
-        use std::{mem, ptr};
-        /* The idea here is to construct a new Arc<T> from the entombed bytes.
-         * The state of this ArcVal upon entry of this function contains only an invalid
-         * pointer to an ArcInner that we need to dispose of without trying to run
-         * its destructor (which would panic).
-         */
-        let (value, bytes) = abomonation::decode::<T>(bytes)?;
-        // value is just a reference to the first part of old bytes, so move it into a new Arc
-        let arc = hash_interner().intern_sized(ptr::read(value));
-        // now swap the fresh arc into its place ...
-        let garbage = mem::replace(&mut self.0, arc);
-        // ... and forget about the old one
-        mem::forget(garbage);
-        Some(bytes)
-    }
-    fn extent(&self) -> usize {
-        std::mem::size_of::<T>() + self.deref().extent()
-    }
-}
-
-#[cfg(feature = "dataflow")]
-impl Abomonation for ArcVal<str> {
-    unsafe fn entomb<W: std::io::Write>(&self, write: &mut W) -> std::io::Result<()> {
-        let len = self.0.len();
-        let buf = self.0.as_ptr();
-        abomonation::encode(&len, write)?;
-        let buf = std::slice::from_raw_parts(buf, len);
-        write.write_all(buf)
-    }
-    unsafe fn exhume<'b>(&mut self, bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
-        use std::{mem, slice, str};
-        let (len, bytes) = abomonation::decode::<usize>(bytes)?;
-        if bytes.len() < *len {
-            return None;
-        }
-        let (mine, bytes) = bytes.split_at_mut(*len);
-        let arc = hash_interner().intern_ref(str::from_utf8_unchecked(slice::from_raw_parts(mine.as_ptr(), *len)));
-        let garbage = mem::replace(&mut self.0, arc);
-        mem::forget(garbage);
-        Some(bytes)
-    }
-    fn extent(&self) -> usize {
-        std::mem::size_of::<usize>() + self.deref().len()
-    }
-}
-
-#[cfg(feature = "dataflow")]
-impl Abomonation for ArcVal<[u8]> {
-    unsafe fn entomb<W: std::io::Write>(&self, write: &mut W) -> std::io::Result<()> {
-        let len = self.0.len();
-        abomonation::encode(&len, write)?;
-        write.write_all(&self.0)
-    }
-    unsafe fn exhume<'b>(&mut self, bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
-        use std::{mem, slice};
-        let (len, bytes) = abomonation::decode::<usize>(bytes)?;
-        if bytes.len() < *len {
-            return None;
-        }
-        let (mine, bytes) = bytes.split_at_mut(*len);
-        let arc = hash_interner().intern_ref(slice::from_raw_parts(mine.as_ptr(), *len));
-        let garbage = mem::replace(&mut self.0, arc);
-        mem::forget(garbage);
-        Some(bytes)
-    }
-    fn extent(&self) -> usize {
-        std::mem::size_of::<usize>() + self.deref().len()
-    }
-}
-
 impl<T: fmt::Display + Eq + Hash + ?Sized> fmt::Display for ArcVal<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.deref().fmt(f)
@@ -329,61 +245,6 @@ mod tests {
     pub fn must_propagate_send_and_sync() {
         assert_send::<ArcVal<i32>>();
         assert_sync::<ArcVal<i32>>();
-    }
-
-    #[test]
-    #[cfg(feature = "dataflow")]
-    pub fn must_exhume() {
-        let value = ArcVal::from_sized("hello".to_owned());
-
-        let mut bytes = Vec::new();
-        unsafe { abomonation::encode(&value, &mut bytes).unwrap() };
-        assert_eq!(&bytes[bytes.len() - 5..], b"hello");
-
-        // modify the bytes to see that deserialization uses them and not the pointer
-        let pos = bytes.len() - 4;
-        bytes[pos] = b'a';
-
-        let (value2, bytes) = unsafe { abomonation::decode::<ArcVal<String>>(&mut bytes).unwrap() };
-        assert_eq!(value2.as_ref(), "hallo".to_owned());
-        assert!(bytes.is_empty());
-    }
-
-    #[test]
-    #[cfg(feature = "dataflow")]
-    pub fn must_work_for_str() {
-        let value = ArcVal::clone_from_unsized("hello");
-
-        let mut bytes = Vec::new();
-        unsafe { abomonation::encode(&value, &mut bytes).unwrap() };
-        assert_eq!(&bytes[bytes.len() - 5..], b"hello");
-
-        // modify the bytes to see that deserialization uses them and not the pointer
-        let pos = bytes.len() - 4;
-        bytes[pos] = b'a';
-
-        let (value2, bytes) = unsafe { abomonation::decode::<ArcVal<str>>(&mut bytes).unwrap() };
-        assert_eq!(value2.as_ref(), "hallo".to_owned());
-        assert!(bytes.is_empty());
-    }
-
-    #[test]
-    #[cfg(feature = "dataflow")]
-    #[allow(clippy::string_lit_as_bytes)]
-    pub fn must_work_for_u8s() {
-        let value: ArcVal<[u8]> = ArcVal::clone_from_unsized(b"hello");
-
-        let mut bytes = Vec::new();
-        unsafe { abomonation::encode(&value, &mut bytes).unwrap() };
-        assert_eq!(&bytes[bytes.len() - 5..], b"hello");
-
-        // modify the bytes to see that deserialization uses them and not the pointer
-        let pos = bytes.len() - 4;
-        bytes[pos] = b'a';
-
-        let (value2, bytes) = unsafe { abomonation::decode::<ArcVal<[u8]>>(&mut bytes).unwrap() };
-        assert_eq!(value2.as_ref(), b"hallo");
-        assert!(bytes.is_empty());
     }
 
     #[test]

@@ -61,7 +61,6 @@ macro_rules! mk_scalar {
 
         $(#[$attr])*
         #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
-        #[cfg_attr(feature = "dataflow", derive(Abomonation))]
         pub struct $id(
             #[serde(deserialize_with = $parse)]
             $crate::types::ArcVal<str>

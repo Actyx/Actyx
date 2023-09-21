@@ -61,7 +61,6 @@ pub use payload::Payload;
 /// let payload = Payload::from_json_str(r#"{"x":1.3}"#).unwrap();
 /// ```
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(rename_all = "camelCase")]
 pub struct Event<T> {
     /// Uniquely identifying event key. Used for sorting.
@@ -94,7 +93,6 @@ impl<T> Eq for Event<T> {}
 
 /// Metadata attached to an event that can be used for filtering.
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(rename_all = "camelCase")]
 pub struct Metadata {
     /// Timestamp of when the event was created
@@ -128,7 +126,6 @@ impl Event<Payload> {
 /// It is sorted first by Lamport timestamp and then by stream ID; this combination is already
 /// unique. The offset is included to keep track of progress in [`OffsetMap`](struct.OffsetMap.html).
 #[derive(Copy, Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(rename_all = "camelCase")]
 pub struct EventKey {
     pub lamport: LamportTimestamp,

@@ -92,7 +92,6 @@ macro_rules! tags {
 /// followed by composition). Thus, `ℌ` and `H` are different tags while the various encodings of `é` are
 /// all represented by the codepoint E9.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct Tag(#[serde(deserialize_with = "crate::scalar::nonempty_string_canonical")] ArcVal<str>);
 
 #[allow(clippy::len_without_is_empty)]
@@ -188,7 +187,6 @@ impl<T: Into<String>> Add<T> for Tag {
 ///
 /// All constructors and serialization ensure that tags appear only once and in string sort order.
 #[derive(DagCbor, Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(from = "Vec<Tag>")]
 #[ipld(repr = "value")]
 pub struct TagSet(Vec<Tag>);

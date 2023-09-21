@@ -192,7 +192,6 @@ impl TryFrom<&TagSet> for FishName {
 /// containing information about kinds of things (like sensor readings) and specific instances of
 /// those things (like a thermometer’s name).
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(rename_all = "camelCase")]
 pub struct StreamInfo {
     pub semantics: Semantics,
@@ -212,7 +211,6 @@ pub struct StreamInfo {
 //
 // TODO change to u128 to make it even more optimal
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct SourceId(pub(crate) [u8; MAX_SOURCEID_LENGTH + 1]);
 
 impl SourceId {
