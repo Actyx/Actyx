@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { Tag, Where } from '.'
+import { Tag, Tags, Where } from '.'
 
 type T0 = {
   type: '0'
@@ -148,6 +148,11 @@ describe('typed tag query system', () => {
     expect(w0.toV1WireFormat()).toMatchObject([{ tags: ['0'] }, { tags: ["a 'funny' tag"] }])
 
     expect(w0.toString()).toEqual("'0' | 'a ''funny'' tag'")
+  })
+
+  it('should throw if empty string is provided', () => {
+    expect(() => Tags('something', '')).toThrow()
+    expect(() => Tag('')).toThrow()
   })
 })
 

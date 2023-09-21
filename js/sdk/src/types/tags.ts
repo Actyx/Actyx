@@ -26,10 +26,15 @@ type TagInternal = {
   extractId: (event: any) => string | undefined
 }
 
-const makeInternal = (tag: string): TagInternal => ({
-  tag,
-  extractId: noop,
-})
+const makeInternal = (tag: string): TagInternal => {
+  if (tag === '') {
+    throw new Error('Tag cannot be empty string')
+  }
+  return {
+    tag,
+    extractId: noop,
+  }
+}
 
 const justTag = (i: TagInternal) => i.tag
 
@@ -187,7 +192,7 @@ export interface Tag<E = unknown> extends Tags<E> {
  */
 export const Tag = <E = unknown>(rawTagString: string, extractId?: (e: E) => string): Tag<E> => {
   const internalTag: TagInternal = {
-    tag: rawTagString,
+    ...makeInternal(rawTagString),
     extractId: extractId || noop,
   }
 
