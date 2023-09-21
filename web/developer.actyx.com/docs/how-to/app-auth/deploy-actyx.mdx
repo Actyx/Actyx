@@ -1,0 +1,50 @@
+# How to deploy your own Actyx swarm to production
+
+:::info
+
+This guide pertains to launching Actyx in "production mode".
+If you're still testing Actyx or developing your application, set the node licensing
+to `development` in the node settings.
+
+```json
+"licensing": {
+    "node": "development"
+}
+```
+
+:::
+
+Before we start, it's important to define what "your own" means, this is because official
+Actyx releases are embedded with a public key to ensure that applications running on an
+official release are certified by Actyx.
+
+When rolling your own Actyx deployment, you will want to set this value to your public key.
+To do so, you first need to generate an Ed25519 key pair, in case you do not know how to do so
+you can refer to [GitHub's tutorial](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent#generating-a-new-ssh-key) on the topic.
+
+After you have your key pair, we need to download Actyx and compile it using your key.
+
+1. Start by cloning the repository.
+
+```bash
+git clone git@github.com:Actyx/Actyx.git
+```
+
+2. Navigate to `rust/actyx`.
+
+```bash
+cd rust/actyx
+```
+
+3. Compile Actyx, using your public key.
+
+```bash
+export AX_PUBLIC_KEY="$(base64 -i <path_to_your_public_key>)"
+cargo build --bin actyx --release --locked
+```
+
+4. (Optional) Double check that your public key in fact embedded in the Actyx binary:
+
+```bash
+strings target/release/actyx | grep $AX_PUBLIC_KEY
+```

@@ -48,6 +48,7 @@ module.exports = {
       items: [
         'how-to/app-auth/sign-app-manifest',
         'how-to/app-auth/authenticate-with-app-manifest',
+        'how-to/app-auth/deploy-actyx'
       ],
     },
     {
