@@ -60,13 +60,13 @@ CARGO_BUILD_JOBS ?= 8
 # Previously used for migrations, kept as placeholder for future use
 CARGO_BUILD_ARGS ?=
 
-export BUILD_RUST_TOOLCHAIN ?= 1.65.0
+export BUILD_RUST_TOOLCHAIN ?= 1.72.1
 
 # The stable image version is the git commit hash inside `Actyx/Actyx`, with
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := dfd0ff4c17c563c8c92739e40b3ff838e1ce8c2b
+export LATEST_STABLE_IMAGE_VERSION := 9cf5eddbb1b6e25112dddbcab58b729b22eadde2
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -94,7 +94,7 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/util:osxbuilder-21c53b627e3c4f06514bef593e4ef7f23bb91581
+image-darwin = actyx/util:osxbuilder-bfb3a4d511386569c70ef919026d476edb864c79
 
 # list all os-arch and binary names
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 macos-aarch64
@@ -150,7 +150,6 @@ docker-build-args = ${AXP_DOCKER} ${AXV_DOCKER} --build-arg GIT_COMMIT=$(GIT_COM
 docker-multiarch-build-args = $(docker-build-args) --platform $(shell echo $(docker-platforms) | sed 's/ /,/g')
 
 export CARGO_HOME ?= $(HOME)/.cargo
-export DOCKER_CLI_EXPERIMENTAL := enabled
 
 # Use docker run -ti only if the input device is a TTY (so that Ctrl+C works)
 export DOCKER_FLAGS ?= ${AXP} ${AXV} ${AXVC} $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
@@ -220,6 +219,7 @@ prepare-docker:
 	docker pull actyx/util:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/util:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
 	docker pull actyx/util:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
+	# used to build the node manager for windows on linux
 	docker pull actyx/util:node-manager-win-builder-$(IMAGE_VERSION)
 
 prepare-docker-crosscompile:
@@ -470,6 +470,7 @@ soTargetPatterns = $(foreach t,$(android_so_targets),rust/actyx/target/$(t)/rele
 soTargetPatterns6 = $(foreach t,$(android_so_targets),rust/actyx/target/$(t)/release/libaxosnodeffi.so6)
 
 # same principle as above for targetPatterns
+# Generate the libaxosnodeffi.so for all android targets
 $(soTargetPatterns): TARGET = $(word 4,$(subst /, ,$@))
 $(soTargetPatterns): cargo-init make-always
 	docker run \
@@ -484,6 +485,7 @@ $(soTargetPatterns): cargo-init make-always
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
 	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --target $(TARGET)
 
+# Generate the libaxosnodeffi.so6 for all android targets
 $(soTargetPatterns6): TARGET = $(word 4,$(subst /, ,$@))
 $(soTargetPatterns6): cargo-init make-always
 	docker run \
@@ -509,6 +511,7 @@ $(CARGO_HOME)/%:
 	mkdir -p $@
 	chmod 777 $@
 
+# Generate the Android App Bundle
 jvm/os-android/app/build/outputs/bundle/release/app-release.aab: android-libaxosnodeffi make-always
 	jvm/os-android/bin/get-keystore.sh
 	docker run \
@@ -522,6 +525,7 @@ jvm/os-android/app/build/outputs/bundle/release/app-release.aab: android-libaxos
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
       ./gradlew --stacktrace ktlintCheck build bundleRelease
 
+# Generate the actual APK
 dist/bin/actyx.apk: jvm/os-android/app/build/outputs/bundle/release/app-release.aab make-always
 	jvm/os-android/bin/get-keystore.sh
 	rm -f dist/bin/actyx.apks
@@ -542,11 +546,7 @@ dist/bin/actyx.apk: jvm/os-android/app/build/outputs/bundle/release/app-release.
 	unzip -o dist/bin/actyx.apks universal.apk
 	mv -f universal.apk dist/bin/actyx.apk
 
-dist/bin/actyx.aab: jvm/os-android/app/build/outputs/bundle/release/app-release.aab
-	mkdir -p $(dir $@)
-	cp $< $@
-
-
+# Windows MSI build recipe. Requires Docker to work
 dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/actyx.exe make-always
 	docker run \
 	  -v `pwd`:/src \

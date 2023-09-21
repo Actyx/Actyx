@@ -1,6 +1,6 @@
 FROM electronuserland/builder:wine
 
-ARG BUILD_RUST_TOOLCHAIN=1.65.0
+ARG BUILD_RUST_TOOLCHAIN=1.72.1
 ARG NVM_VERSION=0.38.0
 
 RUN apt-get update && \

@@ -287,7 +287,9 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
             OutboundInfo::V1(msg) => {
                 self.streams.push(
                     async move {
-                        let Err(err) = msg.upgrade_outbound(stream, T::info_v1()).await else { return Ok(()) };
+                        let Err(err) = msg.upgrade_outbound(stream, T::info_v1()).await else {
+                            return Ok(());
+                        };
                         tracing::debug!("outbound upgrade error on protocol `{}`: {}", T::info_v1(), err);
                         Ok(())
                     }
@@ -400,7 +402,9 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
 
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<ProtocolEvent<T>> {
         while !self.inbound_v2.is_empty() {
-            let Poll::Ready(Some(result)) = self.inbound_v2.poll_next_unpin(cx) else { break };
+            let Poll::Ready(Some(result)) = self.inbound_v2.poll_next_unpin(cx) else {
+                break;
+            };
             match result {
                 Ok((request, mut stream)) => {
                     let (channel, mut rx) = mpsc::channel(self.response_send_buffer_size);
@@ -439,7 +443,9 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
         }
 
         while !self.inbound_v1.is_empty() {
-            let Poll::Ready(Some(result)) = self.inbound_v1.poll_next_unpin(cx) else { break };
+            let Poll::Ready(Some(result)) = self.inbound_v1.poll_next_unpin(cx) else {
+                break;
+            };
             match result {
                 Ok(request) => match request {
                     StreamingResponseMessage::Request { id, payload } => {
@@ -561,7 +567,9 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
         }
 
         while !self.outbound_v1.is_empty() {
-            let Poll::Ready(Some((request_id, result))) = self.outbound_v1.poll_next_unpin(cx) else { break };
+            let Poll::Ready(Some((request_id, result))) = self.outbound_v1.poll_next_unpin(cx) else {
+                break;
+            };
             if let Err(e) = result {
                 tracing::debug!("error in v1 substream task: {}", e);
                 if let Some(mut tx) = self.responses_v1.remove(&request_id) {
@@ -572,7 +580,9 @@ impl<T: Codec + Send + 'static> ConnectionHandler for Handler<T> {
 
         let mut some_finished = false;
         while !self.streams.is_empty() {
-            let Poll::Ready(Some(result)) = self.streams.poll_next_unpin(cx) else { break };
+            let Poll::Ready(Some(result)) = self.streams.poll_next_unpin(cx) else {
+                break;
+            };
             some_finished = true;
             if let Err(e) = result {
                 tracing::debug!("error in substream task: {}", e);

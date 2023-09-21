@@ -204,7 +204,9 @@ impl VersionsFile {
     pub fn history(&self, ignore: &VersionsIgnoreFile) -> anyhow::Result<History> {
         let mut map = BTreeMap::<String, Vec<HistoryChange>>::new();
         let versions = self.versions();
-        let Some(first) = versions.get(0).cloned() else { return Ok(History(map)) };
+        let Some(first) = versions.get(0).cloned() else {
+            return Ok(History(map));
+        };
         for (current, previous) in versions.into_iter().chain(std::iter::once(first)).tuple_windows() {
             let product = current.release.product;
             let repo = Repository::open_from_env()?;

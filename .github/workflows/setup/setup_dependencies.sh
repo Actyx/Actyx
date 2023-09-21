@@ -20,7 +20,7 @@ curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo 
 && sudo apt update \
 && sudo apt install gh -y
 
-RUST_VERSION="1.65.0"
+RUST_VERSION="1.72.1"
 NVM_VERSION="0.39.3"
 
 while getopts 'r:n:' flag; do

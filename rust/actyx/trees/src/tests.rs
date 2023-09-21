@@ -229,7 +229,7 @@ fn events_banyan_tree_roundtrip_with(events: Vec<(AxKey, Payload)>) -> anyhow::R
 /// Roundtrip test from events to banyan tree and back
 #[test]
 fn events_banyan_tree_roundtrip() -> anyhow::Result<()> {
-    for events in vec![generate_events(100), generate_random_events(100)] {
+    for events in [generate_events(100), generate_random_events(100)] {
         events_banyan_tree_roundtrip_with(events)?;
     }
     Ok(())
@@ -254,7 +254,7 @@ async fn events_banyan_tree_simple_queries_with(events: Vec<(AxKey, Payload)>) -
         assert_eq!(events0, events1);
     }
     // try offset query, different ranges
-    for offset_range in vec![100..6666, 0..1] {
+    for offset_range in [100..6666, 0..1] {
         let offset_range1 = offset_range.clone();
         let events0 = events_with_offset()
             .filter(move |(offset, _, _)| offset_range1.contains(offset))
@@ -268,7 +268,7 @@ async fn events_banyan_tree_simple_queries_with(events: Vec<(AxKey, Payload)>) -
         assert_eq!(events0, events1);
     }
     // try lamport query, different ranges
-    for lamport_range in vec![LamportTimestamp::new(1)..LamportTimestamp::new(10000)] {
+    for lamport_range in [LamportTimestamp::new(1)..LamportTimestamp::new(10000)] {
         let lamport_range1 = lamport_range.clone();
         let events0 = events_with_offset()
             .filter(move |(_, key, _)| lamport_range1.contains(&key.lamport()))
@@ -284,7 +284,7 @@ async fn events_banyan_tree_simple_queries_with(events: Vec<(AxKey, Payload)>) -
         assert_eq!(events0, events1);
     }
     // try time query, different ranges
-    for time_range in vec![Timestamp::new(AX_EPOCH + 1_000_000)..Timestamp::new(AX_EPOCH + 666_000_000)] {
+    for time_range in [Timestamp::new(AX_EPOCH + 1_000_000)..Timestamp::new(AX_EPOCH + 666_000_000)] {
         let time_range1 = time_range.clone();
         let events0 = events_with_offset()
             .filter(move |(_, key, _)| time_range1.contains(&key.time()))
@@ -326,7 +326,7 @@ async fn events_banyan_tree_simple_queries_with(events: Vec<(AxKey, Payload)>) -
 
 #[tokio::test]
 async fn events_banyan_tree_simple_queries() -> anyhow::Result<()> {
-    for events in vec![generate_events(100), generate_random_events(100)] {
+    for events in [generate_events(100), generate_random_events(100)] {
         events_banyan_tree_simple_queries_with(events).await?;
     }
     Ok(())

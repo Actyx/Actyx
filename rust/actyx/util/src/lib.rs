@@ -99,7 +99,7 @@ impl SocketAddrHelper {
     }
 
     pub fn append(&mut self, other: Self) {
-        self.inner.extend(other.inner.into_iter());
+        self.inner.extend(other.inner);
     }
 
     pub fn to_multiaddrs(&self) -> impl Iterator<Item = Multiaddr> {

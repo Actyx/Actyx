@@ -37,7 +37,7 @@ on:
 env:
   BASH_ENV: "~/.bashrc"
   NVM_VERSION: 0.39.3
-  RUST_VERSION: 1.65.0
+  RUST_VERSION: 1.72.1
 
 jobs:
   calculate-actyx-version:

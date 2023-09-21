@@ -2075,7 +2075,12 @@ mod test_routing_table {
 
     use actyx_sdk::{language::TagExpr, tags, StreamNr};
 
-    use crate::{internal_app_id, RoutingTable};
+    use crate::{internal_app_id, RoutingTable, DEFAULT_STREAM_NUMBER};
+
+    #[test]
+    fn enforce_default_stream_nr_to_be_zero() {
+        assert_eq!(StreamNr::default(), StreamNr::from(DEFAULT_STREAM_NUMBER));
+    }
 
     #[test]
     fn empty() {
@@ -2180,9 +2185,4 @@ mod test_routing_table {
             StreamNr::from(3)
         );
     }
-}
-
-#[test]
-fn enforce_default_stream_nr_to_be_zero() {
-    assert_eq!(StreamNr::default(), StreamNr::from(DEFAULT_STREAM_NUMBER));
 }

@@ -189,7 +189,7 @@ fn test_docs_from_str() {
 #[test]
 fn test_from_iterated() -> Result<(), Error> {
     for kind in ChangeKind::ALL.iter() {
-        for product in vec![
+        for product in [
             Product::Actyx,
             Product::Cli,
             Product::NodeManager,

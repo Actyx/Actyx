@@ -191,7 +191,7 @@ fn to_offset_map(root_map: RootMap) -> OffsetMap {
     root_map
         .entries
         .into_iter()
-        .zip(root_map.offsets.into_iter())
+        .zip(root_map.offsets)
         .map(|((stream, _), (offset, _))| (stream, offset))
         .collect()
 }
