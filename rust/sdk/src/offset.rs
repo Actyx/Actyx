@@ -41,7 +41,6 @@ const MAX_SAFE_INT: i64 = 9_007_199_254_740_991;
 ///
 /// The `MIN` value is not a valid offset, it is sorted before [`Offset::ZERO`](struct.Offset.html#associatedconstant.ZERO).
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, From, Into, Display)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct OffsetOrMin(#[serde(with = "i64_from_minus_one")] i64);
 
 mod i64_from_minus_one {
@@ -226,7 +225,6 @@ impl Decode<DagCborCodec> for OffsetOrMin {
 /// because for the use-case of naming events within a stream it is impossible to exhaust
 /// the available set of values.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, Display)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct Offset(#[serde(deserialize_with = "offset_i64")] i64);
 
 impl Offset {

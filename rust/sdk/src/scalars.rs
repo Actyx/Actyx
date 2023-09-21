@@ -87,7 +87,6 @@ impl quickcheck::Arbitrary for AppId {
 ///
 /// Each node may emit multiple sources, each identified by its own [`StreamId`](struct.StreamId.html).
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize, Default)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(into = "String", try_from = "String")]
 pub struct NodeId(pub(crate) [u8; 32]);
 
@@ -222,7 +221,6 @@ impl ReadCbor for NodeId {
 /// followed by a dot and a base64url multibase-encoded multiformats-varint (see also
 /// [`varint`](types/varint/index.html)).
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize, Default)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(into = "String", try_from = "String")]
 pub struct StreamId {
     pub node_id: NodeId,
@@ -341,7 +339,6 @@ mod sqlite {
 
 /// Stream number. Newtype alias for `u64`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, DagCbor, Default)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[ipld(repr = "value")]
 pub struct StreamNr(u64);
 

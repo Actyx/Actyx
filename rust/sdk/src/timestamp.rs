@@ -26,7 +26,6 @@ use std::{
 #[derive(
     Copy, Clone, Debug, Default, From, Into, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, DagCbor,
 )]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[ipld(repr = "value")]
 pub struct Timestamp(u64);
 
@@ -118,7 +117,6 @@ impl Add<std::time::Duration> for Timestamp {
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default, From, Into, DagCbor,
 )]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[ipld(repr = "value")]
 pub struct LamportTimestamp(u64);
 
