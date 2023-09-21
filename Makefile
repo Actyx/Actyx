@@ -571,11 +571,6 @@ dist/bin/actyx.apk: jvm/os-android/app/build/outputs/bundle/release/app-release.
 	unzip -o dist/bin/actyx.apks universal.apk
 	mv -f universal.apk dist/bin/actyx.apk
 
-# Not used
-dist/bin/actyx.aab: jvm/os-android/app/build/outputs/bundle/release/app-release.aab
-	mkdir -p $(dir $@)
-	cp $< $@
-
 # Windows MSI build recipe. Requires Docker to work
 dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/actyx.exe make-always
 	docker run \
