@@ -12,7 +12,6 @@ export type ReleaseHistory = {
   actyx: Release[]
   cli: Release[]
   'node-manager': Release[]
-  pond: Release[]
 }
 
 export type Download = {

@@ -74,7 +74,6 @@ const Page: React.FC<{ data: ReleaseHistory }> = ({ data: history }) => {
           releases={history['node-manager']}
         />
         <ReleasesList productDisplayName="Actyx CLI" product="cli" releases={history.cli} />
-        <ReleasesList productDisplayName="Actyx Pond" product="pond" releases={history.pond} />
       </div>
     </Layout>
   )

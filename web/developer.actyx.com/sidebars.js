@@ -17,8 +17,6 @@ module.exports = {
       collapsed: true,
       items: [
         'how-to/business-logic/tracking-state',
-        'how-to/business-logic/business-process',
-        'how-to/business-logic/machine-collaboration',
         'how-to/business-logic/committing-externally',
       ],
     },

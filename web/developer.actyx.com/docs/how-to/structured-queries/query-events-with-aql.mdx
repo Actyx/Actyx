@@ -43,41 +43,6 @@ Excessive event retrieval is the #1 performance sin in Actyx, comparable to full
 Event tagging fulfils the same function as indexing in those databases.
 :::
 
-## Queries sent from TypeScript apps
-
-When you’re using the [Actyx Pond](../../conceptual/pond.mdx) you are using AQL queries under the hood:
-a [fish](https://developer.actyx.com/docs/reference/pond/modules#fish)’s `where` property directly corresponds to a query with only a `FROM` clause.
-The same goes for the SDK methods like [`Actyx.queryAllKnown`](../../reference/pond/interfaces/EventFns#queryallknown), which take a [`Where`](../../reference/pond/interfaces/Where) instance to select events.
-
-<!-- prettier-ignore -->
-```ts
-const itemTag = Tag<ItemEvent>('item') // entity type tag for “Items”
-const createdTag = Tag('created')      // additional tag, can be attached elsewhere
-
-itemTag                 // corresponds to `FROM 'item'`
-itemTag.withId('1234')  // corresponds to `FROM 'item' & 'item:1234'`
-itemTag.and(createdTag) // corresponds to `FROM 'item' & 'created'`
-
-const item1 = itemTag.withId('1')
-const item2 = itemTag.withId('2')
-item1.or(item2) // corresponds to `FROM 'item' & 'item:1' | 'item' & 'item:2'`
-                // which is the same as `FROM 'item' & ('item:1' | 'item:2')`
-
-const userTag = Tag<UserEvent>('user')
-const myItem = itemTag.id('1234')  // note that `.id()` omits the 'item' tag and doesn’t
-                                   // require matching events to be of type `ItemEvent`
-userTag.withId('Fred').and(myItem) // => `FROM 'user' & 'user:Fred' & 'item:1234'`
-```
-
-Note the different roles of tags:
-
-- `'item'` marks events emitted by an “item” entity and constrains the event type
-- `'item:1234'` is an additional tag that marks one particular “item” entity; it can be created with `itemTag.id('1234')` and does not by itself constrain the event type
-- `'created'` marks the occasion and could be combined with items, users, etc.
-
-Note that the `createdTag` could be declared as `Tag<{ id: string }>('created')` to constrain its application to events that do have an `id` property of type `string`.
-The `Where` interface correctly tracks these constraints through `.and()` and `.or()` combinations of tags.
-
 :::info Full reference documentation
 Check out our [reference documentation on AQL](../../reference/aql.mdx) for more info on expressions and data transformations!
 :::
