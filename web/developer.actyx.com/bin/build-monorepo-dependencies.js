@@ -34,10 +34,7 @@
     console.log(`cargo:[${cwd}] done`)
   }
 
-  const npmDeps = [
-    ['..', '..', 'js', 'sdk'],
-    ['..', '..', 'js', 'pond'],
-  ]
+  const npmDeps = [['..', '..', 'js', 'sdk']]
   const cargoDeps = [['..', '..', 'rust', 'release']]
   Promise.all(
     []
