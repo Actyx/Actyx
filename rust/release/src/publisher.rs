@@ -88,7 +88,7 @@ impl Publisher {
     pub fn new(release: &Release, commit: &Oid, os_arch: OsArch, is_newest: bool) -> anyhow::Result<Vec<Self>> {
         Ok(mk_blob_tuples(release, commit, os_arch)
             .into_iter()
-            .chain(mk_docker_tuples(release, commit, os_arch, is_newest)?.into_iter())
+            .chain(mk_docker_tuples(release, commit, os_arch, is_newest)?)
             .map(|(source, target)| Self { source, target })
             .collect())
     }

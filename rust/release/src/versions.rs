@@ -119,7 +119,7 @@ mod test {
 
     #[test]
     fn impact_vec_sort() {
-        let mut sorted = vec![
+        let mut sorted = [
             VersionImpact::None,
             VersionImpact::BumpMinor,
             VersionImpact::BumpMajor,
