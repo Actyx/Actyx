@@ -1,9 +1,9 @@
 mod validate_signed_manifest;
 
-use actyx_sdk::{AppId, Timestamp};
+use actyx_sdk::{types::Binary, AppId, Timestamp};
 use certs::AppManifest;
 use chrono::{DateTime, Utc};
-use crypto::PublicKey;
+use crypto::{PublicKey, SignedMessage};
 use serde::{Deserialize, Serialize};
 use tracing::*;
 use warp::*;
@@ -47,6 +47,32 @@ pub(crate) fn create_token(
     let signed = node_info.key_store.read().sign(bytes, vec![node_info.node_id.into()])?;
     info!(target: "AUTH", "{}", mk_success_log_msg(&token));
     Ok(base64::encode(signed).into())
+}
+
+pub(crate) fn verify_token(node_info: NodeInfo, token: Token) -> Result<BearerToken, ApiError> {
+    let token = token.to_string();
+    let bin: Binary = token.parse().map_err(|_| ApiError::TokenInvalid {
+        token: token.clone(),
+        msg: "Cannot parse token bytes.".to_owned(),
+    })?;
+    let signed_msg: SignedMessage = bin.as_ref().try_into().map_err(|_| ApiError::TokenInvalid {
+        token: token.clone(),
+        msg: "Not a signed token.".to_owned(),
+    })?;
+    node_info
+        .key_store
+        .read()
+        .verify(&signed_msg, vec![node_info.node_id.into()])
+        .map_err(|_| ApiError::TokenUnauthorized)?;
+    let bearer_token =
+        serde_cbor::from_slice::<BearerToken>(signed_msg.message()).map_err(|_| ApiError::TokenInvalid {
+            token: token.clone(),
+            msg: "Cannot parse CBOR.".to_owned(),
+        })?;
+    match bearer_token.cycles != node_info.cycles || bearer_token.is_expired() {
+        true => Err(ApiError::TokenExpired),
+        false => Ok(bearer_token),
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -101,8 +127,8 @@ mod tests {
     use std::sync::Arc;
     use warp::{reject::MethodNotAllowed, test, Filter, Rejection, Reply};
 
-    use super::{route, validate_manifest, AppMode, NodeInfo, TokenResponse};
-    use crate::{formats::Licensing, rejections::ApiError, util::filters::verify};
+    use super::{route, validate_manifest, verify_token, AppMode, NodeInfo, TokenResponse};
+    use crate::{formats::Licensing, rejections::ApiError};
 
     fn test_route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
         let mut key_store = KeyStore::default();
@@ -170,7 +196,7 @@ mod tests {
         assert_eq!(resp.headers()["content-type"], "application/json");
 
         let token: TokenResponse = serde_json::from_slice(resp.body()).unwrap();
-        assert!(verify(auth_args, token.token.into()).is_ok())
+        assert!(verify_token(auth_args, token.token.into()).is_ok())
     }
 
     #[tokio::test]
