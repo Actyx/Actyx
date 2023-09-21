@@ -28,7 +28,7 @@ async fn publish(mut tx: Sender<Task>, peer: PeerId, data: Vec<PublishEvent>) ->
                     return ax_err(
                         util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
                         "EventsRequests::Publish returned empty".to_string(),
-                    )
+                    );
                 };
 
                 let response = match result {
