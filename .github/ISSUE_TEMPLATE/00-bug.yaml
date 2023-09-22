@@ -1,0 +1,62 @@
+name: Bug Report
+description: File a bug report
+title: "[Bug]: "
+labels: ["Bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: dropdown
+    id: product
+    attributes:
+      label: Product
+      description: Which product are you running?
+      options:
+        - Actyx
+        - Actyx CLI
+        - Node Manager
+      default: 0
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: Which Operating System are you running?
+      options:
+        - Linux
+        - Mac
+        - Windows
+        - Android
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: "Current behavior"
+      description: "Describe the observed behavior"
+      placeholder: "Actyx failed to launch with the error..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: "Expected behavior"
+      description: "Describe the expected behavior"
+      placeholder: "Actyx should launch without erroring because..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: "How to reproduce"
+      description: "Describe how to reproduce the bug"
+      placeholder: "1. Load Actyx with the flags..."
+    validations:
+      required: false
+  - type: textarea
+    id: additional-notes
+    attributes:
+      label: "Additional notes"
+      description: "Any additional notes you may want to leave"
+      placeholder: "..."
+    validations:
+      required: false

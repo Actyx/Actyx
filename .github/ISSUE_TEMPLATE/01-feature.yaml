@@ -1,0 +1,52 @@
+name: Feature Request
+description: File a feature request
+title: "[Feature]: "
+labels: ["Feature"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: dropdown
+    id: product
+    attributes:
+      label: Product
+      description: Which product are you running?
+      options:
+        - Actyx
+        - Actyx CLI
+        - Node Manager
+      default: 0
+  - type: textarea
+    id: when
+    attributes:
+      label: When
+      description: Set the context for the feature request
+      placeholder: An event is fired...
+    validations:
+      required: true
+  - type: textarea
+    id: want
+    attributes:
+      label: I want to
+      description: Describe what you expect the feature to do
+      placeholder: Be able to register a local event handler...
+    validations:
+      required: true
+  - type: textarea
+    id: so-that
+    attributes:
+      label: So that
+      description: Describe the problem the feature allows you to solve
+      placeholder: Log events for monitoring the system's health...
+    validations:
+      required: true
+  - type: textarea
+    id: additional-notes
+    attributes:
+      label: "Additional notes"
+      description: "Any additional notes you may want to leave"
+      placeholder: "..."
+    validations:
+      required: false
