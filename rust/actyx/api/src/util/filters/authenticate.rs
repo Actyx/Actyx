@@ -1,38 +1,11 @@
-use actyx_sdk::{types::Binary, AppId};
-use crypto::SignedMessage;
+use actyx_sdk::AppId;
 use futures::FutureExt;
-use std::convert::TryInto;
 use tracing::{debug, info};
 use warp::{reject, Filter, Rejection};
 
+use crate::auth::verify_token;
+use crate::rejections::ApiError;
 use crate::util::{NodeInfo, Token};
-use crate::{rejections::ApiError, BearerToken};
-
-pub(crate) fn verify(node_info: NodeInfo, token: Token) -> Result<BearerToken, ApiError> {
-    let token = token.to_string();
-    let bin: Binary = token.parse().map_err(|_| ApiError::TokenInvalid {
-        token: token.clone(),
-        msg: "Cannot parse token bytes.".to_owned(),
-    })?;
-    let signed_msg: SignedMessage = bin.as_ref().try_into().map_err(|_| ApiError::TokenInvalid {
-        token: token.clone(),
-        msg: "Not a signed token.".to_owned(),
-    })?;
-    node_info
-        .key_store
-        .read()
-        .verify(&signed_msg, vec![node_info.node_id.into()])
-        .map_err(|_| ApiError::TokenUnauthorized)?;
-    let bearer_token =
-        serde_cbor::from_slice::<BearerToken>(signed_msg.message()).map_err(|_| ApiError::TokenInvalid {
-            token: token.clone(),
-            msg: "Cannot parse CBOR.".to_owned(),
-        })?;
-    match bearer_token.cycles != node_info.cycles || bearer_token.is_expired() {
-        true => Err(ApiError::TokenExpired),
-        false => Ok(bearer_token),
-    }
-}
 
 /// Tries to extract the value given to the `access_token` query parameter.
 pub fn query_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
@@ -112,7 +85,7 @@ pub(crate) fn authenticate_optional(
         if let Some(t) = t {
             let auth_args = node_info.clone();
             async move {
-                let res = verify(auth_args, t)
+                let res = verify_token(auth_args, t)
                     .map(|bearer_token| bearer_token.app_id)
                     .map(Some)
                     // TODO: add necessary checks for the flow from the PRD
@@ -138,7 +111,7 @@ pub(crate) fn authenticate(
     token.and_then(move |t: Token| {
         let auth_args = node_info.clone();
         async move {
-            let res = verify(auth_args, t)
+            let res = verify_token(auth_args, t)
                 .map(|bearer_token| bearer_token.app_id)
                 // TODO: add necessary checks for the flow from the PRD
                 .map_err(warp::reject::custom);
@@ -155,8 +128,8 @@ pub(crate) fn authenticate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{formats::Licensing, AppMode};
-    use actyx_sdk::{app_id, Timestamp};
+    use crate::{formats::Licensing, AppMode, BearerToken};
+    use actyx_sdk::{app_id, types::Binary, Timestamp};
     use chrono::Utc;
     use crypto::{KeyStore, PrivateKey};
     use parking_lot::RwLock;
