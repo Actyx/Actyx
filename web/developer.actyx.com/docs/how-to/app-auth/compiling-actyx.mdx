@@ -1,0 +1,100 @@
+---
+title: Deploy Actyx to production
+id: compiling-actyx
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+import { Tabs } from '../../../src/components'
+
+# Compiling your own Actyx
+
+This guide is the starting point to deploying your own Actyx swarm to production.
+We start by showing you how to compile Actyx enabling you to fully control which
+applications run on your swarm.
+
+Actyx releases are embedded with a public key to ensure that applications running on an
+official release are certified by Actyx.
+When rolling your own Actyx deployment, you will want to set this value to your public key.
+
+:::info Example keys
+
+While this guide also addresses generating the required keys, we provide example ones
+(base64 encoded) for the sake of consistent outputs.
+
+|         | Actyx                                           | Developer                                       |
+| ------- | ----------------------------------------------- | ----------------------------------------------- |
+| Public  | `075i62XGQJuXjv6nnLQyJzECZhF29acYvYeEOJ3kc5M8=` | `0nz1YdHu/JDmS6CImcZgOj9Y960sJOPrbZHAJO107qW0=` |
+| Private | `0WBFFicIHbivRZXAlO7tPs7rCX6s7u2OIMJ2mx9nwg0w=` | `08lUw93C+xzdxBcsYOoPVjzn8IHPJtnJW9Y/WyEu4v64=` |
+
+:::
+
+To do so, you first need to generate an Ed25519 key pair, in case you do not know how to do so
+you can refer to [GitHub's tutorial](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent#generating-a-new-ssh-key) on the topic.
+
+After you have your key pair, we need to download Actyx and compile it using your key.
+
+1. Start by cloning the repository.
+
+```bash
+git clone git@github.com:Actyx/Actyx.git
+```
+
+2. Navigate to `rust/actyx`.
+
+```bash
+cd rust/actyx
+```
+
+3. Compile Actyx, using your public key.
+
+:::caution Don't forget the dependencies!
+
+<details>
+<summary>Actyx depends on `protoc` and compilation will fail if it isn't installed on your system. Open to learn how to install it on your system.</summary>
+
+<Tabs>
+<Windows>
+
+Using Chocolatey:
+
+```powershell
+choco install protoc
+```
+
+</Windows>
+<Mac>
+
+Using brew:
+
+```bash
+brew install protobuf
+```
+
+</Mac>
+<Linux>
+
+Using `apt`:
+
+```bash
+apt-get install protobuf-compiler
+```
+
+</Linux>
+</Tabs>
+
+</details>
+
+:::
+
+```bash
+export AX_PUBLIC_KEY="$(base64 -i <path_to_your_public_key>)"
+cargo build --bin actyx --release --locked
+```
+
+4. (Optional) Double check that your public key in fact embedded in the Actyx binary:
+
+```bash
+strings target/release/actyx | grep $AX_PUBLIC_KEY
+```

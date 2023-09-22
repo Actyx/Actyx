@@ -1,0 +1,66 @@
+---
+title: Generate your own developer certificate
+id: generate-dev-certificate
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+:::tip
+
+This guide pertains to launching Actyx in "production mode".
+If you're still testing Actyx or developing your application, set the node licensing
+to `development` in the node settings.
+
+```json
+"licensing": {
+    "node": "development"
+}
+```
+
+:::
+
+## Generate your developer certificate
+
+The developer certificate allows you to [sign app manifests](sign-app-manifest).
+It is linked to the domain name of the email address on the application manifest,
+thus, you can only use it to sign app manifests with an app ID that matches your
+reverse domain name.
+
+For example, if your email address is `developer@actyx.com`, you could use the
+certificate for signing app manifests with app IDs starting with `com.actyx.`.
+
+Using `ax-cert`, create the developer certificate.
+
+If you created a developer key pair (should be different than the Actyx one):
+
+```
+cargo run --bin ax-cert dev-cert \
+    --actyx-private-key "$(base64 -i <path_to_your_actyx_private_key>)" \
+    --dev-private-key "$(base64 -i <path_to_your_dev_private_key>)" \
+    --app-domains "com.actyx.*" "com.example.*"
+
+{
+  "devPrivkey":"08lUw93C+xzdxBcsYOoPVjzn8IHPJtnJW9Y/WyEu4v64=",
+  "devPubkey":"0nz1YdHu/JDmS6CImcZgOj9Y960sJOPrbZHAJO107qW0=",
+  "appDomains":["com.actyx.*","com.example.*"],
+  "axSignature":"8Bl3zCNno5GbpKUoati7CiFgr0KGwNHB1kTwBVKzO9pzW07hFkkQ+GXvyc9QaWhHT5aXzzO+mVrx3eiC7TREAQ=="
+}
+```
+
+If you did not create a developer private key, `ax-cert` will to create one for you:
+
+```
+$ cargo run --bin ax-cert dev-cert \
+    --actyx-private-key "$(base64 -i <path_to_your_actyx_private_key>)" \
+    --app-domains "com.actyx.*" "com.example.*"
+
+{
+  "devPrivkey":"08lUw93C+xzdxBcsYOoPVjzn8IHPJtnJW9Y/WyEu4v64=",
+  "devPubkey":"0nz1YdHu/JDmS6CImcZgOj9Y960sJOPrbZHAJO107qW0=",
+  "appDomains":["com.actyx.*","com.example.*"],
+  "axSignature":"8Bl3zCNno5GbpKUoati7CiFgr0KGwNHB1kTwBVKzO9pzW07hFkkQ+GXvyc9QaWhHT5aXzzO+mVrx3eiC7TREAQ=="
+}
+```
+
+You can also use `ACTYX_PRIVATE_KEY` instead of setting `--actyx-private-key`.

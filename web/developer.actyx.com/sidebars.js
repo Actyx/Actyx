@@ -38,7 +38,6 @@ module.exports = {
       items: [
         'how-to/user-auth/set-up-user-keys',
         'how-to/user-auth/manage-authorized-users',
-        'how-to/user-auth/get-developer-certificate',
       ],
     },
     {
@@ -46,9 +45,11 @@ module.exports = {
       label: 'App Auth',
       collapsed: true,
       items: [
+        'how-to/app-auth/compiling-actyx',
+        'how-to/app-auth/generate-dev-certificate',
         'how-to/app-auth/sign-app-manifest',
         'how-to/app-auth/authenticate-with-app-manifest',
-        'how-to/app-auth/deploy-actyx'
+        'how-to/app-auth/generate-app-license',
       ],
     },
     {
