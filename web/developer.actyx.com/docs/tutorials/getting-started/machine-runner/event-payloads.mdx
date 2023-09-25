@@ -81,7 +81,7 @@ We should be ok now, let's try to run our robot:
 $ npm run start-robot
 
 > tomato-robot@1.0.0 start-robot
-> tsc && node dist/index.js
+> tsc && node dist/robot.js
 
 src/sensor.ts:8:56 - error TS2345: Argument of type '{}' is not assignable to parameter of type 'NeedsWaterPayload'.
   Property 'requiredWaterMl' is missing in type '{}' but required in type 'NeedsWaterPayload'.
@@ -183,7 +183,7 @@ And look back into the robot, we should see the new states:
 $ npm run start-robot
 
 > tomato-robot@1.0.0 start-robot
-> tsc && node src/index.js
+> tsc && node src/robot.js
 
 {
   is: [Function: is],
@@ -272,7 +272,7 @@ Now, when we run, we will see the required water level:
 $ npm run start-robot
 
 > tomato-robot@1.0.0 start-robot
-> tsc && node dist/index.js
+> tsc && node dist/robot.js
 
 {
   is: [Function: is],

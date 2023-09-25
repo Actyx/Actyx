@@ -378,7 +378,7 @@ to simplify subsequent runs, we'll add a new script to `package.json`:
 
 ```json title="package.json"
 "scripts": {
-  "start-robot": "tsc && node dist/index.js"
+  "start-robot": "tsc && node dist/robot.js"
 }
 ```
 
@@ -394,7 +394,7 @@ So, let's run it!
 $ npm run start-robot
 
 > tomato-robot@1.0.0 start-robot
-> tsc && node dist/index.js
+> tsc && node dist/robot.js
 
 {
   is: [Function: is],
@@ -524,7 +524,7 @@ As a final touch, just like we added an `npm` script for the robot, we should do
 
 ```json title="package.json"
 "scripts": {
-  "start-robot": "tsc && node dist/index.js",
+  "start-robot": "tsc && node dist/robot.js",
   "start-sensor": "tsc && node dist/sensor.js"
 }
 ```
@@ -564,7 +564,7 @@ If we take a look into the robot terminal, we should observe the following:
 ```
 
 If you notice, the state changes from `Idle` to `WateringPlant` and back,
-which means that the robot successfully watered the plant! 🌱
+which means that the robot successfully listened to the event from the sensor and watered the plant! 🌱
 
 ### In summary
 
