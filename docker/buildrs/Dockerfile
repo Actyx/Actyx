@@ -54,10 +54,10 @@ RUN ${ANDROID_SDK_ROOT}/tools/bin/sdkmanager --update | grep -v = || true
 
 # Install Android NDK
 RUN cd /usr/local && \
-  wget -q http://dl.google.com/android/repository/android-ndk-r20-linux-x86_64.zip && \
-  unzip -q android-ndk-r20-linux-x86_64.zip && \
-  rm android-ndk-r20-linux-x86_64.zip
-ENV NDK_HOME /usr/local/android-ndk-r20
+  wget -q http://dl.google.com/android/repository/android-ndk-r23-linux.zip && \
+  unzip -q android-ndk-r23-linux.zip && \
+  rm android-ndk-r23-linux.zip
+ENV NDK_HOME /usr/local/android-ndk-r23
 
 # Install bundletool
 RUN curl -L -o /usr/local/lib/bundletool.jar https://github.com/google/bundletool/releases/download/1.7.1/bundletool-all-1.7.1.jar
