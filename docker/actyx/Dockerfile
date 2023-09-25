@@ -45,10 +45,10 @@ RUN cargo install \
 
 # final prod image
 FROM --platform=$TARGETPLATFORM alpine:3.13
-RUN addgroup -g 1000 -S actyx && \
-    adduser -u 1000 -S actyx -G actyx
+RUN addgroup -g 1001 -S actyx && \
+    adduser -u 1001 -S actyx -G actyx
 
-COPY --from=build --chown=1000:1000 /usr/local/cargo/bin/actyx /usr/bin/actyx
+COPY --from=build --chown=1001:1001 /usr/local/cargo/bin/actyx /usr/bin/actyx
 
 CMD ["actyx", "--working-dir", "/data/actyx-data", "--bind-admin", "0.0.0.0:4458", "--bind-api", "0.0.0.0:4454", "--bind-swarm", "0.0.0.0:4001"]
 

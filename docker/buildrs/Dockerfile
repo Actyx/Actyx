@@ -9,8 +9,8 @@ ENV RUST_VERSION=1.72.1
 
 ARG BUILD_RUST_TOOLCHAIN
 
-RUN groupadd -g 1000 builder \
-  && useradd -m -u 1000 -g 1000 builder
+RUN groupadd -g 1001 builder \
+  && useradd -m -u 1001 -g 1001 builder
 
 # openjdk-8 for debian buster
 RUN apt-get update && \

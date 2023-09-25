@@ -6,4 +6,4 @@ build_rust_toolchain=1.72.1
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), the `Makefile` needs to be changed accordingly.
 latest_stable=`git rev-parse HEAD`
-docker buildx build --push --build-arg BUILD_RUST_TOOLCHAIN=$build_rust_toolchain --tag actyx/util:buildrs-x64-$latest_stable .
+docker buildx build --push --provenance=false --build-arg BUILD_RUST_TOOLCHAIN=$build_rust_toolchain --tag actyx/util:buildrs-x64-$latest_stable .

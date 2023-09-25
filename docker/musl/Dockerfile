@@ -5,8 +5,8 @@ FROM rustembedded/cross:${TARGET}-0.2.1 as crossbuild-amd64
 ARG TARGET
 ARG BUILD_RUST_TOOLCHAIN=1.72.1
 
-RUN groupadd -g 1000 builder \
-    && useradd -m -u 1000 -g 1000 builder \
+RUN groupadd -g 1001 builder \
+    && useradd -m -u 1001 -g 1001 builder \
     && apt-get update \
     && apt-get install -y liblzma-dev zlib1g-dev protobuf-compiler
 

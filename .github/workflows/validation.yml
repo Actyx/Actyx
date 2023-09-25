@@ -1,62 +1,87 @@
-# Pull request check and validation workflow
-name: Validate PR
+name: Run checks
 
 on:
   workflow_dispatch:
   pull_request:
   push:
     branches:
-      - 'master'
+      - "master"
 
 env:
   RUST_BACKTRACE: 1
+  RUST_VERSION: 1.72.1
 
 jobs:
-  check:
-    runs-on: [self-hosted, Linux]
-
-    strategy:
-      matrix:
-        product: [release, rust, js, node-manager-bindings]
-      fail-fast: false
-
+  check-rust:
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      - name: Validate ${{matrix.product}}
-        run: make validate-${{matrix.product}} assert-clean
-      - run: make clean
+      - run: rustup toolchain install --profile default $RUST_VERSION
+      - run: |
+          sudo apt update
+          sudo apt install -y protobuf-compiler
+      - run: make validate-rust
+
+  check-js:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - run: make validate-js
+
+  check-release:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - run: rustup toolchain install --profile default $RUST_VERSION
+      - run: make validate-release
+
+  check-node-manager-bindings:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - run: rustup toolchain install --profile default $RUST_VERSION
+      - run: |
+          sudo apt update
+          sudo apt install -y protobuf-compiler
+      - run: make validate-node-manager-bindings
 
   check-android:
-    runs-on: [self-hosted, Linux]
-
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      - name: Validate Android
-        run: |
-          set -e
+      - run: |
           ./jvm/os-android/bin/create-dummy-keystore.sh
           cat jvm/os-android/actyx-local/actyx.properties
-          make validate-os-android assert-clean
-      - run: make clean
+          make validate-os-android
 
-  validate:
+  # NOTE: the default runner isn't beefy enough to run these tests
+  validate-os:
+    needs:
+      - check-rust
     runs-on: [self-hosted, Linux]
-    needs: check
-    timeout-minutes: 60
-
-    strategy:
-      matrix:
-        product: [os, netsim]
-      fail-fast: false
-
     steps:
       - uses: actions/checkout@v3
-      - name: Validate ${{matrix.product}}
-        run: make validate-${{matrix.product}} assert-clean
-      - run: make clean
+      # - run: rustup toolchain install --profile default $RUST_VERSION
+      # - run: |
+      #     sudo apt update
+      #     sudo apt install -y protobuf-compiler
+      - run: make validate-os
 
-  validate-docs:
+  # NOTE: the default runner isn't beefy enough to run these tests
+  validate-netsim:
+    needs:
+      - check-rust
     runs-on: [self-hosted, Linux]
+    steps:
+      - uses: actions/checkout@v3
+      # - run: rustup toolchain install --profile default $RUST_VERSION
+      # - run: |
+      #     sudo apt update
+      #     sudo apt install -y protobuf-compiler
+      - run: make validate-netsim
+
+  check-docs:
+    runs-on: ubuntu-22.04
 
     env:
       NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
@@ -86,13 +111,16 @@ jobs:
       - run: make clean
 
   notify-discord:
-    runs-on: [self-hosted, Linux]
+    runs-on: ubuntu-22.04
     if: ${{ always() }}
 
     needs:
+      - check-rust
+      - check-js
+      - check-release
+      - check-node-manager-bindings
       - check-android
-      - validate
-      - validate-docs
+      - check-docs
 
     steps:
       - uses: jmg-duarte/discord-workflow-status@5a826a3e649f9d1157507494d35811ec2f84380c
