@@ -53,7 +53,7 @@ endif
 architectures = aarch64 x86_64 armv7 arm
 unix-bins = actyx ax
 windows-bins = actyx.exe ax.exe actyx-x64.msi
-android-bins = actyx.apk actyx.aab
+android-bins = actyx.apk
 
 CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
