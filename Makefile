@@ -53,7 +53,7 @@ endif
 architectures = aarch64 x86_64 armv7 arm
 unix-bins = actyx ax
 windows-bins = actyx.exe ax.exe actyx-x64.msi
-android-bins = actyx.apk actyx.aab
+android-bins = actyx.apk
 
 CARGO_TEST_JOBS ?= 8
 CARGO_BUILD_JOBS ?= 8
@@ -66,7 +66,7 @@ export BUILD_RUST_TOOLCHAIN ?= 1.72.1
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 9cf5eddbb1b6e25112dddbcab58b729b22eadde2
+export LATEST_STABLE_IMAGE_VERSION := ceba5940e00c13b6e718c457ae6abd94976bc62c
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
