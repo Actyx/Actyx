@@ -202,6 +202,7 @@ jobs:
 
       - name: Make Docker
         run: |
+          set -x
           CHECK_FORK="$(git remote get-url origin | grep -o 'Actyx/Actyx' || echo '')"
           GIT_COMMIT="$(git rev-parse HEAD)"
           HEAD_OF_MASTER="$(git rev-parse origin/master)"
