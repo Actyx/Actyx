@@ -59,6 +59,11 @@ RUN cd /usr/local && \
   rm android-ndk-r23-linux.zip
 ENV NDK_HOME /usr/local/android-ndk-r23
 
+# This line solves the following error:
+#   error occurred: Failed to find tool. Is `i686-linux-android-ar` installed?
+# https://github.com/termux/termux-packages/discussions/8214#discussioncomment-1793086
+ENV AR=llvm-ar
+
 # Install bundletool
 RUN curl -L -o /usr/local/lib/bundletool.jar https://github.com/google/bundletool/releases/download/1.7.1/bundletool-all-1.7.1.jar
 
