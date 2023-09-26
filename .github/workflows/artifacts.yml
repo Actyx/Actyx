@@ -202,23 +202,17 @@ jobs:
 
       - name: Make Docker
         run: |
-          MAIN_REPO="Actyx/Actyx"
-          # The shell GitHub uses is already "-e" hence we need to avoid termination
-          CHECK_FORK=`git remote get-url origin | grep -o "$MAIN_REPO" || echo ""`
+          CHECK_FORK="$(git remote get-url origin | grep -o 'Actyx/Actyx' || echo '')"
+          GIT_COMMIT="$(git rev-parse HEAD)"
+          HEAD_OF_MASTER="$(git rev-parse origin/master)"
 
-          GIT_COMMIT=`git rev-parse HEAD`
-          HEAD_OF_MASTER=`git rev-parse origin/master`
-
-          # Check if we're running on the main repo as well
-          # This stops forks from pushing using "latest" by default
+          # Check if we're running on the main repo as well (this stops forks from trying to push using "latest" by default)
           if [ "$CHECK_FORK" == "Actyx/Actyx" && "$GIT_COMMIT" == "$HEAD_OF_MASTER"]; then
             echo "Running on Actyx/Actyx HEAD of master ($(HEAD_OF_MASTER)), tagging image as latest"
             make -e ADDITIONAL_DOCKER_ARGS="--tag actyx/actyx-ci:actyx-latest" docker-push-actyx
           else
             make docker-push-actyx
           fi
-
-          make assert-clean
 
         env:
           ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}

@@ -66,7 +66,7 @@ export BUILD_RUST_TOOLCHAIN ?= 1.72.1
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 7f669f49a72d23461e48583a7e30ecbc21b680c2
+export LATEST_STABLE_IMAGE_VERSION := ceba5940e00c13b6e718c457ae6abd94976bc62c
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
