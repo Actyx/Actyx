@@ -54,10 +54,15 @@ RUN ${ANDROID_SDK_ROOT}/tools/bin/sdkmanager --update | grep -v = || true
 
 # Install Android NDK
 RUN cd /usr/local && \
-  wget -q http://dl.google.com/android/repository/android-ndk-r20-linux-x86_64.zip && \
-  unzip -q android-ndk-r20-linux-x86_64.zip && \
-  rm android-ndk-r20-linux-x86_64.zip
-ENV NDK_HOME /usr/local/android-ndk-r20
+  wget -q http://dl.google.com/android/repository/android-ndk-r23-linux.zip && \
+  unzip -q android-ndk-r23-linux.zip && \
+  rm android-ndk-r23-linux.zip
+ENV NDK_HOME /usr/local/android-ndk-r23
+
+# This line solves the following error:
+#   error occurred: Failed to find tool. Is `i686-linux-android-ar` installed?
+# https://github.com/termux/termux-packages/discussions/8214#discussioncomment-1793086
+ENV AR=llvm-ar
 
 # Install bundletool
 RUN curl -L -o /usr/local/lib/bundletool.jar https://github.com/google/bundletool/releases/download/1.7.1/bundletool-all-1.7.1.jar
