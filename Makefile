@@ -357,8 +357,6 @@ node-manager-win:
 	docker run \
 	  -e BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  -w /src/js/node-manager \
 	  --rm \
 	  actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
@@ -455,8 +453,6 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
@@ -477,8 +473,6 @@ $(soTargetPatterns): cargo-init make-always
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
@@ -493,8 +487,6 @@ $(soTargetPatterns6): cargo-init make-always
 	  -e HOME=/home/builder \
 	  -e ANDROID6=yes \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
