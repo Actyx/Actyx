@@ -354,7 +354,6 @@ validate-node-manager-bindings:
 		npm run build
 
 node-manager-win:
-	env | sort
 	docker run \
 	  -e BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
 	  -v `pwd`:/src \
