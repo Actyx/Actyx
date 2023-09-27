@@ -141,7 +141,7 @@ jobs:
 
       - name: Make All Windows
         # Don't try this at home kids!
-        run: chmod -R 0777 wix/ make all-windows
+        run: chmod -R 0777 wix/ && make all-windows
         env:
           ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
           ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
