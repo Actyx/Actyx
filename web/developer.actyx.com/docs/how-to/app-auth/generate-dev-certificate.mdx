@@ -8,7 +8,9 @@ image: /images/defaults/default.svg
 
 :::tip
 
-This guide pertains to launching Actyx in "production mode".
+This guide is part of a series about running your own Actyx deployment in production.
+If you haven't done so, we strongly encourage you to read the [previous guide](./compiling-actyx)!
+
 If you're still testing Actyx or developing your application, set the node licensing
 to `development` in the node settings.
 
@@ -63,4 +65,9 @@ $ cargo run --bin ax-cert dev-cert \
 }
 ```
 
-You can also use `ACTYX_PRIVATE_KEY` instead of setting `--actyx-private-key`.
+You can also use the `ACTYX_PRIVATE_KEY` environment variable instead of setting `--actyx-private-key`.
+
+:::info
+If you wish to generate your own developer key, refer back to
+[Generating your own Actyx key pair](./compiling-actyx#generating-your-own-Actyx-key-pair).
+:::

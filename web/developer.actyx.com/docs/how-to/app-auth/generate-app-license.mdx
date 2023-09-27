@@ -6,6 +6,22 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
+:::tip
+
+This guide is part of a series about running your own Actyx deployment in production.
+If you haven't done so, we strongly encourage you to read the [previous guide](./authenticate-with-app-manifest)!
+
+If you're still testing Actyx or developing your application, set the node licensing
+to `development` in the node settings.
+
+```json
+"licensing": {
+    "node": "development"
+}
+```
+
+:::
+
 This guide will walk you through the process of licensing an app.
 
 When running an Actyx node in production mode, your apps are required to be licensed.
@@ -16,7 +32,7 @@ To generate an app license, we use `ax-cert`:
 ```bash
 $ cd rust/actyx
 $ cargo run --bin ax-cert -- app-license \
-    --actyx-private-key 0WBFFicIHbivRZXAlO7tPs7rCX6s7u2OIMJ2mx9nwg0w= \
+    --actyx-private-key <path_to_your_actyx_private_key> \
     --app-id com.example.app \
     --email 'sample@actyx.com' \
     --expires-at '2024-11-28T12:00:00Z'

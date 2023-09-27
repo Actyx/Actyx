@@ -1,5 +1,5 @@
 ---
-title: Deploy Actyx to production
+title: Compiling your own Actyx
 id: compiling-actyx
 hide_title: false
 hide_table_of_contents: false
@@ -10,18 +10,73 @@ import { Tabs } from '../../../src/components'
 
 # Compiling your own Actyx
 
+:::tip
 This guide is the starting point to deploying your own Actyx swarm to production.
 We start by showing you how to compile Actyx enabling you to fully control which
 applications run on your swarm.
 
-Actyx releases are embedded with a public key to ensure that applications running on an
-official release are certified by Actyx.
-When rolling your own Actyx deployment, you will want to set this value to your public key.
+If you're still testing Actyx or developing your application, set the node licensing
+to `development` in the node settings.
 
-:::info Example keys
+```json
+"licensing": {
+    "node": "development"
+}
+```
 
-While this guide also addresses generating the required keys, we provide example ones
-(base64 encoded) for the sake of consistent outputs.
+:::
+
+When running Actyx in production, you have fine grained control over which applications
+are authorized to run on which node, along with it, you can also sign applications to
+ensure the authenticity of the running application.
+
+To enable this, Actyx makes use of assymetric cryptography, more precisely
+[Ed25519](https://en.wikipedia.org/wiki/EdDSA#Ed25519) keys.
+When running your own Actyx deployment, you will need to generate these key pairs and
+compile Actyx from source.
+
+:::info Download Actyx's source
+
+To simplify the rest of the tutorial, ensure you have downloaded Actyx's source code:
+
+```bash
+git clone git@github.com:Actyx/Actyx.git
+```
+
+:::
+
+## Generate your own Actyx key pair
+
+As discussed, to roll your own Actyx deployment, you will need to generate your own key pair,
+so, without further ado, let's start.
+
+:::tip
+In upcoming tutorials, a "developer key pair" will be mentioned, the generation process
+for said key is the same as for the Actyx key (i.e. you can come back and read this section).
+:::
+
+1. Navigate to `rust/actyx`.
+
+```bash
+cd rust/actyx
+```
+
+2. Using the Actyx CLI (`ax`), generate your Actyx key pair. It will ask you where to
+   store the key pair, you can use the provided directory or select your own, in either
+   case, just make sure you do not lose the key pair (you will need it).
+
+```bash
+cargo run --bin ax users keygen
+Generating public/private key pair ..
+Enter path in which to save the key (/Users/jmgd/Library/Application Support/actyx/keys/users/id):
+Your private key has been saved at /Users/jmgd/Library/Application Support/actyx/keys/users/id
+Your public key has been saved at /Users/jmgd/Library/Application Support/actyx/keys/users/id.pub
+```
+
+:::tip Example keys
+
+If you are just trying out the process and do not want to generate a key pair, you can
+use the following _example_ keys.
 
 |         | Actyx                                           | Developer                                       |
 | ------- | ----------------------------------------------- | ----------------------------------------------- |
@@ -30,24 +85,10 @@ While this guide also addresses generating the required keys, we provide example
 
 :::
 
-To do so, you first need to generate an Ed25519 key pair, in case you do not know how to do so
-you can refer to [GitHub's tutorial](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent#generating-a-new-ssh-key) on the topic.
+## Compile Actyx
 
-After you have your key pair, we need to download Actyx and compile it using your key.
-
-1. Start by cloning the repository.
-
-```bash
-git clone git@github.com:Actyx/Actyx.git
-```
-
-2. Navigate to `rust/actyx`.
-
-```bash
-cd rust/actyx
-```
-
-3. Compile Actyx, using your public key.
+If you followed the previous section, you will already be halfway there.
+You should have downloaded the Actyx source code and be in the `rust/actyx` repository.
 
 :::caution Don't forget the dependencies!
 
@@ -88,12 +129,16 @@ apt-get install protobuf-compiler
 
 :::
 
+1. Compile Actyx, using your public key.
+
 ```bash
-export AX_PUBLIC_KEY="$(base64 -i <path_to_your_public_key>)"
+export AX_PUBLIC_KEY="$(cat <public_key>)"
 cargo build --bin actyx --release --locked
 ```
 
-4. (Optional) Double check that your public key in fact embedded in the Actyx binary:
+Where `public_key` is the path to the public key you generated in the previous section.
+
+2. (Optional) Double check that your public key is, in fact, embedded in the Actyx binary:
 
 ```bash
 strings target/release/actyx | grep $AX_PUBLIC_KEY

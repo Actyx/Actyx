@@ -37,12 +37,12 @@ module.exports = {
       collapsed: true,
       items: [
         'how-to/user-auth/set-up-user-keys',
-        'how-to/user-auth/manage-authorized-users',
+        'how-to/user-auth/manage-authorized-users'
       ],
     },
     {
       type: 'category',
-      label: 'App Auth',
+      label: 'Deploying to Production',
       collapsed: true,
       items: [
         'how-to/app-auth/compiling-actyx',
