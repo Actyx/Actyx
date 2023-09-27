@@ -35,8 +35,6 @@ SELECT _.id
 ```
 
 The performance difference between these can be quite noticeable.
-This is doubly relevant when the query isn’t crafted by you but sent indirectly, e.g. via the Actyx Pond library:
-in this case the filtering would need to be done inside your `onEvent` function in TypeScript, which wastes not only the work inside the Actyx event store but also the much more costly serialisation and deserialisation of the events on their path towards `onEvent`.
 
 :::info take notice!
 Excessive event retrieval is the #1 performance sin in Actyx, comparable to full table scans in relational databases.

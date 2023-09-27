@@ -130,7 +130,7 @@ The optimal scenario would be to first catch up and then insert all 100 chunks i
 The worst-case scenario would be that every chunk causes a time travel, with each subsequent time travel being more costly than the previous (due to added events).
 Thereby, the Fish would process some events potentially a hundred times, more likely ten times (since chunks are ordered per device they come from).
 
-To avoid this issue, we recommend using `Pond.waitForSwarmSync()` or `Actyx.waitForSync()` to delay app startup until Actyx is up-to-date with the rest of the swarm.
+To avoid this issue, we recommend using `Actyx.waitForSync()` to delay app startup until Actyx is up-to-date with the rest of the swarm.
 
 ## Illustrative Examples
 
