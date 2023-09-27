@@ -7,14 +7,15 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to fill out this bug report!
+        Thanks for taking the time to help improve Actyx!
   - type: dropdown
     id: product
     attributes:
       label: Product
-      description: Which product are you running?
+      description: Which product should the feature be in?
       options:
         - Actyx
+        - Actyx SDK
         - Actyx CLI
         - Node Manager
       default: 0

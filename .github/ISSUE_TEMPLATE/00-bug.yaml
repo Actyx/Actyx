@@ -12,9 +12,10 @@ body:
     id: product
     attributes:
       label: Product
-      description: Which product are you running?
+      description: Which product is the bug in?
       options:
         - Actyx
+        - Actyx SDK
         - Actyx CLI
         - Node Manager
       default: 0
