@@ -141,7 +141,7 @@ jobs:
 
       - name: Make All Windows
         # Don't try this at home kids!
-        run: chmod +R 0777 wix/ make all-windows
+        run: chmod -R 0777 wix/ make all-windows
         env:
           ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
           ACTYX_PUBLIC_KEY: ${{ secrets.ACTYX_PUBLIC_KEY }}
@@ -191,6 +191,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # Required to allow `git rev-parse origin/master` to work
+      # (we don't need to download everything, just references)
+      # Solution based on: https://stackoverflow.com/a/58384666
+      - run: git fetch --all
+
       - name: Login to the Docker registry
         uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d
         with:
@@ -203,13 +208,8 @@ jobs:
 
       - name: Make Docker
         run: |
-          set -x
-          CHECK_FORK="$(git remote get-url origin | grep -o 'Actyx/Actyx' || echo '')"
-          GIT_COMMIT="$(git rev-parse HEAD)"
-          HEAD_OF_MASTER="$(git rev-parse 'origin/master')"
-
           # Check if we're running on the main repo as well (this stops forks from trying to push using "latest" by default)
-          if [ "$CHECK_FORK" == "Actyx/Actyx" && "$GIT_COMMIT" == "$HEAD_OF_MASTER"]; then
+          if [ "${{ github.repository }}" == "Actyx/Actyx" && "${{ github.sha }}" == "$(git rev-parse 'origin/master')"]; then
             echo "Running on Actyx/Actyx HEAD of master ($(HEAD_OF_MASTER)), tagging image as latest"
             make -e ADDITIONAL_DOCKER_ARGS="--tag actyx/actyx-ci:actyx-latest" docker-push-actyx
           else
