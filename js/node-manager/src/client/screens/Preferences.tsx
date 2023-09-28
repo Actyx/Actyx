@@ -6,32 +6,6 @@ import clsx from 'clsx'
 import { StoreStateKey } from '../store/types'
 import { DEFAULT_TIMEOUT_SEC } from 'common/consts'
 
-const Analytics = () => {
-  const store = useStore()
-  const checked = store.key === StoreStateKey.Loaded && store.data.analytics.disabled
-  const onChange = (isChecked: boolean) => {
-    if (store.key === StoreStateKey.Loaded) {
-      store.actions.updateAndReload({
-        ...store.data,
-        analytics: {
-          ...store.data.analytics,
-          disabled: isChecked,
-        },
-      })
-    }
-  }
-  return (
-    <label className="inline-flex items-center p-1">
-      <span>Disable anonymous aggregate user behaviour analytics:</span>
-      <input
-        className="ml-2"
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-      />
-    </label>
-  )
-}
 
 const NodeTimeout = () => {
   const store = useStore()
@@ -109,7 +83,6 @@ const Screen: React.FC<{}> = () => {
           <p className="text-gray-400 pb-3 flex-grow-0 flex-shrink-0">
             Configure the Node Manager to fit your workflow.
           </p>
-          <Analytics />
           <NodeTimeout />
         </div>
       </SimpleCanvas>

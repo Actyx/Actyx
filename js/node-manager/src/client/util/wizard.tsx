@@ -1,6 +1,5 @@
 import React, { Reducer, useEffect, useReducer, useState } from 'react'
 import { Either, isRight } from 'fp-ts/lib/Either'
-import { useAnalytics } from '../analytics'
 import { safeErrorToStr } from '../../common/util'
 
 export type WizardInput<I> = React.FC<{
@@ -58,15 +57,10 @@ export function Wizard<Input, Success, Failure>({
   const S = success
   const F = failure
 
-  const analytics = useAnalytics()
-
   useEffect(() => {
     if (state.key === 'f') {
-      if (analytics) {
-        analytics.gotError(safeErrorToStr(state.s))
-      }
     }
-  }, [analytics, state])
+  }, [state])
 
   const wrappedExecute = (i: Input) => {
     ;(async () => {

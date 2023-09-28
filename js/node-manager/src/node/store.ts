@@ -3,19 +3,13 @@ import path from 'path'
 import { StoreData } from '../common/types'
 import { promises as fs, existsSync } from 'fs'
 import { isDev } from '../node/util'
-import { v4 as uuidv4 } from 'uuid'
 import { isLeft } from 'fp-ts/lib/Either'
 import { formatValidationErrors } from 'io-ts-reporters'
-import { sleep } from '../common/util'
 
 const INITIAL_STORE_DATA: StoreData = {
   preferences: {
     favoriteNodeAddrs: [],
     nodeTimeout: undefined,
-  },
-  analytics: {
-    disabled: false,
-    userId: uuidv4(),
   },
 }
 
