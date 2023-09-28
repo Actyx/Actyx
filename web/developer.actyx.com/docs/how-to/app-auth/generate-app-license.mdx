@@ -1,0 +1,51 @@
+---
+title: Generate your own app license
+id: generate-app-license
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+:::tip
+
+This guide is part of a series about running your own Actyx deployment in production.
+If you haven't done so, we strongly encourage you to read the [previous guide](./authenticate-with-app-manifest)!
+
+If you're still testing Actyx or developing your application, set the node licensing
+to `development` in the node settings.
+
+```json
+"licensing": {
+    "node": "development"
+}
+```
+
+:::
+
+This guide will walk you through the process of licensing an app.
+
+When running an Actyx node in production mode, your apps are required to be licensed and signed (see [this guide](./sign-app-manifest) on signing your app manifest for more information).
+This mechanism provides a more fine grained control over which apps are _authorized_ to run on which nodes.
+
+To generate an app license, we use `ax-cert`:
+
+```bash
+$ cd rust/actyx
+$ cargo run --bin ax-cert -- app-license \
+    --actyx-private-key <path_to_your_actyx_private_key> \
+    --app-id com.example.app \
+    --email 'sample@actyx.com' \
+    --expires-at '2024-11-28T12:00:00Z'
+
+v25saWNlbnNlVmVyc2lvbgBrbGljZW5zZVR5cGWhaGV4cGlyaW5nomVhcHBJZG9jb20uZXhhbXBsZS5hcHBpZXhwaXJlc0F0dDIwMjQtMTEtMjhUMTI6MDA6MDBaaWNyZWF0ZWRBdHgbMjAyMy0wOS0yMlQxMzowMTowOS43Njg0ODNaaXNpZ25hdHVyZXhYdEJFK2FIalhmMDdBaG9mVXMwMFdIcjBDZDJiaFBJbmRSY0x0OU5oYk9VN3hpWGFvMENrY0MzU000MEtSRytMcmhtWDhXdlhUdGJuTzB3QzZESWNYQmc9PWlyZXF1ZXN0ZXKhZWVtYWlscHNhbXBsZUBhY3R5eC5jb23/
+```
+
+You can then use the license by setting it in your node settings:
+
+```json
+"licensing": {
+    "apps": {
+        "com.example.app": "v25saWNlbnNlVmVyc2lvbgBrbGljZW5zZVR5cGWhaGV4cGlyaW5nomVhcHBJZG9jb20uZXhhbXBsZS5hcHBpZXhwaXJlc0F0dDIwMjQtMTEtMjhUMTI6MDA6MDBaaWNyZWF0ZWRBdHgbMjAyMy0wOS0yMlQxMzowMTowOS43Njg0ODNaaXNpZ25hdHVyZXhYdEJFK2FIalhmMDdBaG9mVXMwMFdIcjBDZDJiaFBJbmRSY0x0OU5oYk9VN3hpWGFvMENrY0MzU000MEtSRytMcmhtWDhXdlhUdGJuTzB3QzZESWNYQmc9PWlyZXF1ZXN0ZXKhZWVtYWlscHNhbXBsZUBhY3R5eC5jb23"
+    }
+}
+```

@@ -6,6 +6,22 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
+:::tip
+
+This guide is part of a series about running your own Actyx deployment in production.
+If you haven't done so, we strongly encourage you to read the [previous guide](./sign-app-manifest)!
+
+If you're still testing Actyx or developing your application, set the node licensing
+to `development` in the node settings.
+
+```json
+"licensing": {
+    "node": "development"
+}
+```
+
+:::
+
 In order for your app to access the Events API, it needs to be authenticated with the node it is running on.
 This how-to guide explains the steps you need to take to authenticate your app with a node.
 You can authenticate your app using our Typescript SDK (recommended) or by manually using the [Auth API](../../reference/auth-api.mdx).
@@ -36,9 +52,7 @@ import TabItem from '@theme/TabItem'
   ]}
 >
 
-
 <TabItem value="sdk">
-
 
 The SDK automatically manages the authentication flow for the application.
 It only needs to be provided with the signed manifest upon initialization.
@@ -64,9 +78,7 @@ try {
 
 </TabItem>
 
-
 <TabItem value="http">
-
 
 See an example of how to request a new auth token with every HTTP request to the Events API:
 
@@ -85,8 +97,6 @@ If you are manually using the Auth HTTP API, please note that you need to implem
 
 </TabItem>
 
-
 </Tabs>
-
 
 If you want to read a more holistic explanation of authentication and authorization with Actyx, please check out our [conceptual guide](../../conceptual/authentication-and-authorization.mdx) on the topic.

@@ -35,17 +35,19 @@ module.exports = {
       collapsed: true,
       items: [
         'how-to/user-auth/set-up-user-keys',
-        'how-to/user-auth/manage-authorized-users',
-        'how-to/user-auth/get-developer-certificate',
+        'how-to/user-auth/manage-authorized-users'
       ],
     },
     {
       type: 'category',
-      label: 'App Auth',
+      label: 'Deploying to Production',
       collapsed: true,
       items: [
+        'how-to/app-auth/compiling-actyx',
+        'how-to/app-auth/generate-dev-certificate',
         'how-to/app-auth/sign-app-manifest',
         'how-to/app-auth/authenticate-with-app-manifest',
+        'how-to/app-auth/generate-app-license',
       ],
     },
     {
