@@ -11,7 +11,11 @@ module.exports = {
   projectName: 'Actyx Developer Docs',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'throw',
+  markdown: {
+    mermaid: true
+  },
   plugins: [
+    "@docusaurus/theme-mermaid",
     [
       require.resolve('docusaurus-gtm-plugin'),
       {

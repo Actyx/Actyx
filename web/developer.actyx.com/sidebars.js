@@ -8,6 +8,7 @@ module.exports = {
       items: [
         'how-to/local-development/install-actyx',
         'how-to/local-development/install-cli-node-manager',
+        'how-to/local-development/add-node-node-manager',
         'how-to/local-development/reset-your-node',
       ],
     },
@@ -170,6 +171,19 @@ module.exports = {
     {
       type: 'doc',
       id: 'tutorials/overview', // string - document id
+    },
+    {
+      type: 'category', label: 'Getting Started', collapsed: false, items: [
+        'tutorials/getting-started/first-event',
+        'tutorials/getting-started/first-query',
+        {
+          type: 'category', label: 'Machine Runner', collapsed: false, items: [
+            'tutorials/getting-started/machine-runner/first-machine',
+            'tutorials/getting-started/machine-runner/event-payloads',
+            'tutorials/getting-started/machine-runner/state-payloads',
+          ]
+        }
+      ]
     },
     {
       type: 'doc',

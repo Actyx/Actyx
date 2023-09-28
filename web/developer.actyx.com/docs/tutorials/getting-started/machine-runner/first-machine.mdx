@@ -1,0 +1,580 @@
+---
+title: Your first machine
+id: first-machine
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+import { Tabs } from '/src/components'
+import { ExpendableDiagram } from '/src/components/custom-codeblocks/expendable-diagram'
+
+:::info
+This tutorial is aimed at beginners that have read previous tutorials about
+[publishing](../first-event) and [querying](../first-query) events!
+:::
+
+Our goal is to develop a simple Actyx machine for an imaginary client,
+allowing you to get your feet wet with Actyx.
+
+In this scenario, the client has a flower planted in a smart pot,
+the smart pot keeps track of the water level and if it gets too low, emits a warning;
+the client wants us to develop a robot that receives the warning and waters the plant.
+
+```mermaid
+sequenceDiagram
+    WaterSensor->>Robot: NeedsWater
+    Robot-->>Plant: Watering
+    WaterSensor->Robot: HasWater
+    Robot-->Plant: Stops Watering
+```
+
+## Setup
+
+:::caution Requirements
+Before starting the tutorial, you will need to have NodeJS, npm and npx installed
+(if it is not installed, you can take a look over the [installation guide](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)).
+:::
+
+Let's start by creating our project folder and adding its dependencies.
+
+First, initialize the NPM package. We'll use `-y` as the questions NPM asks are not
+relevant to the current project.
+
+```bash
+$ npm init -y
+```
+
+We also need to install TypeScript as a development dependency and initialize the TypeScript project.
+
+```bash
+$ npm install typescript --save-dev
+$ npx tsc --init
+```
+
+The last command will generate [`tsconfig.json`](https://www.typescriptlang.org/tsconfig)
+of which we will change the [`outDir`](https://www.typescriptlang.org/tsconfig#outDir)
+to `dist/` just so our compiled JavaScript code isn't mixed with the TypeScript code.
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    // ...
+    "outDir": "dist/"
+    //...
+  }
+}
+```
+
+We're almost done with setup, we just need to add the Actyx packages now!
+
+```bash
+$ npm install @actyx/sdk @actyx/machine-runner
+```
+
+### Application structure
+
+Before we start coding, let's (quickly) discuss file structure.
+
+When developing a protocol, there will be a bunch of code that can be reused throughout the application.
+To smooth things out in the next steps, let me share with you the code structure we will use.
+
+```mermaid
+flowchart TD
+    sensor.ts --> protocol.ts
+    robot.ts --> protocol.ts
+```
+
+As shown in the picture, we will create three files:
+
+- `robot.ts` - our robot's entrypoint
+- `sensor.ts` - our (mock) sensor's entrypoint
+- `protocol.ts` - the protocol that defines the events, etc, that the robot and sensor will use.
+
+<Tabs>
+
+<Windows>
+
+```powerline
+$ ni -Path '.\src\robot.ts' -ItemType File -Force
+$ ni -Path '.\src\sensor.ts' -ItemType File -Force
+$ ni -Path '.\src\protocol.ts' -ItemType File -Force
+```
+
+</Windows>
+
+<Linux>
+
+```bash
+$ mkdir src
+$ touch src/robot.ts src/sensor.ts src/protocol.ts
+```
+
+</Linux>
+
+<Mac>
+
+```bash
+$ mkdir src
+$ touch src/robot.ts src/sensor.ts src/protocol.ts
+```
+
+</Mac>
+
+</Tabs>
+
+## The Robot
+
+As discussed, our task is to develop a robot that waters a plant whenever needed.
+The idea is as follows — the plant has a sensor that checks the soil humidity level,
+if said level goes below a certain threshold, it sends the robot an event requesting water,
+when the level is restored, the sensor sends an event signaling that the robot can stop.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> WateringPlant: NeedsWater
+    WateringPlant --> Idle: HasWater
+```
+
+:::info
+To further simplify our example, we will not care about the amount of water we're providing to the plant.
+Instead, we will focus on the interaction between the machine and events.
+:::
+
+### Defining the application manifest
+
+Spoiler alert, this will only be used later on, but we'll need it for both the robot and the sensor,
+so we'll get it out of the way now.
+
+The application manifest is used by Actyx to authenticate your application
+(you can read more about it in the [how-to guides](./docs/how-to/app-auth/sign-app-manifest) and in the [conceptual guides](./docs/conceptual/authentication-and-authorization)).
+The manifest requires an application ID, a display name, and an application version, nothing too out of the ordinary:
+
+```ts title="src/protocol.ts"
+export const manifest = {
+  appId: 'com.example.watering-robot',
+  displayName: 'watering Robot',
+  version: '1.0.0',
+}
+```
+
+That's it, with that out of the way, let's move on to the actual protocol.
+
+### Defining the protocol
+
+To define a protocol, we start by creating its events:
+
+```ts title="src/protocol.ts"
+import { MachineEvent, SwarmProtocol } from '@actyx/machine-runner'
+
+export namespace Events {
+  export const HasWater = MachineEvent.design('HasWater').withoutPayload()
+  export const NeedsWater = MachineEvent.design('NeedsWater').withoutPayload()
+  export const All = [HasWater, NeedsWater] as const
+}
+
+export const protocol = SwarmProtocol.make('wateringRobot', Events.All)
+```
+
+Let's break down what is happening:
+
+1. We create a `namespace` for our events to keep everything together and easy to access:
+
+```ts
+export namespace Events { ... }
+```
+
+2. We then declare the protocol events (exporting them so we can actually use them outside the namespace):
+
+```ts
+export const HasWater = MachineEvent.design('HasWater').withoutPayload()
+export const NeedsWater = MachineEvent.design('NeedsWater').withoutPayload()
+```
+
+[`MachineEvent.design`](https://github.com/Actyx/machines/blob/84feac646166ff102558c8c10d68b6832940ac97/machine-runner/src/design/event.ts#L64-L94)
+creates an event with the name you pass it, however, since events may also carry payloads,
+we finish it off by applying either [`withPayload`](https://github.com/Actyx/machines/blob/84feac646166ff102558c8c10d68b6832940ac97/machine-runner/src/design/event.ts#L76-L85) or [`withoutPayload`](https://github.com/Actyx/machines/blob/84feac646166ff102558c8c10d68b6832940ac97/machine-runner/src/design/event.ts#L87-L94).
+For simplicity's sake, we will use [`withoutPayload`](https://github.com/Actyx/machines/blob/84feac646166ff102558c8c10d68b6832940ac97/machine-runner/src/design/event.ts#L87-L94).
+
+3. Finally, we create `All`. It isn't an event but it will be useful when registering the events on the protocol.
+   You can also create other groups of events!
+
+```ts
+export const All = [HasWater, NeedsWater] as const
+```
+
+4. We create the [`SwarmProtocol`](https://github.com/Actyx/machines/blob/84feac646166ff102558c8c10d68b6832940ac97/machine-runner/src/design/protocol.ts#L16-L25) that the robot will use.:
+
+```ts
+export const protocol = SwarmProtocol.make('wateringRobot', Events.All)
+```
+
+[`SwarmProtocol.make`](https://github.com/Actyx/machines/blob/84feac646166ff102558c8c10d68b6832940ac97/machine-runner/src/design/protocol.ts#L55-L72)
+takes the name of the protocol and all events that compose it (this is why `All` is useful).
+
+:::info Note on `SwarmProtocol`
+Actyx is designed to support both a single machine or multiple ones.
+When working with multiple machines, you have a swarm, all machines in the swarm must
+"sync" in a way or another so they can cooperate instead of getting in each others' way,
+that's where the `Swarm` in `SwarmProtocol` comes in.
+:::
+
+<details>
+<summary>Open to see the full contents of <code>protocol.ts</code></summary>
+
+```ts title="src/protocol.ts"
+import { MachineEvent, SwarmProtocol } from '@actyx/machine-runner'
+
+export const manifest = {
+  appId: 'com.example.tomato-robot',
+  displayName: 'Tomato Robot',
+  version: '1.0.0',
+}
+
+export namespace Events {
+  export const HasWater = MachineEvent.design('HasWater').withoutPayload()
+  export const NeedsWater = MachineEvent.design('NeedsWater').withoutPayload()
+  export const All = [HasWater, NeedsWater] as const
+}
+
+export const protocol = SwarmProtocol.make('wateringRobot', Events.All)
+```
+
+</details>
+
+### Creating the robot
+
+Our robot is a [state machine](https://en.wikipedia.org/wiki/Finite-state_machine) and as the name implies,
+it needs states.
+
+We start by creating the `Machine`, the main abstraction which manages all the states.
+
+```ts title="src/robot.ts"
+import { protocol } from './protocol'
+
+export const machine = protocol.makeMachine('robot')
+```
+
+Followed by the machine's states:
+
+```ts title="src/robot.ts"
+export const Idle = machine.designEmpty('Idle').finish()
+export const WateringPlant = machine.designEmpty('WateringPlant').finish()
+```
+
+Just like the events, our states don't carry any data (though they can as you will see in the next tutorials),
+thus they make use of [`designEmpty`](https://github.com/Actyx/machines/blob/84feac646166ff102558c8c10d68b6832940ac97/machine-runner/src/design/protocol.ts#L227-L230).
+
+Finally, to tie everything together, we need to handle the events,
+in other words, we need to make our robot react to them.
+
+To do so, we need to describe what each event reacts to using [`react`](https://github.com/Actyx/machines/blob/84feac646166ff102558c8c10d68b6832940ac97/machine-runner/src/design/state.ts#L368-L386):
+
+```ts title="src/robot.ts"
+import { Events } from './protocol'
+
+Idle.react([Events.NeedsWater], WateringPlant, (_) => WateringPlant.make())
+WateringPlant.react([Events.HasWater], Idle, (_) => Idle.make())
+```
+
+[`react`](https://github.com/Actyx/machines/blob/84feac646166ff102558c8c10d68b6832940ac97/machine-runner/src/design/state.ts#L368-L386) takes in three arguments:
+
+1. A list of events it should react to (another place where grouping states is useful).
+2. The next state.
+3. A function that handles the state transition. This function receives the previous state as a parameter;
+   in our case, since we're only handling a single state which has no data, there is no need to care for the parameter.
+
+Our robot needs to be able to run, otherwise, it's a bit useless.
+To do so, we need an entrypoint:
+
+```ts title="src/robot.ts"
+import { Actyx } from '@actyx/sdk'
+import { createMachineRunner } from '@actyx/machine-runner'
+import { manifest } from './protocol'
+
+export async function main() {
+  const app = await Actyx.of(manifest)
+
+  const tags = protocol.tagWithEntityId('robot-1')
+  const machine = createMachineRunner(app, tags, Idle, undefined)
+
+  for await (const state of machine) {
+    console.log(state)
+  }
+}
+
+main() // Execute your entrypoint
+```
+
+It's a bit more code than before, but it's easier, let's see:
+
+1. This is your Actyx application instance, it will connect to Actyx and authenticate your app.
+
+```ts
+const app = await Actyx.of(manifest)
+```
+
+2. This is a [`tag`](/docs/conceptual/tags), it is used to know who's who — e.g. if you have a bunch of robots that all have the same model name, you can tag them with their serial number.
+
+```ts
+const tags = protocol.tagWithEntityId('robot-1')
+```
+
+3. Create your robot's state machine runner. The runner will listen and react to events with the tags defined in the previous step. Its parameters are:
+
+- The application manifest.
+- The machine's tags.
+- The machine's initial state.
+- The machine's initial payload, we declare it as `undefined` since our state does not carry data.
+
+```ts
+const machine = createMachineRunner(app, tags, Idle, undefined)
+```
+
+4. The main loop, where you get new states as they go through:
+
+```ts
+for await (const state of machine) {
+  console.log(state)
+}
+```
+
+<details>
+<summary>Open to see the full contents of <code>robot.ts</code></summary>
+
+```ts title="src/robot.ts"
+import { createMachineRunner } from '@actyx/machine-runner'
+import { Actyx } from '@actyx/sdk'
+import { Events, manifest, protocol } from './protocol'
+
+const machine = protocol.makeMachine('robot')
+
+export const Idle = machine.designEmpty('Idle').finish()
+export const WateringPlant = machine.designEmpty('WateringPlant').finish()
+
+Idle.react([Events.NeedsWater], WateringPlant, (_) => WateringPlant.make())
+WateringPlant.react([Events.HasWater], Idle, (_) => Idle.make())
+
+export async function main() {
+  const sdk = await Actyx.of(manifest)
+  const tags = protocol.tagWithEntityId('robot-1')
+  const machine = createMachineRunner(sdk, tags, Idle, undefined)
+
+  for await (const state of machine) {
+    console.log(state)
+  }
+}
+
+main()
+```
+
+</details>
+
+### Running the robot
+
+To run the robot we need to compile its code and run it using NodeJS,
+to simplify subsequent runs, we'll add a new script to `package.json`:
+
+```json title="package.json"
+"scripts": {
+  "start-robot": "tsc && node dist/robot.js"
+}
+```
+
+Which enables you to just run `npm run start-robot`.
+
+:::caution Ensure Actyx is running!
+Need a refresher on how to start Actyx? See [how-to guide](./docs/how-to/local-development/install-actyx#starting-and-stopping-actyx).
+:::
+
+So, let's run it!
+
+```bash
+$ npm run start-robot
+
+> tomato-robot@1.0.0 start-robot
+> tsc && node dist/robot.js
+
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: undefined,
+  type: 'Idle'
+}
+```
+
+:::caution
+Actyx keeps data between runs, so if you stop Actyx, everything from previous runs will _still_ be there.
+
+To ensure that this (and subsequent) tutorial's code executes properly,
+you should stop Actyx and clear its storage between runs.
+To do so, you can run remove the `actyx-data` folder.
+
+<Tabs>
+
+<Windows>
+
+```bash
+$ rm -R .\actyx-data
+```
+
+</Windows>
+
+<Linux>
+
+```bash
+$ rm -rf ./actyx-data
+```
+
+</Linux>
+
+<Mac>
+
+```bash
+$ rm -rf ./actyx-data
+```
+
+</Mac>
+
+</Tabs>
+:::
+
+So yeah, nothing happens, and that is because there is no one publishing events!
+Our mock sensor does not exist yet, so let's write it (I swear it's fast).
+
+## The sensor
+
+The sensor is much simpler, as we're just publishing events,
+we just need to prepare the Actyx SDK and start publishing.
+
+```ts title="src/sensor.ts"
+import { Actyx } from '@actyx/sdk'
+import { Events, manifest, protocol } from '.'
+
+async function main() {
+  const app = await Actyx.of(manifest)
+  const tags = protocol.tagWithEntityId('robot-1')
+
+  await app.publish(tags.apply(Events.NeedsWater.make({})))
+  console.log('Publishing NeedsWater')
+  await app.publish(tags.apply(Events.HasWater.make({})))
+  console.log('Publishing HasWater')
+
+  app.dispose()
+}
+```
+
+Once more, breaking it down:
+
+1. We've gone over this for the robot, same rules apply here.
+
+```ts
+const app = await Actyx.of(manifest)
+const tags = protocol.tagWithEntityId('robot-1')
+```
+
+2. Publish the events (with some logs since `publish` does not print anything to the console)!
+
+```ts
+await app.publish(tags.apply(Events.NeedsWater.make({})))
+console.log('Publishing NeedsWater')
+
+await app.publish(tags.apply(Events.HasWater.make({})))
+console.log('Publishing HasWater')
+```
+
+- First, we create a new event with `Events.NeedsWater.make({})`.
+- Then, we apply the existing tags to it with `tags.apply`.
+- Finally, we publish the event to the app with `app.publish`.
+
+3. Since our demo does not run forever, we need to dispose of the app.
+
+```ts
+app.dispose()
+```
+
+<details>
+<summary>Open to see the full <code>sensor.ts</code></summary>
+
+```ts title="src/sensor.ts"
+import { Actyx } from '@actyx/sdk'
+import { Events, manifest, protocol } from '.'
+
+async function main() {
+  const sdk = await Actyx.of(manifest)
+  const where = protocol.tagWithEntityId('robot-1')
+
+  await app.publish(tags.apply(Events.NeedsWater.make({})))
+  console.log('Publishing NeedsWater')
+
+  await app.publish(tags.apply(Events.HasWater.make({})))
+  console.log('Publishing HasWater')
+
+  sdk.dispose()
+}
+
+main()
+```
+
+</details>
+
+As a final touch, just like we added an `npm` script for the robot, we should do the same for the sensor:
+
+```json title="package.json"
+"scripts": {
+  "start-robot": "tsc && node dist/robot.js",
+  "start-sensor": "tsc && node dist/sensor.js"
+}
+```
+
+## Putting it all together
+
+Now we have everything prepared!
+
+1. Ensure Actyx is running.
+2. Start the robot using `npm run start-robot`.
+3. In another terminal, start the sensor using `npm run start-sensor`.
+
+If we take a look into the robot terminal, we should observe the following:
+
+```js
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: undefined,
+  type: 'Idle'
+}
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: undefined,
+  type: 'WateringPlant'
+}
+{
+  is: [Function: is],
+  as: [Function: as],
+  cast: [Function: cast],
+  payload: undefined,
+  type: 'Idle'
+}
+```
+
+If you notice, the state changes from `Idle` to `WateringPlant` and back,
+which means that the robot successfully listened to the event from the sensor and watered the plant! 🌱
+
+### In summary
+
+In this tutorial we covered how to get up and running with the Actyx [Machine Runner](https://github.com/Actyx/machines).
+
+We started by [creating a robot](#creating-the-robot) that listens for events pertaining a plant's water level,
+when necessary, the robot will water the plant and stop when an acceptable water level is detected.
+
+Afterward, we [developed a mock sensor](#the-sensor) that publishes the events to Actyx, which consequently hands them to the robot,
+so it can act on the plant's water needs.
+
+All this runs on top of Actyx (which coordinates all underlying events between the participants),
+the SDK (which we use to publish the events) and the Machine Runner (which allows us to write the state machine for the robot).
