@@ -12,10 +12,9 @@ This conceptual guide explains the limitations of Actyx in real-world factory so
 - [Max. number of nodes](#max-number-of-nodes)
 - [Required disk space of devices](#required-disk-space-of-devices)
 - [Performance](#performance)
-  - [Application and Fish startup time](#application-and-fish-startup-time)
-  - [The effect of semantic snapshots](#the-effect-of-semantic-snapshots)
   - [Latency implications of large number of peers](#latency-implications-of-large-number-of-peers)
   - [Pathological time travel performance when reconnecting a device that was offline for a long time](#pathological-time-travel-performance-when-reconnecting-a-device-that-was-offline-for-a-long-time)
+  - [Startup Time in Machine-runner](#startup-time-in-machine-runner)
 - [Illustrative Examples](#illustrative-examples)
   - [Machine Connectors](#machine-connectors)
   - [Production Data Acquisition](#production-data-acquisition)
@@ -91,27 +90,6 @@ Please [get in touch with us and the Actyx community](https://groups.google.com/
 The limits given above are formulated under the assumption that the processing of events by business logic does not use significant resources.
 While there are vast differences between languages, runtimes, CPU architectures, and your choices of business logic algorithms and data structures, this section gives some guidance based on our experience.
 
-### Application and Fish startup time
-
-Bringing a Fish up to date for the first time in an application run (we say “hydrating” or “waking up” the Fish) requires a starting point and the application of all following events.
-If a Fish requires a large number of events for starting up then it will take a correspondingly long time until the first state is available and the first command can be processed — the startup time is proportional to the number of events selected by the subscription (see below for the effect of snapshots).
-
-Our recommendation is to structure your fishes such that each requires less than 1,000 events.
-This means that fishes are best used to model process workflows (which rarely have more than 1,000 steps).
-Fishes are not ideal for accumulating statistical data over long time periods; a better solution for that use-case is to export the events into a time-series database.
-
-### The effect of semantic snapshots
-
-Semantic snapshots effectively truncate the event history: everything before the recognized snapshot event is ignored.
-This still means that the snapshot event needs to be found (by searching backwards from the current end of the event log) and that all younger events need to be applied.
-
-Semantic snapshots help a lot if in typical cases:
-
-- the previous snapshot event lies less than a month in the past
-- since the previous snapshot event the Fish in question only subscribes to less than 1,000 events
-
-As such, semantic snapshots can make a Fish viable even though it violates the recommendation in the previous section.
-
 ### Latency implications of large number of peers
 
 With current Actyx versions the internal event publication latency is proportional to the number of connected peers.
@@ -122,15 +100,25 @@ We are working on removing this bottleneck in a future release.
 ### Pathological time travel performance when reconnecting a device that was offline for a long time
 
 When reconnecting a device that was disconnected for a long time period, this device will need to ingest all new events from all other devices in the swarm to become up-to-date.
-If a Fish is running during this process of catching up with the swarm, then that Fish will experience a lot more time travel than it would if it were woken up after Actyx is up-to-date.
 Actyx optimizes event delivery by doing it in chunks, nevertheless in pathological cases the amount of time travel is not linear in the number of such chunks but quadratic.
 
-As an example: consider 10 devices to catch up with, each contributing 10 chunks of events for your Fish.
-The optimal scenario would be to first catch up and then insert all 100 chunks into the event history, then perform one time travel.
-The worst-case scenario would be that every chunk causes a time travel, with each subsequent time travel being more costly than the previous (due to added events).
-Thereby, the Fish would process some events potentially a hundred times, more likely ten times (since chunks are ordered per device they come from).
+Event subscription via `subscribeMonotonic` and [machine-runner](https://www.npmjs.com/package/@actyx/machine-runner) may experience a lot more time travel than it would if it were woken up after Actyx is up-to-date.
 
-To avoid this issue, we recommend using `Actyx.waitForSync()` to delay app startup until Actyx is up-to-date with the rest of the swarm.
+As an example: consider 10 devices to catch up with, each contributing 10 chunks of events for your application.
+At best, all 100 chunks are inserted into the event history and then one time travel is performed.
+At worst, every chunk causes a time travel, with each subsequent time travel being more costly than the previous (due to added events).
+Thereby, the application would process some events potentially a hundred times, more likely ten times (since chunks are ordered per device they come from).
+
+To avoid this issue, `Actyx.waitForSync()` can be used to delay app startup until Actyx is up-to-date with the rest of the swarm.
+
+### Startup Time in Machine-runner
+
+[machine-runner](https://www.npmjs.com/package/@actyx/machine-runner) works by subscribing to events of certain tags and applying all events that are found.
+At start up, a lot of matching events may have already been stored, which then makes the machine-runner take time, proportional to the number of events, until the first state is available.
+
+Our recommendation is to structure your machine-runner protocols such that each requires less than 1,000 events.
+This means that machine-runner are best used to model short-lived process workflows (which rarely have more than 1,000 steps).
+Machine-runner are not ideal for accumulating statistical data over long time periods; a better solution for that use-case is to export the events into a time-series database.
 
 ## Illustrative Examples
 
@@ -140,24 +128,11 @@ Machine connectors that only make machine state and counters available in the Ac
 The best way to do so is to emit all state and counter updates as events — typically a complete set is emitted every time.
 You can then use `Actyx.observeLatest` to keep track of the latest known machine state.
 
-If for some reason you need to write partial updates (e.g. only a subset of counters) in some events, you can use a Fish to construct a full state from the partial updates.
-It is recommended to still emit the complete state from time to time. The Fish can treat that as a semantic snapshot:  
-This way, starting up the machine connector’s related Fishes will always be quick.
-
-The other performance consideration for machine connectors is that they produce data at a steady rate that is often higher than the data rates produced by human operators.
-Therefore you need to plan the available disk space according to update frequency times event size (compressed) for at least one year; we will release a future Actyx version with ephemeral event streams which will give you the possibility to place a fixed limit on disk usage and thus solve this issue permanently.
-
-### Production Data Acquisition
-
-This use-case includes the tracking of state as well as results (finished goods, waste) of production orders.
-Each of these orders has a finite lifespan, it becomes irrelevant typically after a few weeks.
-The most challenging part of writing such an app is to construct a process registry fish such that its state doesn’t grow too big — and this fish will typically need to make use of state snapshots because it is long-lived and consumes some events from each production order.
-
-We know from project experience that implementing production data acquisition with 50 workstations and 50 machine connectors (see above) works well if you keep the above recommendations in mind.
+Machine connectors often produce data at a higher rate than human operators.
+Therefore you need to plan the available disk space according to update frequency times event size (compressed) for at least one year.
+Alternatively, [ephemeral event streams](../reference/actyx.mdx#ephemeral-event-streams) configuration can be used to place various types of limitations on disk usage to alleviate this issue.
 
 ### Data Exporters
-
-Exporting events or derived information into an ERP or BI system can be done using fishes if the overall workload is “human-scale”: we know from project experience that it works well for booking acquired production data into an ERP system.
 
 Exporting machine or sensor data into a time-series database for further analysis outside Actyx is best done using the HTTP API and writing the exporter in a language that is well-suited for connecting to your database and handling the required amount of streaming data.
 We know from project experience that this can be done with native code (like Rust, C++) for demanding applications that write many million data points per day, e.g. into PostgreSQL with the timescale extension.
