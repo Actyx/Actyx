@@ -28,8 +28,6 @@ import {
   PublishResponse,
 } from '../../common/types'
 import { AppState, AppAction, AppStateKey, AppActionKey } from './types'
-import { useAnalytics } from '../analytics'
-import { AnalyticsActions } from '../analytics/types'
 import { FatalError } from '../../common/ipc'
 import { safeErrorToStr } from '../../common/util'
 import deepEqual from 'fast-deep-equal'
@@ -45,84 +43,46 @@ const DEFER_UPDATE_AFTER_CHANGE_MS = 200
 // the below MUST be less than the above
 const DEFER_CONNECTING_STATE_MS = 150
 
-export const reducer =
-  (analytics: AnalyticsActions | undefined) =>
+export const reducer =() =>
   (state: AppState, action: AppAction): AppState => {
     switch (action.key) {
       case AppActionKey.ShowOverview: {
-        if (analytics) {
-          analytics.viewedScreen('Overview')
-        }
         return { ...state, key: AppStateKey.Overview }
       }
       case AppActionKey.ShowSetupUserKey: {
-        if (analytics) {
-          analytics.viewedScreen('SetupUserKey')
-        }
         return { ...state, key: AppStateKey.SetupUserKey }
       }
       case AppActionKey.ShowAbout: {
-        if (analytics) {
-          analytics.viewedScreen('About')
-        }
         return { ...state, key: AppStateKey.About }
       }
       case AppActionKey.ShowAppSigning: {
-        if (analytics) {
-          analytics.viewedScreen('AppSigning')
-        }
         return { ...state, key: AppStateKey.AppSigning }
       }
       case AppActionKey.ShowNodeAuth: {
-        if (analytics) {
-          analytics.viewedScreen('NodeAuth')
-        }
         return { ...state, key: AppStateKey.NodeAuth }
       }
       case AppActionKey.ShowDiagnostics: {
-        if (analytics) {
-          analytics.viewedScreen('Diagnostics')
-        }
         return { ...state, key: AppStateKey.Diagnostics }
       }
       case AppActionKey.ShowNodeDetail: {
-        if (analytics) {
-          analytics.viewedScreen('NodeDetail')
-        }
         return { ...state, ...action, key: AppStateKey.NodeDetail }
       }
       case AppActionKey.ShowGenerateSwarmKey: {
-        if (analytics) {
-          analytics.viewedScreen('GenerateSwarmKey')
-        }
         return { ...state, ...action, key: AppStateKey.SwarmKey }
       }
       case AppActionKey.ShowPreferences: {
-        if (analytics) {
-          analytics.viewedScreen('Preferences')
-        }
         return { ...state, ...action, key: AppStateKey.Preferences }
       }
       case AppActionKey.ShowPublish: {
-        if (analytics) {
-          analytics.viewedScreen('Publish')
-        }
         return { ...state, ...action, key: AppStateKey.Publish }
       }
       case AppActionKey.ShowQuery: {
-        if (analytics) {
-          analytics.viewedScreen('Query')
-        }
         return { ...state, ...action, key: AppStateKey.Query }
       }
       case AppActionKey.ShowSettings: {
-        if (analytics) analytics.viewedScreen('Settings')
         return { ...state, ...action, key: AppStateKey.Settings }
       }
       case AppActionKey.ShowTopics: {
-        if (analytics) {
-          analytics.viewedScreen('Topics')
-        }
         return { ...state, ...action, key: AppStateKey.Topics }
       }
     }
@@ -196,9 +156,8 @@ const AppStateContext = React.createContext<
 export const AppStateProvider: React.FC<{
   setFatalError: (error: FatalError) => void
 }> = ({ children, setFatalError }) => {
-  const analytics = useAnalytics()
   const store = useStore()
-  const [state, dispatch] = useReducer(reducer(analytics), {
+  const [state, dispatch] = useReducer(reducer(), {
     key: AppStateKey.Overview,
   })
   const [data, setData] = useState<Data>({
@@ -217,11 +176,6 @@ export const AppStateProvider: React.FC<{
     // is sent
     addNodes: (addrs) => {
       setData((current) => {
-        if (analytics) {
-          addrs.forEach((addr) => {
-            analytics.addedNode()
-          })
-        }
         return {
           ...current,
           nodes: current.nodes.concat(
@@ -234,58 +188,36 @@ export const AppStateProvider: React.FC<{
       })
     },
     remNodes: (addrs) => {
-      if (analytics) {
-        addrs.forEach(() => {
-          analytics.removedNode()
-        })
-      }
       setData((current) => ({
         ...current,
         nodes: current.nodes.filter((n) => !addrs.includes(n.addr)),
       }))
     },
     setSettings: (addr, settings, scope) => {
-      if (analytics) {
-        analytics.setSettings()
-      }
       const peer = getPeer(addr, data)
       return peer === undefined
         ? Promise.reject(`not connected to ${addr}`)
         : setSettings({ peer, settings, scope })
     },
     shutdownNode: (addr) => {
-      if (analytics) {
-        analytics.shutdownNode()
-      }
       const peer = getPeer(addr, data)
       return peer === undefined
         ? Promise.reject(`not connected to ${addr}`)
         : shutdownNode({ peer })
     },
     createUserKeyPair: (privateKeyPath) => {
-      if (analytics) {
-        analytics.createdUserKeyPair(privateKeyPath === null)
-      }
       return createUserKeyPair({ privateKeyPath })
     },
     generateSwarmKey: () => {
-      if (analytics) {
-        analytics.generatedSwarmKey()
-      }
       return generateSwarmKey({})
     },
     signAppManifest: ({ pathToManifest, pathToCertificate }) => {
-      if (analytics) {
-        analytics.signedAppManifest()
-      }
       return signAppManifest({
         pathToManifest,
         pathToCertificate,
       })
     },
     publish: ({ addr, events }) => {
-      if (analytics) {
-      }
       const peer = getPeer(addr, data)
       return peer === undefined
         ? Promise.reject(`not connected to ${addr}`)
@@ -293,9 +225,6 @@ export const AppStateProvider: React.FC<{
     },
     setPublishState,
     query: ({ addr, query: q }) => {
-      if (analytics) {
-        analytics.queriedEvents(q)
-      }
       const peer = getPeer(addr, data)
       return peer === undefined
         ? Promise.reject(`not connected to ${addr}`)
@@ -317,7 +246,6 @@ export const AppStateProvider: React.FC<{
     getTopicList: function (
       addr: string,
     ): Promise<{ nodeId: string; activeTopic: string; topics: { [x: string]: number } }> {
-      // TODO: add analytics
       const peer = getPeer(addr, data)
       return peer === undefined
         ? Promise.reject(`not connected to ${addr}`)
@@ -327,7 +255,6 @@ export const AppStateProvider: React.FC<{
       addr: string,
       topic: string,
     ): Promise<{ nodeId: string; deleted: boolean }> {
-      // TODO: add analytics
       const peer = getPeer(addr, data)
       return peer === undefined
         ? Promise.reject(`not connected to ${addr}`)

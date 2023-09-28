@@ -7,10 +7,6 @@ export const StoreData = io.type({
     favoriteNodeAddrs: io.array(io.string),
     nodeTimeout: io.union([io.undefined, io.number]),
   }),
-  analytics: io.type({
-    disabled: io.boolean,
-    userId: io.string,
-  }),
 })
 
 export type StoreData = io.TypeOf<typeof StoreData>

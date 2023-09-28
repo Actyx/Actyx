@@ -3,15 +3,7 @@ import { Button } from '../components/basics'
 import { shutdownApp } from '../util'
 import { FatalError } from '../../common/ipc'
 import { safeErrorToStr } from '../../common/util'
-import { useAnalytics } from '../analytics'
 const Screen: React.FC<{ error: FatalError }> = ({ error }) => {
-  const analytics = useAnalytics()
-  useEffect(() => {
-    if (analytics) {
-      analytics.viewedScreen('Fatal Error')
-      analytics.gotFatalError(error)
-    }
-  }, [analytics, error])
   const { details, shortMessage } = error
   const safeDetails = safeErrorToStr(details)
   return (

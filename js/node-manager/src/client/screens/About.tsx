@@ -37,17 +37,6 @@ const ActyxLink: React.FC = ({ children }) => (
   </a>
 )
 
-const AnalyticsLink: React.FC = ({ children }) => (
-  <a
-    className="underline text-blue-500"
-    target="_blank"
-    rel="noopener noreferrer"
-    href="https://developer.actyx.com/docs/reference/node-manager/#anonymous-aggregate-user-behavior-analytics"
-  >
-    {children}
-  </a>
-)
-
 const Screen: React.FC<{}> = () => (
   <Layout title="About">
     <SimpleCanvas>
@@ -56,11 +45,6 @@ const Screen: React.FC<{}> = () => (
         <p className="text-gray-400 pb-4 flex-grow-0 flex-shrink-0">
           Problems or feedback? Visit our <DocsLink>Developer Documentation</DocsLink> or get in
           touch on our <ForumLink>Community Forum</ForumLink>.
-        </p>
-        <p className="text-gray-400 pb-3 flex-grow-0 flex-shrink-0">
-          We gather anonymous aggregate user behaviour analytics to prioritise fixes and features.
-          No business data (e.g. node addresses) is emitted. You can disable this in Preferences.
-          More information <AnalyticsLink>here</AnalyticsLink>.
         </p>
       </div>
       <div className="text-gray-400 text-sm flex-grow flex-shrink flex flex-col justify-end mb-3">

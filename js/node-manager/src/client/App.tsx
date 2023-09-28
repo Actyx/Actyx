@@ -17,7 +17,6 @@ import {
   Settings,
 } from './screens'
 import { AppStateProvider, useAppState, AppStateKey } from './app-state'
-import { Provider as AnalyticsProvider, useAnalytics } from './analytics'
 import '../index.css'
 import { waitForFatalError } from './util'
 import { FatalError as FatalErrorT } from '../common/ipc'
@@ -34,7 +33,6 @@ const Root = () => {
 
   return (
     <StoreProvider>
-      <AnalyticsProvider>
         <AppStateProvider setFatalError={setFatalError}>
           {fatalError !== null ? (
             <FatalError error={fatalError} />
@@ -46,26 +44,12 @@ const Root = () => {
             </div>
           )}
         </AppStateProvider>
-      </AnalyticsProvider>
     </StoreProvider>
   )
 }
 
 const Content: React.FC = () => {
   const { state } = useAppState()
-  const [haveLoggedStartup, setHaveLoggedStartup] = useState(false)
-  const analytics = useAnalytics()
-
-  useEffect(() => {
-    if (analytics) {
-      setHaveLoggedStartup((haveLogged) => {
-        if (!haveLogged) {
-          analytics.startedApp()
-        }
-        return true
-      })
-    }
-  }, [analytics, haveLoggedStartup])
 
   switch (state.key) {
     case AppStateKey.Overview:
