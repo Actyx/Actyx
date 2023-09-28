@@ -56,9 +56,7 @@ Now that your bootstrap node is running, you can configure nodes in your swarm w
   ]}
 >
 
-
 <TabItem value="cli">
-
 
 The swarm key is a node setting. You can use the output from above and `ax settings set` to configure it:
 
@@ -69,14 +67,12 @@ ax settings set /swarm/bootstrapNodes [/ip4/192.168.2.225/tcp/4001/p2p/QmQ3iynxm
 </TabItem>
 <TabItem value="manager">
 
-
 The swarm key is a node setting. Copy the bootstrap node address from the output above, go to the settings tab in the node details, change the `initialPeers` property and press save:
 
-![initial-peers-node-manager](../../../static/images/how-to/swarms/initial-peers-configuration.png)
+![initial-peers-node-manager](/images/how-to/swarms/initial-peers-configuration.png)
 
 </TabItem>
 </Tabs>
-
 
 In case you are running Actyx on Docker **without** `network=host` , and your bootstrap node is **not** running in the same local network as your other nodes, you need to [configure the `announceAdresses` setting on these nodes](./configure-announced-addresses.mdx).
 

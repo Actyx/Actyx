@@ -36,9 +36,7 @@ For production usage, we advise creating your own swarm key.
   ]}
 >
 
-
 <TabItem value="cli">
-
 
 You can create a swarm key with the Actyx CLI:
 
@@ -51,14 +49,12 @@ L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjZiNjkzNTQzNGM0Yzc5NjY2OTM4NTkzMjM0Njg0
 </TabItem>
 <TabItem value="manager">
 
-
 In the Node Manager, you can create a swarm key in the Tools tab:
 
-![swarm-key-node-manager](../../../static/images/node-manager/swarm-key.png)
+![swarm-key-node-manager](/images/node-manager/swarm-key.png)
 
 </TabItem>
 </Tabs>
-
 
 ### Join the swarm with a node
 
@@ -71,9 +67,7 @@ In the Node Manager, you can create a swarm key in the Tools tab:
   ]}
 >
 
-
 <TabItem value="cli">
-
 
 The swarm key is a node setting. You can use `ax settings set` to configure it:
 
@@ -84,14 +78,12 @@ ax settings set /swarm/swarmKey L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjZiNjkz
 </TabItem>
 <TabItem value="manager">
 
-
 The swarm key is a node setting. Go to the settings tab, change the swarm key property, and press save:
 
-![swarm-key-configuration](../../../static/images/how-to/swarms/swarm-key-configuration.png)
+![swarm-key-configuration](/images/how-to/swarms/swarm-key-configuration.png)
 
 </TabItem>
 </Tabs>
-
 
 If you configure nodes in the same network with the same swarm key, they will automatically connect to each other via mDNS.
 If mDNS is disabled on your device or network, or you are running Actyx on Docker, you have to [manually configure initial peers](connect-nodes.mdx).

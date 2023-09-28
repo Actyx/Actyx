@@ -19,7 +19,7 @@ Find out more in [this section](#anonymous-aggregate-user-behaviour-analytics) b
 
 ## General UX
 
-![no-nodes](../../static/images/node-manager/no-nodes.png)
+![no-nodes](/images/node-manager/no-nodes.png)
 
 The main navigation elements of the application are the top bar including the node search and the left panel leading to the different features of the Actyx Node Manager.
 
@@ -42,7 +42,7 @@ The features are:
 
 ## Nodes Overview
 
-![node-overview](../../static/images/node-manager/node-overview.png)
+![node-overview](/images/node-manager/node-overview.png)
 
 The Node Overview screen displays all nodes that were added since opening the app.
 You can click on the star in the upper right corner of each card to store that node’s address and open it again when the Node Manager is restarted.
@@ -69,7 +69,7 @@ The _Node Details_ view provides additional information on the selected node.
 
 ### 1 Info
 
-![node-info](../../static/images/node-manager/node-info.png)
+![node-info](/images/node-manager/node-info.png)
 
 The _Info_ view displays meta info on the selected node.
 It contains:
@@ -82,7 +82,7 @@ It contains:
 
 ### 2 Addresses
 
-![node-addresses](../../static/images/node-manager/node-addresses.png)
+![node-addresses](/images/node-manager/node-addresses.png)
 
 The _Addresses_ view provides network details of the node.
 
@@ -98,7 +98,7 @@ For more information on `announceAddresses`, please refer to our [how-to guide](
 
 ### 3 Peers
 
-![node-peers](../../static/images/node-manager/node-peers.png)
+![node-peers](/images/node-manager/node-peers.png)
 
 The _Peers_ view displays all peers of the selected node together with its _ping stats_ and connection time.
 Actyx aims at keeping stable connections between peers, so seeing short times here may be indicative of network issues.
@@ -112,13 +112,13 @@ While “connection refused” usually means that Actyx is not running, “timeo
 
 The _Offsets_ tab shows all event streams known by the node as well as the current offsets:
 
-![node-offsets](../../static/images/node-manager/node-offsets.png)
+![node-offsets](/images/node-manager/node-offsets.png)
 
 Additionally, the number of events the node knows it must get, but hasn't gotten yet is also shown where applicable.
 
 ### 5 Settings
 
-![settings](../../static/images/node-manager/settings.png)
+![settings](/images/node-manager/settings.png)
 
 The _Settings_ view provides an editor where you can manage the node settings.
 The settings are constantly validated against the node settings schema.
@@ -131,19 +131,19 @@ For more information on user keys, please refer to our [how-to guide](../how-to/
 
 ### 1 No user keys found
 
-![auth-01](../../static/images/node-manager/auth-01.png)
+![auth-01](/images/node-manager/auth-01.png)
 
 If you open the Node Manager and it cannot find user keys in the default location, it will ask you to create a pair of user keys.
 
 ### 2 User key pair created
 
-![auth-02](../../static/images/node-manager/auth-02.png)
+![auth-02](/images/node-manager/auth-02.png)
 
 Once you have created the keys, Node Manager displays the location on your device where it saved the user keys as well as your public key.
 
 ### 3 Create additional keys
 
-![auth-03](../../static/images/node-manager/auth-03.png)
+![auth-03](/images/node-manager/auth-03.png)
 
 You can at any time create additional user keys by defining a name and a location where to save the key pair.
 On button click, another key pair is generated.
@@ -155,14 +155,14 @@ For more information on app signing, please refer to our [how-to guide](../how-t
 
 ### 1 Selecting necessary files
 
-![signing-01](../../static/images/node-manager/signing-01.png)
+![signing-01](/images/node-manager/signing-01.png)
 
 To sign an app manifest, you need to select two files from your disc.
 The first one is the manifest you want to sign, the second one is your Actyx developer certificate.
 
 ### 2 Signing
 
-![signing-02](../../static/images/node-manager/signing-02.png)
+![signing-02](/images/node-manager/signing-02.png)
 
 Signing your manifest updates the existing manifest file.
 If it already contained a signature, signing the manifest again overrides the existing signature.
@@ -170,7 +170,7 @@ Note that the app ID in the manifest must use the namespace you used to obtain y
 
 ## Creating a swarm key
 
-![swarm-key](../../static/images/node-manager/swarm-key.png)
+![swarm-key](/images/node-manager/swarm-key.png)
 
 Actyx Node Manager lets you create swarm keys.
 For more information on what a swarm is and what you need the swarm key for, please refer to our [how-to guide](../how-to/swarms/setup-swarm.mdx).
@@ -181,7 +181,7 @@ The _Diagnostics_ view gives insights into the swarm connectivity and provides a
 
 ### 1 Swarm Connectivity
 
-![diagnostics-01](../../static/images/node-manager/diagnostics-01.png)
+![diagnostics-01](/images/node-manager/diagnostics-01.png)
 
 ### 2 Offset Matrix
 
@@ -209,24 +209,24 @@ Consider three examples of an offset matrix and the interpretation thereof.
 In this example, Node 1 has emitted 34 events which all have been synchronized with Node 2.
 Node 2 has not emitted any events yet.
 
-![partially-connected](../../static/images/node-manager/offset-matrix-partial.png)
+![partially-connected](/images/node-manager/offset-matrix-partial.png)
 
 </TabItem>
 <TabItem value="2">
 In this example, Node 1 and Node 2 have both emitted events and all events from Node 1 have been fully synchronized.
 Node 2 has emitted 35 events but Node 1 has only received 14 of them yet and is currently synchronizing.
 
-![partially-synced](../../static/images/node-manager/offset-matrix-partially-synced.png)
+![partially-synced](/images/node-manager/offset-matrix-partially-synced.png)
 
 </TabItem>
 <TabItem value="3">
 In this example, both nodes are fully synchronized meaning every event from Node 1 has arrived at Node 2 and vice versa.
 
-![fully-synced](../../static/images/node-manager/offset-matrix-synced.png)
+![fully-synced](/images/node-manager/offset-matrix-synced.png)
 
 </TabItem>
 </Tabs>
 
 ### 3 Node Manager
 
-![diagnostics-02](../../static/images/node-manager/diagnostics-02.png)
+![diagnostics-02](/images/node-manager/diagnostics-02.png)
