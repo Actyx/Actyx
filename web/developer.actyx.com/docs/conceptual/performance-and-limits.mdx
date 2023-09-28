@@ -117,7 +117,7 @@ To avoid this issue, `Actyx.waitForSync()` can be used to delay app startup unti
 At start up, a lot of matching events may have already been stored, which then makes the machine-runner take time, proportional to the number of events, until the first state is available.
 
 Our recommendation is to structure your machine-runner protocols such that each requires less than 1,000 events.
-This means that machine-runner are best used to model short-lived process workflows (which rarely have more than 1,000 steps).
+This means that machine-runner are best used to model [short-lived](../../how-to/structured-queries/tagging-best-practices.mdx#short-lived-entities) process workflows (which rarely have more than 1,000 steps).
 Machine-runner are not ideal for accumulating statistical data over long time periods; a better solution for that use-case is to export the events into a time-series database.
 
 ## Illustrative Examples
