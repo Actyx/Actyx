@@ -8,7 +8,7 @@ image: /images/defaults/default.svg
 
 ## Apps communicating with Actyx on Docker
 
-By default, all SDKs are trying to connect to Actyx on localhost. If your Actyx and app container are not both using the host's networking directly via `--network=host` (only available on Linux), you therefore need to manually specify the host and the port to let the SDK know where to reach Actyx.
+By default, the SDK tries to connect to Actyx on localhost. If your Actyx and app container are not both using the host's networking directly via `--network=host` (only available on Linux), you therefore need to manually specify the host and the port to let the SDK know where to reach Actyx.
 
 ### In the `docker run` command
 
