@@ -59,6 +59,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
+      # Freeing up some extra space
+      - run: docker system prune
       - run: rustup toolchain install --profile default $RUST_VERSION
       - run: |
           sudo apt update
