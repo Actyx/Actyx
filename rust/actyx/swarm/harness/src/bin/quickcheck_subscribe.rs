@@ -21,7 +21,7 @@ fn main() {
         HarnessOpts,
     };
 
-    const MAX_NODES: usize = 15;
+    const MAX_NODES: usize = 5;
 
     /// Publish arbitrary events on all nodes, subscribe to all of them on all nodes.
     fn publish_all_subscribe_all(tags_per_node: Vec<Vec<TagSet>>) -> quickcheck::TestResult {

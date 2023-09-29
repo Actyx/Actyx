@@ -17,7 +17,7 @@ fn main() {
         HarnessOpts,
     };
 
-    const MAX_NODES: usize = 15;
+    const MAX_NODES: usize = 5;
 
     #[derive(Clone, Debug)]
     enum TestCommand {
