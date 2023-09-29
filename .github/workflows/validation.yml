@@ -73,6 +73,7 @@ jobs:
     needs: check-actyx
 
     strategy:
+      fail-fast: false
       matrix:
         package:
           - api
@@ -96,9 +97,9 @@ jobs:
           sudo apt update
           sudo apt install -y protobuf-compiler
       - run: rustup toolchain install --profile default $RUST_VERSION
-      - working-directory: rust/actyx
+      - working-directory: rust/actyx/${{ matrix.package }}
         run: |
-          cargo +$RUST_VERSION --locked test --all-features --package ${{ matrix.package }}
+          cargo +$RUST_VERSION --locked test --all-features
 
   # NOTE: the default runner isn't beefy enough to run these tests
   validate-netsim:
