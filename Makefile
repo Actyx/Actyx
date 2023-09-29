@@ -283,18 +283,19 @@ validate-release: diagnostics
 	cd rust/release && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
 	cd rust/release && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 
+N_NODES ?= 4
 validate-netsim: diagnostics
 	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release -j $(CARGO_BUILD_JOBS)
-	rust/actyx/target/release/gossip --n-nodes 8 --enable-fast-path
-	rust/actyx/target/release/gossip --n-nodes 8 --enable-slow-path
-	rust/actyx/target/release/gossip --n-nodes 8 --enable-root-map
-	rust/actyx/target/release/gossip_protocol --n-nodes 8
-	rust/actyx/target/release/root_map --n-nodes 8 --enable-root-map
+	rust/actyx/target/release/gossip --n-nodes $(N_NODES) --enable-fast-path
+	rust/actyx/target/release/gossip --n-nodes $(N_NODES) --enable-slow-path
+	rust/actyx/target/release/gossip --n-nodes $(N_NODES) --enable-root-map
+	rust/actyx/target/release/gossip_protocol --n-nodes $(N_NODES)
+	rust/actyx/target/release/root_map --n-nodes $(N_NODES) --enable-root-map
 	rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
 	rust/actyx/target/release/discovery_multi_net
 	rust/actyx/target/release/discovery_external
-	rust/actyx/target/release/subscribe --n-nodes 8
-	rust/actyx/target/release/query --n-nodes 8
+	rust/actyx/target/release/subscribe --n-nodes $(N_NODES)
+	rust/actyx/target/release/query --n-nodes $(N_NODES)
 	rust/actyx/target/release/quickcheck_subscribe
 	rust/actyx/target/release/quickcheck_interleaved
 	rust/actyx/target/release/quickcheck_stress_single_store

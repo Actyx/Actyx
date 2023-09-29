@@ -56,28 +56,24 @@ jobs:
 
   # NOTE: the default runner isn't beefy enough to run these tests
   validate-os:
-    needs:
-      - check-rust
-    runs-on: [self-hosted, Linux]
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      # - run: rustup toolchain install --profile default $RUST_VERSION
-      # - run: |
-      #     sudo apt update
-      #     sudo apt install -y protobuf-compiler
-      - run: make validate-os
+      - run: rustup toolchain install --profile default $RUST_VERSION
+      - run: |
+          sudo apt update
+          sudo apt install -y protobuf-compiler
+      - run: make -e CARGO_BUILD_JOBS=4 validate-os
 
   # NOTE: the default runner isn't beefy enough to run these tests
   validate-netsim:
-    needs:
-      - check-rust
-    runs-on: [self-hosted, Linux]
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      # - run: rustup toolchain install --profile default $RUST_VERSION
-      # - run: |
-      #     sudo apt update
-      #     sudo apt install -y protobuf-compiler
+      - run: rustup toolchain install --profile default $RUST_VERSION
+      - run: |
+          sudo apt update
+          sudo apt install -y protobuf-compiler
       - run: make validate-netsim
 
   check-docs:
