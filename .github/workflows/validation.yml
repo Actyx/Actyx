@@ -179,8 +179,9 @@ jobs:
       - check-node-manager-bindings
       - check-android
       - check-docs
-      - validate-os
-      - validate-netsim
+      - check-actyx
+      - test-actyx
+      - test-netsim
 
     steps:
       - uses: jmg-duarte/discord-workflow-status@5a826a3e649f9d1157507494d35811ec2f84380c
