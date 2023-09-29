@@ -54,18 +54,51 @@ jobs:
           cat jvm/os-android/actyx-local/actyx.properties
           make validate-os-android
 
-  # NOTE: the default runner isn't beefy enough to run these tests
-  validate-os:
+  check-actyx:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      # Freeing up some extra space
-      - run: docker system prune
       - run: rustup toolchain install --profile default $RUST_VERSION
       - run: |
           sudo apt update
           sudo apt install -y protobuf-compiler
-      - run: make -e CARGO_TEST_JOBS=4 validate-os
+      - working-directory: rust/actyx
+        run: |
+          cargo +$RUST_VERSION fmt --all -- --check
+          cargo +$RUST_VERSION --locked clippy --no-deps -- -D warnings
+          cargo +$RUST_VERSION --locked clippy --no-deps --tests -- -D warnings
+
+  validate-os:
+    runs-on: ubuntu-22.04
+    needs: check-actyx
+
+    strategy:
+      matrix:
+        package:
+          - api
+          - ax
+          - ax-futures-util
+          - certs
+          - crypto
+          - libp2p-streaming-response
+          - node
+          - node-ffi
+          - node-manager-bindings
+          - runtime
+          - settings
+          - swarm
+          - trees
+          - util
+
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          sudo apt update
+          sudo apt install -y protobuf-compiler
+      - run: rustup toolchain install --profile default $RUST_VERSION
+      - working-directory: rust/actyx
+        run: |
+          cargo +$RUST_VERSION --locked test --all-features --package ${{ matrix.package }}
 
   # NOTE: the default runner isn't beefy enough to run these tests
   validate-netsim:
