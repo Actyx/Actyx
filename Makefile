@@ -274,7 +274,7 @@ validate-rust: diagnostics
 	cd rust/sdk && $(CARGO) fmt --all -- --check
 	cd rust/sdk && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
 	cd rust/sdk && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
-	cd rust/sdk && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
+	cd rust/sdk && $(CARGO) -v --locked test --all-features -j $(CARGO_TEST_JOBS)
 
 .PHONY: validate-release
 # execute fmt check, clippy and tests for rust/actyx
