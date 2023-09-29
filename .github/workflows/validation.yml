@@ -68,7 +68,7 @@ jobs:
           cargo +$RUST_VERSION --locked clippy --no-deps -- -D warnings
           cargo +$RUST_VERSION --locked clippy --no-deps --tests -- -D warnings
 
-  validate-os:
+  test-actyx:
     runs-on: ubuntu-22.04
     needs: check-actyx
 
@@ -101,16 +101,42 @@ jobs:
         run: |
           cargo +$RUST_VERSION --locked test --all-features
 
-  # NOTE: the default runner isn't beefy enough to run these tests
-  validate-netsim:
+  test-netsim:
     runs-on: ubuntu-22.04
+    needs: check-actyx
+
+    strategy:
+      fail-fast: false
+      matrix:
+        command:
+          - "./gossip --n-nodes 4 --enable-fast-path"
+          - "./gossip --n-nodes 4 --enable-slow-path"
+          - "./gossip --n-nodes 4 --enable-root-map"
+          - "./gossip_protocol --n-nodes 4"
+          - "./root_map --n-nodes 4 --enable-root-map"
+          - "./discovery --n-bootstrap 1 --enable-root-map"
+          - "./discovery_multi_net"
+          - "./discovery_external"
+          - "./subscribe --n-nodes 4"
+          - "./query --n-nodes 4"
+          - "./quickcheck_subscribe"
+          - "./quickcheck_interleaved"
+          - "./quickcheck_stress_single_store"
+          - "./quickcheck_ephemeral"
+          - "./versions"
+          - "./read_only"
+
     steps:
       - uses: actions/checkout@v3
       - run: rustup toolchain install --profile default $RUST_VERSION
       - run: |
           sudo apt update
           sudo apt install -y protobuf-compiler
-      - run: make validate-netsim
+      - working-directory: rust/actyx
+        run: cargo +$RUST_VERSION build -q -p swarm-cli -p swarm-harness --release
+      - working-directory: rust/actyx/target/release
+        # Really weird hack because of the parameters
+        run: bash -c "${{matrix.command}}"
 
   check-docs:
     runs-on: ubuntu-22.04
