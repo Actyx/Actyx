@@ -1,13 +1,30 @@
 import { useAppState } from '../app-state'
 import { Button } from '../components/basics'
-import { Input, Layout } from '../components/Layout'
+import { Layout } from '../components/Layout'
 import React, { useEffect, useMemo, useState } from 'react'
 import AceEditor from 'react-ace'
 import clsx from 'clsx'
 import { NodeType, ReachableNodeUi } from '../../common/types'
 import { get, set, parse } from 'json-pointer'
-import deepEqual from 'deep-equal'
 import { validateAgainstSchema } from '../components/SettingsEditor'
+
+// Handles case where `set` cannot set root path
+// Because require('json-pointer').set throws when `path` is empty
+const setOrReplace = (s: object, path: string, val: unknown): object => {
+  // parse:
+  //  "/a/b" => ['a', 'b']
+  //  "/" => []
+  //  "" => []
+  const pointer = parse(path.trim()).filter((x) => !!x)
+  if (pointer.length === 0) {
+    const c: { default: object } = { default: s }
+    set(c, '/default', val)
+    return c.default
+  } else {
+    set(s, path, val)
+    return s
+  }
+}
 
 const Screen: React.FC<{}> = () => {
   /**
@@ -83,8 +100,8 @@ const Screen: React.FC<{}> = () => {
     for (const node of nodes) {
       if (node.type !== NodeType.Reachable) continue
       const { settings, settingsSchema } = node.details
-      const s: object = JSON.parse(JSON.stringify(settings))
-      set(s, path, val)
+      let s: object = JSON.parse(JSON.stringify(settings))
+      s = setOrReplace(s, path, val)
       const res = validateAgainstSchema(s, settingsSchema)
       if (res.length === 0) a += 1
       else {
