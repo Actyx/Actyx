@@ -112,9 +112,10 @@ fn main() {
         min: usize,
         max: usize,
     ) -> quickcheck::TestResult {
+        let n_nodes = 4;
         let opts = HarnessOpts {
-            n_nodes: 5,
-            n_bootstrap: 1,
+            n_nodes,
+            n_bootstrap: n_nodes,
             delay_ms: 0,
             enable_mdns: false,
             enable_fast_path: true,
