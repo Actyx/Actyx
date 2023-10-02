@@ -137,6 +137,8 @@ jobs:
       - working-directory: rust/actyx/target/release
         # Really weird hack because of the parameters
         run: ${{matrix.command}}
+        env:
+          RUST_LOG: debug
 
   check-docs:
     runs-on: ubuntu-22.04
