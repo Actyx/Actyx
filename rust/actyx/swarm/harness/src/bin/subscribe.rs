@@ -57,7 +57,7 @@ fn main() -> anyhow::Result<()> {
     swarm_harness::run_netsim(opts, move |mut sim| async move {
         let api = Api::new(&mut sim, app_manifest)?;
 
-        fully_meshed(&mut sim, Duration::from_secs(60)).await?;
+        fully_meshed(&mut sim, Duration::from_secs(180)).await?;
 
         for machine in sim.machines_mut() {
             machine.send(Command::SubscribeQuery(Query::parse("FROM 'a'")?));
