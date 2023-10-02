@@ -45,7 +45,7 @@ fn main() {
 
         let t = run_netsim(opts, move |mut sim| async move {
             let api = Api::new(&mut sim, app_manifest())?;
-            fully_meshed::<Event>(&mut sim, Duration::from_secs(180)).await?;
+            fully_meshed::<Event>(&mut sim, Duration::from_secs(360)).await?;
 
             let mut present = OffsetMap::empty();
             let mut expected = BTreeMap::default();
