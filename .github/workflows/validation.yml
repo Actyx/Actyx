@@ -136,7 +136,7 @@ jobs:
         run: cargo +$RUST_VERSION build -q -p swarm-cli -p swarm-harness --release
       - working-directory: rust/actyx/target/release
         # Really weird hack because of the parameters
-        run: bash -c "${{matrix.command}}"
+        run: ${{matrix.command}}
 
   check-docs:
     runs-on: ubuntu-22.04
