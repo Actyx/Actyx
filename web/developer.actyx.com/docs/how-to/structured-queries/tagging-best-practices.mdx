@@ -79,7 +79,7 @@ This process takes a few minutes to run to completion and afterwards it is only 
 The fastfood order is an example of a widely useful class of entities: **workflows.**
 Each workflow needs to be uniquely identifiable, whether it models entering and starting a car or having one’s hair dressed, so we tag it with an entity tag pair as described in the section above.
 
-There is a reason why _coordination_ and _short-lived_ go together: coordination requires following a strict protocol, discarding (or compensating) invalid choices resulting from concurrency or network partitions, i.e. we need to evaluate the relevant event history with a state machine (like the `onEvent` function in Actyx Pond apps).
+There is a reason why _coordination_ and _short-lived_ go together: coordination requires following a strict protocol, discarding (or compensating) invalid choices resulting from concurrency or network partitions, i.e. we need to evaluate the relevant event history with a state machine (like the inner workings of [machine-runner](https://www.npmjs.com/package/@actyx/machine-runner)).
 This fundamentally requires inspecting all state changes, from applying the first event in the initial state to applying the last known event to get the current state.
 If the event history grows long then this process becomes impractical.
 

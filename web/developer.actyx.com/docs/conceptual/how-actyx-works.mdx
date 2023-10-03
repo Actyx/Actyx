@@ -22,15 +22,15 @@ Traditionally, you would write two apps, one dealing with each asset. These apps
 
 ### The local-twin programming model
 
-With the Actyx Platform, you program the process as autonomous _local twins_ that publish and consume events, and develop states based on these events:
+With the Actyx Platform, you program the process as autonomous _local twins_, that is a _digital twin_ that resides, perceives, and acts locally.
+These _local twins_ publish and consume events, and develop states based on these events:
 
 ![how-actyx-works-3](/images/conceptual/how-actyx-works/how-actyx-works-3.png)
 
-Local twins are implemented in the Typescript programming language using APIs provided by the **Actyx Pond** library.
 There are two different ways in which the business logic can be formulated:
 
-- If the local twin models something where your application shall control or coordinate the progression through a sequence of different life cycle states then you use **fishes**.
-- Otherwise you can use stateless logic, emit events as they occur in the real world, and retrieve information using the Actyx Query Language.
+- You can use stateless logic; using the SDK, emit events as they occur in the real world and retrieve information using the Actyx Query Language
+- Otherwise, if the local twin models something where your application shall control or coordinate the progression through a sequence of different life cycle states than you can use [`machine-runner`](https://www.npmjs.com/package/@actyx/machine-runner); please find its docs in the library documentation.
 
 #### Stateless Local Twins
 
@@ -44,12 +44,12 @@ const idle = Tag<{ idle: boolean }>('machineIdle')
 const counter = Tag<{ goodPieces: number; scrapPieces: number }>('machineCounter')
 
 machineConnector // assuming this is an EventEmitter
-  .on('idleStatus', (idle: boolean) => pond.publish(machine.and(idle).apply({ idle })))
+  .on('idleStatus', (idle: boolean) => sdk.publish(machine.and(idle).apply({ idle })))
   .on('counterUpdate', (goodPieces: number, scrapPieces: number) =>
-    pond.publish(machine.and(counter).apply({ goodPieces, scrapPieces })),
+    sdk.publish(machine.and(counter).apply({ goodPieces, scrapPieces })),
   )
   .on('machined', (workPieceId: string, result: 'good' | 'scrap') =>
-    pond.publish(
+    sdk.publish(
       // WorkPieceTag introduced below
       machine.and(WorkPieceTag.withId(workPieceId)).apply({
         type: 'machined', machine: '4711', result,
@@ -66,79 +66,14 @@ We leave that out here to focus on the main part.
 Obtaining the latest idle state of a machine is then only a matter of running the following AQL query:
 
 ```ts
-const [{ idle }] = await pond.event().queryAql({
-  query: `
-    PRAGMA features := aggregate
-    FROM "machineIdle" & "machine:4711" AGGREGATE LAST(_)
-  `,
-})
-```
-
-#### Stateful Local Twins
-
-We call the stateful kind of twins _fishes_. The logic of a fish is defined by three things:
-
-1. The fish **state**, frequently implemented as a tagged union (i.e. an `enum` with data).
-
-   ```ts
-   // Possible states of the work piece
-   export type Fresh = { type: 'fresh' }
-   export type Scrapped = { type: 'scrapped'; machine: string }
-   export type Machined = { type: 'machined'; machine: string }
-   export type Packaged = { type: 'packaged'; machine: string; packager: string }
-   export type WorkPieceState = Fresh | Machined | Packaged
-   ```
-
-2. The **events** that may influence this state, including those created by other fish.
-
-   ```ts
-   export type MachinedWorkPiece = { type: 'machined'; machine: string; result: 'good' | 'scrap' }
-   export type PackagedWorkPiece = { type: 'packaged'; packager: string }
-   export type WorkPieceEvent = MachinedWorkPiece | PackagedWorkPiece
-   export const WorkPieceTag = Tag<WorkPieceEvent>('workPiece')
-   ```
-
-3. An **event reducer** that updates the fish's state when a new event is received.
-
-   ```ts
-   const onEvent: Reduce<WorkPieceState, WorkPieceEvent> = (state, event) => {
-     switch (state.type) {
-       case 'fresh': {
-         switch (event.type) {
-           case 'machined':
-             // in the `fresh` state the work piece can only be machined or scrap
-             return event.result === 'good'
-               ? { type: 'machined', machine: event.machine }
-               : { type: 'scrapped', machine: event.machine }
-         }
-         break
-       }
-       case 'machined': {
-         switch (event.type) {
-           case 'packaged':
-             // in the `machined` state the work piece can only be packaged
-             return { type: 'packaged', machine: state.machine, packager: event.packager }
-         }
-         break
-       }
-     }
-     // ignore all unknown or inappropriate events
-     return state
-   }
-   ```
-
-Now, if a `packaged` event were to arrive before a `machined` event has been seen (e.g. because the machine’s network connection is currently slow), that event would be ignored — for now:
-if at a later time the missing event from the machine arrives, the fish reverts to the `fresh` state and processes its now more complete event log again, this time reaching the `packaged` state.
-
-The above pieces are tied together with an event subscription to form a proper `Fish` factory like so:
-
-```ts
-export const WorkPieceFish = (workPieceId: string): Fish<WorkPieceState, WorkPieceEvent> => {
-  fishId: FishId.of('workPiece', workPieceId, 1),
-  where: WorkPieceTag.withId(workPieceId),
-  initialState: { type: 'fresh' },
-  onEvent,
-}
+const maybeIdle: { idle: boolean } | undefined = (await sdk.queryAql({
+    query: `
+      PRAGMA features := aggregate
+      FROM "machineIdle" & "machine:4711" AGGREGATE LAST(_)
+    `,
+  }))
+  .map(e => e.payload)
+  .at(0)
 ```
 
 ### The local computing environment
