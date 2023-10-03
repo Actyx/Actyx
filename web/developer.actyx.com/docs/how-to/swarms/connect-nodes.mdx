@@ -30,9 +30,7 @@ You can configure nodes in your swarm with each other's address as follows:
   ]}
 >
 
-
 <TabItem value="cli">
-
 
 In this example, the node that should initiate the connection after startup has the IP address `192.168.1.220`, the node that it should connect to has `192.168.1.219`.
 
@@ -73,7 +71,6 @@ ax settings set /swarm/initialPeers [/ip4/192.168.1.219/tcp/4001/p2p/12D3KooWSgv
 </TabItem>
 <TabItem value="manager">
 
-
 **1. Get the peer ID of the node you want to connect to**
 
 TODO
@@ -86,12 +83,11 @@ In this case, we would configure `/ip4/192.168.1.219/tcp/4001/p2p/12D3KooWSgvc3h
 
 Go to the settings tab in the node details, change the `initialPeers` property and press save:
 
-![initial-peers-node-manager](../../../static/images/how-to/swarms/initial-peers-configuration.png)
+![initial-peers-node-manager](/images/how-to/swarms/initial-peers-configuration.png)
 
 <!-- markdownlint-enable MD036 -->
 
 </TabItem>
 </Tabs>
-
 
 For more information on how nodes discover and connect to each other, please check out our [conceptual guide on discovery](../../conceptual/discovery.mdx).

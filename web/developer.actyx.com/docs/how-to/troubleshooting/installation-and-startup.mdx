@@ -45,9 +45,7 @@ import TabItem from '@theme/TabItem'
   ]}
 >
 
-
 <TabItem value="windows">
-
 
 1. Open the `Services` app, right click on Actyx and stop Actyx
 2. Go to the Actyx folder at `C:\Program Files\Actyx\Node`
@@ -69,12 +67,10 @@ Please note that Actyx is now permanently –i.e. also after you restart your co
 </TabItem>
 <TabItem value="android">
 
-
 On Android, you cannot change the ports used by Actyx. Please make sure that the required ports are not in use.
 
 </TabItem>
 <TabItem value="macos">
-
 
 On macOS or Linux, you can specify the ports when starting Actyx (remove the options for ports you do not want to reconfigure):
 
@@ -85,7 +81,6 @@ On macOS or Linux, you can specify the ports when starting Actyx (remove the opt
 </TabItem>
 <TabItem value="docker">
 
-
 On Docker, you can use the [-p option of the docker run command](https://docs.docker.com/engine/reference/run/#expose-incoming-ports). For example, this command would expose the standard ports and 4002 on your host instead of 4001 (remove the options for ports you do not want to reconfigure):
 
 ```text
@@ -95,10 +90,9 @@ docker run --name actyx -it --rm -v actyx-data:/data -p 4002:4001 -p 4458:4458 -
 </TabItem>
 </Tabs>
 
-
 ### Damaged and can't be opened on Apple Silicon (arm64)
 
-![apple-silicon-arm64-is-damaged](../../../images/how-to/troubleshooting/apple-silicon-amd64-is-damaged.png)
+![apple-silicon-arm64-is-damaged](/images/how-to/troubleshooting/apple-silicon-amd64-is-damaged.png)
 
 If you see an error similar to what is shown above, you can _fix_ the respective file (e.g. `actyx`, `ax`) by running the following command in the folder where the file is located:
 
@@ -112,7 +106,7 @@ xattr -d com.apple.quarantine actyx
 
 If you receive the following error during installation, please close the Windows Event Viewer and press **Retry**:
 
-![windows-installation-error](../../../images/how-to/local-development/windows-installation-error.png)
+![windows-installation-error](/images/how-to/local-development/windows-installation-error.png)
 
 ## Did not find what you were looking for?
 
