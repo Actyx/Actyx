@@ -12,10 +12,10 @@ import { validateAgainstSchema } from '../components/SettingsEditor'
 // Because require('json-pointer').set throws when `path` is empty
 const setOrReplace = (s: object, path: string, val: unknown): object => {
   // parse:
-  //  "/a/b" => ['a', 'b']
-  //  "/" => []
-  //  "" => []
-  const pointer = parse(path.trim()).filter((x) => !!x)
+  //  "/a/b" =parse=> ['a', 'b'] =filter=> ['a', 'b']
+  //  "/" =parse=> [''] =filter=> []
+  //  "" =parse=> [] =filter=> []
+  const pointer = parse(path.trim()).filter((x) => x !== '')
   if (pointer.length === 0) {
     const c: { default: object } = { default: s }
     set(c, '/default', val)
