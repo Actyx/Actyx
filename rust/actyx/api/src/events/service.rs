@@ -142,7 +142,7 @@ impl EventService {
                 upper_bound.clone(),
             );
             let mut cx = cx.child();
-            let stream = match &query.source {
+            let mut stream = match &query.source {
                 language::Source::Events { from, order } => {
                     let order = order.or_else(|| feeder.preferred_order()).unwrap_or(request_order);
                     cx.order = order;
@@ -182,6 +182,7 @@ impl EventService {
                                 Ok(v) => v,
                                 Err(_) => Err(event_store_ref::Error::Timeout),
                             })
+                            .boxed()
                             .left_stream()
                     } else {
                         stream.stop_on_error().right_stream()
@@ -226,7 +227,6 @@ impl EventService {
                     })
                     .right_stream(),
             };
-            tokio::pin!(stream);
             while let Some(ev) = stream.next().await {
                 let ev = match ev {
                     Ok(ev) => ev,
