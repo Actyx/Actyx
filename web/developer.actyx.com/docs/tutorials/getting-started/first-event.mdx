@@ -24,7 +24,7 @@ inspect nodes, change settings and others.
 To learn more about `ax` you can run `ax --help` or head over to the [Actyx CLI reference](/docs/reference/cli/cli-overview).
 :::
 
-## Publishing an event
+## Publishing an event using the CLI
 
 Using `ax` you can publish an event through the `events publish` interface,
 if you look into its help text you will see the various options available:
@@ -84,3 +84,53 @@ Congratulations, you have published your first event 🎉
 
 But this isn't very exciting, how can we see it?
 That leads to the [next tutorial](./first-query).
+
+## Publishing an event using the Node Manager
+
+The Node Manager is the GUI interface for Actyx, it's like the CLI's fancy cousin.
+
+:::info
+To publish an event to a node, you need to add it first, head over to our guide on [how to add a node to the Node Manager](../../how-to/local-development/add-node-node-manager) to learn more.
+:::
+
+Head on to the "Publish" page, where you'll find some input boxes.
+
+- The top box is where event tags go, these allow you to retrieve _your_ events later through queries
+  (if you've ever used a social media website, tags are to events as hashtags are to posts).
+  To learn more about tags, head on to our [conceptual guide on tags and queries](../../conceptual/tags)!
+- The second box is where your event payload goes, it needs to be valid JSON, otherwise you will not be able to publish it
+  (keeping with the social media comparison, payloads are you post's contents).
+- The dropdown menu is your node selection, where you pick the node you're publishing to.
+
+![](/images/tutorials/getting-started/first-event/publish-1.png)
+
+In our case, we'll publish a weather update, using the tag `weather-event` to mark our event.
+
+The payload is as follows:
+
+```json
+{
+  "date": "3-10-2023",
+  "location": "Lisbon, Portugal",
+  "weather": "Sunny"
+}
+```
+
+![](/images/tutorials/getting-started/first-event/publish-2.png)
+
+Once we've decided on what to publish, we select the node (in our case, the only one available).
+
+![](/images/tutorials/getting-started/first-event/publish-3.png)
+
+And finally, we click publish! Afterwards, we will be greeted with a message informing us whether we succeeded and some information about the published event.
+
+:::info
+Your output (`lamport`, `stream`, etc) will most likely not match the one in the example, that is to be expected
+(in fact, it would be a bit weird if it fully matched the example).
+:::
+
+![](/images/tutorials/getting-started/first-event/publish-4.png)
+
+Congratulations, you've published your first Actyx event!
+
+You can move on to querying in the [next tutorial](./first-query).
