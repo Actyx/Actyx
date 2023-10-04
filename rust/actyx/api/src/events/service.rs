@@ -30,9 +30,10 @@ use std::{
     num::NonZeroU64,
     ops::Deref,
     task::{self, Poll},
+    time::Duration,
 };
 use swarm::{
-    event_store_ref::{EventStoreHandler, EventStoreRef},
+    event_store_ref::{self, EventStoreHandler, EventStoreRef},
     BanyanStore,
 };
 use tokio::sync::mpsc;
@@ -125,6 +126,13 @@ impl EventService {
         };
         let lower_bound = request.lower_bound.unwrap_or_default();
 
+        let duration: Option<u64> = {
+            match pragmas.pragma("timeout") {
+                Some(timeout) => timeout.parse().ok(),
+                None => None,
+            }
+        };
+
         let request_order = request.order;
         let gen = Gen::new(move |co: Co<QueryResponse>| async move {
             let cx = Context::root(
@@ -134,7 +142,7 @@ impl EventService {
                 upper_bound.clone(),
             );
             let mut cx = cx.child();
-            let mut stream = match &query.source {
+            let stream = match &query.source {
                 language::Source::Events { from, order } => {
                     let order = order.or_else(|| feeder.preferred_order()).unwrap_or(request_order);
                     cx.order = order;
@@ -167,13 +175,22 @@ impl EventService {
                                 .await
                         }
                     };
-                    stream
-                        .stop_on_error()
-                        .map(|ev| match ev {
-                            Ok(ev) => Ok(Value::from(ev)),
-                            Err(e) => Err(e.into()),
-                        })
-                        .left_stream()
+
+                    if let Some(duration) = duration {
+                        tokio_stream::StreamExt::timeout(stream.stop_on_error(), Duration::from_secs(duration))
+                            .map(|t| match t {
+                                Ok(v) => v,
+                                Err(_) => Err(event_store_ref::Error::Timeout),
+                            })
+                            .left_stream()
+                    } else {
+                        stream.stop_on_error().right_stream()
+                    }
+                    .map(|ev| match ev {
+                        Ok(ev) => Ok(Value::from(ev)),
+                        Err(e) => Err(e.into()),
+                    })
+                    .left_stream()
                 }
                 language::Source::Array(Arr { items }) => stream::iter(items.iter())
                     .flat_map(|SpreadExpr { expr, spread }| {
@@ -209,7 +226,7 @@ impl EventService {
                     })
                     .right_stream(),
             };
-
+            tokio::pin!(stream);
             while let Some(ev) = stream.next().await {
                 let ev = match ev {
                     Ok(ev) => ev,

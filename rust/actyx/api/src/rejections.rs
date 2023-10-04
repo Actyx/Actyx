@@ -21,6 +21,9 @@ pub enum UnauthorizedReason {
 
 #[derive(Debug, Display, Clone, PartialEq, Eq)]
 pub enum ApiError {
+    #[display(fmt = "The requested resource timed out.")]
+    Timeout,
+
     #[display(fmt = "The requested resource could not be found.")]
     NotFound,
 
@@ -116,6 +119,7 @@ pub struct ApiErrorResponse {
 impl From<ApiError> for ApiErrorResponse {
     fn from(e: ApiError) -> Self {
         let (status, code) = match &e {
+            ApiError::Timeout => (StatusCode::GATEWAY_TIMEOUT, "ERR_QUERY_TIMEOUT"),
             ApiError::AppUnauthorized { .. } => (StatusCode::UNAUTHORIZED, "ERR_APP_UNAUTHORIZED"),
             ApiError::NodeUnauthorized { .. } => (StatusCode::UNAUTHORIZED, "ERR_NODE_UNAUTHORIZED"),
             ApiError::BadRequest { .. } => (StatusCode::BAD_REQUEST, "ERR_BAD_REQUEST"),
