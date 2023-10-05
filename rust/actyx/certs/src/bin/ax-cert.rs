@@ -55,7 +55,7 @@ struct AppLicenseOpts {
 /// m - minute(s)
 /// s - second(s)
 fn parse_expires_in(expires_in: &str) -> Result<DateTime<Utc>, anyhow::Error> {
-    parse_expires_in_as_duration(expires_in).map(|d| DateTime::from(Utc::now() + d))
+    parse_expires_in_as_duration(expires_in).map(|d| Utc::now() + d)
 }
 
 // This function is much easier to test for correctness
@@ -123,6 +123,86 @@ fn parse_expires_in_as_duration(expires_in: &str) -> Result<chrono::Duration, an
         return Err(anyhow::anyhow!("Expiration time must be bigger than zero"));
     }
     Ok(duration)
+}
+
+#[derive(StructOpt, Debug)]
+enum Commands {
+    /// Creates developer certificate
+    DevCert(DevCertOpts),
+    /// Creates app license
+    AppLicense(AppLicenseOpts),
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(
+    name = "Actyx developer certificate utility",
+    about = "Manages Actyx developer certificates",
+    rename_all = "kebab-case"
+)]
+struct Opts {
+    #[structopt(subcommand)]
+    commands: Option<Commands>,
+    #[structopt(long)]
+    version: bool,
+}
+
+fn main() -> anyhow::Result<()> {
+    let opts = Opts::from_args();
+
+    match opts {
+        Opts { version: true, .. } => {
+            let app = Opts::clap();
+            let mut buf = Vec::new();
+            app.write_version(&mut buf).unwrap();
+            let bin_version = std::str::from_utf8(buf.as_slice()).unwrap().to_string();
+            println!("{} {}", bin_version, NodeVersion::get());
+            Ok(())
+        }
+        Opts {
+            commands: Some(cmd), ..
+        } => match cmd {
+            Commands::DevCert(opts) => create_dev_cert(opts),
+            Commands::AppLicense(opts) => create_app_license(opts),
+        },
+        _ => {
+            let mut app = Opts::clap();
+            app.write_long_help(&mut std::io::stderr()).unwrap();
+            println!();
+            Ok(())
+        }
+    }
+}
+
+fn create_dev_cert(opts: DevCertOpts) -> anyhow::Result<()> {
+    let dev_private_key = opts.dev_private_key.unwrap_or_else(PrivateKey::generate);
+    let app_domains: Vec<AppDomain> = opts
+        .app_domains
+        .iter()
+        .map(|app_domain| {
+            app_domain
+                .parse()
+                .map_err(|err| anyhow::anyhow!("Failed to parse app domain '{}'. {}", app_domain, err))
+        })
+        .collect::<anyhow::Result<_>>()?;
+
+    let dev_cert = DeveloperCertificate::new(dev_private_key, app_domains, opts.actyx_private_key)?;
+    let serialized = serde_json::to_string(&dev_cert)?;
+    println!("{}", serialized);
+
+    Ok(())
+}
+
+fn create_app_license(opts: AppLicenseOpts) -> anyhow::Result<()> {
+    let expiration_date = opts
+        .expires_at
+        .or(opts.expires_in)
+        .unwrap_or_else(|| Utc::now() + chrono::Duration::days(1));
+
+    let license = SignedAppLicense::new(opts.actyx_private_key, opts.email, opts.app_id, expiration_date, None)?;
+    let serialized = license.to_base64().unwrap();
+    println!("{}", serialized);
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -220,84 +300,4 @@ mod test_expires_in {
         let result = parse_expires_in_as_duration(" 10s ").unwrap();
         assert_eq!(expected, result);
     }
-}
-
-#[derive(StructOpt, Debug)]
-enum Commands {
-    /// Creates developer certificate
-    DevCert(DevCertOpts),
-    /// Creates app license
-    AppLicense(AppLicenseOpts),
-}
-
-#[derive(StructOpt, Debug)]
-#[structopt(
-    name = "Actyx developer certificate utility",
-    about = "Manages Actyx developer certificates",
-    rename_all = "kebab-case"
-)]
-struct Opts {
-    #[structopt(subcommand)]
-    commands: Option<Commands>,
-    #[structopt(long)]
-    version: bool,
-}
-
-fn main() -> anyhow::Result<()> {
-    let opts = Opts::from_args();
-
-    match opts {
-        Opts { version: true, .. } => {
-            let app = Opts::clap();
-            let mut buf = Vec::new();
-            app.write_version(&mut buf).unwrap();
-            let bin_version = std::str::from_utf8(buf.as_slice()).unwrap().to_string();
-            println!("{} {}", bin_version, NodeVersion::get());
-            Ok(())
-        }
-        Opts {
-            commands: Some(cmd), ..
-        } => match cmd {
-            Commands::DevCert(opts) => create_dev_cert(opts),
-            Commands::AppLicense(opts) => create_app_license(opts),
-        },
-        _ => {
-            let mut app = Opts::clap();
-            app.write_long_help(&mut std::io::stderr()).unwrap();
-            println!();
-            Ok(())
-        }
-    }
-}
-
-fn create_dev_cert(opts: DevCertOpts) -> anyhow::Result<()> {
-    let dev_private_key = opts.dev_private_key.unwrap_or_else(PrivateKey::generate);
-    let app_domains: Vec<AppDomain> = opts
-        .app_domains
-        .iter()
-        .map(|app_domain| {
-            app_domain
-                .parse()
-                .map_err(|err| anyhow::anyhow!("Failed to parse app domain '{}'. {}", app_domain, err))
-        })
-        .collect::<anyhow::Result<_>>()?;
-
-    let dev_cert = DeveloperCertificate::new(dev_private_key, app_domains, opts.actyx_private_key)?;
-    let serialized = serde_json::to_string(&dev_cert)?;
-    println!("{}", serialized);
-
-    Ok(())
-}
-
-fn create_app_license(opts: AppLicenseOpts) -> anyhow::Result<()> {
-    let expiration_date = opts
-        .expires_at
-        .or(opts.expires_in)
-        .unwrap_or_else(|| DateTime::from(Utc::now() + chrono::Duration::days(1)));
-
-    let license = SignedAppLicense::new(opts.actyx_private_key, opts.email, opts.app_id, expiration_date, None)?;
-    let serialized = license.to_base64().unwrap();
-    println!("{}", serialized);
-
-    Ok(())
 }
