@@ -1,11 +1,9 @@
-use std::str::FromStr;
-
 use actyx_sdk::AppId;
 use certs::{AppDomain, DeveloperCertificate, SignedAppLicense};
 use chrono::{DateTime, Utc};
 use crypto::PrivateKey;
 use lazy_static::lazy_static;
-use regex::{Match, Regex};
+use regex::Regex;
 use structopt::StructOpt;
 use util::version::NodeVersion;
 
@@ -57,8 +55,13 @@ struct AppLicenseOpts {
 /// m - minute(s)
 /// s - second(s)
 fn parse_expires_in(expires_in: &str) -> Result<DateTime<Utc>, anyhow::Error> {
+    parse_expires_in_as_duration(expires_in).map(|d| DateTime::from(Utc::now() + d))
+}
+
+// This function is much easier to test for correctness
+fn parse_expires_in_as_duration(expires_in: &str) -> Result<chrono::Duration, anyhow::Error> {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"((?P<years>[0-9]+)Y)?\s*((?P<months>[0-9]+)M)?\s*((?P<weeks>[0-9]+)w)?\s*((?P<days>[0-9]+)d)?\s*((?P<hours>[0-9]+)h)?\s*((?P<minutes>[0-9]+)m)?\s*((?P<seconds>[0-9]+)s)?\s*").unwrap();
+        static ref RE: Regex = Regex::new(r"\s*((?P<years>[0-9]+)Y)?\s*((?P<months>[0-9]+)M)?\s*((?P<weeks>[0-9]+)w)?\s*((?P<days>[0-9]+)d)?\s*((?P<hours>[0-9]+)h)?\s*((?P<minutes>[0-9]+)m)?\s*((?P<seconds>[0-9]+)s)?\s*").unwrap();
     }
 
     let captures = RE
@@ -75,42 +78,42 @@ fn parse_expires_in(expires_in: &str) -> Result<DateTime<Utc>, anyhow::Error> {
         );
     duration = duration
         + chrono::Duration::days(
-            365 * captures
+            30 * captures
                 .name("months")
                 .and_then(|m| m.as_str().parse::<i64>().ok())
                 .unwrap_or(0),
         );
     duration = duration
         + chrono::Duration::days(
-            365 * captures
+            7 * captures
                 .name("weeks")
                 .and_then(|m| m.as_str().parse::<i64>().ok())
                 .unwrap_or(0),
         );
     duration = duration
         + chrono::Duration::days(
-            365 * captures
+            captures
                 .name("days")
                 .and_then(|m| m.as_str().parse::<i64>().ok())
                 .unwrap_or(0),
         );
     duration = duration
-        + chrono::Duration::days(
-            365 * captures
+        + chrono::Duration::hours(
+            captures
                 .name("hours")
                 .and_then(|m| m.as_str().parse::<i64>().ok())
                 .unwrap_or(0),
         );
     duration = duration
-        + chrono::Duration::days(
-            365 * captures
+        + chrono::Duration::minutes(
+            captures
                 .name("minutes")
                 .and_then(|m| m.as_str().parse::<i64>().ok())
                 .unwrap_or(0),
         );
     duration = duration
-        + chrono::Duration::days(
-            365 * captures
+        + chrono::Duration::seconds(
+            captures
                 .name("seconds")
                 .and_then(|m| m.as_str().parse::<i64>().ok())
                 .unwrap_or(0),
@@ -119,7 +122,104 @@ fn parse_expires_in(expires_in: &str) -> Result<DateTime<Utc>, anyhow::Error> {
     if duration.is_zero() {
         return Err(anyhow::anyhow!("Expiration time must be bigger than zero"));
     }
-    Ok(DateTime::from(Utc::now() + duration))
+    Ok(duration)
+}
+
+#[cfg(test)]
+mod test_expires_in {
+    use crate::parse_expires_in_as_duration;
+
+    // NOTE(duarte): Quickcheck would probably be amazing to test this but I don't have the time to learn it now
+    #[test]
+    fn test_years() {
+        let expected = chrono::Duration::days(365 * 10);
+        let result = parse_expires_in_as_duration("10Y").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration("10Y ").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10Y").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10Y ").unwrap();
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_months() {
+        let expected = chrono::Duration::days(30 * 10);
+        let result = parse_expires_in_as_duration("10M").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration("10M ").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10M").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10M ").unwrap();
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_weeks() {
+        let expected = chrono::Duration::days(7 * 10);
+        let result = parse_expires_in_as_duration("10w").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration("10w ").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10w").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10w ").unwrap();
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_days() {
+        let expected = chrono::Duration::days(10);
+        let result = parse_expires_in_as_duration("10d").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration("10d ").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10d").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10d ").unwrap();
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_hours() {
+        let expected = chrono::Duration::hours(10);
+        let result = parse_expires_in_as_duration("10h").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration("10h ").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10h").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10h ").unwrap();
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_minutes() {
+        let expected = chrono::Duration::minutes(10);
+        let result = parse_expires_in_as_duration("10m").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration("10m ").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10m").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10m ").unwrap();
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_seconds() {
+        let expected = chrono::Duration::seconds(10);
+        let result = parse_expires_in_as_duration("10s").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration("10s ").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10s").unwrap();
+        assert_eq!(expected, result);
+        let result = parse_expires_in_as_duration(" 10s ").unwrap();
+        assert_eq!(expected, result);
+    }
 }
 
 #[derive(StructOpt, Debug)]
