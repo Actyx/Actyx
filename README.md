@@ -85,7 +85,6 @@ We reserve the right to ban you from participating in discussions or development
 This is a monorepo, containing all parts that make up the Actyx suite.
 We have structured the parts by programming language:
 
-- `dotnet/Actyx-SDK` contains the [.Net SDK](https://www.nuget.org/packages/Actyx.Sdk/), written in C#
 - `js/sdk` contains the Typescript/Javascript [SDK](https://www.npmjs.com/package/@actyx/sdk)
 - `js/node-manager` holds the Electron app _Actyx Node Manager_, a graphical version of the Actyx CLI
 - `jvm/os-android` hosts the Android-specific part of Actyx (written in Kotlin) and the build definition for the APK
