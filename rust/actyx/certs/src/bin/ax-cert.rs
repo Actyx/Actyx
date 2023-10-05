@@ -32,11 +32,70 @@ struct AppLicenseOpts {
 
     /// ISO 8601 (i.e. 2014-11-28T12:00:09Z) expiration date time
     #[structopt(long)]
-    expires_at: DateTime<Utc>,
+    expires_at: Option<DateTime<Utc>>,
+
+    #[structopt(long, parse(try_from_str = parse_expires_in))]
+    expires_in: Option<DateTime<Utc>>,
 
     /// Requester's email address
     #[structopt(long)]
     email: String,
+}
+
+/// Parsing function for the `expires_in` variable.
+/// Accepts strings matching the regex: ^([0-9]+(Y|M|w|d|h|m|s))+$
+///
+/// Y - year(s) - counted as 365 days
+/// M - month(s) - counted as 30 days
+/// w - week(s)
+/// d - day(s)
+/// h - hour(s)
+/// m - minute(s)
+/// s - second(s)
+fn parse_expires_in(expires_in: &str) -> Result<DateTime<Utc>, anyhow::Error> {
+    let mut needle = 0;
+    let mut duration = chrono::Duration::zero();
+
+    if let Some(i) = expires_in.find('Y') {
+        let years: i64 = expires_in[needle..i].trim().parse()?;
+        duration = duration + chrono::Duration::days(365 * years);
+        needle = i;
+    }
+    if let Some(i) = expires_in.find('M') {
+        let months: i64 = expires_in[needle..i].trim().parse()?;
+        duration = duration + chrono::Duration::days(30 * months);
+        needle = i;
+    }
+    if let Some(i) = expires_in.find('w') {
+        let weeks: i64 = expires_in[needle..i].trim().parse()?;
+        duration = duration + chrono::Duration::days(30 * weeks);
+        needle = i;
+    }
+    if let Some(i) = expires_in.find('d') {
+        let days: i64 = expires_in[needle..i].trim().parse()?;
+        duration = duration + chrono::Duration::days(30 * days);
+        needle = i;
+    }
+    if let Some(i) = expires_in.find('h') {
+        let hours: i64 = expires_in[needle..i].trim().parse()?;
+        duration = duration + chrono::Duration::days(30 * hours);
+        needle = i;
+    }
+    if let Some(i) = expires_in.find('m') {
+        let minutes: i64 = expires_in[needle..i].trim().parse()?;
+        duration = duration + chrono::Duration::days(30 * minutes);
+        needle = i;
+    }
+    if let Some(i) = expires_in.find('s') {
+        let seconds: i64 = expires_in[needle..i].trim().parse()?;
+        duration = duration + chrono::Duration::days(30 * seconds);
+        needle = i;
+    }
+
+    if needle == 0 {
+        return Err(anyhow::anyhow!("Could not parse string"));
+    }
+    Ok(DateTime::from(Utc::now() + duration))
 }
 
 #[derive(StructOpt, Debug)]
@@ -107,7 +166,12 @@ fn create_dev_cert(opts: DevCertOpts) -> anyhow::Result<()> {
 }
 
 fn create_app_license(opts: AppLicenseOpts) -> anyhow::Result<()> {
-    let license = SignedAppLicense::new(opts.actyx_private_key, opts.email, opts.app_id, opts.expires_at, None)?;
+    let expiration_date = opts
+        .expires_at
+        .or(opts.expires_in)
+        .unwrap_or_else(|| DateTime::from(Utc::now() + chrono::Duration::days(1)));
+
+    let license = SignedAppLicense::new(opts.actyx_private_key, opts.email, opts.app_id, expiration_date, None)?;
     let serialized = license.to_base64().unwrap();
     println!("{}", serialized);
 
