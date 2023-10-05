@@ -1,7 +1,11 @@
+use std::str::FromStr;
+
 use actyx_sdk::AppId;
 use certs::{AppDomain, DeveloperCertificate, SignedAppLicense};
 use chrono::{DateTime, Utc};
 use crypto::PrivateKey;
+use lazy_static::lazy_static;
+use regex::{Match, Regex};
 use structopt::StructOpt;
 use util::version::NodeVersion;
 
@@ -53,47 +57,67 @@ struct AppLicenseOpts {
 /// m - minute(s)
 /// s - second(s)
 fn parse_expires_in(expires_in: &str) -> Result<DateTime<Utc>, anyhow::Error> {
-    let mut needle = 0;
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"((?P<years>[0-9]+)Y)?\s*((?P<months>[0-9]+)M)?\s*((?P<weeks>[0-9]+)w)?\s*((?P<days>[0-9]+)d)?\s*((?P<hours>[0-9]+)h)?\s*((?P<minutes>[0-9]+)m)?\s*((?P<seconds>[0-9]+)s)?\s*").unwrap();
+    }
+
+    let captures = RE
+        .captures(expires_in)
+        .ok_or_else(|| anyhow::anyhow!("Failed to parse string."))?;
+
     let mut duration = chrono::Duration::zero();
+    duration = duration
+        + chrono::Duration::days(
+            365 * captures
+                .name("years")
+                .and_then(|m| m.as_str().parse::<i64>().ok())
+                .unwrap_or(0),
+        );
+    duration = duration
+        + chrono::Duration::days(
+            365 * captures
+                .name("months")
+                .and_then(|m| m.as_str().parse::<i64>().ok())
+                .unwrap_or(0),
+        );
+    duration = duration
+        + chrono::Duration::days(
+            365 * captures
+                .name("weeks")
+                .and_then(|m| m.as_str().parse::<i64>().ok())
+                .unwrap_or(0),
+        );
+    duration = duration
+        + chrono::Duration::days(
+            365 * captures
+                .name("days")
+                .and_then(|m| m.as_str().parse::<i64>().ok())
+                .unwrap_or(0),
+        );
+    duration = duration
+        + chrono::Duration::days(
+            365 * captures
+                .name("hours")
+                .and_then(|m| m.as_str().parse::<i64>().ok())
+                .unwrap_or(0),
+        );
+    duration = duration
+        + chrono::Duration::days(
+            365 * captures
+                .name("minutes")
+                .and_then(|m| m.as_str().parse::<i64>().ok())
+                .unwrap_or(0),
+        );
+    duration = duration
+        + chrono::Duration::days(
+            365 * captures
+                .name("seconds")
+                .and_then(|m| m.as_str().parse::<i64>().ok())
+                .unwrap_or(0),
+        );
 
-    if let Some(i) = expires_in.find('Y') {
-        let years: i64 = expires_in[needle..i].trim().parse()?;
-        duration = duration + chrono::Duration::days(365 * years);
-        needle = i;
-    }
-    if let Some(i) = expires_in.find('M') {
-        let months: i64 = expires_in[needle..i].trim().parse()?;
-        duration = duration + chrono::Duration::days(30 * months);
-        needle = i;
-    }
-    if let Some(i) = expires_in.find('w') {
-        let weeks: i64 = expires_in[needle..i].trim().parse()?;
-        duration = duration + chrono::Duration::days(30 * weeks);
-        needle = i;
-    }
-    if let Some(i) = expires_in.find('d') {
-        let days: i64 = expires_in[needle..i].trim().parse()?;
-        duration = duration + chrono::Duration::days(30 * days);
-        needle = i;
-    }
-    if let Some(i) = expires_in.find('h') {
-        let hours: i64 = expires_in[needle..i].trim().parse()?;
-        duration = duration + chrono::Duration::days(30 * hours);
-        needle = i;
-    }
-    if let Some(i) = expires_in.find('m') {
-        let minutes: i64 = expires_in[needle..i].trim().parse()?;
-        duration = duration + chrono::Duration::days(30 * minutes);
-        needle = i;
-    }
-    if let Some(i) = expires_in.find('s') {
-        let seconds: i64 = expires_in[needle..i].trim().parse()?;
-        duration = duration + chrono::Duration::days(30 * seconds);
-        needle = i;
-    }
-
-    if needle == 0 {
-        return Err(anyhow::anyhow!("Could not parse string"));
+    if duration.is_zero() {
+        return Err(anyhow::anyhow!("Expiration time must be bigger than zero"));
     }
     Ok(DateTime::from(Utc::now() + duration))
 }
