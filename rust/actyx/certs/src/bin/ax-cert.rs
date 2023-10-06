@@ -3,7 +3,7 @@ use certs::{AppDomain, DeveloperCertificate, SignedAppLicense};
 use chrono::{DateTime, Utc};
 use crypto::PrivateKey;
 use lazy_static::lazy_static;
-use regex::Regex;
+use regex::{Captures, Regex};
 use structopt::StructOpt;
 use util::version::NodeVersion;
 
@@ -32,7 +32,8 @@ struct AppLicenseOpts {
     #[structopt(long)]
     app_id: AppId,
 
-    /// ISO 8601 (i.e. 2014-11-28T12:00:09Z) expiration date time
+    /// An expiration date time in ISO 8601 (i.e. 2014-11-28T12:00:09Z).
+    /// Takes precedences over `--expires-in`.
     #[structopt(long)]
     expires_at: Option<DateTime<Utc>>,
 
@@ -72,7 +73,17 @@ fn parse_expires_in(expires_in: &str) -> Result<DateTime<Utc>, anyhow::Error> {
 // This function is much easier to test for correctness
 fn parse_expires_in_as_duration(expires_in: &str) -> Result<chrono::Duration, anyhow::Error> {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"\s*((?P<years>[0-9]+)Y)?\s*((?P<months>[0-9]+)M)?\s*((?P<weeks>[0-9]+)w)?\s*((?P<days>[0-9]+)d)?\s*((?P<hours>[0-9]+)h)?\s*((?P<minutes>[0-9]+)m)?\s*((?P<seconds>[0-9]+)s)?\s*").unwrap();
+        // Named matches for easy extraction, string concat for readability
+        static ref RE: Regex = Regex::new(concat!(
+            r"\s*((?P<years>[0-9]+)Y)?\s*",
+            r"((?P<months>[0-9]+)M)?\s*",
+            r"((?P<weeks>[0-9]+)w)?\s*",
+            r"((?P<days>[0-9]+)d)?\s*",
+            r"((?P<hours>[0-9]+)h)?\s*",
+            r"((?P<minutes>[0-9]+)m)?\s*",
+            r"((?P<seconds>[0-9]+)s)?\s*",
+        ))
+        .unwrap();
     }
 
     let captures = RE
@@ -80,60 +91,28 @@ fn parse_expires_in_as_duration(expires_in: &str) -> Result<chrono::Duration, an
         .ok_or_else(|| anyhow::anyhow!("Failed to parse string."))?;
 
     let mut duration = chrono::Duration::zero();
-    duration = duration
-        + chrono::Duration::days(
-            365 * captures
-                .name("years")
-                .and_then(|m| m.as_str().parse::<i64>().ok())
-                .unwrap_or(0),
-        );
-    duration = duration
-        + chrono::Duration::days(
-            30 * captures
-                .name("months")
-                .and_then(|m| m.as_str().parse::<i64>().ok())
-                .unwrap_or(0),
-        );
-    duration = duration
-        + chrono::Duration::days(
-            7 * captures
-                .name("weeks")
-                .and_then(|m| m.as_str().parse::<i64>().ok())
-                .unwrap_or(0),
-        );
-    duration = duration
-        + chrono::Duration::days(
-            captures
-                .name("days")
-                .and_then(|m| m.as_str().parse::<i64>().ok())
-                .unwrap_or(0),
-        );
-    duration = duration
-        + chrono::Duration::hours(
-            captures
-                .name("hours")
-                .and_then(|m| m.as_str().parse::<i64>().ok())
-                .unwrap_or(0),
-        );
-    duration = duration
-        + chrono::Duration::minutes(
-            captures
-                .name("minutes")
-                .and_then(|m| m.as_str().parse::<i64>().ok())
-                .unwrap_or(0),
-        );
-    duration = duration
-        + chrono::Duration::seconds(
-            captures
-                .name("seconds")
-                .and_then(|m| m.as_str().parse::<i64>().ok())
-                .unwrap_or(0),
-        );
+    duration = duration + chrono::Duration::days(365 * get_i64_from_capture(&captures, "years"));
+    duration = duration + chrono::Duration::days(30 * get_i64_from_capture(&captures, "months"));
+    duration = duration + chrono::Duration::days(7 * get_i64_from_capture(&captures, "weeks"));
+    duration = duration + chrono::Duration::days(get_i64_from_capture(&captures, "days"));
+    duration = duration + chrono::Duration::hours(get_i64_from_capture(&captures, "hours"));
+    duration = duration + chrono::Duration::minutes(get_i64_from_capture(&captures, "minutes"));
+    duration = duration + chrono::Duration::seconds(get_i64_from_capture(&captures, "seconds"));
 
     if duration.is_zero() {
-        return Err(anyhow::anyhow!("Expiration time must be bigger than zero"));
+        return Err(anyhow::anyhow!("Expiration interval must be bigger than zero"));
     }
     Ok(duration)
+}
+
+// This could've been an extension using a trait, but we're not building a library.
+/// Get an i64 from a named capture group. If the group does not exist or parsing
+/// the captured value as i64 fails, returns `0` as a default value.
+fn get_i64_from_capture(captures: &Captures, name: &str) -> i64 {
+    captures
+        .name(name)
+        .and_then(|m| m.as_str().parse::<i64>().ok())
+        .unwrap_or(0)
 }
 
 #[derive(StructOpt, Debug)]
@@ -204,10 +183,9 @@ fn create_dev_cert(opts: DevCertOpts) -> anyhow::Result<()> {
 }
 
 fn create_app_license(opts: AppLicenseOpts) -> anyhow::Result<()> {
-    let expiration_date = opts
-        .expires_at
-        .or(opts.expires_in)
-        .unwrap_or_else(|| Utc::now() + chrono::Duration::days(1));
+    let expiration_date = opts.expires_at.or(opts.expires_in).ok_or(anyhow::anyhow!(
+        "An expiration date must be specified. Use `--expires-at` or `--expires-in`."
+    ))?;
 
     let license = SignedAppLicense::new(opts.actyx_private_key, opts.email, opts.app_id, expiration_date, None)?;
     let serialized = license.to_base64().unwrap();
