@@ -57,7 +57,8 @@ struct AppLicenseOpts {
 }
 
 /// Parsing function for the `expires_in` variable.
-/// Accepts strings matching the regex: ^([0-9]+(Y|M|w|d|h|m|s))+$
+/// Accepts strings matching the regex:
+/// `^\s*([0-9]+Y)?\s*([0-9]+Y)?\s*([0-9]+Y)?\s*([0-9]+Y)?\s*([0-9]+Y)?\s*([0-9]+Y)?\s*([0-9]+Y)?\s*$`
 ///
 /// Y - year(s) - counted as 365 days
 /// M - month(s) - counted as 30 days
@@ -75,13 +76,13 @@ fn parse_expires_in_as_duration(expires_in: &str) -> Result<chrono::Duration, an
     lazy_static! {
         // Named matches for easy extraction, string concat for readability
         static ref RE: Regex = Regex::new(concat!(
-            r"\s*((?P<years>[0-9]+)Y)?\s*",
+            r"^\s*((?P<years>[0-9]+)Y)?\s*",
             r"((?P<months>[0-9]+)M)?\s*",
             r"((?P<weeks>[0-9]+)w)?\s*",
             r"((?P<days>[0-9]+)d)?\s*",
             r"((?P<hours>[0-9]+)h)?\s*",
             r"((?P<minutes>[0-9]+)m)?\s*",
-            r"((?P<seconds>[0-9]+)s)?\s*",
+            r"((?P<seconds>[0-9]+)s)?\s*$",
         ))
         .unwrap();
     }
@@ -287,6 +288,19 @@ mod test_expires_in {
         let result = parse_expires_in_as_duration(" 10s").unwrap();
         assert_eq!(expected, result);
         let result = parse_expires_in_as_duration(" 10s ").unwrap();
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_full() {
+        // 2 years, 3 weeks, 21 minutes and 10 seconds
+        let expected =
+            chrono::Duration::days((365 * 2) + (7 * 3)) + chrono::Duration::minutes(21) + chrono::Duration::seconds(10);
+
+        // Spaces between the number and the unit are not allowed
+        let result = parse_expires_in_as_duration("2Y    3 w   21     m 10 s");
+        assert!(result.is_err());
+        let result = parse_expires_in_as_duration("  2Y    3w   21m 10s  ").unwrap();
         assert_eq!(expected, result);
     }
 }
