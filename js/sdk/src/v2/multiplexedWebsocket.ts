@@ -6,6 +6,7 @@
  */
 
 import * as t from 'io-ts'
+import * as globals from '../globals'
 import {
   MultiplexedWebsocket as WS,
   RequestId,
@@ -14,9 +15,12 @@ import {
 } from '../internal_common/multiplexedWebSocket'
 import { validateOrThrow } from '../util'
 import { WebSocketSubjectConfig } from '../../node_modules/rxjs/webSocket'
-import { concatMap, Observable, catchError, throwError } from '../../node_modules/rxjs'
+import { concatMap, Observable, catchError, throwError, finalize } from '../../node_modules/rxjs'
 import { isRight } from 'fp-ts/lib/Either'
 import { stringifyError } from '../util/error'
+import { GlobalInternalSymbol } from './utils'
+
+const activeRequestInternals = globals.activeRequests[GlobalInternalSymbol]
 
 const NextMessage = t.readonly(
   t.type({
@@ -59,7 +63,10 @@ export class MultiplexedWebsocket {
     this.ws = new WS(config, redialAfter)
   }
   request(serviceId: string, payload?: unknown): Observable<unknown> {
-    return this.ws.request(serviceId, payload).pipe(
+    const sym = Symbol()
+
+    const request = this.ws.request(serviceId, payload).pipe(
+      finalize(() => activeRequestInternals.unregister(sym)),
       concatMap((msg) => msg.payload),
       catchError((err: unknown) => {
         const e = ErrorMessage.decode(err)
@@ -68,6 +75,13 @@ export class MultiplexedWebsocket {
           : throwError(() => err)
       }),
     )
+
+    activeRequestInternals.register(sym, {
+      serviceId: serviceId,
+      observable: request,
+    })
+
+    return request
   }
   close() {
     this.ws.close()

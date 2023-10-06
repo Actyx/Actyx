@@ -8,6 +8,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
+import * as globals from '../globals'
 import {
   fromNullable,
   map as mapO,
@@ -114,6 +115,7 @@ describe('multiplexedWebsocket', () => {
 
   it('should just work', async () => {
     const testArr = msgGen()
+    const globalAssertionsPerCase = 3
     const multiplexer = new MultiplexedWebsocket({
       url: 'ws://socket',
       WebSocketCtor: MockWebSocketConstructor,
@@ -123,12 +125,28 @@ describe('multiplexedWebsocket', () => {
     socket.open()
 
     // Make sure no assertions are missed. Because async and silent success..
-    expect.assertions(testArr.length * 4)
+    expect.assertions(testArr.length * (4 + globalAssertionsPerCase))
+
+    const previousObservers = new Set()
+
     for (const msgFn of testArr) {
       const requestType = 'someRequest'
       const receivedVals: string[] = []
+      const reqObserver = multiplexer.request(requestType, { from: 1, to: 4 })
+
+      // global test section
+      // ============================
+      const currentObserverIsFound = globals.activeRequests
+        .all()
+        .find((x) => x.serviceId === 'someRequest' && x.observable === reqObserver)
+      const previousObserversFound = globals.activeRequests
+        .all()
+        .find((x) => x.serviceId === 'someRequest' && previousObservers.has(x.observable))
+      // ============================
+      // global test section - end
+
       const res = lastValueFrom(
-        multiplexer.request(requestType, { from: 1, to: 4 }).pipe(
+        reqObserver.pipe(
           tap((x) => receivedVals.push(x as string)),
           toArray(),
         ),
@@ -177,6 +195,19 @@ describe('multiplexedWebsocket', () => {
         })
         expect(true).toBeTruthy() // Keep number of assertions symmetrical for all paths
       }
+
+      // global test section
+      // ====================================
+      const currentObserverIsRemovedAfterFinalization =
+        globals.activeRequests
+          .all()
+          .find((x) => x.serviceId === 'someRequest' && x.observable === reqObserver) === undefined
+
+      expect(currentObserverIsFound).toBeTruthy()
+      expect(currentObserverIsRemovedAfterFinalization).toBeTruthy()
+      expect(previousObserversFound).toBeFalsy()
+
+      previousObservers.add(reqObserver)
     }
   })
 })
