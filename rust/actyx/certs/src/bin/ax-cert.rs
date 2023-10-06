@@ -36,6 +36,17 @@ struct AppLicenseOpts {
     #[structopt(long)]
     expires_at: Option<DateTime<Utc>>,
 
+    /// The amount of time in which the license should expire. The accepted format is
+    /// composed of a number followed by a unit (i.e. "10Y"), whitespace is supported
+    /// before, between and after the number and the unit. Values are accepted in
+    /// descending order according to the size of the unit, the unit character and
+    /// ordering is as follows:
+    ///
+    /// [Y]ear, [M]onth, [w]eek, [d]ay, [h]our, [d]ay, [m]inute, [s]econd
+    ///
+    /// Note: Years are considered to be 365 days long and months to be 30 days long.
+    ///
+    /// For example: "1Y 3M 4h" means that the license should expire in 1 year, 3 months and 4 hours.
     #[structopt(long, parse(try_from_str = parse_expires_in))]
     expires_in: Option<DateTime<Utc>>,
 
