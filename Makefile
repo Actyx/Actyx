@@ -380,7 +380,7 @@ android-libaxosnodeffi: \
 	jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so \
 	jvm/os-android/app/src/main/jniLibs/x86_64/libaxosnodeffi.so \
 	jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so \
-	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so \
+	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so
 
 jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so: rust/actyx/target/i686-linux-android/release/libaxosnodeffi.so
 	mkdir -p $(dir $@)
