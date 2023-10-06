@@ -492,7 +492,6 @@ $(soTargetPatterns6): cargo-init make-always
 	  -u builder \
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
-	  -e ANDROID6=yes \
 	  -v `pwd`:/src \
 	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
 	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
