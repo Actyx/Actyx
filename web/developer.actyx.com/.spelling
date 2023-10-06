@@ -339,9 +339,6 @@ body2
 body3
 showLinks
 tutorial-setup-02
-- ./docs/tutorials/chat.mdx
-http
-actyx.io
 - ./docs/tutorials/advanced-tutorial/architecture.mdx
 img1
 dx1-tutorial
