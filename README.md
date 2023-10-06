@@ -53,7 +53,7 @@ cargo run --bin ax events query localhost 'FROM "discovery" FILTER IsDefined(_.N
 ```
 
 The last argument is an [AQL expression](https://developer.actyx.com/docs/reference/aql), you can play around a little bit with the `'discovery'` and (after some time) `'metrics'` events that Actyx emits by itself.
-For emitting events and writing more complex logic, please take a look at [the Typescript SDK](js/sdk/README.md) (C# is on its way).
+For emitting events and writing more complex logic, please take a look at [the Typescript SDK](js/sdk/README.md).
 
 ## How to get Actyx
 
