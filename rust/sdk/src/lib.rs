@@ -23,7 +23,6 @@ mod event;
 #[cfg(feature = "client")]
 mod http_client;
 pub mod language;
-pub mod legacy;
 mod offset;
 mod scalars;
 pub mod service;

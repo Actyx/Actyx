@@ -1,3 +1,5 @@
+#![cfg(feature = "client")]
+
 use std::{
     io::Write,
     path::{Path, PathBuf},

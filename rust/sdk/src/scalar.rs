@@ -3,15 +3,6 @@ use unicode_normalization::UnicodeNormalization;
 
 use crate::{types::ArcVal, ParseError};
 
-pub fn nonempty_string<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D::Error> {
-    let s = <String>::deserialize(d)?;
-    if s.is_empty() {
-        Err(D::Error::custom("expected non-empty string"))
-    } else {
-        Ok(ArcVal::from_boxed(s.into()))
-    }
-}
-
 pub fn is_app_id(s: &str) -> bool {
     if s.is_empty() {
         return false;

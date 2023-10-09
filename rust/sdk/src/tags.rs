@@ -47,13 +47,13 @@ macro_rules! tag {
 ///  - normal expressions (enclosed in parens if multiple tokens)
 ///
 /// ```rust
-/// use actyx_sdk::{semantics, tag, Tag, tags, TagSet};
+/// use actyx_sdk::{tag, Tag, tags, TagSet};
 /// use std::collections::BTreeSet;
 ///
-/// let tags: TagSet = tags!("a", "semantics:b");
+/// let tags: TagSet = tags!("a", "events:b");
 /// let mut expected = BTreeSet::new();
 /// expected.insert(tag!("a"));
-/// expected.insert(tag!("semantics:b"));
+/// expected.insert(tag!("events:b"));
 /// assert_eq!(tags, TagSet::from(expected));
 /// ```
 #[macro_export]
