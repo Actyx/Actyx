@@ -94,7 +94,10 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/util:osxbuilder-bfb3a4d511386569c70ef919026d476edb864c79
+# This image is for GitHub-hosted runners
+# image-darwin = actyx/util:osxbuilder-bfb3a4d511386569c70ef919026d476edb864c79
+# This image is for the self-hosted runners
+image-darwin = actyx/util:osxbuilder-8e34cf39fdef055e223be03d19f21d96ca911154
 
 # list all os-arch and binary names
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 macos-aarch64
@@ -358,8 +361,6 @@ node-manager-win:
 	docker run \
 	  -e BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  -w /src/js/node-manager \
 	  --rm \
 	  actyx/util:node-manager-win-builder-$(IMAGE_VERSION) \
@@ -446,8 +447,6 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
@@ -467,8 +466,6 @@ $(soTargetPatterns): cargo-init make-always
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
@@ -489,8 +486,6 @@ jvm/os-android/app/build/outputs/bundle/release/app-release.aab: android-libaxos
 	docker run \
 	  -u builder \
 	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/for_builder/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/for_builder/registry:/home/builder/.cargo/registry \
 	  -w /src/jvm/os-android \
 	  --rm \
 	  $(DOCKER_FLAGS) \

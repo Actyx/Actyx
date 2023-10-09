@@ -1077,6 +1077,7 @@ dependencies = [
  "chrono",
  "crypto",
  "derive_more",
+ "lazy_static",
  "regex",
  "serde",
  "serde_cbor",

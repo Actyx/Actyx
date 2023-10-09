@@ -189,10 +189,6 @@ module.exports = {
       type: 'doc',
       id: 'tutorials/quickstart', // string - document id
     },
-    {
-      type: 'doc',
-      id: 'tutorials/chat', // string - document id
-    },
     { type: 'doc', id: 'tutorials/aql' },
     { type: 'doc', id: 'tutorials/ephemeral_streams' },
   ],

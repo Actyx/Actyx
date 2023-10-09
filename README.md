@@ -53,7 +53,7 @@ cargo run --bin ax events query localhost 'FROM "discovery" FILTER IsDefined(_.N
 ```
 
 The last argument is an [AQL expression](https://developer.actyx.com/docs/reference/aql), you can play around a little bit with the `'discovery'` and (after some time) `'metrics'` events that Actyx emits by itself.
-For emitting events and writing more complex logic, please take a look at [the Typescript SDK](js/sdk/README.md) (C# is on its way).
+For emitting events and writing more complex logic, please take a look at [the Typescript SDK](js/sdk/README.md).
 
 ## How to get Actyx
 
@@ -85,7 +85,6 @@ We reserve the right to ban you from participating in discussions or development
 This is a monorepo, containing all parts that make up the Actyx suite.
 We have structured the parts by programming language:
 
-- `dotnet/Actyx-SDK` contains the [.Net SDK](https://www.nuget.org/packages/Actyx.Sdk/), written in C#
 - `js/sdk` contains the Typescript/Javascript [SDK](https://www.npmjs.com/package/@actyx/sdk)
 - `js/node-manager` holds the Electron app _Actyx Node Manager_, a graphical version of the Actyx CLI
 - `jvm/os-android` hosts the Android-specific part of Actyx (written in Kotlin) and the build definition for the APK
