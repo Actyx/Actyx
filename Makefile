@@ -254,7 +254,7 @@ define mkRustTestRule=
 $(TARGET_NAME): cargo-init make-always
   $(eval TARGET_PATH:=rust/$(word 3, $(subst -, ,$(TARGET_NAME))))
 	cd $(TARGET_PATH) && $(CARGO) fmt --all -- --check
-	cd $(TARGET_PATH) && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --all-targets -- -D warnings
+	cd $(TARGET_PATH) && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) --all-targets -- -D warnings
 	cd $(TARGET_PATH) && $(CARGO) test --locked --all-features -j $(CARGO_TEST_JOBS)
 endef
 
@@ -264,24 +264,24 @@ $(foreach TARGET_NAME,$(rust-validation),$(eval $(mkRustTestRule)))
 # execute fmt check, clippy and tests for rust/actyx
 validate-os: diagnostics
 	cd rust/actyx && $(CARGO) fmt --all -- --check
-	cd rust/actyx && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
-	cd rust/actyx && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
+	cd rust/actyx && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) -- -D warnings
+	cd rust/actyx && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 	cd rust/actyx && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
 
 .PHONY: validate-rust
 # execute fmt check, clippy and tests for rust/actyx
 validate-rust: diagnostics
 	cd rust/sdk && $(CARGO) fmt --all -- --check
-	cd rust/sdk && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
-	cd rust/sdk && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
+	cd rust/sdk && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) -- -D warnings
+	cd rust/sdk && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 	cd rust/sdk && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
 
 .PHONY: validate-release
 # execute fmt check, clippy and tests for rust/actyx
 validate-release: diagnostics
 	cd rust/release && $(CARGO) fmt --all -- --check
-	cd rust/release && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
-	cd rust/release && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
+	cd rust/release && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) -- -D warnings
+	cd rust/release && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 
 validate-netsim: diagnostics
 	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release -j $(CARGO_BUILD_JOBS)
