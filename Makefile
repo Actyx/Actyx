@@ -379,17 +379,11 @@ node-manager-mac-linux:
 # combines all the .so files to build actyxos on android
 android-libaxosnodeffi: \
 	jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so \
-	jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi6.so \
 	jvm/os-android/app/src/main/jniLibs/x86_64/libaxosnodeffi.so \
 	jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so \
-	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so \
-	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi6.so
+	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so
 
 jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so: rust/actyx/target/i686-linux-android/release/libaxosnodeffi.so
-	mkdir -p $(dir $@)
-	cp $< $@
-
-jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi6.so: rust/actyx/target/i686-linux-android/release/libaxosnodeffi.so6
 	mkdir -p $(dir $@)
 	cp $< $@
 
@@ -402,10 +396,6 @@ jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so: rust/actyx/targ
 	cp $< $@
 
 jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so: rust/actyx/target/armv7-linux-androideabi/release/libaxosnodeffi.so
-	mkdir -p $(dir $@)
-	cp $< $@
-
-jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi6.so: rust/actyx/target/armv7-linux-androideabi/release/libaxosnodeffi.so6
 	mkdir -p $(dir $@)
 	cp $< $@
 
@@ -466,7 +456,6 @@ $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 
 # make a list of pattern rules (with %) for all possible .so files needed for android
 soTargetPatterns = $(foreach t,$(android_so_targets),rust/actyx/target/$(t)/release/libaxosnodeffi.so)
-soTargetPatterns6 = $(foreach t,$(android_so_targets),rust/actyx/target/$(t)/release/libaxosnodeffi.so6)
 
 # same principle as above for targetPatterns
 # Generate the libaxosnodeffi.so for all android targets
@@ -481,21 +470,6 @@ $(soTargetPatterns): cargo-init make-always
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
 	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --target $(TARGET)
-
-# Generate the libaxosnodeffi.so6 for all android targets
-$(soTargetPatterns6): TARGET = $(word 4,$(subst /, ,$@))
-$(soTargetPatterns6): cargo-init make-always
-	docker run \
-	  -u builder \
-	  -w /src/rust/actyx \
-	  -e HOME=/home/builder \
-	  -e ANDROID6=yes \
-	  -v `pwd`:/src \
-	  --rm \
-	  $(DOCKER_FLAGS) \
-	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-	  cargo +$(BUILD_RUST_TOOLCHAIN) --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) $(CARGO_BUILD_ARGS) --target $(TARGET)
-	mv $(patsubst %6,%,$@) $@
 
 # create this with permissions for everyone so that `builder` inside docker can use it
 # but only really share the `git` and `registry` folders within this!
