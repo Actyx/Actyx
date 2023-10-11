@@ -63,9 +63,9 @@ EXPOSE 4001/TCP
 
 # https://github.com/opencontainers/image-spec/blob/master/annotations.md
 LABEL org.opencontainers.image.title="Actyx" \
-    org.opencontainers.image.description="Some description for Actyx" \
+    org.opencontainers.image.description="Local-First Cooperation based on Event Sourcing" \
     org.opencontainers.image.vendor="Actyx AG" \
     org.opencontainers.image.revision="${GIT_COMMIT}" \
     org.opencontainers.image.created="TODO" \
-    org.opencontainers.image.version="TODO" \
-    org.opencontainers.image.documentation="https://developer.actyx.com" \
+    org.opencontainers.image.version="${ACTYX_VERSION}" \
+    org.opencontainers.image.documentation="https://developer.actyx.com"
