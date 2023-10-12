@@ -94,18 +94,20 @@ impl Publisher {
     }
     pub fn source_exists(&self) -> anyhow::Result<bool> {
         log::debug!("checking if source {} exists for target {}", self.source, self.target);
-        match &self.source.r#type {
+        let result = match &self.source.r#type {
             SourceType::Blob(s) => blob_exists(Container::Artifacts, s),
             SourceType::Docker {
                 registry,
                 tag,
                 repository,
             } => docker_manifest_exists(&format!("{}/{}:{}", registry, repository, tag), None),
-        }
+        };
+        log::debug!("source checking result: {:?}", result);
+        result
     }
     pub fn target_exists(&self) -> anyhow::Result<bool> {
         log::debug!("checking if target {} exists for source {}", self.target, self.source);
-        match &self.target {
+        let result = match &self.target {
             TargetArtifact::Blob { file_name: s, .. } => blob_exists(Container::Releases, s),
             TargetArtifact::Docker {
                 registry,
@@ -113,10 +115,12 @@ impl Publisher {
                 repository,
                 tag,
             } => docker_manifest_exists(&format!("{}/{}:{}", registry, repository, tag), Some(manifest)),
-        }
+        };
+        log::debug!("target checking result: {:?}", result);
+        result
     }
     #[cfg(not(windows))]
-    pub fn create_release_artifact(&mut self, in_dir: impl AsRef<Path>, repo_workdir: PathBuf) -> anyhow::Result<()> {
+    pub fn create_release_artifact(&mut self, in_dir: impl AsRef<Path>) -> anyhow::Result<()> {
         match &mut self.target {
             TargetArtifact::Blob {
                 pre_processing,
@@ -171,46 +175,21 @@ impl Publisher {
                 registry,
                 repository,
                 tag,
-                ..
+                manifest,
             } => {
-                if let SourceArtifact {
-                    r#type: SourceType::Docker { .. },
+                if let SourceType::Docker {
+                    repository: source_repository,
                     ..
-                } = &self.source
+                } = &self.source.r#type
                 {
-                    let mut dockerfile = repo_workdir.clone();
-                    dockerfile.push("docker/actyx/Dockerfile");
-                    let target = format!("{}/{}:{}", registry, repository, tag);
-                    let args = [
-                        "buildx",
-                        "build",
-                        "--platform",
-                        "linux/arm64/v8,linux/amd64,linux/arm/v7,linux/arm/v6",
-                        "-f",
-                        &dockerfile.to_string_lossy(),
-                        &repo_workdir.to_string_lossy(),
-                    ];
-                    let cmd = Command::new("docker")
-                        .args(args)
-                        .output()
-                        .context(format!("building multiplatform docker images {:?}", args))?;
-
-                    anyhow::ensure!(
-                        cmd.status.success(),
-                        "Error running `docker {:?}` for {}\nstdout: {}\nstderr: {}",
-                        args,
-                        target,
-                        String::from_utf8(cmd.stdout)?,
-                        String::from_utf8(cmd.stderr)?
-                    );
-                    Ok(())
+                    docker_manifest_create(manifest, registry, source_repository, repository, tag)
                 } else {
                     unreachable!()
                 }
             }
         }
     }
-    pub fn publish(&self, repo_workdir: PathBuf) -> anyhow::Result<()> {
+    pub fn publish(&self) -> anyhow::Result<()> {
         match &self.target {
             TargetArtifact::Blob {
                 file_name,
@@ -227,37 +206,7 @@ impl Publisher {
                 registry,
                 repository,
                 ..
-            } => {
-                let mut dockerfile = repo_workdir.clone();
-                dockerfile.push("docker/actyx/Dockerfile");
-                let target = format!("{}/{}:{}", registry, repository, tag);
-                let args = [
-                    "buildx",
-                    "build",
-                    "--push",
-                    "--tag",
-                    &target,
-                    "--platform",
-                    "linux/arm64/v8,linux/amd64,linux/arm/v7,linux/arm/v6",
-                    "-f",
-                    &dockerfile.to_string_lossy(),
-                    &repo_workdir.to_string_lossy(),
-                ];
-                let cmd = Command::new("docker")
-                    .args(args)
-                    .output()
-                    .context(format!("building multiplatform docker images {:?}", args))?;
-
-                anyhow::ensure!(
-                    cmd.status.success(),
-                    "Error running `docker {:?}` for {}\nstdout: {}\nstderr: {}",
-                    args,
-                    target,
-                    String::from_utf8(cmd.stdout)?,
-                    String::from_utf8(cmd.stderr)?
-                );
-                Ok(())
-            }
+            } => docker_manifest_push(&format!("{}/{}:{}", registry, repository, tag)),
         }
     }
 }
@@ -712,6 +661,7 @@ fn docker_manifest_exists(tag: &str, manifest: Option<&DockerInspectResponse>) -
 
 fn docker_manifest_inspect(tag: &str) -> anyhow::Result<DockerInspectResponse> {
     let args = ["manifest", "inspect", tag];
+    log::debug!("running command \"docker manifest inspect {}\"", tag);
     let cmd = Command::new("docker")
         .args(args)
         .output()
@@ -728,6 +678,7 @@ fn docker_manifest_inspect(tag: &str) -> anyhow::Result<DockerInspectResponse> {
     out.manifests.sort();
     Ok(out)
 }
+
 fn docker_manifest_rm(target: &str) -> anyhow::Result<()> {
     let args = ["manifest", "rm", target];
 
@@ -745,6 +696,68 @@ fn docker_manifest_rm(target: &str) -> anyhow::Result<()> {
         String::from_utf8(cmd.stdout)?,
         stderr
     );
+    Ok(())
+}
+
+// NOTE(duarte): The manifest create & push mechanism is a way of
+// "promoting images to production", by creating a manifest and pushing it under the
+// the name of another image, Docker will essentially just re-use the underlying images
+// to create a new one, under a new namespace. This is *crucial* for us because we
+// check if Docker releases are missing using the manifests.
+fn docker_manifest_push(target: &str) -> anyhow::Result<()> {
+    let args = ["manifest", "push", target];
+    log::debug!("running docker {:?}", args);
+    let cmd = Command::new("docker")
+        .args(args)
+        .output()
+        .context(format!("running docker {:?}", args))?;
+    anyhow::ensure!(
+        cmd.status.success(),
+        "Error running `docker {:?}` for {}\nstdout: {}\nstderr: {}",
+        args,
+        target,
+        String::from_utf8(cmd.stdout)?,
+        String::from_utf8(cmd.stderr)?
+    );
+    Ok(())
+}
+
+fn docker_manifest_create(
+    source_manifest: &DockerInspectResponse,
+    registry: &str,
+    source_repository: &str,
+    target_repository: &str,
+    tag: &str,
+) -> anyhow::Result<()> {
+    let target = format!("{}/{}:{}", registry, target_repository, tag);
+    // Make sure the manifest is removed locally, otherwise we can't
+    // (re)create it
+    docker_manifest_rm(&target)?;
+
+    // Now the actual manifest creation
+    let args = vec!["manifest".to_string(), "create".to_string(), target.clone()]
+        .into_iter()
+        .chain(
+            source_manifest
+                .manifests
+                .iter()
+                .map(|x| format!("{}@{}", source_repository, x.digest)),
+        )
+        .collect::<Vec<String>>();
+    let cmd = Command::new("docker")
+        .args(&args)
+        .output()
+        .context(format!("running docker {:?}", args))?;
+
+    anyhow::ensure!(
+        cmd.status.success(),
+        "Error running `docker {:?}` for {}\nstdout: {}\nstderr: {}",
+        args,
+        target,
+        String::from_utf8(cmd.stdout)?,
+        String::from_utf8(cmd.stderr)?
+    );
+
     Ok(())
 }
 
