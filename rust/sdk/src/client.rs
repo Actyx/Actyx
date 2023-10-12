@@ -39,14 +39,14 @@ use rand::Rng;
 #[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq, Eq)]
 #[display(fmt = "error {} while {}: {}", error_code, context, error)]
 #[serde(rename_all = "camelCase")]
-pub struct HttpClientError {
+pub struct ActyxClientError {
     pub error: serde_json::Value,
     pub error_code: u16,
     pub context: String,
 }
 
 #[derive(Clone)]
-pub struct HttpClient {
+pub struct ActyxClient {
     client: Client,
     base_url: Url,
     token: Arc<RwLock<String>>,
@@ -66,7 +66,7 @@ async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) 
     Ok(token.token)
 }
 
-impl HttpClient {
+impl ActyxClient {
     /// Configures connection to Actyx node with provided Url and AppManifest.
     /// All path segments of the Url (if any) are discarded.
     pub async fn new(origin: Url, app_manifest: AppManifest) -> anyhow::Result<Self> {
@@ -115,8 +115,11 @@ impl HttpClient {
         Ok(token)
     }
 
-    /// Makes request to Actyx apis. On http authorization error tries to
-    /// re-authenticate and retries the request ten times with increasing delay.
+    /// Perform a request (to Actyx APIs).
+    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
+    /// If the service is unavailable (code 503), this method will retry to perform the
+    /// request up to 10 times with exponentially increasing delay - currently,
+    /// this behavior is only available if the `with-tokio` feature is enabled.
     async fn do_request(&self, f: impl FnOnce(&Client) -> RequestBuilder) -> anyhow::Result<Response> {
         let token = self.token.read().unwrap().clone();
         let builder = f(&self.client);
@@ -144,31 +147,31 @@ impl HttpClient {
                     .context(|| format!("sending {} {}", method, url))?;
             }
 
-            let mut retries = 10;
-            let mut delay = Duration::from_secs(0);
-            loop {
-                if response.status() == StatusCode::SERVICE_UNAVAILABLE && retries > 0 {
-                    retries -= 1;
-                    delay = delay * 2 + Duration::from_millis(rand::thread_rng().gen_range(10..200));
-                    tracing::debug!(
-                        "Actyx Node is overloaded, retrying {} {} with a delay of {:?}",
-                        method,
-                        url,
-                        delay
-                    );
-                    #[cfg(feature = "with-tokio")]
-                    tokio::time::sleep(delay).await;
-                    #[cfg(not(feature = "with-tokio"))]
-                    std::thread::sleep(delay);
-                    response = builder
-                        .try_clone()
-                        .expect("Already cloned it once")
-                        .header("Authorization", &format!("Bearer {}", token))
-                        .send()
-                        .await
-                        .context(|| format!("sending {} {}", method, url))?;
-                } else {
-                    break;
+            #[cfg(feature = "with-tokio")]
+            {
+                let mut retries = 10;
+                let mut delay = Duration::from_secs(0);
+                loop {
+                    if response.status() == StatusCode::SERVICE_UNAVAILABLE && retries > 0 {
+                        retries -= 1;
+                        delay = delay * 2 + Duration::from_millis(rand::thread_rng().gen_range(10..200));
+                        tracing::debug!(
+                            "Actyx Node is overloaded, retrying {} {} with a delay of {:?}",
+                            method,
+                            url,
+                            delay
+                        );
+                        tokio::time::sleep(delay).await;
+                        response = builder
+                            .try_clone()
+                            .expect("Already cloned it once")
+                            .header("Authorization", &format!("Bearer {}", token))
+                            .send()
+                            .await
+                            .context(|| format!("sending {} {}", method, url))?;
+                    } else {
+                        break;
+                    }
                 }
             }
         } else {
@@ -184,7 +187,7 @@ impl HttpClient {
             Ok(response)
         } else {
             let error_code = response.status().as_u16();
-            Err(HttpClientError {
+            Err(ActyxClientError {
                 error: response
                     .json()
                     .await
@@ -208,7 +211,7 @@ impl HttpClient {
             .text_with_charset("utf-8")
             .await
             .context(|| "Parsing response".to_string())?;
-        let cid = Cid::from_str(&hash).map_err(|e| HttpClientError {
+        let cid = Cid::from_str(&hash).map_err(|e| ActyxClientError {
             error: serde_json::Value::String(e.to_string()),
             error_code: 102,
             context: format!("Tried to parse {} into a Cid", hash),
@@ -247,9 +250,9 @@ impl HttpClient {
     }
 }
 
-impl Debug for HttpClient {
+impl Debug for ActyxClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("HttpClient")
+        f.debug_struct("ActyxClient")
             .field("base_url", &self.base_url.as_str())
             .field("app_manifest", &self.app_manifest)
             .finish()
@@ -257,7 +260,13 @@ impl Debug for HttpClient {
 }
 
 #[async_trait]
-impl EventService for HttpClient {
+impl EventService for ActyxClient {
+    /// Returns known offsets across local and replicated streams.
+    ///
+    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
+    /// If the service is unavailable (code 503), this method will retry to perform the
+    /// request up to 10 times with exponentially increasing delay - currently,
+    /// this behavior is only available if the `with-tokio` feature is enabled.
     async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
         let response = self.do_request(|c| c.get(self.events_url("offsets"))).await?;
         let bytes = response
@@ -273,6 +282,12 @@ impl EventService for HttpClient {
         })?)
     }
 
+    /// Publishes a set of new events.
+    ///
+    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
+    /// If the service is unavailable (code 503), this method will retry to perform the
+    /// request up to 10 times with exponentially increasing delay - currently,
+    /// this behavior is only available if the `with-tokio` feature is enabled.
     async fn publish(&self, request: PublishRequest) -> anyhow::Result<PublishResponse> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
@@ -291,6 +306,12 @@ impl EventService for HttpClient {
         })?)
     }
 
+    /// Query events known at the time the request was received by the service.
+    ///
+    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
+    /// If the service is unavailable (code 503), this method will retry to perform the
+    /// request up to 10 times with exponentially increasing delay - currently,
+    /// this behavior is only available if the `with-tokio` feature is enabled.
     async fn query(&self, request: QueryRequest) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
@@ -303,6 +324,12 @@ impl EventService for HttpClient {
         Ok(res.boxed())
     }
 
+    /// Suscribe to events that are currently known by the service followed by new "live" events.
+    ///
+    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
+    /// If the service is unavailable (code 503), this method will retry to perform the
+    /// request up to 10 times with exponentially increasing delay - currently,
+    /// this behavior is only available if the `with-tokio` feature is enabled.
     async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
@@ -315,6 +342,13 @@ impl EventService for HttpClient {
         Ok(res.boxed())
     }
 
+    /// Subscribe to events that are currently known by the service followed by new "live" events until
+    /// the service learns about events that need to be sorted earlier than an event already received.
+    ///
+    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
+    /// If the service is unavailable (code 503), this method will retry to perform the
+    /// request up to 10 times with exponentially increasing delay - currently,
+    /// this behavior is only available if the `with-tokio` feature is enabled.
     async fn subscribe_monotonic(
         &self,
         request: SubscribeMonotonicRequest,
@@ -363,9 +397,9 @@ pub(crate) trait WithContext {
 }
 impl<T, E> WithContext for std::result::Result<T, E>
 where
-    HttpClientError: From<(String, E)>,
+    ActyxClientError: From<(String, E)>,
 {
-    type Output = std::result::Result<T, HttpClientError>;
+    type Output = std::result::Result<T, ActyxClientError>;
 
     #[inline]
     fn context<F, C>(self, context: F) -> Self::Output
@@ -375,12 +409,12 @@ where
     {
         match self {
             Ok(value) => Ok(value),
-            Err(err) => Err(HttpClientError::from((context().into(), err))),
+            Err(err) => Err(ActyxClientError::from((context().into(), err))),
         }
     }
 }
 
-impl From<(String, reqwest::Error)> for HttpClientError {
+impl From<(String, reqwest::Error)> for ActyxClientError {
     fn from(e: (String, reqwest::Error)) -> Self {
         Self {
             error: serde_json::json!(format!("{:?}", e.1)),
@@ -390,7 +424,7 @@ impl From<(String, reqwest::Error)> for HttpClientError {
     }
 }
 
-impl From<(String, serde_json::Error)> for HttpClientError {
+impl From<(String, serde_json::Error)> for ActyxClientError {
     fn from(e: (String, serde_json::Error)) -> Self {
         Self {
             error: serde_json::json!(format!("{:?}", e.1)),
@@ -400,7 +434,7 @@ impl From<(String, serde_json::Error)> for HttpClientError {
     }
 }
 
-impl From<(String, serde_cbor::Error)> for HttpClientError {
+impl From<(String, serde_cbor::Error)> for ActyxClientError {
     fn from(e: (String, serde_cbor::Error)) -> Self {
         Self {
             error: serde_json::json!(format!("{:?}", e.1)),

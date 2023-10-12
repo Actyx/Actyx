@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use actyx_sdk::{app_id, service::DirectoryChild, AppManifest, HttpClient};
+use actyx_sdk::{app_id, service::DirectoryChild, ActyxClient, AppManifest};
 use asynchronous_codec::{BytesCodec, Framed};
 use futures::{
     future::{try_join_all, BoxFuture},
@@ -15,7 +15,7 @@ use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_util::compat::*;
 use url::Url;
 
-async fn mk_http_client() -> anyhow::Result<HttpClient> {
+async fn mk_http_client() -> anyhow::Result<ActyxClient> {
     let app_manifest = AppManifest::new(
         app_id!("com.example.actyx-offsets"),
         "Offsets Example".into(),
@@ -23,7 +23,7 @@ async fn mk_http_client() -> anyhow::Result<HttpClient> {
         None,
     );
     let url = Url::parse("http://localhost:4454").unwrap();
-    HttpClient::new(url, app_manifest).await
+    ActyxClient::new(url, app_manifest).await
 }
 
 #[derive(StructOpt)]
@@ -99,7 +99,7 @@ pub async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn list_file_or_dir(client: &HttpClient, name_or_cid: String, level: usize) -> BoxFuture<'_, anyhow::Result<()>> {
+fn list_file_or_dir(client: &ActyxClient, name_or_cid: String, level: usize) -> BoxFuture<'_, anyhow::Result<()>> {
     async move {
         let response = client.files_get(&name_or_cid).await?;
         match response {
@@ -124,7 +124,7 @@ fn list_file_or_dir(client: &HttpClient, name_or_cid: String, level: usize) -> B
 }
 
 fn get_file_or_dir(
-    client: HttpClient,
+    client: ActyxClient,
     name_or_cid: String,
     write_to: PathBuf,
 ) -> BoxFuture<'static, anyhow::Result<()>> {

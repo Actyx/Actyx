@@ -23,7 +23,7 @@ in order to see output.
 
 ```no_run
 use actyx_sdk::{
-  app_id, AppManifest, HttpClient,
+  app_id, AppManifest, ActyxClient,
   service::{EventService, Order, QueryRequest, QueryResponse},
 };
 use futures::stream::StreamExt;
@@ -42,7 +42,7 @@ pub async fn main() -> anyhow::Result<()> {
   // Url of the locally running Actyx node
   let url = Url::parse("http://localhost:4454")?;
   // create client for it
-  let service = HttpClient::new(url, app_manifest).await?;
+  let service = ActyxClient::new(url, app_manifest).await?;
 
   // all events matching the given subscription
   // sorted backwards, i.e. youngest to oldest

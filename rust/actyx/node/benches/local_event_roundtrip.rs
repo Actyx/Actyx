@@ -1,7 +1,7 @@
 use actyx_sdk::{
     app_id,
     service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest},
-    tags, AppManifest, HttpClient, Payload,
+    tags, ActyxClient, AppManifest, Payload,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use futures::StreamExt;
@@ -11,7 +11,7 @@ use tempfile::tempdir;
 use url::Url;
 use util::SocketAddrHelper;
 
-async fn mk_http_client() -> anyhow::Result<HttpClient> {
+async fn mk_http_client() -> anyhow::Result<ActyxClient> {
     let app_manifest = AppManifest::new(
         app_id!("com.example.trial-mode"),
         "display name".into(),
@@ -19,7 +19,7 @@ async fn mk_http_client() -> anyhow::Result<HttpClient> {
         None,
     );
     let url = Url::parse("http://localhost:4454").unwrap();
-    HttpClient::new(url, app_manifest).await
+    ActyxClient::new(url, app_manifest).await
 }
 
 // Note: This doesn't concern itself with any internals (like flushing the send

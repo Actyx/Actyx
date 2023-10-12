@@ -19,9 +19,9 @@ mod scalar;
 mod app_manifest;
 #[cfg(any(test, feature = "arb"))]
 pub mod arb;
-mod event;
 #[cfg(feature = "client")]
-mod http_client;
+mod client;
+mod event;
 pub mod language;
 pub mod legacy;
 mod offset;
@@ -32,9 +32,9 @@ mod timestamp;
 pub mod types;
 
 pub use app_manifest::AppManifest;
-pub use event::{Event, EventKey, Metadata, Opaque, Payload};
 #[cfg(feature = "client")]
-pub use http_client::HttpClient;
+pub use client::ActyxClient;
+pub use event::{Event, EventKey, Metadata, Opaque, Payload};
 pub use offset::{Offset, OffsetError, OffsetMap, OffsetOrMin};
 pub use scalars::{AppId, NodeId, StreamId, StreamNr};
 pub use tags::{Tag, TagSet};

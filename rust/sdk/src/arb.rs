@@ -1,3 +1,7 @@
+// Used by trees::arb
+// Can't really be moved to `trees` since Rust disallows
+// implementing foreign traits on foreign types
+
 use std::collections::BTreeMap;
 
 use crate::{
