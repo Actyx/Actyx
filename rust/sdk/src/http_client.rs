@@ -115,8 +115,11 @@ impl HttpClient {
         Ok(token)
     }
 
-    /// Makes request to Actyx apis. On http authorization error tries to
-    /// re-authenticate and retries the request ten times with increasing delay.
+    /// Perform a request (to Actyx APIs).
+    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
+    /// If the service is unavailable (code 503), this method will retry to perform the
+    /// request up to 10 times with exponentially increasing delay - currently,
+    /// this behavior is only available if the `with-tokio` feature is enabled.
     async fn do_request(&self, f: impl FnOnce(&Client) -> RequestBuilder) -> anyhow::Result<Response> {
         let token = self.token.read().unwrap().clone();
         let builder = f(&self.client);
@@ -144,31 +147,31 @@ impl HttpClient {
                     .context(|| format!("sending {} {}", method, url))?;
             }
 
-            let mut retries = 10;
-            let mut delay = Duration::from_secs(0);
-            loop {
-                if response.status() == StatusCode::SERVICE_UNAVAILABLE && retries > 0 {
-                    retries -= 1;
-                    delay = delay * 2 + Duration::from_millis(rand::thread_rng().gen_range(10..200));
-                    tracing::debug!(
-                        "Actyx Node is overloaded, retrying {} {} with a delay of {:?}",
-                        method,
-                        url,
-                        delay
-                    );
-                    #[cfg(feature = "with-tokio")]
-                    tokio::time::sleep(delay).await;
-                    #[cfg(not(feature = "with-tokio"))]
-                    std::thread::sleep(delay);
-                    response = builder
-                        .try_clone()
-                        .expect("Already cloned it once")
-                        .header("Authorization", &format!("Bearer {}", token))
-                        .send()
-                        .await
-                        .context(|| format!("sending {} {}", method, url))?;
-                } else {
-                    break;
+            #[cfg(feature = "with-tokio")]
+            {
+                let mut retries = 10;
+                let mut delay = Duration::from_secs(0);
+                loop {
+                    if response.status() == StatusCode::SERVICE_UNAVAILABLE && retries > 0 {
+                        retries -= 1;
+                        delay = delay * 2 + Duration::from_millis(rand::thread_rng().gen_range(10..200));
+                        tracing::debug!(
+                            "Actyx Node is overloaded, retrying {} {} with a delay of {:?}",
+                            method,
+                            url,
+                            delay
+                        );
+                        tokio::time::sleep(delay).await;
+                        response = builder
+                            .try_clone()
+                            .expect("Already cloned it once")
+                            .header("Authorization", &format!("Bearer {}", token))
+                            .send()
+                            .await
+                            .context(|| format!("sending {} {}", method, url))?;
+                    } else {
+                        break;
+                    }
                 }
             }
         } else {
