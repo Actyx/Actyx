@@ -261,6 +261,12 @@ impl Debug for ActyxClient {
 
 #[async_trait]
 impl EventService for ActyxClient {
+    /// Returns known offsets across local and replicated streams.
+    ///
+    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
+    /// If the service is unavailable (code 503), this method will retry to perform the
+    /// request up to 10 times with exponentially increasing delay - currently,
+    /// this behavior is only available if the `with-tokio` feature is enabled.
     async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
         let response = self.do_request(|c| c.get(self.events_url("offsets"))).await?;
         let bytes = response
@@ -276,6 +282,12 @@ impl EventService for ActyxClient {
         })?)
     }
 
+    /// Publishes a set of new events.
+    ///
+    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
+    /// If the service is unavailable (code 503), this method will retry to perform the
+    /// request up to 10 times with exponentially increasing delay - currently,
+    /// this behavior is only available if the `with-tokio` feature is enabled.
     async fn publish(&self, request: PublishRequest) -> anyhow::Result<PublishResponse> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
@@ -294,6 +306,12 @@ impl EventService for ActyxClient {
         })?)
     }
 
+    /// Query events known at the time the request was received by the service.
+    ///
+    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
+    /// If the service is unavailable (code 503), this method will retry to perform the
+    /// request up to 10 times with exponentially increasing delay - currently,
+    /// this behavior is only available if the `with-tokio` feature is enabled.
     async fn query(&self, request: QueryRequest) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
@@ -306,6 +324,12 @@ impl EventService for ActyxClient {
         Ok(res.boxed())
     }
 
+    /// Suscribe to events that are currently known by the service followed by new "live" events.
+    ///
+    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
+    /// If the service is unavailable (code 503), this method will retry to perform the
+    /// request up to 10 times with exponentially increasing delay - currently,
+    /// this behavior is only available if the `with-tokio` feature is enabled.
     async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
@@ -318,6 +342,13 @@ impl EventService for ActyxClient {
         Ok(res.boxed())
     }
 
+    /// Subscribe to events that are currently known by the service followed by new "live" events until
+    /// the service learns about events that need to be sorted earlier than an event already received.
+    ///
+    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
+    /// If the service is unavailable (code 503), this method will retry to perform the
+    /// request up to 10 times with exponentially increasing delay - currently,
+    /// this behavior is only available if the `with-tokio` feature is enabled.
     async fn subscribe_monotonic(
         &self,
         request: SubscribeMonotonicRequest,

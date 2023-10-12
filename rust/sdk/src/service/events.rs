@@ -514,7 +514,7 @@ pub trait EventService: Clone + Send {
     /// Publishes a set of new events.
     async fn publish(&self, request: PublishRequest) -> Result<PublishResponse>;
 
-    /// Query events known at the time the request was reveived by the service.
+    /// Query events known at the time the request was received by the service.
     async fn query(&self, request: QueryRequest) -> Result<BoxStream<'static, QueryResponse>>;
 
     /// Suscribe to events that are currently known by the service followed by new "live" events.
