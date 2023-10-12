@@ -39,14 +39,14 @@ use rand::Rng;
 #[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq, Eq)]
 #[display(fmt = "error {} while {}: {}", error_code, context, error)]
 #[serde(rename_all = "camelCase")]
-pub struct HttpClientError {
+pub struct ActyxClientError {
     pub error: serde_json::Value,
     pub error_code: u16,
     pub context: String,
 }
 
 #[derive(Clone)]
-pub struct HttpClient {
+pub struct ActyxClient {
     client: Client,
     base_url: Url,
     token: Arc<RwLock<String>>,
@@ -66,7 +66,7 @@ async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) 
     Ok(token.token)
 }
 
-impl HttpClient {
+impl ActyxClient {
     /// Configures connection to Actyx node with provided Url and AppManifest.
     /// All path segments of the Url (if any) are discarded.
     pub async fn new(origin: Url, app_manifest: AppManifest) -> anyhow::Result<Self> {
@@ -187,7 +187,7 @@ impl HttpClient {
             Ok(response)
         } else {
             let error_code = response.status().as_u16();
-            Err(HttpClientError {
+            Err(ActyxClientError {
                 error: response
                     .json()
                     .await
@@ -211,7 +211,7 @@ impl HttpClient {
             .text_with_charset("utf-8")
             .await
             .context(|| "Parsing response".to_string())?;
-        let cid = Cid::from_str(&hash).map_err(|e| HttpClientError {
+        let cid = Cid::from_str(&hash).map_err(|e| ActyxClientError {
             error: serde_json::Value::String(e.to_string()),
             error_code: 102,
             context: format!("Tried to parse {} into a Cid", hash),
@@ -250,9 +250,9 @@ impl HttpClient {
     }
 }
 
-impl Debug for HttpClient {
+impl Debug for ActyxClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("HttpClient")
+        f.debug_struct("ActyxClient")
             .field("base_url", &self.base_url.as_str())
             .field("app_manifest", &self.app_manifest)
             .finish()
@@ -260,7 +260,7 @@ impl Debug for HttpClient {
 }
 
 #[async_trait]
-impl EventService for HttpClient {
+impl EventService for ActyxClient {
     async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
         let response = self.do_request(|c| c.get(self.events_url("offsets"))).await?;
         let bytes = response
@@ -366,9 +366,9 @@ pub(crate) trait WithContext {
 }
 impl<T, E> WithContext for std::result::Result<T, E>
 where
-    HttpClientError: From<(String, E)>,
+    ActyxClientError: From<(String, E)>,
 {
-    type Output = std::result::Result<T, HttpClientError>;
+    type Output = std::result::Result<T, ActyxClientError>;
 
     #[inline]
     fn context<F, C>(self, context: F) -> Self::Output
@@ -378,12 +378,12 @@ where
     {
         match self {
             Ok(value) => Ok(value),
-            Err(err) => Err(HttpClientError::from((context().into(), err))),
+            Err(err) => Err(ActyxClientError::from((context().into(), err))),
         }
     }
 }
 
-impl From<(String, reqwest::Error)> for HttpClientError {
+impl From<(String, reqwest::Error)> for ActyxClientError {
     fn from(e: (String, reqwest::Error)) -> Self {
         Self {
             error: serde_json::json!(format!("{:?}", e.1)),
@@ -393,7 +393,7 @@ impl From<(String, reqwest::Error)> for HttpClientError {
     }
 }
 
-impl From<(String, serde_json::Error)> for HttpClientError {
+impl From<(String, serde_json::Error)> for ActyxClientError {
     fn from(e: (String, serde_json::Error)) -> Self {
         Self {
             error: serde_json::json!(format!("{:?}", e.1)),
@@ -403,7 +403,7 @@ impl From<(String, serde_json::Error)> for HttpClientError {
     }
 }
 
-impl From<(String, serde_cbor::Error)> for HttpClientError {
+impl From<(String, serde_cbor::Error)> for ActyxClientError {
     fn from(e: (String, serde_cbor::Error)) -> Self {
         Self {
             error: serde_json::json!(format!("{:?}", e.1)),

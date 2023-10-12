@@ -1,5 +1,5 @@
 use crate::m;
-use actyx_sdk::{service::EventService, AppManifest, HttpClient, NodeId, Url};
+use actyx_sdk::{service::EventService, ActyxClient, AppManifest, NodeId, Url};
 use anyhow::{anyhow, Result};
 use async_std::task::block_on;
 use netsim_embed::{Machine, Namespace};
@@ -59,7 +59,7 @@ impl Api {
 }
 
 #[derive(Clone)]
-pub struct ApiClient(PinnedResource<HttpClient>);
+pub struct ApiClient(PinnedResource<ActyxClient>);
 impl ApiClient {
     pub fn new(origin: Url, app_manifest: AppManifest, namespace: Namespace) -> Self {
         Self(PinnedResource::new(move || {
@@ -73,7 +73,7 @@ impl ApiClient {
                 Namespace::current().unwrap(),
                 namespace
             );
-            block_on(HttpClient::new(origin, app_manifest)).expect("cannot create")
+            block_on(ActyxClient::new(origin, app_manifest)).expect("cannot create")
         }))
     }
     pub async fn node_id(&self) -> NodeId {

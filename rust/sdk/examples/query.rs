@@ -1,12 +1,12 @@
 use actyx_sdk::{
     app_id,
     service::{EventService, Order, QueryRequest, QueryResponse},
-    AppManifest, HttpClient,
+    ActyxClient, AppManifest,
 };
 use futures::stream::StreamExt;
 use url::Url;
 
-async fn mk_http_client() -> anyhow::Result<HttpClient> {
+async fn mk_http_client() -> anyhow::Result<ActyxClient> {
     let app_manifest = AppManifest::new(
         app_id!("com.example.actyx-offsets"),
         "Offsets Example".into(),
@@ -14,7 +14,7 @@ async fn mk_http_client() -> anyhow::Result<HttpClient> {
         None,
     );
     let url = Url::parse("http://localhost:4454").unwrap();
-    HttpClient::new(url, app_manifest).await
+    ActyxClient::new(url, app_manifest).await
 }
 
 #[tokio::main]
