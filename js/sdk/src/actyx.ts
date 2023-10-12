@@ -7,10 +7,9 @@
 import { EventFns, TestEventFns } from './event-fns'
 import { EventFnsFromEventStoreV2, EventStoreV2 } from './internal_common'
 import { log } from './internal_common/log'
-import { getInfo, invalidNodeInfo, NodeInfo } from './node-info'
+import { getInfo, NodeInfo } from './node-info'
 import { SnapshotStore } from './snapshotStore'
 import { ActyxOpts, ActyxTestOpts, AppId, AppManifest, NodeId } from './types'
-import { mkV1eventStore } from './v1'
 import { makeWsMultiplexerV2, v2getNodeId, WebsocketEventStoreV2 } from './v2'
 import { BlobSnapshotStore } from './v2/blobSnapshotStore'
 import { getApiLocation, getToken, v2WaitForSwarmSync } from './v2/utils'
@@ -99,21 +98,6 @@ const createV2 = async (manifest: AppManifest, opts: ActyxOpts, nodeId: string):
   }
 }
 
-const createV1 = async (opts: ActyxOpts): Promise<Actyx> => {
-  const { eventStore, sourceId, close, snapshotStore } = await mkV1eventStore(opts)
-
-  const fns = EventFnsFromEventStoreV2(sourceId, eventStore, snapshotStore, () => '1.0.0')
-
-  return {
-    ...fns,
-    snapshotStore,
-    nodeId: sourceId,
-    dispose: () => close(),
-    waitForSync: () => Promise.resolve(),
-    nodeInfo: () => Promise.resolve(invalidNodeInfo),
-  }
-}
-
 /** Function for creating `Actyx` instances.
  * @public */
 export const Actyx = {
@@ -124,10 +108,7 @@ export const Actyx = {
     log.actyx.debug('NodeId call returned:', nodeId)
 
     if (!nodeId) {
-      // Try connecting to v1 if we failed to retrieve a v2 node id
-      // (Note that if the port is completely unreachable, v2getNodeId will throw an exception and we don’t get here.)
-      log.actyx.debug('NodeId was null, trying to reach V1 backend...')
-      return createV1(opts)
+      throw new Error('Node ID is missing')
     }
 
     log.actyx.debug(
