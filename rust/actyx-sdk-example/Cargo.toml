@@ -1,0 +1,19 @@
+[package]
+name = "actyx-rust-sample-chatapp"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actyx_sdk = { version = "0.3.0", features = ["client"] }
+anyhow = "1.0.75"
+crossterm = "0.27.0"
+ctrlc = "3.4.1"
+futures = { version = "0.3.28", package = "futures" }
+random_name_generator = "0.3.6"
+ratatui = "0.23.0"
+serde = "1.0.189"
+serde_json = { version = "1.0.107", features = ["std"] }
+tokio = { version = "1.33.0", features = ["full"] }
+url = "2.4.1"
