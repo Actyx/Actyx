@@ -1,16 +1,7 @@
-use std::str::FromStr;
-
 use actyx_sdk::AppId;
-use serde::{de::Error, Deserialize, Deserializer, Serialize};
+use serde::Serialize;
 
-fn deserialize_trial_app_id<'de, D: Deserializer<'de>>(d: D) -> Result<AppId, D::Error> {
-    let s = <String>::deserialize(d)?;
-    let app_id = AppId::from_str(&s).map_err(D::Error::custom)?;
-    TrialAppManifest::validate_app_id(&app_id).map_err(D::Error::custom)?;
-    Ok(app_id)
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TrialAppManifest {
     #[serde(deserialize_with = "deserialize_trial_app_id")]
@@ -47,6 +38,7 @@ mod tests {
     use actyx_sdk::app_id;
 
     use super::TrialAppManifest;
+    use crate::AppManifest;
 
     #[test]
     fn should_succeed_creating_and_serializing_manifest() {
@@ -68,16 +60,18 @@ mod tests {
     #[test]
     fn should_succeed_deserializing_manifest() {
         let serialized = r#"{"appId":"com.example.test-app","displayName":"display name","version":"v0.0.1"}"#;
-        let _: TrialAppManifest = serde_json::from_str(serialized).unwrap();
+        let AppManifest::Trial(_) = serde_json::from_str::<AppManifest>(serialized).unwrap() else {
+            panic!()
+        };
     }
 
     #[test]
     fn should_fail_deserializing_manifest() {
         let serialized = r#"{"appId":"com.actyx.test-app","displayName":"display name","version":"v0.0.1"}"#;
-        let result = serde_json::from_str::<TrialAppManifest>(serialized).unwrap_err();
+        let result = serde_json::from_str::<AppManifest>(serialized).unwrap_err();
         assert_eq!(
             result.to_string(),
-            "Trial app id needs to start with \'com.example.\'. Got \'com.actyx.test-app\'. at line 1 column 29"
+            "Trial app id needs to start with \'com.example.\'. Got \'com.actyx.test-app\'. at line 1 column 78"
         )
     }
 }

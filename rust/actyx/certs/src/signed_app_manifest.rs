@@ -1,8 +1,9 @@
 use actyx_sdk::AppId;
 use crypto::{PrivateKey, PublicKey};
-use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 
 use crate::{developer_certificate::ManifestDeveloperCertificate, signature::Signature};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AppManifestSignatureProps {
@@ -21,7 +22,7 @@ pub struct AppManifestSignature {
 }
 
 impl AppManifestSignature {
-    fn new(dev_signature: Signature, dev_cert: ManifestDeveloperCertificate) -> Self {
+    pub(crate) fn new(dev_signature: Signature, dev_cert: ManifestDeveloperCertificate) -> Self {
         Self {
             sig_version: 0,
             dev_signature,
@@ -35,14 +36,17 @@ fn serialize_signature<S: Serializer>(sig: &AppManifestSignature, s: S) -> Resul
     s.serialize_str(&base64::encode(bytes))
 }
 
-fn deserialize_signature<'de, D: Deserializer<'de>>(d: D) -> Result<AppManifestSignature, D::Error> {
-    let s = <String>::deserialize(d)?;
-    let data = base64::decode(s).map_err(|_| D::Error::custom("failed to base64 decode app manifest signature"))?;
-    serde_cbor::from_slice::<AppManifestSignature>(&data)
-        .map_err(|_| D::Error::custom("failed to deserialize to app manifest signature"))
+impl FromStr for AppManifestSignature {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let data = base64::decode(s).map_err(|_| "failed to base64 decode app manifest signature")?;
+        serde_cbor::from_slice::<AppManifestSignature>(&data)
+            .map_err(|_| "failed to deserialize to app manifest signature")
+    }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SignedAppManifest {
     pub app_id: AppId,
@@ -114,6 +118,7 @@ mod tests {
         app_domain::AppDomain,
         developer_certificate::{DeveloperCertificateInput, ManifestDeveloperCertificate},
         signature::Signature,
+        AppManifest,
     };
 
     use super::{AppManifestSignature, AppManifestSignatureProps, SignedAppManifest};
@@ -170,7 +175,9 @@ mod tests {
     #[test]
     fn deserialize_and_eq() {
         let x = setup();
-        let manifest: SignedAppManifest = serde_json::from_value(x.serialized_manifest).unwrap();
+        let AppManifest::Signed(manifest) = serde_json::from_value(x.serialized_manifest).unwrap() else {
+            panic!("failed to deserialize")
+        };
         let expected = SignedAppManifest::new(
             x.sig_props.app_id,
             x.sig_props.display_name,
@@ -185,7 +192,9 @@ mod tests {
     #[test]
     fn validate() {
         let x = setup();
-        let manifest: SignedAppManifest = serde_json::from_value(x.serialized_manifest).unwrap();
+        let AppManifest::Signed(manifest) = serde_json::from_value(x.serialized_manifest).unwrap() else {
+            panic!("failed to deserialize")
+        };
         let result = manifest.validate(&x.ax_public_key);
         assert!(matches!(result, Ok(())), "valid signature");
     }
@@ -193,7 +202,9 @@ mod tests {
     #[test]
     fn should_fail_validation_when_using_wrong_ax_public_key() {
         let x = setup();
-        let manifest: SignedAppManifest = serde_json::from_value(x.serialized_manifest).unwrap();
+        let AppManifest::Signed(manifest) = serde_json::from_value(x.serialized_manifest).unwrap() else {
+            panic!("failed to deserialize")
+        };
         let result = manifest.validate(&PrivateKey::generate().into()).unwrap_err();
         assert_eq!(
             result.to_string(),
@@ -211,8 +222,11 @@ mod tests {
         ]
         .into_iter()
         .for_each(|(from, to)| {
-            let manifest: SignedAppManifest =
-                serde_json::from_str(&x.serialized_manifest.to_string().replace(from, to)).unwrap();
+            let AppManifest::Signed(manifest) =
+                serde_json::from_str(&x.serialized_manifest.to_string().replace(from, to)).unwrap()
+            else {
+                panic!("failed to deserialize")
+            };
             let result = manifest.validate(&PrivateKey::generate().into()).unwrap_err();
             assert_eq!(
                 result.to_string(),
