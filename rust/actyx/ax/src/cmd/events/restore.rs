@@ -2,7 +2,7 @@ use super::dump::Diag;
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::request_banyan,
-    private_key::load_dev_cert,
+    private_key::{load_dev_cert, AxPrivateKey},
 };
 use cbor_data::{Cbor, CborBuilder, Encoder};
 use crypto::KeyPair;
@@ -18,7 +18,7 @@ use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
 use util::{
     formats::{
         banyan_protocol::{decode_dump_header, BanyanRequest, BanyanResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult,
+        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
     },
     gen_stream::GenStream,
 };
@@ -98,13 +98,17 @@ impl AxCliCommand for EventsRestore {
                 Box::new(File::open(input.as_path()).io("opening input dump")?)
             } else if let Some(ref cloud) = opts.cloud {
                 let file = File::create(cloud.as_path()).io("opening cloud dump")?;
-                let cert = load_dev_cert(opts.cert)?;
+                let cert =
+                    load_dev_cert(opts.cert).ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "cannot read dev cert")?;
+                let private_key = cert.private_key().map(ActyxOSResult::Ok).unwrap_or_else(|| {
+                    Ok(AxPrivateKey::from_file(AxPrivateKey::default_user_identity_path()?)?.to_private())
+                })?;
                 let url = opts.url.unwrap_or_else(|| URL.to_owned());
                 diag.log(format!("connecting to {}", url))?;
                 let mut ws = connect(URL).io("opening websocket")?.0;
                 let msg = ws.read_message().io("read token message")?;
                 if let Message::Text(token) = msg {
-                    let signature = KeyPair::from(cert.private_key()).sign(token.as_bytes());
+                    let signature = KeyPair::from(private_key).sign(token.as_bytes());
                     let response = CborBuilder::new().encode_array(|b| {
                         b.encode_bytes(signature);
                         b.encode_str(serde_json::to_string(&cert.manifest_dev_cert()).unwrap());

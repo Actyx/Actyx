@@ -1,4 +1,4 @@
-use crate::cmd::AxCliCommand;
+use crate::{cmd::AxCliCommand, private_key::AxPrivateKey};
 use actyx_sdk::AppManifest;
 use certs::{DeveloperCertificate, SignedAppManifest};
 use futures::{stream, Stream};
@@ -23,6 +23,10 @@ pub fn create_signed_app_manifest(opts: SignOpts) -> ActyxOSResult<SignedAppMani
         ActyxOSCode::ERR_INVALID_INPUT,
         "Failed to deserialize developer certificate",
     )?;
+    let dev_privkey = dev_cert
+        .private_key()
+        .map(ActyxOSResult::Ok)
+        .unwrap_or_else(|| Ok(AxPrivateKey::from_file(AxPrivateKey::default_user_identity_path()?)?.to_private()))?;
     let app_manifest =
         fs::read_to_string(&opts.path_to_manifest).ax_err_ctx(ActyxOSCode::ERR_IO, "Failed to read app manifest")?;
     let app_manifest: AppManifest = serde_json::from_str(&app_manifest)
@@ -32,7 +36,7 @@ pub fn create_signed_app_manifest(opts: SignOpts) -> ActyxOSResult<SignedAppMani
         app_manifest.app_id,
         app_manifest.display_name,
         app_manifest.version,
-        dev_cert.private_key(),
+        dev_privkey,
         dev_cert.manifest_dev_cert(),
     )
     .ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "Failed to create signed manifest")?;

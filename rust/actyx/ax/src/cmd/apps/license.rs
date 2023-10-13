@@ -1,43 +1,35 @@
+use crate::cmd::AxCliCommand;
 use actyx_sdk::AppId;
-use certs::{AppDomain, DeveloperCertificate, SignedAppLicense};
+use certs::SignedAppLicense;
 use chrono::{DateTime, Utc};
 use crypto::PrivateKey;
+use futures::{stream::once, FutureExt, Stream};
 use lazy_static::lazy_static;
-use regex::{Captures, Regex};
+use regex::Regex;
 use structopt::StructOpt;
-use util::version::NodeVersion;
+use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt};
 
 #[derive(StructOpt, Debug)]
-struct DevCertOpts {
-    #[structopt(long, env, hide_env_values = true)]
-    /// Actyx private key
-    actyx_private_key: PrivateKey,
+#[structopt(version = env!("AX_CLI_VERSION"))]
+pub struct LicenseOpts {
+    /// The secret key used to sign the license
+    /// (this must match the AX_PUBLIC_KEY your `actyx` binary has been compiled with).
+    #[structopt(long, short = "A", env, hide_env_values = true)]
+    ax_secret_key: PrivateKey,
 
-    #[structopt(long, env, hide_env_values = true)]
-    /// Developer's private key, if omitted one will be generated
-    dev_private_key: Option<PrivateKey>,
-
-    /// Certificate's allowed app domains
-    #[structopt(long, required = true)]
-    app_domains: Vec<String>,
-}
-
-#[derive(StructOpt, Debug)]
-struct AppLicenseOpts {
-    #[structopt(long, env, hide_env_values = true)]
-    /// Actyx private key
-    actyx_private_key: PrivateKey,
-
-    /// App id
+    /// The app id of the app to create a license for,
+    /// use `com.actyx.node` to create a node license.
     #[structopt(long)]
     app_id: AppId,
 
-    /// An expiration date time in ISO 8601 (i.e. 2014-11-28T12:00:09Z).
-    /// Takes precedences over `--expires-in`.
+    /// An expiration date time in ISO 8601 (i.e. 2014-11-28T12:00:09Z),
+    /// takes precedence over `--expires-in`.
     #[structopt(long)]
     expires_at: Option<DateTime<Utc>>,
 
-    /// The amount of time in which the license should expire. The accepted format is
+    /// The amount of time in which the license should expire.
+    ///
+    /// The accepted format is
     /// composed of a number followed by a unit (i.e. "10Y"), whitespace is supported
     /// before, between and after the number and the unit. Values are accepted in
     /// descending order according to the size of the unit, the unit character and
@@ -48,12 +40,39 @@ struct AppLicenseOpts {
     /// Note: Years are considered to be 365 days long and months to be 30 days long.
     ///
     /// For example: "1Y 3M 4h" means that the license should expire in 1 year, 3 months and 4 hours.
-    #[structopt(long, parse(try_from_str = parse_expires_in))]
+    #[structopt(long, short = "e", parse(try_from_str = parse_expires_in))]
     expires_in: Option<DateTime<Utc>>,
 
     /// Requester's email address
     #[structopt(long)]
     email: String,
+}
+
+pub struct AppsLicense;
+
+impl AxCliCommand for AppsLicense {
+    type Opt = LicenseOpts;
+    type Output = String;
+
+    fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
+        Box::new(once(
+            async move {
+                let expiration_date = opts.expires_at.or(opts.expires_in).ok_or(ActyxOSError::new(
+                    ActyxOSCode::ERR_INVALID_INPUT,
+                    "An expiration date must be specified. Use `--expires-at` or `--expires-in`.",
+                ))?;
+
+                let license = SignedAppLicense::new(opts.ax_secret_key, opts.email, opts.app_id, expiration_date, None)
+                    .ax_err(ActyxOSCode::ERR_INTERNAL_ERROR)?;
+                license.to_base64().ax_err(ActyxOSCode::ERR_INTERNAL_ERROR)
+            }
+            .boxed(),
+        ))
+    }
+
+    fn pretty(result: Self::Output) -> String {
+        result
+    }
 }
 
 /// Parsing function for the `expires_in` variable.
@@ -91,14 +110,21 @@ fn parse_expires_in_as_duration(expires_in: &str) -> Result<chrono::Duration, an
         .captures(expires_in)
         .ok_or_else(|| anyhow::anyhow!("Failed to parse string."))?;
 
+    let get_i64_from_capture = |name: &str| {
+        captures
+            .name(name)
+            .and_then(|m| m.as_str().parse::<i64>().ok())
+            .unwrap_or(0)
+    };
+
     let mut duration = chrono::Duration::zero();
-    duration = duration + chrono::Duration::days(365 * get_i64_from_capture(&captures, "years"));
-    duration = duration + chrono::Duration::days(30 * get_i64_from_capture(&captures, "months"));
-    duration = duration + chrono::Duration::days(7 * get_i64_from_capture(&captures, "weeks"));
-    duration = duration + chrono::Duration::days(get_i64_from_capture(&captures, "days"));
-    duration = duration + chrono::Duration::hours(get_i64_from_capture(&captures, "hours"));
-    duration = duration + chrono::Duration::minutes(get_i64_from_capture(&captures, "minutes"));
-    duration = duration + chrono::Duration::seconds(get_i64_from_capture(&captures, "seconds"));
+    duration = duration + chrono::Duration::days(365 * get_i64_from_capture("years"));
+    duration = duration + chrono::Duration::days(30 * get_i64_from_capture("months"));
+    duration = duration + chrono::Duration::days(7 * get_i64_from_capture("weeks"));
+    duration = duration + chrono::Duration::days(get_i64_from_capture("days"));
+    duration = duration + chrono::Duration::hours(get_i64_from_capture("hours"));
+    duration = duration + chrono::Duration::minutes(get_i64_from_capture("minutes"));
+    duration = duration + chrono::Duration::seconds(get_i64_from_capture("seconds"));
 
     if duration.is_zero() {
         return Err(anyhow::anyhow!("Expiration interval must be bigger than zero"));
@@ -106,98 +132,9 @@ fn parse_expires_in_as_duration(expires_in: &str) -> Result<chrono::Duration, an
     Ok(duration)
 }
 
-// This could've been an extension using a trait, but we're not building a library.
-/// Get an i64 from a named capture group. If the group does not exist or parsing
-/// the captured value as i64 fails, returns `0` as a default value.
-fn get_i64_from_capture(captures: &Captures, name: &str) -> i64 {
-    captures
-        .name(name)
-        .and_then(|m| m.as_str().parse::<i64>().ok())
-        .unwrap_or(0)
-}
-
-#[derive(StructOpt, Debug)]
-enum Commands {
-    /// Creates developer certificate
-    DevCert(DevCertOpts),
-    /// Creates app license
-    AppLicense(AppLicenseOpts),
-}
-
-#[derive(StructOpt, Debug)]
-#[structopt(
-    name = "Actyx developer certificate utility",
-    about = "Manages Actyx developer certificates",
-    rename_all = "kebab-case"
-)]
-struct Opts {
-    #[structopt(subcommand)]
-    commands: Option<Commands>,
-    #[structopt(long)]
-    version: bool,
-}
-
-fn main() -> anyhow::Result<()> {
-    let opts = Opts::from_args();
-
-    match opts {
-        Opts { version: true, .. } => {
-            let app = Opts::clap();
-            let mut buf = Vec::new();
-            app.write_version(&mut buf).unwrap();
-            let bin_version = std::str::from_utf8(buf.as_slice()).unwrap().to_string();
-            println!("{} {}", bin_version, NodeVersion::get());
-            Ok(())
-        }
-        Opts {
-            commands: Some(cmd), ..
-        } => match cmd {
-            Commands::DevCert(opts) => create_dev_cert(opts),
-            Commands::AppLicense(opts) => create_app_license(opts),
-        },
-        _ => {
-            let mut app = Opts::clap();
-            app.write_long_help(&mut std::io::stderr()).unwrap();
-            println!();
-            Ok(())
-        }
-    }
-}
-
-fn create_dev_cert(opts: DevCertOpts) -> anyhow::Result<()> {
-    let dev_private_key = opts.dev_private_key.unwrap_or_else(PrivateKey::generate);
-    let app_domains: Vec<AppDomain> = opts
-        .app_domains
-        .iter()
-        .map(|app_domain| {
-            app_domain
-                .parse()
-                .map_err(|err| anyhow::anyhow!("Failed to parse app domain '{}'. {}", app_domain, err))
-        })
-        .collect::<anyhow::Result<_>>()?;
-
-    let dev_cert = DeveloperCertificate::new(dev_private_key, app_domains, opts.actyx_private_key)?;
-    let serialized = serde_json::to_string(&dev_cert)?;
-    println!("{}", serialized);
-
-    Ok(())
-}
-
-fn create_app_license(opts: AppLicenseOpts) -> anyhow::Result<()> {
-    let expiration_date = opts.expires_at.or(opts.expires_in).ok_or(anyhow::anyhow!(
-        "An expiration date must be specified. Use `--expires-at` or `--expires-in`."
-    ))?;
-
-    let license = SignedAppLicense::new(opts.actyx_private_key, opts.email, opts.app_id, expiration_date, None)?;
-    let serialized = license.to_base64().unwrap();
-    println!("{}", serialized);
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod test_expires_in {
-    use crate::parse_expires_in_as_duration;
+    use super::parse_expires_in_as_duration;
 
     // NOTE(duarte): Quickcheck would probably be amazing to test this but I don't have the time to learn it now
     #[test]

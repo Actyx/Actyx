@@ -1,7 +1,7 @@
 use actyx_sdk::AppId;
 use crypto::{PrivateKey, PublicKey};
 use derive_more::{Display, Error};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{app_domain::AppDomain, signature::Signature};
 
@@ -70,21 +70,17 @@ impl ManifestDeveloperCertificate {
     }
 }
 
-fn serialize_dev_private_key<S: Serializer>(x: &PrivateKey, s: S) -> Result<S::Ok, S::Error> {
-    s.serialize_str(&x.to_string())
+fn deserialize_dev_private_key<'de, D: Deserializer<'de>>(d: D) -> Result<Option<PrivateKey>, D::Error> {
+    let s = <Option<String>>::deserialize(d)?;
+    s.map(|s| s.parse::<PrivateKey>().map_err(serde::de::Error::custom))
+        .transpose()
 }
 
-fn deserialize_dev_private_key<'de, D: Deserializer<'de>>(d: D) -> Result<PrivateKey, D::Error> {
-    let s = <String>::deserialize(d)?;
-    s.parse::<PrivateKey>().map_err(serde::de::Error::custom)
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeveloperCertificate {
-    #[serde(serialize_with = "serialize_dev_private_key")]
     #[serde(deserialize_with = "deserialize_dev_private_key")]
-    dev_privkey: PrivateKey,
+    dev_privkey: Option<PrivateKey>,
     #[serde(flatten)]
     manifest_dev_cert: ManifestDeveloperCertificate,
 }
@@ -94,12 +90,12 @@ impl DeveloperCertificate {
         let input = DeveloperCertificateInput::new(dev_privkey.into(), app_domains);
         let manifest_dev_cert = ManifestDeveloperCertificate::new(input, ax_privkey)?;
         Ok(Self {
-            dev_privkey,
+            dev_privkey: Some(dev_privkey),
             manifest_dev_cert,
         })
     }
 
-    pub fn private_key(&self) -> PrivateKey {
+    pub fn private_key(&self) -> Option<PrivateKey> {
         self.dev_privkey
     }
 
@@ -232,14 +228,6 @@ mod tests {
                 let result = dev_cert.validate(&x.dev_public_key).unwrap_err();
                 assert_eq!(result.to_string(), "Invalid signature for provided input.");
             });
-    }
-
-    #[test]
-    fn create_and_serialize_developer_certificate() {
-        let x = setup();
-        let dev_cert = DeveloperCertificate::new(x.dev_private_key, x.app_domains, x.ax_private_key).unwrap();
-        let serialized = serde_json::to_value(dev_cert).unwrap();
-        assert_eq!(serialized, x.dev_cert);
     }
 
     #[test]

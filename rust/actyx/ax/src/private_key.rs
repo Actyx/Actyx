@@ -110,6 +110,10 @@ impl AxPrivateKey {
         let crypto_kp: KeyPair = self.0.into();
         identity::Keypair::from(crypto_kp)
     }
+
+    pub(crate) fn to_private(&self) -> PrivateKey {
+        self.0
+    }
 }
 impl FromStr for AxPrivateKey {
     type Err = anyhow::Error;
