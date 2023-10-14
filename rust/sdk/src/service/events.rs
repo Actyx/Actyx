@@ -153,7 +153,7 @@ impl From<EventMetaIo> for EventMeta {
     }
 }
 impl EventMeta {
-    fn left(&self) -> (EventKey, Timestamp) {
+    pub fn left(&self) -> (EventKey, Timestamp) {
         match self {
             EventMeta::Range {
                 from_key, from_time, ..
@@ -162,7 +162,7 @@ impl EventMeta {
             EventMeta::Event { key, meta } => (*key, meta.timestamp),
         }
     }
-    fn right(&self) -> (EventKey, Timestamp) {
+    pub fn right(&self) -> (EventKey, Timestamp) {
         match self {
             EventMeta::Range { to_key, to_time, .. } => (*to_key, *to_time),
             EventMeta::Synthetic => (EventKey::ZERO, 0.into()),

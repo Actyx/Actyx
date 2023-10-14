@@ -21,6 +21,7 @@ sqlite = ["rusqlite"]
 postgresql = ["postgres-types", "bytes"]
 arb = ["quickcheck", "rand"]
 with-tokio = ["tokio"]
+default = ["client"]
 
 [dependencies]
 actyx_sdk_macros = { version = "0.1", path = "../sdk_macros" }
@@ -69,15 +70,25 @@ unicode-normalization = "0.1.19"
 url = { version = "2.2.2", optional = true }
 
 [dev-dependencies]
+acto = { version = "0.3.0", features = ["tokio"] }
 asynchronous-codec = "0.6.0"
+crossterm = { version = "0.27.0", features = ["event-stream"] }
 futures-timer = "3.0.2"
 hex = "0.4.3"
 quickcheck = "1.0.3"
 quickcheck_derive = "0.3.0"
 rand = "0.8.4"
+ratatui = "0.23.0"
+serde = "1.0.133"
 structopt = "0.3.25"
-tokio = { version = "1.15.0", features = ["rt-multi-thread", "macros", "fs"] }
+tokio = { version = "1.15.0", features = ["macros"] }
 tokio-util = { version = "0.6.9", features = ["compat"] }
+tracing = "0.1.29"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+tui-textarea = { version = "0.2.2", default-features = false, features = [
+    "ratatui-crossterm",
+] }
+void = "1.0.2"
 
 [[example]]
 name = "files"

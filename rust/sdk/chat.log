@@ -1,0 +1,50 @@
+[2m2023-10-14T21:56:00.784301Z[0m [32m INFO[0m [2mchat[0m[2m:[0m starting runtime
+[2m2023-10-14T21:56:00.784476Z[0m [32m INFO[0m [2mchat[0m[2m:[0m starting actors
+[2m2023-10-14T21:56:00.784591Z[0m [32m INFO[0m [2mchat[0m[2m:[0m awaiting termination
+[2m2023-10-14T21:56:00.785191Z[0m [32m INFO[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mdisplay(chat/1)[1m}[0m[2m:[0m [2mchat::display::guard[0m[2m:[0m Initializing TermGuard
+[2m2023-10-14T21:56:00.795143Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mreqwest::connect[0m[2m:[0m starting new connection: http://localhost:4454/    
+[2m2023-10-14T21:56:00.795332Z[0m [34mDEBUG[0m [2mhyper::client::connect::dns[0m[2m:[0m resolving host="localhost"
+[2m2023-10-14T21:56:00.797641Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mhyper::client::connect::http[0m[2m:[0m connecting to 127.0.0.1:4454
+[2m2023-10-14T21:56:00.797779Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mhyper::client::connect::http[0m[2m:[0m connected to 127.0.0.1:4454
+[2m2023-10-14T21:56:00.797967Z[0m [34mDEBUG[0m [2mhyper::proto::h1::io[0m[2m:[0m flushed 90 bytes
+[2m2023-10-14T21:56:00.798107Z[0m [34mDEBUG[0m [2mhyper::proto::h1::io[0m[2m:[0m parsed 4 headers
+[2m2023-10-14T21:56:00.798119Z[0m [34mDEBUG[0m [2mhyper::proto::h1::conn[0m[2m:[0m incoming body is content-length (43 bytes)
+[2m2023-10-14T21:56:00.798139Z[0m [34mDEBUG[0m [2mhyper::proto::h1::conn[0m[2m:[0m incoming body completed
+[2m2023-10-14T21:56:00.798197Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mhyper::client::pool[0m[2m:[0m pooling idle connection for ("http", localhost:4454)
+[2m2023-10-14T21:56:00.798347Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mhyper::client::pool[0m[2m:[0m reuse idle connection for ("http", localhost:4454)
+[2m2023-10-14T21:56:00.798433Z[0m [34mDEBUG[0m [2mhyper::proto::h1::io[0m[2m:[0m flushed 231 bytes
+[2m2023-10-14T21:56:00.798629Z[0m [34mDEBUG[0m [2mhyper::proto::h1::io[0m[2m:[0m parsed 3 headers
+[2m2023-10-14T21:56:00.798640Z[0m [34mDEBUG[0m [2mhyper::proto::h1::conn[0m[2m:[0m incoming body is content-length (272 bytes)
+[2m2023-10-14T21:56:00.798652Z[0m [34mDEBUG[0m [2mhyper::proto::h1::conn[0m[2m:[0m incoming body completed
+[2m2023-10-14T21:56:00.798702Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mhyper::client::pool[0m[2m:[0m pooling idle connection for ("http", localhost:4454)
+[2m2023-10-14T21:56:00.798808Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mhyper::client::pool[0m[2m:[0m reuse idle connection for ("http", localhost:4454)
+[2m2023-10-14T21:56:00.798889Z[0m [34mDEBUG[0m [2mhyper::proto::h1::io[0m[2m:[0m flushed 529 bytes
+[2m2023-10-14T21:56:00.799537Z[0m [34mDEBUG[0m [2mhyper::proto::h1::io[0m[2m:[0m parsed 3 headers
+[2m2023-10-14T21:56:00.799549Z[0m [34mDEBUG[0m [2mhyper::proto::h1::conn[0m[2m:[0m incoming body is chunked encoding
+[2m2023-10-14T21:56:00.799566Z[0m [34mDEBUG[0m [2mhyper::proto::h1::decode[0m[2m:[0m incoming chunked header: 0xE3 (227 bytes)
+[2m2023-10-14T21:56:00.799767Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mchat::messages[0m[2m:[0m received response: Event { event: EventResponse { meta: Event { key: EventKey { lamport: LamportTimestamp(4), stream: StreamId(a5p8H5lySNhAOyEWIHqLkStiKXBnOFL9DOrUzdpioy.-0), offset: Offset(0) }, meta: Metadata { timestamp: Timestamp(1697320157356476), tags: TagSet([Tag("message")]), app_id: AppId("com.example.chat") } }, payload: {"from":"me","text":"asdf"} }, caught_up: false }
+[2m2023-10-14T21:56:00.799854Z[0m [34mDEBUG[0m [2mhyper::proto::h1::decode[0m[2m:[0m incoming chunked header: 0xE3 (227 bytes)
+[2m2023-10-14T21:56:00.799959Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mchat::messages[0m[2m:[0m received response: Event { event: EventResponse { meta: Event { key: EventKey { lamport: LamportTimestamp(5), stream: StreamId(a5p8H5lySNhAOyEWIHqLkStiKXBnOFL9DOrUzdpioy.-0), offset: Offset(1) }, meta: Metadata { timestamp: Timestamp(1697320160565629), tags: TagSet([Tag("message")]), app_id: AppId("com.example.chat") } }, payload: {"from":"me","text":"gfds"} }, caught_up: false }
+[2m2023-10-14T21:56:00.800022Z[0m [34mDEBUG[0m [2mhyper::proto::h1::decode[0m[2m:[0m incoming chunked header: 0xB5 (181 bytes)
+[2m2023-10-14T21:56:00.800095Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mchat::messages[0m[2m:[0m received response: Offsets(OffsetMapResponse { offsets: OffsetMap({StreamId(a5p8H5lySNhAOyEWIHqLkStiKXBnOFL9DOrUzdpioy.-0): Offset(1), StreamId(a5p8H5lySNhAOyEWIHqLkStiKXBnOFL9DOrUzdpioy.-1): Offset(2), StreamId(a5p8H5lySNhAOyEWIHqLkStiKXBnOFL9DOrUzdpioy.-3): Offset(0)}) })
+[2m2023-10-14T21:56:05.592473Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0minput(chat/4)[1m}[0m[2m:[0m [2mchat::input[0m[2m:[0m sending event: KeyEvent { code: Char('h'), modifiers: KeyModifiers(0x0), kind: Press, state: KeyEventState(0x0) }
+[2m2023-10-14T21:56:05.676669Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0minput(chat/4)[1m}[0m[2m:[0m [2mchat::input[0m[2m:[0m sending event: KeyEvent { code: Char('i'), modifiers: KeyModifiers(0x0), kind: Press, state: KeyEventState(0x0) }
+[2m2023-10-14T21:56:05.794339Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0minput(chat/4)[1m}[0m[2m:[0m [2mchat::input[0m[2m:[0m sending event: KeyEvent { code: Char('h'), modifiers: KeyModifiers(0x0), kind: Press, state: KeyEventState(0x0) }
+[2m2023-10-14T21:56:05.903063Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0minput(chat/4)[1m}[0m[2m:[0m [2mchat::input[0m[2m:[0m sending event: KeyEvent { code: Char('i'), modifiers: KeyModifiers(0x0), kind: Press, state: KeyEventState(0x0) }
+[2m2023-10-14T21:56:07.015554Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0minput(chat/4)[1m}[0m[2m:[0m [2mchat::input[0m[2m:[0m sending event: KeyEvent { code: Enter, modifiers: KeyModifiers(0x0), kind: Press, state: KeyEventState(0x0) }
+[2m2023-10-14T21:56:07.015795Z[0m [32m INFO[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mcmdline(chat/3)[1m}[0m[2m:[0m [2mchat::cmdline[0m[2m:[0m publishing message: hihi
+[2m2023-10-14T21:56:07.021412Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mreqwest::connect[0m[2m:[0m starting new connection: http://localhost:4454/    
+[2m2023-10-14T21:56:07.021617Z[0m [34mDEBUG[0m [2mhyper::client::connect::dns[0m[2m:[0m resolving host="localhost"
+[2m2023-10-14T21:56:07.021841Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mhyper::client::connect::http[0m[2m:[0m connecting to 127.0.0.1:4454
+[2m2023-10-14T21:56:07.022175Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mhyper::client::connect::http[0m[2m:[0m connected to 127.0.0.1:4454
+[2m2023-10-14T21:56:07.022651Z[0m [34mDEBUG[0m [2mhyper::proto::h1::io[0m[2m:[0m flushed 503 bytes
+[2m2023-10-14T21:56:07.046080Z[0m [34mDEBUG[0m [2mhyper::proto::h1::io[0m[2m:[0m parsed 3 headers
+[2m2023-10-14T21:56:07.046116Z[0m [34mDEBUG[0m [2mhyper::proto::h1::conn[0m[2m:[0m incoming body is content-length (121 bytes)
+[2m2023-10-14T21:56:07.046158Z[0m [34mDEBUG[0m [2mhyper::proto::h1::conn[0m[2m:[0m incoming body completed
+[2m2023-10-14T21:56:07.046309Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mhyper::client::pool[0m[2m:[0m pooling idle connection for ("http", localhost:4454)
+[2m2023-10-14T21:56:07.046631Z[0m [34mDEBUG[0m [2mhyper::proto::h1::decode[0m[2m:[0m incoming chunked header: 0xE2 (226 bytes)
+[2m2023-10-14T21:56:07.046949Z[0m [34mDEBUG[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0mmessages(chat/2)[1m}[0m[2m:[0m [2mchat::messages[0m[2m:[0m received response: Event { event: EventResponse { meta: Event { key: EventKey { lamport: LamportTimestamp(6), stream: StreamId(a5p8H5lySNhAOyEWIHqLkStiKXBnOFL9DOrUzdpioy.-0), offset: Offset(2) }, meta: Metadata { timestamp: Timestamp(1697320567022921), tags: TagSet([Tag("message")]), app_id: AppId("com.example.chat") } }, payload: {"from":"me","text":"hihi"} }, caught_up: true }
+[2m2023-10-14T21:56:21.942043Z[0m [32m INFO[0m [1mpoll[0m[1m{[0m[3mactor[0m[2m=[0minput(chat/4)[1m}[0m[2m:[0m [2mchat::input[0m[2m:[0m shutting down
+[2m2023-10-14T21:56:21.942308Z[0m [32m INFO[0m [2mchat[0m[2m:[0m terminating
+[2m2023-10-14T21:56:21.943770Z[0m [32m INFO[0m [2mchat::display::guard[0m[2m:[0m Dropping TermGuard
+[2m2023-10-14T21:56:22.942554Z[0m [32m INFO[0m [2mchat[0m[2m:[0m terminated
