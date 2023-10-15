@@ -17,7 +17,6 @@ use std::{
     fmt::Debug,
     str::FromStr,
     sync::{Arc, RwLock},
-    time::Duration,
 };
 use url::Url;
 
@@ -29,7 +28,6 @@ use crate::{
     },
     AppManifest, NodeId,
 };
-use rand::Rng;
 
 /// Error type that is returned in the response body by the Event Service when requests fail
 ///
@@ -149,6 +147,9 @@ impl ActyxClient {
 
             #[cfg(feature = "with-tokio")]
             {
+                use rand::Rng;
+                use std::time::Duration;
+
                 let mut retries = 10;
                 let mut delay = Duration::from_secs(0);
                 loop {
