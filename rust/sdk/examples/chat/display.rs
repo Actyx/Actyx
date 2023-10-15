@@ -6,7 +6,7 @@ use acto::{
 use chrono::{DateTime, Utc};
 use ratatui::{
     prelude::{Alignment, Constraint, CrosstermBackend, Direction, Layout, Rect},
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
     Terminal,
@@ -101,13 +101,21 @@ pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
             if let Some(ref e) = not_connected {
                 let rect = centered_rect(60, 20, size);
                 let text = Paragraph::new(vec![
-                    Line::from("Not connected to Actyx"),
+                    Line::from(Span::styled(
+                        "Not connected to Actyx",
+                        Style::new().add_modifier(Modifier::BOLD),
+                    )),
                     Line::from(""),
                     Line::from(e.as_str()),
                 ])
                 .alignment(Alignment::Center)
                 .wrap(Wrap { trim: true })
-                .block(Block::default().title("Popup").borders(Borders::ALL));
+                .block(
+                    Block::default()
+                        .title("Error")
+                        .borders(Borders::ALL)
+                        .style(Style::new().bg(Color::Red)),
+                );
                 f.render_widget(Clear, rect);
                 f.render_widget(text, rect);
             }
