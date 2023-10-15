@@ -15,6 +15,13 @@ fn main() {
         .with_writer(logs)
         .init();
 
+    // reset terminal on panic
+    let original_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic| {
+        display::reset_terminal();
+        original_hook(panic);
+    }));
+
     tracing::info!("starting runtime");
     let rt = AcTokio::new("chat", 1).expect("failed to create runtime");
 

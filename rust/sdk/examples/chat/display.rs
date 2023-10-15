@@ -28,8 +28,7 @@ mod guard {
         pub fn new() -> TermGuard {
             tracing::info!("Initializing TermGuard");
             enable_raw_mode().expect("failed to enable raw mode");
-            let mut term = io::stdout();
-            execute!(term, EnterAlternateScreen, EnableMouseCapture).expect("failed to enter alternate screen");
+            execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture).expect("failed to enter alternate screen");
             TermGuard(PhantomData)
         }
     }
@@ -37,12 +36,17 @@ mod guard {
     impl Drop for TermGuard {
         fn drop(&mut self) {
             tracing::info!("Dropping TermGuard");
-            disable_raw_mode().expect("failed to disable raw mode");
-            let mut term = io::stdout();
-            execute!(term, LeaveAlternateScreen, DisableMouseCapture).expect("failed to leave alternate screen");
+            reset_terminal();
         }
     }
+
+    pub fn reset_terminal() {
+        disable_raw_mode().expect("failed to disable raw mode");
+        execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture).expect("failed to leave alternate screen");
+    }
 }
+
+pub use guard::reset_terminal;
 
 pub enum Display {
     Cmdline(Reader<TextArea<'static>>),
