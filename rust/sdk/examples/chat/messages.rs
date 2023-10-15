@@ -1,4 +1,4 @@
-use crate::display::Display;
+use crate::{display::Display, Supervisor};
 use acto::{variable::Writer, ActoCell, ActoInput, ActoRef, ActoRuntime};
 use actyx_sdk::{
     app_id,
@@ -36,7 +36,11 @@ pub enum Messages {
     Publish(Event),
 }
 
-pub async fn messages(mut cell: ActoCell<Messages, impl ActoRuntime>, display: ActoRef<Display>) {
+pub(crate) async fn messages(
+    mut cell: ActoCell<Messages, impl ActoRuntime>,
+    supervisor: ActoRef<Supervisor>,
+    display: ActoRef<Display>,
+) -> anyhow::Result<()> {
     // FIXME too verbose
     let client = ActyxClient::new(
         "http://localhost:4454".parse().unwrap(),
@@ -47,14 +51,8 @@ pub async fn messages(mut cell: ActoCell<Messages, impl ActoRuntime>, display: A
             None,
         ),
     )
-    .await;
-    let client = match client {
-        Ok(c) => c,
-        Err(e) => {
-            tracing::error!("failed to connect to Actyx: {}", e);
-            return;
-        }
-    };
+    .await?;
+    supervisor.send(Supervisor::Connected);
 
     let mk_sub = || async {
         // FIXME too verbose
@@ -91,7 +89,7 @@ pub async fn messages(mut cell: ActoCell<Messages, impl ActoRuntime>, display: A
                     }
                 } else {
                     tracing::info!("messages stopped via ActoRef");
-                    return;
+                    return Ok(());
                 }
             }
             Either::Right((resp, _)) => {
@@ -122,7 +120,7 @@ pub async fn messages(mut cell: ActoCell<Messages, impl ActoRuntime>, display: A
                     }
                 } else {
                     tracing::info!("messages stopped via subscription");
-                    return;
+                    anyhow::bail!("subscription stopped");
                 }
             }
         }

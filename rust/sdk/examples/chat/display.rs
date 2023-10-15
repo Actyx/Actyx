@@ -5,10 +5,10 @@ use acto::{
 };
 use chrono::{DateTime, Utc};
 use ratatui::{
-    prelude::{CrosstermBackend, Layout},
+    prelude::{Alignment, Constraint, CrosstermBackend, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::Paragraph,
+    widgets::{Block, Borders, Clear, Paragraph, Wrap},
     Terminal,
 };
 use std::io;
@@ -51,6 +51,8 @@ pub use guard::reset_terminal;
 pub enum Display {
     Cmdline(Reader<TextArea<'static>>),
     Messages(Reader<Vec<Message>>),
+    NotConnected(String),
+    Connected,
 }
 
 pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
@@ -59,11 +61,14 @@ pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
 
     let mut text_area = Writer::new(TextArea::default()).reader();
     let mut messages = Writer::new(Vec::new()).reader();
+    let mut not_connected = None;
 
     while let ActoInput::Message(msg) = cell.recv().await {
         match msg {
             Display::Cmdline(t) => text_area = t,
             Display::Messages(m) => messages = m,
+            Display::NotConnected(e) => not_connected = Some(e),
+            Display::Connected => not_connected = None,
         }
         let res = terminal.draw(|f| {
             let size = f.size();
@@ -92,10 +97,45 @@ pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
             });
 
             text_area.project(|t| f.render_widget(t.widget(), layout[1]));
+
+            if let Some(ref e) = not_connected {
+                let rect = centered_rect(60, 20, size);
+                let text = Paragraph::new(vec![
+                    Line::from("Not connected to Actyx"),
+                    Line::from(""),
+                    Line::from(e.as_str()),
+                ])
+                .alignment(Alignment::Center)
+                .wrap(Wrap { trim: true })
+                .block(Block::default().title("Popup").borders(Borders::ALL));
+                f.render_widget(Clear, rect);
+                f.render_widget(text, rect);
+            }
         });
         if let Err(e) = res {
             tracing::error!("failed to draw terminal: {}", e);
             return;
         }
     }
+}
+
+/// helper function to create a centered rect using up certain percentage of the available rect `r`
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }
