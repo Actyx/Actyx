@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "acto"
-version = "0.3.0"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f787bff5030d8dc1d6980adf66a9d75e4702924baba3f86cca0949b4b71c6199"
+checksum = "35c51c5c669e937a5cb5e22b709a244da547e8325846ae90abcc7c98b66bd169"
 dependencies = [
  "parking_lot 0.12.1",
  "pin-project-lite",

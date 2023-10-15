@@ -1,5 +1,5 @@
-use acto::{AcTokio, ActoCell, ActoHandle, ActoInput, ActoRuntime};
-use std::{env::var, fs::File, future::poll_fn, time::Duration};
+use acto::{AcTokio, ActoCell, ActoInput, ActoRuntime};
+use std::{env::var, fs::File};
 use tracing_subscriber::EnvFilter;
 use void::Void;
 
@@ -19,14 +19,13 @@ fn main() {
     let rt = AcTokio::new("chat", 1).expect("failed to create runtime");
 
     tracing::info!("starting actors");
-    let mut handle = rt.spawn_actor("supervisor", supervisor).handle;
+    let handle = rt.spawn_actor("supervisor", supervisor).handle;
 
     tracing::info!("awaiting termination");
-    rt.rt().block_on(poll_fn(move |cx| handle.poll(cx))).unwrap();
+    rt.rt().block_on(handle.join()).unwrap();
 
     tracing::info!("terminating");
-    // FIXME: need to figure out how to wait for AcTokio task drops to have finished
-    std::thread::sleep(Duration::from_millis(300));
+    rt.rt().block_on(rt.drop_done());
     tracing::info!("terminated");
 }
 
