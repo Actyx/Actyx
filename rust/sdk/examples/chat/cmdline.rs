@@ -22,7 +22,7 @@ fn mk_message_text_area() -> TextArea<'static> {
     text_area
 }
 
-fn mk_identity_text_area(s: &String) -> TextArea<'static> {
+fn mk_identity_text_area(s: &str) -> TextArea<'static> {
     let mut text_area: TextArea<'_> = TextArea::default();
     text_area.set_block(
         Block::default()
