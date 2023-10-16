@@ -31,6 +31,58 @@ use crate::{
 };
 use rand::Rng;
 
+pub struct AxClientOpts {
+    pub url: url::Url,
+    pub manifest: AppManifest,
+}
+
+impl AxClientOpts {
+    /// Create an [`AxClientOpts`] with a custom URL and the default application manifest.
+    ///
+    /// This function is equivalent to:
+    /// ```no_run
+    /// AxClientOpts {
+    ///     url: "https://your.host:1234".parse()?,
+    ///     ..Default::default()
+    /// }
+    /// ```
+    pub fn url(url: &str) -> anyhow::Result<Self> {
+        Ok(Self {
+            url: Url::from_str(url)?,
+            ..Default::default()
+        })
+    }
+
+    /// Create an [`AxClientOpts`] with a custom application manifest and the default URL.
+    ///
+    /// This function is equivalent to:
+    /// ```no_run
+    /// AxClientOpts {
+    ///     AppManifest { /* elided for brevity */ },
+    ///     ..Default::default()
+    /// }
+    /// ```
+    pub fn manifest(manifest: AppManifest) -> anyhow::Result<Self> {
+        Ok(Self {
+            manifest,
+            ..Default::default()
+        })
+    }
+}
+
+impl Default for AxClientOpts {
+    /// Return a default set of options.
+    ///
+    /// The default URL is `https://localhost:4454`,
+    /// for the default manifest see [`AppManifest`].
+    fn default() -> Self {
+        Self {
+            url: url::Url::from_str("https://localhost:4454").unwrap(),
+            manifest: Default::default(),
+        }
+    }
+}
+
 /// Error type that is returned in the response body by the Event Service when requests fail
 ///
 /// The Event Service does not map client errors or internal errors to HTTP status codes,
@@ -45,15 +97,6 @@ pub struct ActyxClientError {
     pub context: String,
 }
 
-#[derive(Clone)]
-pub struct ActyxClient {
-    client: Client,
-    base_url: Url,
-    token: Arc<RwLock<String>>,
-    app_manifest: AppManifest,
-    node_id: NodeId,
-}
-
 async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) -> anyhow::Result<String> {
     let body = serde_json::to_value(app_manifest).context(|| format!("serializing {:?}", app_manifest))?;
     let response = client.post(base_url.join("auth")?).json(&body).send().await?;
@@ -66,10 +109,25 @@ async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) 
     Ok(token.token)
 }
 
+#[derive(Clone)]
+pub struct ActyxClient {
+    client: Client,
+    base_url: Url,
+    token: Arc<RwLock<String>>,
+    app_manifest: AppManifest,
+    node_id: NodeId,
+}
+
 impl ActyxClient {
-    /// Configures connection to Actyx node with provided Url and AppManifest.
-    /// All path segments of the Url (if any) are discarded.
-    pub async fn new(origin: Url, app_manifest: AppManifest) -> anyhow::Result<Self> {
+    /// Instantiate a new [`ActyxClient`] with the provided options.
+    ///
+    /// See [`AxClientOpts`] for more information.
+    pub async fn new(opts: AxClientOpts) -> anyhow::Result<Self> {
+        let origin = opts.url;
+        let app_manifest = opts.manifest;
+
+        // NOTE(duarte): we could probably validate this in the opts
+        // We would need to provide a `new` instead of letting users do struct instantiation by hand though
         anyhow::ensure!(!origin.cannot_be_a_base(), "{} is not a valid base address", origin);
         let mut base_url = origin;
         base_url.set_path("api/v2/");

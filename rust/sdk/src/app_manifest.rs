@@ -1,4 +1,4 @@
-use crate::AppId;
+use crate::{app_id, AppId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -23,6 +23,22 @@ impl AppManifest {
             display_name,
             version,
             signature,
+        }
+    }
+}
+
+impl Default for AppManifest {
+    /// Returns the default manifest.
+    ///
+    /// The default manifest has the application ID `com.example.trial`,
+    /// the display name "Trial App" and the version "0.0.1".
+    /// Since it is a trial applicatio manifest, it does not have a signature.
+    fn default() -> Self {
+        Self {
+            app_id: app_id!("com.example.trial"),
+            display_name: "Trial App".to_string(),
+            version: "0.0.1".to_string(),
+            signature: None,
         }
     }
 }
