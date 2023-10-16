@@ -90,20 +90,26 @@ fn render<W: io::Write>(
     messages: &Reader<Vec<Message>>,
     not_connected: &Option<String>,
 ) {
-    identity.project(|identity| match &identity.edit {
-        Some(edit) => render_editing_identity(f, edit),
-        None => render_chat(f, text_area, messages, not_connected),
-    });
+    let is_editing = identity.project(|identity| identity.edit.is_some());
+    if is_editing {
+        render_editing_identity(f, identity);
+    } else {
+        render_chat(f, text_area, messages, not_connected);
+    }
 }
 
-fn render_editing_identity<W: io::Write>(f: &mut Frame<CrosstermBackend<W>>, edit: &TextArea) {
+fn render_editing_identity<W: io::Write>(f: &mut Frame<CrosstermBackend<W>>, identity: &Reader<Identity>) {
     let size = f.size();
     let layout = Layout::default()
         .direction(ratatui::prelude::Direction::Vertical)
         .constraints([ratatui::prelude::Constraint::Length(1)])
         .split(size);
 
-    f.render_widget(edit.widget(), layout[0]);
+    identity.project(|identity| {
+        if let Some(edit) = &identity.edit {
+            f.render_widget(edit.widget(), layout[0]);
+        }
+    });
 }
 
 fn render_chat<W: io::Write>(

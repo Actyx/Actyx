@@ -78,7 +78,7 @@ pub async fn cmdline(
                                     identity.edit = None;
                                 }
                                 KeyCode::Enter => {
-                                    identity.val = identity.edit.take();
+                                    identity.val = identity_buffer_value;
                                 }
                                 _ => {
                                     if let Some(edit) = &mut identity.edit {
