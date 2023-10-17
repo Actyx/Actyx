@@ -1,6 +1,4 @@
 use anyhow::Result;
-use async_trait::async_trait;
-use futures::stream::BoxStream;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt::Display, num::NonZeroU64, ops::AddAssign};
 
@@ -557,61 +555,6 @@ pub struct OffsetsResponse {
     pub present: OffsetMap,
     /// Number of events per [`StreamId`] pending replication to this node
     pub to_replicate: BTreeMap<StreamId, NonZeroU64>,
-}
-
-#[async_trait]
-/// A service providing retrieval of historic and live events, publishing of new events
-/// and access to information about current stream offsets.
-pub trait EventService: Clone + Send {
-    /// Returns known offsets across local and replicated streams.
-    async fn offsets(&self) -> Result<OffsetsResponse>;
-
-    /// Publishes a set of new events.
-    async fn publish(&self, request: PublishRequest) -> Result<PublishResponse>;
-
-    /// Query events known at the time the request was received by the service.
-    async fn query_with_defaults<Q: Into<String> + Send>(&self, query: Q) -> Result<BoxStream<'static, QueryResponse>> {
-        self.query(query, None).await
-    }
-
-    /// Query events known at the time the request was received by the service.
-    async fn query<Q: Into<String> + Send>(
-        &self,
-        query: Q,
-        opts: Option<QueryOpts>,
-    ) -> Result<BoxStream<'static, QueryResponse>>;
-
-    /// Suscribe to events that are currently known by the service followed by new "live" events.
-    async fn subscribe_with_defaults<Q: Into<String> + Send>(
-        &self,
-        query: Q,
-    ) -> Result<BoxStream<'static, SubscribeResponse>> {
-        self.subscribe(query, None).await
-    }
-
-    /// Suscribe to events that are currently known by the service followed by new "live" events.
-    async fn subscribe<Q: Into<String> + Send>(
-        &self,
-        query: Q,
-        opts: Option<SubscribeOpts>,
-    ) -> Result<BoxStream<'static, SubscribeResponse>>;
-
-    /// Subscribe to events that are currently known by the service followed by new "live" events until
-    /// the service learns about events that need to be sorted earlier than an event already received.
-    async fn subscribe_monotonic_with_defaults<Q: Into<String> + Send>(
-        &self,
-        query: Q,
-    ) -> Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        self.subscribe_monotonic(query, None).await
-    }
-
-    /// Subscribe to events that are currently known by the service followed by new "live" events until
-    /// the service learns about events that need to be sorted earlier than an event already received.
-    async fn subscribe_monotonic<Q: Into<String> + Send>(
-        &self,
-        query: Q,
-        opts: Option<SubscribeMonotonicOpts>,
-    ) -> Result<BoxStream<'static, SubscribeMonotonicResponse>>;
 }
 
 #[cfg(test)]

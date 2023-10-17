@@ -1,5 +1,4 @@
 use anyhow::Result;
-use async_trait::async_trait;
 use bytes::Bytes;
 use derive_more::{Display, Error};
 use futures::{
@@ -22,9 +21,9 @@ use url::Url;
 
 use crate::{
     service::{
-        AuthenticationResponse, EventService, FilesGetResponse, OffsetsResponse, Order, PublishRequest,
-        PublishResponse, QueryOpts, QueryRequest, QueryResponse, SessionId, StartFrom, SubscribeMonotonicOpts,
-        SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeOpts, SubscribeRequest, SubscribeResponse,
+        AuthenticationResponse, FilesGetResponse, OffsetsResponse, Order, PublishRequest, PublishResponse, QueryOpts,
+        QueryRequest, QueryResponse, SessionId, StartFrom, SubscribeMonotonicOpts, SubscribeMonotonicRequest,
+        SubscribeMonotonicResponse, SubscribeOpts, SubscribeRequest, SubscribeResponse,
     },
     AppManifest, NodeId, OffsetMap,
 };
@@ -331,8 +330,7 @@ impl Debug for Ax {
     }
 }
 
-#[async_trait]
-impl EventService for Ax {
+impl ActyxClient {
     /// Returns known offsets across local and replicated streams.
     ///
     /// If an authorization error (code 401) is returned, it will try to re-authenticate.
