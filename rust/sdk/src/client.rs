@@ -19,96 +19,20 @@ use std::{
 };
 use url::Url;
 
-use crate::{
-    service::{
-        AuthenticationResponse, FilesGetResponse, OffsetsResponse, Order, PublishRequest, PublishResponse, QueryOpts,
-        QueryRequest, QueryResponse, SessionId, StartFrom, SubscribeMonotonicOpts, SubscribeMonotonicRequest,
-        SubscribeMonotonicResponse, SubscribeOpts, SubscribeRequest, SubscribeResponse,
-    },
-    AppManifest, NodeId, OffsetMap,
-};
-
-use std::future;
-
-use futures::{stream::BoxStream, StreamExt};
-
-use crate::{
-    app_id,
-    client::{to_lines, WithContext},
-    service::{
-        Order, QueryRequest, QueryResponse, SessionId, StartFrom, SubscribeMonotonicRequest,
-        SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
-    },
-    ActyxClient, OffsetMap,
-};
-
 #[cfg(feature = "with-tokio")]
 use rand::Rng;
 #[cfg(feature = "with-tokio")]
 use std::time::Duration;
 
-pub struct AxOpts {
-    pub url: url::Url,
-    pub manifest: AppManifest,
-}
-
-impl AxOpts {
-    /// Create an [`AxOpts`] with a custom URL and the default application manifest.
-    ///
-    /// This function is similar to:
-    /// ```no_run
-    /// # use actyx_sdk::AxOpts;
-    /// # fn opts() -> AxOpts {
-    /// AxOpts {
-    ///     url: "https://your.host:1234".parse().unwrap(),
-    ///     ..Default::default()
-    /// }.into()
-    /// # }
-    /// ```
-    pub fn url(url: &str) -> anyhow::Result<Self> {
-        Ok(Self {
-            url: Url::from_str(url)?,
-            ..Default::default()
-        })
-    }
-
-    /// Create an [`AxOpts`] with a custom application manifest and the default URL.
-    ///
-    /// This function is equivalent to:
-    /// ```no_run
-    /// # use actyx_sdk::{app_id, AppManifest, AxOpts};
-    /// # fn opts() -> AxOpts {
-    /// AxOpts {
-    ///     manifest: AppManifest {
-    ///         app_id: app_id!("com.example.app"),
-    ///         display_name: "Example manifest".to_string(),
-    ///         version: "0.1.0".to_string(),
-    ///         signature: None,
-    ///     },
-    ///     ..Default::default()
-    /// }.into()
-    /// # }
-    /// ```
-    pub fn manifest(manifest: AppManifest) -> anyhow::Result<Self> {
-        Ok(Self {
-            manifest,
-            ..Default::default()
-        })
-    }
-}
-
-impl Default for AxOpts {
-    /// Return a default set of options.
-    ///
-    /// The default URL is `https://localhost:4454`,
-    /// for the default manifest see [`AppManifest`].
-    fn default() -> Self {
-        Self {
-            url: url::Url::from_str("https://localhost:4454").unwrap(),
-            manifest: Default::default(),
-        }
-    }
-}
+use crate::{
+    app_id,
+    service::{
+        AuthenticationResponse, FilesGetResponse, OffsetsResponse, Order, PublishRequest, PublishResponse,
+        QueryRequest, QueryResponse, SessionId, StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
+        SubscribeRequest, SubscribeResponse,
+    },
+    AppManifest, NodeId, OffsetMap,
+};
 
 /// Error type that is returned in the response body by the Event Service when requests fail
 ///
@@ -340,7 +264,7 @@ impl Ax {
     /// If the service is unavailable (code 503), this method will retry to perform the
     /// request up to 10 times with exponentially increasing delay - currently,
     /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
+    pub async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
         let response = self.do_request(|c| c.get(self.events_url("offsets"))).await?;
         let bytes = response
             .bytes()
@@ -361,7 +285,7 @@ impl Ax {
     /// If the service is unavailable (code 503), this method will retry to perform the
     /// request up to 10 times with exponentially increasing delay - currently,
     /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn publish(&self, request: PublishRequest) -> anyhow::Result<PublishResponse> {
+    pub async fn publish(&self, request: PublishRequest) -> anyhow::Result<PublishResponse> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
             .do_request(|c| c.post(self.events_url("publish")).json(&body))
@@ -480,7 +404,7 @@ impl From<(String, serde_cbor::Error)> for AxError {
     }
 }
 
-struct Query {
+pub struct Query {
     client: ActyxClient,
     request: QueryRequest,
 }
@@ -527,7 +451,7 @@ impl Query {
     }
 }
 
-struct Subscribe {
+pub struct Subscribe {
     client: ActyxClient,
     request: SubscribeRequest,
 }
@@ -543,12 +467,12 @@ impl Subscribe {
         }
     }
 
-    fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
+    pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
         self.request.lower_bound = Some(lower_bound);
         self
     }
 
-    async fn execute(self) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
+    pub async fn execute(self) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
         let body = serde_json::to_value(&self.request).context(|| format!("serializing {:?}", &self.request))?;
         let response = self
             .client
@@ -562,7 +486,7 @@ impl Subscribe {
     }
 }
 
-struct SubscribeMonotonic {
+pub struct SubscribeMonotonic {
     client: ActyxClient,
     request: SubscribeMonotonicRequest,
 }
@@ -579,17 +503,17 @@ impl SubscribeMonotonic {
         }
     }
 
-    fn with_session_id<T: Into<SessionId>>(mut self, session_id: T) -> Self {
+    pub fn with_session_id<T: Into<SessionId>>(mut self, session_id: T) -> Self {
         self.request.session = session_id.into();
         self
     }
 
-    fn with_start_from(mut self, start_from: StartFrom) -> Self {
+    pub fn with_start_from(mut self, start_from: StartFrom) -> Self {
         self.request.from = start_from;
         self
     }
 
-    async fn execute(self) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
+    pub async fn execute(self) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
         let body = serde_json::to_value(&self.request).context(|| format!("serializing {:?}", &self.request))?;
         let response = self
             .client
@@ -615,8 +539,7 @@ async fn test() {
     )
     .await
     .unwrap();
-    let builder = Builder(client);
-    builder
+    client
         .query("FROM allEvents")
         .with_order(Order::Desc)
         .execute()
