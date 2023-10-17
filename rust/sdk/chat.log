@@ -1,0 +1,96 @@
+[2m2023-10-16T07:59:46.847586Z[0m [32m INFO[0m [2mchat[0m[2m:[0m starting runtime
+[2m2023-10-16T07:59:46.847831Z[0m [32m INFO[0m [2mchat[0m[2m:[0m starting actors
+[2m2023-10-16T07:59:46.847903Z[0m [32m INFO[0m [2mchat[0m[2m:[0m awaiting termination
+[2m2023-10-16T07:59:46.848265Z[0m [32m INFO[0m [2mchat::display::guard[0m[2m:[0m Initializing TermGuard
+[2m2023-10-16T08:00:00.446912Z[0m [32m INFO[0m [2mchat::cmdline[0m[2m:[0m publishing message: hello
+[2m2023-10-16T08:14:04.359637Z[0m [32m INFO[0m [2mchat::messages[0m[2m:[0m messages stopped via subscription
+[2m2023-10-16T08:14:04.360429Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/2) terminated with Ok(Err(subscription stopped))
+[2m2023-10-16T08:14:04.868879Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/5) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:14:05.377141Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/6) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:14:05.885512Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/7) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:14:06.394488Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/8) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:14:06.904296Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/9) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:14:07.412078Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/a) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:14:07.919745Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/b) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:14:08.425747Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/c) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:14:08.935024Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/d) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:14:09.440451Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/e) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:14:09.950085Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/f) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:14:10.459027Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/10) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:14:10.967247Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/11) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:14:11.476046Z[0m [32m INFO[0m [2mchat[0m[2m:[0m messages(chat/12) terminated with Ok(Err(error sending request for url (http://localhost:4454/api/v2/node/id): error trying to connect: tcp connect error: Connection refused (os error 111)
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)))
+[2m2023-10-16T08:25:59.637816Z[0m [32m INFO[0m [2mchat::input[0m[2m:[0m shutting down
+[2m2023-10-16T08:25:59.637935Z[0m [32m INFO[0m [2mchat[0m[2m:[0m input(chat/4) terminated with Ok(Ok(()))
+[2m2023-10-16T08:25:59.638012Z[0m [32m INFO[0m [2mchat[0m[2m:[0m terminating
+[2m2023-10-16T08:25:59.638689Z[0m [32m INFO[0m [2mchat::display::guard[0m[2m:[0m Dropping TermGuard
+[2m2023-10-16T08:25:59.639541Z[0m [32m INFO[0m [2mchat[0m[2m:[0m terminated

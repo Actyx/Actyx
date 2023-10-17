@@ -51,6 +51,7 @@ enum Command {
         /// Examples: bafybeibogm7ogaite4rjjnw6laiszuxw5hvwkp2cj726rr7zup3yw34tea,
         /// <cid>/types
         name_or_cid: String,
+
         /// Output path
         #[structopt(short, long)]
         output: PathBuf,

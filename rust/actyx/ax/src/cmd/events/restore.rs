@@ -27,23 +27,23 @@ use util::{
 #[structopt(version = env!("AX_CLI_VERSION"))]
 /// restore events from an event dump to a temporary topic
 pub struct RestoreOpts {
-    #[structopt(long, short = "I", value_name = "FILE")]
     /// file to read the dump from
+    #[structopt(long, short = "I", value_name = "FILE")]
     input: Option<PathBuf>,
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
-    #[structopt(long, short)]
     /// suppress progress information on stderr
+    #[structopt(long, short)]
     quiet: bool,
-    #[structopt(long, value_name = "FILE")]
     /// load dump via the cloud and store it as the given filename
-    cloud: Option<PathBuf>,
     #[structopt(long, value_name = "FILE")]
+    cloud: Option<PathBuf>,
     /// location to read developer certificate from
+    #[structopt(long, value_name = "FILE")]
     cert: Option<PathBuf>,
-    #[structopt(long, value_name = "URL")]
     /// base URL where to find the cloudmirror (only for --cloud)
     /// defaults to wss://cloudmirror.actyx.net/forward
+    #[structopt(long, value_name = "URL")]
     url: Option<String>,
 }
 pub const URL: &str = "wss://cloudmirror.actyx.net/forward";

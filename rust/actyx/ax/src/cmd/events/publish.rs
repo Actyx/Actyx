@@ -26,8 +26,8 @@ pub struct PublishOpts {
     console_opt: ConsoleOpt,
     /// event payload (JSON)
     payload: serde_json::Value,
-    #[structopt(long, short)]
     /// tag (can be given multiple times)
+    #[structopt(long, short)]
     tag: Option<Vec<Tag>>,
 }
 

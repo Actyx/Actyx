@@ -64,11 +64,11 @@ impl FromStr for Authority {
 
 #[derive(StructOpt, Debug)]
 pub struct ConsoleOpt {
-    #[structopt(name = "NODE", required = true)]
     /// the IP address or <host>:<admin port> of the node to perform the operation on.
+    #[structopt(name = "NODE", required = true)]
     authority: Authority,
-    #[structopt(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     /// File from which the identity (private key) for authentication is read.
+    #[structopt(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     identity: Option<KeyPathWrapper>,
 }
 

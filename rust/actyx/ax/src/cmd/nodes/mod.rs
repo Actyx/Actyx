@@ -11,11 +11,11 @@ use structopt::StructOpt;
 #[structopt(version = env!("AX_CLI_VERSION"))]
 /// get information about nodes
 pub enum NodesOpts {
-    #[structopt(no_version)]
     /// Show node info and status
-    Ls(LsOpts),
     #[structopt(no_version)]
+    Ls(LsOpts),
     /// Show node details and connections
+    #[structopt(no_version)]
     Inspect(InspectOpts),
 }
 

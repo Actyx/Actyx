@@ -32,11 +32,11 @@ pub struct GetOpt {
 #[derive(StructOpt, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct GetSettingsCommand {
-    #[structopt(long = "no-defaults")]
     /// Only return settings explicitly set by the user and skip default values.
+    #[structopt(long = "no-defaults")]
     no_defaults: bool,
-    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
     /// Scope from which you want to get the settings.
+    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
     scope: settings::Scope,
 }
 

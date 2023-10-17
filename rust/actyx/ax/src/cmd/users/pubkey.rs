@@ -10,8 +10,8 @@ use util::formats::ActyxOSResult;
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
 pub struct PubkeyOpts {
-    #[structopt(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     /// File from which the identity (private key) for authentication is read.
+    #[structopt(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     identity: Option<KeyPathWrapper>,
 }
 

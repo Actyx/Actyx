@@ -109,22 +109,23 @@ fn parse_expires_in_as_duration(expires_in: &str) -> Result<chrono::Duration, an
     let captures = RE
         .captures(expires_in)
         .ok_or_else(|| anyhow::anyhow!("Failed to parse string."))?;
+    let mut duration = chrono::Duration::zero();
 
-    let get_i64_from_capture = |name: &str| {
-        captures
+    let mut add_from_captures = |name: &str, factor: i64, unit: fn(i64) -> chrono::Duration| {
+        let quantity = captures
             .name(name)
             .and_then(|m| m.as_str().parse::<i64>().ok())
-            .unwrap_or(0)
+            .unwrap_or(0);
+        duration = duration + unit(quantity * factor);
     };
 
-    let mut duration = chrono::Duration::zero();
-    duration = duration + chrono::Duration::days(365 * get_i64_from_capture("years"));
-    duration = duration + chrono::Duration::days(30 * get_i64_from_capture("months"));
-    duration = duration + chrono::Duration::days(7 * get_i64_from_capture("weeks"));
-    duration = duration + chrono::Duration::days(get_i64_from_capture("days"));
-    duration = duration + chrono::Duration::hours(get_i64_from_capture("hours"));
-    duration = duration + chrono::Duration::minutes(get_i64_from_capture("minutes"));
-    duration = duration + chrono::Duration::seconds(get_i64_from_capture("seconds"));
+    add_from_captures("years", 365, chrono::Duration::days);
+    add_from_captures("months", 30, chrono::Duration::days);
+    add_from_captures("weeks", 7, chrono::Duration::days);
+    add_from_captures("days", 1, chrono::Duration::days);
+    add_from_captures("hours", 1, chrono::Duration::hours);
+    add_from_captures("minutes", 1, chrono::Duration::minutes);
+    add_from_captures("seconds", 1, chrono::Duration::seconds);
 
     if duration.is_zero() {
         return Err(anyhow::anyhow!("Expiration interval must be bigger than zero"));

@@ -13,14 +13,14 @@ use structopt::StructOpt;
 #[structopt(version = env!("AX_CLI_VERSION"))]
 /// do not use until instructed by Actyx
 pub enum InternalOpts {
-    #[structopt(no_version)]
     /// Interact with ax trees
+    #[structopt(no_version)]
     Trees(TreesOpts),
-    #[structopt(no_version)]
     /// Request the node to shut down
-    Shutdown(ShutdownOpts),
     #[structopt(no_version)]
+    Shutdown(ShutdownOpts),
     /// Query the events API
+    #[structopt(no_version)]
     Events(EventsOpts),
 }
 

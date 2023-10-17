@@ -45,13 +45,13 @@ struct NoColor;
     version = env!("AX_VERSION"),
 )]
 struct Opts {
+    /// Path where to store all the data of the Actyx node.
     #[structopt(
         long,
         env = "ACTYX_PATH",
         long_help = "Path where to store all the data of the Actyx node. \
             Defaults to creating <current working dir>/actyx-data"
     )]
-    /// Path where to store all the data of the Actyx node.
     working_dir: Option<PathBuf>,
 
     #[structopt(flatten)]
@@ -60,13 +60,14 @@ struct Opts {
     #[structopt(short, long, hidden = true)]
     random: bool,
 
-    #[structopt(long)]
     /// This does not do anything; kept for backward-compatibility
+    #[structopt(long)]
     background: bool,
 
     #[structopt(long)]
     version: bool,
 
+    /// Control whether to use ANSI color sequences in log output.
     #[structopt(
         long,
         env = "ACTYX_COLOR",
@@ -75,9 +76,9 @@ struct Opts {
             (default is on, auto only uses colour when stderr is a terminal). \
             Defaults to 1."
     )]
-    /// Control whether to use ANSI color sequences in log output.
     log_color: Option<Color>,
 
+    /// Output logs as JSON objects (one per line)
     #[structopt(
         long,
         env = "ACTYX_LOG_JSON",
@@ -85,7 +86,6 @@ struct Opts {
             1, true, on or if stderr is not a terminal and the value is auto \
             (all case insensitive). Defaults to 0."
     )]
-    /// Output logs as JSON objects (one per line)
     log_json: Option<Color>,
 }
 

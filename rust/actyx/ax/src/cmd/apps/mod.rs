@@ -12,11 +12,11 @@ pub use sign::{create_signed_app_manifest, SignOpts};
 #[structopt(version = env!("AX_CLI_VERSION"))]
 /// manage app manifests
 pub enum AppsOpts {
-    #[structopt(no_version)]
     /// Create app or node license
-    License(LicenseOpts),
     #[structopt(no_version)]
+    License(LicenseOpts),
     /// Sign application manifest
+    #[structopt(no_version)]
     Sign(SignOpts),
 }
 

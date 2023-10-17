@@ -15,14 +15,14 @@ use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, Admi
 #[structopt(version = env!("AX_CLI_VERSION"))]
 /// show node overview
 pub struct LsOpts {
-    #[structopt(name = "NODE", required = true)]
     /// the IP address or <host>:<admin port> of the nodes to list.
+    #[structopt(name = "NODE", required = true)]
     authority: Vec<Authority>,
-    #[structopt(short, long)]
     /// File from which the identity (private key) for authentication is read.
+    #[structopt(short, long)]
     identity: Option<KeyPathWrapper>,
-    #[structopt(short, long, default_value = "5")]
     /// maximal wait time (in seconds, max. 255) for establishing a connection to the node
+    #[structopt(short, long, default_value = "5")]
     timeout: u8,
 }
 

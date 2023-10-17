@@ -42,8 +42,8 @@ pub struct UnsetOpt {
 #[derive(StructOpt, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct UnsetSettingsCommand {
-    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
     /// Scope for which you want to unset the settings; use `/` for the root scope.
+    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
     scope: settings::Scope,
 }
 

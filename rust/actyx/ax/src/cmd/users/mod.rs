@@ -16,17 +16,17 @@ use pubkey::PubkeyOpts;
 #[structopt(version = env!("AX_CLI_VERSION"))]
 /// manage user keys
 pub enum UsersOpts {
-    #[structopt(no_version)]
     /// Install a user key into /admin/authorizedUsers of a local Actyx node that is not currently running.
+    #[structopt(no_version)]
     AddKey(AddKeyOpts),
-    #[structopt(no_version)]
     /// Generate a new user key pair for interacting with an Actyx node.
+    #[structopt(no_version)]
     Keygen(KeygenOpts),
-    #[structopt(no_version)]
     /// Show public key corresponding to a private key.
-    Pubkey(PubkeyOpts),
     #[structopt(no_version)]
+    Pubkey(PubkeyOpts),
     /// Generate a new developer certificate.
+    #[structopt(no_version)]
     DevCert(DevCertOpts),
 }
 

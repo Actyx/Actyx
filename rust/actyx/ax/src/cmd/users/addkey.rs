@@ -75,10 +75,10 @@ impl AxCliCommand for UsersAddKey {
 #[structopt(version = env!("AX_CLI_VERSION"))]
 /// add own user key to a given Actyx data directory
 pub struct AddKeyOpts {
-    #[structopt(name = "PATH", required = true)]
     /// Path to the `actyx-data` folder you wish to modify
+    #[structopt(name = "PATH", required = true)]
     path: PathBuf,
-    #[structopt(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     /// File from which the identity (private key) for authentication is read.
+    #[structopt(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     identity: Option<KeyPathWrapper>,
 }
