@@ -1,4 +1,4 @@
-use certs::{AppLicenseType, Expiring, SignedAppLicense, SignedAppManifest};
+use certs::{AppLicenseType, AppManifest, Expiring, SignedAppLicense};
 use crypto::PublicKey;
 
 use crate::{
@@ -8,7 +8,7 @@ use crate::{
 use chrono::Utc;
 
 pub fn validate_signed_manifest(
-    manifest: &SignedAppManifest,
+    manifest: &AppManifest,
     ax_public_key: &PublicKey,
     licensing: &Licensing,
 ) -> Result<(), ApiError> {
@@ -16,7 +16,7 @@ pub fn validate_signed_manifest(
         .validate(ax_public_key)
         .map_err(|x| ApiError::InvalidManifest { msg: x.to_string() })?;
     if licensing.is_node_licensed(ax_public_key)? {
-        let app_id = manifest.get_app_id();
+        let app_id = manifest.app_id();
         let license = licensing
             .app_id_license(&app_id)
             .ok_or_else(|| ApiError::AppUnauthorized {
@@ -39,7 +39,7 @@ pub fn validate_signed_manifest(
 
         match license.license.license_type {
             AppLicenseType::Expiring(Expiring { expires_at, app_id }) => {
-                if app_id != manifest.app_id {
+                if app_id != manifest.app_id() {
                     Err(ApiError::AppUnauthorized {
                         app_id,
                         reason: UnauthorizedReason::WrongSubject,
@@ -67,12 +67,12 @@ mod tests {
 
     use super::*;
     use actyx_sdk::{app_id, AppId};
-    use certs::SignedAppManifest;
+    use certs::AppManifest;
     use crypto::{PrivateKey, PublicKey};
 
     struct TestFixture {
         ax_public_key: PublicKey,
-        signed_manifest: SignedAppManifest,
+        signed_manifest: AppManifest,
         node_license: String,
         expired_node_license: String,
         app_license: String,

@@ -1,8 +1,7 @@
+use crate::{developer_certificate::ManifestDeveloperCertificate, signature::Signature};
 use actyx_sdk::AppId;
 use crypto::{PrivateKey, PublicKey};
-use serde::{Deserialize, Serialize, Serializer};
-
-use crate::{developer_certificate::ManifestDeveloperCertificate, signature::Signature};
+use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -31,7 +30,7 @@ impl AppManifestSignature {
     }
 }
 
-fn serialize_signature<S: Serializer>(sig: &AppManifestSignature, s: S) -> Result<S::Ok, S::Error> {
+fn serialize_signature<S: Serializer>(sig: &Option<AppManifestSignature>, s: S) -> Result<S::Ok, S::Error> {
     let bytes = serde_cbor::to_vec(sig).map_err(serde::ser::Error::custom)?;
     s.serialize_str(&base64::encode(bytes))
 }
@@ -46,19 +45,50 @@ impl FromStr for AppManifestSignature {
     }
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+fn deserialize_signature<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<AppManifestSignature>, D::Error> {
+    let s = String::deserialize(deserializer)?;
+    let sig = s.parse::<AppManifestSignature>().map_err(D::Error::custom)?;
+    Ok(Some(sig))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct SignedAppManifest {
+pub struct AppManifestIo {
     pub app_id: AppId,
     pub display_name: String,
     pub version: String,
-    #[serde(serialize_with = "serialize_signature")]
-    #[serde(deserialize_with = "deserialize_signature")]
-    pub signature: AppManifestSignature,
+    #[serde(serialize_with = "serialize_signature", skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_signature", default)]
+    pub signature: Option<AppManifestSignature>,
 }
 
-impl SignedAppManifest {
-    pub fn new(
+impl From<AppManifest> for AppManifestIo {
+    fn from(value: AppManifest) -> Self {
+        value.0
+    }
+}
+
+impl TryFrom<AppManifestIo> for AppManifest {
+    type Error = String;
+
+    fn try_from(value: AppManifestIo) -> Result<Self, Self::Error> {
+        if value.signature.is_none() && !value.app_id.starts_with("com.example.") {
+            Err(format!(
+                "Trial app id needs to start with 'com.example.'. Got '{}'.",
+                value.app_id
+            ))
+        } else {
+            Ok(Self(value))
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(into = "AppManifestIo", try_from = "AppManifestIo")]
+pub struct AppManifest(AppManifestIo);
+
+impl AppManifest {
+    pub fn sign(
         app_id: AppId,
         display_name: String,
         version: String,
@@ -73,36 +103,71 @@ impl SignedAppManifest {
         };
         let dev_signature = Signature::new(&hash_input, dev_privkey)?;
         let manifest_signature = AppManifestSignature::new(dev_signature, dev_cert);
-        Ok(SignedAppManifest {
+        Ok(Self(AppManifestIo {
             app_id,
             display_name,
             version,
-            signature: manifest_signature,
+            signature: Some(manifest_signature),
+        }))
+    }
+
+    pub fn signed(app_id: AppId, display_name: String, version: String, signature: AppManifestSignature) -> Self {
+        Self(AppManifestIo {
+            app_id,
+            display_name,
+            version,
+            signature: Some(signature),
         })
     }
 
-    pub fn get_app_id(&self) -> AppId {
-        self.app_id.clone()
+    pub fn trial(app_id: AppId, display_name: String, version: String) -> anyhow::Result<Self> {
+        if !app_id.starts_with("com.example.") {
+            anyhow::bail!("Trial app id needs to start with 'com.example.'. Got '{}'.", app_id);
+        }
+        Ok(Self(AppManifestIo {
+            app_id,
+            display_name,
+            version,
+            signature: None,
+        }))
+    }
+
+    pub fn app_id(&self) -> AppId {
+        self.0.app_id.clone()
+    }
+
+    pub fn display_name(&self) -> &str {
+        &self.0.display_name
+    }
+
+    pub fn version(&self) -> &str {
+        &self.0.version
+    }
+
+    pub fn is_signed(&self) -> bool {
+        self.0.signature.is_some()
     }
 
     pub fn validate(&self, ax_public_key: &PublicKey) -> anyhow::Result<()> {
-        // Check signature on the dev cert
-        self.signature
-            .dev_cert
-            .validate(ax_public_key)
-            .map_err(|x| anyhow::Error::msg(format!("Failed to validate developer certificate. {}", x)))?;
-        // Check app id matches allowed domains
-        self.signature.dev_cert.validate_app_id(&self.app_id)?;
-        // Check manifest hash signature
-        let hash_input = AppManifestSignatureProps {
-            app_id: self.app_id.clone(),
-            display_name: self.display_name.clone(),
-            version: self.version.clone(),
-        };
-        self.signature
-            .dev_signature
-            .verify(&hash_input, &self.signature.dev_cert.dev_public_key())
-            .map_err(|x| anyhow::Error::msg(format!("Failed to validate app manifest. {}", x)))?;
+        if let Some(signature) = &self.0.signature {
+            // Check signature on the dev cert
+            signature
+                .dev_cert
+                .validate(ax_public_key)
+                .map_err(|x| anyhow::Error::msg(format!("Failed to validate developer certificate. {}", x)))?;
+            // Check app id matches allowed domains
+            signature.dev_cert.validate_app_id(&self.0.app_id)?;
+            // Check manifest hash signature
+            let hash_input = AppManifestSignatureProps {
+                app_id: self.0.app_id.clone(),
+                display_name: self.0.display_name.clone(),
+                version: self.0.version.clone(),
+            };
+            signature
+                .dev_signature
+                .verify(&hash_input, &signature.dev_cert.dev_public_key())
+                .map_err(|x| anyhow::Error::msg(format!("Failed to validate app manifest. {}", x)))?;
+        }
         Ok(())
     }
 }
@@ -118,10 +183,9 @@ mod tests {
         app_domain::AppDomain,
         developer_certificate::{DeveloperCertificateInput, ManifestDeveloperCertificate},
         signature::Signature,
-        AppManifest,
     };
 
-    use super::{AppManifestSignature, AppManifestSignatureProps, SignedAppManifest};
+    use super::{AppManifest, AppManifestSignature, AppManifestSignatureProps};
 
     struct TestFixture {
         ax_public_key: PublicKey,
@@ -160,7 +224,7 @@ mod tests {
     #[test]
     fn serialize() {
         let x = setup();
-        let manifest = SignedAppManifest::new(
+        let manifest = AppManifest::sign(
             x.sig_props.app_id,
             x.sig_props.display_name,
             x.sig_props.version,
@@ -175,10 +239,8 @@ mod tests {
     #[test]
     fn deserialize_and_eq() {
         let x = setup();
-        let AppManifest::Signed(manifest) = serde_json::from_value(x.serialized_manifest).unwrap() else {
-            panic!("failed to deserialize")
-        };
-        let expected = SignedAppManifest::new(
+        let manifest = serde_json::from_value::<AppManifest>(x.serialized_manifest).unwrap();
+        let expected = AppManifest::sign(
             x.sig_props.app_id,
             x.sig_props.display_name,
             x.sig_props.version,
@@ -192,9 +254,7 @@ mod tests {
     #[test]
     fn validate() {
         let x = setup();
-        let AppManifest::Signed(manifest) = serde_json::from_value(x.serialized_manifest).unwrap() else {
-            panic!("failed to deserialize")
-        };
+        let manifest = serde_json::from_value::<AppManifest>(x.serialized_manifest).unwrap();
         let result = manifest.validate(&x.ax_public_key);
         assert!(matches!(result, Ok(())), "valid signature");
     }
@@ -202,9 +262,7 @@ mod tests {
     #[test]
     fn should_fail_validation_when_using_wrong_ax_public_key() {
         let x = setup();
-        let AppManifest::Signed(manifest) = serde_json::from_value(x.serialized_manifest).unwrap() else {
-            panic!("failed to deserialize")
-        };
+        let manifest = serde_json::from_value::<AppManifest>(x.serialized_manifest).unwrap();
         let result = manifest.validate(&PrivateKey::generate().into()).unwrap_err();
         assert_eq!(
             result.to_string(),
@@ -213,7 +271,7 @@ mod tests {
     }
 
     #[test]
-    fn should_fail_validation_for_tempered_props() {
+    fn should_fail_validation_for_tampered_props() {
         let x = setup();
         vec![
             ("com.actyx.test-app", "com.actyx.another-test-app"),
@@ -222,11 +280,8 @@ mod tests {
         ]
         .into_iter()
         .for_each(|(from, to)| {
-            let AppManifest::Signed(manifest) =
-                serde_json::from_str(&x.serialized_manifest.to_string().replace(from, to)).unwrap()
-            else {
-                panic!("failed to deserialize")
-            };
+            let manifest: AppManifest =
+                serde_json::from_str(&x.serialized_manifest.to_string().replace(from, to)).unwrap();
             let result = manifest.validate(&PrivateKey::generate().into()).unwrap_err();
             assert_eq!(
                 result.to_string(),
@@ -244,5 +299,26 @@ mod tests {
         let dev_cert = ManifestDeveloperCertificate::new(input, private).unwrap();
         let signature = AppManifestSignature::new(dev_signature, dev_cert);
         assert_eq!(signature.sig_version, 0);
+    }
+
+    #[test]
+    fn should_succeed_creating_and_serializing_trial_manifest() {
+        let manifest =
+            AppManifest::trial(app_id!("com.example.test-app"), "display name".into(), "v0.0.1".into()).unwrap();
+        let serialized = serde_json::to_string(&manifest).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{"appId":"com.example.test-app","displayName":"display name","version":"v0.0.1"}"#
+        )
+    }
+
+    #[test]
+    fn should_fail_creating_trial_manifest() {
+        let err =
+            AppManifest::trial(app_id!("com.actyx.test-app"), "display name".into(), "v0.0.1".into()).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Trial app id needs to start with 'com.example.'. Got 'com.actyx.test-app'."
+        );
     }
 }

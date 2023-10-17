@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use axlib::cmd::apps::{create_signed_app_manifest, SignOpts};
-use certs::SignedAppManifest;
+use certs::AppManifest;
 use neon::{
     context::{Context, FunctionContext},
     result::JsResult,
@@ -20,7 +20,7 @@ struct Args {
 }
 pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let ud = cx.undefined();
-    run_task::<Args, SignedAppManifest>(
+    run_task::<Args, AppManifest>(
         cx,
         Box::new(
             |mut _tx,

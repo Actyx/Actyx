@@ -1,6 +1,5 @@
 use crate::{cmd::AxCliCommand, private_key::AxPrivateKey};
-use actyx_sdk::AppManifest;
-use certs::{DeveloperCertificate, SignedAppManifest};
+use certs::{AppManifest, DeveloperCertificate};
 use futures::{stream, Stream};
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;
@@ -16,7 +15,7 @@ pub struct SignOpts {
     pub path_to_manifest: PathBuf,
 }
 
-pub fn create_signed_app_manifest(opts: SignOpts) -> ActyxOSResult<SignedAppManifest> {
+pub fn create_signed_app_manifest(opts: SignOpts) -> ActyxOSResult<AppManifest> {
     let dev_cert = fs::read_to_string(&opts.path_to_certificate)
         .ax_err_ctx(ActyxOSCode::ERR_IO, "Failed to read developer certificate")?;
     let dev_cert: DeveloperCertificate = serde_json::from_str(&dev_cert).ax_err_ctx(
@@ -32,10 +31,10 @@ pub fn create_signed_app_manifest(opts: SignOpts) -> ActyxOSResult<SignedAppMani
     let app_manifest: AppManifest = serde_json::from_str(&app_manifest)
         .ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "Failed to deserialize app manifest")?;
 
-    let signed_manifest = SignedAppManifest::new(
-        app_manifest.app_id,
-        app_manifest.display_name,
-        app_manifest.version,
+    let signed_manifest = AppManifest::sign(
+        app_manifest.app_id(),
+        app_manifest.display_name().to_owned(),
+        app_manifest.version().to_owned(),
         dev_privkey,
         dev_cert.manifest_dev_cert(),
     )
@@ -47,7 +46,7 @@ pub fn create_signed_app_manifest(opts: SignOpts) -> ActyxOSResult<SignedAppMani
     Ok(signed_manifest)
 }
 
-async fn run(opts: SignOpts) -> ActyxOSResult<SignedAppManifest> {
+async fn run(opts: SignOpts) -> ActyxOSResult<AppManifest> {
     create_signed_app_manifest(opts)
 }
 
@@ -55,7 +54,7 @@ pub struct AppsSign();
 
 impl AxCliCommand for AppsSign {
     type Opt = SignOpts;
-    type Output = SignedAppManifest;
+    type Output = AppManifest;
     fn run(opts: SignOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let r = Box::pin(run(opts));
         Box::new(stream::once(r))

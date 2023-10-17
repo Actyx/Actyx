@@ -93,10 +93,11 @@ fn validate_manifest(
     ax_public_key: &PublicKey,
     licensing: &Licensing,
 ) -> Result<(AppMode, AppId, String), ApiError> {
-    match manifest {
-        AppManifest::Signed(x) => validate_signed_manifest(x, ax_public_key, licensing)
-            .map(|_| (AppMode::Signed, x.get_app_id(), x.version.clone())),
-        AppManifest::Trial(x) => Ok((AppMode::Trial, x.get_app_id(), x.version.clone())),
+    if manifest.is_signed() {
+        validate_signed_manifest(manifest, ax_public_key, licensing)
+            .map(|_| (AppMode::Signed, manifest.app_id(), manifest.version().to_owned()))
+    } else {
+        Ok((AppMode::Trial, manifest.app_id(), manifest.version().to_owned()))
     }
 }
 
@@ -119,7 +120,7 @@ pub(crate) fn route(node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,),
 #[cfg(test)]
 mod tests {
     use actyx_sdk::app_id;
-    use certs::{AppManifest, TrialAppManifest};
+    use certs::AppManifest;
     use chrono::Utc;
     use crypto::{KeyStore, PrivateKey, PublicKey};
     use hyper::http;
@@ -148,12 +149,12 @@ mod tests {
 
     struct TestFixture {
         ax_public_key: PublicKey,
-        trial_manifest: TrialAppManifest,
+        trial_manifest: AppManifest,
     }
 
     fn setup() -> TestFixture {
         let ax_private_key: PrivateKey = "0WBFFicIHbivRZXAlO7tPs7rCX6s7u2OIMJ2mx9nwg0w=".parse().unwrap();
-        let trial_manifest = TrialAppManifest::new(
+        let trial_manifest = AppManifest::trial(
             app_id!("com.example.sample"),
             "display name".to_string(),
             "version".to_string(),
@@ -170,7 +171,7 @@ mod tests {
         let mut key_store = KeyStore::default();
         let node_key = key_store.generate_key_pair().unwrap();
         let key_store = Arc::new(RwLock::new(key_store));
-        let manifest = TrialAppManifest::new(
+        let manifest = AppManifest::trial(
             app_id!("com.example.my-app"),
             "display name".to_string(),
             "1.0.0".to_string(),
@@ -223,15 +224,14 @@ mod tests {
     #[test]
     fn validate_manifest_should_succeed_for_trial() {
         let x = setup();
-        let result = validate_manifest(
-            &AppManifest::Trial(x.trial_manifest.clone()),
-            &x.ax_public_key,
-            &Licensing::default(),
-        )
-        .unwrap();
+        let result = validate_manifest(&x.trial_manifest, &x.ax_public_key, &Licensing::default()).unwrap();
         assert_eq!(
             result,
-            (AppMode::Trial, x.trial_manifest.get_app_id(), x.trial_manifest.version)
+            (
+                AppMode::Trial,
+                x.trial_manifest.app_id(),
+                x.trial_manifest.version().to_owned()
+            )
         );
     }
 }
