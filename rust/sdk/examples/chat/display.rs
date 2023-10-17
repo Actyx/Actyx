@@ -6,12 +6,12 @@ use acto::{
 use chrono::{DateTime, Utc};
 use ratatui::{
     prelude::{Alignment, Constraint, CrosstermBackend, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
     Frame, Terminal,
 };
-use std::io;
+use std::{collections::VecDeque, convert::TryInto, io};
 use tui_textarea::TextArea;
 
 mod guard {
@@ -53,7 +53,15 @@ pub enum Display {
     Messages(Reader<Vec<Message>>),
     NotConnected(String),
     UpdateIdentity(Reader<Identity>),
+    Scroll(i8),
     Connected,
+}
+
+#[derive(Default)]
+struct MessageScrollState {
+    /// vertical_scroll_from_the_bottom
+    pub last_recorded_par_height: Option<u16>,
+    pub vscroll_from_bottom: u16,
 }
 
 pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
@@ -63,6 +71,7 @@ pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
     let mut identity = Writer::new(Identity::default()).reader();
     let mut text_area = Writer::new(TextArea::default()).reader();
     let mut messages = Writer::new(Vec::new()).reader();
+    let mut scroll_state = MessageScrollState::default();
     let mut not_connected = None;
 
     while let ActoInput::Message(msg) = cell.recv().await {
@@ -72,9 +81,21 @@ pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
             Display::NotConnected(e) => not_connected = Some(e),
             Display::Connected => not_connected = None,
             Display::UpdateIdentity(i) => identity = i,
+            Display::Scroll(i) => {
+                let scroll_val = if i >= 0 {
+                    scroll_state
+                        .vscroll_from_bottom
+                        .checked_add(i as u16)
+                        .unwrap_or(u16::MAX)
+                } else {
+                    scroll_state.vscroll_from_bottom.checked_sub((-i) as u16).unwrap_or(0)
+                };
+
+                scroll_state.vscroll_from_bottom = scroll_val;
+            }
         }
         let res = terminal.draw(|f| {
-            render(f, &identity, &text_area, &messages, &not_connected);
+            render(f, &identity, &text_area, &messages, &mut scroll_state, &not_connected);
         });
         if let Err(e) = res {
             tracing::error!("failed to draw terminal: {}", e);
@@ -88,26 +109,32 @@ fn render<W: io::Write>(
     identity: &Reader<Identity>,
     text_area: &Reader<TextArea>,
     messages: &Reader<Vec<Message>>,
+    scroll_state: &mut MessageScrollState,
     not_connected: &Option<String>,
 ) {
     let is_editing = identity.project(|identity| identity.edit.is_some());
     if is_editing {
         render_editing_identity(f, identity);
     } else {
-        render_chat(f, text_area, messages, not_connected);
+        render_chat(f, text_area, messages, scroll_state, not_connected);
     }
 }
 
 fn render_editing_identity<W: io::Write>(f: &mut Frame<CrosstermBackend<W>>, identity: &Reader<Identity>) {
     let size = f.size();
+    let pad = (size.height / 2).checked_sub(2).unwrap_or(0);
     let layout = Layout::default()
         .direction(ratatui::prelude::Direction::Vertical)
-        .constraints([ratatui::prelude::Constraint::Length(1)])
+        .constraints([
+            ratatui::prelude::Constraint::Length(pad),
+            ratatui::prelude::Constraint::Max(3),
+            ratatui::prelude::Constraint::Min(0),
+        ])
         .split(size);
 
     identity.project(|identity| {
         if let Some(edit) = &identity.edit {
-            f.render_widget(edit.widget(), layout[0]);
+            f.render_widget(edit.widget(), layout[1]);
         }
     });
 }
@@ -116,6 +143,7 @@ fn render_chat<W: io::Write>(
     f: &mut Frame<CrosstermBackend<W>>,
     text_area: &Reader<TextArea>,
     messages: &Reader<Vec<Message>>,
+    scroll_state: &mut MessageScrollState,
     not_connected: &Option<String>,
 ) {
     let size = f.size();
@@ -129,8 +157,63 @@ fn render_chat<W: io::Write>(
         .split(size);
 
     messages.project(|msgs| {
-        let lines = msgs.into_iter().map(message_to_line).collect::<Vec<_>>();
-        f.render_widget(Paragraph::new(lines), layout[0]);
+        let message_text_rect = layout[0];
+        let message_text_rect_width = message_text_rect.width;
+        let message_text_rect_height = message_text_rect.height;
+        tracing::info!("paragraph_available_width: {}", message_text_rect_width);
+        let mut lines = msgs
+            .into_iter()
+            .flat_map(|x| message_to_lines(x, message_text_rect_width))
+            .collect::<Vec<_>>();
+
+        // FIXME Maybe there is a better way to calculate height using Widget::render, Buffer, and binary search?
+        // That way using Paragraph::wrap can be possible
+        let text_height: u16 = lines.len().try_into().unwrap_or(0);
+
+        let scroll_range = text_height.checked_sub(message_text_rect_height).unwrap_or(0);
+        let user_scroll_y_from_bottom: u16 = {
+            // Is there a height shift from previous render?
+            let height_shift_on_update = if let Some(prev_height) = scroll_state.last_recorded_par_height {
+                text_height.checked_sub(prev_height).unwrap_or(0)
+            } else {
+                0
+            };
+
+            scroll_state.last_recorded_par_height = Some(text_height);
+
+            // if vscroll_from_bottom is not 0, it must shift up, because UX
+            if scroll_state.vscroll_from_bottom > 0 {
+                scroll_state.vscroll_from_bottom += height_shift_on_update;
+            }
+
+            scroll_state.vscroll_from_bottom = scroll_state.vscroll_from_bottom.clamp(0, scroll_range);
+
+            scroll_state.vscroll_from_bottom
+        };
+
+        let scroll_y = scroll_range.checked_sub(user_scroll_y_from_bottom).unwrap_or(0);
+
+        if text_height > message_text_rect_height {
+            if user_scroll_y_from_bottom != 0 {
+                let visible_bottom = scroll_y + message_text_rect_height - 1;
+                if let Some(last_line) = lines.get_mut(visible_bottom as usize) {
+                    *last_line = Line::from(vec![Span::from("Press Down to scroll down (Hold Ctrl to Boost)")])
+                        .alignment(Alignment::Center);
+                }
+            }
+
+            if scroll_y != 0 {
+                let visible_top = scroll_y;
+                if let Some(first_line) = lines.get_mut(visible_top as usize) {
+                    *first_line = Line::from(vec![Span::from("Press Up to scroll up (Hold Ctrl to Boost)")])
+                        .alignment(Alignment::Center);
+                }
+            }
+        }
+
+        let paragraph = Paragraph::new(lines).dark_gray().scroll((scroll_y, 0));
+
+        f.render_widget(paragraph, message_text_rect);
     });
 
     text_area.project(|t| f.render_widget(t.widget(), layout[1]));
@@ -158,15 +241,61 @@ fn render_chat<W: io::Write>(
     }
 }
 
-fn message_to_line(msg: &Message) -> Line {
+// FIXME sometimes, Scrollbar from ratatui doesn't work for bottom-to-top scrolling
+//  because there is no way to calculate the height of a text
+//  meanwhile Paragraph::wrap has an opaque wrapping mechanism
+fn split_into_lines(spans: VecDeque<Span>, max_width: u16) -> Vec<Line> {
+    let max_width_as_usize: usize = max_width.into();
+    let mut lines = vec![];
+    let mut current_line = Line::default();
+    let mut current_line_width: usize = 0;
+
+    for span in spans {
+        let Span { content, style } = span;
+        let mut content: String = content.into();
+        while content.len() > 0 {
+            let remaining_line_width = max_width_as_usize.checked_sub(current_line_width).unwrap_or(0);
+
+            if remaining_line_width == 0 {
+                let line = std::mem::replace(&mut current_line, Line::default());
+                lines.push(line);
+                current_line_width = 0;
+            } else {
+                let split_point = usize::min(remaining_line_width, content.len());
+                let (pushable_content, remaining_content) = {
+                    let (a, b) = content.split_at(split_point);
+                    (String::from(a), String::from(b))
+                };
+
+                let pushable_content_length = pushable_content.len();
+                let mut new_span = Span::from(pushable_content);
+                new_span.patch_style(style.clone());
+
+                current_line.spans.push(new_span);
+                current_line_width += pushable_content_length;
+
+                content = remaining_content
+            }
+        }
+    }
+
+    lines.push(current_line);
+
+    lines
+}
+
+fn message_to_lines(msg: &Message, max_width: u16) -> Vec<Line> {
     let time = DateTime::<Utc>::from(msg.time).to_rfc3339();
-    Line::from(vec![
-        Span::styled(time, Style::new().add_modifier(Modifier::ITALIC)),
-        Span::raw(" "),
-        Span::styled(&msg.from, Style::new().add_modifier(Modifier::BOLD)),
-        Span::raw(": "),
-        Span::raw(&msg.text),
-    ])
+    split_into_lines(
+        VecDeque::from([
+            Span::styled(time, Style::new().add_modifier(Modifier::ITALIC)),
+            Span::raw(" "),
+            Span::styled(&msg.from, Style::new().add_modifier(Modifier::BOLD)),
+            Span::raw(": "),
+            Span::raw(&msg.text),
+        ]),
+        max_width,
+    )
 }
 
 /// helper function to create a centered rect using up certain percentage of the available rect `r`

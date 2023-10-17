@@ -67,10 +67,10 @@ pub async fn cmdline(
                     _ => continue,
                 };
 
-                let is_editing_identity = { (identity.read()).edit.clone() };
+                let is_editing_identity = { (identity.read()).edit.is_some() };
                 match is_editing_identity {
                     // When editing identity
-                    Some(identity_buffer_value) => {
+                    true => {
                         {
                             let mut identity = identity.write();
                             match key.code {
@@ -78,7 +78,9 @@ pub async fn cmdline(
                                     identity.edit = None;
                                 }
                                 KeyCode::Enter => {
-                                    identity.val = identity_buffer_value;
+                                    if let Some(identity_buffer_value) = identity.edit.take() {
+                                        identity.val = identity_buffer_value;
+                                    }
                                 }
                                 _ => {
                                     if let Some(edit) = &mut identity.edit {
@@ -90,8 +92,30 @@ pub async fn cmdline(
                         display.send(Display::UpdateIdentity(identity.reader()));
                     }
                     // When chatting
-                    None => {
+                    false => {
                         match key.code {
+                            KeyCode::Down => {
+                                display.send(Display::Scroll(
+                                    -1 * {
+                                        if key.modifiers.contains(KeyModifiers::CONTROL) {
+                                            10
+                                        } else {
+                                            1
+                                        }
+                                    },
+                                ));
+                            }
+                            KeyCode::Up => {
+                                display.send(Display::Scroll(
+                                    1 * {
+                                        if key.modifiers.contains(KeyModifiers::CONTROL) {
+                                            10
+                                        } else {
+                                            1
+                                        }
+                                    },
+                                ));
+                            }
                             KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                                 {
                                     let mut identity = identity.write();
