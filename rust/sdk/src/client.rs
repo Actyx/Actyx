@@ -28,6 +28,20 @@ use crate::{
     AppManifest, NodeId, OffsetMap,
 };
 
+use std::future;
+
+use futures::{stream::BoxStream, StreamExt};
+
+use crate::{
+    app_id,
+    client::{to_lines, WithContext},
+    service::{
+        Order, QueryRequest, QueryResponse, SessionId, StartFrom, SubscribeMonotonicRequest,
+        SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
+    },
+    ActyxClient, OffsetMap,
+};
+
 #[cfg(feature = "with-tokio")]
 use rand::Rng;
 #[cfg(feature = "with-tokio")]
@@ -319,18 +333,7 @@ impl Ax {
             })
         }
     }
-}
 
-impl Debug for Ax {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Ax")
-            .field("base_url", &self.base_url.as_str())
-            .field("app_manifest", &self.app_manifest)
-            .finish()
-    }
-}
-
-impl ActyxClient {
     /// Returns known offsets across local and replicated streams.
     ///
     /// If an authorization error (code 401) is returned, it will try to re-authenticate.
@@ -376,143 +379,25 @@ impl ActyxClient {
         })?)
     }
 
-    /// Query events known at the time the request was received by the service.
-    ///
-    /// If `opts.is_none()` then this call is equivalent to the following:
-    /// ```no_run
-    /// query(
-    ///     query, // Your query
-    ///     Some(
-    ///         QueryOpts {
-    ///             lower_bound: None,
-    ///             upper_bound: None,
-    ///             order: Order::Asc,
-    ///         }
-    ///     )
-    /// )
-    /// ```
-    /// In plain english:
-    ///
-    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
-    /// If the service is unavailable (code 503), this method will retry to perform the
-    /// request up to 10 times with exponentially increasing delay - currently,
-    /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn query<Q: Into<String> + Send>(
-        &self,
-        query: Q,
-        opts: Option<QueryOpts>,
-    ) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
-        let request = if let Some(opts) = opts {
-            QueryRequest {
-                query: query.into(),
-                lower_bound: opts.lower_bound,
-                upper_bound: opts.upper_bound,
-                order: opts.order,
-            }
-        } else {
-            QueryRequest {
-                query: query.into(),
-                lower_bound: None,
-                upper_bound: None,
-                order: Order::Asc,
-            }
-        };
-        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self
-            .do_request(|c| c.post(self.events_url("query")).json(&body))
-            .await?;
-        let res = to_lines(response.bytes_stream())
-            .map(|bs| serde_json::from_slice(bs.as_ref()))
-            // FIXME this swallows deserialization errors, silently dropping event envelopes
-            .filter_map(|res| future::ready(res.ok()));
-        Ok(res.boxed())
+    pub fn query<Q: Into<String> + Send>(self, query: Q) -> Query {
+        Query::new(self, query)
     }
 
-    /// Suscribe to events that are currently known by the service followed by new "live" events.
-    ///
-    /// If `opts.is_none()` then this call is equivalent to the following:
-    /// ```no_run
-    /// subscribe(
-    ///     query, // Your query
-    ///     Some(
-    ///         SubscribeOpts { lower_bound: None }
-    ///     )
-    /// )
-    /// ```
-    /// In plain english: subscribe using the provided query, reading _all_ events from the current session.
-    ///
-    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
-    /// If the service is unavailable (code 503), this method will retry to perform the
-    /// request up to 10 times with exponentially increasing delay - currently,
-    /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn subscribe<Q: Into<String> + Send>(
-        &self,
-        query: Q,
-        opts: Option<SubscribeOpts>,
-    ) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
-        let request = SubscribeRequest {
-            query: query.into(),
-            lower_bound: opts.map(|opts| opts.lower_bound).unwrap_or_default(),
-        };
-        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self
-            .do_request(|c| c.post(self.events_url("subscribe")).json(&body))
-            .await?;
-        let res = to_lines(response.bytes_stream())
-            .map(|bs| serde_json::from_slice(bs.as_ref()))
-            // FIXME this swallows deserialization errors, silently dropping event envelopes
-            .filter_map(|res| future::ready(res.ok()));
-        Ok(res.boxed())
+    pub fn subscribe<Q: Into<String> + Send>(self, query: Q) -> Subscribe {
+        Subscribe::new(self, query)
     }
 
-    /// Subscribe to events that are currently known by the service followed by new "live" events until
-    /// the service learns about events that need to be sorted earlier than an event already received.
-    ///
-    /// If `opts.is_none()` then this call is equivalent to the following:
-    /// ```no_run
-    /// subscribe_monotonic(
-    ///     query, // Your query
-    ///     Some(
-    ///         SubscribeMonotonicOpts {
-    ///             from: StartFrom::LowerBound(OffsetMap::empty()),
-    ///             session: SessionId::from("me")
-    ///         }
-    ///     )
-    /// )
-    /// ```
-    /// In plain english: subscribe using the provided query, reading _all_ events from the current session.
-    ///
-    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
-    /// If the service is unavailable (code 503), this method will retry to perform the
-    /// request up to 10 times with exponentially increasing delay - currently,
-    /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn subscribe_monotonic<Q: Into<String> + Send>(
-        &self,
-        query: Q,
-        opts: Option<SubscribeMonotonicOpts>,
-    ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        let request = if let Some(opts) = opts {
-            SubscribeMonotonicRequest {
-                query: query.into(),
-                from: opts.from,
-                session: opts.session,
-            }
-        } else {
-            SubscribeMonotonicRequest {
-                query: query.into(),
-                from: StartFrom::LowerBound(OffsetMap::empty()),
-                session: SessionId::from("me"),
-            }
-        };
-        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self
-            .do_request(|c| c.post(self.events_url("subscribe_monotonic")).json(&body))
-            .await?;
-        let res = to_lines(response.bytes_stream())
-            .map(|bs| serde_json::from_slice(bs.as_ref()))
-            // FIXME this swallows deserialization errors, silently dropping event envelopes
-            .filter_map(|res| future::ready(res.ok()));
-        Ok(res.boxed())
+    pub fn subscribe_monotonic<Q: Into<String> + Send>(self, query: Q) -> SubscribeMonotonic {
+        SubscribeMonotonic::new(self, query)
+    }
+}
+
+impl Debug for ActyxClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ActyxClient")
+            .field("base_url", &self.base_url.as_str())
+            .field("app_manifest", &self.app_manifest)
+            .finish()
     }
 }
 
@@ -593,4 +478,148 @@ impl From<(String, serde_cbor::Error)> for AxError {
             context: e.0,
         }
     }
+}
+
+struct Query {
+    client: ActyxClient,
+    request: QueryRequest,
+}
+
+impl Query {
+    fn new<Q: Into<String>>(client: ActyxClient, query: Q) -> Self {
+        Self {
+            client,
+            request: QueryRequest {
+                query: query.into(),
+                lower_bound: Some(OffsetMap::empty()),
+                upper_bound: None,
+                order: Order::Asc,
+            },
+        }
+    }
+
+    pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
+        self.request.lower_bound = Some(lower_bound);
+        self
+    }
+
+    pub fn with_upper_bound(mut self, upper_bound: OffsetMap) -> Self {
+        self.request.upper_bound = Some(upper_bound);
+        self
+    }
+
+    pub fn with_order(mut self, order: Order) -> Self {
+        self.request.order = order;
+        self
+    }
+
+    pub async fn execute(self) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
+        let body = serde_json::to_value(&self.request).context(|| format!("serializing {:?}", &self.request))?;
+        let response = self
+            .client
+            .do_request(|c| c.post(self.client.events_url("query")).json(&body))
+            .await?;
+        let res = to_lines(response.bytes_stream())
+            .map(|bs| serde_json::from_slice(bs.as_ref()))
+            // FIXME this swallows deserialization errors, silently dropping event envelopes
+            .filter_map(|res| future::ready(res.ok()));
+        Ok(res.boxed())
+    }
+}
+
+struct Subscribe {
+    client: ActyxClient,
+    request: SubscribeRequest,
+}
+
+impl Subscribe {
+    fn new<Q: Into<String>>(client: ActyxClient, query: Q) -> Self {
+        Self {
+            client,
+            request: SubscribeRequest {
+                query: query.into(),
+                lower_bound: Some(OffsetMap::empty()),
+            },
+        }
+    }
+
+    fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
+        self.request.lower_bound = Some(lower_bound);
+        self
+    }
+
+    async fn execute(self) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
+        let body = serde_json::to_value(&self.request).context(|| format!("serializing {:?}", &self.request))?;
+        let response = self
+            .client
+            .do_request(|c| c.post(self.client.events_url("subscribe")).json(&body))
+            .await?;
+        let res = to_lines(response.bytes_stream())
+            .map(|bs| serde_json::from_slice(bs.as_ref()))
+            // FIXME this swallows deserialization errors, silently dropping event envelopes
+            .filter_map(|res| future::ready(res.ok()));
+        Ok(res.boxed())
+    }
+}
+
+struct SubscribeMonotonic {
+    client: ActyxClient,
+    request: SubscribeMonotonicRequest,
+}
+
+impl SubscribeMonotonic {
+    fn new<Q: Into<String>>(client: ActyxClient, query: Q) -> Self {
+        Self {
+            client,
+            request: SubscribeMonotonicRequest {
+                query: query.into(),
+                session: SessionId::from("me"),
+                from: StartFrom::LowerBound(OffsetMap::empty()),
+            },
+        }
+    }
+
+    fn with_session_id<T: Into<SessionId>>(mut self, session_id: T) -> Self {
+        self.request.session = session_id.into();
+        self
+    }
+
+    fn with_start_from(mut self, start_from: StartFrom) -> Self {
+        self.request.from = start_from;
+        self
+    }
+
+    async fn execute(self) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
+        let body = serde_json::to_value(&self.request).context(|| format!("serializing {:?}", &self.request))?;
+        let response = self
+            .client
+            .do_request(|c| c.post(self.client.events_url("subscribe_monotonic")).json(&body))
+            .await?;
+        let res = to_lines(response.bytes_stream())
+            .map(|bs| serde_json::from_slice(bs.as_ref()))
+            // FIXME this swallows deserialization errors, silently dropping event envelopes
+            .filter_map(|res| future::ready(res.ok()));
+        Ok(res.boxed())
+    }
+}
+
+async fn test() {
+    let client = ActyxClient::new(
+        "localhost:4454".parse().unwrap(),
+        crate::AppManifest {
+            app_id: app_id!("com.example.hey"),
+            display_name: "Test".to_string(),
+            version: "0.0.1".to_string(),
+            signature: None,
+        },
+    )
+    .await
+    .unwrap();
+    let builder = Builder(client);
+    builder
+        .query("FROM allEvents")
+        .with_order(Order::Desc)
+        .execute()
+        .await
+        .unwrap();
 }
