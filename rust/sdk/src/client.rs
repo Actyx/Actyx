@@ -27,11 +27,11 @@ use std::time::Duration;
 use crate::{
     app_id,
     service::{
-        AuthenticationResponse, FilesGetResponse, OffsetsResponse, Order, PublishRequest, PublishResponse,
-        QueryRequest, QueryResponse, SessionId, StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
-        SubscribeRequest, SubscribeResponse,
+        AuthenticationResponse, FilesGetResponse, OffsetsResponse, Order, PublishEvent, PublishRequest,
+        PublishResponse, QueryRequest, QueryResponse, SessionId, StartFrom, SubscribeMonotonicRequest,
+        SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    AppManifest, NodeId, OffsetMap,
+    AppManifest, NodeId, OffsetMap, Payload, TagSet,
 };
 
 /// Error type that is returned in the response body by the Event Service when requests fail
@@ -279,28 +279,8 @@ impl Ax {
         })?)
     }
 
-    /// Publishes a set of new events.
-    ///
-    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
-    /// If the service is unavailable (code 503), this method will retry to perform the
-    /// request up to 10 times with exponentially increasing delay - currently,
-    /// this behavior is only available if the `with-tokio` feature is enabled.
-    pub async fn publish(&self, request: PublishRequest) -> anyhow::Result<PublishResponse> {
-        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self
-            .do_request(|c| c.post(self.events_url("publish")).json(&body))
-            .await?;
-        let bytes = response
-            .bytes()
-            .await
-            .context(|| format!("getting body for GET {}", self.events_url("publish")))?;
-        Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
-            format!(
-                "deserializing publish response from {:?} received from GET {}",
-                bytes,
-                self.events_url("publish")
-            )
-        })?)
+    pub async fn publish(self) -> Publish {
+        Publish::new(self)
     }
 
     pub fn query<Q: Into<String> + Send>(self, query: Q) -> Query {
@@ -401,6 +381,51 @@ impl From<(String, serde_cbor::Error)> for AxError {
             error_code: 102,
             context: e.0,
         }
+    }
+}
+
+pub struct Publish {
+    client: ActyxClient,
+    request: PublishRequest,
+}
+
+impl Publish {
+    fn new(client: ActyxClient) -> Self {
+        Self {
+            client,
+            request: PublishRequest { data: vec![] },
+        }
+    }
+
+    pub fn event<E: Serialize>(mut self, tags: TagSet, event: &E) -> Result<Self, serde_cbor::Error> {
+        self.request.data.push(PublishEvent {
+            tags,
+            payload: Payload::compact(event)?,
+        });
+        Ok(self)
+    }
+
+    pub fn events<E: Iterator<Item = impl Into<PublishEvent>>>(mut self, events: E) -> Self {
+        self.request.data.extend(events.map(Into::into));
+        self
+    }
+
+    pub async fn execute(self) -> anyhow::Result<PublishResponse> {
+        let response = self
+            .client
+            .do_request(|c| c.post(self.client.events_url("publish")).json(&self.request))
+            .await?;
+        let bytes = response
+            .bytes()
+            .await
+            .context(|| format!("getting body for GET {}", self.client.events_url("publish")))?;
+        Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
+            format!(
+                "deserializing publish response from {:?} received from GET {}",
+                bytes,
+                self.client.events_url("publish")
+            )
+        })?)
     }
 }
 
