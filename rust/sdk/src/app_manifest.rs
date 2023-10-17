@@ -32,7 +32,7 @@ impl Default for AppManifest {
     ///
     /// The default manifest has the application ID `com.example.trial`,
     /// the display name "Trial App" and the version "0.0.1".
-    /// Since it is a trial applicatio manifest, it does not have a signature.
+    /// Since it is a trial application manifest, it does not have a signature.
     fn default() -> Self {
         Self {
             app_id: app_id!("com.example.trial"),
