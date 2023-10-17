@@ -34,28 +34,6 @@ pub enum Order {
     StreamAsc,
 }
 
-/// Options for a [`QueryRequest`].
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct QueryOpts {
-    /// Optional lower bound offset per stream.
-    pub lower_bound: Option<OffsetMap>,
-    /// Upper bound offset per stream.
-    pub upper_bound: Option<OffsetMap>,
-    /// Order in which events should be received.
-    pub order: Order,
-}
-
-impl Default for QueryOpts {
-    fn default() -> Self {
-        Self {
-            lower_bound: Default::default(),
-            upper_bound: Default::default(),
-            order: Order::Asc,
-        }
-    }
-}
-
 /// Query for a bounded set of events across multiple event streams.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -68,13 +46,6 @@ pub struct QueryRequest {
     pub upper_bound: Option<OffsetMap>,
     /// Order in which events should be received.
     pub order: Order,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct SubscribeOpts {
-    /// Optional lower bound offset per stream.
-    pub lower_bound: Option<OffsetMap>,
 }
 
 /// Subscription to an unbounded set of events across multiple streams.
@@ -397,32 +368,6 @@ impl SessionId {
     /// Extracts a string slice containing the entire session id
     pub fn as_str(&self) -> &str {
         &self.0
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct SubscribeMonotonicOpts {
-    /// This id uniquely identifies one particular session. Connecting again with this
-    /// SessionId shall only be done after a TimeTravel message has been received. The
-    /// subscription is stored with the Session and all previous state is destroyed
-    /// upon receiving a different subscription for this session.
-    pub session: SessionId,
-
-    /// The consumer may already have kept state and know at which point to resume a
-    /// previously interrupted stream. In this case, StartFrom::Offsets is used,
-    /// otherwise StartFrom::Snapshot indicates that the PondService shall figure
-    /// out where best to start out from, possibly sending a `State` message first.
-    #[serde(flatten)]
-    pub from: StartFrom,
-}
-
-impl Default for SubscribeMonotonicOpts {
-    fn default() -> Self {
-        Self {
-            session: SessionId::from("me"),
-            from: StartFrom::LowerBound(OffsetMap::empty()),
-        }
     }
 }
 
