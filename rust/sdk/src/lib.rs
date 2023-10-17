@@ -58,3 +58,6 @@ pub enum ParseError {
     InvalidAppId(String),
 }
 impl std::error::Error for ParseError {}
+
+#[cfg(feature = "client")]
+mod builder;

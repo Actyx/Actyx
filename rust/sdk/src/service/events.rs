@@ -36,28 +36,57 @@ pub enum Order {
     StreamAsc,
 }
 
-/// Query for a bounded set of events across multiple event streams.
+/// Options for a [`QueryRequest`].
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct QueryRequest {
+pub struct QueryOpts {
     /// Optional lower bound offset per stream.
     pub lower_bound: Option<OffsetMap>,
     /// Upper bound offset per stream.
     pub upper_bound: Option<OffsetMap>,
-    /// Query for which events should be returned.
-    pub query: String,
     /// Order in which events should be received.
     pub order: Order,
+}
+
+impl Default for QueryOpts {
+    fn default() -> Self {
+        Self {
+            lower_bound: Default::default(),
+            upper_bound: Default::default(),
+            order: Order::Asc,
+        }
+    }
+}
+
+/// Query for a bounded set of events across multiple event streams.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryRequest {
+    /// Query for which events should be returned.
+    pub query: String,
+    /// Optional lower bound offset per stream.
+    pub lower_bound: Option<OffsetMap>,
+    /// Upper bound offset per stream.
+    pub upper_bound: Option<OffsetMap>,
+    /// Order in which events should be received.
+    pub order: Order,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SubscribeOpts {
+    /// Optional lower bound offset per stream.
+    pub lower_bound: Option<OffsetMap>,
 }
 
 /// Subscription to an unbounded set of events across multiple streams.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeRequest {
-    /// Optional lower bound offset per stream.
-    pub lower_bound: Option<OffsetMap>,
     /// Query for which events should be returned.
     pub query: String,
+    /// Optional lower bound offset per stream.
+    pub lower_bound: Option<OffsetMap>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -373,6 +402,32 @@ impl SessionId {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SubscribeMonotonicOpts {
+    /// This id uniquely identifies one particular session. Connecting again with this
+    /// SessionId shall only be done after a TimeTravel message has been received. The
+    /// subscription is stored with the Session and all previous state is destroyed
+    /// upon receiving a different subscription for this session.
+    pub session: SessionId,
+
+    /// The consumer may already have kept state and know at which point to resume a
+    /// previously interrupted stream. In this case, StartFrom::Offsets is used,
+    /// otherwise StartFrom::Snapshot indicates that the PondService shall figure
+    /// out where best to start out from, possibly sending a `State` message first.
+    #[serde(flatten)]
+    pub from: StartFrom,
+}
+
+impl Default for SubscribeMonotonicOpts {
+    fn default() -> Self {
+        Self {
+            session: SessionId::from("me"),
+            from: StartFrom::LowerBound(OffsetMap::empty()),
+        }
+    }
+}
+
 /// Subscribe to live updates as the Event Services receives or publishes new events,
 /// until the recipient would need to time travel
 ///
@@ -383,14 +438,14 @@ impl SessionId {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeMonotonicRequest {
+    /// Definition of the events to be received by this session, i.e. a selection of
+    /// tags coupled with other flags like “isLocal”.
+    pub query: String,
     /// This id uniquely identifies one particular session. Connecting again with this
     /// SessionId shall only be done after a TimeTravel message has been received. The
     /// subscription is stored with the Session and all previous state is destroyed
     /// upon receiving a different subscription for this session.
     pub session: SessionId,
-    /// Definition of the events to be received by this session, i.e. a selection of
-    /// tags coupled with other flags like “isLocal”.
-    pub query: String,
     /// The consumer may already have kept state and know at which point to resume a
     /// previously interrupted stream. In this case, StartFrom::Offsets is used,
     /// otherwise StartFrom::Snapshot indicates that the PondService shall figure
@@ -515,16 +570,47 @@ pub trait EventService: Clone + Send {
     async fn publish(&self, request: PublishRequest) -> Result<PublishResponse>;
 
     /// Query events known at the time the request was received by the service.
-    async fn query(&self, request: QueryRequest) -> Result<BoxStream<'static, QueryResponse>>;
+    async fn query_with_defaults<Q: Into<String> + Send>(&self, query: Q) -> Result<BoxStream<'static, QueryResponse>> {
+        self.query(query, None).await
+    }
+
+    /// Query events known at the time the request was received by the service.
+    async fn query<Q: Into<String> + Send>(
+        &self,
+        query: Q,
+        opts: Option<QueryOpts>,
+    ) -> Result<BoxStream<'static, QueryResponse>>;
 
     /// Suscribe to events that are currently known by the service followed by new "live" events.
-    async fn subscribe(&self, request: SubscribeRequest) -> Result<BoxStream<'static, SubscribeResponse>>;
+    async fn subscribe_with_defaults<Q: Into<String> + Send>(
+        &self,
+        query: Q,
+    ) -> Result<BoxStream<'static, SubscribeResponse>> {
+        self.subscribe(query, None).await
+    }
+
+    /// Suscribe to events that are currently known by the service followed by new "live" events.
+    async fn subscribe<Q: Into<String> + Send>(
+        &self,
+        query: Q,
+        opts: Option<SubscribeOpts>,
+    ) -> Result<BoxStream<'static, SubscribeResponse>>;
 
     /// Subscribe to events that are currently known by the service followed by new "live" events until
     /// the service learns about events that need to be sorted earlier than an event already received.
-    async fn subscribe_monotonic(
+    async fn subscribe_monotonic_with_defaults<Q: Into<String> + Send>(
         &self,
-        request: SubscribeMonotonicRequest,
+        query: Q,
+    ) -> Result<BoxStream<'static, SubscribeMonotonicResponse>> {
+        self.subscribe_monotonic(query, None).await
+    }
+
+    /// Subscribe to events that are currently known by the service followed by new "live" events until
+    /// the service learns about events that need to be sorted earlier than an event already received.
+    async fn subscribe_monotonic<Q: Into<String> + Send>(
+        &self,
+        query: Q,
+        opts: Option<SubscribeMonotonicOpts>,
     ) -> Result<BoxStream<'static, SubscribeMonotonicResponse>>;
 }
 

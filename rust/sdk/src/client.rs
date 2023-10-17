@@ -17,19 +17,22 @@ use std::{
     fmt::Debug,
     str::FromStr,
     sync::{Arc, RwLock},
-    time::Duration,
 };
 use url::Url;
 
 use crate::{
     service::{
-        AuthenticationResponse, EventService, FilesGetResponse, OffsetsResponse, PublishRequest, PublishResponse,
-        QueryRequest, QueryResponse, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest,
-        SubscribeResponse,
+        AuthenticationResponse, EventService, FilesGetResponse, OffsetsResponse, Order, PublishRequest,
+        PublishResponse, QueryOpts, QueryRequest, QueryResponse, SessionId, StartFrom, SubscribeMonotonicOpts,
+        SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeOpts, SubscribeRequest, SubscribeResponse,
     },
-    AppManifest, NodeId,
+    AppManifest, NodeId, OffsetMap,
 };
+
+#[cfg(feature = "with-tokio")]
 use rand::Rng;
+#[cfg(feature = "with-tokio")]
+use std::time::Duration;
 
 pub struct AxOpts {
     pub url: url::Url,
@@ -168,12 +171,12 @@ impl Ax {
         self.node_id
     }
 
-    fn events_url(&self, path: &str) -> Url {
+    pub(crate) fn events_url(&self, path: &str) -> Url {
         // Safe to unwrap, because we fully control path creation
         self.base_url.join(&format!("events/{}", path)).unwrap()
     }
 
-    fn files_url(&self) -> Url {
+    pub(crate) fn files_url(&self) -> Url {
         self.base_url.join("files/").unwrap()
     }
 
@@ -189,7 +192,7 @@ impl Ax {
     /// If the service is unavailable (code 503), this method will retry to perform the
     /// request up to 10 times with exponentially increasing delay - currently,
     /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn do_request(&self, f: impl FnOnce(&Client) -> RequestBuilder) -> anyhow::Result<Response> {
+    pub(crate) async fn do_request(&self, f: impl FnOnce(&Client) -> RequestBuilder) -> anyhow::Result<Response> {
         let token = self.token.read().unwrap().clone();
         let builder = f(&self.client);
         let builder_clone = builder.try_clone();
@@ -377,11 +380,45 @@ impl EventService for Ax {
 
     /// Query events known at the time the request was received by the service.
     ///
+    /// If `opts.is_none()` then this call is equivalent to the following:
+    /// ```no_run
+    /// query(
+    ///     query, // Your query
+    ///     Some(
+    ///         QueryOpts {
+    ///             lower_bound: None,
+    ///             upper_bound: None,
+    ///             order: Order::Asc,
+    ///         }
+    ///     )
+    /// )
+    /// ```
+    /// In plain english:
+    ///
     /// If an authorization error (code 401) is returned, it will try to re-authenticate.
     /// If the service is unavailable (code 503), this method will retry to perform the
     /// request up to 10 times with exponentially increasing delay - currently,
     /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn query(&self, request: QueryRequest) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
+    async fn query<Q: Into<String> + Send>(
+        &self,
+        query: Q,
+        opts: Option<QueryOpts>,
+    ) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
+        let request = if let Some(opts) = opts {
+            QueryRequest {
+                query: query.into(),
+                lower_bound: opts.lower_bound,
+                upper_bound: opts.upper_bound,
+                order: opts.order,
+            }
+        } else {
+            QueryRequest {
+                query: query.into(),
+                lower_bound: None,
+                upper_bound: None,
+                order: Order::Asc,
+            }
+        };
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
             .do_request(|c| c.post(self.events_url("query")).json(&body))
@@ -395,11 +432,30 @@ impl EventService for Ax {
 
     /// Suscribe to events that are currently known by the service followed by new "live" events.
     ///
+    /// If `opts.is_none()` then this call is equivalent to the following:
+    /// ```no_run
+    /// subscribe(
+    ///     query, // Your query
+    ///     Some(
+    ///         SubscribeOpts { lower_bound: None }
+    ///     )
+    /// )
+    /// ```
+    /// In plain english: subscribe using the provided query, reading _all_ events from the current session.
+    ///
     /// If an authorization error (code 401) is returned, it will try to re-authenticate.
     /// If the service is unavailable (code 503), this method will retry to perform the
     /// request up to 10 times with exponentially increasing delay - currently,
     /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
+    async fn subscribe<Q: Into<String> + Send>(
+        &self,
+        query: Q,
+        opts: Option<SubscribeOpts>,
+    ) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
+        let request = SubscribeRequest {
+            query: query.into(),
+            lower_bound: opts.map(|opts| opts.lower_bound).unwrap_or_default(),
+        };
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
             .do_request(|c| c.post(self.events_url("subscribe")).json(&body))
@@ -414,14 +470,42 @@ impl EventService for Ax {
     /// Subscribe to events that are currently known by the service followed by new "live" events until
     /// the service learns about events that need to be sorted earlier than an event already received.
     ///
+    /// If `opts.is_none()` then this call is equivalent to the following:
+    /// ```no_run
+    /// subscribe_monotonic(
+    ///     query, // Your query
+    ///     Some(
+    ///         SubscribeMonotonicOpts {
+    ///             from: StartFrom::LowerBound(OffsetMap::empty()),
+    ///             session: SessionId::from("me")
+    ///         }
+    ///     )
+    /// )
+    /// ```
+    /// In plain english: subscribe using the provided query, reading _all_ events from the current session.
+    ///
     /// If an authorization error (code 401) is returned, it will try to re-authenticate.
     /// If the service is unavailable (code 503), this method will retry to perform the
     /// request up to 10 times with exponentially increasing delay - currently,
     /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn subscribe_monotonic(
+    async fn subscribe_monotonic<Q: Into<String> + Send>(
         &self,
-        request: SubscribeMonotonicRequest,
+        query: Q,
+        opts: Option<SubscribeMonotonicOpts>,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
+        let request = if let Some(opts) = opts {
+            SubscribeMonotonicRequest {
+                query: query.into(),
+                from: opts.from,
+                session: opts.session,
+            }
+        } else {
+            SubscribeMonotonicRequest {
+                query: query.into(),
+                from: StartFrom::LowerBound(OffsetMap::empty()),
+                session: SessionId::from("me"),
+            }
+        };
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
             .do_request(|c| c.post(self.events_url("subscribe_monotonic")).json(&body))
