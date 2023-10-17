@@ -2,9 +2,10 @@ use anyhow::Result;
 use bytes::Bytes;
 use derive_more::{Display, Error};
 use futures::{
-    future,
+    future, pin_mut,
     stream::{iter, BoxStream, Stream, StreamExt},
 };
+
 use libipld::Cid;
 use reqwest::{
     header::{CONTENT_DISPOSITION, CONTENT_TYPE},
@@ -14,8 +15,11 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Debug,
+    future::Future,
+    pin::Pin,
     str::FromStr,
     sync::{Arc, RwLock},
+    task::Poll,
 };
 use url::Url;
 
@@ -25,7 +29,6 @@ use rand::Rng;
 use std::time::Duration;
 
 use crate::{
-    app_id,
     service::{
         AuthenticationResponse, FilesGetResponse, OffsetsResponse, Order, PublishEvent, PublishRequest,
         PublishResponse, QueryRequest, QueryResponse, SessionId, StartFrom, SubscribeMonotonicRequest,
@@ -409,23 +412,39 @@ impl Publish {
         self.request.data.extend(events.map(Into::into));
         self
     }
+}
 
-    pub async fn execute(self) -> anyhow::Result<PublishResponse> {
+impl Future for Publish {
+    type Output = anyhow::Result<PublishResponse>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         let response = self
             .client
-            .do_request(|c| c.post(self.client.events_url("publish")).json(&self.request))
-            .await?;
-        let bytes = response
-            .bytes()
-            .await
-            .context(|| format!("getting body for GET {}", self.client.events_url("publish")))?;
-        Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
-            format!(
-                "deserializing publish response from {:?} received from GET {}",
-                bytes,
-                self.client.events_url("publish")
-            )
-        })?)
+            .do_request(|c| c.post(self.client.events_url("publish")).json(&self.request));
+
+        let response = std::pin::pin!(response);
+        match response.poll(cx) {
+            Poll::Ready(Ok(response)) => {
+                let bytes = std::pin::pin!(response.bytes());
+                match bytes.poll(cx) {
+                    Poll::Ready(Ok(bytes)) => {
+                        Poll::Ready(Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
+                            format!(
+                                "deserializing publish response from {:?} received from GET {}",
+                                bytes,
+                                self.client.events_url("publish")
+                            )
+                        })?))
+                    }
+                    Poll::Ready(Err(err)) => Poll::Ready(
+                        Err(err).context(|| format!("getting body for GET {}", self.client.events_url("publish")))?,
+                    ),
+                    Poll::Pending => Poll::Pending,
+                }
+            }
+            Poll::Ready(Err(err)) => Poll::Ready(Err(err)),
+            Poll::Pending => Poll::Pending,
+        }
     }
 }
 
@@ -461,18 +480,30 @@ impl Query {
         self.request.order = order;
         self
     }
+}
 
-    pub async fn execute(self) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
+impl Future for Query {
+    type Output = anyhow::Result<BoxStream<'static, QueryResponse>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         let body = serde_json::to_value(&self.request).context(|| format!("serializing {:?}", &self.request))?;
-        let response = self
+
+        let request = self
             .client
-            .do_request(|c| c.post(self.client.events_url("query")).json(&body))
-            .await?;
-        let res = to_lines(response.bytes_stream())
-            .map(|bs| serde_json::from_slice(bs.as_ref()))
-            // FIXME this swallows deserialization errors, silently dropping event envelopes
-            .filter_map(|res| future::ready(res.ok()));
-        Ok(res.boxed())
+            .do_request(|c| c.post(self.client.events_url("query")).json(&body));
+        pin_mut!(request);
+
+        match request.poll(cx) {
+            std::task::Poll::Ready(Ok(response)) => {
+                let res = to_lines(response.bytes_stream())
+                    .map(|bs| serde_json::from_slice(bs.as_ref()))
+                    // FIXME this swallows deserialization errors, silently dropping event envelopes
+                    .filter_map(|res| future::ready(res.ok()));
+                std::task::Poll::Ready(Ok(res.boxed()))
+            }
+            std::task::Poll::Ready(Err(err)) => std::task::Poll::Ready(Err(err)),
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
     }
 }
 
@@ -496,18 +527,30 @@ impl Subscribe {
         self.request.lower_bound = Some(lower_bound);
         self
     }
+}
 
-    pub async fn execute(self) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
+impl Future for Subscribe {
+    type Output = anyhow::Result<BoxStream<'static, SubscribeResponse>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         let body = serde_json::to_value(&self.request).context(|| format!("serializing {:?}", &self.request))?;
-        let response = self
+
+        let request = self
             .client
-            .do_request(|c| c.post(self.client.events_url("subscribe")).json(&body))
-            .await?;
-        let res = to_lines(response.bytes_stream())
-            .map(|bs| serde_json::from_slice(bs.as_ref()))
-            // FIXME this swallows deserialization errors, silently dropping event envelopes
-            .filter_map(|res| future::ready(res.ok()));
-        Ok(res.boxed())
+            .do_request(|c| c.post(self.client.events_url("subscribe")).json(&body));
+        pin_mut!(request);
+
+        match request.poll(cx) {
+            std::task::Poll::Ready(Ok(response)) => {
+                let res = to_lines(response.bytes_stream())
+                    .map(|bs| serde_json::from_slice(bs.as_ref()))
+                    // FIXME this swallows deserialization errors, silently dropping event envelopes
+                    .filter_map(|res| future::ready(res.ok()));
+                std::task::Poll::Ready(Ok(res.boxed()))
+            }
+            std::task::Poll::Ready(Err(err)) => std::task::Poll::Ready(Err(err)),
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
     }
 }
 
@@ -537,37 +580,29 @@ impl SubscribeMonotonic {
         self.request.from = start_from;
         self
     }
-
-    pub async fn execute(self) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        let body = serde_json::to_value(&self.request).context(|| format!("serializing {:?}", &self.request))?;
-        let response = self
-            .client
-            .do_request(|c| c.post(self.client.events_url("subscribe_monotonic")).json(&body))
-            .await?;
-        let res = to_lines(response.bytes_stream())
-            .map(|bs| serde_json::from_slice(bs.as_ref()))
-            // FIXME this swallows deserialization errors, silently dropping event envelopes
-            .filter_map(|res| future::ready(res.ok()));
-        Ok(res.boxed())
-    }
 }
 
-async fn test() {
-    let client = ActyxClient::new(
-        "localhost:4454".parse().unwrap(),
-        crate::AppManifest {
-            app_id: app_id!("com.example.hey"),
-            display_name: "Test".to_string(),
-            version: "0.0.1".to_string(),
-            signature: None,
-        },
-    )
-    .await
-    .unwrap();
-    client
-        .query("FROM allEvents")
-        .with_order(Order::Desc)
-        .execute()
-        .await
-        .unwrap();
+impl Future for SubscribeMonotonic {
+    type Output = anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>>;
+
+    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+        let body = serde_json::to_value(&self.request).context(|| format!("serializing {:?}", &self.request))?;
+
+        let request = self
+            .client
+            .do_request(|c| c.post(self.client.events_url("subscribe_monotonic")).json(&body));
+        pin_mut!(request);
+
+        match request.poll(cx) {
+            std::task::Poll::Ready(Ok(response)) => {
+                let res = to_lines(response.bytes_stream())
+                    .map(|bs| serde_json::from_slice(bs.as_ref()))
+                    // FIXME this swallows deserialization errors, silently dropping event envelopes
+                    .filter_map(|res| future::ready(res.ok()));
+                std::task::Poll::Ready(Ok(res.boxed()))
+            }
+            std::task::Poll::Ready(Err(err)) => std::task::Poll::Ready(Err(err)),
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
+    }
 }
