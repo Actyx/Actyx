@@ -1,6 +1,6 @@
 use actyx_sdk::{
     service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest},
-    tags, ActyxClient, Payload,
+    tags, Ax, AxOpts, Payload,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use futures::StreamExt;
@@ -36,7 +36,7 @@ fn round_trip(c: &mut Criterion) {
     }
     c.bench_function("id", |b| {
         b.to_async(&rt).iter_batched(
-            || (data.clone(), ActyxClient::new(AxClientOpts::default())),
+            || (data.clone(), Ax::new(AxOpts::default())),
             |(input, service)| async move {
                 let service = service.await.unwrap();
                 let offsets_before = service.offsets().await.unwrap();

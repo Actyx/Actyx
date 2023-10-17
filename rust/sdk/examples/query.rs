@@ -1,25 +1,14 @@
 use actyx_sdk::{
     app_id,
     service::{EventService, Order, QueryRequest, QueryResponse},
-    ActyxClient, AppManifest,
+    AppManifest, Ax, AxOpts,
 };
 use futures::stream::StreamExt;
 use url::Url;
 
-async fn mk_http_client() -> anyhow::Result<ActyxClient> {
-    let app_manifest = AppManifest::new(
-        app_id!("com.example.actyx-offsets"),
-        "Offsets Example".into(),
-        "0.1.0".into(),
-        None,
-    );
-    let url = Url::parse("http://localhost:4454").unwrap();
-    ActyxClient::new(url, app_manifest).await
-}
-
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
-    let service = mk_http_client().await?;
+    let service = Ax::new(AxOpts::default()).await?;
 
     // all events matching the given subscription
     // sorted backwards, i.e. youngest to oldest
