@@ -3,7 +3,7 @@ use crate::{
     messages::{self, Messages},
 };
 use acto::{variable::Writer, ActoCell, ActoInput, ActoRef, ActoRuntime};
-use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::widgets::{Block, Borders};
 use tui_textarea::TextArea;
 
@@ -61,8 +61,9 @@ pub async fn cmdline(
     while let ActoInput::Message(msg) = cell.recv().await {
         match msg {
             Cmdline::Event(event) => {
-                // Prevent double input because of KeyEventKind::Release
+                // Allow certain key to pass
                 let key = match event {
+                    // Prevent double input because of KeyEventKind::Release
                     Event::Key(key) if key.kind == KeyEventKind::Press || key.kind == KeyEventKind::Repeat => key,
                     _ => continue,
                 };
@@ -70,83 +71,85 @@ pub async fn cmdline(
                 let is_editing_identity = { (identity.read()).edit.is_some() };
                 match is_editing_identity {
                     // When editing identity
-                    true => {
-                        {
-                            let mut identity = identity.write();
-                            match key.code {
-                                KeyCode::Esc => {
-                                    identity.edit = None;
-                                }
-                                KeyCode::Enter => {
-                                    if let Some(identity_buffer_value) = identity.edit.take() {
-                                        identity.val = identity_buffer_value;
-                                    }
-                                }
-                                _ => {
-                                    if let Some(edit) = &mut identity.edit {
-                                        edit.input(key);
-                                    }
-                                }
-                            }
-                        }
-                        display.send(Display::UpdateIdentity(identity.reader()));
-                    }
+                    true => handle_key_on_identity_mode(&display, &identity, key),
                     // When chatting
-                    false => {
-                        match key.code {
-                            KeyCode::Down => {
-                                display.send(Display::Scroll(
-                                    -1 * {
-                                        if key.modifiers.contains(KeyModifiers::CONTROL) {
-                                            10
-                                        } else {
-                                            1
-                                        }
-                                    },
-                                ));
-                            }
-                            KeyCode::Up => {
-                                display.send(Display::Scroll(
-                                    1 * {
-                                        if key.modifiers.contains(KeyModifiers::CONTROL) {
-                                            10
-                                        } else {
-                                            1
-                                        }
-                                    },
-                                ));
-                            }
-                            KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                {
-                                    let mut identity = identity.write();
-                                    identity.edit = Some(identity.val.clone());
-                                }
-                                display.send(Display::UpdateIdentity(identity.reader()));
-                            }
-                            _ => {
-                                // FIXME modifiers are not recognised, so no ctrl-enter
-                                if key.code == KeyCode::Enter {
-                                    let mut text_area = text_area.write();
-                                    let text = std::mem::replace(&mut *text_area, mk_message_text_area())
-                                        .into_lines()
-                                        .join("\n");
-                                    tracing::info!("publishing message: {}", text);
-                                    let name = {
-                                        let val = &identity.read().val;
-                                        let lines = val.clone().into_lines().join("\n");
-                                        lines
-                                    };
-                                    messages.send(Messages::Publish(messages::Event::new(name, text)));
-                                } else {
-                                    text_area.write().input(key);
-                                }
-                                display.send(Display::Cmdline(text_area.reader()));
-                            }
-                        }
-                    }
+                    false => handle_key_on_chat_mode(&display, &identity, &text_area, &messages, key),
                 }
             }
             Cmdline::Reconnect(m) => messages = m,
+        }
+    }
+}
+
+fn handle_key_on_identity_mode(display: &ActoRef<Display>, identity: &Writer<Identity>, key: KeyEvent) {
+    {
+        let mut identity = identity.write();
+        match key.code {
+            KeyCode::Esc => {
+                identity.edit = None;
+            }
+            KeyCode::Enter => {
+                if let Some(identity_buffer_value) = identity.edit.take() {
+                    identity.val = identity_buffer_value;
+                }
+            }
+            _ => {
+                if let Some(edit) = &mut identity.edit {
+                    edit.input(key);
+                }
+            }
+        }
+    }
+    display.send(Display::UpdateIdentity(identity.reader()));
+}
+
+fn handle_key_on_chat_mode(
+    display: &ActoRef<Display>,
+    identity: &Writer<Identity>,
+    text_area: &Writer<TextArea<'static>>,
+    messages: &ActoRef<Messages>,
+    key: KeyEvent,
+) {
+    match key.code {
+        KeyCode::PageDown => {
+            display.send(Display::scroll_down(if key.modifiers.contains(KeyModifiers::CONTROL) {
+                10
+            } else {
+                1
+            }));
+        }
+        KeyCode::PageUp => {
+            display.send(Display::scroll_up(if key.modifiers.contains(KeyModifiers::CONTROL) {
+                10
+            } else {
+                1
+            }));
+        }
+        KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            {
+                let mut identity = identity.write();
+                identity.edit = Some(identity.val.clone());
+            }
+            display.send(Display::UpdateIdentity(identity.reader()));
+        }
+        _ => {
+            // FIXME modifiers are not recognised, so no ctrl-enter
+            if key.code == KeyCode::Enter {
+                let mut text_area = text_area.write();
+                let text = std::mem::replace(&mut *text_area, mk_message_text_area())
+                    .into_lines()
+                    .join("\n");
+                tracing::info!("publishing message: {}", text);
+                let name = {
+                    let val = &identity.read().val;
+                    let lines = val.clone().into_lines().join("\n");
+                    lines
+                };
+                messages.send(Messages::Publish(messages::Event::new(name, text)));
+            } else {
+                text_area.write().input(key);
+            }
+            display.send(Display::Cmdline(text_area.reader()));
         }
     }
 }

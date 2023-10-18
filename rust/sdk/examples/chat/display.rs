@@ -52,16 +52,44 @@ pub enum Display {
     Cmdline(Reader<TextArea<'static>>),
     Messages(Reader<Vec<Message>>),
     NotConnected(String),
+    Connected,
     UpdateIdentity(Reader<Identity>),
     Scroll(i8),
-    Connected,
+}
+
+impl Display {
+    pub fn scroll_down(multiplier: i8) -> Self {
+        Display::Scroll(-1 * multiplier)
+    }
+    pub fn scroll_up(multiplier: i8) -> Self {
+        Display::Scroll(1 * multiplier)
+    }
 }
 
 #[derive(Default)]
 struct MessageScrollState {
     /// vertical_scroll_from_the_bottom
-    pub last_recorded_par_height: Option<u16>,
+    pub last_text_height: Option<u16>,
     pub vscroll_from_bottom: u16,
+}
+
+impl MessageScrollState {
+    pub fn update_text_height_and_clamp_vscroll(&mut self, text_height: u16, clamp_max_vscroll: u16) {
+        // if scroll_state.vscroll_from_bottom is not 0, it must shift up, because UX
+        if self.vscroll_from_bottom > 0 {
+            // Is there a height shift from previous render?
+            let height_shift_from_previous_render = self
+                .last_text_height
+                .map_or(0_u16, |prev_height| text_height.saturating_sub(prev_height));
+
+            self.vscroll_from_bottom = self
+                .vscroll_from_bottom
+                .saturating_add(height_shift_from_previous_render)
+                .clamp(0, clamp_max_vscroll);
+        }
+
+        self.last_text_height = Some(text_height);
+    }
 }
 
 pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
@@ -83,12 +111,9 @@ pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
             Display::UpdateIdentity(i) => identity = i,
             Display::Scroll(i) => {
                 let scroll_val = if i >= 0 {
-                    scroll_state
-                        .vscroll_from_bottom
-                        .checked_add(i as u16)
-                        .unwrap_or(u16::MAX)
+                    scroll_state.vscroll_from_bottom.saturating_add(i as u16)
                 } else {
-                    scroll_state.vscroll_from_bottom.checked_sub((-i) as u16).unwrap_or(0)
+                    scroll_state.vscroll_from_bottom.saturating_sub((-i) as u16)
                 };
 
                 scroll_state.vscroll_from_bottom = scroll_val;
@@ -122,12 +147,12 @@ fn render<W: io::Write>(
 
 fn render_editing_identity<W: io::Write>(f: &mut Frame<CrosstermBackend<W>>, identity: &Reader<Identity>) {
     let size = f.size();
-    let pad = (size.height / 2).checked_sub(2).unwrap_or(0);
+    let pad = (size.height / 2).saturating_sub(2);
     let layout = Layout::default()
         .direction(ratatui::prelude::Direction::Vertical)
         .constraints([
             ratatui::prelude::Constraint::Length(pad),
-            ratatui::prelude::Constraint::Max(3),
+            ratatui::prelude::Constraint::Length(3),
             ratatui::prelude::Constraint::Min(0),
         ])
         .split(size);
@@ -169,43 +194,29 @@ fn render_chat<W: io::Write>(
         // FIXME Maybe there is a better way to calculate height using Widget::render, Buffer, and binary search?
         // That way using Paragraph::wrap can be possible
         let text_height: u16 = lines.len().try_into().unwrap_or(0);
+        let max_scroll = text_height.saturating_sub(message_text_rect_height);
 
-        let scroll_range = text_height.checked_sub(message_text_rect_height).unwrap_or(0);
-        let user_scroll_y_from_bottom: u16 = {
-            // Is there a height shift from previous render?
-            let height_shift_on_update = if let Some(prev_height) = scroll_state.last_recorded_par_height {
-                text_height.checked_sub(prev_height).unwrap_or(0)
-            } else {
-                0
-            };
+        scroll_state.update_text_height_and_clamp_vscroll(text_height, max_scroll);
 
-            scroll_state.last_recorded_par_height = Some(text_height);
+        // calculate scroll_y from top
+        let scroll_y = max_scroll.saturating_sub(scroll_state.vscroll_from_bottom);
 
-            // if vscroll_from_bottom is not 0, it must shift up, because UX
-            if scroll_state.vscroll_from_bottom > 0 {
-                scroll_state.vscroll_from_bottom += height_shift_on_update;
-            }
-
-            scroll_state.vscroll_from_bottom = scroll_state.vscroll_from_bottom.clamp(0, scroll_range);
-
-            scroll_state.vscroll_from_bottom
-        };
-
-        let scroll_y = scroll_range.checked_sub(user_scroll_y_from_bottom).unwrap_or(0);
-
+        // "render" scroll control key by mutating the top-most-rendered line and bottom-most-rendered-line
         if text_height > message_text_rect_height {
-            if user_scroll_y_from_bottom != 0 {
+            // when not at the bottom
+            if scroll_state.vscroll_from_bottom != 0 {
                 let visible_bottom = scroll_y + message_text_rect_height - 1;
                 if let Some(last_line) = lines.get_mut(visible_bottom as usize) {
-                    *last_line = Line::from(vec![Span::from("Press Down to scroll down (Hold Ctrl to Boost)")])
+                    *last_line = Line::from(vec![Span::from("Press PgDn to scroll down (Hold Ctrl to Boost)")])
                         .alignment(Alignment::Center);
                 }
             }
 
+            // when not at the top
             if scroll_y != 0 {
                 let visible_top = scroll_y;
                 if let Some(first_line) = lines.get_mut(visible_top as usize) {
-                    *first_line = Line::from(vec![Span::from("Press Up to scroll up (Hold Ctrl to Boost)")])
+                    *first_line = Line::from(vec![Span::from("Press PgUp to scroll up (Hold Ctrl to Boost)")])
                         .alignment(Alignment::Center);
                 }
             }
@@ -254,7 +265,7 @@ fn split_into_lines(spans: VecDeque<Span>, max_width: u16) -> Vec<Line> {
         let Span { content, style } = span;
         let mut content: String = content.into();
         while content.len() > 0 {
-            let remaining_line_width = max_width_as_usize.checked_sub(current_line_width).unwrap_or(0);
+            let remaining_line_width = max_width_as_usize.saturating_sub(current_line_width);
 
             if remaining_line_width == 0 {
                 let line = std::mem::replace(&mut current_line, Line::default());
