@@ -40,7 +40,7 @@ impl AxOpts {
     /// Create an [`AxOpts`] with a custom URL and the default application manifest.
     ///
     /// This function is similar to:
-    /// ```
+    /// ```no_run
     /// # use actyx_sdk::AxOpts;
     /// # fn opts() -> AxOpts {
     /// AxOpts {
@@ -59,7 +59,7 @@ impl AxOpts {
     /// Create an [`AxOpts`] with a custom application manifest and the default URL.
     ///
     /// This function is equivalent to:
-    /// ```
+    /// ```no_run
     /// # use actyx_sdk::{app_id, AppManifest, AxOpts};
     /// # fn opts() -> AxOpts {
     /// AxOpts {
