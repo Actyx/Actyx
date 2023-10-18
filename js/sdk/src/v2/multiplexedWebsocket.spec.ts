@@ -127,21 +127,22 @@ describe('multiplexedWebsocket', () => {
     // Make sure no assertions are missed. Because async and silent success..
     expect.assertions(testArr.length * (4 + globalAssertionsPerCase))
 
-    const previousObservers = new Set()
+    const previousRequestType = new Set()
 
-    for (const msgFn of testArr) {
-      const requestType = 'someRequest'
+    for (const [i, msgFn] of testArr.entries()) {
+      const requestType = 'someRequest' + i
       const receivedVals: string[] = []
-      const reqObserver = multiplexer.request(requestType, { from: 1, to: 4 })
+      const payload = { from: 1, to: 4 }
+      const reqObserver = multiplexer.request(requestType, payload)
 
       // global test section
       // ============================
       const currentObserverIsFound = globals.activeRequests
         .all()
-        .find((x) => x.serviceId === 'someRequest' && x.observable === reqObserver)
+        .find((x) => x.serviceId === requestType && x.payload === payload)
       const previousObserversFound = globals.activeRequests
         .all()
-        .find((x) => x.serviceId === 'someRequest' && previousObservers.has(x.observable))
+        .find((x) => previousRequestType.has(x.serviceId))
       // ============================
       // global test section - end
 
@@ -201,13 +202,13 @@ describe('multiplexedWebsocket', () => {
       const currentObserverIsRemovedAfterFinalization =
         globals.activeRequests
           .all()
-          .find((x) => x.serviceId === 'someRequest' && x.observable === reqObserver) === undefined
+          .find((x) => x.serviceId === requestType && x.payload === payload) === undefined
 
       expect(currentObserverIsFound).toBeTruthy()
       expect(currentObserverIsRemovedAfterFinalization).toBeTruthy()
       expect(previousObserversFound).toBeFalsy()
 
-      previousObservers.add(reqObserver)
+      previousRequestType.add(requestType)
     }
   })
 })

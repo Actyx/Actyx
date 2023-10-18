@@ -1,9 +1,9 @@
-import { Observable } from 'rxjs'
 import { GlobalInternalSymbol } from './v2/utils'
 
 type ActiveRequest = {
   serviceId: string
-  observable: Observable<unknown>
+  payload?: unknown
+  time: Date
 }
 
 type ActiveRequestGlobals = {

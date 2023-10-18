@@ -77,8 +77,9 @@ export class MultiplexedWebsocket {
     )
 
     activeRequestInternals.register(sym, {
-      serviceId: serviceId,
-      observable: request,
+      serviceId,
+      payload,
+      time: new Date(),
     })
 
     return request

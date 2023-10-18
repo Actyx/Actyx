@@ -4,7 +4,6 @@
 
 ```ts
 
-import { Observable } from 'rxjs';
 import { Ord } from 'fp-ts/lib/Ord';
 import * as t from 'io-ts';
 
