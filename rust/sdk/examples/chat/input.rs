@@ -1,10 +1,10 @@
-use crate::cmdline::Cmdline;
+use crate::{cmdline::Cmdline, display::Display};
 use acto::{ActoCell, ActoRef, ActoRuntime};
 use crossterm::event::{Event, EventStream, KeyCode, KeyModifiers};
 use futures::StreamExt;
 use void::Void;
 
-pub async fn input(_cell: ActoCell<Void, impl ActoRuntime>, cmdline: ActoRef<Cmdline>) {
+pub async fn input(_cell: ActoCell<Void, impl ActoRuntime>, cmdline: ActoRef<Cmdline>, display: ActoRef<Display>) {
     let mut events = EventStream::new();
 
     while let Some(event) = events.next().await {
@@ -25,6 +25,10 @@ pub async fn input(_cell: ActoCell<Void, impl ActoRuntime>, cmdline: ActoRef<Cmd
                     tracing::debug!("sending event: {:?}", key);
                     cmdline.send(Cmdline::Event(Event::Key(key)));
                 }
+            }
+            Event::Resize(_, _) => {
+                tracing::debug!("sending event: {:?}", event);
+                display.send(Display::Redraw);
             }
             x => tracing::debug!("ignoring event: {:?}", x),
         }

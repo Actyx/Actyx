@@ -81,6 +81,7 @@ rand = "0.8.4"
 ratatui = "0.23.0"
 serde = "1.0.133"
 structopt = "0.3.25"
+textwrap = "0.16.0"
 tokio = { version = "1.15.0", features = ["macros"] }
 tokio-util = { version = "0.6.9", features = ["compat"] }
 tracing = "0.1.29"

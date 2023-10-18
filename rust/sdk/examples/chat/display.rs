@@ -53,6 +53,7 @@ pub enum Display {
     Messages(Reader<Vec<Message>>),
     NotConnected(String),
     Connected,
+    Redraw,
 }
 
 pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
@@ -69,6 +70,7 @@ pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
             Display::Messages(m) => messages = m,
             Display::NotConnected(e) => not_connected = Some(e),
             Display::Connected => not_connected = None,
+            Display::Redraw => {}
         }
         let res = terminal.draw(|f| {
             let size = f.size();
@@ -82,17 +84,10 @@ pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
                 .split(size);
 
             messages.project(|msgs| {
-                let mut lines = vec![];
-                for msg in msgs {
-                    let time = DateTime::<Utc>::from(msg.time).to_rfc3339();
-                    lines.push(Line::from(vec![
-                        Span::styled(time, Style::new().add_modifier(Modifier::ITALIC)),
-                        Span::raw(" "),
-                        Span::styled(&msg.from, Style::new().add_modifier(Modifier::BOLD)),
-                        Span::raw(": "),
-                        Span::raw(&msg.text),
-                    ]));
-                }
+                let lines = msgs
+                    .iter()
+                    .flat_map(|msg| message_to_lines(msg, layout[0].width))
+                    .collect::<Vec<_>>();
                 f.render_widget(Paragraph::new(lines), layout[0]);
             });
 
@@ -125,6 +120,31 @@ pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
             return;
         }
     }
+}
+
+fn message_to_lines(msg: &Message, width: u16) -> Vec<Line<'static>> {
+    let time = DateTime::<Utc>::from(msg.time).to_rfc3339();
+    let mut first = vec![
+        Span::styled(time, Style::new().add_modifier(Modifier::ITALIC)),
+        Span::raw(" "),
+        Span::styled(msg.from.to_owned(), Style::new().add_modifier(Modifier::BOLD)),
+        Span::raw(": "),
+    ];
+    let first_width: usize = first.iter().map(|s| s.width()).sum();
+    let indent = Span::raw(" ".repeat(first_width));
+
+    let inputs = textwrap::wrap(&msg.text, usize::from(width).saturating_sub(first_width).max(20));
+    let mut lines = vec![];
+    for (idx, input) in inputs.into_iter().enumerate() {
+        let mut v = if idx == 0 {
+            std::mem::take(&mut first)
+        } else {
+            vec![indent.clone()]
+        };
+        v.push(Span::raw(input.into_owned()));
+        lines.push(Line::from(v));
+    }
+    lines
 }
 
 /// helper function to create a centered rect using up certain percentage of the available rect `r`
