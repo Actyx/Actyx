@@ -2,8 +2,9 @@ use anyhow::Result;
 use bytes::Bytes;
 use derive_more::{Display, Error};
 use futures::{
-    future, pin_mut,
+    future::{self, BoxFuture, FusedFuture},
     stream::{iter, BoxStream, Stream, StreamExt},
+    FutureExt,
 };
 
 use libipld::Cid;
@@ -16,10 +17,10 @@ use serde::{Deserialize, Serialize};
 use std::{
     fmt::Debug,
     future::Future,
+    mem::replace,
     pin::Pin,
     str::FromStr,
     sync::{Arc, RwLock},
-    task::Poll,
 };
 use url::Url;
 
@@ -37,18 +38,13 @@ use crate::{
     AppManifest, NodeId, OffsetMap, Payload, TagSet,
 };
 
-/// Error type that is returned in the response body by the Event Service when requests fail
-///
-/// The Event Service does not map client errors or internal errors to HTTP status codes,
-/// instead it gives more structured information using this data type, except when the request
-/// is not understood at all.
-#[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq, Eq)]
-#[display(fmt = "error {} while {}: {}", error_code, context, error)]
-#[serde(rename_all = "camelCase")]
-pub struct AxError {
-    pub error: serde_json::Value,
-    pub error_code: u16,
-    pub context: String,
+#[derive(Clone)]
+pub struct ActyxClient {
+    client: Client,
+    base_url: Url,
+    token: Arc<RwLock<String>>,
+    app_manifest: AppManifest,
+    node_id: NodeId,
 }
 
 async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) -> anyhow::Result<String> {
@@ -282,20 +278,24 @@ impl Ax {
         })?)
     }
 
-    pub async fn publish(self) -> Publish {
-        Publish::new(self)
+    /// Returns a builder for publishing events.
+    pub fn publish(&self) -> Publish<'_> {
+        Publish::new(&self)
     }
 
-    pub fn query<Q: Into<String> + Send>(self, query: Q) -> Query {
-        Query::new(self, query)
+    /// Returns a builder to query events.
+    pub fn query<Q: Into<String> + Send>(&self, query: Q) -> Query<'_> {
+        Query::new(&self, query)
     }
 
-    pub fn subscribe<Q: Into<String> + Send>(self, query: Q) -> Subscribe {
-        Subscribe::new(self, query)
+    /// Returns a builder to subscribe to an event query.
+    pub fn subscribe<Q: Into<String> + Send>(&self, query: Q) -> Subscribe<'_> {
+        Subscribe::new(&self, query)
     }
 
-    pub fn subscribe_monotonic<Q: Into<String> + Send>(self, query: Q) -> SubscribeMonotonic {
-        SubscribeMonotonic::new(self, query)
+    /// Returns a builder to subscribe to an event query.
+    pub fn subscribe_monotonic<Q: Into<String> + Send>(&self, query: Q) -> SubscribeMonotonic<'_> {
+        SubscribeMonotonic::new(&self, query)
     }
 }
 
@@ -331,131 +331,100 @@ pub(crate) fn to_lines(stream: impl Stream<Item = Result<Bytes, reqwest::Error>>
         .flatten()
 }
 
-pub(crate) trait WithContext {
-    type Output;
-    fn context<F, T>(self, context: F) -> Self::Output
-    where
-        T: Into<String>,
-        F: FnOnce() -> T;
-}
-impl<T, E> WithContext for std::result::Result<T, E>
-where
-    AxError: From<(String, E)>,
-{
-    type Output = std::result::Result<T, AxError>;
-
-    #[inline]
-    fn context<F, C>(self, context: F) -> Self::Output
-    where
-        C: Into<String>,
-        F: FnOnce() -> C,
-    {
-        match self {
-            Ok(value) => Ok(value),
-            Err(err) => Err(AxError::from((context().into(), err))),
-        }
-    }
+pub enum Publish<'a> {
+    Initial {
+        client: &'a ActyxClient,
+        request: PublishRequest,
+    },
+    Pending(BoxFuture<'a, anyhow::Result<PublishResponse>>),
+    Empty,
 }
 
-impl From<(String, reqwest::Error)> for AxError {
-    fn from(e: (String, reqwest::Error)) -> Self {
-        Self {
-            error: serde_json::json!(format!("{:?}", e.1)),
-            error_code: 101,
-            context: e.0,
-        }
-    }
-}
-
-impl From<(String, serde_json::Error)> for AxError {
-    fn from(e: (String, serde_json::Error)) -> Self {
-        Self {
-            error: serde_json::json!(format!("{:?}", e.1)),
-            error_code: 102,
-            context: e.0,
-        }
-    }
-}
-
-impl From<(String, serde_cbor::Error)> for AxError {
-    fn from(e: (String, serde_cbor::Error)) -> Self {
-        Self {
-            error: serde_json::json!(format!("{:?}", e.1)),
-            error_code: 102,
-            context: e.0,
-        }
-    }
-}
-
-pub struct Publish {
-    client: ActyxClient,
-    request: PublishRequest,
-}
-
-impl Publish {
-    fn new(client: ActyxClient) -> Self {
-        Self {
+impl<'a> Publish<'a> {
+    fn new(client: &'a ActyxClient) -> Self {
+        Self::Initial {
             client,
             request: PublishRequest { data: vec![] },
         }
     }
 
+    // TODO: add an example showing the subsequent calls instead of a sentence
+    /// Add an event for publishing.
+    ///
+    /// Subsequent calls will add the events rather than replacing them.
     pub fn event<E: Serialize>(mut self, tags: TagSet, event: &E) -> Result<Self, serde_cbor::Error> {
-        self.request.data.push(PublishEvent {
-            tags,
-            payload: Payload::compact(event)?,
-        });
+        if let Self::Initial { ref mut request, .. } = self {
+            request.data.push(PublishEvent {
+                tags,
+                payload: Payload::compact(event)?,
+            });
+        }
         Ok(self)
     }
 
-    pub fn events<E: Iterator<Item = impl Into<PublishEvent>>>(mut self, events: E) -> Self {
-        self.request.data.extend(events.map(Into::into));
+    // TODO: add an example showing the subsequent calls instead of a sentence
+    /// Add events for publishing, from an iterable.
+    ///
+    /// Subsequent calls will add the events rather than replacing them.
+    pub fn events<E: IntoIterator<Item = impl Into<PublishEvent>>>(mut self, events: E) -> Self {
+        if let Self::Initial { ref mut request, .. } = self {
+            request.data.extend(events.into_iter().map(Into::into));
+        }
         self
     }
 }
 
-impl Future for Publish {
+impl<'a> Future for Publish<'a> {
     type Output = anyhow::Result<PublishResponse>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-        let response = self
-            .client
-            .do_request(|c| c.post(self.client.events_url("publish")).json(&self.request));
-
-        let response = std::pin::pin!(response);
-        match response.poll(cx) {
-            Poll::Ready(Ok(response)) => {
-                let bytes = std::pin::pin!(response.bytes());
-                match bytes.poll(cx) {
-                    Poll::Ready(Ok(bytes)) => {
-                        Poll::Ready(Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
-                            format!(
-                                "deserializing publish response from {:?} received from GET {}",
-                                bytes,
-                                self.client.events_url("publish")
-                            )
-                        })?))
-                    }
-                    Poll::Ready(Err(err)) => Poll::Ready(
-                        Err(err).context(|| format!("getting body for GET {}", self.client.events_url("publish")))?,
-                    ),
-                    Poll::Pending => Poll::Pending,
+        let this = self.get_mut();
+        loop {
+            *this = match replace(this, Publish::Empty) {
+                Publish::Initial { client, request } => {
+                    let publish_response = async move {
+                        let publish_url = client.events_url("publish");
+                        let response = client.do_request(|c| c.post(publish_url).json(&request)).await?;
+                        let body = response.bytes().await?;
+                        Ok(serde_json::from_slice::<PublishResponse>(&body)?)
+                    };
+                    Publish::Pending(publish_response.boxed())
                 }
-            }
-            Poll::Ready(Err(err)) => Poll::Ready(Err(err)),
-            Poll::Pending => Poll::Pending,
+                Publish::Pending(mut publish_response_future) => {
+                    let polled = publish_response_future.poll_unpin(cx);
+                    if polled.is_pending() {
+                        *this = Publish::Pending(publish_response_future);
+                    }
+                    return polled;
+                }
+                Publish::Empty => panic!("Polling a terminated Publish future"),
+            };
         }
     }
 }
 
-pub struct Query {
-    client: ActyxClient,
-    request: QueryRequest,
+impl<'a> FusedFuture for Publish<'a> {
+    fn is_terminated(&self) -> bool {
+        if let Publish::Empty = self {
+            true
+        } else {
+            false
+        }
+    }
 }
 
-impl Query {
-    fn new<Q: Into<String>>(client: ActyxClient, query: Q) -> Self {
-        Self {
+pub enum Query<'a> {
+    Initial {
+        client: &'a ActyxClient,
+        request: QueryRequest,
+    },
+    Pending(BoxFuture<'a, anyhow::Result<BoxStream<'a, QueryResponse>>>),
+    Empty,
+}
+
+impl<'a> Query<'a> {
+    fn new<Q: Into<String>>(client: &'a ActyxClient, query: Q) -> Self {
+        Self::Initial {
             client,
             request: QueryRequest {
                 query: query.into(),
@@ -466,55 +435,107 @@ impl Query {
         }
     }
 
+    /// Add a lower bound to the query.
+    ///
+    /// The lower bound limits the start of the query events.
+    /// As an example, consider the following (example) events:
+    /// ```json
+    /// { "lamport": 1, "event": { "temperature": 10 } }
+    /// { "lamport": 3, "event": { "temperature": 12 } }
+    /// { "lamport": 14, "event": { "temperature": 9 } }
+    /// ```
+    /// If you set the lower bound to `10`, only the last event will be returned.
     pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
-        self.request.lower_bound = Some(lower_bound);
+        if let Self::Initial { ref mut request, .. } = self {
+            request.lower_bound = Some(lower_bound);
+        }
         self
     }
 
+    /// Add an upper bound to the query.
+    ///
+    /// The upper bound limits the start of the query events.
+    /// As an example, consider the following (example) events:
+    /// ```json
+    /// { "lamport": 1, "event": { "temperature": 10 } }
+    /// { "lamport": 3, "event": { "temperature": 12 } }
+    /// { "lamport": 14, "event": { "temperature": 9 } }
+    /// ```
+    /// If you set the upper bound to `10`, the first two events will be returned.
     pub fn with_upper_bound(mut self, upper_bound: OffsetMap) -> Self {
-        self.request.upper_bound = Some(upper_bound);
+        if let Self::Initial { ref mut request, .. } = self {
+            request.upper_bound = Some(upper_bound);
+        }
         self
     }
 
+    /// Set the query's event order. By default, this value is set to [`Order::Asc`].
+    ///
+    /// As an example, consider the following (example) events:
+    /// ```json
+    /// { "lamport": 1, "event": { "temperature": 10 } }
+    /// { "lamport": 3, "event": { "temperature": 12 } }
+    /// { "lamport": 14, "event": { "temperature": 9 } }
+    /// ```
+    /// If your query sets [`Order::Desc`], the result will instead look like:
+    /// ```json
+    /// { "lamport": 14, "event": { "temperature": 9 } }
+    /// { "lamport": 3, "event": { "temperature": 12 } }
+    /// { "lamport": 1, "event": { "temperature": 10 } }
+    /// ```
     pub fn with_order(mut self, order: Order) -> Self {
-        self.request.order = order;
+        if let Self::Initial { ref mut request, .. } = self {
+            request.order = order;
+        }
         self
     }
 }
 
-impl Future for Query {
-    type Output = anyhow::Result<BoxStream<'static, QueryResponse>>;
+impl<'a> Future for Query<'a> {
+    type Output = anyhow::Result<BoxStream<'a, QueryResponse>>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-        let body = serde_json::to_value(&self.request).context(|| format!("serializing {:?}", &self.request))?;
-
-        let request = self
-            .client
-            .do_request(|c| c.post(self.client.events_url("query")).json(&body));
-        pin_mut!(request);
-
-        match request.poll(cx) {
-            std::task::Poll::Ready(Ok(response)) => {
-                let res = to_lines(response.bytes_stream())
-                    .map(|bs| serde_json::from_slice(bs.as_ref()))
-                    // FIXME this swallows deserialization errors, silently dropping event envelopes
-                    .filter_map(|res| future::ready(res.ok()));
-                std::task::Poll::Ready(Ok(res.boxed()))
+        let this = self.get_mut();
+        loop {
+            *this = match replace(this, Query::Empty) {
+                Query::Initial { client, request } => {
+                    let query_response = async move {
+                        let query_url = client.events_url("query");
+                        let response = client.do_request(|c| c.post(query_url).json(&request)).await?;
+                        let response_stream = to_lines(response.bytes_stream())
+                            .map(|bytes| serde_json::from_slice::<QueryResponse>(&bytes))
+                            // FIXME this swallows deserialization errors, silently dropping event envelopes
+                            .filter_map(|res| future::ready(res.ok()))
+                            .boxed();
+                        Ok(response_stream)
+                    };
+                    Query::Pending(query_response.boxed())
+                }
+                Query::Pending(mut query_responses_future) => {
+                    let polled = query_responses_future.poll_unpin(cx);
+                    if polled.is_pending() {
+                        *this = Query::Pending(query_responses_future);
+                    }
+                    return polled;
+                }
+                Query::Empty => panic!("Polling a terminated Query future"),
             }
-            std::task::Poll::Ready(Err(err)) => std::task::Poll::Ready(Err(err)),
-            std::task::Poll::Pending => std::task::Poll::Pending,
         }
     }
 }
 
-pub struct Subscribe {
-    client: ActyxClient,
-    request: SubscribeRequest,
+pub enum Subscribe<'a> {
+    Initial {
+        client: &'a ActyxClient,
+        request: SubscribeRequest,
+    },
+    Pending(BoxFuture<'a, anyhow::Result<BoxStream<'a, SubscribeResponse>>>),
+    Empty,
 }
 
-impl Subscribe {
-    fn new<Q: Into<String>>(client: ActyxClient, query: Q) -> Self {
-        Self {
+impl<'a> Subscribe<'a> {
+    fn new<Q: Into<String>>(client: &'a ActyxClient, query: Q) -> Self {
+        Self::Initial {
             client,
             request: SubscribeRequest {
                 query: query.into(),
@@ -523,45 +544,70 @@ impl Subscribe {
         }
     }
 
+    /// Add a lower bound to the subscription query.
+    ///
+    /// The lower bound limits the start of the query events.
+    /// As an example, consider the following (example) events:
+    /// ```json
+    /// { "lamport": 1, "event": { "temperature": 10 } }
+    /// { "lamport": 3, "event": { "temperature": 12 } }
+    /// { "lamport": 14, "event": { "temperature": 9 } }
+    /// ```
+    /// If you set the lower bound to `10`, the first event to be returned
+    /// would be the last of the example.
     pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
-        self.request.lower_bound = Some(lower_bound);
+        if let Self::Initial { ref mut request, .. } = self {
+            request.lower_bound = Some(lower_bound);
+        }
         self
     }
 }
 
-impl Future for Subscribe {
-    type Output = anyhow::Result<BoxStream<'static, SubscribeResponse>>;
+impl<'a> Future for Subscribe<'a> {
+    type Output = anyhow::Result<BoxStream<'a, SubscribeResponse>>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-        let body = serde_json::to_value(&self.request).context(|| format!("serializing {:?}", &self.request))?;
-
-        let request = self
-            .client
-            .do_request(|c| c.post(self.client.events_url("subscribe")).json(&body));
-        pin_mut!(request);
-
-        match request.poll(cx) {
-            std::task::Poll::Ready(Ok(response)) => {
-                let res = to_lines(response.bytes_stream())
-                    .map(|bs| serde_json::from_slice(bs.as_ref()))
-                    // FIXME this swallows deserialization errors, silently dropping event envelopes
-                    .filter_map(|res| future::ready(res.ok()));
-                std::task::Poll::Ready(Ok(res.boxed()))
+        let this = self.get_mut();
+        loop {
+            *this = match replace(this, Self::Empty) {
+                Self::Initial { client, request } => {
+                    let query_response = async move {
+                        let query_url = client.events_url("subscribe");
+                        let response = client.do_request(|c| c.post(query_url).json(&request)).await?;
+                        let response_stream = to_lines(response.bytes_stream())
+                            .map(|bytes| serde_json::from_slice::<SubscribeResponse>(&bytes))
+                            // FIXME this swallows deserialization errors, silently dropping event envelopes
+                            .filter_map(|res| future::ready(res.ok()))
+                            .boxed();
+                        Ok(response_stream)
+                    };
+                    Self::Pending(query_response.boxed())
+                }
+                Self::Pending(mut query_responses_future) => {
+                    let polled = query_responses_future.poll_unpin(cx);
+                    if polled.is_pending() {
+                        *this = Self::Pending(query_responses_future);
+                    }
+                    return polled;
+                }
+                Self::Empty => panic!("Polling a terminated Query future"),
             }
-            std::task::Poll::Ready(Err(err)) => std::task::Poll::Ready(Err(err)),
-            std::task::Poll::Pending => std::task::Poll::Pending,
         }
     }
 }
 
-pub struct SubscribeMonotonic {
-    client: ActyxClient,
-    request: SubscribeMonotonicRequest,
+pub enum SubscribeMonotonic<'a> {
+    Initial {
+        client: &'a ActyxClient,
+        request: SubscribeMonotonicRequest,
+    },
+    Pending(BoxFuture<'a, anyhow::Result<BoxStream<'a, SubscribeMonotonicResponse>>>),
+    Empty,
 }
 
-impl SubscribeMonotonic {
-    fn new<Q: Into<String>>(client: ActyxClient, query: Q) -> Self {
-        Self {
+impl<'a> SubscribeMonotonic<'a> {
+    fn new<Q: Into<String>>(client: &'a ActyxClient, query: Q) -> Self {
+        Self::Initial {
             client,
             request: SubscribeMonotonicRequest {
                 query: query.into(),
@@ -571,38 +617,122 @@ impl SubscribeMonotonic {
         }
     }
 
+    // TODO: Figure out how to explain this
     pub fn with_session_id<T: Into<SessionId>>(mut self, session_id: T) -> Self {
-        self.request.session = session_id.into();
+        if let Self::Initial { ref mut request, .. } = self {
+            request.session = session_id.into();
+        }
         self
     }
 
+    // TODO: Figure out how this is different from the lower bound
     pub fn with_start_from(mut self, start_from: StartFrom) -> Self {
-        self.request.from = start_from;
+        if let Self::Initial { ref mut request, .. } = self {
+            request.from = start_from;
+        }
         self
     }
 }
 
-impl Future for SubscribeMonotonic {
-    type Output = anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>>;
+impl<'a> Future for SubscribeMonotonic<'a> {
+    type Output = anyhow::Result<BoxStream<'a, SubscribeMonotonicResponse>>;
 
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-        let body = serde_json::to_value(&self.request).context(|| format!("serializing {:?}", &self.request))?;
-
-        let request = self
-            .client
-            .do_request(|c| c.post(self.client.events_url("subscribe_monotonic")).json(&body));
-        pin_mut!(request);
-
-        match request.poll(cx) {
-            std::task::Poll::Ready(Ok(response)) => {
-                let res = to_lines(response.bytes_stream())
-                    .map(|bs| serde_json::from_slice(bs.as_ref()))
-                    // FIXME this swallows deserialization errors, silently dropping event envelopes
-                    .filter_map(|res| future::ready(res.ok()));
-                std::task::Poll::Ready(Ok(res.boxed()))
+        let this = self.get_mut();
+        loop {
+            *this = match replace(this, Self::Empty) {
+                Self::Initial { client, request } => {
+                    let query_response = async move {
+                        let query_url = client.events_url("subscribe_monotonic");
+                        let response = client.do_request(|c| c.post(query_url).json(&request)).await?;
+                        let response_stream = to_lines(response.bytes_stream())
+                            .map(|bytes| serde_json::from_slice::<SubscribeMonotonicResponse>(&bytes))
+                            // FIXME this swallows deserialization errors, silently dropping event envelopes
+                            .filter_map(|res| future::ready(res.ok()))
+                            .boxed();
+                        Ok(response_stream)
+                    };
+                    Self::Pending(query_response.boxed())
+                }
+                Self::Pending(mut query_responses_future) => {
+                    let polled = query_responses_future.poll_unpin(cx);
+                    if polled.is_pending() {
+                        *this = Self::Pending(query_responses_future);
+                    }
+                    return polled;
+                }
+                Self::Empty => panic!("Polling a terminated Query future"),
             }
-            std::task::Poll::Ready(Err(err)) => std::task::Poll::Ready(Err(err)),
-            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
+    }
+}
+
+/// Error type that is returned in the response body by the Event Service when requests fail
+///
+/// The Event Service does not map client errors or internal errors to HTTP status codes,
+/// instead it gives more structured information using this data type, except when the request
+/// is not understood at all.
+#[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq, Eq)]
+#[display(fmt = "error {} while {}: {}", error_code, context, error)]
+#[serde(rename_all = "camelCase")]
+pub struct ActyxClientError {
+    pub error: serde_json::Value,
+    pub error_code: u16,
+    pub context: String,
+}
+
+pub(crate) trait WithContext {
+    type Output;
+    fn context<F, T>(self, context: F) -> Self::Output
+    where
+        T: Into<String>,
+        F: FnOnce() -> T;
+}
+impl<T, E> WithContext for std::result::Result<T, E>
+where
+    ActyxClientError: From<(String, E)>,
+{
+    type Output = std::result::Result<T, ActyxClientError>;
+
+    #[inline]
+    fn context<F, C>(self, context: F) -> Self::Output
+    where
+        C: Into<String>,
+        F: FnOnce() -> C,
+    {
+        match self {
+            Ok(value) => Ok(value),
+            Err(err) => Err(ActyxClientError::from((context().into(), err))),
+        }
+    }
+}
+
+impl From<(String, reqwest::Error)> for ActyxClientError {
+    fn from(e: (String, reqwest::Error)) -> Self {
+        Self {
+            error: serde_json::json!(format!("{:?}", e.1)),
+            error_code: 101,
+            context: e.0,
+        }
+    }
+}
+
+impl From<(String, serde_json::Error)> for ActyxClientError {
+    fn from(e: (String, serde_json::Error)) -> Self {
+        Self {
+            error: serde_json::json!(format!("{:?}", e.1)),
+            error_code: 102,
+            context: e.0,
+        }
+    }
+}
+
+impl From<(String, serde_cbor::Error)> for ActyxClientError {
+    fn from(e: (String, serde_cbor::Error)) -> Self {
+        Self {
+            error: serde_json::json!(format!("{:?}", e.1)),
+            error_code: 102,
+            context: e.0,
         }
     }
 }
