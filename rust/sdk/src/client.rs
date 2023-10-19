@@ -21,6 +21,7 @@ use std::{
     pin::Pin,
     str::FromStr,
     sync::{Arc, RwLock},
+    task::Poll,
 };
 use url::Url;
 
@@ -38,6 +39,7 @@ use crate::{
     AppManifest, NodeId, OffsetMap, Payload, TagSet,
 };
 
+/// [`Ax`]'s configuration options.
 pub struct AxOpts {
     pub url: url::Url,
     pub manifest: AppManifest,
@@ -113,6 +115,7 @@ async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) 
     Ok(token.token)
 }
 
+/// The Actyx client.
 #[derive(Clone)]
 pub struct Ax {
     client: Client,
@@ -157,6 +160,7 @@ impl Ax {
         })
     }
 
+    /// Return the ID of the node [`Ax`] is connected to.
     pub fn node_id(&self) -> NodeId {
         self.node_id
     }
@@ -261,6 +265,7 @@ impl Ax {
         }
     }
 
+    // TODO: #558
     pub async fn files_post(&self, files: impl IntoIterator<Item = reqwest::multipart::Part>) -> anyhow::Result<Cid> {
         let mut form = Form::new();
         for file in files {
@@ -281,6 +286,7 @@ impl Ax {
         Ok(cid)
     }
 
+    // TODO: #558
     pub async fn files_get(&self, cid_or_name: &str) -> anyhow::Result<FilesGetResponse> {
         let url = self.files_url().join(cid_or_name)?;
         let response = self.do_request(move |c| c.get(url)).await?;
@@ -333,21 +339,77 @@ impl Ax {
     }
 
     /// Returns a builder for publishing events.
+    ///
+    /// [`Publish`] implements the [`Future`] trait, thus, it can be `.await`ed.
+    ///
+    /// Example:
+    /// ```no_run
+    /// use sdk::{Ax, AxOpts, PublishResponse}
+    /// fn publish_example() {
+    ///     let response = Ax::new(AxOpts::default())
+    ///         .publish()
+    ///         .await
+    ///         .unwrap();
+    ///     println!("{:?}", response);
+    /// }
+    /// ```
     pub fn publish(&self) -> Publish<'_> {
         Publish::new(&self)
     }
 
     /// Returns a builder to query events.
+    ///
+    /// [`Query`] implements the [`Future`] trait, thus, it can be `.await`ed.
+    ///
+    /// Example:
+    /// ```no_run
+    /// use sdk::{Ax, AxOpts, QueryResponse}
+    /// fn query_example() {
+    ///     let response = Ax::new(AxOpts::default())
+    ///         .query("FROM allEvents")
+    ///         .await
+    ///         .unwrap();
+    ///     println!("{:?}", response);
+    /// }
+    /// ```
     pub fn query<Q: Into<String> + Send>(&self, query: Q) -> Query<'_> {
         Query::new(&self, query)
     }
 
     /// Returns a builder to subscribe to an event query.
+    ///
+    /// [`Subscribe`] implements the [`Future`] trait, thus, it can be `.await`ed.
+    ///
+    /// Example:
+    /// ```no_run
+    /// use sdk::{Ax, AxOpts, SubscribeResponse}
+    /// fn subscribe_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let mut subscribe_stream = service.subscribe("FROM 'example:tag'").await.unwrap();
+    ///     while let Some(response) = subscribe_stream.next().await {
+    ///         println!("{:?}", response)
+    ///     }
+    /// }
+    /// ```
     pub fn subscribe<Q: Into<String> + Send>(&self, query: Q) -> Subscribe<'_> {
         Subscribe::new(&self, query)
     }
 
     /// Returns a builder to subscribe to an event query.
+    ///
+    /// [`SubscribeMonotonic`] implements the [`Future`] trait, thus, it can be `.await`ed.
+    ///
+    /// Example:
+    /// ```no_run
+    /// use sdk::{Ax, AxOpts, SubscribeMonotonicResponse}
+    /// fn subscribe_monotonic_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let mut subscribe_stream = service.subscribe_monotonic("FROM 'example:tag'").await.unwrap();
+    ///     while let Some(response) = subscribe_stream.next().await {
+    ///         println!("{:?}", response)
+    ///     }
+    /// }
+    /// ```
     pub fn subscribe_monotonic<Q: Into<String> + Send>(&self, query: Q) -> SubscribeMonotonic<'_> {
         SubscribeMonotonic::new(&self, query)
     }
