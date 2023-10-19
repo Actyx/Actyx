@@ -21,7 +21,6 @@ use std::{
     pin::Pin,
     str::FromStr,
     sync::{Arc, RwLock},
-    task::Poll,
 };
 use url::Url;
 
@@ -453,7 +452,7 @@ pub enum Publish<'a> {
         request: PublishRequest,
     },
     Pending(BoxFuture<'a, anyhow::Result<PublishResponse>>),
-    Empty,
+    Void,
 }
 
 impl<'a> Publish<'a> {
@@ -496,7 +495,7 @@ impl<'a> Future for Publish<'a> {
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         let this = self.get_mut();
         loop {
-            *this = match replace(this, Publish::Empty) {
+            *this = match replace(this, Publish::Void) {
                 Publish::Initial { client, request } => {
                     let publish_response = async move {
                         let publish_url = client.events_url("publish");
@@ -513,7 +512,7 @@ impl<'a> Future for Publish<'a> {
                     }
                     return polled;
                 }
-                Publish::Empty => panic!("Polling a terminated Publish future"),
+                Publish::Void => panic!("Polling a terminated Publish future"),
             };
         }
     }
@@ -521,7 +520,7 @@ impl<'a> Future for Publish<'a> {
 
 impl<'a> FusedFuture for Publish<'a> {
     fn is_terminated(&self) -> bool {
-        if let Publish::Empty = self {
+        if let Publish::Void = self {
             true
         } else {
             false
@@ -535,7 +534,7 @@ pub enum Query<'a> {
         request: QueryRequest,
     },
     Pending(BoxFuture<'a, anyhow::Result<BoxStream<'a, QueryResponse>>>),
-    Empty,
+    Void,
 }
 
 impl<'a> Query<'a> {
@@ -613,7 +612,7 @@ impl<'a> Future for Query<'a> {
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         let this = self.get_mut();
         loop {
-            *this = match replace(this, Query::Empty) {
+            *this = match replace(this, Query::Void) {
                 Query::Initial { client, request } => {
                     let query_response = async move {
                         let query_url = client.events_url("query");
@@ -634,7 +633,7 @@ impl<'a> Future for Query<'a> {
                     }
                     return polled;
                 }
-                Query::Empty => panic!("Polling a terminated Query future"),
+                Query::Void => panic!("Polling a terminated Query future"),
             }
         }
     }
@@ -646,7 +645,7 @@ pub enum Subscribe<'a> {
         request: SubscribeRequest,
     },
     Pending(BoxFuture<'a, anyhow::Result<BoxStream<'a, SubscribeResponse>>>),
-    Empty,
+    Void,
 }
 
 impl<'a> Subscribe<'a> {
@@ -685,7 +684,7 @@ impl<'a> Future for Subscribe<'a> {
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         let this = self.get_mut();
         loop {
-            *this = match replace(this, Self::Empty) {
+            *this = match replace(this, Self::Void) {
                 Self::Initial { client, request } => {
                     let query_response = async move {
                         let query_url = client.events_url("subscribe");
@@ -706,7 +705,7 @@ impl<'a> Future for Subscribe<'a> {
                     }
                     return polled;
                 }
-                Self::Empty => panic!("Polling a terminated Query future"),
+                Self::Void => panic!("Polling a terminated Query future"),
             }
         }
     }
