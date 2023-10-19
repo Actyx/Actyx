@@ -449,6 +449,10 @@ pub(crate) fn to_lines(stream: impl Stream<Item = Result<Bytes, reqwest::Error>>
         .flatten()
 }
 
+/// Request builder for event publishing.
+///
+/// Warning: [`Publish`] implements the [`Future`] trait, as such it can be polled.
+/// Calling _any_ [`Publish`] function after polling will result in a panic!
 pub enum Publish<'a> {
     Initial {
         client: &'a ActyxClient,
@@ -573,6 +577,10 @@ impl<'a> FusedFuture for Publish<'a> {
     }
 }
 
+/// Request builder for queries.
+///
+/// Warning: [`Query`] implements the [`Future`] trait, as such it can be polled.
+/// Calling _any_ [`Query`] function after polling will result in a panic!
 pub enum Query<'a> {
     Initial {
         client: &'a ActyxClient,
@@ -627,6 +635,14 @@ impl<'a> Query<'a> {
             request.upper_bound = Some(upper_bound);
         }
         panic!("Calling Query::with_upper_bound after polling.")
+    }
+
+    /// Dual to [`Query::with_upper_bound`], removes the upper bound.
+    pub fn without_upper_bound(mut self) -> Self {
+        if let Self::Initial { ref mut request, .. } = self {
+            request.upper_bound = None;
+        }
+        panic!("Calling Query::without_upper_bound after polling.")
     }
 
     /// Set the query's event order.
@@ -691,6 +707,10 @@ impl<'a> Future for Query<'a> {
     }
 }
 
+/// Request builder for subscriptions.
+///
+/// Warning: [`Subscribe`] implements the [`Future`] trait, as such it can be polled.
+/// Calling _any_ [`Subscribe`] function after polling will result in a panic!
 pub enum Subscribe<'a> {
     Initial {
         client: &'a ActyxClient,
@@ -763,6 +783,10 @@ impl<'a> Future for Subscribe<'a> {
     }
 }
 
+/// Request builder for subscriptions.
+///
+/// Warning: [`SubscribeMonotonic`] implements the [`Future`] trait, as such it can be polled.
+/// Calling _any_ [`SubscribeMonotonic`] function after polling will result in a panic!
 pub enum SubscribeMonotonic<'a> {
     Initial {
         client: &'a ActyxClient,
