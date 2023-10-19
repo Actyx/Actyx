@@ -47,7 +47,7 @@ pub struct AxOpts {
 impl AxOpts {
     /// Create an [`AxOpts`] with a custom URL and the default application manifest.
     ///
-    /// This function is similar to:
+    /// This function is similar manually constructing the following:
     /// ```no_run
     /// # use actyx_sdk::AxOpts;
     /// # fn opts() -> AxOpts {
@@ -66,7 +66,7 @@ impl AxOpts {
 
     /// Create an [`AxOpts`] with a custom application manifest and the default URL.
     ///
-    /// This function is equivalent to:
+    /// This function is similar manually constructing the following:
     /// ```no_run
     /// # use actyx_sdk::{app_id, AppManifest, AxOpts};
     /// # fn opts() -> AxOpts {
@@ -344,7 +344,7 @@ impl Ax {
     /// Example:
     /// ```no_run
     /// use sdk::{Ax, AxOpts, PublishResponse}
-    /// fn publish_example() {
+    /// async fn publish_example() {
     ///     let response = Ax::new(AxOpts::default())
     ///         .publish()
     ///         .await
@@ -366,7 +366,7 @@ impl Ax {
     /// Example:
     /// ```no_run
     /// use sdk::{Ax, AxOpts, QueryResponse}
-    /// fn query_example() {
+    /// async fn query_example() {
     ///     let response = Ax::new(AxOpts::default())
     ///         .query("FROM allEvents")
     ///         .await
@@ -385,7 +385,7 @@ impl Ax {
     /// Example:
     /// ```no_run
     /// use sdk::{Ax, AxOpts, SubscribeResponse}
-    /// fn subscribe_example() {
+    /// async fn subscribe_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
     ///     let mut subscribe_stream = service.subscribe("FROM 'example:tag'").await.unwrap();
     ///     while let Some(response) = subscribe_stream.next().await {
@@ -404,7 +404,7 @@ impl Ax {
     /// Example:
     /// ```no_run
     /// use sdk::{Ax, AxOpts, SubscribeMonotonicResponse}
-    /// fn subscribe_monotonic_example() {
+    /// async fn subscribe_monotonic_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
     ///     let mut subscribe_stream = service.subscribe_monotonic("FROM 'example:tag'").await.unwrap();
     ///     while let Some(response) = subscribe_stream.next().await {
@@ -466,10 +466,31 @@ impl<'a> Publish<'a> {
         }
     }
 
-    // TODO: add an example showing the subsequent calls instead of a sentence
-    /// Add an event for publishing.
+    /// Add an event.
     ///
-    /// Subsequent calls will add the events rather than replacing them.
+    /// Subsequent calls to this function will not remove previous events.
+    ///
+    /// Example:
+    /// ```no_run
+    /// use sdk::{Ax, AxOpts, PublishResponse};
+    /// async fn main() -> PublishResponse {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     service
+    ///         .publish()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor1"),
+    ///             &serde_json::json!({ "temperature": 10 }),
+    ///         )
+    ///         .unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor2"),
+    ///             &serde_json::json!({ "temperature": 21 }),
+    ///         )
+    ///         .unwrap()
+    ///         .await
+    ///         .unwrap()
+    /// }
+    /// ```
     pub fn event<E: Serialize>(mut self, tags: TagSet, event: &E) -> Result<Self, serde_cbor::Error> {
         if let Self::Initial { ref mut request, .. } = self {
             request.data.push(PublishEvent {
@@ -480,10 +501,31 @@ impl<'a> Publish<'a> {
         Ok(self)
     }
 
-    // TODO: add an example showing the subsequent calls instead of a sentence
-    /// Add events for publishing, from an iterable.
+    /// Add events from an iterable.
     ///
-    /// Subsequent calls will add the events rather than replacing them.
+    /// Subsequent calls to this function will not remove previous events.
+    ///
+    /// Example:
+    /// ```no_run
+    /// use sdk::{Ax, AxOpts, PublishResponse};
+    /// async fn main() -> PublishResponse {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     service
+    ///         .publish()
+    ///         .events([
+    ///             PublishEvent {
+    ///                 tags: tags!("temperature", "sensor:temp-sensor1"),
+    ///                 payload: Payload::compact(&serde_json::json!({ "temperature": 10 })).unwrap(),
+    ///             },
+    ///             PublishEvent {
+    ///                 tags: tags!("temperature", "sensor:temp-sensor2"),
+    ///                 payload: Payload::compact(&serde_json::json!({ "temperature": 27 })).unwrap(),
+    ///             },
+    ///         ])
+    ///         .await
+    ///         .unwrap()
+    /// }
+    /// ```
     pub fn events<E: IntoIterator<Item = impl Into<PublishEvent>>>(mut self, events: E) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.data.extend(events.into_iter().map(Into::into));
@@ -567,7 +609,7 @@ impl<'a> Query<'a> {
         if let Self::Initial { ref mut request, .. } = self {
             request.lower_bound = Some(lower_bound);
         }
-        self
+        panic!("Calling Query::with_lower_bound after polling.")
     }
 
     /// Add an upper bound to the query.
@@ -584,7 +626,7 @@ impl<'a> Query<'a> {
         if let Self::Initial { ref mut request, .. } = self {
             request.upper_bound = Some(upper_bound);
         }
-        self
+        panic!("Calling Query::with_upper_bound after polling.")
     }
 
     /// Set the query's event order.
@@ -612,7 +654,7 @@ impl<'a> Query<'a> {
         if let Self::Initial { ref mut request, .. } = self {
             request.order = order;
         }
-        self
+        panic!("Calling Query::with_order after polling.")
     }
 }
 
@@ -684,7 +726,7 @@ impl<'a> Subscribe<'a> {
         if let Self::Initial { ref mut request, .. } = self {
             request.lower_bound = Some(lower_bound);
         }
-        self
+        panic!("Calling Subscribe::with_lower_bound after polling.")
     }
 }
 
@@ -727,7 +769,7 @@ pub enum SubscribeMonotonic<'a> {
         request: SubscribeMonotonicRequest,
     },
     Pending(BoxFuture<'a, anyhow::Result<BoxStream<'a, SubscribeMonotonicResponse>>>),
-    Empty,
+    Void,
 }
 
 impl<'a> SubscribeMonotonic<'a> {
@@ -748,7 +790,7 @@ impl<'a> SubscribeMonotonic<'a> {
         if let Self::Initial { ref mut request, .. } = self {
             request.session = session_id.into();
         }
-        self
+        panic!("Calling SubscribeMonotonic::with_session_id after polling.")
     }
 
     // TODO: Figure out how this is different from the lower bound
@@ -756,7 +798,7 @@ impl<'a> SubscribeMonotonic<'a> {
         if let Self::Initial { ref mut request, .. } = self {
             request.from = start_from;
         }
-        self
+        panic!("Calling SubscribeMonotonic::with_start_from after polling.")
     }
 }
 
@@ -766,7 +808,7 @@ impl<'a> Future for SubscribeMonotonic<'a> {
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         let this = self.get_mut();
         loop {
-            *this = match replace(this, Self::Empty) {
+            *this = match replace(this, Self::Void) {
                 Self::Initial { client, request } => {
                     let query_response = async move {
                         let query_url = client.events_url("subscribe_monotonic");
@@ -787,7 +829,7 @@ impl<'a> Future for SubscribeMonotonic<'a> {
                     }
                     return polled;
                 }
-                Self::Empty => panic!("Polling a terminated Query future"),
+                Self::Void => panic!("Polling a terminated Query future"),
             }
         }
     }

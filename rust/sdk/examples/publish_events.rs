@@ -10,7 +10,7 @@ async fn main() -> anyhow::Result<()> {
     let publish_response = service
         .publish()
         // Manually create two events
-        .events(vec![
+        .events([
             PublishEvent {
                 tags: tags!("temperature", "sensor:temp-sensor1"),
                 payload: Payload::compact(&serde_json::json!({ "temperature": 10 })).unwrap(),
