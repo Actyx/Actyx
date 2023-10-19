@@ -16,6 +16,7 @@ categories = ["network-programming"]
 features = ["client"]
 
 [features]
+default = ["client"]
 client = ["reqwest", "url", "bytes", "rand"]
 sqlite = ["rusqlite"]
 postgresql = ["postgres-types", "bytes"]

@@ -358,6 +358,9 @@ impl Ax {
 
     /// Returns a builder to query events.
     ///
+    /// Query order defined in the query itself takes precedence over options.
+    /// See [`Query::with_order`] for more information.
+    ///
     /// [`Query`] implements the [`Future`] trait, thus, it can be `.await`ed.
     ///
     /// Example:
@@ -584,7 +587,14 @@ impl<'a> Query<'a> {
         self
     }
 
-    /// Set the query's event order. By default, this value is set to [`Order::Asc`].
+    /// Set the query's event order.
+    ///
+    /// By default, this value is set to [`Order::Asc`], however,
+    /// order set in the query takes precedence over the order defined using this function.
+    /// The precedence order flows like so:
+    /// 1. Explicit `ORDER` in query
+    /// 2. Inferred from `AGGREGATE` in query
+    /// 3. [`Query::with_order`] call
     ///
     /// As an example, consider the following (example) events:
     /// ```json
@@ -732,8 +742,9 @@ impl<'a> SubscribeMonotonic<'a> {
         }
     }
 
-    // TODO: Figure out how to explain this
-    pub fn with_session_id<T: Into<SessionId>>(mut self, session_id: T) -> Self {
+    // NOTE: Currently not being used. This is an "artifact" for future reference.
+    #[allow(dead_code)]
+    fn with_session_id<T: Into<SessionId>>(mut self, session_id: T) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.session = session_id.into();
         }
