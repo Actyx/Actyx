@@ -1,7 +1,7 @@
 use actyx_sdk::{
     app_id,
     service::{EventService, PublishEvent, PublishRequest},
-    tags, ActyxClient, AppManifest, Payload,
+    tags, AppManifest, Ax, AxOpts, Payload,
 };
 use futures::{stream, FutureExt, Stream, StreamExt, TryStreamExt};
 use url::Url;
@@ -10,20 +10,9 @@ fn counter() -> impl Stream<Item = i32> {
     stream::iter(0..).then(|i| futures_timer::Delay::new(std::time::Duration::from_secs(1)).map(move |()| i))
 }
 
-async fn mk_http_client() -> anyhow::Result<ActyxClient> {
-    let app_manifest = AppManifest::new(
-        app_id!("com.example.actyx-publish"),
-        "Publish Example".into(),
-        "0.1.0".into(),
-        None,
-    );
-    let url = Url::parse("http://localhost:4454").unwrap();
-    ActyxClient::new(url, app_manifest).await
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let service = mk_http_client().await?;
+    let service = Ax::new(AxOpts::default()).await?;
     let mut results = counter().flat_map(|i| {
         let request = PublishRequest {
             data: vec![
