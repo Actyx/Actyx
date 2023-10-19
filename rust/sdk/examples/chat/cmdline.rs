@@ -16,7 +16,7 @@ fn mk_message_text_area() -> TextArea<'static> {
     let mut text_area = TextArea::default();
     text_area.set_block(
         Block::default()
-            .title("your message (Enter to send, Ctrl-I to Edit Identity, Ctrl-C to quit)")
+            .title("your message (Enter to send, Ctrl-N to edit your identity, Ctrl-C to quit)")
             .borders(Borders::ALL),
     );
     text_area
@@ -125,7 +125,7 @@ fn handle_key_on_chat_mode(
                 1
             }));
         }
-        KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+        KeyCode::Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             {
                 let mut identity = identity.write();
                 identity.edit = Some(identity.val.clone());
