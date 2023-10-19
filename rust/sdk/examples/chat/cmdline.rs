@@ -142,8 +142,7 @@ fn handle_key_on_chat_mode(
                 tracing::info!("publishing message: {}", text);
                 let name = {
                     let val = &identity.read().val;
-                    let lines = val.clone().into_lines().join("\n");
-                    lines
+                    val.clone().into_lines().join("\n")
                 };
                 messages.send(Messages::Publish(messages::Event::new(name, text)));
             } else {

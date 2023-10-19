@@ -60,10 +60,10 @@ pub enum Display {
 
 impl Display {
     pub fn scroll_down(multiplier: i8) -> Self {
-        Display::Scroll(-1 * multiplier)
+        Display::Scroll(-multiplier)
     }
     pub fn scroll_up(multiplier: i8) -> Self {
-        Display::Scroll(1 * multiplier)
+        Display::Scroll(multiplier)
     }
 }
 
@@ -151,12 +151,8 @@ fn render_editing_identity<W: io::Write>(f: &mut Frame<CrosstermBackend<W>>, ide
     let size = f.size();
     let pad = (size.height / 2).saturating_sub(2);
     let layout = Layout::default()
-        .direction(ratatui::prelude::Direction::Vertical)
-        .constraints([
-            ratatui::prelude::Constraint::Length(pad),
-            ratatui::prelude::Constraint::Length(3),
-            ratatui::prelude::Constraint::Min(0),
-        ])
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(pad), Constraint::Length(3), Constraint::Min(0)])
         .split(size);
 
     identity.project(|identity| {
@@ -176,11 +172,8 @@ fn render_chat<W: io::Write>(
     let size = f.size();
     let cmdheight = text_area.project(|t| t.lines().len() as u16);
     let layout = Layout::default()
-        .direction(ratatui::prelude::Direction::Vertical)
-        .constraints([
-            ratatui::prelude::Constraint::Min(0),
-            ratatui::prelude::Constraint::Length(cmdheight + 2),
-        ])
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(0), Constraint::Length(cmdheight + 2)])
         .split(size);
 
     messages.project(|msgs| {
@@ -189,7 +182,7 @@ fn render_chat<W: io::Write>(
         let message_text_rect_height = message_text_rect.height;
         tracing::info!("paragraph_available_width: {}", message_text_rect_width);
         let mut lines = msgs
-            .into_iter()
+            .iter()
             .flat_map(|x| message_to_lines(x, message_text_rect_width))
             .collect::<Vec<_>>();
 

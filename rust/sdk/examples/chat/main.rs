@@ -30,10 +30,8 @@ fn main() {
     let handle = rt.spawn_actor("supervisor", supervisor).handle;
 
     tracing::info!("awaiting termination");
-    rt.rt().block_on(handle.join()).unwrap();
+    rt.with_rt(|rt| rt.block_on(handle.join())).unwrap().unwrap();
 
-    tracing::info!("terminating");
-    rt.rt().block_on(rt.drop_done());
     tracing::info!("terminated");
 }
 

@@ -70,7 +70,7 @@ unicode-normalization = "0.1.19"
 url = { version = "2.2.2", optional = true }
 
 [dev-dependencies]
-acto = { version = "0.3.2", features = ["tokio"] }
+acto = { version = "0.4.0", features = ["tokio"] }
 asynchronous-codec = "0.6.0"
 crossterm = { version = "0.27.0", features = ["event-stream"] }
 futures-timer = "3.0.2"
