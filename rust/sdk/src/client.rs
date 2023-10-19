@@ -371,7 +371,9 @@ impl Ax {
     ///         .query("FROM allEvents")
     ///         .await
     ///         .unwrap();
-    ///     println!("{:?}", response);
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
     /// }
     /// ```
     pub fn query<Q: Into<String> + Send>(&self, query: Q) -> Query<'_> {
@@ -477,7 +479,7 @@ impl<'a> Publish<'a> {
     /// Example:
     /// ```no_run
     /// use sdk::{Ax, AxOpts, PublishResponse};
-    /// async fn main() -> PublishResponse {
+    /// async fn event_example() -> PublishResponse {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
     ///     service
     ///         .publish()
@@ -512,7 +514,7 @@ impl<'a> Publish<'a> {
     /// Example:
     /// ```no_run
     /// use sdk::{Ax, AxOpts, PublishResponse};
-    /// async fn main() -> PublishResponse {
+    /// async fn events_example() -> PublishResponse {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
     ///     service
     ///         .publish()
@@ -605,14 +607,35 @@ impl<'a> Query<'a> {
 
     /// Add a lower bound to the query.
     ///
+    /// For more information on offsets, as well as lower and upper bounds refer to the
+    /// [offsets and partitions](https://developer.actyx.com/docs/conceptual/event-streams#offsets-and-partitions) documentation page.
+    ///
     /// The lower bound limits the start of the query events.
     /// As an example, consider the following (example) events:
     /// ```json
-    /// { "lamport": 1, "event": { "temperature": 10 } }
-    /// { "lamport": 3, "event": { "temperature": 12 } }
-    /// { "lamport": 14, "event": { "temperature": 9 } }
+    /// { "offset": 1, "event": { "temperature": 10 } }
+    /// { "offset": 3, "event": { "temperature": 12 } }
+    /// { "offset": 14, "event": { "temperature": 9 } }
     /// ```
     /// If you set the lower bound to `10`, only the last event will be returned.
+    ///
+    /// Example:
+    /// ```no_run
+    /// use sdk::{Ax, AxOpts, QueryResponse};
+    /// async fn lower_bound_example() -> QueryResponse {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     // It's not always the case that you need to read the past
+    ///     // hence, you can get the current offsets and read from then onwards
+    ///     let present_offsets = service.offsets().await?.unwrap().present;
+    ///     let response = service.query("FROM allEvents")
+    ///         .with_lower_bound(present_offsets)
+    ///         .await
+    ///         .unwrap();
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
     pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.lower_bound = Some(lower_bound);
@@ -622,14 +645,33 @@ impl<'a> Query<'a> {
 
     /// Add an upper bound to the query.
     ///
+    /// For more information on offsets, as well as lower and upper bounds refer to the
+    /// [offsets and partitions](https://developer.actyx.com/docs/conceptual/event-streams#offsets-and-partitions) documentation page.
+    ///
     /// The upper bound limits the start of the query events.
     /// As an example, consider the following (example) events:
     /// ```json
-    /// { "lamport": 1, "event": { "temperature": 10 } }
-    /// { "lamport": 3, "event": { "temperature": 12 } }
-    /// { "lamport": 14, "event": { "temperature": 9 } }
+    /// { "offset": 1, "event": { "temperature": 10 } }
+    /// { "offset": 3, "event": { "temperature": 12 } }
+    /// { "offset": 14, "event": { "temperature": 9 } }
     /// ```
     /// If you set the upper bound to `10`, the first two events will be returned.
+    ///
+    /// Example:
+    /// ```no_run
+    /// use sdk::{Ax, AxOpts};
+    /// async fn upper_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let present_offsets = service.offsets().await?.unwrap().present;
+    ///     let response = service.query("FROM allEvents")
+    ///         .with_upper_bound(present_offsets)
+    ///         .await
+    ///         .unwrap();
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
     pub fn with_upper_bound(mut self, upper_bound: OffsetMap) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.upper_bound = Some(upper_bound);
@@ -656,15 +698,30 @@ impl<'a> Query<'a> {
     ///
     /// As an example, consider the following (example) events:
     /// ```json
-    /// { "lamport": 1, "event": { "temperature": 10 } }
-    /// { "lamport": 3, "event": { "temperature": 12 } }
-    /// { "lamport": 14, "event": { "temperature": 9 } }
+    /// { "offset": 1, "event": { "temperature": 10 } }
+    /// { "offset": 3, "event": { "temperature": 12 } }
+    /// { "offset": 14, "event": { "temperature": 9 } }
     /// ```
     /// If your query sets [`Order::Desc`], the result will instead look like:
     /// ```json
-    /// { "lamport": 14, "event": { "temperature": 9 } }
-    /// { "lamport": 3, "event": { "temperature": 12 } }
-    /// { "lamport": 1, "event": { "temperature": 10 } }
+    /// { "offset": 14, "event": { "temperature": 9 } }
+    /// { "offset": 3, "event": { "temperature": 12 } }
+    /// { "offset": 1, "event": { "temperature": 10 } }
+    /// ```
+    ///
+    /// Example:
+    /// ```no_run
+    /// use sdk::{Ax, AxOpts, Order};
+    /// async fn order_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let response = service.query("FROM allEvents")
+    ///         .order(Order::Desc)
+    ///         .await
+    ///         .unwrap();
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
+    /// }
     /// ```
     pub fn with_order(mut self, order: Order) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
@@ -743,15 +800,34 @@ impl<'a> Subscribe<'a> {
 
     /// Add a lower bound to the subscription query.
     ///
+    /// For more information on offsets, as well as lower and upper bounds refer to the
+    /// [offsets and partitions](https://developer.actyx.com/docs/conceptual/event-streams#offsets-and-partitions) documentation page.
+    ///
     /// The lower bound limits the start of the query events.
     /// As an example, consider the following (example) events:
     /// ```json
-    /// { "lamport": 1, "event": { "temperature": 10 } }
-    /// { "lamport": 3, "event": { "temperature": 12 } }
-    /// { "lamport": 14, "event": { "temperature": 9 } }
+    /// { "offset": 1, "event": { "temperature": 10 } }
+    /// { "offset": 3, "event": { "temperature": 12 } }
+    /// { "offset": 14, "event": { "temperature": 9 } }
     /// ```
     /// If you set the lower bound to `10`, the first event to be returned
     /// would be the last of the example.
+    ///
+    /// Example:
+    /// ```no_run
+    /// use sdk::{Ax, AxOpts};
+    /// async fn lower_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let present_offsets = service.offsets().await?.unwrap().present;
+    ///     let response = service.subscribe("FROM allEvents")
+    ///         .with_lower_bound(present_offsets)
+    ///         .await
+    ///         .unwrap();
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
     pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.lower_bound = Some(lower_bound);

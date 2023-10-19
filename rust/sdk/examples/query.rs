@@ -1,4 +1,4 @@
-use actyx_sdk::{service::Order, Ax, AxOpts};
+use actyx_sdk::{service::Order, Ax, AxOpts, OffsetMap};
 use futures::stream::StreamExt;
 
 // This example demonstrates how to query events.
@@ -12,6 +12,7 @@ pub async fn main() -> anyhow::Result<()> {
         .query("FROM 'sensor:temp-sensor'")
         // Set the order for the received results
         .with_order(Order::Desc)
+        .with_lower_bound(service.offsets().await?.present)
         .await?;
 
     // Consume the query result stream
