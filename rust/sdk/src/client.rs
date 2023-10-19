@@ -707,6 +707,16 @@ impl<'a> Future for Query<'a> {
     }
 }
 
+impl<'a> FusedFuture for Query<'a> {
+    fn is_terminated(&self) -> bool {
+        if let Query::Void = self {
+            true
+        } else {
+            false
+        }
+    }
+}
+
 /// Request builder for subscriptions.
 ///
 /// Warning: [`Subscribe`] implements the [`Future`] trait, as such it can be polled.
@@ -783,6 +793,16 @@ impl<'a> Future for Subscribe<'a> {
     }
 }
 
+impl<'a> FusedFuture for Subscribe<'a> {
+    fn is_terminated(&self) -> bool {
+        if let Subscribe::Void = self {
+            true
+        } else {
+            false
+        }
+    }
+}
+
 /// Request builder for subscriptions.
 ///
 /// Warning: [`SubscribeMonotonic`] implements the [`Future`] trait, as such it can be polled.
@@ -855,6 +875,16 @@ impl<'a> Future for SubscribeMonotonic<'a> {
                 }
                 Self::Void => panic!("Polling a terminated Query future"),
             }
+        }
+    }
+}
+
+impl<'a> FusedFuture for SubscribeMonotonic<'a> {
+    fn is_terminated(&self) -> bool {
+        if let SubscribeMonotonic::Void = self {
+            true
+        } else {
+            false
         }
     }
 }
