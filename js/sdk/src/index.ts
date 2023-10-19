@@ -4,6 +4,8 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
+import * as globals from './globals'
+export { globals }
 export * from './actyx'
 export * from './event-fns'
 export * from './types'

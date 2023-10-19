@@ -13,6 +13,9 @@ import { log } from '../internal_common/log'
 import { ActyxOpts, AppManifest } from '../types'
 import { isNode } from '../util'
 
+export const GlobalInternalSymbol: unique symbol = Symbol('GlobalInternalSymbol')
+export type GlobalInternalSymbol = typeof GlobalInternalSymbol
+
 const defaultApiLocation = (isNode && process.env.AX_STORE_URI) || 'localhost:4454/api/v2'
 
 export const getApiLocation = (host?: string, port?: number) => {
