@@ -38,13 +38,67 @@ use crate::{
     AppManifest, NodeId, OffsetMap, Payload, TagSet,
 };
 
-#[derive(Clone)]
-pub struct ActyxClient {
-    client: Client,
-    base_url: Url,
-    token: Arc<RwLock<String>>,
-    app_manifest: AppManifest,
-    node_id: NodeId,
+pub struct AxOpts {
+    pub url: url::Url,
+    pub manifest: AppManifest,
+}
+
+impl AxOpts {
+    /// Create an [`AxOpts`] with a custom URL and the default application manifest.
+    ///
+    /// This function is similar to:
+    /// ```no_run
+    /// # use actyx_sdk::AxOpts;
+    /// # fn opts() -> AxOpts {
+    /// AxOpts {
+    ///     url: "https://your.host:1234".parse().unwrap(),
+    ///     ..Default::default()
+    /// }.into()
+    /// # }
+    /// ```
+    pub fn url(url: &str) -> anyhow::Result<Self> {
+        Ok(Self {
+            url: Url::from_str(url)?,
+            ..Default::default()
+        })
+    }
+
+    /// Create an [`AxOpts`] with a custom application manifest and the default URL.
+    ///
+    /// This function is equivalent to:
+    /// ```no_run
+    /// # use actyx_sdk::{app_id, AppManifest, AxOpts};
+    /// # fn opts() -> AxOpts {
+    /// AxOpts {
+    ///     manifest: AppManifest {
+    ///         app_id: app_id!("com.example.app"),
+    ///         display_name: "Example manifest".to_string(),
+    ///         version: "0.1.0".to_string(),
+    ///         signature: None,
+    ///     },
+    ///     ..Default::default()
+    /// }.into()
+    /// # }
+    /// ```
+    pub fn manifest(manifest: AppManifest) -> anyhow::Result<Self> {
+        Ok(Self {
+            manifest,
+            ..Default::default()
+        })
+    }
+}
+
+impl Default for AxOpts {
+    /// Return a default set of options.
+    ///
+    /// The default URL is `http://localhost:4454`,
+    /// for the default manifest see [`AppManifest`].
+    fn default() -> Self {
+        Self {
+            url: url::Url::from_str("http://localhost:4454").unwrap(),
+            manifest: Default::default(),
+        }
+    }
 }
 
 async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) -> anyhow::Result<String> {
