@@ -11,7 +11,7 @@ use ratatui::{
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
     Frame, Terminal,
 };
-use std::{collections::VecDeque, convert::TryInto, io};
+use std::{convert::TryInto, io};
 use tui_textarea::TextArea;
 
 mod guard {
@@ -55,6 +55,7 @@ pub enum Display {
     Connected,
     UpdateIdentity(Reader<Identity>),
     Scroll(i8),
+    Redraw,
 }
 
 impl Display {
@@ -108,6 +109,7 @@ pub async fn display(mut cell: ActoCell<Display, impl ActoRuntime>) {
             Display::Messages(m) => messages = m,
             Display::NotConnected(e) => not_connected = Some(e),
             Display::Connected => not_connected = None,
+            Display::Redraw => {}
             Display::UpdateIdentity(i) => identity = i,
             Display::Scroll(i) => {
                 let scroll_val = if i >= 0 {
@@ -252,61 +254,29 @@ fn render_chat<W: io::Write>(
     }
 }
 
-// FIXME sometimes, Scrollbar from ratatui doesn't work for bottom-to-top scrolling
-//  because there is no way to calculate the height of a text
-//  meanwhile Paragraph::wrap has an opaque wrapping mechanism
-fn split_into_lines(spans: VecDeque<Span>, max_width: u16) -> Vec<Line> {
-    let max_width_as_usize: usize = max_width.into();
-    let mut lines = vec![];
-    let mut current_line = Line::default();
-    let mut current_line_width: usize = 0;
-
-    for span in spans {
-        let Span { content, style } = span;
-        let mut content: String = content.into();
-        while content.len() > 0 {
-            let remaining_line_width = max_width_as_usize.saturating_sub(current_line_width);
-
-            if remaining_line_width == 0 {
-                let line = std::mem::replace(&mut current_line, Line::default());
-                lines.push(line);
-                current_line_width = 0;
-            } else {
-                let split_point = usize::min(remaining_line_width, content.len());
-                let (pushable_content, remaining_content) = {
-                    let (a, b) = content.split_at(split_point);
-                    (String::from(a), String::from(b))
-                };
-
-                let pushable_content_length = pushable_content.len();
-                let mut new_span = Span::from(pushable_content);
-                new_span.patch_style(style.clone());
-
-                current_line.spans.push(new_span);
-                current_line_width += pushable_content_length;
-
-                content = remaining_content
-            }
-        }
-    }
-
-    lines.push(current_line);
-
-    lines
-}
-
 fn message_to_lines(msg: &Message, max_width: u16) -> Vec<Line> {
     let time = DateTime::<Utc>::from(msg.time).to_rfc3339();
-    split_into_lines(
-        VecDeque::from([
-            Span::styled(time, Style::new().add_modifier(Modifier::ITALIC)),
-            Span::raw(" "),
-            Span::styled(&msg.from, Style::new().add_modifier(Modifier::BOLD)),
-            Span::raw(": "),
-            Span::raw(&msg.text),
-        ]),
-        max_width,
-    )
+    let mut first = vec![
+        Span::styled(time, Style::new().add_modifier(Modifier::ITALIC)),
+        Span::raw(" "),
+        Span::styled(msg.from.to_owned(), Style::new().add_modifier(Modifier::BOLD)),
+        Span::raw(": "),
+    ];
+    let first_width: usize = first.iter().map(|s| s.width()).sum();
+    let indent = Span::raw(" ".repeat(first_width));
+
+    let inputs = textwrap::wrap(&msg.text, usize::from(max_width).saturating_sub(first_width).max(20));
+    let mut lines = vec![];
+    for (idx, input) in inputs.into_iter().enumerate() {
+        let mut v = if idx == 0 {
+            std::mem::take(&mut first)
+        } else {
+            vec![indent.clone()]
+        };
+        v.push(Span::raw(input.into_owned()));
+        lines.push(Line::from(v));
+    }
+    lines
 }
 
 /// helper function to create a centered rect using up certain percentage of the available rect `r`

@@ -63,7 +63,8 @@ async fn supervisor(mut cell: ActoCell<Supervisor, impl ActoRuntime, anyhow::Res
     cell.supervise(
         cell.spawn("input", {
             let cmdline = cmdline.clone();
-            |cell| input::input(cell, cmdline)
+            let display = display.clone();
+            |cell| input::input(cell, cmdline, display)
         })
         .map_handle(Ok),
     );
