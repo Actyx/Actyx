@@ -1,4 +1,4 @@
-/// parses hex from cbor.me format
+/// Parses hex from the [cbor.me](https://cbor.me) format
 pub fn from_cbor_me(text: &str) -> anyhow::Result<Vec<u8>> {
     let parts = text
         .split('\n')
