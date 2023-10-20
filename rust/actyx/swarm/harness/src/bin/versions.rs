@@ -7,6 +7,7 @@ mod versions {
         tags, Payload,
     };
     use anyhow::Context;
+    use async_std::future::timeout;
     use escargot::CargoBuild;
     use flate2::read::GzDecoder;
     use futures::{future::ready, StreamExt};
@@ -95,30 +96,31 @@ mod versions {
 
         let machines = sim.machines().iter().map(|m| m.id()).collect::<Vec<_>>();
 
-        let started = Instant::now();
         for i in &machines {
             let ip = sim.machine(*i).addr();
             let ns = sim.machine(*i).namespace();
             loop {
-                let req = std::thread::spawn(move || {
+                let req = {
                     ns.enter().unwrap();
-                    reqwest::blocking::get(format!("http://{}:4454/api/v2/node/id", ip))
-                })
-                .join()
-                .unwrap();
+                    timeout(
+                        Duration::from_secs(10),
+                        reqwest::get(format!("http://{}:4454/api/v2/node/id", ip)),
+                    )
+                    .await
+                };
                 match req {
-                    Ok(resp) => {
+                    Ok(Ok(resp)) => {
                         if resp.status().is_success() {
                             break;
                         }
                     }
-                    Err(e) => {
+                    Ok(Err(e)) => {
                         tracing::info!("{} not yet ready: {}", i, e);
-                        sleep(Duration::from_secs(1));
+                        async_std::task::sleep(Duration::from_secs(1)).await;
                     }
-                }
-                if started.elapsed() > Duration::from_secs(10) {
-                    anyhow::bail!("timeout waiting for machines to come up");
+                    Err(err) => {
+                        Err(err).context("timeout waiting for machines to come up")?;
+                    }
                 }
             }
         }
