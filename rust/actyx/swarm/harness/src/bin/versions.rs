@@ -1,5 +1,5 @@
 #[cfg(target_os = "linux")]
-fn main() -> anyhow::Result<()> {
+mod versions {
     use actyx_sdk::{
         service::{
             EventMeta, EventResponse, EventService, Order, PublishEvent, PublishRequest, QueryRequest, QueryResponse,
@@ -19,9 +19,10 @@ fn main() -> anyhow::Result<()> {
         time::{Duration, Instant},
     };
     use swarm_cli::{Command, Event};
-    use swarm_harness::{api::Api, setup_env, util::app_manifest, MachineExt};
-    use tempdir::TempDir;
+    use swarm_harness::{api::Api, util::app_manifest, MachineExt};
     use util::formats::os_arch::Arch;
+
+    const VERSIONS: [&'static str; 7] = ["2.0.0", "2.3.0", "2.5.0", "2.8.2", "2.10.0", "2.11.0", "current"];
 
     fn get_version(tmp: &Path, version: &str) -> anyhow::Result<PathBuf> {
         if version == "current" {
@@ -62,20 +63,11 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    let versions = ["2.0.0", "2.3.0", "2.5.0", "2.8.2", "2.10.0", "2.11.0", "current"];
-
-    setup_env().context("setting up env")?;
-    let tmp_dir = TempDir::new("swarm-versions").context("creating temp_dir")?;
-    let tmp = tmp_dir.path();
-    create_dir(tmp.join("bin")).context("creating ./bin")?;
-
-    match async_global_executor::block_on(async move {
-        let mut sim = Netsim::<Command, Event>::new();
-
+    pub async fn spawn_network(sim: &mut Netsim<Command, Event>, tmp: &Path) -> anyhow::Result<()> {
         let net = sim.spawn_network(Ipv4Range::random_local_subnet());
         tracing::warn!("using network {:?}", sim.network(net).range());
 
-        for (idx, version) in versions.iter().copied().enumerate() {
+        for (idx, version) in VERSIONS.iter().copied().enumerate() {
             let mut cmd = async_process::Command::new(
                 get_version(tmp.join("bin").as_path(), version).with_context(|| format!("get_version({})", version))?,
             );
@@ -94,6 +86,12 @@ fn main() -> anyhow::Result<()> {
                 m.peer_id()
             );
         }
+        Ok(())
+    }
+
+    pub async fn run(tmp: &Path) -> anyhow::Result<()> {
+        let mut sim = Netsim::<Command, Event>::new();
+        spawn_network(&mut sim, tmp).await?;
 
         let machines = sim.machines().iter().map(|m| m.id()).collect::<Vec<_>>();
 
@@ -242,7 +240,22 @@ fn main() -> anyhow::Result<()> {
         }
 
         Ok(())
-    }) {
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn main() -> anyhow::Result<()> {
+    use anyhow::Context;
+    use std::fs::create_dir;
+    use swarm_harness::setup_env;
+    use tempdir::TempDir;
+
+    setup_env().context("setting up env")?;
+    let tmp_dir = TempDir::new("swarm-versions").context("creating temp_dir")?;
+    let tmp = tmp_dir.path();
+    create_dir(tmp.join("bin")).context("creating ./bin")?;
+
+    match async_global_executor::block_on(versions::run(tmp)) {
         Ok(_) => Ok(()),
         Err(e) => {
             eprintln!("persisting tmp dir at {}", tmp_dir.into_path().display());
