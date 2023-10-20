@@ -4,7 +4,7 @@ mod versions {
         service::{
             EventMeta, EventResponse, EventService, Order, PublishEvent, PublishRequest, QueryRequest, QueryResponse,
         },
-        tags, Payload, StreamId,
+        Payload, StreamId, TagSet,
     };
     use anyhow::Context;
     use async_std::future::timeout;
@@ -124,10 +124,23 @@ mod versions {
         Ok(())
     }
 
-    async fn ensure_all_machines_are_connected(
+    /// This function:
+    /// 1. publishes a single message as each machine
+    /// 2. queries for said messages in each machine
+    ///
+    /// This process ensures that all machines have connected and
+    /// depending on timing constraints, that the fast path is being use.
+    /// This is controlled by the `timeout` and `interval` parameters.
+    /// - The `timeout` parameter controls for how long we're willing to wait until we
+    /// receive messages from all machines.
+    /// - The `interval` parameter controls how much time we wait between each query.
+    async fn publish_and_query(
         api: &Api,
         machine_ids: &Vec<MachineId>,
         streams: &HashMap<StreamId, MachineId>,
+        tag: &'static str,
+        timeout: Duration,
+        interval: Duration,
     ) -> anyhow::Result<()> {
         let all = machine_ids.iter().copied().collect::<HashSet<_>>();
 
@@ -136,7 +149,7 @@ mod versions {
                 .run(*i, |api| async move {
                     api.publish(PublishRequest {
                         data: vec![PublishEvent {
-                            tags: tags!("versions"),
+                            tags: TagSet::from_iter([tag.parse().expect("A valid tag")]),
                             payload: Payload::from_json_str("1").map_err(|s| anyhow::anyhow!("{}", s))?,
                         }],
                     })
@@ -147,14 +160,14 @@ mod versions {
         }
 
         for i in machine_ids {
-            let _: anyhow::Result<()> = timeout(Duration::from_secs(20), async {
+            let _: anyhow::Result<()> = async_std::future::timeout(timeout, async {
                 loop {
                     let alive_machines = api
                         .run(*i, |api| async move {
                             api.query(QueryRequest {
                                 lower_bound: None,
                                 upper_bound: None,
-                                query: "FROM 'versions'".parse()?,
+                                query: format!("FROM '{}'", tag).parse()?,
                                 order: Order::Asc,
                             })
                             .await
@@ -175,68 +188,7 @@ mod versions {
                     if alive_machines == all {
                         break;
                     }
-                    async_std::task::sleep(Duration::from_secs(1)).await;
-                }
-                Ok(())
-            })
-            .await
-            .context("timeout waiting for event propagation")?;
-        }
-        Ok(())
-    }
-
-    async fn ensure_fast_path_is_working(
-        api: &Api,
-        machine_ids: &Vec<MachineId>,
-        streams: &HashMap<StreamId, MachineId>,
-    ) -> anyhow::Result<()> {
-        let all = machine_ids.iter().copied().collect::<HashSet<_>>();
-
-        for i in machine_ids {
-            let r = api
-                .run(*i, |api| async move {
-                    api.publish(PublishRequest {
-                        data: vec![PublishEvent {
-                            tags: tags!("version2"),
-                            payload: Payload::from_json_str("1").map_err(|s| anyhow::anyhow!("{}", s))?,
-                        }],
-                    })
-                    .await
-                })
-                .await?;
-            tracing::info!("{} published: {:?}", i, r);
-        }
-
-        for i in machine_ids {
-            let _: anyhow::Result<()> = timeout(Duration::from_secs(20), async {
-                loop {
-                    let alive_machines = api
-                        .run(*i, |api| async move {
-                            api.query(QueryRequest {
-                                lower_bound: None,
-                                upper_bound: None,
-                                query: "FROM 'version2'".parse()?,
-                                order: Order::Asc,
-                            })
-                            .await
-                        })
-                        .await?
-                        .filter_map(|r| {
-                            tracing::info!("{} query response {:?}", i, r);
-                            match r {
-                                QueryResponse::Event(EventResponse {
-                                    meta: EventMeta::Event { key, .. },
-                                    ..
-                                }) => ready(streams.get(&key.stream)),
-                                _ => ready(None),
-                            }
-                        })
-                        .collect::<HashSet<MachineId>>()
-                        .await;
-                    if alive_machines == all {
-                        break;
-                    }
-                    async_std::task::sleep(Duration::from_millis(100)).await;
+                    async_std::task::sleep(interval).await;
                 }
                 Ok(())
             })
@@ -260,15 +212,35 @@ mod versions {
             streams.insert(node_id.stream(0.into()), *i);
         }
 
-        // step 1: wait until events propagate, i.e. all are connected
-        ensure_all_machines_are_connected(&api, &machines, &streams).await?;
+        // Step 1: wait until events propagate, i.e. all are connected
+        // We're using a total timeout of 20 seconds and an interval of 1 second between queries
+        // These values date back to before the refactor
+        publish_and_query(
+            &api,
+            &machines,
+            &streams,
+            "versions",
+            Duration::from_secs(20),
+            Duration::from_secs(1),
+        )
+        .await?;
 
         // it may be that the above was fulfilled by indirect event delivery, but now every
         // node must see every other; just wait a second to get them connected
         async_std::task::sleep(Duration::from_secs(1)).await;
 
         // step 2: check that fast_path is working between all of them
-        ensure_fast_path_is_working(&api, &machines, &streams).await?;
+        // We're using a total timeout of 1 seconds and an interval of 100 milliseconds between queries
+        // These values date back to before the refactor
+        publish_and_query(
+            &api,
+            &machines,
+            &streams,
+            "version2",
+            Duration::from_secs(1),
+            Duration::from_millis(100),
+        )
+        .await?;
 
         Ok(())
     }
