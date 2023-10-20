@@ -16,8 +16,7 @@ mod versions {
         collections::{HashMap, HashSet},
         fs::{create_dir, File},
         path::{Path, PathBuf},
-        thread::sleep,
-        time::{Duration, Instant},
+        time::Duration,
     };
     use swarm_cli::{Command, Event};
     use swarm_harness::{api::Api, util::app_manifest, MachineExt};
@@ -132,7 +131,6 @@ mod versions {
     ) -> anyhow::Result<()> {
         let all = machine_ids.iter().copied().collect::<HashSet<_>>();
 
-        // step 1: wait until events propagate, i.e. all are connected
         for i in machine_ids {
             let r = api
                 .run(*i, |api| async move {
@@ -187,28 +185,14 @@ mod versions {
         Ok(())
     }
 
-    pub async fn run(tmp: &Path) -> anyhow::Result<()> {
-        let mut sim = Netsim::<Command, Event>::new();
-        spawn_network(&mut sim, tmp).await?;
-        let machines = sim.machines().iter().map(|m| m.id()).collect::<Vec<_>>();
-        ensure_all_machines_are_up(&mut sim, &machines).await?;
+    async fn ensure_fast_path_is_working(
+        api: &Api,
+        machine_ids: &Vec<MachineId>,
+        streams: &HashMap<StreamId, MachineId>,
+    ) -> anyhow::Result<()> {
+        let all = machine_ids.iter().copied().collect::<HashSet<_>>();
 
-        let api = Api::with_port(&mut sim, app_manifest(), 4454).context("creating Api")?;
-        let mut streams = HashMap::new();
-        for i in &machines {
-            let node_id = api.run(*i, |api| async move { Ok(api.node_id().await) }).await?;
-            streams.insert(node_id.stream(0.into()), *i);
-        }
-        let all = machines.iter().copied().collect::<HashSet<_>>();
-
-        ensure_all_machines_are_connected(&api, &machines, &streams).await?;
-
-        // it may be that the above was fulfilled by indirect event delivery, but now every
-        // node must see every other; just wait a second to get them connected
-        async_std::task::sleep(Duration::from_secs(1)).await;
-
-        // step 2: check that fast_path is working between all of them
-        for i in &machines {
+        for i in machine_ids {
             let r = api
                 .run(*i, |api| async move {
                     api.publish(PublishRequest {
@@ -223,41 +207,68 @@ mod versions {
             tracing::info!("{} published: {:?}", i, r);
         }
 
-        let started = Instant::now();
-        for i in &machines {
-            loop {
-                let v = api
-                    .run(*i, |api| async move {
-                        api.query(QueryRequest {
-                            lower_bound: None,
-                            upper_bound: None,
-                            query: "FROM 'version2'".parse()?,
-                            order: Order::Asc,
+        for i in machine_ids {
+            let _: anyhow::Result<()> = timeout(Duration::from_secs(20), async {
+                loop {
+                    let alive_machines = api
+                        .run(*i, |api| async move {
+                            api.query(QueryRequest {
+                                lower_bound: None,
+                                upper_bound: None,
+                                query: "FROM 'version2'".parse()?,
+                                order: Order::Asc,
+                            })
+                            .await
                         })
-                        .await
-                    })
-                    .await?
-                    .filter_map(|r| {
-                        tracing::info!("{} query response {:?}", i, r);
-                        match r {
-                            QueryResponse::Event(EventResponse {
-                                meta: EventMeta::Event { key, .. },
-                                ..
-                            }) => ready(streams.get(&key.stream)),
-                            _ => ready(None),
-                        }
-                    })
-                    .collect::<HashSet<MachineId>>()
-                    .await;
-                if v == all {
-                    break;
+                        .await?
+                        .filter_map(|r| {
+                            tracing::info!("{} query response {:?}", i, r);
+                            match r {
+                                QueryResponse::Event(EventResponse {
+                                    meta: EventMeta::Event { key, .. },
+                                    ..
+                                }) => ready(streams.get(&key.stream)),
+                                _ => ready(None),
+                            }
+                        })
+                        .collect::<HashSet<MachineId>>()
+                        .await;
+                    if alive_machines == all {
+                        break;
+                    }
+                    async_std::task::sleep(Duration::from_millis(100)).await;
                 }
-                if started.elapsed() > Duration::from_secs(1) {
-                    anyhow::bail!("timeout waiting for event propagation");
-                }
-                sleep(Duration::from_millis(100));
-            }
+                Ok(())
+            })
+            .await
+            .context("timeout waiting for event propagation")?;
         }
+
+        Ok(())
+    }
+
+    pub async fn run(tmp: &Path) -> anyhow::Result<()> {
+        let mut sim = Netsim::<Command, Event>::new();
+        spawn_network(&mut sim, tmp).await?;
+        let machines = sim.machines().iter().map(|m| m.id()).collect::<Vec<_>>();
+        ensure_all_machines_are_up(&mut sim, &machines).await?;
+
+        let api = Api::with_port(&mut sim, app_manifest(), 4454).context("creating Api")?;
+        let mut streams = HashMap::new();
+        for i in &machines {
+            let node_id = api.run(*i, |api| async move { Ok(api.node_id().await) }).await?;
+            streams.insert(node_id.stream(0.into()), *i);
+        }
+
+        // step 1: wait until events propagate, i.e. all are connected
+        ensure_all_machines_are_connected(&api, &machines, &streams).await?;
+
+        // it may be that the above was fulfilled by indirect event delivery, but now every
+        // node must see every other; just wait a second to get them connected
+        async_std::task::sleep(Duration::from_secs(1)).await;
+
+        // step 2: check that fast_path is working between all of them
+        ensure_fast_path_is_working(&api, &machines, &streams).await?;
 
         Ok(())
     }
