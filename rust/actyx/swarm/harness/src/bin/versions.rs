@@ -7,7 +7,6 @@ mod versions {
         Payload, StreamId, TagSet,
     };
     use anyhow::Context;
-    use async_std::future::timeout;
     use escargot::CargoBuild;
     use flate2::read::GzDecoder;
     use futures::{future::ready, StreamExt};
@@ -16,7 +15,7 @@ mod versions {
         collections::{HashMap, HashSet},
         fs::{create_dir, File},
         path::{Path, PathBuf},
-        time::Duration,
+        time::{Duration, Instant},
     };
     use swarm_cli::{Command, Event};
     use swarm_harness::{api::Api, util::app_manifest, MachineExt};
@@ -93,31 +92,34 @@ mod versions {
         sim: &mut Netsim<Command, Event>,
         machine_ids: &Vec<MachineId>,
     ) -> anyhow::Result<()> {
+        let start = Instant::now();
         for i in machine_ids {
             let ip = sim.machine(*i).addr();
             let ns = sim.machine(*i).namespace();
             loop {
-                let req = {
+                // Spawning a "proper" thread is required because of `ns.enter()`
+                // which places the thread in a given namespace, tokio is not helpful
+                // here because it will keep the thread around - inside said namespace.
+                // Hence, disposing of the thread is how we "leave" the namespace
+                let req = std::thread::spawn(move || {
                     ns.enter().unwrap();
-                    timeout(
-                        Duration::from_secs(10),
-                        reqwest::get(format!("http://{}:4454/api/v2/node/id", ip)),
-                    )
-                    .await
-                };
+                    reqwest::blocking::get(format!("http://{}:4454/api/v2/node/id", ip))
+                })
+                .join()
+                .unwrap();
                 match req {
-                    Ok(Ok(resp)) => {
+                    Ok(resp) => {
                         if resp.status().is_success() {
                             break;
                         }
                     }
-                    Ok(Err(e)) => {
+                    Err(e) => {
                         tracing::info!("{} not yet ready: {}", i, e);
                         async_std::task::sleep(Duration::from_secs(1)).await;
                     }
-                    Err(err) => {
-                        Err(err).context("timeout waiting for machines to come up")?;
-                    }
+                }
+                if start.elapsed() > Duration::from_secs(10) {
+                    anyhow::bail!("timeout waiting for machines to come up");
                 }
             }
         }
