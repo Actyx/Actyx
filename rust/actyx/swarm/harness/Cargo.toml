@@ -29,4 +29,4 @@ tracing = "0.1.29"
 util = { path = "../../util" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-netsim-embed = "0.7.1"
+netsim-embed = "0.8.0"

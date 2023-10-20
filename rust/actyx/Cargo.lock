@@ -4184,9 +4184,9 @@ dependencies = [
 
 [[package]]
 name = "netsim-embed"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e561fd26ad86f3ba2804dc4eeb05e3e67ec2feca705c61f6d145b3915e79e56"
+checksum = "e7305e021dab0e7ef4b90b1730cae9c4a4e1853d8d5ecee6b1be58f0086aee60"
 dependencies = [
  "async-global-executor",
  "async-process",
@@ -4215,13 +4215,14 @@ dependencies = [
 
 [[package]]
 name = "netsim-embed-machine"
-version = "0.6.2"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0f1112c44fffc1f82dfc64b790f3fd0eca33094d8aec86de7fea872a441f39b"
+checksum = "83710638e06632fbb962734b93c52b7b1d6959ca5f2685ec35458a3088627c9e"
 dependencies = [
  "async-global-executor",
  "async-io",
  "async-process",
+ "async-std",
  "futures 0.3.25",
  "ioctl-sys",
  "libc",
