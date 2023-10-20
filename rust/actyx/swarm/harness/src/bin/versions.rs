@@ -21,7 +21,7 @@ mod versions {
     use swarm_harness::{api::Api, util::app_manifest, MachineExt};
     use util::formats::os_arch::Arch;
 
-    const VERSIONS: [&'static str; 7] = ["2.0.0", "2.3.0", "2.5.0", "2.8.2", "2.10.0", "2.11.0", "current"];
+    const VERSIONS: [&str; 7] = ["2.0.0", "2.3.0", "2.5.0", "2.8.2", "2.10.0", "2.11.0", "current"];
 
     fn get_version(tmp: &Path, version: &str) -> anyhow::Result<PathBuf> {
         if version == "current" {
