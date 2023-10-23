@@ -1,5 +1,5 @@
 use actyx_sdk::{
-    service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest},
+    service::{Order, PublishEvent},
     tags, Ax, AxOpts, Payload,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};

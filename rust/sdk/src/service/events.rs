@@ -304,6 +304,15 @@ pub struct PublishEvent {
     pub payload: Payload,
 }
 
+impl From<(TagSet, Payload)> for PublishEvent {
+    fn from(value: (TagSet, Payload)) -> Self {
+        Self {
+            tags: value.0,
+            payload: value.1,
+        }
+    }
+}
+
 /// Publication of a set of events
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

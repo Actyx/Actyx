@@ -27,6 +27,8 @@ tempdir = "0.3.7"
 tokio = { version = "1.15.0", features = ["time"], package = "tokio" }
 tracing = "0.1.29"
 util = { path = "../../util" }
+serde = "1"
+serde_json = "1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 netsim-embed = "0.8.0"

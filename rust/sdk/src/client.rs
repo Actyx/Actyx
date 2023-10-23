@@ -503,8 +503,9 @@ impl<'a> Publish<'a> {
                 tags,
                 payload: Payload::compact(event)?,
             });
+            return Ok(self);
         }
-        Ok(self)
+        panic!("Calling Publish::event after polling.")
     }
 
     /// Add events from an iterable.
@@ -535,8 +536,9 @@ impl<'a> Publish<'a> {
     pub fn events<E: IntoIterator<Item = impl Into<PublishEvent>>>(mut self, events: E) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.data.extend(events.into_iter().map(Into::into));
+            return self;
         }
-        self
+        panic!("Calling Publish::events after polling.");
     }
 }
 
@@ -636,6 +638,7 @@ impl<'a> Query<'a> {
     pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.lower_bound = Some(lower_bound);
+            return self;
         }
         panic!("Calling Query::with_lower_bound after polling.")
     }
@@ -672,6 +675,7 @@ impl<'a> Query<'a> {
     pub fn with_upper_bound(mut self, upper_bound: OffsetMap) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.upper_bound = Some(upper_bound);
+            return self;
         }
         panic!("Calling Query::with_upper_bound after polling.")
     }
@@ -680,6 +684,7 @@ impl<'a> Query<'a> {
     pub fn without_upper_bound(mut self) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.upper_bound = None;
+            return self;
         }
         panic!("Calling Query::without_upper_bound after polling.")
     }
@@ -723,6 +728,7 @@ impl<'a> Query<'a> {
     pub fn with_order(mut self, order: Order) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.order = order;
+            return self;
         }
         panic!("Calling Query::with_order after polling.")
     }
@@ -825,6 +831,7 @@ impl<'a> Subscribe<'a> {
     pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.lower_bound = Some(lower_bound);
+            return self;
         }
         panic!("Calling Subscribe::with_lower_bound after polling.")
     }

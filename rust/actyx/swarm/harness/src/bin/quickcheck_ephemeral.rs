@@ -2,10 +2,10 @@
 fn main() {
     use actyx_sdk::{
         language::TagExpr,
-        service::{EventMeta, EventResponse, EventService, QueryRequest, QueryResponse},
-        service::{PublishEvent, PublishRequest},
+        service::{EventMeta, EventResponse, PublishEvent, QueryResponse},
         tags, OffsetMap, Payload,
     };
+    use async_std::task::block_on;
     use futures::{future, stream::FuturesUnordered, StreamExt};
     use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
     use std::{
@@ -142,7 +142,7 @@ fn main() {
             let mut present = OffsetMap::empty();
             let machine = sim.machines().first().unwrap();
             api.run(machine.id(), move |client| async move {
-                client.publish(PublishRequest { data: events }).await?;
+                client.0.spawn_mut(|ax| block_on(ax.publish().events(events))).await??;
                 Ok(())
             })
             .await?;
@@ -153,7 +153,10 @@ fn main() {
             // Publish another event for other peers to ingest the new tree
             let (stream_0, max_offset) = api
                 .run(machine.id(), move |client| async move {
-                    let meta = client.publish(PublishRequest { data: make_events(1) }).await?;
+                    let meta = client
+                        .0
+                        .spawn_mut(|ax| block_on(ax.publish().events(make_events(1))))
+                        .await??;
                     let stream_0 = client.node_id().await.stream(1.into());
                     Ok((stream_0, meta.data.last().unwrap().offset))
                 })
@@ -181,16 +184,12 @@ fn main() {
                     .map(|m| m.id())
                     .map(|id| {
                         api.run(id, |client| {
-                            let request = QueryRequest {
-                                lower_bound: None,
-                                upper_bound: Some(present.clone()),
-                                query: "FROM allEvents".parse().unwrap(),
-                                order: actyx_sdk::service::Order::Asc,
-                            };
+                            let present = present.clone();
                             async move {
                                 let round_tripped = client
-                                    .query(request)
-                                    .await?
+                                    .0
+                                    .spawn_mut(|ax| block_on(ax.query("FROM allEvents").with_upper_bound(present)))
+                                    .await??
                                     .filter_map(|resp| async move {
                                         if let QueryResponse::Event(EventResponse {
                                             meta: EventMeta::Event { key, meta },
