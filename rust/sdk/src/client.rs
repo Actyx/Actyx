@@ -343,9 +343,11 @@ impl Ax {
     ///
     /// Example:
     /// ```no_run
-    /// use sdk::{Ax, AxOpts, PublishResponse}
+    /// use actyx_sdk::{Ax, AxOpts, service::PublishResponse};
     /// async fn publish_example() {
     ///     let response = Ax::new(AxOpts::default())
+    ///         .await
+    ///         .unwrap()
     ///         .publish()
     ///         .await
     ///         .unwrap();
@@ -353,7 +355,7 @@ impl Ax {
     /// }
     /// ```
     pub fn publish(&self) -> Publish<'_> {
-        Publish::new(&self)
+        Publish::new(self)
     }
 
     /// Returns a builder to query events.
@@ -365,9 +367,12 @@ impl Ax {
     ///
     /// Example:
     /// ```no_run
-    /// use sdk::{Ax, AxOpts, QueryResponse}
+    /// use actyx_sdk::{Ax, AxOpts, service::QueryResponse};
+    /// use futures::stream::StreamExt;
     /// async fn query_example() {
-    ///     let response = Ax::new(AxOpts::default())
+    ///     let mut response = Ax::new(AxOpts::default())
+    ///         .await
+    ///         .unwrap()
     ///         .query("FROM allEvents")
     ///         .await
     ///         .unwrap();
@@ -377,7 +382,7 @@ impl Ax {
     /// }
     /// ```
     pub fn query<Q: Into<String> + Send>(&self, query: Q) -> Query<'_> {
-        Query::new(&self, query)
+        Query::new(self, query)
     }
 
     /// Returns a builder to subscribe to an event query.
@@ -386,7 +391,8 @@ impl Ax {
     ///
     /// Example:
     /// ```no_run
-    /// use sdk::{Ax, AxOpts, SubscribeResponse}
+    /// use actyx_sdk::{Ax, AxOpts, service::SubscribeResponse};
+    /// use futures::stream::StreamExt;
     /// async fn subscribe_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
     ///     let mut subscribe_stream = service.subscribe("FROM 'example:tag'").await.unwrap();
@@ -396,7 +402,7 @@ impl Ax {
     /// }
     /// ```
     pub fn subscribe<Q: Into<String> + Send>(&self, query: Q) -> Subscribe<'_> {
-        Subscribe::new(&self, query)
+        Subscribe::new(self, query)
     }
 
     /// Returns a builder to subscribe to an event query.
@@ -405,7 +411,8 @@ impl Ax {
     ///
     /// Example:
     /// ```no_run
-    /// use sdk::{Ax, AxOpts, SubscribeMonotonicResponse}
+    /// use actyx_sdk::{Ax, AxOpts, service::SubscribeMonotonicResponse};
+    /// use futures::stream::StreamExt;
     /// async fn subscribe_monotonic_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
     ///     let mut subscribe_stream = service.subscribe_monotonic("FROM 'example:tag'").await.unwrap();
@@ -415,7 +422,7 @@ impl Ax {
     /// }
     /// ```
     pub fn subscribe_monotonic<Q: Into<String> + Send>(&self, query: Q) -> SubscribeMonotonic<'_> {
-        SubscribeMonotonic::new(&self, query)
+        SubscribeMonotonic::new(self, query)
     }
 }
 
@@ -478,7 +485,7 @@ impl<'a> Publish<'a> {
     ///
     /// Example:
     /// ```no_run
-    /// use sdk::{Ax, AxOpts, PublishResponse};
+    /// use actyx_sdk::{tags, Ax, AxOpts, service::PublishResponse};
     /// async fn event_example() -> PublishResponse {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
     ///     service
@@ -514,7 +521,7 @@ impl<'a> Publish<'a> {
     ///
     /// Example:
     /// ```no_run
-    /// use sdk::{Ax, AxOpts, PublishResponse};
+    /// use actyx_sdk::{tags, Ax, AxOpts, Payload, service::{PublishEvent, PublishResponse}};
     /// async fn events_example() -> PublishResponse {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
     ///     service
@@ -573,11 +580,7 @@ impl<'a> Future for Publish<'a> {
 
 impl<'a> FusedFuture for Publish<'a> {
     fn is_terminated(&self) -> bool {
-        if let Publish::Void = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, Publish::Void)
     }
 }
 
@@ -620,13 +623,14 @@ impl<'a> Query<'a> {
     ///
     /// Example:
     /// ```no_run
-    /// use sdk::{Ax, AxOpts, QueryResponse};
-    /// async fn lower_bound_example() -> QueryResponse {
+    /// use actyx_sdk::{Ax, AxOpts, service::QueryResponse};
+    /// use futures::stream::StreamExt;
+    /// async fn lower_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
     ///     // It's not always the case that you need to read the past
     ///     // hence, you can get the current offsets and read from then onwards
-    ///     let present_offsets = service.offsets().await?.unwrap().present;
-    ///     let response = service.query("FROM allEvents")
+    ///     let present_offsets = service.offsets().await.unwrap().present;
+    ///     let mut response = service.query("FROM allEvents")
     ///         .with_lower_bound(present_offsets)
     ///         .await
     ///         .unwrap();
@@ -659,11 +663,12 @@ impl<'a> Query<'a> {
     ///
     /// Example:
     /// ```no_run
-    /// use sdk::{Ax, AxOpts};
+    /// use actyx_sdk::{Ax, AxOpts};
+    /// use futures::stream::StreamExt;
     /// async fn upper_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
-    ///     let present_offsets = service.offsets().await?.unwrap().present;
-    ///     let response = service.query("FROM allEvents")
+    ///     let present_offsets = service.offsets().await.unwrap().present;
+    ///     let mut response = service.query("FROM allEvents")
     ///         .with_upper_bound(present_offsets)
     ///         .await
     ///         .unwrap();
@@ -713,11 +718,12 @@ impl<'a> Query<'a> {
     ///
     /// Example:
     /// ```no_run
-    /// use sdk::{Ax, AxOpts, Order};
+    /// use actyx_sdk::{Ax, AxOpts, service::Order};
+    /// use futures::stream::StreamExt;
     /// async fn order_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
-    ///     let response = service.query("FROM allEvents")
-    ///         .order(Order::Desc)
+    ///     let mut response = service.query("FROM allEvents")
+    ///         .with_order(Order::Desc)
     ///         .await
     ///         .unwrap();
     ///     while let Some(event) = response.next().await {
@@ -769,11 +775,7 @@ impl<'a> Future for Query<'a> {
 
 impl<'a> FusedFuture for Query<'a> {
     fn is_terminated(&self) -> bool {
-        if let Query::Void = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, Query::Void)
     }
 }
 
@@ -815,11 +817,12 @@ impl<'a> Subscribe<'a> {
     ///
     /// Example:
     /// ```no_run
-    /// use sdk::{Ax, AxOpts};
+    /// use actyx_sdk::{Ax, AxOpts};
+    /// use futures::stream::StreamExt;
     /// async fn lower_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
-    ///     let present_offsets = service.offsets().await?.unwrap().present;
-    ///     let response = service.subscribe("FROM allEvents")
+    ///     let present_offsets = service.offsets().await.unwrap().present;
+    ///     let mut response = service.subscribe("FROM allEvents")
     ///         .with_lower_bound(present_offsets)
     ///         .await
     ///         .unwrap();
@@ -872,11 +875,7 @@ impl<'a> Future for Subscribe<'a> {
 
 impl<'a> FusedFuture for Subscribe<'a> {
     fn is_terminated(&self) -> bool {
-        if let Subscribe::Void = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, Subscribe::Void)
     }
 }
 
@@ -958,11 +957,7 @@ impl<'a> Future for SubscribeMonotonic<'a> {
 
 impl<'a> FusedFuture for SubscribeMonotonic<'a> {
     fn is_terminated(&self) -> bool {
-        if let SubscribeMonotonic::Void = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, SubscribeMonotonic::Void)
     }
 }
 

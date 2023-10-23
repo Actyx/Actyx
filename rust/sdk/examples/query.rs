@@ -1,4 +1,4 @@
-use actyx_sdk::{service::Order, Ax, AxOpts, OffsetMap};
+use actyx_sdk::{service::Order, Ax, AxOpts};
 use futures::stream::StreamExt;
 
 // This example demonstrates how to query events.
