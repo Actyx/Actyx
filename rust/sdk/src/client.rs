@@ -584,11 +584,8 @@ impl<'a> FusedFuture for Publish<'a> {
 /// Warning: [`Query`] implements the [`Future`] trait, as such it can be polled.
 /// Calling _any_ [`Query`] function after polling will result in a panic!
 pub enum Query<'a> {
-    Initial {
-        client: &'a ActyxClient,
-        request: QueryRequest,
-    },
-    Pending(BoxFuture<'a, anyhow::Result<BoxStream<'a, QueryResponse>>>),
+    Initial { client: &'a Ax, request: QueryRequest },
+    Pending(BoxFuture<'a, anyhow::Result<BoxStream<'static, QueryResponse>>>),
     Void,
 }
 
@@ -732,7 +729,7 @@ impl<'a> Query<'a> {
 }
 
 impl<'a> Future for Query<'a> {
-    type Output = anyhow::Result<BoxStream<'a, QueryResponse>>;
+    type Output = anyhow::Result<BoxStream<'static, QueryResponse>>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         let this = self.get_mut();
@@ -779,11 +776,8 @@ impl<'a> FusedFuture for Query<'a> {
 /// Warning: [`Subscribe`] implements the [`Future`] trait, as such it can be polled.
 /// Calling _any_ [`Subscribe`] function after polling will result in a panic!
 pub enum Subscribe<'a> {
-    Initial {
-        client: &'a ActyxClient,
-        request: SubscribeRequest,
-    },
-    Pending(BoxFuture<'a, anyhow::Result<BoxStream<'a, SubscribeResponse>>>),
+    Initial { client: &'a Ax, request: SubscribeRequest },
+    Pending(BoxFuture<'a, anyhow::Result<BoxStream<'static, SubscribeResponse>>>),
     Void,
 }
 
@@ -837,7 +831,7 @@ impl<'a> Subscribe<'a> {
 }
 
 impl<'a> Future for Subscribe<'a> {
-    type Output = anyhow::Result<BoxStream<'a, SubscribeResponse>>;
+    type Output = anyhow::Result<BoxStream<'static, SubscribeResponse>>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         let this = self.get_mut();
@@ -888,7 +882,7 @@ pub enum SubscribeMonotonic<'a> {
         client: &'a ActyxClient,
         request: SubscribeMonotonicRequest,
     },
-    Pending(BoxFuture<'a, anyhow::Result<BoxStream<'a, SubscribeMonotonicResponse>>>),
+    Pending(BoxFuture<'a, anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>>>),
     Void,
 }
 
@@ -923,7 +917,7 @@ impl<'a> SubscribeMonotonic<'a> {
 }
 
 impl<'a> Future for SubscribeMonotonic<'a> {
-    type Output = anyhow::Result<BoxStream<'a, SubscribeMonotonicResponse>>;
+    type Output = anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>>;
 
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         let this = self.get_mut();
