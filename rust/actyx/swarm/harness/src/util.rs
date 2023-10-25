@@ -10,12 +10,7 @@ use std::{collections::BTreeMap, str::FromStr};
 use swarm_cli::Command;
 
 pub fn app_manifest() -> AppManifest {
-    AppManifest::new(
-        app_id!("com.example.trial-mode"),
-        "display name".into(),
-        "0.1.0".into(),
-        None,
-    )
+    AppManifest::trial(app_id!("com.example.trial-mode"), "display name".into(), "0.1.0".into()).unwrap()
 }
 
 pub fn to_events(tags: Vec<TagSet>) -> Vec<(TagSet, Payload)> {

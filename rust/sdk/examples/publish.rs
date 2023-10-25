@@ -11,12 +11,12 @@ fn counter() -> impl Stream<Item = i32> {
 }
 
 async fn mk_http_client() -> anyhow::Result<ActyxClient> {
-    let app_manifest = AppManifest::new(
+    let app_manifest = AppManifest::trial(
         app_id!("com.example.actyx-publish"),
         "Publish Example".into(),
         "0.1.0".into(),
-        None,
-    );
+    )
+    .unwrap();
     let url = Url::parse("http://localhost:4454").unwrap();
     ActyxClient::new(url, app_manifest).await
 }

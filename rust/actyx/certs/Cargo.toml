@@ -6,7 +6,7 @@ authors = ["Actyx AG"]
 
 [dependencies]
 crypto = { path = "../crypto" }
-actyx_sdk = { path = "../../sdk" }
+actyx_sdk = { path = "../../sdk", features = ["internals"] }
 util = { path = "../util" }
 
 anyhow = "1.0.52"

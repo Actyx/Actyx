@@ -21,6 +21,7 @@ sqlite = ["rusqlite"]
 postgresql = ["postgres-types", "bytes"]
 arb = ["quickcheck", "rand"]
 with-tokio = ["tokio"]
+internals = []
 
 [dependencies]
 actyx_sdk_macros = { version = "0.1", path = "../sdk_macros" }

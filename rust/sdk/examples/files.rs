@@ -16,12 +16,12 @@ use tokio_util::compat::*;
 use url::Url;
 
 async fn mk_http_client() -> anyhow::Result<ActyxClient> {
-    let app_manifest = AppManifest::new(
+    let app_manifest = AppManifest::trial(
         app_id!("com.example.actyx-offsets"),
         "Offsets Example".into(),
         "0.1.0".into(),
-        None,
-    );
+    )
+    .unwrap();
     let url = Url::parse("http://localhost:4454").unwrap();
     ActyxClient::new(url, app_manifest).await
 }

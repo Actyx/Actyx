@@ -1,5 +1,5 @@
 use crate::{cmd::AxCliCommand, private_key::AxPrivateKey};
-use certs::{AppManifest, DeveloperCertificate};
+use certs::{app_manifest_signer, AppManifest, DeveloperCertificate};
 use futures::{stream, Stream};
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;
@@ -31,7 +31,7 @@ pub fn create_signed_app_manifest(opts: SignOpts) -> ActyxOSResult<AppManifest> 
     let app_manifest: AppManifest = serde_json::from_str(&app_manifest)
         .ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "Failed to deserialize app manifest")?;
 
-    let signed_manifest = AppManifest::sign(
+    let signed_manifest = app_manifest_signer::make_signed(
         app_manifest.app_id(),
         app_manifest.display_name().to_owned(),
         app_manifest.version().to_owned(),

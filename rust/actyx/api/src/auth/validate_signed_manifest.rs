@@ -1,4 +1,4 @@
-use certs::{AppLicenseType, AppManifest, Expiring, SignedAppLicense};
+use certs::{app_manifest_signer, AppLicenseType, AppManifest, Expiring, SignedAppLicense};
 use crypto::PublicKey;
 
 use crate::{
@@ -12,8 +12,7 @@ pub fn validate_signed_manifest(
     ax_public_key: &PublicKey,
     licensing: &Licensing,
 ) -> Result<(), ApiError> {
-    manifest
-        .validate(ax_public_key)
+    app_manifest_signer::validate(manifest, ax_public_key)
         .map_err(|x| ApiError::InvalidManifest { msg: x.to_string() })?;
     if licensing.is_node_licensed(ax_public_key)? {
         let app_id = manifest.app_id();
