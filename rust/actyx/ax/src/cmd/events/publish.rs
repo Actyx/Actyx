@@ -1,3 +1,5 @@
+use std::{fs::File, io::Read};
+
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::Task,
@@ -6,6 +8,7 @@ use actyx_sdk::{
     service::{PublishEvent, PublishRequest, PublishResponse},
     Payload, Tag, TagSet,
 };
+use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use futures::{channel::mpsc::channel, future::ready, SinkExt, Stream, StreamExt};
 use genawaiter::sync::Co;
@@ -13,7 +16,7 @@ use structopt::StructOpt;
 use util::{
     formats::{
         events_protocol::{EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult,
+        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
     },
     gen_stream::GenStream,
 };
@@ -24,11 +27,43 @@ use util::{
 pub struct PublishOpts {
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
-    /// event payload (JSON)
-    payload: serde_json::Value,
-    #[structopt(long, short)]
+
+    /// Event payload, needs to be valid JSON.
+    /// You may also pass a file in using the syntax `@file.json` or
+    /// have the command read from standard input using `@-`.
+    payload: String,
+
     /// tag (can be given multiple times)
+    #[structopt(long, short)]
     tag: Option<Vec<Tag>>,
+}
+
+fn load_json(input: String) -> ActyxOSResult<serde_json::Value> {
+    let i = if input == "@-" {
+        let stdin = std::io::stdin();
+        let mut stdin = stdin.lock(); // locking is optional
+
+        let mut line = String::new();
+        while let Ok(n_bytes) = stdin.read_to_string(&mut line) {
+            if n_bytes == 0 {
+                break;
+            }
+        }
+        serde_json::from_str(&line)
+    } else if input.starts_with('@') {
+        let f: &str = input
+            .chars()
+            .next()
+            .map(|c| &input[c.len_utf8()..])
+            .ok_or_else(|| anyhow!("Malformed input"))
+            .ax_invalid_input()?;
+        let manifest_file = File::open(f).ax_invalid_input()?;
+        serde_json::from_reader(manifest_file)
+    } else {
+        serde_json::from_str(&input)
+    };
+
+    i.ax_invalid_input()
 }
 
 pub struct EventsPublish;
@@ -40,7 +75,7 @@ impl AxCliCommand for EventsPublish {
         Box::new(
             GenStream::new(move |co: Co<_>| async move {
                 let tags = opts.tag.unwrap_or_default().into_iter().collect::<TagSet>();
-                let payload = Payload::from_json_value(opts.payload)
+                let payload = Payload::from_json_value(load_json(opts.payload)?)
                     .map_err(|msg| ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, msg))?;
 
                 let (mut conn, peer) = opts.console_opt.connect().await?;
