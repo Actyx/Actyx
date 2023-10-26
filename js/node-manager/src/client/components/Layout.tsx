@@ -199,6 +199,7 @@ export const Menu: React.FC<MenuProps & ClassName> = ({ className, items }) => {
 }
 interface LayoutProps {
   title?: string
+  subtitle?: string
   input?: InputProps
   actions?: ActionProps[]
   menuItems?: MenuItem[]
@@ -207,6 +208,7 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps & ClassName> = ({
   title,
+  subtitle,
   children,
   className,
   input,
@@ -316,9 +318,16 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
       </div>
       <div className="flex flex-col flex-grow overflow-hidden">
         <div className="flex items-center flex-shrink-0 h-16 px-7 border-b border-gray-300 z-10">
-          <h1 className="text-lg font-medium" id="Layout_Title">
-            {title}
-          </h1>
+          <div className="flex flex-col">
+            <h1 className="text-lg font-medium" id="Layout_Title">
+              {title}
+            </h1>
+            {subtitle !== null && (
+              <h3 className="text-xs font-normal" id="Layout_Subtitle">
+                {subtitle}
+              </h3>
+            )}
+          </div>
           {input && <Input className="ml-auto" {...input} />}
           {actions &&
             actions.length > 0 &&
