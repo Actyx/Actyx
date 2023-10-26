@@ -909,6 +909,7 @@ impl<'a> SubscribeMonotonic<'a> {
     fn with_session_id<T: Into<SessionId>>(mut self, session_id: T) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.session = session_id.into();
+            return self;
         }
         panic!("Calling SubscribeMonotonic::with_session_id after polling.")
     }
@@ -917,6 +918,7 @@ impl<'a> SubscribeMonotonic<'a> {
     pub fn with_start_from(mut self, start_from: StartFrom) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.from = start_from;
+            return self;
         }
         panic!("Calling SubscribeMonotonic::with_start_from after polling.")
     }
