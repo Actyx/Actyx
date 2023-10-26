@@ -1030,3 +1030,171 @@ impl From<(String, serde_cbor::Error)> for ActyxClientError {
         }
     }
 }
+
+/// Tests for the builder. Most of these are "dumb" as to keep sure
+/// the values or semantics aren't changed without a "purposeful" change
+/// — i.e. they are here to make you double check when you change semantics
+/// or ensure you didn't miss an `else` that leads to an unconditional panic
+/// (not that has ever happened...)
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, RwLock};
+
+    use reqwest::Client;
+
+    use crate::{
+        service::{Order, PublishEvent, StartFrom},
+        tags, Ax, AxOpts, NodeId, OffsetMap, Payload,
+    };
+
+    use super::{Publish, Query, Subscribe, SubscribeMonotonic};
+
+    /// The normal [`Ax::new`] connects to a client, the client returned by this
+    /// function is a "mock" client instead that allows us to test the builder
+    /// functions without requiring a connection to Actyx
+    fn new_test_client() -> Ax {
+        let opts = AxOpts::default();
+        let client = Client::new();
+
+        Ax {
+            client,
+            base_url: opts.url,
+            token: Arc::new(RwLock::new("empty_token".to_string())),
+            app_manifest: opts.manifest,
+            node_id: NodeId::new([
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ]),
+        }
+    }
+
+    #[test]
+    fn test_publish_event() {
+        let ax = new_test_client();
+        let publish = ax
+            .publish()
+            .event(tags!("test"), &"test_string")
+            .expect("The event payload should be serializable");
+
+        if let Publish::Initial { request, .. } = publish {
+            assert_eq!(
+                request.data,
+                vec![PublishEvent::from((
+                    tags!("test"),
+                    Payload::compact(&"test_string").expect("The event payload must be serializable")
+                ))]
+            )
+        }
+    }
+
+    #[test]
+    fn test_publish_events() {
+        let ax = new_test_client();
+        let publish = ax.publish().events([(
+            tags!("test"),
+            Payload::compact(&"test_string").expect("The event payload should be serializable"),
+        )]);
+
+        if let Publish::Initial { request, .. } = publish {
+            assert_eq!(
+                request.data,
+                vec![PublishEvent::from((
+                    tags!("test"),
+                    Payload::compact(&"test_string").expect("The event payload must be serializable")
+                ))]
+            )
+        }
+    }
+
+    #[test]
+    fn test_query() {
+        let ax = new_test_client();
+        let query = ax.query("FROM allEvents");
+        if let Query::Initial { request, .. } = query {
+            assert_eq!(request.query, "FROM allEvents");
+        }
+    }
+
+    #[test]
+    fn test_query_with_lower_bound() {
+        let ax = new_test_client();
+        let query = ax.query("FROM allEvents").with_lower_bound(OffsetMap::empty());
+        if let Query::Initial { request, .. } = query {
+            assert_eq!(request.lower_bound, Some(OffsetMap::empty()));
+        }
+    }
+
+    #[test]
+    fn test_query_with_upper_bound() {
+        let ax = new_test_client();
+        let query = ax.query("FROM allEvents").with_upper_bound(OffsetMap::empty());
+        if let Query::Initial { request, .. } = query {
+            assert_eq!(request.upper_bound, Some(OffsetMap::empty()));
+        }
+    }
+
+    #[test]
+    fn test_query_without_upper_bound() {
+        let ax = new_test_client();
+        let query = ax.query("FROM allEvents").without_upper_bound();
+        if let Query::Initial { request, .. } = query {
+            assert_eq!(request.upper_bound, None);
+        }
+    }
+
+    #[test]
+    fn test_query_with_order() {
+        let ax = new_test_client();
+        let query = ax.query("FROM allEvents").with_order(Order::Desc);
+        if let Query::Initial { request, .. } = query {
+            assert_eq!(request.order, Order::Desc);
+        }
+    }
+
+    #[test]
+    fn test_subcribe() {
+        let ax = new_test_client();
+        let subscribe = ax.subscribe("FROM allEvents");
+        if let Subscribe::Initial { request, .. } = subscribe {
+            assert_eq!(request.query, "FROM allEvents");
+        }
+    }
+
+    #[test]
+    fn test_subcribe_with_lower_bound() {
+        let ax = new_test_client();
+        let subscribe = ax.subscribe("FROM allEvents").with_lower_bound(OffsetMap::empty());
+        if let Subscribe::Initial { request, .. } = subscribe {
+            assert_eq!(request.lower_bound, Some(OffsetMap::empty()));
+        }
+    }
+
+    #[test]
+    fn test_subscribe_monotonic() {
+        let ax = new_test_client();
+        let subscribe = ax.subscribe_monotonic("FROM allEvents");
+        if let SubscribeMonotonic::Initial { request, .. } = subscribe {
+            assert_eq!(request.query, "FROM allEvents");
+        }
+    }
+
+    #[test]
+    fn test_subscribe_monotonic_with_session_id() {
+        let ax = new_test_client();
+        let subscribe = ax.subscribe_monotonic("FROM allEvents").with_session_id("session_id");
+        if let SubscribeMonotonic::Initial { request, .. } = subscribe {
+            assert_eq!(request.session.as_str(), "session_id");
+        }
+    }
+
+    #[test]
+    fn test_subscribe_monotonic_with_start_from() {
+        let ax = new_test_client();
+        let subscribe = ax
+            .subscribe_monotonic("FROM allEvents")
+            .with_start_from(crate::service::StartFrom::LowerBound(OffsetMap::empty()));
+        if let SubscribeMonotonic::Initial { request, .. } = subscribe {
+            let StartFrom::LowerBound(lower_bound) = request.from;
+            assert_eq!(lower_bound, OffsetMap::empty());
+        }
+    }
+}
