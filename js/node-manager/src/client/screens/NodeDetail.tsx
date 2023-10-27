@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Connection, NodeType, Peer, ReachableNodeUi as ReachableNodeT } from '../../common/types'
+import { NodeType, Peer, ReachableNodeUi as ReachableNodeT } from '../../common/types/nodes'
 import { Layout } from '../components/Layout'
 import { useAppState, AppActionKey } from '../app-state'
 import { Error } from '../components/Error'
@@ -7,6 +7,7 @@ import { SimpleCanvas } from '../components/SimpleCanvas'
 import { Button, Tabs } from '../components/basics'
 import { SettingsEditor } from '../components/SettingsEditor'
 import clsx from 'clsx'
+import { NodeManagerAgentContext } from '../agents/node-manager'
 
 const removePeerIdFromPeerAddr = (addr: string): string => {
   const parts = addr.split('/')
@@ -177,9 +178,7 @@ const Peers: React.FC<{ node: ReachableNodeT }> = ({ node }) => {
 
 const Actions: React.FC<{ node: ReachableNodeT }> = ({ node: { addr } }) => {
   const [shuttingDown, setShuttingDown] = useState(false)
-  const {
-    actions: { shutdownNode },
-  } = useAppState()
+  const nodeManagerAgent = NodeManagerAgentContext.use()
   return (
     <div className="">
       <Button
@@ -187,7 +186,7 @@ const Actions: React.FC<{ node: ReachableNodeT }> = ({ node: { addr } }) => {
         color="red"
         onClick={() => {
           setShuttingDown(true)
-          shutdownNode(addr)
+          nodeManagerAgent.api.shutdownNode(addr)
         }}
         working={shuttingDown}
         small
@@ -257,10 +256,10 @@ const Offsets: React.FC<{ node: ReachableNodeT }> = ({
     details: { offsets },
   },
 }) => {
-  const {
-    data: { nodes },
-  } = useAppState()
-  const allReachableNodes = nodes.filter((n) => n.type === NodeType.Reachable) as ReachableNodeT[]
+  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const allReachableNodes = nodeManagerAgent.api
+    .getReachableUiNodes()
+    .filter((n) => n.type === NodeType.Reachable) as ReachableNodeT[]
 
   const Row: React.FC<{ field: string; value: string; gray?: boolean }> = ({
     field,
@@ -419,11 +418,9 @@ const ReachableNode: React.FC<{ node: ReachableNodeT }> = ({ node }) => (
 )
 
 const Screen: React.FC<{ addr: string }> = ({ addr }) => {
-  const {
-    dispatch,
-    data: { nodes },
-  } = useAppState()
-  const node = nodes.find((n) => n.addr === addr)
+  const { dispatch } = useAppState()
+  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const node = nodeManagerAgent.api.getNodeAsUiNode(addr)
   if (!node) {
     return (
       <Layout title="Error">

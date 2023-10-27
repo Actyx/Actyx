@@ -1,5 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { NodeType, UiNode } from '../../common/types'
+import React, { useEffect, useState } from 'react'
 import { nodeAddrValid } from '../../common/util'
 import { Layout } from '../components/Layout'
 import { useAppState, AppActionKey } from '../app-state'
@@ -10,6 +9,8 @@ import { useStore } from '../store'
 import { StoreState } from '../store/types'
 import { connect, getNodeDetails } from '../util'
 import deepEqual from 'deep-equal'
+import { NodeType, UiNode } from '../../common/types/nodes'
+import { NodeManagerAgentContext } from '../agents/node-manager'
 
 const ErrorSpan: React.FC<{ error: string }> = ({ children, error }) => {
   const [open, setOpen] = useState(false)
@@ -63,18 +64,42 @@ const nodeToStatusText = (node: UiNode) => {
   }
 }
 
-const isFavorite = (store: StoreState, node: UiNode) =>
-  store.key === 'Loaded' && store.data.preferences.favoriteNodeAddrs.includes(node.addr)
+const isFavorite = (store: StoreState, addr: string) =>
+  store.key === 'Loaded' && store.data.preferences.favoriteNodeAddrs.includes(addr)
 
-const NodeCard: React.FC<{ node: UiNode; remove: () => void; view: () => void }> = ({
-  node,
+const useSingleUiNode = (addr: string) => {
+  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const node: UiNode = nodeManagerAgent.api.getNodeAsUiNode(addr) || {
+    type: NodeType.Fresh,
+    addr,
+  }
+
+  const [_, setRefreshSymbol] = useState(Symbol())
+  useEffect(() => {
+    const unsub = nodeManagerAgent.channels.onNodeInfoChange.sub((incomingAddr) => {
+      if (incomingAddr === addr) {
+        setRefreshSymbol(Symbol())
+      }
+    })
+
+    return () => {
+      unsub()
+    }
+  }, [nodeManagerAgent, addr])
+
+  return node
+}
+
+const NodeCard: React.FC<{ addr: string; remove: () => void; view: () => void }> = ({
+  addr,
   remove,
   view,
 }) => {
   const store = useStore()
+  const node: UiNode = useSingleUiNode(addr)
 
   const toggleFavorite = () => {
-    isFavorite(store, node) ? unmkFavorite() : mkFavorite()
+    isFavorite(store, node.addr) ? unmkFavorite() : mkFavorite()
   }
 
   const mkFavorite = () => {
@@ -108,7 +133,7 @@ const NodeCard: React.FC<{ node: UiNode; remove: () => void; view: () => void }>
   return (
     <div key={node.addr} className="bg-white rounded p-4 w-56 relative">
       <div className="absolute top-3 right-3 cursor-pointer" onClick={toggleFavorite}>
-        {isFavorite(store, node) ? (
+        {isFavorite(store, node.addr) ? (
           <SolidStarIcon height={4} width={4} className="text-gray-400" />
         ) : (
           <UnsolidStarIcon height={4} width={4} className="text-gray-400" />
@@ -146,8 +171,8 @@ const NodeCard: React.FC<{ node: UiNode; remove: () => void; view: () => void }>
         <Button
           color="gray"
           onClick={remove}
-          disabled={isFavorite(store, node)}
-          title={isFavorite(store, node) ? 'cannot remove starred node' : undefined}
+          disabled={isFavorite(store, node.addr)}
+          title={isFavorite(store, node.addr) ? 'cannot remove starred node' : undefined}
         >
           Remove
         </Button>
@@ -347,43 +372,44 @@ const Search: React.FC<{ nodes: UiNode[]; addNodes: (addrs: string[]) => void }>
 }
 
 const Screen: React.FC<{}> = () => {
-  const {
-    dispatch,
-    actions: { addNodes, remNodes },
-    data: { nodes },
-  } = useAppState()
+  const { dispatch } = useAppState()
 
+  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodes = nodeManagerAgent.api.getNodesAsUiNode()
   const store = useStore()
 
   const inputValidator = (addr: string) =>
     addr !== '' && !nodes.map((n) => n.addr).includes(addr) && nodeAddrValid(addr)
   const viewNode = (addr: string) => dispatch({ key: AppActionKey.ShowNodeDetail, addr })
-  const remNode = (addr: string) => remNodes([addr])
+  const remNode = (addr: string) => nodeManagerAgent.api.removeNodes([addr])
 
   return (
     <Layout
       title="Nodes"
       input={{
-        onSubmit: (val) => addNodes([val]),
+        onSubmit: (val) => nodeManagerAgent.api.addNodes([val]),
         placeholder: 'Node address',
         buttonText: 'Add node',
         validator: inputValidator,
       }}
       actions={[
         {
-          target: () => remNodes(nodes.filter((n) => !isFavorite(store, n)).map((n) => n.addr)),
+          target: () =>
+            nodeManagerAgent.api.removeNodes(
+              nodeManagerAgent.api.getAllTrackedAddrs().filter((n) => !isFavorite(store, n)),
+            ),
           text: 'Remove all nodes',
-          disabled: nodes.filter((n) => !isFavorite(store, n)).length < 1,
+          disabled: nodes.filter((n) => !isFavorite(store, n.addr)).length < 1,
         },
       ]}
     >
       {/* <div className="grid gap-6 grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"> */}
       <div className="grid gap-4 grid-cols-nodes">
-        <Search nodes={nodes} addNodes={addNodes} />
+        <Search nodes={nodes} addNodes={nodeManagerAgent.api.addNodes} />
         {nodes.map((node) => (
           <NodeCard
             key={node.addr}
-            node={node}
+            addr={node.addr}
             remove={() => remNode(node.addr)}
             view={() => viewNode(node.addr)}
           />

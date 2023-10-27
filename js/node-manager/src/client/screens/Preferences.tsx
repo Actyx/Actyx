@@ -4,7 +4,7 @@ import { Layout } from '../components/Layout'
 import { useStore } from '../store'
 import clsx from 'clsx'
 import { StoreStateKey } from '../store/types'
-import { DEFAULT_TIMEOUT_SEC } from 'common/consts'
+import { DEFAULT_TIMEOUT_SEC } from '../../common/consts'
 
 
 const NodeTimeout = () => {

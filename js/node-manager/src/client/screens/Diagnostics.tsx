@@ -1,5 +1,5 @@
 import React from 'react'
-import { UiNode, NodeType, ReachableNodeUi as ReachableNodeT } from '../../common/types'
+import { UiNode, NodeType, ReachableNodeUi as ReachableNodeT } from '../../common/types/nodes'
 import { Layout } from '../components/Layout'
 import { useAppState } from '../app-state'
 import { SimpleCanvas } from '../components/SimpleCanvas'
@@ -7,9 +7,9 @@ import { Button, Tabs } from '../components/basics'
 import { shutdownApp, toggleDevTools } from '../util'
 import { useStore } from '../store'
 import clsx from 'clsx'
-import { HslPercentageSpectrum, RedToGreenPercentageSpectrum } from '../util/color'
+import { HslPercentageSpectrum } from '../util/color'
 import { OffsetInfo, Offset } from '../offsets'
-import { isNone } from 'fp-ts/lib/Option'
+import { NodeManagerAgentContext } from '../agents/node-manager'
 
 const isConnectedTo = (from: ReachableNodeT, to: UiNode) => {
   if (to.type === NodeType.Reachable) {
@@ -181,8 +181,13 @@ const SwarmConnectivity: React.FC<{ nodes: UiNode[] }> = ({ nodes }) => {
 }
 
 const NodeManager: React.FC = () => {
-  const { state, data } = useAppState()
+  const { state } = useAppState()
   const store = useStore()
+  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const data = {
+    nodes: nodeManagerAgent.api.getNodesAsUiNode(),
+    offsets: nodeManagerAgent.api.getOffsets(),
+  }
   return (
     <div>
       <Button className="mb-3" color="yellow" onClick={toggleDevTools} small>
@@ -211,10 +216,9 @@ const NodeManager: React.FC = () => {
 }
 
 const Screen: React.FC = () => {
-  const {
-    data: { nodes, offsets },
-  } = useAppState()
-
+  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodes = nodeManagerAgent.api.getNodesAsUiNode()
+  const offsets = nodeManagerAgent.api.getOffsets()
   return (
     <Layout title={`Diagnostics`}>
       <SimpleCanvas>
@@ -229,11 +233,12 @@ const Screen: React.FC = () => {
               },
               {
                 text: 'Offset Matrix',
-                elem: isNone(offsets) ? (
-                  <p>Loading...</p>
-                ) : (
-                  <OffsetMatrix nodes={nodes} offsets={offsets.value} />
-                ),
+                elem:
+                  offsets === null ? (
+                    <p>Loading...</p>
+                  ) : (
+                    <OffsetMatrix nodes={nodes} offsets={offsets} />
+                  ),
               },
               {
                 text: 'Node Manager',
