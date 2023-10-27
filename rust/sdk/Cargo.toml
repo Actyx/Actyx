@@ -2,7 +2,7 @@
 name = "actyx_sdk"
 version = "0.3.0"
 authors = ["Actyx AG <developer@actyx.io>"]
-edition = "2018"
+edition = "2021"
 description = "Tools for interacting with the services of an Actyx node"
 readme = "README.md"
 documentation = "https://docs.rs/actyx_sdk"

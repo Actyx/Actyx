@@ -1,3 +1,5 @@
+#![cfg(feature = "client")]
+
 use actyx_sdk::{
     app_id,
     service::{EventService, Order, QueryRequest, QueryResponse},

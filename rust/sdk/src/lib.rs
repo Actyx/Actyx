@@ -23,7 +23,6 @@ pub mod arb;
 mod client;
 mod event;
 pub mod language;
-pub mod legacy;
 mod offset;
 mod scalars;
 pub mod service;
