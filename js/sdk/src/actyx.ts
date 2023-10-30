@@ -127,7 +127,7 @@ export const Actyx = {
     if (previousInstanceCount > 0) {
       console.warn(
         new Error(
-          `Multiple creations of actyx instance with these parameters are detected! manifest: ${JSON.stringify(
+          `Multiple connections to Actyx with these parameters are detected! manifest: ${JSON.stringify(
             manifest,
           )} opts: ${JSON.stringify(opts)}`,
         ),
