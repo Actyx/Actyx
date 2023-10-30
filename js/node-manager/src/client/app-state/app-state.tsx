@@ -16,7 +16,8 @@ import { AppState, AppAction, AppStateKey, AppActionKey } from './types'
 import { FatalError } from '../../common/ipc'
 import { ObsValcon } from '../util/valcon'
 import { ServReact } from '../util/serv-react'
-import { NodeManagerAgent, NodeManagerAgentContext } from '../agents/node-manager'
+import { FavoriteParams, NodeManagerAgent, NodeManagerAgentContext } from '../agents/node-manager'
+import { useStore } from '../store'
 
 export const reducer =
   () =>
@@ -109,6 +110,38 @@ const AppStateContext = React.createContext<
   | undefined
 >(undefined)
 
+// const toggleFavorite = () => {
+//   isFavorite(store, node.addr) ? unmkFavorite() : mkFavorite()
+// }
+
+// const mkFavorite = () => {
+//   if (store.key !== 'Loaded') {
+//     return
+//   }
+//   store.actions.updateAndReload({
+//     ...store.data,
+//     preferences: {
+//       ...store.data.preferences,
+//       favoriteNodeAddrs: store.data.preferences.favoriteNodeAddrs.concat([node.addr]),
+//     },
+//   })
+// }
+
+// const unmkFavorite = () => {
+//   if (store.key !== 'Loaded') {
+//     return
+//   }
+//   store.actions.updateAndReload({
+//     ...store.data,
+//     preferences: {
+//       ...store.data.preferences,
+//       favoriteNodeAddrs: store.data.preferences.favoriteNodeAddrs.filter(
+//         (addr) => addr !== node.addr,
+//       ),
+//     },
+//   })
+// }
+
 export const AppStateProvider: React.FC<{
   setFatalError: (error: FatalError) => void
 }> = ({ children, setFatalError }) => {
@@ -149,6 +182,7 @@ export const AppStateProvider: React.FC<{
       })
     },
   }
+  const store = useStore()
 
   useEffect(() => {
     ;(async () => {
@@ -167,9 +201,43 @@ export const AppStateProvider: React.FC<{
     nodeManagerAgentAllowedToWorkRef.set(nodeManagerAgentAllowedToWork)
   }, [nodeManagerAgentAllowedToWork])
 
+  const favoriteAddressesControlRef = useMemo<FavoriteParams>(
+    () =>
+      ObsValcon<null | {
+        initial: string[]
+        set: (_: string[]) => unknown
+      }>(null),
+    [],
+  )
+  useEffect(() => {
+    if (store.key === 'Loaded') {
+      favoriteAddressesControlRef.set({
+        initial: store.data.preferences.favoriteNodeAddrs,
+        set: (favorite) =>
+          store.actions.updateAndReload({
+            ...store.data,
+            preferences: {
+              ...store.data.preferences,
+              favoriteNodeAddrs: favorite,
+            },
+          }),
+      })
+    }
+  }, [store])
+
+  const nodeTimeoutRef = useMemo<ObsValcon<number | null>>(() => ObsValcon<null | number>(null), [])
+  const nodeTimeout = (store.key === 'Loaded' && store.data.preferences.nodeTimeout) || null
+  useEffect(() => {
+    nodeTimeoutRef.set(nodeTimeout)
+  }, [nodeTimeout])
+
   // Initialize NodeManagerAgent here
   const nodeManagerAgent = ServReact.useOwned(() =>
-    NodeManagerAgent(nodeManagerAgentAllowedToWorkRef),
+    NodeManagerAgent({
+      allowedToWorkRef: nodeManagerAgentAllowedToWorkRef,
+      favoriteParams: favoriteAddressesControlRef,
+      timeoutRef: nodeTimeoutRef,
+    }),
   )
 
   return (

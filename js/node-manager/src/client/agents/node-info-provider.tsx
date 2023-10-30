@@ -9,6 +9,7 @@ import { ipcRenderer } from 'electron'
 import { DEFAULT_TIMEOUT_SEC } from '../../common/consts'
 import deepEqual from 'deep-equal'
 import { sleep } from '../../common/util'
+import { ObsValcon } from '../util/valcon'
 
 const POLLING_INTERVAL_MS = 1000
 
@@ -18,11 +19,13 @@ export const NodeInfoProvider = ({
   peer,
   emitNodeInfoChange,
   emitDisconnect,
+  timeoutRef,
 }: {
   addr: string
   peer: string
   emitNodeInfoChange: () => unknown
   emitDisconnect: () => unknown
+  timeoutRef: ObsValcon<number | null>
 }) =>
   Serv.build()
     .api(({ isDestroyed }) => {
@@ -30,20 +33,16 @@ export const NodeInfoProvider = ({
         nodeInfo: null as null | GetNodeDetailsResponse,
       })
 
-      // const getTimeoutSec =
-      //   (store.key === StoreStateKey.Loaded && store.data.preferences.nodeTimeout) ||
-      //   DEFAULT_TIMEOUT_SEC
-      const getTimeoutSec = DEFAULT_TIMEOUT_SEC
+      const onDisconnect = (_: Electron.IpcRendererEvent, incomingPeer: string) => {
+        if (incomingPeer !== peer) return
+        data.nodeInfo = { type: NodeType.Disconnected, peer }
+        emitDisconnect()
+      }
 
       ;(async () => {
-        const listener = (event: Electron.IpcRendererEvent, incomingPeer: string) => {
-          if (incomingPeer !== peer) return
-          data.nodeInfo = { type: NodeType.Disconnected, peer }
-          emitDisconnect()
-        }
-
-        ipcRenderer.on('onDisconnect', listener)
+        ipcRenderer.on('onDisconnect', onDisconnect)
         while (!isDestroyed()) {
+          const getTimeoutSec = timeoutRef.get() || DEFAULT_TIMEOUT_SEC
           const detail = await sleep(Math.round(Math.random() * 0)).then(() =>
             getNodeDetails({ peer, timeout: getTimeoutSec }),
           )
@@ -54,9 +53,10 @@ export const NodeInfoProvider = ({
           }
           await sleep(POLLING_INTERVAL_MS)
         }
+      })().finally(() => {
         console.log('node provider destroyed', addr)
-        ipcRenderer.off('onDisonnect', listener)
-      })()
+        ipcRenderer.off('onDisonnect', onDisconnect)
+      })
 
       return {
         get: (): null | GetNodeDetailsResponse => data.nodeInfo,

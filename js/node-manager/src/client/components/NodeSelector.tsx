@@ -1,4 +1,4 @@
-import { NodeType, ReachableNodeUi } from 'common/types/nodes'
+import { NodeType, ReachableNodeUi } from '../../common/types/nodes'
 import React, { useEffect } from 'react'
 import Select from 'react-select'
 import semver from 'semver'

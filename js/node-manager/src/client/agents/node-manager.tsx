@@ -1,7 +1,3 @@
-// add nodes
-// rem nodes
-// restart nodes
-
 import * as E from 'fp-ts/Either'
 import { OffsetInfo } from '../offsets'
 import { Obs, Serv } from '../util/serv'
@@ -19,19 +15,28 @@ import {
 import * as util from '../util'
 import { ServReact } from '../util/serv-react'
 import { ObsValcon } from '../util/valcon'
+import { ContainerCell, ContainerCellLazyCalc } from '../util/immutable-container'
+import { Favorite, FavoriteParams } from './favorite-manager'
+export { Favorite, FavoriteParams }
 
 const POLLING_INTERVAL_MS = 1000
 
 // Agent definition
-
-// TODO: Implement Favorited Addresses
-// TODO: Implement using timeout from preferences
+// ================
 
 export const NodeManagerAgentContext = ServReact.Context.make<NodeManagerAgent>()
 
 export type NodeManagerAgent = ReturnType<typeof NodeManagerAgent>
 
-export const NodeManagerAgent = (allowedToWorkRef: ObsValcon<boolean>) =>
+export const NodeManagerAgent = ({
+  allowedToWorkRef,
+  timeoutRef,
+  favoriteParams,
+}: {
+  allowedToWorkRef: ObsValcon<boolean>
+  timeoutRef: ObsValcon<number | null>
+  favoriteParams: FavoriteParams
+}) =>
   Serv.build()
     .channels((channels) => ({
       ...channels,
@@ -39,24 +44,26 @@ export const NodeManagerAgent = (allowedToWorkRef: ObsValcon<boolean>) =>
       onNodeInfoChange: Obs.make<string>(),
     }))
     .api(({ channels, isDestroyed, onDestroy }) => {
+      const favorites = Favorite(favoriteParams)
+
       const data: Internals = Object.seal({
-        trackedAddresses: ImmutableContainer(new Set()),
-        connections: ImmutableContainer(new Map()),
-        nodeDetailsProviders: ImmutableContainer(new Map()),
+        trackedAddresses: ContainerCell(new Set()),
+        connections: ContainerCell(new Map()),
+        nodeDetailsProviders: ContainerCell(new Map()),
         offsets: null as OffsetInfo | null,
       })
 
-      const getAllTrackedAddrs = ImmutableLazyCalc(data.trackedAddresses, (trackedAddrs) =>
+      const memoTrackedAddrs = ContainerCellLazyCalc(data.trackedAddresses, (trackedAddrs) =>
         Array.from(trackedAddrs),
       )
 
-      const getReachableUiNodes = ImmutableLazyCalc(data.nodeDetailsProviders, (providers) =>
+      const memoReachableUINodes = ContainerCellLazyCalc(data.nodeDetailsProviders, (providers) =>
         Array.from(providers.values())
           .map((provider) => provider.api.getAsReachableNodeUi())
           .filter((info): info is ReachableNodeUi => info !== null),
       )
 
-      const getConnectedNodes = ImmutableLazyCalc(data.connections, (connections) =>
+      const memoConnectedNodes = ContainerCellLazyCalc(data.connections, (connections) =>
         Array.from(connections.entries())
           .map(([addr, connection]) => {
             if (!E.isRight(connection)) return null
@@ -65,9 +72,9 @@ export const NodeManagerAgent = (allowedToWorkRef: ObsValcon<boolean>) =>
           .filter((x): x is { addr: string; peer: string } => x !== null),
       )
 
-      const getNodesAsUiNode = ImmutableLazyCalc(data.trackedAddresses, (addresses) =>
-        ImmutableLazyCalc(data.connections, (connections) =>
-          ImmutableLazyCalc(data.nodeDetailsProviders, (infoproviders) => {
+      const memoNodeAsUINode = ContainerCellLazyCalc(data.trackedAddresses, (addresses) =>
+        ContainerCellLazyCalc(data.connections, (connections) =>
+          ContainerCellLazyCalc(data.nodeDetailsProviders, (infoproviders) => {
             const alltracked = Array.from(addresses)
 
             return alltracked.map(
@@ -83,6 +90,16 @@ export const NodeManagerAgent = (allowedToWorkRef: ObsValcon<boolean>) =>
       )
 
       const unsubs = [
+        // After favorites is initialized: populate tracked addresses with favorites
+        favorites.channels.initialized.sub(() => {
+          data.trackedAddresses.mutate((tracked) =>
+            favorites.api.getFavorites().forEach((favorite) => tracked.add(favorite)),
+          )
+          channels.change.emit()
+        }),
+        // Propagate all change events from favorites
+        favorites.channels.change.sub(channels.change.emit),
+        // On node disconnection, dissolve "connection"
         channels.onNodeDisconnect.sub((addr) => {
           data.connections.mutate((connection) => {
             console.log('disconnected from:', addr)
@@ -90,11 +107,12 @@ export const NodeManagerAgent = (allowedToWorkRef: ObsValcon<boolean>) =>
           })
           regulateRemovals(data, channels.change.emit)
         }),
+        // On node info change, switch nodedetailsprovider to invalidate "memoNodesAsUINode"
+        // And refresh data.offsets
         channels.onNodeInfoChange.sub((addr) => {
-          // swap node detail providers - triggering cache-invalidation to `getNodesAsUiNode`
           data.nodeDetailsProviders.mutate((x) => x)
-          // refresh offsets everytime there's a change in NodeInfoChange
-          data.offsets = OffsetInfo.of(getReachableUiNodes())
+          data.offsets = OffsetInfo.of(memoReachableUINodes())
+          channels.change.emit()
         }),
       ]
 
@@ -111,14 +129,11 @@ export const NodeManagerAgent = (allowedToWorkRef: ObsValcon<boolean>) =>
       // Recurring task
       ;(async () => {
         while (!isDestroyed()) {
-          // const getTimeoutSec =
-          //   (store.key === StoreStateKey.Loaded && store.data.preferences.nodeTimeout) ||
-          //   DEFAULT_TIMEOUT_SEC
+          const getTimeoutSec = timeoutRef.get() || DEFAULT_TIMEOUT_SEC
 
           if (allowedToWorkRef.get()) {
-            const getTimeoutSec = DEFAULT_TIMEOUT_SEC
             regulateRemovals(data, channels.change.emit)
-            await regulateNewConnections(data, getTimeoutSec, {
+            await regulateNewConnections(data, getTimeoutSec, timeoutRef, {
               onChange: channels.change.emit,
               onNodeInfoChange: channels.onNodeInfoChange.emit,
               onNodeDisconnect: channels.onNodeDisconnect.emit,
@@ -134,10 +149,10 @@ export const NodeManagerAgent = (allowedToWorkRef: ObsValcon<boolean>) =>
         ...makeExtendedControl(data),
 
         getOffsets: () => data.offsets,
-        getAllTrackedAddrs,
-        getReachableUiNodes,
-        getConnectedNodes,
-        getNodesAsUiNode: () => getNodesAsUiNode()()(),
+        getAllTrackedAddrs: memoTrackedAddrs,
+        getReachableUiNodes: memoReachableUINodes,
+        getConnectedNodes: memoConnectedNodes,
+        getNodesAsUiNode: () => memoNodeAsUINode()()(),
         getNodeAsUiNode: (addr: string) => {
           const isTracking = data.trackedAddresses.access().has(addr)
           return isTracking
@@ -148,6 +163,7 @@ export const NodeManagerAgent = (allowedToWorkRef: ObsValcon<boolean>) =>
               )
             : null
         },
+        favorites: favorites.api,
 
         addNodes: (addrs: string[]) => {
           data.trackedAddresses.mutate((trackedAddrs) => {
@@ -161,50 +177,12 @@ export const NodeManagerAgent = (allowedToWorkRef: ObsValcon<boolean>) =>
           })
           channels.change.emit()
         },
-        control: (addr: string): ExtendedControl => null as any,
       }
     })
     .finish()
 
 // Implementation Details
 // ======================
-
-type ImmutableContainer<T extends Set<any> | Map<any, any>> = {
-  access: () => Readonly<T>
-  mutate: <R>(fn: (set: T) => R) => R
-}
-
-const ImmutableContainer = <T extends Set<any> | Map<any, any>>(t: T) => {
-  const proto: any = t instanceof Set ? Set : Map
-  let inner: T = new proto(t) as T
-  const self: ImmutableContainer<T> = {
-    access: () => inner,
-    mutate: (fn) => {
-      inner = new proto(inner)
-      return fn(inner)
-    },
-  }
-  return self
-}
-
-const ImmutableLazyCalcUninit: unique symbol = Symbol()
-const ImmutableLazyCalc = <T extends Set<any> | Map<any, any>, R extends any>(
-  immutable: ImmutableContainer<T>,
-  fn: (t: Readonly<T>) => R,
-): (() => R) => {
-  let lastContainerState = immutable.access()
-  let cache = ImmutableLazyCalcUninit as typeof ImmutableLazyCalcUninit | R
-
-  return () => {
-    if (immutable.access() !== lastContainerState) {
-      lastContainerState = immutable.access()
-      cache = fn(immutable.access())
-    }
-    const ret = cache !== ImmutableLazyCalcUninit ? cache : (fn(immutable.access()) as R)
-    cache = ret
-    return ret
-  }
-}
 
 const intoUiNode = (
   addr: string,
@@ -221,40 +199,34 @@ const intoUiNode = (
   return { ...nodeInfo, addr }
 }
 
+/**
+ * Internals, regulateRemovals, and regulateNewConnections are designed
+ * so that `regulateRemovals` can be called as an interruptions (concurrently by many parties)
+ */
 type Internals = {
   /**
    * User-indicated addresses that needs to be tracked
    * IMMUTABLE, must be comparable with nodes === nodes
    */
-  trackedAddresses: ImmutableContainer<Set<string>>
+  trackedAddresses: ContainerCell<Set<string>>
   /**
    * "Connection" to nodes, containing either peer info or error
    * IMMUTABLE, must be comparable with nodes === nodes
    */
-  connections: ImmutableContainer<Map<string, ConnectionResult>>
+  connections: ContainerCell<Map<string, ConnectionResult>>
   /**
    * Contains agents providing node details asynchonously
    */
-  nodeDetailsProviders: ImmutableContainer<Map<string, NodeInfoProvider>>
+  nodeDetailsProviders: ContainerCell<Map<string, NodeInfoProvider>>
   offsets: null | OffsetInfo
 }
 
 type ConnectionResult = E.Either<string, { peer: string }>
 
-const getDisconnectibles = (data: Internals) => {
-  const connections = data.connections.access()
-  const addresses = data.connections.access()
-  return Array.from(connections.keys()).filter((addr) => !addresses.has(addr))
-}
-
-const getRemoveableDetailsProviders = (data: Internals) => {
-  const connections = data.connections.access()
-  const providers = data.nodeDetailsProviders.access()
-  return Array.from(providers.keys()).filter((addr) => !connections.has(addr))
-}
-
 /**
  * Remove nodes whose addresses are untracked.
+ *
+ * Multiple regulateRemovals can run concurrently.
  */
 const regulateRemovals = (data: Internals, onChange: () => unknown) => {
   const disconnectibles = getDisconnectibles(data)
@@ -287,11 +259,15 @@ const regulateRemovals = (data: Internals, onChange: () => unknown) => {
 }
 
 /**
- * When a tracked address does not have
+ * There must be only one instance of `regulateNewConnections` running.
+ *
+ * regulate `connections` according to the list of `trackedAddrs`
+ * regulate `nodeDetailsProviders` according to `connections`
  */
 const regulateNewConnections = async (
   data: Internals,
   timeout: number,
+  timeoutRef: ObsValcon<number | null>,
   events: {
     onChange: () => unknown
     onNodeInfoChange: (addr: string) => unknown
@@ -301,7 +277,6 @@ const regulateNewConnections = async (
   // Connect to newly tracked nodes
   const connectibles = Array.from(data.trackedAddresses.access()).filter((addr) => {
     const connection = data.connections.access().get(addr)
-    console.log('connectible addr', connection)
     return !connection || E.isLeft(connection)
   })
 
@@ -314,7 +289,7 @@ const regulateNewConnections = async (
         if (E.isRight(res)) {
           console.log('connected to', addr, res.right.peer)
         } else {
-          console.log('connect error', addr, res.left)
+          console.warn('connect error', addr, res.left)
         }
       })
     })
@@ -342,6 +317,7 @@ const regulateNewConnections = async (
         providermap.set(
           addr,
           NodeInfoProvider({
+            timeoutRef,
             addr,
             peer,
             emitNodeInfoChange: () => events.onNodeInfoChange(addr),
@@ -353,6 +329,18 @@ const regulateNewConnections = async (
 
     events.onChange()
   }
+}
+
+const getDisconnectibles = (data: Internals) => {
+  const connections = data.connections.access()
+  const addresses = data.connections.access()
+  return Array.from(connections.keys()).filter((addr) => !addresses.has(addr))
+}
+
+const getRemoveableDetailsProviders = (data: Internals) => {
+  const connections = data.connections.access()
+  const providers = data.nodeDetailsProviders.access()
+  return Array.from(providers.keys()).filter((addr) => !connections.has(addr))
 }
 
 const attemptConnections = (
@@ -374,9 +362,6 @@ const attemptConnections = (
       ),
     ),
   )
-
-// Implementation Details
-// ======================
 
 // Extended Control
 // ================
