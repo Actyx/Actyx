@@ -153,8 +153,8 @@ export const Actyx = {
     // Patch dispose
     const oldDispose = actyx.dispose
     actyx.dispose = () => {
-      const result = oldDispose()
       actyxInstanceRegister.subOne(manifest, opts)
+      const result = oldDispose()
       return result
     }
     actyxInstanceRegister.addOne(manifest, opts)
