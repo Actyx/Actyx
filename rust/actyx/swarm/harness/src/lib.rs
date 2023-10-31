@@ -317,21 +317,7 @@ where
                 futures::pin_mut!(deadline);
                 while !peers.is_empty() {
                     let res = {
-                        let f = async {
-                            let x = machine.select(|ev| m!(ev.borrow(), Event::Connected(p) => *p));
-                            futures::pin_mut!(x);
-                            loop {
-                                let poll = futures::poll!(&mut x);
-                                match poll {
-                                    task::Poll::Ready(x) => return x,
-                                    task::Poll::Pending => {
-                                        tokio::task::yield_now().await;
-                                        // tokio::time::sleep(Duration::from_millis(20)).await;
-                                    }
-                                };
-                            }
-                        };
-
+                        let f = machine.select(|ev| m!(ev.borrow(), Event::Connected(p) => *p));
                         futures::pin_mut!(f);
                         match select(deadline.as_mut(), f).await {
                             Either::Left(_) => Either::Left(()),
@@ -365,7 +351,7 @@ where
 
     let errors = res.into_iter().filter_map(|f| f.err()).collect::<Vec<_>>();
 
-    if errors.len() > 0 {
+    if !errors.is_empty() {
         bail!(errors.into_iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n"))
     }
 
