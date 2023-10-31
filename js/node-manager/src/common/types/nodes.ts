@@ -82,7 +82,6 @@ const UnauthorizedNode = io.type({
 type UnauthorizedNode = io.TypeOf<typeof UnauthorizedNode>
 const DisconnectedNode = io.type({
   type: io.literal(NodeType.Disconnected),
-  peer: io.string,
 })
 export type DisconnectedNode = io.TypeOf<typeof DisconnectedNode>
 

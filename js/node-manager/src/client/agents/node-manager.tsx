@@ -1,10 +1,10 @@
 import * as E from 'fp-ts/Either'
 import { OffsetInfo } from '../offsets'
 import { Obs, Serv } from '../util/serv'
-import { GetNodeDetailsResponse, NodeType, ReachableNodeUi, UiNode } from '../../common/types/nodes'
+import { NodeType, ReachableNodeUi, UiNode } from '../../common/types/nodes'
 import { safeErrorToStr, sleep } from '../../common/util'
 import { DEFAULT_TIMEOUT_SEC } from '../../common/consts'
-import { NodeInfoProvider } from './node-info-provider'
+import { NodeInfo, NodeInfoProvider } from './node-info-provider'
 import {
   PublishRequest,
   PublishResponse,
@@ -46,12 +46,13 @@ export const NodeManagerAgent = ({
     .api(({ channels, isDestroyed, onDestroy }) => {
       const favorites = Favorite(favoriteParams)
 
-      const data: Internals = Object.seal({
+      const data = Object.seal({
         trackedAddresses: ContainerCell(new Set()),
+        disconnectionPeriodExpiry: ContainerCell(new Map()),
         connections: ContainerCell(new Map()),
         nodeDetailsProviders: ContainerCell(new Map()),
         offsets: null as OffsetInfo | null,
-      })
+      } as Internals)
 
       const memoTrackedAddrs = ContainerCellLazyCalc(data.trackedAddresses, (trackedAddrs) =>
         Array.from(trackedAddrs),
@@ -73,19 +74,22 @@ export const NodeManagerAgent = ({
       )
 
       const memoNodeAsUINode = ContainerCellLazyCalc(data.trackedAddresses, (addresses) =>
-        ContainerCellLazyCalc(data.connections, (connections) =>
-          ContainerCellLazyCalc(data.nodeDetailsProviders, (infoproviders) => {
-            const alltracked = Array.from(addresses)
+        ContainerCellLazyCalc(data.disconnectionPeriodExpiry, (disconnectionsExpiry) =>
+          ContainerCellLazyCalc(data.connections, (connections) =>
+            ContainerCellLazyCalc(data.nodeDetailsProviders, (infoproviders) => {
+              const alltracked = Array.from(addresses)
 
-            return alltracked.map(
-              (addr): UiNode =>
-                intoUiNode(
-                  addr,
-                  connections.get(addr) || null,
-                  infoproviders.get(addr)?.api.get() || null,
-                ),
-            )
-          }),
+              return alltracked.map(
+                (addr): UiNode =>
+                  intoUiNode(
+                    addr,
+                    disconnectionsExpiry.get(addr) || null,
+                    connections.get(addr) || null,
+                    infoproviders.get(addr)?.api.get() || null,
+                  ),
+              )
+            }),
+          ),
         ),
       )
 
@@ -104,6 +108,10 @@ export const NodeManagerAgent = ({
           data.connections.mutate((connection) => {
             console.log('disconnected from:', addr)
             connection.delete(addr)
+          })
+          data.disconnectionPeriodExpiry.mutate((reconnect) => {
+            // 5 seconds delay before reconnecting
+            reconnect.set(addr, new Date(Date.now() + 5000))
           })
           regulateRemovals(data, channels.change.emit)
         }),
@@ -152,12 +160,13 @@ export const NodeManagerAgent = ({
         getAllTrackedAddrs: memoTrackedAddrs,
         getReachableUiNodes: memoReachableUINodes,
         getConnectedNodes: memoConnectedNodes,
-        getNodesAsUiNode: () => memoNodeAsUINode()()(),
+        getNodesAsUiNode: () => memoNodeAsUINode()()()(),
         getNodeAsUiNode: (addr: string) => {
           const isTracking = data.trackedAddresses.access().has(addr)
           return isTracking
             ? intoUiNode(
                 addr,
+                data.disconnectionPeriodExpiry.access().get(addr) || null,
                 data.connections.access().get(addr) || null,
                 data.nodeDetailsProviders.access().get(addr)?.api.get() || null,
               )
@@ -186,16 +195,19 @@ export const NodeManagerAgent = ({
 
 const intoUiNode = (
   addr: string,
+  disconnectionPeriodExpiry: Date | null,
   connection: ConnectionResult | null,
-  nodeInfo: GetNodeDetailsResponse | null,
+  nodeInfo: NodeInfo | null,
 ): UiNode => {
+  if (disconnectionPeriodExpiry) return { type: NodeType.Disconnected, addr }
   if (!connection) return { type: NodeType.Connecting, addr, prevError: null }
-
   if (E.isLeft(connection)) return { type: NodeType.Connecting, addr, prevError: connection.left }
   const { peer } = connection.right
 
   if (!nodeInfo) return { type: NodeType.Connected, addr, peer }
-  if (nodeInfo.type === NodeType.Reachable) return { ...nodeInfo, addr, timeouts: 0 }
+  if (nodeInfo.type === NodeType.Reachable) {
+    return { ...nodeInfo, addr, timeouts: nodeInfo.timeouts }
+  }
   return { ...nodeInfo, addr }
 }
 
@@ -209,6 +221,11 @@ type Internals = {
    * IMMUTABLE, must be comparable with nodes === nodes
    */
   trackedAddresses: ContainerCell<Set<string>>
+  /**
+   * After a disconnection, reconnectionAvailabilityTime records the timetstamp
+   * which an address will be for reconnection
+   */
+  disconnectionPeriodExpiry: ContainerCell<Map<string, Date>>
   /**
    * "Connection" to nodes, containing either peer info or error
    * IMMUTABLE, must be comparable with nodes === nodes
@@ -231,6 +248,7 @@ type ConnectionResult = E.Either<string, { peer: string }>
 const regulateRemovals = (data: Internals, onChange: () => unknown) => {
   const disconnectibles = getDisconnectibles(data)
   const removableNodeDetailsProviders = getRemoveableDetailsProviders(data)
+  const removableDisconnectionPeriod = getRemovableDisconnectionPeriod(data)
 
   if (disconnectibles.length > 0) {
     data.connections.mutate((nodes) => {
@@ -253,9 +271,30 @@ const regulateRemovals = (data: Internals, onChange: () => unknown) => {
     })
   }
 
-  if (disconnectibles.length + removableNodeDetailsProviders.length > 0) {
+  if (removableDisconnectionPeriod.length > 0) {
+    data.disconnectionPeriodExpiry.mutate((map) => {
+      removableDisconnectionPeriod.forEach((addr) => {
+        map.delete(addr)
+
+        console.log('disconnected node available for reconnection:', addr)
+      })
+    })
+  }
+
+  if (
+    disconnectibles.length +
+      removableNodeDetailsProviders.length +
+      removableDisconnectionPeriod.length >
+    0
+  ) {
     onChange()
   }
+}
+
+const isInDisconnectionPeriod = (data: Internals, addr: string, now = new Date()) => {
+  const disconnectionExpiry = data.disconnectionPeriodExpiry.access().get(addr)
+  if (!disconnectionExpiry) return false
+  return disconnectionExpiry.getTime() > now.getTime()
 }
 
 /**
@@ -274,10 +313,12 @@ const regulateNewConnections = async (
     onNodeDisconnect: (addr: string) => unknown
   },
 ) => {
+  const now = new Date()
   // Connect to newly tracked nodes
   const connectibles = Array.from(data.trackedAddresses.access()).filter((addr) => {
     const connection = data.connections.access().get(addr)
-    return !connection || E.isLeft(connection)
+    const inDisconnectionPeriod = isInDisconnectionPeriod(data, addr, now)
+    return !inDisconnectionPeriod && (!connection || E.isLeft(connection))
   })
 
   if (connectibles.length > 0) {
@@ -343,6 +384,14 @@ const getRemoveableDetailsProviders = (data: Internals) => {
   return Array.from(providers.keys()).filter((addr) => !connections.has(addr))
 }
 
+const getRemovableDisconnectionPeriod = (data: Internals) => {
+  const now = new Date().getTime()
+  const disconnectionPeriodExpiry = data.disconnectionPeriodExpiry.access()
+  return Array.from(disconnectionPeriodExpiry.entries())
+    .filter(([_, expiry]) => expiry.getTime() <= now)
+    .map(([addr, _]) => addr)
+}
+
 const attemptConnections = (
   addresses: string[],
   timeout: number,
@@ -354,12 +403,10 @@ const attemptConnections = (
 > =>
   Promise.all(
     addresses.map((addr) =>
-      sleep(Math.round(Math.random() * 0)).then(() =>
-        util
-          .connect({ addr, timeout })
-          .then(({ peer }) => ({ addr, res: E.right({ peer }) }))
-          .catch((err) => ({ addr, res: E.left(safeErrorToStr(err)) })),
-      ),
+      util
+        .connect({ addr, timeout })
+        .then(({ peer }) => ({ addr, res: E.right({ peer }) }))
+        .catch((err) => ({ addr, res: E.left(safeErrorToStr(err)) })),
     ),
   )
 
