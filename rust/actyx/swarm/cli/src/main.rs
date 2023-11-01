@@ -161,7 +161,12 @@ async fn run() -> Result<()> {
                 //      other_established_connection_ids - banned_peers
                 //  - https://docs.rs/crate/libp2p-swarm/0.41.1/source/src/lib.rs#:~:text=let%20non_banned_established
                 //      other_established_connection_ids is the
-                ipfs_embed::Event::ConnectionEstablished(peer_id, _) => Some(Event::Connected(peer_id)),
+                // These connection reroutings are removed and replaced with the
+                // fix written on a separate tokio task above due to incomplete
+                // rerouting that we haven't quite able to pinpoint so that
+                // harness tests sometimes cannot capture some events
+                // ipfs_embed::Event::ConnectionEstablished(peer_id, _) => Some(Event::Connected(peer_id)),
+                // ipfs_embed::Event::Connected(peer_id) => Some(Event::Connected(peer_id)),
                 ipfs_embed::Event::Disconnected(peer_id) => Some(Event::Disconnected(peer_id)),
                 ipfs_embed::Event::Subscribed(peer_id, topic) => Some(Event::Subscribed(peer_id, topic)),
                 _ => None,
