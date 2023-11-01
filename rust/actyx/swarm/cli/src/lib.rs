@@ -48,7 +48,7 @@ pub struct Config {
     #[structopt(long)]
     pub max_leaf_count: Option<usize>,
     #[structopt(long)]
-    pub event_routes: Vec<EventRoute>,
+    pub event_routes: Vec<EventRoute>
 }
 
 impl From<Config> for async_process::Command {

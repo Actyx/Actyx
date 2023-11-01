@@ -6544,12 +6544,15 @@ dependencies = [
  "hex",
  "ipfs-embed",
  "libp2p",
+ "log-panics",
  "parking_lot 0.12.1",
  "serde_json",
  "structopt",
  "swarm",
  "tokio",
  "tracing",
+ "tracing-appender",
+ "tracing-log",
  "tracing-subscriber",
  "trees",
  "util",
@@ -6956,6 +6959,17 @@ checksum = "12612be8f868a09c0ceae7113ff26afe79d81a24473a393cb9120ece162e86c0"
 dependencies = [
  "android_log-sys",
  "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "tracing-appender"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09d48f71a791638519505cefafe162606f706c25592e4bde4d97600c0195312e"
+dependencies = [
+ "crossbeam-channel",
+ "time 0.3.17",
  "tracing-subscriber",
 ]
 

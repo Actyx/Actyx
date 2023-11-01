@@ -45,6 +45,7 @@ pub fn setup_logger_with_level(level: u8) {
         }
         .to_owned()
     });
+
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
         .with_env_filter(EnvFilter::new(env))

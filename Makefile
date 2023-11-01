@@ -248,9 +248,9 @@ validate: validate-rust validate-os validate-netsim validate-release validate-os
 .PHONY: diagnostics
 
 diagnostics:
-	@echo HOME = $(HOME)
+	@echo HOME = $HOME
 	@echo USER = $(shell whoami)
-	@echo PATH = $(PATH)
+	@echo PATH = $PATH
 	@echo PWD = $(shell pwd)
 
 define mkRustTestRule=
@@ -288,24 +288,24 @@ validate-release: diagnostics
 
 validate-netsim: diagnostics
 	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release -j $(CARGO_BUILD_JOBS)
-	rust/actyx/target/release/gossip --n-nodes 8 --enable-fast-path
-	rust/actyx/target/release/gossip --n-nodes 8 --enable-slow-path
-	rust/actyx/target/release/gossip --n-nodes 8 --enable-root-map
-	rust/actyx/target/release/gossip_protocol --n-nodes 8
-	rust/actyx/target/release/root_map --n-nodes 8 --enable-root-map
-	rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
-	rust/actyx/target/release/discovery_multi_net
-	rust/actyx/target/release/discovery_external
-	rust/actyx/target/release/subscribe --n-nodes 8
-	rust/actyx/target/release/query --n-nodes 8
-	rust/actyx/target/release/quickcheck_subscribe
-	rust/actyx/target/release/quickcheck_interleaved
-	rust/actyx/target/release/quickcheck_stress_single_store
-	rust/actyx/target/release/quickcheck_ephemeral
-	rust/actyx/target/release/versions
+	NETSIM_TEST_LOGFILE=gossip-8-fast 										rust/actyx/target/release/gossip --n-nodes 8 --enable-fast-path
+	NETSIM_TEST_LOGFILE=gossip-8-slow 										rust/actyx/target/release/gossip --n-nodes 8 --enable-slow-path
+	NETSIM_TEST_LOGFILE=gossip-8-root 										rust/actyx/target/release/gossip --n-nodes 8 --enable-root-map
+	NETSIM_TEST_LOGFILE=gossip_protocol-8 								rust/actyx/target/release/gossip_protocol --n-nodes 8
+	NETSIM_TEST_LOGFILE=rootmap 													rust/actyx/target/release/root_map --n-nodes 8 --enable-root-map
+	NETSIM_TEST_LOGFILE=discovery 												rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
+	NETSIM_TEST_LOGFILE=discovery_multi_net 							rust/actyx/target/release/discovery_multi_net
+	NETSIM_TEST_LOGFILE=discovery_external 								rust/actyx/target/release/discovery_external
+	NETSIM_TEST_LOGFILE=subscribe													rust/actyx/target/release/subscribe --n-nodes 8
+	NETSIM_TEST_LOGFILE=query															rust/actyx/target/release/query --n-nodes 8
+	NETSIM_TEST_LOGFILE=quickcheck_subscribe							rust/actyx/target/release/quickcheck_subscribe
+	NETSIM_TEST_LOGFILE=quickcheck_interleaved						rust/actyx/target/release/quickcheck_interleaved
+	NETSIM_TEST_LOGFILE=quickcheck_stress_single_store		rust/actyx/target/release/quickcheck_stress_single_store
+	NETSIM_TEST_LOGFILE=quickcheck_ephemeral							rust/actyx/target/release/quickcheck_ephemeral
+	NETSIM_TEST_LOGFILE=versions													rust/actyx/target/release/versions
         # https://github.com/Actyx/Actyx/issues/160
 	# rust/actyx/target/release/health
-	rust/actyx/target/release/read_only
+	NETSIM_TEST_LOGFILE=read_only 													rust/actyx/target/release/read_only
 
 .PHONY: validate-os-android
 # execute linter for os-android

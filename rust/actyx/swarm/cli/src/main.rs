@@ -25,25 +25,50 @@ use tokio::{
     runtime::Handle,
     sync::mpsc,
 };
+use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
 use trees::{query::TagExprQuery, AxKey};
 use util::variable::Writer;
 
+fn make_log_filename() -> String {
+    std::env::vars()
+        .find(|x| x.0 == "NETSIM_TEST_LOGFILE")
+        .map(|x| x.1)
+        .unwrap_or("unknown".to_string())
+}
+
 #[tokio::main]
 async fn main() {
+    let config = Config::from_args();
+
+    tracing_log::LogTracer::init().ok();
+    // install global collector configured based on RUST_LOG env var.
+
+    let log_filename = make_log_filename();
+    let file_appender =
+        tracing_appender::rolling::minutely("./test-log/netsim/", format!("{}-{}.log", log_filename, config.keypair));
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
+        .with_writer(std::io::stderr)
+        .with_writer(non_blocking)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).ok();
+    log_panics::init();
+
     util::setup_logger();
-    if let Err(err) = run().await {
+    if let Err(err) = run(config).await {
         tracing::error!("{}", err);
     }
 }
 
-async fn run() -> Result<()> {
+async fn run(mut config: Config) -> Result<()> {
     let mut stdin = BufReader::new(tokio::io::stdin());
     let mut line = String::with_capacity(4096);
     fn app_id() -> AppId {
         app_id!("com.actyx.swarm-cli")
     }
 
-    let mut config = Config::from_args();
     tracing::info!(
         "mdns: {} fast_path: {} slow_path: {} root_map: {} discovery: {} metrics: {} api: {:?}",
         config.enable_mdns,
@@ -151,7 +176,6 @@ async fn run() -> Result<()> {
                 ipfs_embed::Event::ExpiredExternalAddr(addr) => Some(Event::ExpiredExternalAddr(addr)),
                 ipfs_embed::Event::Discovered(peer_id) => Some(Event::Discovered(peer_id)),
                 ipfs_embed::Event::Unreachable(peer_id) => Some(Event::Unreachable(peer_id)),
-                ipfs_embed::Event::Connected(peer_id) => Some(Event::Connected(peer_id)),
                 // NOTE: ipfs_embed::Event::Connected is not always emitted
                 // Therefore ipfs_embed::Event::ConnectionEstablished is used as a fallback
                 // See:
