@@ -1,6 +1,8 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
+    use anyhow::{bail, Result};
     use async_std::future::timeout;
+    use futures::{future::BoxFuture, FutureExt};
     use std::time::Duration;
     use structopt::StructOpt;
     use swarm_cli::{Command, Event, Multiaddr, PeerId};
@@ -29,6 +31,32 @@ fn main() -> anyhow::Result<()> {
         }
         tracing::info!("fully meshed");
         network.machines_mut()[0].down();
+
+        // NOTE: This may need longer timeout as ipfs doesn't seem issue disconnect fast enough sometimes
+        let res = futures::future::join_all(&mut network.machines_mut()[1..].iter_mut().map(
+            |machine| -> BoxFuture<Result<()>> {
+                async {
+                    loop {
+                        if let Some(Event::Disconnected(peer)) =
+                            timeout(Duration::from_secs(20), machine.recv()).await?
+                        {
+                            if peer == peers[0].0 {
+                                tracing::info!("disconnected");
+                                break;
+                            }
+                        }
+                    }
+                    Ok(())
+                }
+                .boxed()
+            },
+        ))
+        .await;
+        let errors = res.into_iter().filter_map(|f| f.err()).collect::<Vec<_>>();
+        if !errors.is_empty() {
+            bail!(errors.into_iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n"))
+        }
+
         for machine in &mut network.machines_mut()[1..] {
             loop {
                 if let Some(Event::Disconnected(peer)) = timeout(Duration::from_secs(20), machine.recv()).await? {

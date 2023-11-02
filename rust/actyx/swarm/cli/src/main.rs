@@ -82,8 +82,6 @@ async fn run(mut config: Config) -> Result<()> {
         config.enable_api
     );
     let listen_addresses = std::mem::take(&mut config.listen_on);
-    // to be used later
-    let listen_addresses2 = listen_addresses.clone();
     let swarm = if let Some(addr) = config.enable_api {
         let cfg = SwarmConfig::from(config.clone());
         let mut key_store = KeyStore::default();
@@ -153,19 +151,56 @@ async fn run(mut config: Config) -> Result<()> {
     // Poor man's fix for missing ipfs_embed::Event::Connected and
     // ipfs_embed::Event::ConnectionEstablished event from ipfs.swarm_events()
     tokio::spawn(async move {
+        use std::collections::HashSet;
         use tokio::time::{sleep, Duration};
-        let mut connected_peer_ids = std::collections::HashSet::<PeerId>::new();
         let ipfs = ipfs.clone();
-        let listen_addresses = listen_addresses2;
-        while connected_peer_ids.len() < listen_addresses.len() {
-            ipfs.connections().iter().for_each(|connection| {
-                let peer_id = connection.0;
-                let is_connected = ipfs.is_connected(&peer_id);
-                if is_connected && !connected_peer_ids.contains(&peer_id) {
-                    println!("{}", Event::Connected(peer_id));
-                    connected_peer_ids.insert(peer_id);
-                }
+        let mut last_connected = HashSet::<PeerId>::new();
+        loop {
+            let current_connected = ipfs
+                .peers()
+                .into_iter()
+                .filter(|peer| ipfs.is_connected(peer))
+                .collect::<HashSet<PeerId>>();
+
+            let new_connected = &current_connected - &last_connected;
+            let new_disconnected = &last_connected - &current_connected;
+
+            if !new_connected.is_empty() {
+                tracing::info!(
+                    "{} connected to: {}",
+                    ipfs.local_peer_id(),
+                    new_connected
+                        .iter()
+                        .map(|x| format!(" - {}", x))
+                        .collect::<Vec<_>>()
+                        .join(",")
+                );
+            }
+            if !new_disconnected.is_empty() {
+                tracing::info!(
+                    "{} disconnected from: {}",
+                    ipfs.local_peer_id(),
+                    new_disconnected
+                        .iter()
+                        .map(|x| format!(" - {}", x))
+                        .collect::<Vec<_>>()
+                        .join(",")
+                );
+            }
+            if new_connected.is_empty() && new_disconnected.is_empty() {
+                tracing::info!("{} there is no connection status update", ipfs.local_peer_id());
+            }
+
+            new_connected.into_iter().for_each(|peer_id| {
+                println!("{}", Event::Connected(peer_id));
             });
+
+            new_disconnected.into_iter().for_each(|peer_id| {
+                println!("{}", Event::Disconnected(peer_id));
+            });
+
+            last_connected = current_connected;
+
             sleep(Duration::from_millis(1000)).await;
         }
     });
@@ -187,12 +222,14 @@ async fn run(mut config: Config) -> Result<()> {
                 //      other_established_connection_ids - banned_peers
                 //  - https://docs.rs/crate/libp2p-swarm/0.41.1/source/src/lib.rs#:~:text=let%20non_banned_established
                 //      other_established_connection_ids is the
-                // These connection reroutings are removed and replaced with the
-                // fix written on a separate tokio task above due to incomplete
-                // rerouting that we haven't quite able to pinpoint so that
-                // harness tests sometimes cannot capture some events
-                // ipfs_embed::Event::ConnectionEstablished(peer_id, _) => Some(Event::Connected(peer_id)),
-                // ipfs_embed::Event::Connected(peer_id) => Some(Event::Connected(peer_id)),
+
+                // Better not remove these reroutings of ConnectionEstablished,
+                // Connected, and Disconnected despite having the above
+                // poor-man's fix because some events can arrive but isn't
+                // caught by the above loop because the loop might be too slow
+                // to catch these events
+                ipfs_embed::Event::ConnectionEstablished(peer_id, _) => Some(Event::Connected(peer_id)),
+                ipfs_embed::Event::Connected(peer_id) => Some(Event::Connected(peer_id)),
                 ipfs_embed::Event::Disconnected(peer_id) => Some(Event::Disconnected(peer_id)),
                 ipfs_embed::Event::Subscribed(peer_id, topic) => Some(Event::Subscribed(peer_id, topic)),
                 _ => None,
