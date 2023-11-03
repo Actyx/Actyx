@@ -38,6 +38,7 @@ libipld = "0.14.0"
 libp2p = { version = "0.50.0", default-features = false, features = ["tokio", "tcp", "dns", "noise", "request-response", "macros"] }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 maplit = "1.0.2"
+node = { path = "../node" }
 prettytable-rs = "0.8.0"
 rand = "0.8.4"
 runtime = { path = "../runtime" }

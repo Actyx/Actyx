@@ -618,6 +618,7 @@ dependencies = [
  "libp2p",
  "libp2p-streaming-response",
  "maplit",
+ "node",
  "once_cell",
  "parking_lot 0.12.1",
  "predicates",

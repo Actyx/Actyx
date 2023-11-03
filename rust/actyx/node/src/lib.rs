@@ -11,6 +11,7 @@ mod node_api;
 mod node_storage;
 pub mod settings;
 mod util;
+pub mod run;
 
 pub use crate::{
     components::swarm_observer::SwarmObserver,
