@@ -1,7 +1,7 @@
 use acto::ActoRef;
 use actyx_sdk::{app_id, service::SwarmState, AppId, Payload};
 use anyhow::Result;
-use api::{formats::Licensing, NodeInfo};
+use axlib::api::{self, formats::Licensing, NodeInfo};
 use ax_futures_util::prelude::AxStreamExt;
 use cbor_data::{
     codec::{CodecError, ReadCbor},

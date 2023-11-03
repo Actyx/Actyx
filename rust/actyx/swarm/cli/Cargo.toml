@@ -8,9 +8,9 @@ authors = ["Actyx AG"]
 acto = "0.2.9"
 actyx_sdk = { path = "../../../sdk" }
 anyhow = "1.0.52"
-api = { path = "../../api" }
 async-process = "1.3.0"
 ax-futures-util = { path = "../../ax-futures-util/" }
+ax = { path = "../../ax" }
 cbor-data = "0.8.7"
 chrono = "0.4.19"
 crossbeam = "0.8.1"

@@ -8,13 +8,13 @@ use super::{
     settings::{SettingsRequest, SYSTEM_SCOPE},
     util::trigger_shutdown,
 };
+use crate::api::EventService;
 use actyx_sdk::{
     app_id,
     service::{QueryResponse, SubscribeMonotonicResponse, SubscribeResponse},
     tag, LamportTimestamp, NodeId, Payload,
 };
 use anyhow::{anyhow, bail, Context};
-use api::EventService;
 use ax_futures_util::stream::variable::Variable;
 use cbor_data::Cbor;
 use crossbeam::channel::Sender;
