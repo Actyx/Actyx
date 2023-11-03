@@ -1,4 +1,4 @@
-use crate::{actors::ComponentCommand, node_settings::Settings};
+use crate::node::{actors::ComponentCommand, node_settings::Settings};
 use acto::{ActoCell, ActoInput, ActoRuntime};
 use actyx_sdk::{
     service::{PeerStatus, SwarmState},

@@ -6,7 +6,7 @@ authors = ["Actyx AG"]
 
 [dependencies]
 settings = { path = "../settings" }
-node = { path = "../node" }
+ax = { path = "../ax" }
 
 anyhow = "1.0.52"
 crossbeam = "0.8.1"

@@ -9,49 +9,46 @@ pub mod migration;
 mod node;
 mod node_api;
 mod node_storage;
+pub mod run;
 pub mod settings;
 mod util;
-pub mod run;
 
-pub use crate::{
-    components::swarm_observer::SwarmObserver,
-    node::NodeError,
-    util::{init_shutdown_ceremony, shutdown_ceremony, spawn_with_name},
-};
+pub use components::swarm_observer::SwarmObserver;
+pub use node::NodeError;
+pub use util::{init_shutdown_ceremony, shutdown_ceremony, spawn_with_name};
+
 pub use formats::{node_settings, ShutdownReason};
 #[cfg(not(target_os = "android"))]
 pub use host::lock_working_dir;
 
 use ::util::formats::LogSeverity;
 
-use crate::actors::Actors;
-use crate::components::swarm_observer::swarm_observer;
-use crate::{
-    components::{
-        android::{Android, FfiMessage},
-        logging::Logging,
-        node_api::NodeApi,
-        store::{Store, StoreRequest},
-        Component, ComponentRequest,
-    },
-    formats::ExternalEvent,
-    host::Host,
-    node::NodeProcessResult,
-    node::{ComponentChannel, NodeWrapper},
-    settings::SettingsRequest,
-    util::init_panic_hook,
-};
 use ::util::variable::Writer;
 use ::util::SocketAddrHelper;
 use acto::ActoRuntime;
+use actors::Actors;
 use actyx_sdk::service::SwarmState;
 use anyhow::Context;
+use components::swarm_observer::swarm_observer;
+use components::{
+    android::{Android, FfiMessage},
+    logging::Logging,
+    node_api::NodeApi,
+    store::{Store, StoreRequest},
+    Component, ComponentRequest,
+};
 use crossbeam::channel::{bounded, Receiver, Sender};
+use formats::ExternalEvent;
+use host::Host;
+use node::NodeProcessResult;
+use node::{ComponentChannel, NodeWrapper};
+use settings::SettingsRequest;
 use std::net::ToSocketAddrs;
 use std::net::{IpAddr, Ipv4Addr};
 use std::{convert::TryInto, path::PathBuf, thread};
 use structopt::StructOpt;
 use swarm::event_store_ref::{self, EventStoreRef};
+use util::init_panic_hook;
 
 // Rust defaults to use the system allocator, which seemed to be the fastest
 // allocator generally available for our use case [0]. For production, the Actyx
@@ -92,7 +89,7 @@ fn spawn(
     log_as_json: bool,
 ) -> anyhow::Result<ApplicationState> {
     #[cfg(not(target_os = "android"))]
-    let _lock = crate::host::lock_working_dir(&working_dir)?;
+    let _lock = host::lock_working_dir(&working_dir)?;
     let mut join_handles = vec![];
 
     let (store_tx, store_rx) = bounded_channel();

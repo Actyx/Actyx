@@ -6,4 +6,9 @@ fn main() {
     let version = util::version::NodeVersion::get_cli();
     println!("cargo:rustc-env=AX_CLI_VERSION={}", version);
     println!("cargo:rerun-if-env-changed=ACTYX_VERSION_CLI");
+
+    // From ../node
+    let version = util::version::NodeVersion::get();
+    println!("cargo:rustc-env=AX_VERSION={}", version);
+    println!("cargo:rerun-if-env-changed=ACTYX_VERSION");
 }

@@ -4,7 +4,7 @@ use actyx_sdk::{
 };
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use futures::StreamExt;
-use node::{BindTo, Runtime};
+use axlib::node::{BindTo, Runtime};
 use std::time::Duration;
 use tempfile::tempdir;
 use util::SocketAddrHelper;
@@ -14,7 +14,7 @@ use util::SocketAddrHelper;
 fn round_trip(c: &mut Criterion) {
     let dir = tempdir().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let _x = node::ApplicationState::spawn(
+    let _x = axlib::node::ApplicationState::spawn(
         dir.path().into(),
         Runtime::Linux,
         BindTo {

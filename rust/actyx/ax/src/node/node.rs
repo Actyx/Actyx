@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{
+use super::{
     actors::ActorCommand,
     components::{store::StoreRequest, ComponentRequest, ComponentState, ComponentType},
     formats::{ExternalEvent, NodeDetails, NodeEvent, NodeState, ResultInspect, ShutdownReason},
@@ -412,7 +412,7 @@ mod test {
     use std::{collections::BTreeMap, str::FromStr};
 
     use super::*;
-    use crate::{
+    use crate::node::{
         components::Component,
         node_settings::{EventRouting, Route, Settings},
     };
@@ -431,7 +431,7 @@ mod test {
         let runtime = Host::new(temp_dir.path().to_path_buf()).unwrap();
         let mut node = Node::new(runtime_rx, vec![], runtime).unwrap();
         let schema = serde_json::from_slice(include_bytes!(
-            "../../../../protocols/json-schema/node-settings.schema.json"
+            "../../../../../protocols/json-schema/node-settings.schema.json"
         ))
         .unwrap();
         let scope = system_scope();
@@ -604,7 +604,7 @@ mod test {
         let runtime = Host::new(temp_dir.path().to_path_buf()).unwrap();
         let mut node = Node::new(runtime_rx, vec![], runtime).unwrap();
         let schema = serde_json::from_slice(include_bytes!(
-            "../../../../protocols/json-schema/node-settings.schema.json"
+            "../../../../../protocols/json-schema/node-settings.schema.json"
         ))
         .unwrap();
         {

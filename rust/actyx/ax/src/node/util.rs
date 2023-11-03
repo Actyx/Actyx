@@ -1,4 +1,4 @@
-use crate::{formats::ExternalEvent, node::NodeError, node_storage::NodeStorage, ApplicationState};
+use super::{formats::ExternalEvent, node::NodeError, node_storage::NodeStorage, ApplicationState};
 use anyhow::{anyhow, Context};
 use crossbeam::channel::Sender;
 use crypto::{KeyStore, KeyStoreRef};
@@ -88,7 +88,7 @@ pub(crate) fn init_panic_hook(tx: Sender<ExternalEvent>) {
         };
         if tx
             .send(ExternalEvent::ShutdownRequested(
-                crate::formats::ShutdownReason::Internal(err),
+                super::formats::ShutdownReason::Internal(err),
             ))
             .is_err()
         {

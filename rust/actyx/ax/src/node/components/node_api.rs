@@ -1,5 +1,5 @@
 use super::store::StoreTx;
-use crate::{
+use crate::node::{
     components::{Component, ComponentRequest},
     formats::ExternalEvent,
     node_settings::Settings,
@@ -88,7 +88,7 @@ impl Component<(), NodeApiSettings> for NodeApi {
             .enable_all()
             .build()?;
 
-        rt.block_on(crate::node_api::mk_swarm(
+        rt.block_on(crate::node::node_api::mk_swarm(
             self.node_id,
             self.keypair.clone(),
             self.sender.clone(),
@@ -131,7 +131,7 @@ fn extract_settings_into_node_settings(s: Settings) -> Result<NodeApiSettings> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{components::node_api::extract_settings_into_node_settings, node_settings::Settings};
+    use crate::node::{components::node_api::extract_settings_into_node_settings, node_settings::Settings};
 
     #[test]
     pub fn sample_with_invalid_authorized_users() {

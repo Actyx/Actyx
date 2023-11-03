@@ -1,7 +1,7 @@
 use crossbeam::channel::bounded;
 use ffi_support::{ErrorCode, ExternError, FfiStr};
 use lazy_static::lazy_static;
-use node::{spawn_with_name, ApplicationState, BindTo, NodeError, Runtime, ShutdownReason};
+use axlib::node::{spawn_with_name, ApplicationState, BindTo, NodeError, Runtime, ShutdownReason};
 use parking_lot::Mutex;
 use std::{convert::TryFrom, os::raw::c_char, sync::Arc};
 use tracing::*;

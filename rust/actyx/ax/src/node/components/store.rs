@@ -1,5 +1,5 @@
 use super::{Component, ComponentRequest};
-use crate::{node_settings::Settings, BindTo};
+use crate::node::{node_settings::Settings, BindTo};
 use acto::ActoRef;
 use actyx_sdk::{service::SwarmState, NodeId};
 use anyhow::Result;

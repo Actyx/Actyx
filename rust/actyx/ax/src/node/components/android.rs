@@ -1,5 +1,5 @@
 use super::{Component, ComponentState};
-use crate::{
+use crate::node::{
     components::ComponentRequest,
     formats::{ExternalEvent, ShutdownReason},
     node_settings::Settings,
@@ -45,10 +45,10 @@ impl From<ShutdownReason> for FfiMessage {
             ShutdownReason::TriggeredByHost => (ffi_codes::NODE_STOPPED_BY_HOST, "".to_string()),
 
             ShutdownReason::Internal(err) => match err {
-                crate::NodeError::ServicesStartup { err, .. } | crate::NodeError::InternalError(err) => {
+                crate::node::NodeError::ServicesStartup { err, .. } | crate::node::NodeError::InternalError(err) => {
                     (ffi_codes::NODE_STOPPED_BY_NODE, format!("{:#}", err))
                 }
-                crate::NodeError::PortCollision { component, addr } => (
+                crate::node::NodeError::PortCollision { component, addr } => (
                     ffi_codes::ERR_PORT_COLLISION,
                     format!(
                         "Could not bind to port {}. Please specify a different {} port",
