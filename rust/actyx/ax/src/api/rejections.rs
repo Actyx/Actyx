@@ -1,7 +1,7 @@
 use actyx_sdk::AppId;
-use util::serde_support::StringSerialized;
+use crate::util::serde_support::StringSerialized;
 use derive_more::Display;
-use runtime::features::FeatureError;
+use crate::runtime::features::FeatureError;
 use tracing::*;
 use warp::{http::StatusCode, *};
 

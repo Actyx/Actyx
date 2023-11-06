@@ -5,7 +5,7 @@ use crate::{
     private_key::load_dev_cert,
 };
 use cbor_data::{Cbor, CborBuilder, Encoder};
-use crypto::KeyPair;
+use crate::crypto::KeyPair;
 use futures::Stream;
 use std::{
     fs::File,
@@ -15,7 +15,7 @@ use std::{
 };
 use structopt::StructOpt;
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
-use util::{
+use crate::util::{
     formats::{
         banyan_protocol::{decode_dump_header, BanyanRequest, BanyanResponse},
         ActyxOSCode, ActyxOSError, ActyxOSResult,

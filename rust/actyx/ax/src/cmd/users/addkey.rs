@@ -1,13 +1,11 @@
+use crate::ax_bail;
 use crate::cmd::KeyPathWrapper;
+use crate::settings::{Database, Repository, Scope, DB_FILENAME};
+use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult};
 use crate::{cmd::AxCliCommand, private_key::AxPrivateKey};
 use futures::{stream, Stream};
-use settings::{Database, Repository, Scope, DB_FILENAME};
 use std::{convert::TryFrom, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
-use util::{
-    ax_bail,
-    formats::{ax_err, ActyxOSCode, ActyxOSError, ActyxOSResult},
-};
 
 fn lock_working_dir(working_dir: impl AsRef<std::path::Path>) -> ActyxOSResult<fslock::LockFile> {
     let path = working_dir.as_ref().join("lockfile");

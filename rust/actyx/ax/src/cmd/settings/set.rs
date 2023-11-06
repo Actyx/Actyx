@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read};
 use structopt::StructOpt;
 use tracing::*;
-use util::formats::{ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
+use crate::util::formats::{ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -50,7 +50,7 @@ pub struct SetOpt {
 struct SetSettingsCommand {
     #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
     /// Scope for which you want to set the given settings; use `/` for the the root scope.
-    scope: settings::Scope,
+    scope: crate::settings::Scope,
     #[structopt(name = "VALUE")]
     /// The value you want to set for the given scope as a YAML or JSON string.
     /// You may also pass in a file using the syntax `@file.yml` or have the
@@ -92,7 +92,7 @@ pub async fn run(opts: SetOpt) -> Result<Output> {
     let scope = opts.actual_opts.scope.clone();
     let scope2 = scope.clone();
     let json = serde_json::to_value(settings).ax_err_ctx(
-        util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+        crate::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
         "cannot parse provided value",
     )?;
     let (mut conn, peer) = opts.console_opt.connect().await?;

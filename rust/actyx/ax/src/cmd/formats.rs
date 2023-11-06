@@ -1,4 +1,4 @@
-use util::formats::{ActyxOSError, ActyxOSResult};
+use crate::util::formats::{ActyxOSError, ActyxOSResult};
 pub type Result<T> = ActyxOSResult<T>;
 use serde::{Deserialize, Serialize};
 

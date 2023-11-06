@@ -1,17 +1,17 @@
 mod validate_signed_manifest;
 
+use crate::certs::AppManifest;
+use crate::crypto::{PublicKey, SignedMessage};
 use actyx_sdk::{types::Binary, AppId, Timestamp};
-use certs::AppManifest;
 use chrono::{DateTime, Utc};
-use crypto::{PublicKey, SignedMessage};
 use serde::{Deserialize, Serialize};
 use tracing::*;
 use warp::*;
 
 use crate::api::{
+    api_util::{filters::accept_json, reject, NodeInfo, Token},
     formats::Licensing,
     rejections::ApiError,
-    api_util::{filters::accept_json, reject, NodeInfo, Token},
     AppMode, BearerToken,
 };
 
@@ -118,10 +118,10 @@ pub(crate) fn route(node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,),
 
 #[cfg(test)]
 mod tests {
+    use crate::certs::{AppManifest, TrialAppManifest};
+    use crate::crypto::{KeyStore, PrivateKey, PublicKey};
     use actyx_sdk::app_id;
-    use certs::{AppManifest, TrialAppManifest};
     use chrono::Utc;
-    use crypto::{KeyStore, PrivateKey, PublicKey};
     use hyper::http;
     use parking_lot::lock_api::RwLock;
     use std::sync::Arc;

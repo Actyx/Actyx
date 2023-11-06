@@ -1,10 +1,10 @@
 use super::{node_settings::Settings, node_storage::NodeStorage, settings::system_scope, util::make_keystore};
+use crate::crypto::KeyStoreRef;
+use crate::util::formats::NodeCycleCount;
 use actyx_sdk::NodeId;
 use anyhow::{Context, Result};
-use crypto::KeyStoreRef;
 use derive_more::Display;
 use std::path::PathBuf;
-use util::formats::NodeCycleCount;
 
 #[derive(Debug, Clone, Display)]
 #[display(fmt = "data directory `{}` is locked by another Actyx process", _0)]
@@ -14,7 +14,7 @@ impl std::error::Error for WorkdirLocked {}
 pub(crate) struct Host {
     keystore: KeyStoreRef,
     storage: NodeStorage,
-    settings_repo: settings::Repository,
+    settings_repo: crate::settings::Repository,
     sys_settings: Settings,
 }
 #[cfg(not(target_os = "android"))]
@@ -29,14 +29,14 @@ pub fn lock_working_dir(working_dir: impl AsRef<std::path::Path>) -> anyhow::Res
 impl Host {
     pub fn new(base_path: PathBuf) -> Result<Self> {
         let (settings_db, storage) = if cfg!(test) {
-            (settings::Database::in_memory()?, NodeStorage::in_memory())
+            (crate::settings::Database::in_memory()?, NodeStorage::in_memory())
         } else {
             (
-                settings::Database::new(&base_path)?,
+                crate::settings::Database::new(&base_path)?,
                 NodeStorage::new(base_path.join("node.sqlite")).context("Error opening node.sqlite")?,
             )
         };
-        let mut settings_repo = settings::Repository::new(settings_db);
+        let mut settings_repo = crate::settings::Repository::new(settings_db);
         // Apply the current schema for com.actyx (it might have changed). If this is
         // unsuccessful, we panic.
         apply_system_schema(&mut settings_repo).expect("Error applying system schema com.actyx.");
@@ -72,11 +72,11 @@ impl Host {
         self.keystore.clone()
     }
 
-    pub fn get_settings_repo(&self) -> &settings::Repository {
+    pub fn get_settings_repo(&self) -> &crate::settings::Repository {
         &self.settings_repo
     }
 
-    pub fn get_settings(&self) -> &Settings {
+    pub fn get_settings(&self) -> &crate::node::formats::Settings {
         &self.sys_settings
     }
 
@@ -86,7 +86,9 @@ impl Host {
 }
 
 /// Set the schema for the ActyxOS system settings.
-pub(crate) fn apply_system_schema(settings_repo: &mut settings::Repository) -> Result<(), settings::RepositoryError> {
+pub(crate) fn apply_system_schema(
+    settings_repo: &mut crate::settings::Repository,
+) -> Result<(), crate::settings::RepositoryError> {
     tracing::debug!("setting current schema for com.actyx");
     let schema: serde_json::Value = serde_json::from_slice(include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -94,7 +96,7 @@ pub(crate) fn apply_system_schema(settings_repo: &mut settings::Repository) -> R
     )))
     .expect("embedded settings schema is not valid json");
     // check that embedded schema for com.actyx is a valid schema. If not, there is no point in going on.
-    settings::Validator::new(schema.clone()).expect("Embedded schema for com.actyx is not a valid JSON schema.");
+    crate::settings::Validator::new(schema.clone()).expect("Embedded schema for com.actyx is not a valid JSON schema.");
 
     settings_repo.set_schema(&system_scope(), schema)?;
     Ok(())

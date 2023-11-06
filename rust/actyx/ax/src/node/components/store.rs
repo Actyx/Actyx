@@ -1,16 +1,22 @@
 use super::{Component, ComponentRequest};
+use crate::api::{formats::Licensing, NodeInfo};
+use crate::crypto::KeyStoreRef;
 use crate::node::{node_settings::Settings, BindTo};
+use crate::swarm::{
+    blob_store::BlobStore,
+    event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
+    BanyanStore, DbPath, EphemeralEventsConfig, EventRoute, GossipMessage, Ipfs, SwarmConfig,
+};
+use crate::util::{
+    formats::{Connection, Failure, NodeCycleCount, Peer, PeerInfo, PingStats},
+    variable::Reader,
+    SocketAddrHelper,
+};
 use acto::ActoRef;
 use actyx_sdk::{service::SwarmState, NodeId};
 use anyhow::Result;
-use crate::api::{
-    self,
-    formats::Licensing,
-    NodeInfo
-};
 use chrono::{DateTime, SecondsFormat::Millis, Utc};
 use crossbeam::channel::{Receiver, Sender};
-use crypto::KeyStoreRef;
 use ipfs_embed::{Direction, PeerId};
 use libp2p::{multiaddr::Protocol, Multiaddr};
 use parking_lot::Mutex;
@@ -23,18 +29,8 @@ use std::{
     },
     time::Duration,
 };
-use swarm::{
-    blob_store::BlobStore,
-    event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
-    BanyanStore, DbPath, EphemeralEventsConfig, EventRoute, GossipMessage, Ipfs, SwarmConfig,
-};
 use tokio::sync::oneshot;
 use tracing::*;
-use util::{
-    formats::{Connection, Failure, NodeCycleCount, Peer, PeerInfo, PingStats},
-    variable::Reader,
-    SocketAddrHelper,
-};
 
 pub(crate) enum StoreRequest {
     NodesInspect(oneshot::Sender<Result<InspectResponse>>),
@@ -232,7 +228,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 let store = BanyanStore::new(swarm_config, swarm_observer).await?;
                 store.spawn_task(
                     "api".to_owned(),
-                    api::run(node_info, store.clone(), event_store, blobs, bind_api, snd, swarm_state),
+                    crate::api::run(node_info, store.clone(), event_store, blobs, bind_api, snd, swarm_state),
                 );
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;

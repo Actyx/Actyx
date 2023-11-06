@@ -2,7 +2,7 @@ use actyx_sdk::language::TagExpr;
 use crate::api::formats::Licensing;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
-use util::formats::LogSeverity;
+use crate::util::formats::LogSeverity;
 
 // These type definitions need to be kept in sync with the Actyx
 // node schema, as found in [0].
@@ -105,7 +105,7 @@ pub struct Route {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Default)]
 pub struct EventRouting {
-    pub streams: BTreeMap<String, swarm::RetainConfig>,
+    pub streams: BTreeMap<String, crate::swarm::RetainConfig>,
     pub routes: Vec<Route>,
 }
 

@@ -21,10 +21,10 @@ pub use formats::{node_settings, ShutdownReason};
 #[cfg(not(target_os = "android"))]
 pub use host::lock_working_dir;
 
-use ::util::formats::LogSeverity;
+use crate::util::formats::LogSeverity;
 
-use ::util::variable::Writer;
-use ::util::SocketAddrHelper;
+use crate::swarm::event_store_ref::{self, EventStoreRef};
+use crate::util::SocketAddrHelper;
 use acto::ActoRuntime;
 use actors::Actors;
 use actyx_sdk::service::SwarmState;
@@ -47,8 +47,8 @@ use std::net::ToSocketAddrs;
 use std::net::{IpAddr, Ipv4Addr};
 use std::{convert::TryInto, path::PathBuf, thread};
 use structopt::StructOpt;
-use swarm::event_store_ref::{self, EventStoreRef};
 use util::init_panic_hook;
+use crate::util::variable::Writer;
 
 // Rust defaults to use the system allocator, which seemed to be the fastest
 // allocator generally available for our use case [0]. For production, the Actyx

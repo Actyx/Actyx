@@ -6,7 +6,7 @@ use libipld::cid::Cid;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::Arc};
-use trees::{
+use crate::trees::{
     query::{LamportQuery, TagExprQuery, TimeQuery},
     tags::{ScopedTag, ScopedTagSet, TagScope},
 };
@@ -26,7 +26,7 @@ pub enum NameRecordEvent {
     Add {
         name: ActyxName,
         // This must not be serialized as a ipld cid!
-        #[serde(with = "::util::serde_str")]
+        #[serde(with = "crate::util::serde_str")]
         cid: Cid,
         /// Indicates whether a valid auth token is required to get the files
         public: bool,

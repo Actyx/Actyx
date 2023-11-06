@@ -4,7 +4,7 @@ mod explore;
 use crate::cmd::AxCliCommand;
 use futures::Future;
 use structopt::StructOpt;
-use trees::axtrees::Sha256Digest;
+use crate::trees::axtrees::Sha256Digest;
 use TreesOpts::DumpTree;
 
 use self::dump::DumpTreeOpts;

@@ -542,30 +542,35 @@ version = "0.1.0"
 dependencies = [
  "acto",
  "actyx_sdk",
+ "aes-stream",
  "anyhow",
  "assert_cmd",
  "async-trait",
  "atty",
- "ax-futures-util",
  "backtrace",
  "banyan",
  "banyan-utils",
  "base64 0.13.1",
+ "build-util",
+ "byteorder",
  "bytes",
  "cbor-data",
- "certs",
+ "cbor-tag-index",
  "cfg-if 1.0.0",
+ "chacha20poly1305",
  "chrono",
  "console",
  "criterion",
  "crossbeam",
- "crypto",
+ "curve25519-dalek 3.2.0",
  "derive_more",
  "dirs 4.0.0",
+ "ed25519-dalek",
  "env_logger 0.9.1",
  "escargot",
  "ffi-support",
  "flate2",
+ "fnv",
  "fslock",
  "futures 0.3.25",
  "genawaiter",
@@ -579,38 +584,51 @@ dependencies = [
  "itertools",
  "jemallocator",
  "lazy_static",
+ "libipld 0.12.0",
  "libipld 0.14.0",
  "libp2p",
- "libp2p-streaming-response",
  "log",
+ "log-panics",
  "maplit",
  "mime_guess",
+ "multiaddr",
  "multihash 0.16.3",
+ "names",
+ "num-bigint 0.4.3",
  "num-traits",
  "once_cell",
  "parking_lot 0.12.1",
  "percent-encoding",
  "pin-project",
+ "pin-project-lite",
+ "pin-utils",
  "predicates",
+ "pretty_assertions",
  "prettytable-rs",
+ "prometheus",
  "prost 0.9.0",
  "prost-build 0.9.0",
  "prost-derive 0.9.0",
+ "quickcheck",
+ "quickcheck_macros",
  "rand 0.8.5",
+ "range-collections",
+ "rayon",
  "regex",
  "reqwest",
- "runtime",
  "rusqlite",
+ "rust-crypto",
  "serde",
  "serde_cbor",
  "serde_json",
  "serde_urlencoded",
  "serde_yaml",
- "settings",
+ "sha2 0.9.9",
  "signal-hook",
+ "smallvec",
  "socket2",
+ "spectral",
  "structopt",
- "swarm",
  "tar",
  "tempfile",
  "thiserror",
@@ -622,33 +640,21 @@ dependencies = [
  "tracing-log",
  "tracing-subscriber",
  "tree_magic_mini",
- "trees",
+ "treediff",
+ "trust-dns-resolver",
  "tungstenite 0.16.0",
  "unicode-width",
+ "unixfs-v1",
  "url",
- "util",
  "uuid 0.8.2",
+ "valico",
+ "vec-collections 0.3.6",
  "void",
+ "waker-fn",
  "warp",
  "wsrpc",
  "zeroize",
  "zstd",
-]
-
-[[package]]
-name = "ax-futures-util"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "fnv",
- "futures 0.3.25",
- "itertools",
- "parking_lot 0.12.1",
- "pin-project-lite",
- "rand 0.8.5",
- "tokio",
- "tokio-stream",
- "tracing",
 ]
 
 [[package]]
@@ -941,6 +947,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "build-util"
+version = "0.1.0"
+dependencies = [
+ "pin-utils",
+ "quickcheck",
+ "serde",
+ "tokio",
+ "waker-fn",
+ "winres",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1057,25 +1075,6 @@ dependencies = [
  "aead 0.3.2",
  "cipher 0.2.5",
  "subtle",
-]
-
-[[package]]
-name = "certs"
-version = "0.1.0"
-dependencies = [
- "actyx_sdk",
- "anyhow",
- "base64 0.13.1",
- "chrono",
- "crypto",
- "derive_more",
- "lazy_static",
- "regex",
- "serde",
- "serde_cbor",
- "serde_json",
- "structopt",
- "util",
 ]
 
 [[package]]
@@ -1472,31 +1471,6 @@ name = "crunchy"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
-
-[[package]]
-name = "crypto"
-version = "0.1.0"
-dependencies = [
- "actyx_sdk",
- "aes-stream",
- "anyhow",
- "base64 0.13.1",
- "byteorder",
- "chacha20poly1305",
- "criterion",
- "curve25519-dalek 3.2.0",
- "derive_more",
- "ed25519-dalek",
- "libp2p",
- "multihash 0.16.3",
- "parking_lot 0.12.1",
- "rand 0.7.3",
- "rust-crypto",
- "serde",
- "serde_cbor",
- "sha2 0.9.9",
- "zeroize",
-]
 
 [[package]]
 name = "crypto-bigint"
@@ -3567,23 +3541,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libp2p-streaming-response"
-version = "0.1.0"
-dependencies = [
- "derive_more",
- "futures 0.3.25",
- "libp2p",
- "serde",
- "serde_cbor",
- "smallvec",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "void",
-]
-
-[[package]]
 name = "libp2p-swarm"
 version = "0.41.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4280,7 +4237,6 @@ dependencies = [
  "lazy_static",
  "parking_lot 0.12.1",
  "serde_json",
- "settings",
  "tokio",
  "tracing",
  "zeroize",
@@ -4293,16 +4249,14 @@ dependencies = [
  "actyx_sdk",
  "anyhow",
  "ax",
- "certs",
+ "build-util",
  "futures 0.3.25",
  "libp2p",
  "neon",
  "once_cell",
  "serde",
  "serde_json",
- "settings",
  "tokio",
- "util",
 ]
 
 [[package]]
@@ -5709,29 +5663,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "runtime"
-version = "0.1.0"
-dependencies = [
- "actyx_sdk",
- "anyhow",
- "ax-futures-util",
- "cbor-data",
- "chrono",
- "criterion",
- "derive_more",
- "futures 0.3.25",
- "itertools",
- "maplit",
- "num-bigint 0.4.3",
- "parking_lot 0.12.1",
- "quickcheck",
- "spectral",
- "swarm",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "rusqlite"
 version = "0.26.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6084,28 +6015,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "settings"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "log",
- "maplit",
- "multiaddr",
- "parking_lot 0.12.1",
- "rand 0.8.5",
- "rusqlite",
- "serde",
- "serde_json",
- "structopt",
- "tempfile",
- "thiserror",
- "tracing",
- "treediff",
- "url",
- "valico",
-]
-
-[[package]]
 name = "sha-1"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6394,58 +6303,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
-name = "swarm"
-version = "0.1.0"
-dependencies = [
- "acto",
- "actyx_sdk",
- "anyhow",
- "ax-futures-util",
- "banyan",
- "base64 0.13.1",
- "cbor-data",
- "chrono",
- "crossbeam",
- "crypto",
- "derive_more",
- "fnv",
- "futures 0.3.25",
- "hex",
- "ipfs-embed",
- "ipfs-sqlite-block-store",
- "itertools",
- "lazy_static",
- "libipld 0.14.0",
- "libp2p",
- "maplit",
- "names",
- "num-traits",
- "once_cell",
- "parking_lot 0.12.1",
- "pretty_assertions",
- "prometheus",
- "quickcheck",
- "quickcheck_macros",
- "rand 0.8.5",
- "rayon",
- "regex",
- "rusqlite",
- "serde",
- "serde_cbor",
- "serde_json",
- "smallvec",
- "swarm-old-formats",
- "tempfile",
- "tokio",
- "tracing",
- "trees",
- "trust-dns-resolver",
- "unixfs-v1",
- "util",
- "zstd",
-]
-
-[[package]]
 name = "swarm-cli"
 version = "0.1.0"
 dependencies = [
@@ -6454,11 +6311,10 @@ dependencies = [
  "anyhow",
  "async-process",
  "ax",
- "ax-futures-util",
+ "build-util",
  "cbor-data",
  "chrono",
  "crossbeam",
- "crypto",
  "futures 0.3.25",
  "hex",
  "ipfs-embed",
@@ -6467,14 +6323,11 @@ dependencies = [
  "parking_lot 0.12.1",
  "serde_json",
  "structopt",
- "swarm",
  "tokio",
  "tracing",
  "tracing-appender",
  "tracing-log",
  "tracing-subscriber",
- "trees",
- "util",
 ]
 
 [[package]]
@@ -6487,7 +6340,7 @@ dependencies = [
  "async-process",
  "async-std",
  "async-trait",
- "crypto",
+ "build-util",
  "escargot",
  "flate2",
  "futures 0.3.25",
@@ -6503,20 +6356,6 @@ dependencies = [
  "tempdir",
  "tokio",
  "tracing",
- "util",
-]
-
-[[package]]
-name = "swarm-old-formats"
-version = "0.1.0"
-dependencies = [
- "actyx_sdk",
- "anyhow",
- "ipfs-embed",
- "libipld 0.12.0",
- "libipld 0.14.0",
- "quickcheck",
- "trees",
 ]
 
 [[package]]
@@ -6989,32 +6828,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "trees"
-version = "0.1.0"
-dependencies = [
- "actyx_sdk",
- "anyhow",
- "banyan",
- "cbor-tag-index",
- "derive_more",
- "futures 0.3.25",
- "libipld 0.14.0",
- "multihash 0.16.3",
- "num-traits",
- "parking_lot 0.12.1",
- "pretty_assertions",
- "quickcheck",
- "range-collections",
- "serde",
- "serde_cbor",
- "serde_json",
- "smallvec",
- "tokio",
- "vec-collections 0.3.6",
- "zstd",
-]
-
-[[package]]
 name = "trust-dns-proto"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7262,43 +7075,6 @@ name = "utf-8"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
-
-[[package]]
-name = "util"
-version = "0.1.0"
-dependencies = [
- "actyx_sdk",
- "anyhow",
- "async-trait",
- "base64 0.13.1",
- "cbor-data",
- "chrono",
- "crossbeam",
- "derive_more",
- "fnv",
- "futures 0.3.25",
- "genawaiter",
- "libp2p",
- "libp2p-streaming-response",
- "log-panics",
- "multiaddr",
- "num-traits",
- "parking_lot 0.12.1",
- "pin-utils",
- "quickcheck",
- "rand 0.8.5",
- "serde",
- "serde_cbor",
- "serde_json",
- "serde_yaml",
- "settings",
- "tokio",
- "tracing",
- "tracing-log",
- "tracing-subscriber",
- "waker-fn",
- "winres",
-]
 
 [[package]]
 name = "uuid"

@@ -1,5 +1,14 @@
 pub mod api;
+pub mod ax_futures_util;
+pub mod certs;
 pub mod cmd;
+pub mod crypto;
+pub mod libp2p_streaming_response;
 pub mod node;
-pub mod node_connection; // TODO: node_connections becomes node_remote
+pub mod node_connection;
 pub mod private_key;
+pub mod runtime;
+pub mod settings;
+pub mod swarm;
+pub mod trees;
+pub mod util;

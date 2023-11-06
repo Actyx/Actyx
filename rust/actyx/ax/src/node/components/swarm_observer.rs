@@ -7,8 +7,8 @@ use actyx_sdk::{
 use im::OrdMap;
 use ipfs_embed::PeerId;
 use std::collections::HashMap;
-use swarm::{GossipMessage, RootMap, RootUpdate};
-use util::variable::Writer;
+use crate::swarm::{GossipMessage, RootMap, RootUpdate};
+use crate::util::variable::Writer;
 
 pub enum SwarmObserver {
     NewSettings(Settings),
@@ -99,7 +99,7 @@ pub async fn swarm_observer(
                     // keep track of who is who
                     for (stream_id, _) in offsets.stream_iter() {
                         let node_id = stream_id.node_id();
-                        let peer_id = PeerId::from(crypto::PublicKey::from(node_id));
+                        let peer_id = PeerId::from(crate::crypto::PublicKey::from(node_id));
                         peer_map.insert(node_id, peer_id);
                     }
 

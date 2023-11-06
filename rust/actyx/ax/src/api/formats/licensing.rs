@@ -1,8 +1,8 @@
 use crate::api::rejections::{ApiError, UnauthorizedReason};
 use actyx_sdk::AppId;
-use certs::{AppLicenseType, Expiring, SignedAppLicense};
+use crate::certs::{AppLicenseType, Expiring, SignedAppLicense};
 use chrono::Utc;
-use crypto::PublicKey;
+use crate::crypto::PublicKey;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 

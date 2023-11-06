@@ -5,7 +5,7 @@ use anyhow::Result;
 use crossbeam::channel::{Receiver, Sender};
 use parking_lot::Mutex;
 use std::sync::Arc;
-use util::formats::LogSeverity;
+use crate::util::formats::LogSeverity;
 
 mod logging_sink;
 pub struct Logging {

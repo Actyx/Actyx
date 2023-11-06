@@ -8,7 +8,7 @@ use actyx_sdk::AppId;
 use bytes::Bytes;
 use http::StatusCode;
 use std::{borrow::Cow, convert::TryFrom};
-use swarm::blob_store::{BlobStore, BlobTooLarge};
+use crate::swarm::blob_store::{BlobStore, BlobTooLarge};
 use warp::{
     body::bytes,
     delete, get,

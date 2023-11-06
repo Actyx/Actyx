@@ -7,7 +7,7 @@ use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
 use std::collections::BTreeSet;
 use structopt::StructOpt;
-use util::formats::{
+use crate::util::formats::{
     events_protocol::{EventsRequest, EventsResponse},
     ActyxOSError, ActyxOSResult,
 };

@@ -1,14 +1,12 @@
+use crate::ax_bail;
 use crate::private_key::DEFAULT_PRIVATE_KEY_FILE_NAME;
+use crate::util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 use crate::{cmd::AxCliCommand, private_key::AxPrivateKey};
 use futures::{stream, Stream};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use structopt::StructOpt;
 use tokio::io::AsyncBufReadExt;
-use util::{
-    ax_bail,
-    formats::{ax_err, ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
-};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -53,7 +51,7 @@ impl AxCliCommand for UsersKeygen {
             };
             if store_to.exists() {
                 ax_bail!(
-                    util::formats::ActyxOSCode::ERR_FILE_EXISTS,
+                    crate::util::formats::ActyxOSCode::ERR_FILE_EXISTS,
                     "File {} already exists in the specified path. Specify a different file name or path.",
                     store_to.display()
                 );

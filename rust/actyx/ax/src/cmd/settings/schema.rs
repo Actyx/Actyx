@@ -3,10 +3,10 @@ use crate::{
     node_connection::{request_single, Task},
 };
 use futures::{stream, Stream, TryFutureExt};
-use settings::Scope;
+use crate::settings::Scope;
 use std::str::FromStr;
 use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
+use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]

@@ -4,7 +4,7 @@ use crate::{
 };
 use futures::{stream, FutureExt, Stream};
 use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest};
+use crate::util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]

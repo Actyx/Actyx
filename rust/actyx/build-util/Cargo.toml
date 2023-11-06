@@ -1,0 +1,19 @@
+[package]
+edition = { workspace = true }
+name = "build-util"
+version = "0.1.0"
+authors = ["Actyx AG"]
+
+[lib]
+name = "build_util"
+path = "src/lib.rs"
+
+[dependencies]
+winres = { git = "https://github.com/Actyx/winres", branch = "cross_compile" }
+serde = { version = "1.0.133", features = ["derive"] }
+
+[dev-dependencies]
+pin-utils = "0.1.0"
+quickcheck = "1.0.3"
+tokio = { version = "1.15.0", features = ["full"], package = "tokio" }
+waker-fn = "1.1.0"

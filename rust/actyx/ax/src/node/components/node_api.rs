@@ -17,7 +17,7 @@ use std::{
         Arc,
     },
 };
-use util::SocketAddrHelper;
+use crate::util::SocketAddrHelper;
 
 impl NodeApi {
     pub(crate) fn new(
@@ -118,7 +118,7 @@ fn extract_settings_into_node_settings(s: Settings) -> Result<NodeApiSettings> {
         .authorized_users
         .iter()
         .enumerate()
-        .filter_map(|(i, pk)| match crypto::PublicKey::from_str(pk) {
+        .filter_map(|(i, pk)| match crate::crypto::PublicKey::from_str(pk) {
             Ok(pk) => Some(PeerId::from(pk)),
             Err(_) => {
                 tracing::warn!("Found invalid entry in config/admin/authorizedUsers at index: {}", i);

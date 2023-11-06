@@ -1,18 +1,16 @@
 use std::fmt::Write;
 
+use crate::util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse};
 use crate::{
     cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt},
     node_connection::{request_single, Task},
 };
 use actyx_sdk::NodeId;
+use build_util::version::NodeVersion;
 use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
-use util::{
-    formats::{ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse},
-    version::NodeVersion,
-};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]

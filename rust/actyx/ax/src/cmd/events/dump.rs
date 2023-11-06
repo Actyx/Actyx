@@ -16,7 +16,7 @@ use std::{
 };
 use structopt::StructOpt;
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
-use util::{
+use crate::util::{
     formats::{
         events_protocol::{EventsRequest, EventsResponse},
         ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse,

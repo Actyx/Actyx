@@ -11,8 +11,8 @@ use crate::api::{
     rejections::ApiError,
     api_util::{self, Result},
 };
-use runtime::features::FeatureError;
-use swarm::event_store_ref;
+use crate::runtime::features::FeatureError;
+use crate::swarm::event_store_ref;
 
 pub async fn offsets(_app_id: AppId, event_service: EventService) -> Result<impl Reply> {
     event_service

@@ -9,7 +9,7 @@ use actyx_sdk::{
     },
     AppId, Event, EventKey, NodeId, OffsetMap, OffsetOrMin, Payload, TagSet, Timestamp,
 };
-use ax_futures_util::{stream::AxStreamExt, ReceiverExt};
+use crate::ax_futures_util::{stream::AxStreamExt, ReceiverExt};
 use futures::{
     future::{poll_fn, ready},
     stream::{self, BoxStream, StreamExt},
@@ -17,7 +17,7 @@ use futures::{
     FutureExt,
 };
 use genawaiter::sync::{Co, Gen};
-use runtime::{
+use crate::runtime::{
     error::{RuntimeError, RuntimeFailure},
     eval::Context,
     features::{Endpoint, Feature, FeatureError, Features},
@@ -31,7 +31,7 @@ use std::{
     ops::Deref,
     task::{self, Poll},
 };
-use swarm::{
+use crate::swarm::{
     event_store_ref::{EventStoreHandler, EventStoreRef},
     BanyanStore,
 };
@@ -587,7 +587,7 @@ async fn store_ephemeral(value: &str) -> anyhow::Result<EphemeralStore> {
                 handler.handle(request, &runtime);
             }
         });
-        EventStoreRef::new(move |e| tx.try_send(e).map_err(swarm::event_store_ref::Error::from))
+        EventStoreRef::new(move |e| tx.try_send(e).map_err(crate::swarm::event_store_ref::Error::from))
     };
     Ok(EphemeralStore(event_store, Some(banyan)))
 }
@@ -629,7 +629,7 @@ mod tests {
     use maplit::btreemap;
     use regex::Regex;
     use std::{collections::BTreeMap, convert::TryInto, pin::Pin, str::FromStr, time::Duration};
-    use swarm::{
+    use crate::swarm::{
         event_store_ref::{self, EventStoreHandler},
         BanyanStore, EventRoute,
     };

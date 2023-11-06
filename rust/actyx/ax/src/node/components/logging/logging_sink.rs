@@ -1,7 +1,7 @@
 use tracing::Subscriber;
 use tracing_subscriber::{fmt::format::FmtSpan, layer::Layer, reload, reload::Handle, EnvFilter};
 
-use util::formats::{ActyxOSResult, LogSeverity};
+use crate::util::formats::{ActyxOSResult, LogSeverity};
 
 // Wrapper trait to contain the types
 trait ReloadHandle {

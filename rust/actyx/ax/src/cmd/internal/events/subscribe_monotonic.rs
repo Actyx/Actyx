@@ -8,7 +8,7 @@ use actyx_sdk::{
 };
 use futures::{future::ready, Stream, StreamExt};
 use structopt::StructOpt;
-use util::{
+use crate::util::{
     formats::{events_protocol::EventsRequest, ActyxOSResult},
     gen_stream::GenStream,
 };

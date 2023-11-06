@@ -1,11 +1,12 @@
-use super::{init_shutdown_ceremony, shutdown_ceremony, ApplicationState, BindTo, BindToOpts, Runtime};
+use super::util::{init_shutdown_ceremony, shutdown_ceremony};
+use super::{ApplicationState, BindTo, BindToOpts, Runtime};
 use anyhow::Result;
 use anyhow::{anyhow, Context};
+use build_util::version::NodeVersion;
 use derive_more::{Display, Error};
 use std::str::FromStr;
 use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
-use util::version::NodeVersion;
 
 #[derive(Debug)]
 enum Color {

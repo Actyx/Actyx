@@ -3,20 +3,11 @@
 [workspace]
 members = [
   "ax",
-  "ax-futures-util",
-  "certs",
-  "settings",
-  "crypto",
-  "libp2p-streaming-response",
   "node-ffi",
   "node-manager-bindings",
-  "runtime",
-  "swarm",
   "swarm/cli",
   "swarm/harness",
-  "swarm/old-formats",
-  "trees",
-  "util",
+  "build-util",
 ]
 resolver = "2"
 package.edition = "2021"

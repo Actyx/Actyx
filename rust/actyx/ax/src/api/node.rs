@@ -1,12 +1,13 @@
 use std::{collections::BTreeSet, convert::Infallible};
 
+use crate::swarm::BanyanStore;
+use crate::util::variable::Reader;
 use actyx_sdk::{
     service::{NodeInfoResponse, SwarmState},
     AppId, NodeId,
 };
+use build_util::version::NodeVersion;
 use chrono::Utc;
-use swarm::BanyanStore;
-use util::{variable::Reader, version::NodeVersion};
 use warp::*;
 
 use crate::api::{

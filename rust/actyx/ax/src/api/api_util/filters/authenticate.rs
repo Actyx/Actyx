@@ -131,7 +131,7 @@ mod tests {
     use crate::api::{formats::Licensing, AppMode, BearerToken};
     use actyx_sdk::{app_id, types::Binary, Timestamp};
     use chrono::Utc;
-    use crypto::{KeyStore, PrivateKey};
+    use crate::crypto::{KeyStore, PrivateKey};
     use parking_lot::RwLock;
     use std::sync::Arc;
 

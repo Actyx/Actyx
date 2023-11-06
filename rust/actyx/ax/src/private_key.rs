@@ -5,12 +5,12 @@ use std::{
     str::FromStr,
 };
 
-use crypto::{KeyPair, PrivateKey, PublicKey};
+use crate::crypto::{KeyPair, PrivateKey, PublicKey};
 use libp2p::identity;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt};
+use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt};
 
 use crate::cmd::get_data_dir;
-use certs::DeveloperCertificate;
+use crate::certs::DeveloperCertificate;
 
 const PUB_KEY_FILE_EXTENSION: &str = "pub";
 pub const DEFAULT_PRIVATE_KEY_FILE_NAME: &str = "id";
@@ -23,8 +23,8 @@ impl fmt::Display for AxPrivateKey {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-/// Wrapper around `crypto::PrivateKey` for use inside ax's context. Most notably
-/// is the on disk format, which differs from [`crypto::Keystore::dump`].
+/// Wrapper around `crate::crypto::PrivateKey` for use inside ax's context. Most notably
+/// is the on disk format, which differs from [`crate::crypto::Keystore::dump`].
 pub struct AxPrivateKey(PrivateKey);
 impl AxPrivateKey {
     fn default_user_identity_dir() -> ActyxOSResult<PathBuf> {

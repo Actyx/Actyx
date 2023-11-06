@@ -4,10 +4,10 @@ use crate::{
 };
 use actyx_sdk::service::{Order, QueryRequest};
 use futures::{future::ready, Stream, StreamExt};
-use runtime::value::Value;
+use crate::runtime::value::Value;
 use std::{fs::File, io::Read};
 use structopt::StructOpt;
-use util::{
+use crate::util::{
     formats::{events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
     gen_stream::GenStream,
 };

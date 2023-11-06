@@ -9,16 +9,36 @@ use super::{
     util::trigger_shutdown,
 };
 use crate::api::EventService;
+use crate::ax_futures_util::stream::variable::Variable;
+use crate::crypto::PublicKey;
+use crate::libp2p_streaming_response::{RequestReceived, StreamingResponse, StreamingResponseConfig};
+use crate::swarm::{
+    event_store_ref::EventStoreRef, BanyanConfig, BlockWriter, StorageConfig, StorageService, StorageServiceStore,
+    StorageServiceStoreWrite, StreamAlias,
+};
+use crate::trees::{
+    tags::{ScopedTag, ScopedTagSet, TagScope},
+    AxKey, AxTreeHeader,
+};
+use crate::util::formats::{
+    admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
+    banyan_protocol::{
+        decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse,
+    },
+    events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
+    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
+    TopicDeleteResponse, TopicLsResponse,
+};
+use crate::util::SocketAddrHelper;
 use actyx_sdk::{
     app_id,
     service::{QueryResponse, SubscribeMonotonicResponse, SubscribeResponse},
     tag, LamportTimestamp, NodeId, Payload,
 };
 use anyhow::{anyhow, bail, Context};
-use ax_futures_util::stream::variable::Variable;
+use build_util::version::NodeVersion;
 use cbor_data::Cbor;
 use crossbeam::channel::Sender;
-use crypto::PublicKey;
 use formats::NodesRequest;
 use futures::{
     channel::mpsc,
@@ -39,7 +59,6 @@ use libp2p::{
     swarm::{keep_alive, NetworkBehaviour, Swarm, SwarmBuilder, SwarmEvent},
     Multiaddr, PeerId,
 };
-use libp2p_streaming_response::{RequestReceived, StreamingResponse, StreamingResponseConfig};
 use parking_lot::Mutex;
 use serde_json::json;
 use std::{
@@ -51,28 +70,10 @@ use std::{
     task::Poll,
     time::Duration,
 };
-use swarm::{
-    event_store_ref::EventStoreRef, BanyanConfig, BlockWriter, StorageConfig, StorageService, StorageServiceStore,
-    StorageServiceStoreWrite, StreamAlias,
-};
 use tokio::{
     sync::oneshot,
     time::{timeout_at, Instant},
 };
-use trees::{
-    tags::{ScopedTag, ScopedTagSet, TagScope},
-    AxKey, AxTreeHeader,
-};
-use util::formats::{
-    admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
-    banyan_protocol::{
-        decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse,
-    },
-    events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
-    TopicDeleteResponse, TopicLsResponse,
-};
-use util::{version::NodeVersion, SocketAddrHelper};
 use zstd::stream::write::Decoder;
 
 pub mod formats;
@@ -80,24 +81,24 @@ pub mod formats;
 type PendingFinalise = BoxFuture<'static, (ResponseChannel<BanyanResponse>, BanyanResponse)>;
 
 struct BanyanWriter {
-    txn: swarm::BanyanTransaction<swarm::TT, StorageServiceStore, StorageServiceStoreWrite>,
-    own: swarm::StreamBuilder<swarm::TT, Payload>,
-    other: swarm::StreamBuilder<swarm::TT, Payload>,
+    txn: crate::swarm::BanyanTransaction<crate::swarm::TT, StorageServiceStore, StorageServiceStoreWrite>,
+    own: crate::swarm::StreamBuilder<crate::swarm::TT, Payload>,
+    other: crate::swarm::StreamBuilder<crate::swarm::TT, Payload>,
     buf: Decoder<'static, Vec<u8>>,
     node_id: Option<NodeId>,
     lamport: LamportTimestamp,
 }
 
 impl BanyanWriter {
-    fn new(forest: swarm::BanyanForest<swarm::TT, StorageServiceStore>) -> Self {
+    fn new(forest: crate::swarm::BanyanForest<crate::swarm::TT, StorageServiceStore>) -> Self {
         let config = BanyanConfig::default();
         Self {
             txn: forest.transaction(|s| {
                 let w = s.write().unwrap();
                 (s, w)
             }),
-            own: swarm::StreamBuilder::new(config.tree.clone(), config.secret.clone()),
-            other: swarm::StreamBuilder::new(config.tree, config.secret),
+            own: crate::swarm::StreamBuilder::new(config.tree.clone(), config.secret.clone()),
+            other: crate::swarm::StreamBuilder::new(config.tree, config.secret),
             buf: Decoder::new(Vec::new()).unwrap(),
             node_id: None,
             lamport: LamportTimestamp::default(),
@@ -139,7 +140,7 @@ impl ApiBehaviour {
         let tx = store.clone();
         let events = EventStoreRef::new(move |req| {
             tx.try_send(ComponentRequest::Individual(StoreRequest::EventsV2(req)))
-                .map_err(swarm::event_store_ref::Error::from)
+                .map_err(crate::swarm::event_store_ref::Error::from)
         });
         let events = EventService::new(events, node_id);
         let state = State {
@@ -799,11 +800,12 @@ fn inject_banyan_event(
                                             10_000,
                                             Duration::from_secs(7200),
                                         ),
-                                        swarm::IpfsEmbedExecutor::new(),
+                                        crate::swarm::IpfsEmbedExecutor::new(),
                                     )
                                     .context("creating new store DB")?,
                                 );
-                                let forest = swarm::BanyanForest::<swarm::TT, _>::new(storage, Default::default());
+                                let forest =
+                                    crate::swarm::BanyanForest::<crate::swarm::TT, _>::new(storage, Default::default());
                                 tracing::info!("prepared new store DB for upload of topic `{}`", topic);
                                 state.banyan_stores.insert(topic, BanyanWriter::new(forest));
                                 Ok(())
@@ -1169,7 +1171,7 @@ type TConnErr = <<<ApiBehaviour as NetworkBehaviour>::ConnectionHandler as libp2
 
 async fn mk_transport(id_keys: identity::Keypair) -> anyhow::Result<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {
     let peer_id = id_keys.public().to_peer_id();
-    let transport = swarm::transport::build_transport(id_keys, None, Duration::from_secs(20))
+    let transport = crate::swarm::transport::build_transport(id_keys, None, Duration::from_secs(20))
         .await
         .context("Building libp2p transport")?;
     Ok((peer_id, transport))

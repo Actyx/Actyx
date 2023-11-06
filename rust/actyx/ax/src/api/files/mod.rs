@@ -11,7 +11,7 @@ use futures::prelude::*;
 use http::{header::CACHE_CONTROL, Uri};
 use libipld::cid::Cid;
 use serde::Serialize;
-use swarm::{BanyanStore, Block, BufferingTreeBuilder, TreeOptions};
+use crate::swarm::{BanyanStore, Block, BufferingTreeBuilder, TreeOptions};
 use warp::{
     path::{self, FullPath},
     Buf, Filter, Rejection, Reply,
@@ -81,7 +81,7 @@ async fn serve_unixfs_node(
     ans_name: Option<ActyxName>,
 ) -> anyhow::Result<impl Reply> {
     let mut response = match store.unixfs_resolve_path(query.root, query.path).await? {
-        swarm::FileNode::Directory {
+        crate::swarm::FileNode::Directory {
             children,
             name,
             own_cid,
@@ -125,7 +125,7 @@ async fn serve_unixfs_node(
                 warp::reply::json(&r).into_response()
             }
         }
-        swarm::FileNode::File { cid, name } => ipfs::get_file_raw(store, cid, &name).await?,
+        crate::swarm::FileNode::File { cid, name } => ipfs::get_file_raw(store, cid, &name).await?,
     };
     if ans_name.is_some() {
         response
@@ -175,7 +175,7 @@ fn prefetch(
 fn render_directory_listing(
     name: String,
     cid: Cid,
-    children: Vec<swarm::Child>,
+    children: Vec<crate::swarm::Child>,
     raw_query: Option<String>,
 ) -> anyhow::Result<String> {
     let mut body = String::new();
@@ -204,7 +204,7 @@ fn render_directory_listing(
   </tr>"#,
         name, name, cid
     )?;
-    for swarm::Child { cid, name, size } in children {
+    for crate::swarm::Child { cid, name, size } in children {
         write!(
             &mut body,
             r#"
@@ -305,7 +305,7 @@ enum FileApiEvent {
     FileAdded {
         name: String,
         // Must not be serialized as a cid!
-        #[serde(with = "::util::serde_str")]
+        #[serde(with = "crate::util::serde_str")]
         cid: Cid,
         size: u64,
         mime: String,
@@ -314,7 +314,7 @@ enum FileApiEvent {
     DirectoryAdded {
         name: String,
         // Must not be serialized as a cid!
-        #[serde(with = "::util::serde_str")]
+        #[serde(with = "crate::util::serde_str")]
         cid: Cid,
         size: u64,
         app_id: AppId,

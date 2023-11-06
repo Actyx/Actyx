@@ -3,10 +3,10 @@ mod node_connection;
 mod private_key;
 
 use anyhow::Result;
-use axlib::node;
+use axlib::{node, settings::SettingsOpts};
 use cmd::{
-    apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
-    swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
+    apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, swarms::SwarmsOpts,
+    topics::TopicsOpts, users::UsersOpts,
 };
 use futures::Future;
 use std::process::exit;

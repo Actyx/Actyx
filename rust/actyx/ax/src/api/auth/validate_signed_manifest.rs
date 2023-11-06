@@ -1,5 +1,5 @@
-use certs::{AppLicenseType, Expiring, SignedAppLicense, SignedAppManifest};
-use crypto::PublicKey;
+use crate::certs::{AppLicenseType, Expiring, SignedAppLicense, SignedAppManifest};
+use crate::crypto::PublicKey;
 
 use crate::api::{
     formats::Licensing,
@@ -67,8 +67,8 @@ mod tests {
 
     use super::*;
     use actyx_sdk::{app_id, AppId};
-    use certs::SignedAppManifest;
-    use crypto::{PrivateKey, PublicKey};
+    use crate::certs::SignedAppManifest;
+    use crate::crypto::{PrivateKey, PublicKey};
 
     struct TestFixture {
         ax_public_key: PublicKey,

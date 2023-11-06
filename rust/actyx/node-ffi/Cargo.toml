@@ -5,7 +5,6 @@ version = "0.1.0"
 authors = ["Actyx AG"]
 
 [dependencies]
-settings = { path = "../settings" }
 ax = { path = "../ax" }
 
 anyhow = "1.0.52"

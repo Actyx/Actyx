@@ -5,7 +5,7 @@ use crate::{
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
-use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
+use crate::util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -27,7 +27,7 @@ impl AxCliCommand for SettingsUnset {
 }
 #[derive(Serialize)]
 struct RequestBody {
-    scope: settings::Scope,
+    scope: crate::settings::Scope,
 }
 
 #[derive(StructOpt, Debug)]
@@ -44,7 +44,7 @@ pub struct UnsetOpt {
 struct UnsetSettingsCommand {
     #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
     /// Scope for which you want to unset the settings; use `/` for the root scope.
-    scope: settings::Scope,
+    scope: crate::settings::Scope,
 }
 
 pub async fn run(opts: UnsetOpt) -> Result<Output> {

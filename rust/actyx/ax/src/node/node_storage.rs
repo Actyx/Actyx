@@ -2,12 +2,12 @@ use std::{convert::TryFrom, path::Path, str::FromStr, sync::Arc};
 
 use actyx_sdk::NodeId;
 use anyhow::{bail, Context};
-use crypto::PublicKey;
+use crate::crypto::PublicKey;
 use derive_more::{Display, Error};
 use parking_lot::Mutex;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use tracing::*;
-use util::formats::NodeCycleCount;
+use crate::util::formats::NodeCycleCount;
 
 #[derive(Debug, Clone, Copy, Display, Error)]
 #[display(
@@ -221,7 +221,7 @@ mod test {
 
     #[test]
     fn should_persist_the_node_id() -> anyhow::Result<()> {
-        let mut ks = crypto::KeyStore::default();
+        let mut ks = crate::crypto::KeyStore::default();
         let node_id = ks.generate_key_pair().unwrap().into();
 
         let db = NodeStorage::in_memory();

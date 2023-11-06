@@ -13,7 +13,9 @@ use super::{
     spawn_with_name,
     util::trigger_shutdown,
 };
+use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext};
 use acto::ActoRef;
+use build_util::version::NodeVersion;
 use chrono::SecondsFormat;
 use crossbeam::{
     channel::{bounded, Receiver, Sender},
@@ -23,10 +25,6 @@ use ipfs_embed::Multiaddr;
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::*;
-use util::{
-    formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext},
-    version::NodeVersion,
-};
 
 pub type ApiResult<T> = ActyxOSResult<T>;
 
@@ -121,13 +119,13 @@ macro_rules! standard_lifecycle {
 }
 
 impl Node {
-    fn settings_repo(&self) -> &settings::Repository {
+    fn settings_repo(&self) -> &crate::settings::Repository {
         self.runtime_storage.get_settings_repo()
     }
 
     fn handle_set_settings_request(
         &mut self,
-        scope: &settings::Scope,
+        scope: &crate::settings::Scope,
         json: serde_json::Value,
         ignore_errors: bool,
     ) -> ApiResult<serde_json::Value> {
@@ -148,7 +146,7 @@ impl Node {
         Ok(update)
     }
 
-    fn handle_unset_settings_request(&mut self, scope: &settings::Scope) -> ApiResult<()> {
+    fn handle_unset_settings_request(&mut self, scope: &crate::settings::Scope) -> ApiResult<()> {
         debug!("Trying to unset settings for {}", scope);
         self.settings_repo().clear_settings(scope)?;
         self.update_node_state()?;
@@ -209,7 +207,7 @@ impl Node {
     fn handle_nodes_request(&self, request: NodesRequest) {
         match request {
             NodesRequest::Ls(sender) => {
-                let resp = util::formats::NodesLsResponse {
+                let resp = crate::util::formats::NodesLsResponse {
                     node_id: self.state.details.node_id,
                     display_name: self.state.details.node_name.to_string(),
                     version: NodeVersion::get(),
@@ -416,13 +414,13 @@ mod test {
         components::Component,
         node_settings::{EventRouting, Route, Settings},
     };
+    use crate::util::formats::NodeName;
     use actyx_sdk::language::TagExpr;
     use anyhow::Result;
     use futures::executor::block_on;
     use serde_json::json;
     use tempfile::TempDir;
     use tokio::sync::oneshot::channel;
-    use util::formats::NodeName;
 
     #[tokio::test]
     async fn should_handle_settings_requests() {
@@ -575,7 +573,7 @@ mod test {
         {
             let (response, rx) = channel();
             node.handle_settings_request(SettingsRequest::UnsetSettings {
-                scope: settings::Scope::root(),
+                scope: crate::settings::Scope::root(),
                 response,
             });
             assert!(rx.await.unwrap().is_ok());
@@ -584,7 +582,7 @@ mod test {
             let json = serde_json::json!(null);
             let (response, rx) = channel();
             node.handle_settings_request(SettingsRequest::SetSettings {
-                scope: settings::Scope::root(),
+                scope: crate::settings::Scope::root(),
                 json,
                 response,
                 ignore_errors: false,
@@ -654,7 +652,7 @@ mod test {
                 (
                     "metrics".to_string(),
                     swarm::RetainConfig {
-                        max_age: Some(swarm::StreamAge::Hours(1)),
+                        max_age: Some(crate::swarm::StreamAge::Hours(1)),
                         ..Default::default()
                     },
                 ),

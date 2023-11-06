@@ -5,7 +5,7 @@ use http::header::CONTENT_DISPOSITION;
 use libipld::cid::Cid;
 use percent_encoding::percent_decode_str;
 use std::{collections::VecDeque, path::Path, str::FromStr};
-use swarm::BanyanStore;
+use crate::swarm::BanyanStore;
 use tracing::*;
 use warp::{
     host::Authority,

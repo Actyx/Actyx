@@ -10,24 +10,24 @@ mod rejections;
 #[cfg(test)]
 mod tests;
 
+use crate::swarm::{event_store_ref::EventStoreRef, BanyanStore};
+use crate::util::formats::NodeErrorContext;
 use anyhow::Result;
 use crossbeam::channel::Sender;
 use futures::future::try_join_all;
 use std::fmt;
-use swarm::{event_store_ref::EventStoreRef, BanyanStore};
-use util::{ax_panic, formats::NodeErrorContext};
 use warp::*;
 
 pub use crate::api::api_util::{AppMode, BearerToken, NodeInfo, Token};
 pub use crate::api::events::service::EventService;
 use crate::api::{api_util::hyper_serve::serve_it, files::FilePinner};
-use crate::balanced_or;
+use crate::swarm::blob_store::BlobStore;
+use crate::util::variable::Reader;
+use crate::util::{to_multiaddr, SocketAddrHelper};
+use crate::{ax_panic, balanced_or};
 use actyx_sdk::service::SwarmState;
 use parking_lot::Mutex;
 use std::sync::Arc;
-use swarm::blob_store::BlobStore;
-use util::variable::Reader;
-use util::{to_multiaddr, SocketAddrHelper};
 
 pub async fn run(
     node_info: NodeInfo,
