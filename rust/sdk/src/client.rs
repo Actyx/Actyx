@@ -426,9 +426,9 @@ impl Ax {
     }
 }
 
-impl Debug for ActyxClient {
+impl Debug for Ax {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ActyxClient")
+        f.debug_struct("Ax")
             .field("base_url", &self.base_url.as_str())
             .field("app_manifest", &self.app_manifest)
             .finish()
@@ -463,16 +463,13 @@ pub(crate) fn to_lines(stream: impl Stream<Item = Result<Bytes, reqwest::Error>>
 /// Warning: [`Publish`] implements the [`Future`] trait, as such it can be polled.
 /// Calling _any_ [`Publish`] function after polling will result in a panic!
 pub enum Publish<'a> {
-    Initial {
-        client: &'a ActyxClient,
-        request: PublishRequest,
-    },
+    Initial { client: &'a Ax, request: PublishRequest },
     Pending(BoxFuture<'a, anyhow::Result<PublishResponse>>),
     Void,
 }
 
 impl<'a> Publish<'a> {
-    fn new(client: &'a ActyxClient) -> Self {
+    fn new(client: &'a Ax) -> Self {
         Self::Initial {
             client,
             request: PublishRequest { data: vec![] },
@@ -595,7 +592,7 @@ pub enum Query<'a> {
 }
 
 impl<'a> Query<'a> {
-    fn new<Q: Into<String>>(client: &'a ActyxClient, query: Q) -> Self {
+    fn new<Q: Into<String>>(client: &'a Ax, query: Q) -> Self {
         Self::Initial {
             client,
             request: QueryRequest {
@@ -790,7 +787,7 @@ pub enum Subscribe<'a> {
 }
 
 impl<'a> Subscribe<'a> {
-    fn new<Q: Into<String>>(client: &'a ActyxClient, query: Q) -> Self {
+    fn new<Q: Into<String>>(client: &'a Ax, query: Q) -> Self {
         Self::Initial {
             client,
             request: SubscribeRequest {
@@ -885,7 +882,7 @@ impl<'a> FusedFuture for Subscribe<'a> {
 /// Calling _any_ [`SubscribeMonotonic`] function after polling will result in a panic!
 pub enum SubscribeMonotonic<'a> {
     Initial {
-        client: &'a ActyxClient,
+        client: &'a Ax,
         request: SubscribeMonotonicRequest,
     },
     Pending(BoxFuture<'a, anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>>>),
@@ -893,7 +890,7 @@ pub enum SubscribeMonotonic<'a> {
 }
 
 impl<'a> SubscribeMonotonic<'a> {
-    fn new<Q: Into<String>>(client: &'a ActyxClient, query: Q) -> Self {
+    fn new<Q: Into<String>>(client: &'a Ax, query: Q) -> Self {
         Self::Initial {
             client,
             request: SubscribeMonotonicRequest {
@@ -971,7 +968,7 @@ impl<'a> FusedFuture for SubscribeMonotonic<'a> {
 #[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq, Eq)]
 #[display(fmt = "error {} while {}: {}", error_code, context, error)]
 #[serde(rename_all = "camelCase")]
-pub struct ActyxClientError {
+pub struct AxError {
     pub error: serde_json::Value,
     pub error_code: u16,
     pub context: String,
@@ -986,9 +983,9 @@ pub(crate) trait WithContext {
 }
 impl<T, E> WithContext for std::result::Result<T, E>
 where
-    ActyxClientError: From<(String, E)>,
+    AxError: From<(String, E)>,
 {
-    type Output = std::result::Result<T, ActyxClientError>;
+    type Output = std::result::Result<T, AxError>;
 
     #[inline]
     fn context<F, C>(self, context: F) -> Self::Output
@@ -998,12 +995,12 @@ where
     {
         match self {
             Ok(value) => Ok(value),
-            Err(err) => Err(ActyxClientError::from((context().into(), err))),
+            Err(err) => Err(AxError::from((context().into(), err))),
         }
     }
 }
 
-impl From<(String, reqwest::Error)> for ActyxClientError {
+impl From<(String, reqwest::Error)> for AxError {
     fn from(e: (String, reqwest::Error)) -> Self {
         Self {
             error: serde_json::json!(format!("{:?}", e.1)),
@@ -1013,7 +1010,7 @@ impl From<(String, reqwest::Error)> for ActyxClientError {
     }
 }
 
-impl From<(String, serde_json::Error)> for ActyxClientError {
+impl From<(String, serde_json::Error)> for AxError {
     fn from(e: (String, serde_json::Error)) -> Self {
         Self {
             error: serde_json::json!(format!("{:?}", e.1)),
@@ -1023,7 +1020,7 @@ impl From<(String, serde_json::Error)> for ActyxClientError {
     }
 }
 
-impl From<(String, serde_cbor::Error)> for ActyxClientError {
+impl From<(String, serde_cbor::Error)> for AxError {
     fn from(e: (String, serde_cbor::Error)) -> Self {
         Self {
             error: serde_json::json!(format!("{:?}", e.1)),
