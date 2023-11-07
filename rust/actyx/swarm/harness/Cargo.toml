@@ -1,11 +1,15 @@
 [package]
-edition = { workspace = true }
+edition = "2021"
 name = "swarm-harness"
 version = "0.1.0"
 authors = ["Actyx AG"]
 
 [dependencies]
-actyx_sdk = { path = "../../../sdk", features = ["client", "arb", "with-tokio"] }
+actyx_sdk = { path = "../../../sdk", features = [
+    "client",
+    "arb",
+    "with-tokio",
+] }
 ax = { path = "../../ax" }
 anyhow = "1.0.52"
 async-global-executor = { version = "2.0.2", features = ["tokio"] }

@@ -1,5 +1,5 @@
 [package]
-edition = { workspace = true }
+edition = "2021"
 name = "node-manager-bindings"
 version = "0.1.0"
 description = "Native Node.js bindings for interacting with Actyx nodes"
