@@ -1,3 +1,4 @@
+mod ax_cert_bin;
 use anyhow::Result;
 use axlib::cmd::{
     self, apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
@@ -42,6 +43,7 @@ enum CommandsOpt {
     Events(EventsOpts),
     Topics(TopicsOpts),
     Run(node::run::RunOpts),
+    Cert(ax_cert_bin::Opts),
 }
 
 impl StructOpt for CommandsOpt {
@@ -59,6 +61,8 @@ impl StructOptInternal for CommandsOpt {
     fn augment_clap<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
         let app = app.subcommands(vec![
             node::run::RunOpts::augment_clap(SubCommand::with_name("run")),
+            ax_cert_bin::Opts::augment_clap(SubCommand::with_name("cert"))
+                .setting(AppSettings::SubcommandRequiredElseHelp),
             AppsOpts::augment_clap(SubCommand::with_name("apps")).setting(AppSettings::SubcommandRequiredElseHelp),
             SettingsOpts::augment_clap(SubCommand::with_name("settings"))
                 .setting(AppSettings::SubcommandRequiredElseHelp),
@@ -84,6 +88,7 @@ impl StructOptInternal for CommandsOpt {
     {
         match sub {
             ("apps", Some(matches)) => Some(CommandsOpt::Apps(AppsOpts::from_clap(matches))),
+            ("cert", Some(matches)) => Some(CommandsOpt::Cert(ax_cert_bin::Opts::from_clap(matches))),
             ("settings", Some(matches)) => Some(CommandsOpt::Settings(SettingsOpts::from_clap(matches))),
             ("swarms", Some(matches)) => Some(CommandsOpt::Swarms(SwarmsOpts::from_clap(matches))),
             ("nodes", Some(matches)) => Some(CommandsOpt::Nodes(NodesOpts::from_clap(matches))),
@@ -127,6 +132,7 @@ async fn main() -> Result<()> {
 
     match command {
         CommandsOpt::Run(opts) => node::run::run(opts)?,
+        CommandsOpt::Cert(opts) => with_logger::<Result<()>>(async { ax_cert_bin::run(opts) }, verbosity).await?,
         CommandsOpt::Apps(opts) => with_logger(cmd::apps::run(opts, json), verbosity).await,
         CommandsOpt::Nodes(opts) => with_logger(cmd::nodes::run(opts, json), verbosity).await,
         CommandsOpt::Settings(opts) => with_logger(cmd::settings::run(opts, json), verbosity).await,
@@ -139,7 +145,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn with_logger(fut: impl Future<Output = ()>, verbosity: u8) {
+async fn with_logger<T>(fut: impl Future<Output = T>, verbosity: u8) -> T {
     axlib::util::setup_logger_with_level(verbosity);
     fut.await
 }
