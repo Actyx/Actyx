@@ -1,11 +1,10 @@
 use actyx_sdk::AppId;
-use certs::{AppDomain, DeveloperCertificate, SignedAppLicense};
+use axlib::certs::{AppDomain, DeveloperCertificate, SignedAppLicense};
+use axlib::crypto::PrivateKey;
 use chrono::{DateTime, Utc};
-use crate::crypto::PrivateKey;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use structopt::StructOpt;
-use util::version::NodeVersion;
 
 #[derive(StructOpt, Debug)]
 struct DevCertOpts {
@@ -130,25 +129,13 @@ enum Commands {
     about = "Manages Actyx developer certificates",
     rename_all = "kebab-case"
 )]
-struct Opts {
+pub struct Opts {
     #[structopt(subcommand)]
     commands: Option<Commands>,
-    #[structopt(long)]
-    version: bool,
 }
 
-fn main() -> anyhow::Result<()> {
-    let opts = Opts::from_args();
-
+pub fn run(opts: Opts) -> anyhow::Result<()> {
     match opts {
-        Opts { version: true, .. } => {
-            let app = Opts::clap();
-            let mut buf = Vec::new();
-            app.write_version(&mut buf).unwrap();
-            let bin_version = std::str::from_utf8(buf.as_slice()).unwrap().to_string();
-            println!("{} {}", bin_version, NodeVersion::get());
-            Ok(())
-        }
         Opts {
             commands: Some(cmd), ..
         } => match cmd {
@@ -158,7 +145,7 @@ fn main() -> anyhow::Result<()> {
         _ => {
             let mut app = Opts::clap();
             app.write_long_help(&mut std::io::stderr()).unwrap();
-            println!();
+            println!("");
             Ok(())
         }
     }
@@ -197,7 +184,7 @@ fn create_app_license(opts: AppLicenseOpts) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod test_expires_in {
-    use crate::certs::parse_expires_in_as_duration;
+    use super::parse_expires_in_as_duration;
 
     // NOTE(duarte): Quickcheck would probably be amazing to test this but I don't have the time to learn it now
     #[test]
