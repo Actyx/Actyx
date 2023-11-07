@@ -4,7 +4,7 @@ mod types;
 mod util;
 
 use crate::util::{create_default_private_key, default_private_key};
-use ::util::{formats::ActyxOSCode, setup_logger};
+use axlib::util::{formats::ActyxOSCode, setup_logger};
 use axlib::node_connection::{mk_swarm, Task};
 use futures::channel::mpsc;
 use neon::prelude::*;

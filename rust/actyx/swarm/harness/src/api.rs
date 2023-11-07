@@ -10,7 +10,7 @@ use std::fmt::Display;
 use std::future::Future;
 use std::str::FromStr;
 use swarm_cli::{Command, Event};
-use util::pinned_resource::PinnedResource;
+use axlib::util::pinned_resource::PinnedResource;
 
 pub struct Api {
     machines: BTreeMap<MachineId, ApiClient>,

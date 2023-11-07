@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use axlib::cmd::apps::{create_signed_app_manifest, SignOpts};
-use certs::SignedAppManifest;
+use axlib::certs::SignedAppManifest;
 use neon::{
     context::{Context, FunctionContext},
     result::JsResult,

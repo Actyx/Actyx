@@ -13,7 +13,7 @@ use neon::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::convert::TryFrom;
-use util::formats::{ActyxOSCode, ActyxOSResult};
+use axlib::util::formats::{ActyxOSCode, ActyxOSResult};
 
 pub fn to_stringified<Se: Serialize>(s: Se) -> Result<String> {
     Ok(serde_json::to_string(&s)?)

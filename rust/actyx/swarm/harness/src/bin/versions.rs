@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     use swarm_cli::{Command, Event};
     use swarm_harness::{api::Api, setup_env, util::app_manifest, MachineExt};
     use tempdir::TempDir;
-    use util::formats::os_arch::Arch;
+    use build_util::formats::os_arch::Arch;
 
     fn get_version(tmp: &Path, version: &str) -> anyhow::Result<PathBuf> {
         if version == "current" {

@@ -6198,6 +6198,7 @@ dependencies = [
  "async-process",
  "async-std",
  "async-trait",
+ "ax",
  "build-util",
  "escargot",
  "flate2",

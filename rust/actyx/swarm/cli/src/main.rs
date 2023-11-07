@@ -1,33 +1,33 @@
 use acto::ActoRef;
 use actyx_sdk::{app_id, service::SwarmState, AppId, Payload};
 use anyhow::Result;
-use ax_futures_util::prelude::AxStreamExt;
 use axlib::api::{self, formats::Licensing, NodeInfo};
+use axlib::ax_futures_util::prelude::AxStreamExt;
+use axlib::crypto::{KeyPair, KeyStore};
+use axlib::swarm::{
+    blob_store::BlobStore,
+    event_store_ref::{self, EventStoreHandler, EventStoreRef, EventStoreRequest},
+    BanyanStore, DbPath, GossipMessage, SwarmConfig,
+};
+use axlib::trees::{query::TagExprQuery, AxKey};
+use axlib::util::variable::Writer;
 use cbor_data::{
     codec::{CodecError, ReadCbor},
     Cbor,
 };
-use crypto::{KeyPair, KeyStore};
 use futures::{stream::StreamExt, TryStreamExt};
 use ipfs_embed::GossipEvent;
 use libp2p::PeerId;
 use parking_lot::Mutex;
 use std::sync::Arc;
 use structopt::StructOpt;
-use swarm::{
-    blob_store::BlobStore,
-    event_store_ref::{self, EventStoreHandler, EventStoreRef, EventStoreRequest},
-    BanyanStore, DbPath, GossipMessage, SwarmConfig,
-};
 use swarm_cli::{Command, Config, Event};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     runtime::Handle,
     sync::mpsc,
 };
-use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
-use trees::{query::TagExprQuery, AxKey};
-use util::variable::Writer;
+use tracing_subscriber::fmt::format::FmtSpan;
 
 fn make_log_filename() -> String {
     std::env::vars()
@@ -56,7 +56,7 @@ async fn main() {
     tracing::subscriber::set_global_default(subscriber).ok();
     log_panics::init();
 
-    util::setup_logger();
+    axlib::util::setup_logger();
     if let Err(err) = run(config).await {
         tracing::error!("{}", err);
     }

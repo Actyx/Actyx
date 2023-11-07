@@ -3,7 +3,7 @@ use axlib::node_connection::{request, Task};
 use futures::FutureExt;
 use neon::prelude::*;
 use serde::{Deserialize, Serialize};
-use util::formats::AdminRequest;
+use axlib::util::formats::AdminRequest;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

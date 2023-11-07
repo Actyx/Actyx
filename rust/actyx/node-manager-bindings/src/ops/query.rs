@@ -5,7 +5,7 @@ use futures::{channel::mpsc::Sender, FutureExt, StreamExt};
 use libp2p::PeerId;
 use neon::prelude::*;
 use serde::{Deserialize, Serialize};
-use util::formats::{ax_err, events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult};
+use axlib::util::formats::{ax_err, events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -36,7 +36,7 @@ async fn do_query(mut tx: Sender<Task>, peer: PeerId, query: String) -> ActyxOSR
     match r {
         Err(err) if err.code() == ActyxOSCode::ERR_UNSUPPORTED => Ok(Res { events: None }),
         Err(err) => ax_err(
-            util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+            axlib::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
             format!("EventsRequests::Query returned unexpected error: {:?}", err),
         ),
         Ok(mut stream) => {

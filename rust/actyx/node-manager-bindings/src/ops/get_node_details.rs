@@ -2,8 +2,8 @@ use futures::FutureExt;
 use neon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tokio::time::{timeout, Duration};
-use util::formats::events_protocol::{EventsRequest, EventsResponse};
-use util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse};
+use axlib::util::formats::events_protocol::{EventsRequest, EventsResponse};
+use axlib::util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse};
 
 use crate::consts::DEFAULT_TIMEOUT_SEC;
 use crate::types::*;
@@ -26,7 +26,7 @@ async fn get_node_details(mut tx: Sender<Task>, peer: PeerId) -> ActyxOSResult<C
             Task::Admin(
                 peer,
                 AdminRequest::SettingsGet {
-                    scope: settings::Scope {
+                    scope: axlib::settings::Scope {
                         tokens: vec!["com.actyx".to_string()],
                     },
                     no_defaults: false,
@@ -44,7 +44,7 @@ async fn get_node_details(mut tx: Sender<Task>, peer: PeerId) -> ActyxOSResult<C
             Task::Admin(
                 peer,
                 AdminRequest::SettingsSchema {
-                    scope: settings::Scope {
+                    scope: axlib::settings::Scope {
                         tokens: vec!["com.actyx".to_string()],
                     },
                 },

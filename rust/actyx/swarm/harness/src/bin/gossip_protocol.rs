@@ -2,7 +2,7 @@
 fn main() -> anyhow::Result<()> {
     use actyx_sdk::{language::TagExpr, tags, LamportTimestamp, Offset, Payload, StreamNr};
     use async_std::future::timeout;
-    use crypto::peer_id_to_node_id;
+    use axlib::crypto::peer_id_to_node_id;
     use std::{
         str::FromStr,
         time::{Duration, Instant},
