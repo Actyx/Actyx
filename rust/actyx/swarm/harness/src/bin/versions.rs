@@ -7,6 +7,7 @@ fn main() -> anyhow::Result<()> {
         tags, Payload,
     };
     use anyhow::Context;
+    use build_util::formats::os_arch::Arch;
     use escargot::CargoBuild;
     use flate2::read::GzDecoder;
     use futures::{future::ready, StreamExt};
@@ -21,7 +22,6 @@ fn main() -> anyhow::Result<()> {
     use swarm_cli::{Command, Event};
     use swarm_harness::{api::Api, setup_env, util::app_manifest, MachineExt};
     use tempdir::TempDir;
-    use build_util::formats::os_arch::Arch;
 
     fn get_version(tmp: &Path, version: &str) -> anyhow::Result<PathBuf> {
         if version == "current" {

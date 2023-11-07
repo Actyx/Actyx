@@ -1,5 +1,6 @@
 use crate::Ctx;
 use anyhow::Result;
+use axlib::util::formats::{ActyxOSCode, ActyxOSResult};
 use axlib::{
     node_connection::Task,
     private_key::{AxPrivateKey, DEFAULT_PRIVATE_KEY_FILE_NAME},
@@ -13,7 +14,6 @@ use neon::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::convert::TryFrom;
-use axlib::util::formats::{ActyxOSCode, ActyxOSResult};
 
 pub fn to_stringified<Se: Serialize>(s: Se) -> Result<String> {
     Ok(serde_json::to_string(&s)?)

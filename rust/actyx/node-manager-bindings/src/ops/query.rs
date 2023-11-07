@@ -1,11 +1,11 @@
 use crate::util::run_task;
 use actyx_sdk::service::{Order, QueryRequest};
 use axlib::node_connection::{request_events, EventDiagnostic, Task};
+use axlib::util::formats::{ax_err, events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult};
 use futures::{channel::mpsc::Sender, FutureExt, StreamExt};
 use libp2p::PeerId;
 use neon::prelude::*;
 use serde::{Deserialize, Serialize};
-use axlib::util::formats::{ax_err, events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

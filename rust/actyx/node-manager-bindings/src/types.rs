@@ -1,6 +1,6 @@
 use actyx_sdk::{service::OffsetsResponse, NodeId};
-use serde::{Deserialize, Serialize};
 use axlib::util::formats::NodesInspectResponse;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
