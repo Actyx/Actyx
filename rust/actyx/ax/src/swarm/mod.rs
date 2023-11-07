@@ -17,7 +17,6 @@ pub mod event_store_ref;
 mod gossip;
 mod gossip_protocol;
 pub mod metrics;
-pub mod old_formats;
 mod prune;
 pub mod selection;
 mod sqlite;

@@ -55,7 +55,7 @@ fn cids_to_string(cids: Vec<Cid>) -> String {
 #[tokio::test]
 #[ignore]
 async fn smoke() -> Result<()> {
-    util::setup_logger();
+    crate::util::setup_logger();
     let mut tagger = Tagger::new();
     let mut ev = move |tag| (tagger.tags(&[tag]), Payload::null());
     let store = BanyanStore::test("smoke").await?;
@@ -287,7 +287,7 @@ async fn must_report_proper_initial_offsets() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_add_cat() -> Result<()> {
     use rand::RngCore;
-    util::setup_logger();
+    crate::util::setup_logger();
     let store = BanyanStore::test("local").await?;
     let mut data = vec![0; 16_000_000];
     let mut rng = rand::thread_rng();
@@ -309,7 +309,7 @@ async fn test_add_cat() -> Result<()> {
 fn test_add_zero_bytes() -> Result<()> {
     let rt = Runtime::new()?;
     rt.block_on(async {
-        util::setup_logger();
+        crate::util::setup_logger();
         let store = BanyanStore::test("local").await?;
         tracing::info!("store created");
         let mut tmp = store.ipfs().create_temp_pin()?;
@@ -329,7 +329,7 @@ fn test_add_zero_bytes() -> Result<()> {
 /// Expected streams should be "default", "metrics", "discovery", "files".
 #[tokio::test]
 async fn non_existing_swarm_config() {
-    util::setup_logger();
+    crate::util::setup_logger();
 
     let dir = tempfile::tempdir().unwrap();
     let db = PathBuf::from(dir.path().join("db").to_str().expect("illegal filename"));
@@ -496,7 +496,7 @@ fn get_keypair() -> KeyPair {
 async fn non_existing_swarm_config_existing_streams() {
     use tempfile::TempDir;
 
-    util::setup_logger();
+    crate::util::setup_logger();
 
     let expected_mappings = vec![
         EventRouteMappingEvent {
@@ -626,7 +626,7 @@ async fn non_existing_swarm_config_existing_streams() {
 async fn existing_swarm_config_existing_streams() {
     use tempfile::TempDir;
 
-    util::setup_logger();
+    crate::util::setup_logger();
     println!("{:?}", std::env::current_dir().unwrap());
     // Copy the test data to a temporary directory because the tests modify the stores
     let dir = PathBuf::from_str("test-data/v2.15").unwrap();

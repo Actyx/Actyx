@@ -487,7 +487,7 @@ mod test {
     }
 
     async fn create_store() -> anyhow::Result<BanyanStore> {
-        util::setup_logger();
+        crate::util::setup_logger();
         let cfg: SwarmConfig = SwarmConfig {
             node_name: Some("ephemeral".to_owned()),
             topic: "topic".into(),
@@ -519,7 +519,7 @@ mod test {
 
     async fn test_retain_count(events_to_retain: u64) {
         let event_count = 1024;
-        util::setup_logger();
+        crate::util::setup_logger();
         let test_stream = StreamNr::from(1);
 
         let store = publish_events(event_count).await.unwrap();
@@ -639,7 +639,7 @@ mod test {
     }
 
     async fn test_retain_age(percentage_to_keep: usize) {
-        util::setup_logger();
+        crate::util::setup_logger();
         let event_count = 1024;
         let max_leaf_count = SwarmConfig::test("..").banyan_config.tree.max_leaf_count;
         let test_stream = StreamNr::from(1);
@@ -757,7 +757,7 @@ mod test {
     // Test was "stolen" from tests/multi_node.rs
     #[tokio::test(flavor = "multi_thread")]
     async fn test_prune_replication() {
-        util::setup_logger();
+        crate::util::setup_logger();
 
         let collect_timeout_duration = Duration::from_secs(5);
         let test_stream_nr = StreamNr::from(1);

@@ -310,10 +310,13 @@ impl ReadCbor for RootMap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swarm::old_formats::{gossip_protocol as old, Codec, DagCborCodec};
     use actyx_sdk::NodeId;
     use cbor_data::{Cbor, CborBuilder};
-    use libipld::multihash::{Code, MultihashDigest};
+    use libipld::{
+        cbor::DagCborCodec,
+        multihash::{Code, MultihashDigest},
+        prelude::Codec,
+    };
     use quickcheck::Arbitrary;
     use quickcheck_macros::quickcheck;
 
@@ -416,85 +419,11 @@ mod tests {
         }
     }
 
-    impl From<RootUpdate> for old::RootUpdate {
-        fn from(u: RootUpdate) -> Self {
-            Self {
-                stream: u.stream,
-                root: u.root,
-                blocks: u.blocks,
-                lamport: u.lamport,
-                time: u.time,
-            }
-        }
-    }
-
-    impl From<RootMap> for old::RootMap {
-        fn from(m: RootMap) -> Self {
-            Self {
-                entries: m.entries,
-                lamport: m.lamport,
-                time: m.time,
-            }
-        }
-    }
-
-    impl From<GossipMessage> for old::GossipMessage {
-        fn from(g: GossipMessage) -> Self {
-            match g {
-                GossipMessage::RootUpdate(x) => old::GossipMessage::RootUpdate(x.into()),
-                GossipMessage::RootMap(x) => old::GossipMessage::RootMap(x.into()),
-            }
-        }
-    }
-
     #[quickcheck]
     fn roundtrip_new(message: GossipMessage) -> bool {
         let bytes = message.write_cbor(CborBuilder::default());
         let decoded: GossipMessage = ReadCbor::read_cbor(bytes.as_ref()).unwrap();
         decoded == message
-    }
-
-    #[quickcheck]
-    fn roundtrip_old(message: GossipMessage) -> bool {
-        let message = old::GossipMessage::from(message);
-        let bytes = DagCborCodec.encode(&message).unwrap();
-        let decoded: old::GossipMessage = DagCborCodec.decode(&bytes).unwrap();
-        decoded == message
-    }
-
-    #[quickcheck]
-    fn roundtrip_new_to_old(message: GossipMessage) -> bool {
-        let bytes = message.write_cbor(CborBuilder::default());
-        let decoded: old::GossipMessage = DagCborCodec.decode(bytes.as_slice()).unwrap();
-        match (decoded, message) {
-            (old::GossipMessage::RootUpdate(x), GossipMessage::RootUpdate(y)) => {
-                x.stream == y.stream && x.root == y.root && x.blocks == y.blocks && x.lamport == y.lamport
-            }
-            (old::GossipMessage::RootMap(x), GossipMessage::RootMap(y)) => {
-                x.entries == y.entries && x.lamport == y.lamport && x.time == y.time
-            }
-            _ => false,
-        }
-    }
-
-    #[quickcheck]
-    fn roundtrip_old_to_new(message: GossipMessage) -> bool {
-        let message = old::GossipMessage::from(message);
-        let bytes = DagCborCodec.encode(&message).unwrap();
-        let decoded: GossipMessage = ReadCbor::read_cbor(Cbor::checked(&bytes).unwrap()).unwrap();
-        match (decoded, message) {
-            (GossipMessage::RootUpdate(x), old::GossipMessage::RootUpdate(y)) => {
-                x.stream == y.stream
-                    && x.root == y.root
-                    && x.blocks == y.blocks
-                    && x.lamport == y.lamport
-                    && x.offset.is_none()
-            }
-            (GossipMessage::RootMap(x), old::GossipMessage::RootMap(y)) => {
-                x.entries == y.entries && x.lamport == y.lamport && x.time == y.time && x.offsets.is_empty()
-            }
-            _ => false,
-        }
     }
 
     #[test]
@@ -538,16 +467,15 @@ mod tests {
                     b't', b'i', b'm', b'e',
                 0x00, // unsigned(0)
         ];
-        let root_update = old::RootUpdate {
+        let root_update = RootUpdate {
             stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(42.into()),
             root: Cid::new_v1(0x00, Code::Sha2_256.digest(&[])),
             blocks: Default::default(),
             lamport: Default::default(),
             time: Default::default(),
+            offset: None,
         };
-        let msg = DagCborCodec.encode(&root_update).unwrap();
-        assert_eq!(msg, cbor);
-        let root_update2 = DagCborCodec.decode(&msg).unwrap();
+        let root_update2 = RootUpdate::read_cbor(Cbor::checked(&cbor).unwrap()).unwrap();
         assert_eq!(root_update, root_update2);
     }
 
@@ -622,49 +550,6 @@ mod tests {
     }
 
     #[test]
-    fn test_root_update_backwards_compatibility() {
-        // decode old format
-        let old = old::RootUpdate {
-            stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(42.into()),
-            root: Cid::new_v1(0x00, Code::Sha2_256.digest(&[])),
-            blocks: Default::default(),
-            lamport: Default::default(),
-            time: Default::default(),
-        };
-        let expected_new = RootUpdate {
-            stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(42.into()),
-            root: Cid::new_v1(0x00, Code::Sha2_256.digest(&[])),
-            blocks: Default::default(),
-            lamport: Default::default(),
-            time: Default::default(),
-            offset: None,
-        };
-        let bytes = DagCborCodec.encode(&old).unwrap();
-        let decoded = RootUpdate::read_cbor(Cbor::checked(&bytes[..]).unwrap()).unwrap();
-        assert_eq!(expected_new, decoded);
-        // decode new format
-
-        let new = RootUpdate {
-            stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(42.into()),
-            root: Cid::new_v1(0x00, Code::Sha2_256.digest(&[])),
-            blocks: Default::default(),
-            lamport: Default::default(),
-            time: Default::default(),
-            offset: None,
-        };
-        let expected_old = old::RootUpdate {
-            stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(42.into()),
-            root: Cid::new_v1(0x00, Code::Sha2_256.digest(&[])),
-            blocks: Default::default(),
-            lamport: Default::default(),
-            time: Default::default(),
-        };
-        let bytes = new.write_cbor(CborBuilder::default());
-        let decoded: old::RootUpdate = DagCborCodec.decode(bytes.as_slice()).unwrap();
-        assert_eq!(expected_old, decoded);
-    }
-
-    #[test]
     fn test_decode_root_map_old() {
         #[rustfmt::skip]
         let cbor = [
@@ -679,10 +564,8 @@ mod tests {
                     b't', b'i', b'm', b'e',
                 0x00, // unsigned(0)
         ];
-        let root_map = old::RootMap::default();
-        let msg = DagCborCodec.encode(&root_map).unwrap();
-        assert_eq!(msg, cbor);
-        let root_map2: old::RootMap = DagCborCodec.decode(&msg).unwrap();
+        let root_map = RootMap::default();
+        let root_map2 = RootMap::read_cbor(Cbor::checked(&cbor).unwrap()).unwrap();
         assert_eq!(root_map, root_map2);
     }
 
@@ -712,20 +595,5 @@ mod tests {
         assert_eq!(root_map, root_map2);
         let root_map3 = RootMap::read_cbor(Cbor::checked(&cbor[..]).unwrap()).unwrap();
         assert_eq!(root_map3, root_map);
-    }
-
-    #[test]
-    fn test_root_map_backwards_compatibility() {
-        let old = old::RootMap::default();
-        let new = RootMap::default();
-        // read old
-        let bytes = DagCborCodec.encode(&old).unwrap();
-        let decoded = RootMap::read_cbor(Cbor::checked(&bytes[..]).unwrap()).unwrap();
-        assert_eq!(decoded, new);
-
-        // read new
-        let bytes = new.write_cbor(CborBuilder::default());
-        let decoded: old::RootMap = DagCborCodec.decode(bytes.as_slice()).unwrap();
-        assert_eq!(decoded, old);
     }
 }

@@ -14,7 +14,7 @@ use libp2p::{multiaddr::Protocol, Multiaddr, PeerId};
 pub mod apps;
 pub mod events;
 mod formats;
-pub(crate) mod internal;
+pub mod internal;
 pub mod nodes;
 pub mod settings;
 pub mod swarms;

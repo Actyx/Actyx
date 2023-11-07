@@ -1,13 +1,9 @@
-mod cmd;
-mod node_connection;
-mod private_key;
-
 use anyhow::Result;
-use axlib::{node, settings::SettingsOpts};
-use cmd::{
-    apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, swarms::SwarmsOpts,
-    topics::TopicsOpts, users::UsersOpts,
+use axlib::cmd::{
+    self, apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
+    swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
 };
+use axlib::node;
 use futures::Future;
 use std::process::exit;
 use structopt::{
@@ -130,19 +126,20 @@ async fn main() -> Result<()> {
     };
 
     match command {
-        CommandsOpt::Run(opts) => async { node::run::run(opts) }.await,
-        CommandsOpt::Apps(opts) => Ok(with_logger(cmd::apps::run(opts, json), verbosity).await),
-        CommandsOpt::Nodes(opts) => Ok(with_logger(cmd::nodes::run(opts, json), verbosity).await),
-        CommandsOpt::Settings(opts) => Ok(with_logger(cmd::settings::run(opts, json), verbosity).await),
-        CommandsOpt::Swarms(opts) => Ok(with_logger(cmd::swarms::run(opts, json), verbosity).await),
-        CommandsOpt::Users(opts) => Ok(with_logger(cmd::users::run(opts, json), verbosity).await),
-        CommandsOpt::Internal(opts) => Ok(with_logger(cmd::internal::run(opts, json), verbosity).await),
-        CommandsOpt::Events(opts) => Ok(with_logger(cmd::events::run(opts, json), verbosity).await),
-        CommandsOpt::Topics(opts) => Ok(with_logger(cmd::topics::run(opts, json), verbosity).await),
+        CommandsOpt::Run(opts) => node::run::run(opts)?,
+        CommandsOpt::Apps(opts) => with_logger(cmd::apps::run(opts, json), verbosity).await,
+        CommandsOpt::Nodes(opts) => with_logger(cmd::nodes::run(opts, json), verbosity).await,
+        CommandsOpt::Settings(opts) => with_logger(cmd::settings::run(opts, json), verbosity).await,
+        CommandsOpt::Swarms(opts) => with_logger(cmd::swarms::run(opts, json), verbosity).await,
+        CommandsOpt::Users(opts) => with_logger(cmd::users::run(opts, json), verbosity).await,
+        CommandsOpt::Internal(opts) => with_logger(cmd::internal::run(opts, json), verbosity).await,
+        CommandsOpt::Events(opts) => with_logger(cmd::events::run(opts, json), verbosity).await,
+        CommandsOpt::Topics(opts) => with_logger(cmd::topics::run(opts, json), verbosity).await,
     }
+    Ok(())
 }
 
 async fn with_logger(fut: impl Future<Output = ()>, verbosity: u8) {
-    util::setup_logger_with_level(verbosity);
+    axlib::util::setup_logger_with_level(verbosity);
     fut.await
 }

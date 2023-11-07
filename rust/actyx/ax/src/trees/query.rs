@@ -473,7 +473,7 @@ impl FromIterator<ScopedTagSet> for TagExprQuery {
 mod tests {
     use std::str::FromStr;
 
-    use crate::trees::{stags, TagIndex};
+    use crate::{stags, trees::TagIndex};
 
     use super::*;
     use actyx_sdk::{

@@ -599,7 +599,7 @@ impl TreeTypes for AxTrees {
 /// The link type used internally by the actyx flavour of banyan trees
 ///
 /// This is much smaller and less complex than than an libipld::Cid
-#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, DagCbor)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Sha256Digest([u8; 32]);
 
 impl Sha256Digest {

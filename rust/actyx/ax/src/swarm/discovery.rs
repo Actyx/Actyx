@@ -414,7 +414,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_discovery() -> Result<()> {
-        util::setup_logger();
+        crate::util::setup_logger();
         let a = BanyanStore::test("a").await?;
         let mut a = a.ipfs().clone();
         let b = BanyanStore::test("b").await?;

@@ -1,9 +1,11 @@
-use crate::trees::{
-    axtrees::{AxKey, AxTrees, Sha256Digest},
-    query::{LamportQuery, LamportQueryBuilder, TagExprQuery, TimeQuery},
+use crate::{
     stags,
-    tags::ScopedTagSet,
-    AxTree,
+    trees::{
+        axtrees::{AxKey, AxTrees, Sha256Digest},
+        query::{LamportQuery, LamportQueryBuilder, TagExprQuery, TimeQuery},
+        tags::ScopedTagSet,
+        AxTree,
+    },
 };
 use actyx_sdk::{language::SortKey, tag, tags, LamportTimestamp, Payload, StreamId, TagSet, Timestamp};
 use banyan::{

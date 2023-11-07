@@ -607,8 +607,8 @@ mod tests {
         let n = 100;
 
         let random_range = move || {
-            let i1 = thread_rng().gen_range(0..n) as usize;
-            let i2 = thread_rng().gen_range(0..n) as usize;
+            let i1 = thread_rng().gen_range(0, n) as usize;
+            let i2 = thread_rng().gen_range(0, n) as usize;
             let from = i1.min(i2);
             let to = i1.max(i2);
             from..=to

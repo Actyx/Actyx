@@ -644,14 +644,14 @@ mod test {
             streams: BTreeMap::from([
                 (
                     "logs".to_string(),
-                    swarm::RetainConfig {
+                    crate::swarm::RetainConfig {
                         max_events: 1024.into(),
                         ..Default::default()
                     },
                 ),
                 (
                     "metrics".to_string(),
-                    swarm::RetainConfig {
+                    crate::swarm::RetainConfig {
                         max_age: Some(crate::swarm::StreamAge::Hours(1)),
                         ..Default::default()
                     },
