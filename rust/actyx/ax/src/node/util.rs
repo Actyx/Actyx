@@ -1,4 +1,4 @@
-use super::{formats::ExternalEvent, node::NodeError, node_storage::NodeStorage, ApplicationState};
+use super::{formats::ExternalEvent, node_impl::NodeError, node_storage::NodeStorage, ApplicationState};
 use crate::crypto::{KeyStore, KeyStoreRef};
 use anyhow::{anyhow, Context};
 use crossbeam::channel::Sender;

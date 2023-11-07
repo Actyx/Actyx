@@ -1,5 +1,5 @@
 use super::{
-    actors::ActorCommand, components::ComponentType, node::NodeError, node_api::formats::NodesRequest,
+    actors::ActorCommand, components::ComponentType, node_api::formats::NodesRequest, node_impl::NodeError,
     settings::SettingsRequest,
 };
 use crate::util::formats::NodeName;

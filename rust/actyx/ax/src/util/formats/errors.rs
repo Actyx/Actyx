@@ -11,7 +11,7 @@ pub fn ax_err<T>(code: ActyxOSCode, message: String) -> ActyxOSResult<T> {
 #[macro_export]
 macro_rules! ax_bail {
     ($code:expr, $fmt:expr, $($arg:tt)*) => {
-        return crate::util::formats::ax_err($code, format!($fmt, $($arg)*));
+        return $crate::util::formats::ax_err($code, format!($fmt, $($arg)*));
     };
 }
 pub trait ActyxOSResultExt<T> {

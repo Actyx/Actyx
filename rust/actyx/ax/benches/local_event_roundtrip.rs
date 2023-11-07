@@ -2,12 +2,14 @@ use actyx_sdk::{
     service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest},
     tags, Ax, AxOpts, Payload,
 };
-use axlib::node::{BindTo, Runtime};
+use axlib::{
+    node::{BindTo, Runtime},
+    util::SocketAddrHelper,
+};
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use futures::StreamExt;
 use std::time::Duration;
 use tempfile::tempdir;
-use util::SocketAddrHelper;
 
 // Note: This doesn't concern itself with any internals (like flushing the send
 // log etc). Just a simple and brute-force roundtrip test.

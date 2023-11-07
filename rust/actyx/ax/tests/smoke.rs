@@ -85,7 +85,7 @@ fn with_api(
     mut log: impl Write + Clone + Send + 'static,
     f: impl FnOnce(u16, &Path) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    util::setup_logger();
+    axlib::util::setup_logger();
     setup();
 
     let workdir = tempdir()?;

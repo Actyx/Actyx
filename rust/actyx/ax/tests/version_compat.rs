@@ -1,7 +1,11 @@
 #![cfg(target_os = "linux")]
 use actyx_sdk::service::OffsetsResponse;
 use anyhow::{anyhow, bail, ensure};
-use axlib::cmd::ActyxCliResult;
+use axlib::{
+    cmd::ActyxCliResult,
+    util::formats::{ActyxOSCode, NodesInspectResponse},
+};
+use build_util::{formats::os_arch::Arch, version::Version};
 use escargot::{format::Message, CargoBuild};
 use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;
@@ -21,10 +25,6 @@ use std::{
 };
 use tar::Archive;
 use tempfile::tempdir;
-use util::{
-    formats::{os_arch::Arch, ActyxOSCode, NodesInspectResponse},
-    version::Version,
-};
 
 trait Opts: Sized {
     type Out;
@@ -214,7 +214,7 @@ fn with_api(
     mut log: impl Write + Clone + Send + 'static,
     f: impl FnOnce(u16, &Path) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    util::setup_logger();
+    axlib::util::setup_logger();
     setup();
 
     let workdir = tempdir()?;

@@ -1,13 +1,15 @@
 use actyx_sdk::{app_id, language};
+use axlib::{
+    runtime::{
+        eval::{Context, RootContext},
+        query::Query,
+        value::Value,
+    },
+    swarm::{self, event_store_ref::EventStoreRef},
+};
 use cbor_data::Encoder;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use futures::executor::block_on;
-use runtime::{
-    eval::{Context, RootContext},
-    query::Query,
-    value::Value,
-};
-use swarm::event_store_ref::EventStoreRef;
 
 fn store() -> EventStoreRef {
     EventStoreRef::new(|_x| Err(swarm::event_store_ref::Error::Aborted))

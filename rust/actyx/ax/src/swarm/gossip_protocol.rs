@@ -312,11 +312,7 @@ mod tests {
     use super::*;
     use actyx_sdk::NodeId;
     use cbor_data::{Cbor, CborBuilder};
-    use libipld::{
-        cbor::DagCborCodec,
-        multihash::{Code, MultihashDigest},
-        prelude::Codec,
-    };
+    use libipld::multihash::{Code, MultihashDigest};
     use quickcheck::Arbitrary;
     use quickcheck_macros::quickcheck;
 

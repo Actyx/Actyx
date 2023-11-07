@@ -6,15 +6,15 @@ mod formats;
 mod host;
 mod log_tracer;
 pub mod migration;
-mod node;
 mod node_api;
+mod node_impl;
 mod node_storage;
 pub mod run;
 pub mod settings;
 mod util;
 
 pub use components::swarm_observer::SwarmObserver;
-pub use node::NodeError;
+pub use node_impl::NodeError;
 pub use util::{init_shutdown_ceremony, shutdown_ceremony, spawn_with_name};
 
 pub use formats::{node_settings, ShutdownReason};
@@ -41,8 +41,8 @@ use components::{
 use crossbeam::channel::{bounded, Receiver, Sender};
 use formats::ExternalEvent;
 use host::Host;
-use node::NodeProcessResult;
-use node::{ComponentChannel, NodeWrapper};
+use node_impl::NodeProcessResult;
+use node_impl::{ComponentChannel, NodeWrapper};
 use settings::SettingsRequest;
 use std::net::ToSocketAddrs;
 use std::net::{IpAddr, Ipv4Addr};

@@ -1,5 +1,5 @@
+use axlib::crypto::{KeyStore, KeyStoreRef, SignedMessage};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use crypto::{KeyStore, KeyStoreRef, SignedMessage};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
