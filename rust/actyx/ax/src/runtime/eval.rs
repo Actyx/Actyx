@@ -1,4 +1,5 @@
 use crate::runtime::{error::RuntimeError, query::Query, value::Value};
+use crate::swarm::event_store_ref::EventStoreRef;
 use actyx_sdk::{
     language::{BinOp, Ind, Index, Num, SimpleExpr, TagAtom, TagExpr},
     service::{EventMeta, Order},
@@ -18,7 +19,6 @@ use std::{
     convert::{TryFrom, TryInto},
     sync::Arc,
 };
-use crate::swarm::event_store_ref::EventStoreRef;
 
 pub struct RootContext {
     scratch: Mutex<Vec<u8>>,

@@ -1,3 +1,4 @@
+use crate::swarm::BanyanStore;
 use actyx_sdk::AppId;
 use anyhow::{Context, Result};
 use futures::{Stream, StreamExt};
@@ -5,7 +6,6 @@ use http::header::CONTENT_DISPOSITION;
 use libipld::cid::Cid;
 use percent_encoding::percent_decode_str;
 use std::{collections::VecDeque, path::Path, str::FromStr};
-use crate::swarm::BanyanStore;
 use tracing::*;
 use warp::{
     host::Authority,
@@ -17,8 +17,8 @@ use warp::{
 
 use crate::api::{
     ans::{ActyxName, ActyxNamingService},
-    rejections::ApiError,
     api_util::filters::{authenticate_optional, header_or_query_token_opt},
+    rejections::ApiError,
     NodeInfo,
 };
 

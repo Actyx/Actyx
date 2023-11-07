@@ -1,5 +1,5 @@
-use actyx_sdk::{language::TagExpr, OffsetMap, OffsetOrMin, StreamId};
 use crate::trees::query::TagExprQuery;
+use actyx_sdk::{language::TagExpr, OffsetMap, OffsetOrMin, StreamId};
 
 /// A precise selection of events, possibly unbounded in size.
 ///

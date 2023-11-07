@@ -1,3 +1,4 @@
+use crate::ax_futures_util::stream::ready_iter;
 use crate::swarm::{
     gossip_protocol::{GossipMessage, RootMap, RootUpdate},
     BanyanStore, Ipfs, Link, RootPath, RootSource,
@@ -5,7 +6,6 @@ use crate::swarm::{
 use acto::ActoRef;
 use actyx_sdk::{LamportTimestamp, NodeId, Offset, StreamNr, Timestamp};
 use anyhow::Result;
-use crate::ax_futures_util::stream::ready_iter;
 use cbor_data::{
     codec::{CodecError, ReadCbor, WriteCbor},
     Cbor, CborBuilder,

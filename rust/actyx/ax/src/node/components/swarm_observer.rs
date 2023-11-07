@@ -1,4 +1,6 @@
 use crate::node::{actors::ComponentCommand, node_settings::Settings};
+use crate::swarm::{GossipMessage, RootMap, RootUpdate};
+use crate::util::variable::Writer;
 use acto::{ActoCell, ActoInput, ActoRuntime};
 use actyx_sdk::{
     service::{PeerStatus, SwarmState},
@@ -7,8 +9,6 @@ use actyx_sdk::{
 use im::OrdMap;
 use ipfs_embed::PeerId;
 use std::collections::HashMap;
-use crate::swarm::{GossipMessage, RootMap, RootUpdate};
-use crate::util::variable::Writer;
 
 pub enum SwarmObserver {
     NewSettings(Settings),

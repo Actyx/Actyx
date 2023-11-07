@@ -1,10 +1,12 @@
 use std::time::Duration;
 
+use crate::util::formats::{
+    ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicDeleteResponse,
+};
 use futures::{channel::mpsc, future::join_all, stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
-use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicDeleteResponse};
 
 use crate::{
     cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand, KeyPathWrapper},
@@ -89,7 +91,9 @@ impl AxCliCommand for TopicsDelete {
 
     type Output = Vec<DeleteOutput>;
 
-    fn run(opts: Self::Opt) -> Box<dyn futures::Stream<Item = crate::util::formats::ActyxOSResult<Self::Output>> + Unpin> {
+    fn run(
+        opts: Self::Opt,
+    ) -> Box<dyn futures::Stream<Item = crate::util::formats::ActyxOSResult<Self::Output>> + Unpin> {
         let requests = Box::pin(delete_run(opts));
         Box::new(stream::once(requests))
     }

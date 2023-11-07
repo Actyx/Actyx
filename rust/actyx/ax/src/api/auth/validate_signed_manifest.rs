@@ -66,9 +66,9 @@ mod tests {
     use crate::api::{formats::Licensing, rejections::ApiError};
 
     use super::*;
-    use actyx_sdk::{app_id, AppId};
     use crate::certs::SignedAppManifest;
     use crate::crypto::{PrivateKey, PublicKey};
+    use actyx_sdk::{app_id, AppId};
 
     struct TestFixture {
         ax_public_key: PublicKey,

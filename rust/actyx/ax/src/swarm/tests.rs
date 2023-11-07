@@ -1,16 +1,17 @@
-use crate::swarm::{
-    AxTreeExt, BanyanStore, EphemeralEventsConfig, EventRoute, EventRouteMappingEvent, SwarmConfig,
-    DEFAULT_STREAM_NAME, DISCOVERY_STREAM_NAME, FILES_STREAM_NAME, MAX_TREE_LEVEL, METRICS_STREAM_NAME,
-};
-use acto::ActoRef;
-use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Offset, OffsetMap, Payload, StreamNr, Tag, TagSet};
-use anyhow::Result;
 use crate::ax_futures_util::{
     prelude::AxStreamExt,
     stream::{interval, Drainer},
 };
-use banyan::query::AllQuery;
 use crate::crypto::{KeyPair, KeyStore, PublicKey};
+use crate::swarm::{
+    AxTreeExt, BanyanStore, EphemeralEventsConfig, EventRoute, EventRouteMappingEvent, SwarmConfig,
+    DEFAULT_STREAM_NAME, DISCOVERY_STREAM_NAME, FILES_STREAM_NAME, MAX_TREE_LEVEL, METRICS_STREAM_NAME,
+};
+use crate::trees::query::TagExprQuery;
+use acto::ActoRef;
+use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Offset, OffsetMap, Payload, StreamNr, Tag, TagSet};
+use anyhow::Result;
+use banyan::query::AllQuery;
 use futures::{pin_mut, prelude::*, StreamExt};
 use libipld::Cid;
 use maplit::btreemap;
@@ -23,7 +24,6 @@ use std::{
     time::Duration,
 };
 use tokio::runtime::Runtime;
-use crate::trees::query::TagExprQuery;
 struct Tagger(BTreeMap<&'static str, Tag>);
 
 impl Tagger {

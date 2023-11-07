@@ -2,9 +2,9 @@ mod dump;
 mod explore;
 
 use crate::cmd::AxCliCommand;
+use crate::trees::axtrees::Sha256Digest;
 use futures::Future;
 use structopt::StructOpt;
-use crate::trees::axtrees::Sha256Digest;
 use TreesOpts::DumpTree;
 
 use self::dump::DumpTreeOpts;

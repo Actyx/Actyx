@@ -1,3 +1,4 @@
+use crate::libp2p_streaming_response::Codec;
 use actyx_sdk::{
     service::{
         Diagnostic, EventResponse, OffsetsResponse, PublishRequest, PublishResponse, QueryRequest,
@@ -5,7 +6,6 @@ use actyx_sdk::{
     },
     OffsetMap, Payload,
 };
-use crate::libp2p_streaming_response::Codec;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]

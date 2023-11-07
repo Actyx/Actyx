@@ -1,12 +1,12 @@
+use crate::settings::Scope;
+use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
 use crate::{
     cmd::{formats::Result, AxCliCommand, ConsoleOpt},
     node_connection::{request_single, Task},
 };
 use futures::{stream, Stream, TryFutureExt};
-use crate::settings::Scope;
 use std::str::FromStr;
 use structopt::StructOpt;
-use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]

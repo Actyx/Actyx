@@ -1,11 +1,11 @@
+use crate::swarm::StreamAlias;
+use crate::util::formats::{ActyxOSResult, ActyxOSResultExt};
 use actyx_sdk::StreamId;
 use futures::{prelude::*, stream, Stream};
 use ipfs_sqlite_block_store::BlockStore;
 use libipld::{Cid, DefaultParams};
 use std::{convert::TryFrom, path::PathBuf};
 use structopt::StructOpt;
-use crate::swarm::StreamAlias;
-use crate::util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 use crate::cmd::AxCliCommand;
 
@@ -65,7 +65,8 @@ impl AxCliCommand for ExploreTree {
     type Output = ();
     fn run(opts: ExploreTreeOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         Box::new(stream::once(
-            async move { run(opts).ax_err_ctx(crate::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "run failed") }.boxed(),
+            async move { run(opts).ax_err_ctx(crate::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "run failed") }
+                .boxed(),
         ))
     }
 

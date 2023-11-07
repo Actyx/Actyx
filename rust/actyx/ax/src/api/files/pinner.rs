@@ -5,6 +5,7 @@ use std::{
     time::Duration,
 };
 
+use crate::swarm::{Block, Ipfs};
 use actyx_sdk::{
     app_id,
     language::{Query, StaticQuery},
@@ -19,7 +20,6 @@ use chrono::Utc;
 use futures::{pin_mut, stream, Future, StreamExt};
 use libipld::{cbor::DagCborCodec, multihash::Code, Cid, DagCbor};
 use serde::{Deserialize, Deserializer, Serialize};
-use crate::swarm::{Block, Ipfs};
 use tokio::{sync::mpsc, task::JoinHandle, time::MissedTickBehavior};
 use tokio_stream::wrappers::{IntervalStream, ReceiverStream};
 

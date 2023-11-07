@@ -2,6 +2,7 @@ use crate::swarm::{
     event_store::{self, EventStore, PersistenceMeta},
     BanyanStore, SwarmOffsets,
 };
+use crate::trees::query::TagExprError;
 use actyx_sdk::{language::TagExpr, AppId, Event, OffsetMap, Payload, TagSet};
 use futures::{Future, Stream, StreamExt};
 use parking_lot::Mutex;
@@ -21,7 +22,6 @@ use tokio::{
     },
     task::JoinHandle,
 };
-use crate::trees::query::TagExprError;
 
 #[derive(Debug, Clone, derive_more::Display, derive_more::Error)]
 pub enum Error {

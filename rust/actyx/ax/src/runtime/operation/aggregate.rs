@@ -441,8 +441,8 @@ mod tests {
         operation::{Operation, Processor},
         query::Query,
     };
-    use actyx_sdk::{app_id, language, tags, EventKey, Metadata, NodeId};
     use crate::swarm::event_store_ref::EventStoreRef;
+    use actyx_sdk::{app_id, language, tags, EventKey, Metadata, NodeId};
 
     fn a(s: &str) -> Box<dyn Processor> {
         let s = format!("FROM 'x' AGGREGATE {}", s);

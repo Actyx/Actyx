@@ -1,5 +1,6 @@
 use std::{fmt::Write, path::Path, str::FromStr, time::Duration};
 
+use crate::swarm::{BanyanStore, Block, BufferingTreeBuilder, TreeOptions};
 use actyx_sdk::{
     app_id,
     service::{DirectoryChild, FilesGetResponse, PrefetchRequest},
@@ -11,7 +12,6 @@ use futures::prelude::*;
 use http::{header::CACHE_CONTROL, Uri};
 use libipld::cid::Cid;
 use serde::Serialize;
-use crate::swarm::{BanyanStore, Block, BufferingTreeBuilder, TreeOptions};
 use warp::{
     path::{self, FullPath},
     Buf, Filter, Rejection, Reply,

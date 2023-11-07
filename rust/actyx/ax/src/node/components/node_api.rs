@@ -4,6 +4,7 @@ use crate::node::{
     formats::ExternalEvent,
     node_settings::Settings,
 };
+use crate::util::SocketAddrHelper;
 use actyx_sdk::NodeId;
 use anyhow::Result;
 use crossbeam::channel::{Receiver, Sender};
@@ -17,7 +18,6 @@ use std::{
         Arc,
     },
 };
-use crate::util::SocketAddrHelper;
 
 impl NodeApi {
     pub(crate) fn new(

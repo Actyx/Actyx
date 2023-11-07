@@ -1,3 +1,4 @@
+use crate::ax_futures_util::ReceiverExt;
 use crate::runtime::{
     eval::Context,
     operation::{Operation, Processor},
@@ -8,7 +9,6 @@ use actyx_sdk::{
     service::Order,
     AppId,
 };
-use crate::ax_futures_util::ReceiverExt;
 use futures::{stream, StreamExt};
 
 pub struct Pragmas<'a>(Vec<(&'a str, &'a str)>);
@@ -220,8 +220,8 @@ impl Feeder {
 mod tests {
     use super::*;
     use crate::runtime::eval::RootContext;
-    use actyx_sdk::{app_id, OffsetMap};
     use crate::swarm::event_store_ref::EventStoreRef;
+    use actyx_sdk::{app_id, OffsetMap};
 
     fn store() -> EventStoreRef {
         EventStoreRef::new(|_x| Err(crate::swarm::event_store_ref::Error::Aborted))

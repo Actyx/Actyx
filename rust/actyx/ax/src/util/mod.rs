@@ -2,6 +2,7 @@
 
 pub mod base64_blob;
 pub mod drainer;
+pub mod formats;
 pub mod gen_stream;
 pub mod immutable_sync;
 pub mod keepalivestream3;
@@ -13,7 +14,6 @@ pub mod serde_util;
 pub mod trace_poll;
 pub mod value_or_limit;
 pub mod variable;
-pub mod formats;
 
 pub use self::value_or_limit::*;
 

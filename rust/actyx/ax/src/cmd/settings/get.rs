@@ -1,3 +1,4 @@
+use crate::util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
 use crate::{
     cmd::{formats::Result, AxCliCommand, ConsoleOpt},
     node_connection::{request_single, Task},
@@ -5,7 +6,6 @@ use crate::{
 use futures::{stream, Stream};
 use serde::Serialize;
 use structopt::StructOpt;
-use crate::util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
 
 pub struct SettingsGet();
 impl AxCliCommand for SettingsGet {

@@ -210,9 +210,9 @@ impl Processor for Binding {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::swarm::event_store_ref::EventStoreRef;
     use cbor_data::Encoder;
     use std::convert::TryInto;
-    use crate::swarm::event_store_ref::EventStoreRef;
 
     fn simple_expr(s: &str) -> SimpleExpr {
         s.parse::<SimpleExpr>().unwrap()

@@ -1,6 +1,7 @@
-use crate::swarm::{AxStreamBuilder, Cid, Link, RootPath, RootSource, Tree};
-use actyx_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr};
 use crate::ax_futures_util::stream::variable::Variable;
+use crate::swarm::{AxStreamBuilder, Cid, Link, RootPath, RootSource, Tree};
+use crate::trees::{axtrees::AxTrees, AxTree, AxTreeHeader};
+use actyx_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr};
 use banyan::StreamTransaction;
 use fnv::FnvHashMap;
 use futures::{
@@ -12,7 +13,6 @@ use std::{
     ops::{Deref, DerefMut},
     sync::Arc,
 };
-use crate::trees::{axtrees::AxTrees, AxTree, AxTreeHeader};
 
 const PREFIX: u8 = b'S';
 

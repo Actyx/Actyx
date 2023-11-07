@@ -1,3 +1,10 @@
+use crate::util::{
+    formats::{
+        events_protocol::{EventsRequest, EventsResponse},
+        ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse,
+    },
+    gen_stream::GenStream,
+};
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::{request_single, Task},
@@ -16,13 +23,6 @@ use std::{
 };
 use structopt::StructOpt;
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
-use crate::util::{
-    formats::{
-        events_protocol::{EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse,
-    },
-    gen_stream::GenStream,
-};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]

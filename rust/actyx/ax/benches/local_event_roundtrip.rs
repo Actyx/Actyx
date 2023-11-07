@@ -2,9 +2,9 @@ use actyx_sdk::{
     service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest},
     tags, Ax, AxOpts, Payload,
 };
+use axlib::node::{BindTo, Runtime};
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use futures::StreamExt;
-use axlib::node::{BindTo, Runtime};
 use std::time::Duration;
 use tempfile::tempdir;
 use util::SocketAddrHelper;

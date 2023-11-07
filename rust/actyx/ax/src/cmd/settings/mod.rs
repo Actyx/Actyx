@@ -4,11 +4,11 @@ mod set;
 mod unset;
 
 use crate::cmd::AxCliCommand;
+use crate::settings::{Scope, ScopeError};
 use futures::Future;
 use get::GetOpt;
 use schema::SchemaOpt;
 use set::SetOpt;
-use crate::settings::{Scope, ScopeError};
 use std::{convert::TryFrom, str::FromStr};
 use structopt::StructOpt;
 use unset::UnsetOpt;

@@ -1,6 +1,6 @@
+use crate::util::formats::{ActyxOSResult, NodesLsResponse};
 use actyx_sdk::NodeId;
 use tokio::sync::oneshot::Sender;
-use crate::util::formats::{ActyxOSResult, NodesLsResponse};
 
 #[derive(Debug)]
 pub enum NodesRequest {

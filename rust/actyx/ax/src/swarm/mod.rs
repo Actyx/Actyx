@@ -17,13 +17,13 @@ pub mod event_store_ref;
 mod gossip;
 mod gossip_protocol;
 pub mod metrics;
+pub mod old_formats;
 mod prune;
 pub mod selection;
 mod sqlite;
 mod sqlite_index_store;
 mod streams;
 pub mod transport;
-pub mod old_formats;
 
 #[cfg(test)]
 mod tests;
@@ -32,6 +32,8 @@ use crate::swarm::event_store::PersistenceMeta;
 pub use crate::swarm::sqlite::{StorageServiceStore, StorageServiceStoreWrite};
 pub use crate::swarm::sqlite_index_store::DbPath;
 pub use crate::swarm::streams::StreamAlias;
+use crate::trees::dnf::Dnf;
+use crate::trees::query::TagExprQuery;
 use actyx_sdk::language::{TagAtom, TagExpr};
 use actyx_sdk::{app_id, tag};
 pub use banyan::{store::BlockWriter, Forest as BanyanForest, StreamBuilder, Transaction as BanyanTransaction};
@@ -41,29 +43,27 @@ pub use libipld::codec::Codec as IpldCodec;
 use once_cell::sync::Lazy;
 pub use prune::{RetainConfig, StreamAge, StreamSize};
 use streams::{OwnStreamGuard, RemoteNodeInner};
-use crate::trees::dnf::Dnf;
-use crate::trees::query::TagExprQuery;
 pub use unixfs_v1::{
     dir::builder::{BufferingTreeBuilder, TreeOptions},
     FlatUnixFs, PBLink, UnixFsType,
 };
 
+use crate::ax_futures_util::{
+    prelude::*,
+    stream::variable::{Observer, Variable},
+};
+use crate::crypto::KeyPair;
 use crate::swarm::gossip::Gossip;
 pub use crate::swarm::gossip_protocol::{GossipMessage, RootMap, RootUpdate};
 use crate::swarm::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::swarm::streams::{OwnStream, PublishedTree, ReplicatedStream};
 use actyx_sdk::{AppId, LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, TagSet, Timestamp};
 use anyhow::{Context, Result};
-use crate::ax_futures_util::{
-    prelude::*,
-    stream::variable::{Observer, Variable},
-};
 use banyan::{
     query::Query,
     store::{BranchCache, ReadOnlyStore},
     FilteredChunk, Secrets,
 };
-use crate::crypto::KeyPair;
 use fnv::FnvHashMap;
 use futures::channel::mpsc;
 use ipfs_embed::identity::PublicKey::Ed25519;
@@ -103,13 +103,13 @@ use crate::trees::{
     tags::{ScopedTag, ScopedTagSet},
     AxTree, AxTreeHeader,
 };
-use unixfs_v1::file::{adder::FileAdder, visit::IdleFileVisit};
-use unixfs_v1::{dir::MaybeResolved, file::visit::FileVisit};
 use crate::util::{
     formats::NodeErrorContext,
     reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
 };
 use crate::util::{to_multiaddr, to_socket_addr, SocketAddrHelper};
+use unixfs_v1::file::{adder::FileAdder, visit::IdleFileVisit};
+use unixfs_v1::{dir::MaybeResolved, file::visit::FileVisit};
 
 #[allow(clippy::upper_case_acronyms)]
 pub type TT = AxTrees;
@@ -121,8 +121,8 @@ pub type Tree = banyan::Tree<TT, Event>;
 pub type AxStreamBuilder = banyan::StreamBuilder<TT, Event>;
 pub type Link = Sha256Digest;
 
-use acto::ActoRef;
 pub use crate::trees::StoreParams;
+use acto::ActoRef;
 pub type Block = libipld::Block<StoreParams>;
 pub type Ipfs = ipfs_embed::Ipfs<StoreParams>;
 
@@ -1925,8 +1925,8 @@ impl MatchTagSet for Dnf {
 mod test_match_tag_set {
     use std::str::FromStr;
 
-    use actyx_sdk::{language::TagExpr, tags, AppId};
     use crate::trees::dnf::Dnf;
+    use actyx_sdk::{language::TagExpr, tags, AppId};
 
     use crate::swarm::{internal_app_id, MatchTagSet};
 

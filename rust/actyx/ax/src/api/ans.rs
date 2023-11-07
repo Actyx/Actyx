@@ -1,4 +1,8 @@
 //! Actyx Naming Service
+use crate::trees::{
+    query::{LamportQuery, TagExprQuery, TimeQuery},
+    tags::{ScopedTag, ScopedTagSet, TagScope},
+};
 use actyx_sdk::{app_id, tag, tags, Payload};
 use derive_more::{Deref, Display, From};
 use futures::{StreamExt, TryFutureExt};
@@ -6,10 +10,6 @@ use libipld::cid::Cid;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::Arc};
-use crate::trees::{
-    query::{LamportQuery, TagExprQuery, TimeQuery},
-    tags::{ScopedTag, ScopedTagSet, TagScope},
-};
 
 use crate::api::BanyanStore;
 

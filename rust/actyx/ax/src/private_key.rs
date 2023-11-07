@@ -6,11 +6,11 @@ use std::{
 };
 
 use crate::crypto::{KeyPair, PrivateKey, PublicKey};
-use libp2p::identity;
 use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt};
+use libp2p::identity;
 
-use crate::cmd::get_data_dir;
 use crate::certs::DeveloperCertificate;
+use crate::cmd::get_data_dir;
 
 const PUB_KEY_FILE_EXTENSION: &str = "pub";
 pub const DEFAULT_PRIVATE_KEY_FILE_NAME: &str = "id";

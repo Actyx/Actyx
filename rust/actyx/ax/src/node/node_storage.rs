@@ -1,13 +1,13 @@
 use std::{convert::TryFrom, path::Path, str::FromStr, sync::Arc};
 
+use crate::crypto::PublicKey;
+use crate::util::formats::NodeCycleCount;
 use actyx_sdk::NodeId;
 use anyhow::{bail, Context};
-use crate::crypto::PublicKey;
 use derive_more::{Display, Error};
 use parking_lot::Mutex;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use tracing::*;
-use crate::util::formats::NodeCycleCount;
 
 #[derive(Debug, Clone, Copy, Display, Error)]
 #[display(

@@ -1,8 +1,8 @@
 use crate::api::rejections::{ApiError, UnauthorizedReason};
-use actyx_sdk::AppId;
 use crate::certs::{AppLicenseType, Expiring, SignedAppLicense};
-use chrono::Utc;
 use crate::crypto::PublicKey;
+use actyx_sdk::AppId;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -67,7 +67,7 @@ impl Default for Licensing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::api::{formats::Licensing, rejections::ApiError, api_util::get_ax_public_key};
+    use crate::api::{api_util::get_ax_public_key, formats::Licensing, rejections::ApiError};
     use std::collections::BTreeMap;
 
     #[test]

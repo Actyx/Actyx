@@ -1,3 +1,9 @@
+use crate::crypto::{KeyStore, KeyStoreRef, PrivateKey, PublicKey};
+use crate::swarm::{
+    blob_store::BlobStore,
+    event_store_ref::{self, EventStoreHandler, EventStoreRef},
+    BanyanStore, DbPath,
+};
 use actyx_sdk::{
     app_id,
     service::{AuthenticationResponse, SwarmState},
@@ -5,19 +11,13 @@ use actyx_sdk::{
 };
 use bytes::Bytes;
 use chrono::Utc;
-use crate::crypto::{KeyStore, KeyStoreRef, PrivateKey, PublicKey};
 use hyper::Response;
 use parking_lot::lock_api::RwLock;
 use serde_json::*;
-use crate::swarm::{
-    blob_store::BlobStore,
-    event_store_ref::{self, EventStoreHandler, EventStoreRef},
-    BanyanStore, DbPath,
-};
 use warp::*;
 
 use crate::api::{
-    auth::create_token, files::FilePinner, formats::Licensing, rejections, api_util::NodeInfo, AppMode, EventService,
+    api_util::NodeInfo, auth::create_token, files::FilePinner, formats::Licensing, rejections, AppMode, EventService,
 };
 use crate::util::variable::Writer;
 use tokio::{crate::runtime::Handle, sync::mpsc};

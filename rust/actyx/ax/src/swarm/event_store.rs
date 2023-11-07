@@ -1,18 +1,18 @@
 use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
-use crate::swarm::{selection::StreamEventSelection, BanyanStore, SwarmOffsets};
-use actyx_sdk::{
-    language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
-    Payload, StreamId, StreamNr, TagSet, Timestamp,
-};
 use crate::ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
-use banyan::FilteredChunk;
-use derive_more::{Display, Error, From};
-use futures::{future, stream, Stream, StreamExt, TryStreamExt};
+use crate::swarm::{selection::StreamEventSelection, BanyanStore, SwarmOffsets};
 use crate::trees::{
     axtrees::AxKey,
     query::{TagExprError, TagExprQuery},
 };
+use actyx_sdk::{
+    language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
+    Payload, StreamId, StreamNr, TagSet, Timestamp,
+};
+use banyan::FilteredChunk;
+use derive_more::{Display, Error, From};
+use futures::{future, stream, Stream, StreamExt, TryStreamExt};
 
 #[derive(Clone, Debug, Display, Error, From)]
 pub enum Error {
@@ -249,13 +249,13 @@ mod tests {
         str::FromStr,
     };
 
+    use crate::ax_futures_util::stream::Drainer;
     use actyx_sdk::{
         app_id,
         language::{TagAtom, TagExpr},
         service::Order,
         tag, tags, OffsetOrMin, StreamId, Tag,
     };
-    use crate::ax_futures_util::stream::Drainer;
     use futures::future::try_join_all;
     use maplit::btreemap;
     use quickcheck::Arbitrary;
@@ -263,8 +263,8 @@ mod tests {
 
     use super::*;
     use crate::swarm::{selection::EventSelection, BanyanStore, EventRoute};
-    use chrono::{DateTime, SecondsFormat, Utc};
     use crate::trees::query::{LamportQuery, TimeQuery};
+    use chrono::{DateTime, SecondsFormat, Utc};
 
     async fn mk_store(name: &'static str) -> EventStore {
         EventStore::new(BanyanStore::test(name).await.unwrap())

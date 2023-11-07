@@ -1,3 +1,7 @@
+use crate::util::{
+    formats::{events_protocol::EventsRequest, ActyxOSResult},
+    gen_stream::GenStream,
+};
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::{request_events, EventDiagnostic},
@@ -8,10 +12,6 @@ use actyx_sdk::{
 };
 use futures::{future::ready, Stream, StreamExt};
 use structopt::StructOpt;
-use crate::util::{
-    formats::{events_protocol::EventsRequest, ActyxOSResult},
-    gen_stream::GenStream,
-};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]

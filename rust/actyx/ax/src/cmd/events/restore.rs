@@ -1,11 +1,18 @@
 use super::dump::Diag;
+use crate::crypto::KeyPair;
+use crate::util::{
+    formats::{
+        banyan_protocol::{decode_dump_header, BanyanRequest, BanyanResponse},
+        ActyxOSCode, ActyxOSError, ActyxOSResult,
+    },
+    gen_stream::GenStream,
+};
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::request_banyan,
     private_key::load_dev_cert,
 };
 use cbor_data::{Cbor, CborBuilder, Encoder};
-use crate::crypto::KeyPair;
 use futures::Stream;
 use std::{
     fs::File,
@@ -15,13 +22,6 @@ use std::{
 };
 use structopt::StructOpt;
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
-use crate::util::{
-    formats::{
-        banyan_protocol::{decode_dump_header, BanyanRequest, BanyanResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult,
-    },
-    gen_stream::GenStream,
-};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]

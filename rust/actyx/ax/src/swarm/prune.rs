@@ -470,9 +470,9 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
 mod test {
     use std::{collections::BTreeMap, iter::once, str::FromStr, sync::Arc};
 
+    use crate::ax_futures_util::prelude::AxStreamExt;
     use crate::trees::query::TagExprQuery;
     use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Payload, StreamNr};
-    use crate::ax_futures_util::prelude::AxStreamExt;
     use futures::{future, StreamExt, TryStreamExt};
     use tokio::time::{sleep, timeout};
 

@@ -1,4 +1,16 @@
 use crate::api::rejections::ApiError;
+use crate::ax_futures_util::{stream::AxStreamExt, ReceiverExt};
+use crate::runtime::{
+    error::{RuntimeError, RuntimeFailure},
+    eval::Context,
+    features::{Endpoint, Feature, FeatureError, Features},
+    query::{Feeder, Query},
+    value::Value,
+};
+use crate::swarm::{
+    event_store_ref::{EventStoreHandler, EventStoreRef},
+    BanyanStore,
+};
 use actyx_sdk::{
     app_id,
     language::{self, Arr, SimpleExpr, SpreadExpr},
@@ -9,7 +21,6 @@ use actyx_sdk::{
     },
     AppId, Event, EventKey, NodeId, OffsetMap, OffsetOrMin, Payload, TagSet, Timestamp,
 };
-use crate::ax_futures_util::{stream::AxStreamExt, ReceiverExt};
 use futures::{
     future::{poll_fn, ready},
     stream::{self, BoxStream, StreamExt},
@@ -17,23 +28,12 @@ use futures::{
     FutureExt,
 };
 use genawaiter::sync::{Co, Gen};
-use crate::runtime::{
-    error::{RuntimeError, RuntimeFailure},
-    eval::Context,
-    features::{Endpoint, Feature, FeatureError, Features},
-    query::{Feeder, Query},
-    value::Value,
-};
 use serde::Deserialize;
 use std::{
     convert::TryFrom,
     num::NonZeroU64,
     ops::Deref,
     task::{self, Poll},
-};
-use crate::swarm::{
-    event_store_ref::{EventStoreHandler, EventStoreRef},
-    BanyanStore,
 };
 use tokio::sync::mpsc;
 
@@ -616,6 +616,10 @@ async fn store_line(store: &BanyanStore, line: &str) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::swarm::{
+        event_store_ref::{self, EventStoreHandler},
+        BanyanStore, EventRoute,
+    };
     use actyx_sdk::{
         app_id,
         language::TagExpr,
@@ -629,10 +633,6 @@ mod tests {
     use maplit::btreemap;
     use regex::Regex;
     use std::{collections::BTreeMap, convert::TryInto, pin::Pin, str::FromStr, time::Duration};
-    use crate::swarm::{
-        event_store_ref::{self, EventStoreHandler},
-        BanyanStore, EventRoute,
-    };
     use tokio::{
         runtime::{Handle, Runtime},
         sync::mpsc,

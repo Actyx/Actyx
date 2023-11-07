@@ -129,9 +129,9 @@ pub(crate) fn authenticate(
 mod tests {
     use super::*;
     use crate::api::{formats::Licensing, AppMode, BearerToken};
+    use crate::crypto::{KeyStore, PrivateKey};
     use actyx_sdk::{app_id, types::Binary, Timestamp};
     use chrono::Utc;
-    use crate::crypto::{KeyStore, PrivateKey};
     use parking_lot::RwLock;
     use std::sync::Arc;
 

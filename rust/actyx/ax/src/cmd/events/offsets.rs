@@ -1,3 +1,7 @@
+use crate::util::formats::{
+    events_protocol::{EventsRequest, EventsResponse},
+    ActyxOSError, ActyxOSResult,
+};
 use crate::{
     cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt},
     node_connection::{request_single, Task},
@@ -7,10 +11,6 @@ use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
 use std::collections::BTreeSet;
 use structopt::StructOpt;
-use crate::util::formats::{
-    events_protocol::{EventsRequest, EventsResponse},
-    ActyxOSError, ActyxOSResult,
-};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]

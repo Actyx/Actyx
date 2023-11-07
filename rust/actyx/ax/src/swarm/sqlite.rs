@@ -1,5 +1,6 @@
 //! helper methods to work with ipfs/ipld
 use crate::swarm::{Block, Ipfs};
+use crate::trees::axtrees::Sha256Digest;
 use anyhow::Result;
 use banyan::store::{BlockWriter, ReadOnlyStore};
 use core::fmt;
@@ -7,7 +8,6 @@ use ipfs_embed::{StorageService, TempPin};
 use libipld::Cid;
 use parking_lot::Mutex;
 use std::{collections::BTreeSet, ops::Deref};
-use crate::trees::axtrees::Sha256Digest;
 
 #[derive(Clone)]
 pub struct SqliteStore(Ipfs);

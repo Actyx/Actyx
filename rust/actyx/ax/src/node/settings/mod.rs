@@ -1,5 +1,5 @@
-use tokio::sync::oneshot::Sender;
 use crate::util::formats::ActyxOSResult;
+use tokio::sync::oneshot::Sender;
 
 pub const SYSTEM_SCOPE: &str = "com.actyx";
 pub fn system_scope() -> crate::settings::Scope {

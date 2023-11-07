@@ -1,5 +1,6 @@
 use std::{convert::TryInto, time::Duration};
 
+use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesLsResponse};
 use crate::{
     cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand, KeyPathWrapper},
     node_connection::{connect, mk_swarm, request_single, Task},
@@ -9,7 +10,6 @@ use futures::{channel::mpsc, future::join_all, stream, Stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
-use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesLsResponse};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]

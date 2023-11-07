@@ -1,16 +1,16 @@
+use crate::runtime::value::Value;
+use crate::util::{
+    formats::{events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+    gen_stream::GenStream,
+};
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::{request_events, EventDiagnostic},
 };
 use actyx_sdk::service::SubscribeRequest;
 use futures::{future::ready, Stream, StreamExt};
-use crate::runtime::value::Value;
 use std::{fs::File, io::Read};
 use structopt::StructOpt;
-use crate::util::{
-    formats::{events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
-    gen_stream::GenStream,
-};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]

@@ -7,9 +7,9 @@ use actyx_sdk::{
 use warp::*;
 
 use crate::api::{
+    api_util::{self, Result},
     events::service::EventService,
     rejections::ApiError,
-    api_util::{self, Result},
 };
 use crate::runtime::features::FeatureError;
 use crate::swarm::event_store_ref;

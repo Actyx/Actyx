@@ -38,6 +38,9 @@
 //! while when configuring an external address you are telling other peers how to reach you, given
 //! you have a bootstrap node in common.
 use crate::swarm::{internal_app_id, BanyanStore};
+use crate::trees::query::{LamportQuery, TagExprQuery, TimeQuery};
+use crate::trees::tags::{ScopedTag, ScopedTagSet, TagScope};
+use crate::trees::AxKey;
 use actyx_sdk::{tag, tags, Payload, Timestamp};
 use anyhow::Result;
 use fnv::{FnvHashMap, FnvHashSet};
@@ -50,9 +53,6 @@ use std::future::Future;
 use std::io::{Read, Seek, Write};
 use std::time::Duration;
 use tokio::time::timeout;
-use crate::trees::query::{LamportQuery, TagExprQuery, TimeQuery};
-use crate::trees::tags::{ScopedTag, ScopedTagSet, TagScope};
-use crate::trees::AxKey;
 
 #[derive(DagCbor, Debug)]
 #[allow(clippy::enum_variant_names)]

@@ -4,9 +4,9 @@ mod ndjson;
 
 use warp::Filter;
 
-use crate::balanced_or;
-use crate::api::events::service::EventService;
 use crate::api::api_util::NodeInfo;
+use crate::api::events::service::EventService;
+use crate::balanced_or;
 
 pub(crate) fn routes(
     node_info: NodeInfo,

@@ -1,7 +1,7 @@
 use super::{formats::ExternalEvent, node::NodeError, node_storage::NodeStorage, ApplicationState};
+use crate::crypto::{KeyStore, KeyStoreRef};
 use anyhow::{anyhow, Context};
 use crossbeam::channel::Sender;
-use crate::crypto::{KeyStore, KeyStoreRef};
 use parking_lot::RwLock;
 use signal_hook::{consts::TERM_SIGNALS, low_level};
 use std::{

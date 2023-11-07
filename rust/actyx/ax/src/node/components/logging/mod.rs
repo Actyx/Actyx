@@ -1,11 +1,11 @@
 use self::logging_sink::LoggingSink;
 use super::{Component, ComponentRequest};
 use crate::node::node_settings::Settings;
+use crate::util::formats::LogSeverity;
 use anyhow::Result;
 use crossbeam::channel::{Receiver, Sender};
 use parking_lot::Mutex;
 use std::sync::Arc;
-use crate::util::formats::LogSeverity;
 
 mod logging_sink;
 pub struct Logging {

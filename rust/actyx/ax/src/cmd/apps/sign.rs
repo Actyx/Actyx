@@ -1,10 +1,10 @@
-use crate::cmd::AxCliCommand;
-use actyx_sdk::AppManifest;
 use crate::certs::{DeveloperCertificate, SignedAppManifest};
+use crate::cmd::AxCliCommand;
+use crate::util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
+use actyx_sdk::AppManifest;
 use futures::{stream, Stream};
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;
-use crate::util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
