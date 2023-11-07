@@ -604,7 +604,7 @@ impl<'a> Query<'a> {
         }
     }
 
-    /// Add a lower bound to the query.
+    /// Add a (inclusive) lower bound to the query.
     ///
     /// For more information on offsets, as well as lower and upper bounds refer to the
     /// [offsets and partitions](https://developer.actyx.com/docs/conceptual/event-streams#offsets-and-partitions) documentation page.
@@ -618,7 +618,8 @@ impl<'a> Query<'a> {
     /// ```
     /// If you set the lower bound to `10`, only the last event will be returned.
     ///
-    /// Example:
+    /// # Examples
+    ///
     /// ```no_run
     /// use actyx_sdk::{Ax, AxOpts, service::QueryResponse};
     /// use futures::stream::StreamExt;
@@ -636,6 +637,59 @@ impl<'a> Query<'a> {
     ///     }
     /// }
     /// ```
+    ///
+    /// Generating an `OffsetMap` out of thin air is usually not possible because they
+    /// require stream IDs — which require knowledge of the streams and so on.
+    /// Hence, a more involved and useful example requires you to perform a query to
+    /// get an offset map when the query finishes streaming all results.
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use futures::stream::StreamExt;
+    /// async fn lower_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     // We're publishing events for a completely functional example
+    ///     let publish_response = service
+    ///         .publish()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor1"),
+    ///             &serde_json::json!({ "temperature": 10 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor2"),
+    ///             &serde_json::json!({ "temperature": 21 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor3"),
+    ///             &serde_json::json!({ "temperature": 40 }),
+    ///         ).unwrap()
+    ///         .await.unwrap();
+    ///     // Query for the "halfway" event
+    ///     let mut query_response = service
+    ///         .query("FROM 'sensor:temp-sensor2'")
+    ///         .await
+    ///         .unwrap();
+    ///     // This loop is a bit of a dirty hack for demonstration purposes
+    ///     // in real world usage you will most likely be using the events
+    ///     // and keeping the offset map in the end.
+    ///     let offsets = loop {
+    ///         let result = query_response.next().await.unwrap();
+    ///         if let QueryResponse::Offsets(offsets) = result {
+    ///             break offsets.offsets;
+    ///         }
+    ///     };
+    ///     // Query for all 'temperature' events with the previous query `OffsetMap`
+    ///     // as a lower bound. We're expecting to only see events after the "halfway"
+    ///     // event — {"temperature"}
+    ///     let mut query_response = service
+    ///         .query("FROM 'temperature'")
+    ///         .with_lower_bound(offsets.clone())
+    ///         .await.unwrap();
+    ///     while let Some(response) = query_response.next().await {
+    ///         println!("{:?}", response);
+    ///     }
+    /// }
+    /// ```
     pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.lower_bound = Some(lower_bound);
@@ -644,7 +698,7 @@ impl<'a> Query<'a> {
         panic!("Calling Query::with_lower_bound after polling.")
     }
 
-    /// Add an upper bound to the query.
+    /// Add an (inclusive) upper bound to the query.
     ///
     /// For more information on offsets, as well as lower and upper bounds refer to the
     /// [offsets and partitions](https://developer.actyx.com/docs/conceptual/event-streams#offsets-and-partitions) documentation page.
@@ -658,7 +712,8 @@ impl<'a> Query<'a> {
     /// ```
     /// If you set the upper bound to `10`, the first two events will be returned.
     ///
-    /// Example:
+    /// # Examples
+    ///
     /// ```no_run
     /// use actyx_sdk::{Ax, AxOpts};
     /// use futures::stream::StreamExt;
@@ -671,6 +726,59 @@ impl<'a> Query<'a> {
     ///         .unwrap();
     ///     while let Some(event) = response.next().await {
     ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Generating an `OffsetMap` out of thin air is usually not possible because they
+    /// require stream IDs — which require knowledge of the streams and so on.
+    /// Hence, a more involved and useful example requires you to perform a query to
+    /// get an offset map when the query finishes streaming all results.
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use futures::stream::StreamExt;
+    /// async fn upper_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     // We're publishing events for a completely functional example
+    ///     let publish_response = service
+    ///         .publish()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor1"),
+    ///             &serde_json::json!({ "temperature": 10 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor2"),
+    ///             &serde_json::json!({ "temperature": 21 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor3"),
+    ///             &serde_json::json!({ "temperature": 40 }),
+    ///         ).unwrap()
+    ///         .await.unwrap();
+    ///     // Query for the "halfway" event
+    ///     let mut query_response = service
+    ///         .query("FROM 'sensor:temp-sensor2'")
+    ///         .await
+    ///         .unwrap();
+    ///     // This loop is a bit of a dirty hack for demonstration purposes
+    ///     // in real world usage you will most likely be using the events
+    ///     // and keeping the offset map in the end.
+    ///     let offsets = loop {
+    ///         let result = query_response.next().await.unwrap();
+    ///         if let QueryResponse::Offsets(offsets) = result {
+    ///             break offsets.offsets;
+    ///         }
+    ///     };
+    ///     // Query for all 'temperature' events with the previous query `OffsetMap`
+    ///     // as an upper bound. We're expecting to only see events after the "halfway"
+    ///     // event — {"temperature"}
+    ///     let mut query_response = service
+    ///         .query("FROM 'temperature'")
+    ///         .with_upper_bound(offsets.clone())
+    ///         .await.unwrap();
+    ///     while let Some(response) = query_response.next().await {
+    ///         println!("{:?}", response);
     ///     }
     /// }
     /// ```
@@ -696,6 +804,7 @@ impl<'a> Query<'a> {
     /// By default, this value is set to [`Order::Asc`], however,
     /// order set in the query takes precedence over the order defined using this function.
     /// The precedence order flows like so:
+    ///
     /// 1. Explicit `ORDER` in query
     /// 2. Inferred from `AGGREGATE` in query
     /// 3. [`Query::with_order`] call
@@ -797,7 +906,7 @@ impl<'a> Subscribe<'a> {
         }
     }
 
-    /// Add a lower bound to the subscription query.
+    /// Add a (inclusive) lower bound to the subscription query.
     ///
     /// For more information on offsets, as well as lower and upper bounds refer to the
     /// [offsets and partitions](https://developer.actyx.com/docs/conceptual/event-streams#offsets-and-partitions) documentation page.
@@ -825,6 +934,59 @@ impl<'a> Subscribe<'a> {
     ///         .unwrap();
     ///     while let Some(event) = response.next().await {
     ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Generating an `OffsetMap` out of thin air is usually not possible because they
+    /// require stream IDs — which require knowledge of the streams and so on.
+    /// Hence, a more involved and useful example requires you to perform a query to
+    /// get an offset map when the query finishes streaming all results.
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use futures::stream::StreamExt;
+    /// async fn lower_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     // We're publishing events for a completely functional example
+    ///     let publish_response = service
+    ///         .publish()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor1"),
+    ///             &serde_json::json!({ "temperature": 10 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor2"),
+    ///             &serde_json::json!({ "temperature": 21 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor3"),
+    ///             &serde_json::json!({ "temperature": 40 }),
+    ///         ).unwrap()
+    ///         .await.unwrap();
+    ///     // Query for the "halfway" event
+    ///     let mut query_response = service
+    ///         .query("FROM 'sensor:temp-sensor2'")
+    ///         .await
+    ///         .unwrap();
+    ///     // This loop is a dirty hack for demonstration purposes
+    ///     // in real world usage you will most likely be using the events
+    ///     // and keeping the offset map in the end.
+    ///     let offsets = loop {
+    ///         let result = query_response.next().await.unwrap();
+    ///         if let QueryResponse::Offsets(offsets) = result {
+    ///             break offsets.offsets;
+    ///         }
+    ///     };
+    ///     // Subcribe for all 'temperature' events with the previous query `OffsetMap`
+    ///     // as a lower bound. We're expecting to only see events after the "halfway"
+    ///     // event — {"temperature"}
+    ///     let mut subscribe_response = service
+    ///         .subscribe("FROM 'temperature'")
+    ///         .with_lower_bound(offsets.clone())
+    ///         .await.unwrap();
+    ///     while let Some(response) = query_response.next().await {
+    ///         println!("{:?}", response);
     ///     }
     /// }
     /// ```
@@ -1030,11 +1192,10 @@ impl From<(String, serde_cbor::Error)> for AxError {
     }
 }
 
-/// Tests for the builder. Most of these are "dumb" as to keep sure
-/// the values or semantics aren't changed without a "purposeful" change
-/// — i.e. they are here to make you double check when you change semantics
-/// or ensure you didn't miss an `else` that leads to an unconditional panic
-/// (not that has ever happened...)
+/// Tests for the builder. Most of these are "dumb" as to keep sure the values or
+/// semantics aren't changed without a "purposeful" change — i.e. they are here to make
+/// you double check when you change semantics or ensure you didn't miss an `else` that
+/// leads to an unconditional panic (not that has ever happened...),
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, RwLock};
