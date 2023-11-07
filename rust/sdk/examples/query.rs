@@ -1,10 +1,8 @@
 use actyx_sdk::{
-    app_id,
     service::{EventService, Order, QueryRequest, QueryResponse},
-    AppManifest, Ax, AxOpts,
+    Ax, AxOpts,
 };
 use futures::stream::StreamExt;
-use url::Url;
 
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {

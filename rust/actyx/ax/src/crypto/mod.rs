@@ -34,16 +34,12 @@
 //! byte such that its length can be deduced by consumers.
 
 mod keystore;
-#[cfg(feature = "legacy")]
-mod legacy;
 mod pair;
 mod private;
 mod public;
 mod signature;
 
 pub use keystore::{KeyStore, KeyStoreRef};
-#[cfg(feature = "legacy")]
-pub use legacy::LegacyKeyId;
 pub use pair::KeyPair;
 pub use private::PrivateKey;
 pub use public::{node_id_to_peer_id, peer_id_to_node_id, PublicKey};

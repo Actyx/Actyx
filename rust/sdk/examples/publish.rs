@@ -1,10 +1,8 @@
 use actyx_sdk::{
-    app_id,
     service::{EventService, PublishEvent, PublishRequest},
-    tags, AppManifest, Ax, AxOpts, Payload,
+    tags, Ax, AxOpts, Payload,
 };
 use futures::{stream, FutureExt, Stream, StreamExt, TryStreamExt};
-use url::Url;
 
 fn counter() -> impl Stream<Item = i32> {
     stream::iter(0..).then(|i| futures_timer::Delay::new(std::time::Duration::from_secs(1)).map(move |()| i))

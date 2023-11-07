@@ -145,7 +145,7 @@ pub fn run(opts: Opts) -> anyhow::Result<()> {
         _ => {
             let mut app = Opts::clap();
             app.write_long_help(&mut std::io::stderr()).unwrap();
-            println!("");
+            println!();
             Ok(())
         }
     }

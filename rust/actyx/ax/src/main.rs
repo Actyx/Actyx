@@ -132,7 +132,7 @@ async fn main() -> Result<()> {
 
     match command {
         CommandsOpt::Run(opts) => node::run::run(opts)?,
-        CommandsOpt::Cert(opts) => with_logger::<Result<()>>(async { ax_cert_bin::run(opts) }, verbosity).await?,
+        CommandsOpt::Cert(opts) => with_logger(async { ax_cert_bin::run(opts) }, verbosity).await?,
         CommandsOpt::Apps(opts) => with_logger(cmd::apps::run(opts, json), verbosity).await,
         CommandsOpt::Nodes(opts) => with_logger(cmd::nodes::run(opts, json), verbosity).await,
         CommandsOpt::Settings(opts) => with_logger(cmd::settings::run(opts, json), verbosity).await,
