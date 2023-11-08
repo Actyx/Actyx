@@ -64,11 +64,11 @@ impl FromStr for Authority {
 
 #[derive(StructOpt, Debug)]
 pub struct ConsoleOpt {
-    #[structopt(name = "NODE", required = true)]
     /// the IP address or <host>:<admin port> of the node to perform the operation on.
+    #[structopt(name = "NODE", required = true)]
     authority: Authority,
-    #[structopt(short, long, value_name = "FILE")]
     /// File from which the identity (private key) for authentication is read.
+    #[structopt(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     identity: Option<KeyPathWrapper>,
 }
 
@@ -104,7 +104,11 @@ impl TryFrom<&Option<KeyPathWrapper>> for AxPrivateKey {
     type Error = ActyxOSError;
     fn try_from(k: &Option<KeyPathWrapper>) -> Result<AxPrivateKey> {
         if let Some(path) = k {
-            AxPrivateKey::from_file(&path.0)
+            path.0
+                .to_str()
+                .and_then(|s| s.parse::<AxPrivateKey>().ok())
+                .ok_or(ActyxOSError::internal(""))
+                .or_else(|_| AxPrivateKey::from_file(&path.0))
         } else {
             let private_key_path = AxPrivateKey::default_user_identity_path()?;
             AxPrivateKey::from_file(&private_key_path).map_err(move |e| {

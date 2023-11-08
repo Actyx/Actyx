@@ -23,8 +23,8 @@ enum List {
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
 pub struct ExploreTreeOpts {
-    #[structopt(long)]
     /// Path to a sqlite blockstore (read-only access!)
+    #[structopt(long)]
     block_store: PathBuf,
     #[structopt(flatten)]
     command: List,

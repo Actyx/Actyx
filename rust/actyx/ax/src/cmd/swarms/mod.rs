@@ -9,8 +9,8 @@ use structopt::StructOpt;
 #[structopt(version = env!("AX_CLI_VERSION"))]
 /// manage swarms
 pub enum SwarmsOpts {
-    #[structopt(no_version)]
     /// Generate a new swarm key.
+    #[structopt(no_version)]
     Keygen(KeygenOpts),
 }
 

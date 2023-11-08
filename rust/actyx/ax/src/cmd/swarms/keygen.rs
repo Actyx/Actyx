@@ -33,8 +33,8 @@ impl AxCliCommand for SwarmsKeygen {
 #[structopt(version = env!("AX_CLI_VERSION"))]
 /// generate swarm key
 pub struct KeygenOpts {
-    #[structopt(short, long, parse(from_os_str))]
     /// Create file <output> and write the generated key to it.
+    #[structopt(short, long, parse(from_os_str))]
     pub(crate) output: Option<PathBuf>,
 }
 

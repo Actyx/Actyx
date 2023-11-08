@@ -238,6 +238,7 @@ impl BindTo {
 
 #[derive(StructOpt, Debug)]
 pub struct BindToOpts {
+    /// Port to bind to for management connections.
     #[structopt(
         long,
         parse(try_from_str = parse_port_maybe_host),
@@ -248,9 +249,9 @@ pub struct BindToOpts {
             [::]:<port> for only IPv6; you may also specify other names or addresses or leave off \
             the port number."
     )]
-    /// Port to bind to for management connections.
     bind_admin: Vec<PortOrHostPort<4458>>,
 
+    /// Port to bind to for intra swarm connections.
     #[structopt(
         long,
         parse(try_from_str = parse_port_maybe_host),
@@ -258,9 +259,9 @@ pub struct BindToOpts {
         long_help = "Port to bind to for intra swarm connections. \
             The same rules apply as for the admin port."
     )]
-    /// Port to bind to for intra swarm connections.
     bind_swarm: Vec<PortOrHostPort<4001>>,
 
+    /// Port to bind to for the API used by apps.
     #[structopt(
         long,
         parse(try_from_str = parse_port_maybe_host),
@@ -269,7 +270,6 @@ pub struct BindToOpts {
             The same rules apply as for the admin port, except that giving only a port binds \
             to 127.0.0.1 only. The default port is 4454."
     )]
-    /// Port to bind to for the API used by apps.
     bind_api: Vec<PortOrHostPort<4454>>,
 }
 

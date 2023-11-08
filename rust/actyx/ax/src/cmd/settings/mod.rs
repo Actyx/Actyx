@@ -17,17 +17,17 @@ use unset::UnsetOpt;
 #[structopt(version = env!("AX_CLI_VERSION"))]
 /// manage node settings
 pub enum SettingsOpts {
-    #[structopt(no_version)]
     /// Configure settings of a node
+    #[structopt(no_version)]
     Set(SetOpt),
-    #[structopt(no_version)]
     /// Remove settings from a node
+    #[structopt(no_version)]
     Unset(UnsetOpt),
-    #[structopt(no_version)]
     /// Get settings from a node
-    Get(GetOpt),
     #[structopt(no_version)]
+    Get(GetOpt),
     /// Get setting schemas from a node
+    #[structopt(no_version)]
     Schema(SchemaOpt),
 }
 

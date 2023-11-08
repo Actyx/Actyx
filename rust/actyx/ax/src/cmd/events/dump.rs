@@ -28,23 +28,23 @@ use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
 #[structopt(version = env!("AX_CLI_VERSION"))]
 /// dump events described by an AQL query into a file
 pub struct DumpOpts {
-    #[structopt(name = "QUERY", required = true)]
     /// selection of event data to include in the dump
+    #[structopt(name = "QUERY", required = true)]
     query: String,
-    #[structopt(long, short, value_name = "FILE")]
     /// file to write the dump to
+    #[structopt(long, short, value_name = "FILE")]
     output: Option<PathBuf>,
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
-    #[structopt(long, short)]
     /// suppress progress information on stderr
+    #[structopt(long, short)]
     quiet: bool,
-    #[structopt(long, value_name = "TOKEN")]
     /// send dump via the cloud (start restore first to get the token)
+    #[structopt(long, value_name = "TOKEN")]
     cloud: Option<String>,
-    #[structopt(long, value_name = "URL")]
     /// base URL where to find the cloudmirror (only for --cloud)
     /// defaults to wss://cloudmirror.actyx.net/forward
+    #[structopt(long, value_name = "URL")]
     url: Option<String>,
 }
 

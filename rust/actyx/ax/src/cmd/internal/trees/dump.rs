@@ -26,24 +26,24 @@ use crate::cmd::AxCliCommand;
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
 pub struct DumpTreeOpts {
-    #[structopt(long)]
     /// Path to a sqlite blockstore (read-only access!)
+    #[structopt(long)]
     block_store: PathBuf,
-    #[structopt(long)]
     /// Index password to use
+    #[structopt(long)]
     index_pass: Option<String>,
-    #[structopt(long)]
     /// Value password to use
-    value_pass: Option<String>,
     #[structopt(long)]
+    value_pass: Option<String>,
     /// Dump a tree with a given root. Per default, only the extracted values are
     /// being printed. Set the --with-keys flag to emit those as well.
+    #[structopt(long)]
     root: Option<Sha256Digest>,
-    #[structopt(long)]
     /// Dump the raw block data as json
-    block: Option<Sha256Digest>,
     #[structopt(long)]
+    block: Option<Sha256Digest>,
     /// When dumping all values from a tree, also include the keys.
+    #[structopt(long)]
     with_keys: bool,
     /// Output dot. Sample usage: `ax _internal trees dump --block-store ..
     /// --dot --root .. | dot -Tpng > out.png`

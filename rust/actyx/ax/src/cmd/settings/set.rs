@@ -48,13 +48,13 @@ pub struct SetOpt {
 #[derive(StructOpt, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SetSettingsCommand {
-    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
     /// Scope for which you want to set the given settings; use `/` for the the root scope.
+    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
     scope: crate::settings::Scope,
-    #[structopt(name = "VALUE")]
     /// The value you want to set for the given scope as a YAML or JSON string.
     /// You may also pass in a file using the syntax `@file.yml` or have the
     /// command read from stdin using `@-`.
+    #[structopt(name = "VALUE")]
     input: String,
 }
 
