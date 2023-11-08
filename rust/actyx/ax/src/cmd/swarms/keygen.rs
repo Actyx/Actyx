@@ -1,6 +1,7 @@
-use crate::cmd::formats::Result;
-use crate::cmd::AxCliCommand;
-use crate::util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
+use crate::{
+    cmd::{formats::Result, AxCliCommand},
+    util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+};
 use futures::{stream, Stream, TryFutureExt};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
@@ -71,8 +72,10 @@ pub async fn run(opt: KeygenOpts) -> Result<Output> {
 
 #[cfg(test)]
 mod test {
-    use crate::cmd::formats::Result;
-    use crate::cmd::swarms::keygen::{generate_key, run, store_key, KeygenOpts};
+    use crate::cmd::{
+        formats::Result,
+        swarms::keygen::{generate_key, run, store_key, KeygenOpts},
+    };
 
     #[tokio::test]
     pub async fn should_store_swarm_key() -> Result<()> {

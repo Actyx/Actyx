@@ -1,6 +1,8 @@
-use std::fmt::{self, Display};
-use std::ops::{Deref, DerefMut};
-use std::str::FromStr;
+use std::{
+    fmt::{self, Display},
+    ops::{Deref, DerefMut},
+    str::FromStr,
+};
 
 /// A wrapper for anything that implements FromStr to make it serde::Deserialize. Will turn
 /// Display to serde::Serialize. Probably should be used with Cid, PeerId and such.

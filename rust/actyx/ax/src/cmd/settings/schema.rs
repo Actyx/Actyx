@@ -1,8 +1,8 @@
-use crate::settings::Scope;
-use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
 use crate::{
     cmd::{formats::Result, AxCliCommand, ConsoleOpt},
     node_connection::{request_single, Task},
+    settings::Scope,
+    util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse},
 };
 use futures::{stream, Stream, TryFutureExt};
 use std::str::FromStr;

@@ -8,28 +8,33 @@ use super::{
     settings::{SettingsRequest, SYSTEM_SCOPE},
     util::trigger_shutdown,
 };
-use crate::api::EventService;
-use crate::ax_futures_util::stream::variable::Variable;
-use crate::crypto::PublicKey;
-use crate::libp2p_streaming_response::{RequestReceived, StreamingResponse, StreamingResponseConfig};
-use crate::swarm::{
-    event_store_ref::EventStoreRef, BanyanConfig, BlockWriter, StorageConfig, StorageService, StorageServiceStore,
-    StorageServiceStoreWrite, StreamAlias,
-};
-use crate::trees::{
-    tags::{ScopedTag, ScopedTagSet, TagScope},
-    AxKey, AxTreeHeader,
-};
-use crate::util::formats::{
-    admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
-    banyan_protocol::{
-        decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse,
+use crate::{
+    api::EventService,
+    ax_futures_util::stream::variable::Variable,
+    crypto::PublicKey,
+    libp2p_streaming_response::{RequestReceived, StreamingResponse, StreamingResponseConfig},
+    swarm::{
+        event_store_ref::EventStoreRef, BanyanConfig, BlockWriter, StorageConfig, StorageService, StorageServiceStore,
+        StorageServiceStoreWrite, StreamAlias,
     },
-    events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
-    TopicDeleteResponse, TopicLsResponse,
+    trees::{
+        tags::{ScopedTag, ScopedTagSet, TagScope},
+        AxKey, AxTreeHeader,
+    },
+    util::{
+        formats::{
+            admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
+            banyan_protocol::{
+                decode_dump_frame, decode_dump_header, BanyanProtocol, BanyanProtocolName, BanyanRequest,
+                BanyanResponse,
+            },
+            events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
+            ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
+            TopicDeleteResponse, TopicLsResponse,
+        },
+        SocketAddrHelper,
+    },
 };
-use crate::util::SocketAddrHelper;
 use actyx_sdk::{
     app_id,
     service::{QueryResponse, SubscribeMonotonicResponse, SubscribeResponse},

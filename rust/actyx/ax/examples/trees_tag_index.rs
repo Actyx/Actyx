@@ -1,6 +1,10 @@
 use actyx_sdk::{tags, Tag};
 use cbor_tag_index::TagIndex;
-use libipld::{cbor::DagCbor, cbor::DagCborCodec, codec::Codec, Ipld};
+use libipld::{
+    cbor::{DagCbor, DagCborCodec},
+    codec::Codec,
+    Ipld,
+};
 use std::str::FromStr;
 
 fn compresss_zstd_cbor<T: DagCbor>(value: &T) -> std::result::Result<Vec<u8>, Box<dyn std::error::Error>> {

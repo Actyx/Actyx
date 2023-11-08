@@ -1,16 +1,18 @@
 use acto::ActoRef;
 use actyx_sdk::{app_id, service::SwarmState, AppId, Payload};
 use anyhow::Result;
-use axlib::api::{self, formats::Licensing, NodeInfo};
-use axlib::ax_futures_util::prelude::AxStreamExt;
-use axlib::crypto::{KeyPair, KeyStore};
-use axlib::swarm::{
-    blob_store::BlobStore,
-    event_store_ref::{self, EventStoreHandler, EventStoreRef, EventStoreRequest},
-    BanyanStore, DbPath, GossipMessage, SwarmConfig,
+use axlib::{
+    api::{self, formats::Licensing, NodeInfo},
+    ax_futures_util::prelude::AxStreamExt,
+    crypto::{KeyPair, KeyStore},
+    swarm::{
+        blob_store::BlobStore,
+        event_store_ref::{self, EventStoreHandler, EventStoreRef, EventStoreRequest},
+        BanyanStore, DbPath, GossipMessage, SwarmConfig,
+    },
+    trees::{query::TagExprQuery, AxKey},
+    util::variable::Writer,
 };
-use axlib::trees::{query::TagExprQuery, AxKey};
-use axlib::util::variable::Writer;
 use cbor_data::{
     codec::{CodecError, ReadCbor},
     Cbor,

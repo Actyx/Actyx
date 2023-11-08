@@ -1,9 +1,11 @@
 use anyhow::Result;
-use axlib::cmd::{
-    self, apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
-    swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
+use axlib::{
+    cmd::{
+        self, apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
+        swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
+    },
+    node,
 };
-use axlib::node;
 use futures::Future;
 use std::process::exit;
 use structopt::{

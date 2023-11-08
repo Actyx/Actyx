@@ -1,7 +1,9 @@
 mod validate_signed_manifest;
 
-use crate::certs::AppManifest;
-use crate::crypto::{PublicKey, SignedMessage};
+use crate::{
+    certs::AppManifest,
+    crypto::{PublicKey, SignedMessage},
+};
 use actyx_sdk::{types::Binary, AppId, Timestamp};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -119,8 +121,10 @@ pub(crate) fn route(node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,),
 
 #[cfg(test)]
 mod tests {
-    use crate::certs::AppManifest;
-    use crate::crypto::{KeyStore, PrivateKey, PublicKey};
+    use crate::{
+        certs::AppManifest,
+        crypto::{KeyStore, PrivateKey, PublicKey},
+    };
     use actyx_sdk::app_id;
     use chrono::Utc;
     use hyper::http;

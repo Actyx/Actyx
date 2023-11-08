@@ -1,8 +1,10 @@
-use crate::ax_futures_util::ReceiverExt;
-use crate::runtime::{
-    eval::Context,
-    operation::{Operation, Processor},
-    value::Value,
+use crate::{
+    ax_futures_util::ReceiverExt,
+    runtime::{
+        eval::Context,
+        operation::{Operation, Processor},
+        value::Value,
+    },
 };
 use actyx_sdk::{
     language::{self, Arr, Galactus, Tactic, TagAtom},
@@ -219,8 +221,7 @@ impl Feeder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::runtime::eval::RootContext;
-    use crate::swarm::event_store_ref::EventStoreRef;
+    use crate::{runtime::eval::RootContext, swarm::event_store_ref::EventStoreRef};
     use actyx_sdk::{app_id, OffsetMap};
 
     fn store() -> EventStoreRef {

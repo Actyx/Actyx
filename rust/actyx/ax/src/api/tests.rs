@@ -1,8 +1,10 @@
-use crate::crypto::{KeyStore, KeyStoreRef, PrivateKey, PublicKey};
-use crate::swarm::{
-    blob_store::BlobStore,
-    event_store_ref::{self, EventStoreHandler, EventStoreRef},
-    BanyanStore, DbPath,
+use crate::{
+    crypto::{KeyStore, KeyStoreRef, PrivateKey, PublicKey},
+    swarm::{
+        blob_store::BlobStore,
+        event_store_ref::{self, EventStoreHandler, EventStoreRef},
+        BanyanStore, DbPath,
+    },
 };
 use actyx_sdk::{
     app_id,
@@ -16,10 +18,13 @@ use parking_lot::lock_api::RwLock;
 use serde_json::*;
 use warp::*;
 
-use crate::api::{
-    api_util::NodeInfo, auth::create_token, files::FilePinner, formats::Licensing, rejections, AppMode, EventService,
+use crate::{
+    api::{
+        api_util::NodeInfo, auth::create_token, files::FilePinner, formats::Licensing, rejections, AppMode,
+        EventService,
+    },
+    util::variable::Writer,
 };
-use crate::util::variable::Writer;
 use tokio::{runtime::Handle, sync::mpsc};
 
 const UNAUTHORIZED_TOKEN: &str = "AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ==";

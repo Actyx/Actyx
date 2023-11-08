@@ -1,11 +1,11 @@
-use crate::runtime::value::Value;
-use crate::util::{
-    formats::{events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
-    gen_stream::GenStream,
-};
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::{request_events, EventDiagnostic},
+    runtime::value::Value,
+    util::{
+        formats::{events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+        gen_stream::GenStream,
+    },
 };
 use actyx_sdk::service::{Order, QueryRequest};
 use futures::{future::ready, Stream, StreamExt};

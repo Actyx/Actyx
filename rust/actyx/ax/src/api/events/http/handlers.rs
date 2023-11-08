@@ -6,13 +6,15 @@ use actyx_sdk::{
 };
 use warp::*;
 
-use crate::api::{
-    api_util::{self, Result},
-    events::service::EventService,
-    rejections::ApiError,
+use crate::{
+    api::{
+        api_util::{self, Result},
+        events::service::EventService,
+        rejections::ApiError,
+    },
+    runtime::features::FeatureError,
+    swarm::event_store_ref,
 };
-use crate::runtime::features::FeatureError;
-use crate::swarm::event_store_ref;
 
 pub async fn offsets(_app_id: AppId, event_service: EventService) -> Result<impl Reply> {
     event_service

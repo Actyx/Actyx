@@ -1,7 +1,7 @@
-use crate::util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest};
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::{request, Task},
+    util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest},
 };
 use futures::{stream, FutureExt, Stream};
 use structopt::StructOpt;

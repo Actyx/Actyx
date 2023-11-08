@@ -1,7 +1,9 @@
-use crate::certs::{AppDomain, DeveloperCertificateInput, ManifestDeveloperCertificate};
-use crate::cmd::AxCliCommand;
-use crate::crypto::{PrivateKey, PublicKey};
-use crate::util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
+use crate::{
+    certs::{AppDomain, DeveloperCertificateInput, ManifestDeveloperCertificate},
+    cmd::AxCliCommand,
+    crypto::{PrivateKey, PublicKey},
+    util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+};
 use futures::{stream::once, FutureExt, Stream};
 use structopt::StructOpt;
 

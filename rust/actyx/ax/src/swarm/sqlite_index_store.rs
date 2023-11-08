@@ -2,11 +2,8 @@ use crate::ax_futures_util::stream::variable::{Observer, Variable};
 use actyx_sdk::{LamportTimestamp, StreamId};
 use anyhow::{Context, Result};
 use parking_lot::Mutex;
-use rusqlite::backup;
-use rusqlite::{params, Connection, OpenFlags};
-use std::time::Duration;
-use std::{collections::BTreeSet, sync::Arc};
-use std::{convert::TryFrom, path::PathBuf};
+use rusqlite::{backup, params, Connection, OpenFlags};
+use std::{collections::BTreeSet, convert::TryFrom, path::PathBuf, sync::Arc, time::Duration};
 use tracing::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

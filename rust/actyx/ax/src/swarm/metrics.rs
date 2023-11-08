@@ -1,15 +1,17 @@
-use std::future::Future;
-use std::io::Write;
-use std::time::Duration;
+use std::{future::Future, io::Write, time::Duration};
 
 use crate::swarm::{internal_app_id, BanyanStore};
 use actyx_sdk::{tags, Payload};
 use anyhow::Result;
-use libipld::cbor::cbor::MajorKind;
-use libipld::cbor::encode::{write_u64, write_u8};
-use libipld::cbor::DagCborCodec;
-use libipld::codec::Encode;
-use libipld::DagCbor;
+use libipld::{
+    cbor::{
+        cbor::MajorKind,
+        encode::{write_u64, write_u8},
+        DagCborCodec,
+    },
+    codec::Encode,
+    DagCbor,
+};
 use prometheus::{Encoder, Registry};
 
 pub fn metrics(store: BanyanStore, interval: Duration) -> Result<impl Future<Output = ()>> {
@@ -217,8 +219,7 @@ fn prometheus_encode<W: Write>(families: &[prometheus::proto::MetricFamily], w: 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libipld::cbor::DagCborCodec;
-    use libipld::codec::Codec;
+    use libipld::{cbor::DagCborCodec, codec::Codec};
     use prometheus::core::Collector;
 
     #[test]

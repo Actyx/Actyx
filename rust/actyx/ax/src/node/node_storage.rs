@@ -1,7 +1,6 @@
 use std::{convert::TryFrom, path::Path, str::FromStr, sync::Arc};
 
-use crate::crypto::PublicKey;
-use crate::util::formats::NodeCycleCount;
+use crate::{crypto::PublicKey, util::formats::NodeCycleCount};
 use actyx_sdk::NodeId;
 use anyhow::{bail, Context};
 use derive_more::{Display, Error};

@@ -1,13 +1,15 @@
-use crate::ax_futures_util::{
-    prelude::AxStreamExt,
-    stream::{interval, Drainer},
+use crate::{
+    ax_futures_util::{
+        prelude::AxStreamExt,
+        stream::{interval, Drainer},
+    },
+    crypto::{KeyPair, KeyStore, PublicKey},
+    swarm::{
+        AxTreeExt, BanyanStore, EphemeralEventsConfig, EventRoute, EventRouteMappingEvent, SwarmConfig,
+        DEFAULT_STREAM_NAME, DISCOVERY_STREAM_NAME, FILES_STREAM_NAME, MAX_TREE_LEVEL, METRICS_STREAM_NAME,
+    },
+    trees::query::TagExprQuery,
 };
-use crate::crypto::{KeyPair, KeyStore, PublicKey};
-use crate::swarm::{
-    AxTreeExt, BanyanStore, EphemeralEventsConfig, EventRoute, EventRouteMappingEvent, SwarmConfig,
-    DEFAULT_STREAM_NAME, DISCOVERY_STREAM_NAME, FILES_STREAM_NAME, MAX_TREE_LEVEL, METRICS_STREAM_NAME,
-};
-use crate::trees::query::TagExprQuery;
 use acto::ActoRef;
 use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Offset, OffsetMap, Payload, StreamNr, Tag, TagSet};
 use anyhow::Result;

@@ -1,13 +1,13 @@
-use crate::util::{
-    formats::{
-        events_protocol::{EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse,
-    },
-    gen_stream::GenStream,
-};
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::{request_single, Task},
+    util::{
+        formats::{
+            events_protocol::{EventsRequest, EventsResponse},
+            ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse,
+        },
+        gen_stream::GenStream,
+    },
 };
 use actyx_sdk::service::{EventMeta, EventResponse, Order, QueryRequest};
 use cbor_data::{value::Precision, CborBuilder, Encoder, Writer};

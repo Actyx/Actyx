@@ -1,10 +1,9 @@
-use crossbeam::channel;
-use crossbeam::channel::Sender;
-use futures::channel::oneshot;
-use futures::channel::oneshot::Canceled;
-use futures::Future;
-use std::sync::Arc;
-use std::thread;
+use crossbeam::{channel, channel::Sender};
+use futures::{
+    channel::{oneshot, oneshot::Canceled},
+    Future,
+};
+use std::{sync::Arc, thread};
 use tracing::*;
 
 /// Protects a resource so that it's always tied to a single, dedicated thread. This wrapper allows other
@@ -88,9 +87,7 @@ impl<T: 'static> PinnedResource<T> {
 #[cfg(test)]
 mod tests {
     use crate::util::pinned_resource::PinnedResource;
-    use std::cell::UnsafeCell;
-    use std::sync::Arc;
-    use std::thread;
+    use std::{cell::UnsafeCell, sync::Arc, thread};
 
     // Does nothing, but it can assert that T is Sync, Send and 'static at compile time of the tests
     fn is_sync_send_static<T: Sync + Send + 'static>() {}

@@ -1,10 +1,12 @@
 use actyx_sdk::{language::Query, Payload, TagSet, Timestamp};
 use anyhow::Result;
-use axlib::crypto::{KeyPair, PrivateKey};
-use axlib::swarm::{BanyanConfig, SwarmConfig};
 pub use axlib::swarm::{EphemeralEventsConfig, EventRoute, GossipMessage, RetainConfig, RootMap, RootUpdate};
-use axlib::trees::axtrees::AxKey;
-use axlib::util::SocketAddrHelper;
+use axlib::{
+    crypto::{KeyPair, PrivateKey},
+    swarm::{BanyanConfig, SwarmConfig},
+    trees::axtrees::AxKey,
+    util::SocketAddrHelper,
+};
 use cbor_data::{
     codec::{ReadCbor, WriteCbor},
     Cbor, CborBuilder,

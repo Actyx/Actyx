@@ -1,7 +1,9 @@
-use crate::ax_bail;
-use crate::private_key::DEFAULT_PRIVATE_KEY_FILE_NAME;
-use crate::util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
-use crate::{cmd::AxCliCommand, private_key::AxPrivateKey};
+use crate::{
+    ax_bail,
+    cmd::AxCliCommand,
+    private_key::{AxPrivateKey, DEFAULT_PRIVATE_KEY_FILE_NAME},
+    util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+};
 use futures::{stream, Stream};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

@@ -12,8 +12,10 @@ pub use developer_certificate::{DeveloperCertificate, DeveloperCertificateInput,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::certs::{developer_certificate::DeveloperCertificateInput, signature::Signature};
-    use crate::crypto::PrivateKey;
+    use crate::{
+        certs::{developer_certificate::DeveloperCertificateInput, signature::Signature},
+        crypto::PrivateKey,
+    };
     use actyx_sdk::app_id;
     use std::str::FromStr;
 

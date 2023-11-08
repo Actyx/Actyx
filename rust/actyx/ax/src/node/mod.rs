@@ -23,30 +23,33 @@ pub use host::lock_working_dir;
 
 use crate::util::formats::LogSeverity;
 
-use crate::swarm::event_store_ref::{self, EventStoreRef};
-use crate::util::variable::Writer;
-use crate::util::SocketAddrHelper;
+use crate::{
+    swarm::event_store_ref::{self, EventStoreRef},
+    util::{variable::Writer, SocketAddrHelper},
+};
 use acto::ActoRuntime;
 use actors::Actors;
 use actyx_sdk::service::SwarmState;
 use anyhow::Context;
-use components::swarm_observer::swarm_observer;
 use components::{
     android::{Android, FfiMessage},
     logging::Logging,
     node_api::NodeApi,
     store::{Store, StoreRequest},
+    swarm_observer::swarm_observer,
     Component, ComponentRequest,
 };
 use crossbeam::channel::{bounded, Receiver, Sender};
 use formats::ExternalEvent;
 use host::Host;
-use node_impl::NodeProcessResult;
-use node_impl::{ComponentChannel, NodeWrapper};
+use node_impl::{ComponentChannel, NodeProcessResult, NodeWrapper};
 use settings::SettingsRequest;
-use std::net::ToSocketAddrs;
-use std::net::{IpAddr, Ipv4Addr};
-use std::{convert::TryInto, path::PathBuf, thread};
+use std::{
+    convert::TryInto,
+    net::{IpAddr, Ipv4Addr, ToSocketAddrs},
+    path::PathBuf,
+    thread,
+};
 use structopt::StructOpt;
 use util::init_panic_hook;
 

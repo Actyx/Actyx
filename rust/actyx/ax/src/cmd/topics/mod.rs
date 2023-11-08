@@ -4,8 +4,10 @@ mod ls;
 use futures::Future;
 use structopt::StructOpt;
 
-use self::delete::{DeleteOpts, TopicsDelete};
-use self::ls::{LsOpts, TopicsList};
+use self::{
+    delete::{DeleteOpts, TopicsDelete},
+    ls::{LsOpts, TopicsList},
+};
 
 use super::{Authority, AxCliCommand, KeyPathWrapper};
 

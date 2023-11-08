@@ -2,8 +2,7 @@
 fn main() {
     use actyx_sdk::{
         language::TagExpr,
-        service::{EventMeta, EventResponse, EventService, QueryRequest, QueryResponse},
-        service::{PublishEvent, PublishRequest},
+        service::{EventMeta, EventResponse, EventService, PublishEvent, PublishRequest, QueryRequest, QueryResponse},
         tags, OffsetMap, Payload,
     };
     use futures::{future, stream::FuturesUnordered, StreamExt};

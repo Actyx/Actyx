@@ -1,8 +1,10 @@
-use crate::ax_bail;
-use crate::cmd::KeyPathWrapper;
-use crate::settings::{Database, Repository, Scope, DB_FILENAME};
-use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult};
-use crate::{cmd::AxCliCommand, private_key::AxPrivateKey};
+use crate::{
+    ax_bail,
+    cmd::{AxCliCommand, KeyPathWrapper},
+    private_key::AxPrivateKey,
+    settings::{Database, Repository, Scope, DB_FILENAME},
+    util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult},
+};
 use futures::{stream, Stream};
 use std::{convert::TryFrom, path::PathBuf, str::FromStr};
 use structopt::StructOpt;

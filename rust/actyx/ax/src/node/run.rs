@@ -1,11 +1,11 @@
-use super::util::{init_shutdown_ceremony, shutdown_ceremony};
-use super::{ApplicationState, BindTo, BindToOpts, Runtime};
-use anyhow::Result;
-use anyhow::{anyhow, Context};
+use super::{
+    util::{init_shutdown_ceremony, shutdown_ceremony},
+    ApplicationState, BindTo, BindToOpts, Runtime,
+};
+use anyhow::{anyhow, Context, Result};
 use build_util::version::NodeVersion;
 use derive_more::{Display, Error};
-use std::str::FromStr;
-use std::{convert::TryInto, path::PathBuf};
+use std::{convert::TryInto, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
 #[derive(Debug)]

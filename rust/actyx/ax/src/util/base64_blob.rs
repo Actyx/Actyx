@@ -1,6 +1,8 @@
-use serde::de::{self, Visitor};
-use serde::ser::Serializer;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{
+    de::{self, Visitor},
+    ser::Serializer,
+    Deserialize, Deserializer, Serialize,
+};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

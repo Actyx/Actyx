@@ -1,7 +1,9 @@
-use crate::ax_futures_util::stream::ready_iter;
-use crate::swarm::{
-    gossip_protocol::{GossipMessage, RootMap, RootUpdate},
-    BanyanStore, Ipfs, Link, RootPath, RootSource,
+use crate::{
+    ax_futures_util::stream::ready_iter,
+    swarm::{
+        gossip_protocol::{GossipMessage, RootMap, RootUpdate},
+        BanyanStore, Ipfs, Link, RootPath, RootSource,
+    },
 };
 use acto::ActoRef;
 use actyx_sdk::{LamportTimestamp, NodeId, Offset, StreamNr, Timestamp};

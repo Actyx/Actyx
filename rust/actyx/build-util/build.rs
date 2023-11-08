@@ -1,8 +1,10 @@
-use std::env;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::{
+    env,
+    fs::File,
+    io::{BufRead, BufReader},
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+};
 
 fn find_commit(prefix: &str, commit: String) -> Option<String> {
     let mut here = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

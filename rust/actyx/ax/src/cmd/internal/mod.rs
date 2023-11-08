@@ -2,9 +2,7 @@ mod events;
 mod shutdown;
 mod trees;
 
-use self::events::EventsOpts;
-use self::shutdown::ShutdownOpts;
-use self::trees::TreesOpts;
+use self::{events::EventsOpts, shutdown::ShutdownOpts, trees::TreesOpts};
 use crate::cmd::AxCliCommand;
 use futures::Future;
 use structopt::StructOpt;

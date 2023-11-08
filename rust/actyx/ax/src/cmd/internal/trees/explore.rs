@@ -1,5 +1,7 @@
-use crate::swarm::StreamAlias;
-use crate::util::formats::{ActyxOSResult, ActyxOSResultExt};
+use crate::{
+    swarm::StreamAlias,
+    util::formats::{ActyxOSResult, ActyxOSResultExt},
+};
 use actyx_sdk::StreamId;
 use futures::{prelude::*, stream, Stream};
 use ipfs_sqlite_block_store::BlockStore;

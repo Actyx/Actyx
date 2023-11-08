@@ -1,10 +1,12 @@
-use crate::api::{
-    api_util::filters::{authenticate, header_or_query_token},
-    rejections::ApiError,
-    NodeInfo,
+use crate::{
+    api::{
+        api_util::filters::{authenticate, header_or_query_token},
+        rejections::ApiError,
+        NodeInfo,
+    },
+    balanced_or,
+    swarm::blob_store::{BlobStore, BlobTooLarge},
 };
-use crate::balanced_or;
-use crate::swarm::blob_store::{BlobStore, BlobTooLarge};
 use actyx_sdk::AppId;
 use bytes::Bytes;
 use http::StatusCode;

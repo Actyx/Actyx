@@ -1,6 +1,8 @@
-use crate::ax_futures_util::stream::variable::Variable;
-use crate::swarm::{AxStreamBuilder, Cid, Link, RootPath, RootSource, Tree};
-use crate::trees::{axtrees::AxTrees, AxTree, AxTreeHeader};
+use crate::{
+    ax_futures_util::stream::variable::Variable,
+    swarm::{AxStreamBuilder, Cid, Link, RootPath, RootSource, Tree},
+    trees::{axtrees::AxTrees, AxTree, AxTreeHeader},
+};
 use actyx_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr};
 use banyan::StreamTransaction;
 use fnv::FnvHashMap;

@@ -1,11 +1,12 @@
-use crate::certs::SignedAppLicense;
-use crate::cmd::AxCliCommand;
-use crate::crypto::PrivateKey;
-use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt};
+use crate::{
+    certs::SignedAppLicense,
+    cmd::AxCliCommand,
+    crypto::PrivateKey,
+    util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt},
+};
 use actyx_sdk::AppId;
 use chrono::{DateTime, Utc};
-use futures::stream::once;
-use futures::{FutureExt, Stream};
+use futures::{stream::once, FutureExt, Stream};
 use lazy_static::lazy_static;
 use regex::Regex;
 use structopt::StructOpt;

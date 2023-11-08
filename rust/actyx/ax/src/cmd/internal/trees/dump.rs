@@ -1,8 +1,10 @@
-use crate::trees::{
-    axtrees::{AxKeySeq, AxTrees, Sha256Digest},
-    AxTreeHeader,
+use crate::{
+    trees::{
+        axtrees::{AxKeySeq, AxTrees, Sha256Digest},
+        AxTreeHeader,
+    },
+    util::formats::{ActyxOSResult, ActyxOSResultExt},
 };
-use crate::util::formats::{ActyxOSResult, ActyxOSResultExt};
 use actyx_sdk::Payload;
 use banyan::{
     chacha20,

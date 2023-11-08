@@ -18,13 +18,15 @@ use warp::{
 };
 
 use self::ipfs::{extract_query_from_host, extract_query_from_path, IpfsQuery};
-use crate::api::{
-    ans::{ActyxName, ActyxNamingService, PersistenceLevel},
-    api_util::filters::{authenticate, header_or_query_token},
-    rejections::ApiError,
-    NodeInfo,
+use crate::{
+    api::{
+        ans::{ActyxName, ActyxNamingService, PersistenceLevel},
+        api_util::filters::{authenticate, header_or_query_token},
+        rejections::ApiError,
+        NodeInfo,
+    },
+    balanced_or,
 };
-use crate::balanced_or;
 pub(crate) use pinner::FilePinner;
 
 mod ipfs;

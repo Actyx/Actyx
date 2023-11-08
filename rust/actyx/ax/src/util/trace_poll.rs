@@ -1,7 +1,9 @@
 use core::pin::Pin;
-use futures::stream::{FusedStream, Stream};
-use futures::task::{Context, Poll};
-use futures::Future;
+use futures::{
+    stream::{FusedStream, Stream},
+    task::{Context, Poll},
+    Future,
+};
 use pin_utils::{unsafe_pinned, unsafe_unpinned};
 
 /// Stream for the chunk_unless_pending method.

@@ -1,12 +1,15 @@
-use crate::crypto::PublicKey;
-use crate::libp2p_streaming_response::{RequestReceived, Response, StreamingResponse, StreamingResponseConfig};
-use crate::swarm::transport::build_transport;
-use crate::util::formats::{
-    banyan_protocol::{BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse},
-    events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol, AdminRequest, AdminResponse,
+use crate::{
+    cmd::Authority,
+    crypto::PublicKey,
+    libp2p_streaming_response::{RequestReceived, Response, StreamingResponse, StreamingResponseConfig},
+    private_key::AxPrivateKey,
+    swarm::transport::build_transport,
+    util::formats::{
+        banyan_protocol::{BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse},
+        events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
+        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol, AdminRequest, AdminResponse,
+    },
 };
-use crate::{cmd::Authority, private_key::AxPrivateKey};
 use actyx_sdk::{
     service::{Diagnostic, EventResponse, PublishResponse},
     NodeId, Payload,

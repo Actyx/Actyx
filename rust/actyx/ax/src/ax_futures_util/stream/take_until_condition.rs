@@ -1,10 +1,11 @@
 //! copied from futures-rs TakeWhile
-use core::fmt;
-use core::pin::Pin;
-use futures::future::Future;
-use futures::ready;
-use futures::stream::{FusedStream, Stream};
-use futures::task::{Context, Poll};
+use core::{fmt, pin::Pin};
+use futures::{
+    future::Future,
+    ready,
+    stream::{FusedStream, Stream},
+    task::{Context, Poll},
+};
 use pin_project_lite::pin_project;
 
 pin_project! {
@@ -119,10 +120,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::ax_futures_util::future::future_helpers::wait_for;
-    use crate::ax_futures_util::prelude::*;
-    use futures::future::ready;
-    use futures::stream::{self, StreamExt};
+    use crate::ax_futures_util::{future::future_helpers::wait_for, prelude::*};
+    use futures::{
+        future::ready,
+        stream::{self, StreamExt},
+    };
 
     #[test]
     fn should_work_with_empty_stream() {

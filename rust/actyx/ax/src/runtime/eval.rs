@@ -1,5 +1,7 @@
-use crate::runtime::{error::RuntimeError, query::Query, value::Value};
-use crate::swarm::event_store_ref::EventStoreRef;
+use crate::{
+    runtime::{error::RuntimeError, query::Query, value::Value},
+    swarm::event_store_ref::EventStoreRef,
+};
 use actyx_sdk::{
     language::{BinOp, Ind, Index, Num, SimpleExpr, TagAtom, TagExpr},
     service::{EventMeta, Order},

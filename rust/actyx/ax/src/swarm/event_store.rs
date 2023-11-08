@@ -1,10 +1,12 @@
 use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
-use crate::ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
-use crate::swarm::{selection::StreamEventSelection, BanyanStore, SwarmOffsets};
-use crate::trees::{
-    axtrees::AxKey,
-    query::{TagExprError, TagExprQuery},
+use crate::{
+    ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered},
+    swarm::{selection::StreamEventSelection, BanyanStore, SwarmOffsets},
+    trees::{
+        axtrees::AxKey,
+        query::{TagExprError, TagExprQuery},
+    },
 };
 use actyx_sdk::{
     language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
@@ -262,8 +264,10 @@ mod tests {
     use rand::{thread_rng, Rng};
 
     use super::*;
-    use crate::swarm::{selection::EventSelection, BanyanStore, EventRoute};
-    use crate::trees::query::{LamportQuery, TimeQuery};
+    use crate::{
+        swarm::{selection::EventSelection, BanyanStore, EventRoute},
+        trees::query::{LamportQuery, TimeQuery},
+    };
     use chrono::{DateTime, SecondsFormat, Utc};
 
     async fn mk_store(name: &'static str) -> EventStore {

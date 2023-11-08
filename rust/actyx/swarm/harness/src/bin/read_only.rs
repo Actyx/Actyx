@@ -1,13 +1,15 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
-    use actyx_sdk::language::Query;
-    use actyx_sdk::{tags, Payload};
+    use actyx_sdk::{language::Query, tags, Payload};
     use async_std::future::timeout;
     use netsim_embed::{Ipv4Range, MachineId, Netsim, NetworkId};
-    use std::path::Path;
-    use std::sync::{Arc, Mutex};
-    use std::time::{Duration, Instant};
-    use std::{collections::BTreeMap, net::Ipv4Addr};
+    use std::{
+        collections::BTreeMap,
+        net::Ipv4Addr,
+        path::Path,
+        sync::{Arc, Mutex},
+        time::{Duration, Instant},
+    };
     use swarm_cli::{Command, Config, Event};
     use swarm_harness::MachineExt;
     use tempdir::TempDir;

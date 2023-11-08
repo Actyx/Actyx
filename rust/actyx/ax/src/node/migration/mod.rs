@@ -1,7 +1,7 @@
 use rusqlite::OpenFlags;
 use std::path::{Path, PathBuf};
 
-use super::{node_storage::NodeStorage, node_storage::CURRENT_VERSION};
+use super::node_storage::{NodeStorage, CURRENT_VERSION};
 use anyhow::Context;
 
 const NODE_DB_FILENAME: &str = "node.sqlite";

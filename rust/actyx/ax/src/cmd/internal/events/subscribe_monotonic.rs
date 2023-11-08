@@ -1,10 +1,10 @@
-use crate::util::{
-    formats::{events_protocol::EventsRequest, ActyxOSResult},
-    gen_stream::GenStream,
-};
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::{request_events, EventDiagnostic},
+    util::{
+        formats::{events_protocol::EventsRequest, ActyxOSResult},
+        gen_stream::GenStream,
+    },
 };
 use actyx_sdk::{
     service::{StartFrom, SubscribeMonotonicRequest},

@@ -1,6 +1,8 @@
 //! helper methods to work with ipfs/ipld
-use crate::swarm::{Block, Ipfs};
-use crate::trees::axtrees::Sha256Digest;
+use crate::{
+    swarm::{Block, Ipfs},
+    trees::axtrees::Sha256Digest,
+};
 use anyhow::Result;
 use banyan::store::{BlockWriter, ReadOnlyStore};
 use core::fmt;

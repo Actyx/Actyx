@@ -1,7 +1,6 @@
 pub mod keygen;
 
-use crate::cmd::swarms::keygen::KeygenOpts;
-use crate::cmd::AxCliCommand;
+use crate::cmd::{swarms::keygen::KeygenOpts, AxCliCommand};
 use futures::Future;
 use structopt::StructOpt;
 

@@ -410,11 +410,13 @@ mod test {
     use std::{collections::BTreeMap, str::FromStr};
 
     use super::*;
-    use crate::node::{
-        components::Component,
-        node_settings::{EventRouting, Route, Settings},
+    use crate::{
+        node::{
+            components::Component,
+            node_settings::{EventRouting, Route, Settings},
+        },
+        util::formats::NodeName,
     };
-    use crate::util::formats::NodeName;
     use actyx_sdk::language::TagExpr;
     use anyhow::Result;
     use futures::executor::block_on;

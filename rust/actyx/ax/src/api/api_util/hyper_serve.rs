@@ -1,10 +1,8 @@
 use futures::{Future, TryFutureExt};
 use hyper::{server::Server, service::make_service_fn};
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
-use std::convert::Infallible;
-use std::net::SocketAddr;
-use warp::filters::BoxedFilter;
-use warp::Reply;
+use std::{convert::Infallible, net::SocketAddr};
+use warp::{filters::BoxedFilter, Reply};
 
 /// Creates a `std::net::TcpListener` for the given `addr`. This also sets the `SO_REUSEADDR` flag
 /// on the socket.

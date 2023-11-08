@@ -1,5 +1,4 @@
-use crate::runtime::features::FeatureError;
-use crate::util::serde_support::StringSerialized;
+use crate::{runtime::features::FeatureError, util::serde_support::StringSerialized};
 use actyx_sdk::AppId;
 use derive_more::Display;
 use tracing::*;

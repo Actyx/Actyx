@@ -1,9 +1,6 @@
-use futures::stream::StreamExt;
-use futures::task::Context;
-use futures::Stream;
+use futures::{stream::StreamExt, task::Context, Stream};
 use pin_project_lite::pin_project;
-use std::pin::Pin;
-use std::task::Poll;
+use std::{pin::Pin, task::Poll};
 
 pin_project! {
     /// A stream combinator that resubmits the task after a certain number of elements

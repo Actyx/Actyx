@@ -436,12 +436,14 @@ pub(super) fn aggregate(expr: &SimpleExpr) -> Box<dyn super::Processor> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::runtime::{
-        eval::RootContext,
-        operation::{Operation, Processor},
-        query::Query,
+    use crate::{
+        runtime::{
+            eval::RootContext,
+            operation::{Operation, Processor},
+            query::Query,
+        },
+        swarm::event_store_ref::EventStoreRef,
     };
-    use crate::swarm::event_store_ref::EventStoreRef;
     use actyx_sdk::{app_id, language, tags, EventKey, Metadata, NodeId};
 
     fn a(s: &str) -> Box<dyn Processor> {

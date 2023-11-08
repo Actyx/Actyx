@@ -8,8 +8,7 @@ fn main() {
         tags, Offset, Url,
     };
     use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
-    use quickcheck::{empty_shrinker, Arbitrary, Gen};
-    use quickcheck::{QuickCheck, TestResult};
+    use quickcheck::{empty_shrinker, Arbitrary, Gen, QuickCheck, TestResult};
     use swarm_cli::{Event, EventRoute};
     use swarm_harness::{
         api::ApiClient,

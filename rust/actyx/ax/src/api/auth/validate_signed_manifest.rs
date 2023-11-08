@@ -1,5 +1,7 @@
-use crate::certs::{AppLicenseType, AppManifest, Expiring, SignedAppLicense};
-use crate::crypto::PublicKey;
+use crate::{
+    certs::{AppLicenseType, AppManifest, Expiring, SignedAppLicense},
+    crypto::PublicKey,
+};
 
 use crate::api::{
     formats::Licensing,
@@ -66,8 +68,10 @@ mod tests {
     use crate::api::{formats::Licensing, rejections::ApiError};
 
     use super::*;
-    use crate::certs::AppManifest;
-    use crate::crypto::{PrivateKey, PublicKey};
+    use crate::{
+        certs::AppManifest,
+        crypto::{PrivateKey, PublicKey},
+    };
     use actyx_sdk::{app_id, AppId};
 
     struct TestFixture {

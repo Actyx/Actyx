@@ -1,8 +1,9 @@
-use core::fmt;
-use core::pin::Pin;
-use futures::future::Future;
-use futures::stream::{FusedStream, Stream};
-use futures::task::{Context, Poll};
+use core::{fmt, pin::Pin};
+use futures::{
+    future::Future,
+    stream::{FusedStream, Stream},
+    task::{Context, Poll},
+};
 use pin_project_lite::pin_project;
 
 pin_project! {
@@ -76,10 +77,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::ax_futures_util::future::future_helpers::wait_for;
-    use crate::ax_futures_util::prelude::*;
-    use futures::channel::{mpsc, oneshot};
-    use futures::stream::{self, StreamExt};
+    use crate::ax_futures_util::{future::future_helpers::wait_for, prelude::*};
+    use futures::{
+        channel::{mpsc, oneshot},
+        stream::{self, StreamExt},
+    };
 
     #[test]
     fn should_work_with_empty_stream() {

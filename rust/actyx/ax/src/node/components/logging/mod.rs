@@ -1,7 +1,6 @@
 use self::logging_sink::LoggingSink;
 use super::{Component, ComponentRequest};
-use crate::node::node_settings::Settings;
-use crate::util::formats::LogSeverity;
+use crate::{node::node_settings::Settings, util::formats::LogSeverity};
 use anyhow::Result;
 use crossbeam::channel::{Receiver, Sender};
 use parking_lot::Mutex;

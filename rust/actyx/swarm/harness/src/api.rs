@@ -3,13 +3,8 @@ use actyx_sdk::{service::EventService, AppManifest, Ax, AxOpts, NodeId, Url};
 use anyhow::{anyhow, Result};
 use async_std::task::block_on;
 use axlib::util::pinned_resource::PinnedResource;
-use netsim_embed::{Machine, Namespace};
-use netsim_embed::{MachineId, Netsim};
-use std::borrow::Borrow;
-use std::collections::BTreeMap;
-use std::fmt::Display;
-use std::future::Future;
-use std::str::FromStr;
+use netsim_embed::{Machine, MachineId, Namespace, Netsim};
+use std::{borrow::Borrow, collections::BTreeMap, fmt::Display, future::Future, str::FromStr};
 use swarm_cli::{Command, Event};
 
 pub struct Api {

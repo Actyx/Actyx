@@ -1,16 +1,18 @@
 use super::{Component, ComponentRequest};
-use crate::api::{formats::Licensing, NodeInfo};
-use crate::crypto::KeyStoreRef;
-use crate::node::{node_settings::Settings, BindTo};
-use crate::swarm::{
-    blob_store::BlobStore,
-    event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
-    BanyanStore, DbPath, EphemeralEventsConfig, EventRoute, GossipMessage, Ipfs, SwarmConfig,
-};
-use crate::util::{
-    formats::{Connection, Failure, NodeCycleCount, Peer, PeerInfo, PingStats},
-    variable::Reader,
-    SocketAddrHelper,
+use crate::{
+    api::{formats::Licensing, NodeInfo},
+    crypto::KeyStoreRef,
+    node::{node_settings::Settings, BindTo},
+    swarm::{
+        blob_store::BlobStore,
+        event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
+        BanyanStore, DbPath, EphemeralEventsConfig, EventRoute, GossipMessage, Ipfs, SwarmConfig,
+    },
+    util::{
+        formats::{Connection, Failure, NodeCycleCount, Peer, PeerInfo, PingStats},
+        variable::Reader,
+        SocketAddrHelper,
+    },
 };
 use acto::ActoRef;
 use actyx_sdk::{service::SwarmState, NodeId};

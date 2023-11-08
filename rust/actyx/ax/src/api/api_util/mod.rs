@@ -4,8 +4,10 @@ pub(crate) mod macros;
 
 use std::{str::FromStr, time::Duration};
 
-use crate::crypto::{KeyStoreRef, PublicKey};
-use crate::util::formats::NodeCycleCount;
+use crate::{
+    crypto::{KeyStoreRef, PublicKey},
+    util::formats::NodeCycleCount,
+};
 use actyx_sdk::{AppId, NodeId, Timestamp};
 use chrono::{DateTime, Utc};
 use derive_more::Display;

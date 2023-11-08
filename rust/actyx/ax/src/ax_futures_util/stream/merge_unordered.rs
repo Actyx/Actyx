@@ -1,7 +1,8 @@
 use futures::stream::{SelectAll, Stream};
-use std::pin::Pin;
-use std::task::Context;
-use std::task::Poll;
+use std::{
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 /// ## Merge a stream of streams into a single stream
 ///
@@ -86,10 +87,14 @@ impl<St: Stream + Unpin, Si: Stream<Item = St>> Stream for MergeUnordered<St, Si
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ax_futures_util::future::future_helpers::{delay_ms, wait_for};
-    use crate::ax_futures_util::prelude::*;
-    use futures::future::{ready, FutureExt};
-    use futures::stream::{self, StreamExt};
+    use crate::ax_futures_util::{
+        future::future_helpers::{delay_ms, wait_for},
+        prelude::*,
+    };
+    use futures::{
+        future::{ready, FutureExt},
+        stream::{self, StreamExt},
+    };
 
     fn mk_streams() -> Vec<Pin<Box<dyn Stream<Item = i32> + Send>>> {
         (0..10)

@@ -1,9 +1,11 @@
-use std::error::Error;
-use std::fmt::Display;
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use std::time::Duration;
+use std::{
+    error::Error,
+    fmt::Display,
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+    time::Duration,
+};
 
 use self::sealed::NdjsonError;
 use futures::{

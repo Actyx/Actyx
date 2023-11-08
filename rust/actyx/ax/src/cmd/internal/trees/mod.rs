@@ -1,14 +1,12 @@
 mod dump;
 mod explore;
 
-use crate::cmd::AxCliCommand;
-use crate::trees::axtrees::Sha256Digest;
+use crate::{cmd::AxCliCommand, trees::axtrees::Sha256Digest};
 use futures::Future;
 use structopt::StructOpt;
 use TreesOpts::DumpTree;
 
-use self::dump::DumpTreeOpts;
-use self::explore::ExploreTreeOpts;
+use self::{dump::DumpTreeOpts, explore::ExploreTreeOpts};
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]

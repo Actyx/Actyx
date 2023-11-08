@@ -1,7 +1,6 @@
 use std::{collections::BTreeSet, convert::Infallible};
 
-use crate::swarm::BanyanStore;
-use crate::util::variable::Reader;
+use crate::{swarm::BanyanStore, util::variable::Reader};
 use actyx_sdk::{
     service::{NodeInfoResponse, SwarmState},
     AppId, NodeId,
@@ -10,14 +9,16 @@ use build_util::version::NodeVersion;
 use chrono::Utc;
 use warp::*;
 
-use crate::api::{
-    api_util::{
-        filters::{accept_text, authenticate, header_or_query_token},
-        reject, Result,
+use crate::{
+    api::{
+        api_util::{
+            filters::{accept_text, authenticate, header_or_query_token},
+            reject, Result,
+        },
+        NodeInfo,
     },
-    NodeInfo,
+    balanced_or,
 };
-use crate::balanced_or;
 
 fn with_node_id(node_id: NodeId) -> impl Filter<Extract = (NodeId,), Error = Infallible> + Clone {
     any().map(move || node_id)

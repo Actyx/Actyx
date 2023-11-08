@@ -1,14 +1,17 @@
 use num_traits::Bounded;
-use serde::de::{self, IntoDeserializer, Visitor};
-use serde::ser::Serializer;
-use serde::{Deserialize, Deserializer, Serialize};
-use std::cmp::Ordering;
-use std::cmp::Ordering::*;
-use std::fmt;
-use std::fmt::{Debug, Display};
-use std::marker::PhantomData;
-use std::str;
-use std::str::FromStr;
+use serde::{
+    de::{self, IntoDeserializer, Visitor},
+    ser::Serializer,
+    Deserialize, Deserializer, Serialize,
+};
+use std::{
+    cmp::{Ordering, Ordering::*},
+    fmt,
+    fmt::{Debug, Display},
+    marker::PhantomData,
+    str,
+    str::FromStr,
+};
 use ValueOrLimit::*;
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]

@@ -1,10 +1,12 @@
 use super::store::StoreTx;
-use crate::node::{
-    components::{Component, ComponentRequest},
-    formats::ExternalEvent,
-    node_settings::Settings,
+use crate::{
+    node::{
+        components::{Component, ComponentRequest},
+        formats::ExternalEvent,
+        node_settings::Settings,
+    },
+    util::SocketAddrHelper,
 };
-use crate::util::SocketAddrHelper;
 use actyx_sdk::NodeId;
 use anyhow::Result;
 use crossbeam::channel::{Receiver, Sender};

@@ -1,9 +1,10 @@
 //! heavily inspired by futures-rs TakeWhile
-use core::fmt;
-use core::pin::Pin;
-use futures::ready;
-use futures::stream::Stream;
-use futures::task::{Context, Poll};
+use core::{fmt, pin::Pin};
+use futures::{
+    ready,
+    stream::Stream,
+    task::{Context, Poll},
+};
 use pin_project_lite::pin_project;
 
 pin_project! {
@@ -66,9 +67,11 @@ where
 #[cfg(test)]
 mod tests {
     use crate::ax_futures_util::{prelude::*, stream::drainer::Drainer};
-    use futures::channel::mpsc;
-    use futures::executor::block_on;
-    use futures::stream::{empty, pending, StreamExt};
+    use futures::{
+        channel::mpsc,
+        executor::block_on,
+        stream::{empty, pending, StreamExt},
+    };
 
     #[test]
     fn should_work_with_empty_stream() {

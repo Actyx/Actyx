@@ -53,8 +53,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::ax_futures_util::prelude::*;
-    use futures::executor::block_on_stream;
-    use futures::stream;
+    use futures::{executor::block_on_stream, stream};
 
     #[test]
     fn tap_should_work() {

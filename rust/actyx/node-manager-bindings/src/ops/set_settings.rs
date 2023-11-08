@@ -1,6 +1,8 @@
 use crate::{types::Nothing, util::run_task};
-use axlib::node_connection::{request_single, Task};
-use axlib::util::formats::{AdminRequest, AdminResponse};
+use axlib::{
+    node_connection::{request_single, Task},
+    util::formats::{AdminRequest, AdminResponse},
+};
 use futures::FutureExt;
 use neon::prelude::*;
 use serde::{Deserialize, Serialize};

@@ -1,6 +1,8 @@
-use crate::node::{actors::ComponentCommand, node_settings::Settings};
-use crate::swarm::{GossipMessage, RootMap, RootUpdate};
-use crate::util::variable::Writer;
+use crate::{
+    node::{actors::ComponentCommand, node_settings::Settings},
+    swarm::{GossipMessage, RootMap, RootUpdate},
+    util::variable::Writer,
+};
 use acto::{ActoCell, ActoInput, ActoRuntime};
 use actyx_sdk::{
     service::{PeerStatus, SwarmState},

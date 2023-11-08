@@ -4,11 +4,13 @@ use maplit::btreemap;
 use warp::*;
 use wsrpc::Service;
 
-use crate::api::api_util::{
-    filters::{query_token, query_token_ws},
-    NodeInfo,
+use crate::api::{
+    api_util::{
+        filters::{query_token, query_token_ws},
+        NodeInfo,
+    },
+    events::service::EventService,
 };
-use crate::api::events::service::EventService;
 
 mod offsets;
 mod publish;

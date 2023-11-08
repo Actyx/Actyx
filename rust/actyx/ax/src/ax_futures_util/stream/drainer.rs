@@ -1,9 +1,13 @@
-use futures::executor::LocalPool;
-use futures::future::ready;
-use futures::stream::{self, Stream, StreamExt};
-use futures::task::LocalSpawnExt;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use futures::{
+    executor::LocalPool,
+    future::ready,
+    stream::{self, Stream, StreamExt},
+    task::LocalSpawnExt,
+};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
 
 pub struct Drainer<T> {
     acc: Arc<Mutex<Vec<T>>>,

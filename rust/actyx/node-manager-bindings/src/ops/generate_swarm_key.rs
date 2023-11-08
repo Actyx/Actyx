@@ -1,5 +1,4 @@
-use crate::types::Nothing;
-use crate::util::run_task;
+use crate::{types::Nothing, util::run_task};
 use axlib::cmd::swarms::keygen::generate_key;
 use futures::FutureExt;
 use neon::prelude::*;

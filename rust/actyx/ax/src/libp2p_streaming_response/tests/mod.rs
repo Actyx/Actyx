@@ -1,16 +1,17 @@
-use crate::libp2p_streaming_response::{Codec, RequestReceived, Response};
-use crate::libp2p_streaming_response::{ProtocolError, StreamingResponse, StreamingResponseConfig};
+use crate::libp2p_streaming_response::{
+    Codec, ProtocolError, RequestReceived, Response, StreamingResponse, StreamingResponseConfig,
+};
 use futures::{
     channel::mpsc::{self, Receiver, Sender},
     Future, SinkExt, StreamExt,
 };
-use libp2p::yamux::YamuxConfig;
 use libp2p::{
     core::{transport::MemoryTransport, upgrade::Version},
     identity::Keypair,
     multiaddr::Protocol,
     plaintext::PlainText2Config,
     swarm::{SwarmBuilder, SwarmEvent},
+    yamux::YamuxConfig,
     Multiaddr, PeerId, Swarm, Transport,
 };
 use tokio::runtime::Runtime;

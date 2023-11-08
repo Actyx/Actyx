@@ -3,8 +3,10 @@ mod schema;
 mod set;
 mod unset;
 
-use crate::cmd::AxCliCommand;
-use crate::settings::{Scope, ScopeError};
+use crate::{
+    cmd::AxCliCommand,
+    settings::{Scope, ScopeError},
+};
 use futures::Future;
 use get::GetOpt;
 use schema::SchemaOpt;

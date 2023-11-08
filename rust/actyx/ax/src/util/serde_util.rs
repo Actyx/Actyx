@@ -117,8 +117,7 @@ impl Write for &mut SizeWrite {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
-    use serde_json::Value as JsValue;
+    use serde_json::{json, Value as JsValue};
     use std::num::ParseIntError;
 
     fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {

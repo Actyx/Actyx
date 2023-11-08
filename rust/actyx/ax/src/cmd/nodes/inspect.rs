@@ -1,9 +1,9 @@
 use std::fmt::Write;
 
-use crate::util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse};
 use crate::{
     cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt},
     node_connection::{request_single, Task},
+    util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse},
 };
 use actyx_sdk::NodeId;
 use build_util::version::NodeVersion;

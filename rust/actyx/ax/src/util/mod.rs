@@ -20,15 +20,16 @@ pub use self::value_or_limit::*;
 use anyhow::bail;
 use multiaddr::{Multiaddr, Protocol};
 use serde::{Deserialize, Deserializer};
-use std::collections::HashSet;
-use std::fmt::{Display, Formatter};
-use std::iter::FromIterator;
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
-use std::num::NonZeroU16;
-use std::str::FromStr;
-use std::{convert::TryFrom, net::IpAddr};
-use tracing_subscriber::fmt::format::FmtSpan;
-use tracing_subscriber::EnvFilter;
+use std::{
+    collections::HashSet,
+    convert::TryFrom,
+    fmt::{Display, Formatter},
+    iter::FromIterator,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
+    num::NonZeroU16,
+    str::FromStr,
+};
+use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
 
 /// Sets up a logging and a panic handler that logs panics.
 pub fn setup_logger_with_level(level: u8) {
@@ -245,8 +246,7 @@ pub fn to_multiaddr(socket_addr: SocketAddr) -> Multiaddr {
 pub mod serde_str {
     //! Serializes fields annotated with `#[serde(with = "crate::util::serde_str")]` with their !
     //! `Display` implementation, deserializes fields using `FromStr`.
-    use std::fmt::Display;
-    use std::str::FromStr;
+    use std::{fmt::Display, str::FromStr};
 
     use serde::{de, Deserialize, Deserializer, Serializer};
 

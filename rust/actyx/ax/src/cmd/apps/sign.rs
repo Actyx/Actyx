@@ -1,7 +1,9 @@
-use crate::certs::{AppManifest, DeveloperCertificate};
-use crate::cmd::AxCliCommand;
-use crate::private_key::AxPrivateKey;
-use crate::util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
+use crate::{
+    certs::{AppManifest, DeveloperCertificate},
+    cmd::AxCliCommand,
+    private_key::AxPrivateKey,
+    util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+};
 use futures::{stream, Stream};
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;

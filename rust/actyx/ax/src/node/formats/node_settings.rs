@@ -1,5 +1,4 @@
-use crate::api::formats::Licensing;
-use crate::util::formats::LogSeverity;
+use crate::{api::formats::Licensing, util::formats::LogSeverity};
 use actyx_sdk::language::TagExpr;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};

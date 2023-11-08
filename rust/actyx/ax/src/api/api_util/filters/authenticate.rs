@@ -4,8 +4,7 @@ use tracing::{debug, info};
 use warp::{reject, Filter, Rejection};
 
 use super::super::{NodeInfo, Token};
-use crate::api::auth::verify_token;
-use crate::api::rejections::ApiError;
+use crate::api::{auth::verify_token, rejections::ApiError};
 
 /// Tries to extract the value given to the `access_token` query parameter.
 pub fn query_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
@@ -128,8 +127,10 @@ pub(crate) fn authenticate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::api::{formats::Licensing, AppMode, BearerToken};
-    use crate::crypto::{KeyStore, PrivateKey};
+    use crate::{
+        api::{formats::Licensing, AppMode, BearerToken},
+        crypto::{KeyStore, PrivateKey},
+    };
     use actyx_sdk::{app_id, types::Binary, Timestamp};
     use chrono::Utc;
     use parking_lot::RwLock;

@@ -1,6 +1,8 @@
-use crate::api::rejections::{ApiError, UnauthorizedReason};
-use crate::certs::{AppLicenseType, Expiring, SignedAppLicense};
-use crate::crypto::PublicKey;
+use crate::{
+    api::rejections::{ApiError, UnauthorizedReason},
+    certs::{AppLicenseType, Expiring, SignedAppLicense},
+    crypto::PublicKey,
+};
 use actyx_sdk::AppId;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};

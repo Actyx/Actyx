@@ -10,21 +10,26 @@ mod rejections;
 #[cfg(test)]
 mod tests;
 
-use crate::swarm::{event_store_ref::EventStoreRef, BanyanStore};
-use crate::util::formats::NodeErrorContext;
+use crate::{
+    swarm::{event_store_ref::EventStoreRef, BanyanStore},
+    util::formats::NodeErrorContext,
+};
 use anyhow::Result;
 use crossbeam::channel::Sender;
 use futures::future::try_join_all;
 use std::fmt;
 use warp::*;
 
-pub use crate::api::api_util::{AppMode, BearerToken, NodeInfo, Token};
-pub use crate::api::events::service::EventService;
-use crate::api::{api_util::hyper_serve::serve_it, files::FilePinner};
-use crate::swarm::blob_store::BlobStore;
-use crate::util::variable::Reader;
-use crate::util::{to_multiaddr, SocketAddrHelper};
-use crate::{ax_panic, balanced_or};
+pub use crate::api::{
+    api_util::{AppMode, BearerToken, NodeInfo, Token},
+    events::service::EventService,
+};
+use crate::{
+    api::{api_util::hyper_serve::serve_it, files::FilePinner},
+    ax_panic, balanced_or,
+    swarm::blob_store::BlobStore,
+    util::{to_multiaddr, variable::Reader, SocketAddrHelper},
+};
 use actyx_sdk::service::SwarmState;
 use parking_lot::Mutex;
 use std::sync::Arc;

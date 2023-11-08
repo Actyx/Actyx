@@ -27,14 +27,20 @@ pub mod transport;
 #[cfg(test)]
 mod tests;
 
-use crate::swarm::event_store::PersistenceMeta;
-pub use crate::swarm::sqlite::{StorageServiceStore, StorageServiceStoreWrite};
-pub use crate::swarm::sqlite_index_store::DbPath;
-pub use crate::swarm::streams::StreamAlias;
-use crate::trees::dnf::Dnf;
-use crate::trees::query::TagExprQuery;
-use actyx_sdk::language::{TagAtom, TagExpr};
-use actyx_sdk::{app_id, tag};
+pub use crate::swarm::{
+    sqlite::{StorageServiceStore, StorageServiceStoreWrite},
+    sqlite_index_store::DbPath,
+    streams::StreamAlias,
+};
+use crate::{
+    swarm::event_store::PersistenceMeta,
+    trees::{dnf::Dnf, query::TagExprQuery},
+};
+use actyx_sdk::{
+    app_id,
+    language::{TagAtom, TagExpr},
+    tag,
+};
 pub use banyan::{store::BlockWriter, Forest as BanyanForest, StreamBuilder, Transaction as BanyanTransaction};
 use futures::{future, stream, Future, FutureExt, Stream, StreamExt, TryStreamExt};
 pub use ipfs_embed::{Executor as IpfsEmbedExecutor, StorageConfig, StorageService};
@@ -47,15 +53,19 @@ pub use unixfs_v1::{
     FlatUnixFs, PBLink, UnixFsType,
 };
 
-use crate::ax_futures_util::{
-    prelude::*,
-    stream::variable::{Observer, Variable},
-};
-use crate::crypto::KeyPair;
-use crate::swarm::gossip::Gossip;
 pub use crate::swarm::gossip_protocol::{GossipMessage, RootMap, RootUpdate};
-use crate::swarm::sqlite::{SqliteStore, SqliteStoreWrite};
-use crate::swarm::streams::{OwnStream, PublishedTree, ReplicatedStream};
+use crate::{
+    ax_futures_util::{
+        prelude::*,
+        stream::variable::{Observer, Variable},
+    },
+    crypto::KeyPair,
+    swarm::{
+        gossip::Gossip,
+        sqlite::{SqliteStore, SqliteStoreWrite},
+        streams::{OwnStream, PublishedTree, ReplicatedStream},
+    },
+};
 use actyx_sdk::{AppId, LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, TagSet, Timestamp};
 use anyhow::{Context, Result};
 use banyan::{
@@ -65,10 +75,9 @@ use banyan::{
 };
 use fnv::FnvHashMap;
 use futures::channel::mpsc;
-use ipfs_embed::identity::PublicKey::Ed25519;
 use ipfs_embed::{
-    config::BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId,
-    SyncEvent, TempPin,
+    config::BitswapConfig, identity::PublicKey::Ed25519, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent,
+    Multiaddr, NetworkConfig, PeerId, SyncEvent, TempPin,
 };
 use libipld::{cbor::DagCborCodec, error::BlockNotFound};
 use libp2p::{
@@ -81,34 +90,39 @@ use libp2p::{
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use sqlite_index_store::SqliteIndexStore;
-use std::collections::HashMap;
-use std::convert::TryInto;
-use std::process::Command;
-use std::str::FromStr;
 use std::{
-    collections::{BTreeMap, VecDeque},
-    convert::TryFrom,
+    collections::{BTreeMap, HashMap, VecDeque},
+    convert::{TryFrom, TryInto},
     fmt::{Debug, Display},
     io::{BufRead, BufReader, Read},
     num::NonZeroU32,
     ops::{Deref, DerefMut, RangeInclusive},
     path::PathBuf,
+    process::Command,
+    str::FromStr,
     sync::Arc,
     time::Duration,
 };
 
-use crate::trees::{
-    axtrees::{AxKey, AxTrees, Sha256Digest},
-    tags::{ScopedTag, ScopedTagSet},
-    AxTree, AxTreeHeader,
+use crate::{
+    trees::{
+        axtrees::{AxKey, AxTrees, Sha256Digest},
+        tags::{ScopedTag, ScopedTagSet},
+        AxTree, AxTreeHeader,
+    },
+    util::{
+        formats::NodeErrorContext,
+        reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
+        to_multiaddr, to_socket_addr, SocketAddrHelper,
+    },
 };
-use crate::util::{
-    formats::NodeErrorContext,
-    reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
+use unixfs_v1::{
+    dir::MaybeResolved,
+    file::{
+        adder::FileAdder,
+        visit::{FileVisit, IdleFileVisit},
+    },
 };
-use crate::util::{to_multiaddr, to_socket_addr, SocketAddrHelper};
-use unixfs_v1::file::{adder::FileAdder, visit::IdleFileVisit};
-use unixfs_v1::{dir::MaybeResolved, file::visit::FileVisit};
 
 #[allow(clippy::upper_case_acronyms)]
 pub type TT = AxTrees;

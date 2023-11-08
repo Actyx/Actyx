@@ -2,8 +2,7 @@ use assert_cmd::prelude::*;
 use build_util::version::NodeVersion;
 use maplit::btreemap;
 use predicates::prelude::*;
-use std::collections::HashMap;
-use std::{path::PathBuf, process::Command};
+use std::{collections::HashMap, path::PathBuf, process::Command};
 
 fn get_commands() -> HashMap<&'static str, Vec<&'static str>> {
     let apps = vec!["sign"];

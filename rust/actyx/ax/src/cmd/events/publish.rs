@@ -1,13 +1,13 @@
-use crate::util::{
-    formats::{
-        events_protocol::{EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult,
-    },
-    gen_stream::GenStream,
-};
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::Task,
+    util::{
+        formats::{
+            events_protocol::{EventsRequest, EventsResponse},
+            ActyxOSCode, ActyxOSError, ActyxOSResult,
+        },
+        gen_stream::GenStream,
+    },
 };
 use actyx_sdk::{
     service::{PublishEvent, PublishRequest, PublishResponse},

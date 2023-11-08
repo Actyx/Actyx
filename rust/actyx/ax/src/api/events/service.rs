@@ -1,15 +1,17 @@
-use crate::api::rejections::ApiError;
-use crate::ax_futures_util::{stream::AxStreamExt, ReceiverExt};
-use crate::runtime::{
-    error::{RuntimeError, RuntimeFailure},
-    eval::Context,
-    features::{Endpoint, Feature, FeatureError, Features},
-    query::{Feeder, Query},
-    value::Value,
-};
-use crate::swarm::{
-    event_store_ref::{EventStoreHandler, EventStoreRef},
-    BanyanStore,
+use crate::{
+    api::rejections::ApiError,
+    ax_futures_util::{stream::AxStreamExt, ReceiverExt},
+    runtime::{
+        error::{RuntimeError, RuntimeFailure},
+        eval::Context,
+        features::{Endpoint, Feature, FeatureError, Features},
+        query::{Feeder, Query},
+        value::Value,
+    },
+    swarm::{
+        event_store_ref::{EventStoreHandler, EventStoreRef},
+        BanyanStore,
+    },
 };
 use actyx_sdk::{
     app_id,

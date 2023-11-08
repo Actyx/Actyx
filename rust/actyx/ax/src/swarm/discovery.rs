@@ -37,21 +37,29 @@
 //! NATs. When configuring a bootstrap node you are telling the node how to reach another peer,
 //! while when configuring an external address you are telling other peers how to reach you, given
 //! you have a bootstrap node in common.
-use crate::swarm::{internal_app_id, BanyanStore};
-use crate::trees::query::{LamportQuery, TagExprQuery, TimeQuery};
-use crate::trees::tags::{ScopedTag, ScopedTagSet, TagScope};
-use crate::trees::AxKey;
+use crate::{
+    swarm::{internal_app_id, BanyanStore},
+    trees::{
+        query::{LamportQuery, TagExprQuery, TimeQuery},
+        tags::{ScopedTag, ScopedTagSet, TagScope},
+        AxKey,
+    },
+};
 use actyx_sdk::{tag, tags, Payload, Timestamp};
 use anyhow::Result;
 use fnv::{FnvHashMap, FnvHashSet};
 use futures::stream::{Stream, StreamExt};
 use ipfs_embed::multiaddr;
-use libipld::cbor::DagCborCodec;
-use libipld::codec::{Codec, Decode, Encode};
-use libipld::DagCbor;
-use std::future::Future;
-use std::io::{Read, Seek, Write};
-use std::time::Duration;
+use libipld::{
+    cbor::DagCborCodec,
+    codec::{Codec, Decode, Encode},
+    DagCbor,
+};
+use std::{
+    future::Future,
+    io::{Read, Seek, Write},
+    time::Duration,
+};
 use tokio::time::timeout;
 
 #[derive(DagCbor, Debug)]

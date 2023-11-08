@@ -1,9 +1,9 @@
 use core::pin::Pin;
-use futures::stream::{self, Stream};
-use futures::task::Context;
-use std::cmp::Ordering;
-use std::collections::BinaryHeap;
-use std::task::Poll;
+use futures::{
+    stream::{self, Stream},
+    task::Context,
+};
+use std::{cmp::Ordering, collections::BinaryHeap, task::Poll};
 
 /// A struct for putting a stream and its head into the BinaryHeap. Since we need
 /// a min-heap, the ordering is **REVERSED**.
@@ -223,15 +223,21 @@ where
 #[cfg(test)]
 mod tests {
     use super::{MergeOrdered, NewSourceMode};
-    use crate::ax_futures_util::future::future_helpers::{delay_ms, wait_for};
-    use crate::ax_futures_util::prelude::*;
-    use futures::channel::oneshot;
-    use futures::future::{ready, FutureExt};
-    use futures::stream::{self, Stream, StreamExt};
+    use crate::ax_futures_util::{
+        future::future_helpers::{delay_ms, wait_for},
+        prelude::*,
+    };
+    use futures::{
+        channel::oneshot,
+        future::{ready, FutureExt},
+        stream::{self, Stream, StreamExt},
+    };
     use rand::random;
-    use std::pin::Pin;
-    use std::sync::{Arc, Mutex};
-    use std::time::Duration;
+    use std::{
+        pin::Pin,
+        sync::{Arc, Mutex},
+        time::Duration,
+    };
 
     fn mk_streams() -> Vec<Pin<Box<dyn Stream<Item = i32> + Send>>> {
         (0..10)

@@ -1,5 +1,4 @@
-use super::util::spawn_with_name;
-use super::{formats::ShutdownReason, node_settings::Settings};
+use super::{formats::ShutdownReason, node_settings::Settings, util::spawn_with_name};
 use anyhow::Result;
 use crossbeam::{channel, select};
 use derive_more::{Display, From};

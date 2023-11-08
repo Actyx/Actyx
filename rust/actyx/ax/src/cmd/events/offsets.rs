@@ -1,10 +1,10 @@
-use crate::util::formats::{
-    events_protocol::{EventsRequest, EventsResponse},
-    ActyxOSError, ActyxOSResult,
-};
 use crate::{
     cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt},
     node_connection::{request_single, Task},
+    util::formats::{
+        events_protocol::{EventsRequest, EventsResponse},
+        ActyxOSError, ActyxOSResult,
+    },
 };
 use actyx_sdk::service::OffsetsResponse;
 use futures::{stream, FutureExt, Stream};
