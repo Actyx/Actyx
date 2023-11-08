@@ -428,44 +428,6 @@ mod sqlite {
     }
 }
 
-#[cfg(feature = "postgresql")]
-mod postgresql {
-    use super::*;
-    use bytes::BytesMut;
-    use postgres_types::{FromSql, IsNull, ToSql, Type};
-
-    impl<'a> FromSql<'a> for Offset {
-        fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
-            i64::from_sql(ty, raw).and_then(|o| Offset::try_from(o).map_err(|e| e.into()))
-        }
-        fn accepts(ty: &Type) -> bool {
-            <i64 as FromSql>::accepts(ty)
-        }
-    }
-
-    impl ToSql for Offset {
-        fn accepts(ty: &Type) -> bool
-        where
-            Self: Sized,
-        {
-            <i64 as ToSql>::accepts(ty)
-        }
-        fn to_sql_checked(
-            &self,
-            ty: &Type,
-            out: &mut BytesMut,
-        ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
-            self.0.to_sql_checked(ty, out)
-        }
-        fn to_sql(&self, ty: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>>
-        where
-            Self: Sized,
-        {
-            self.0.to_sql(ty, out)
-        }
-    }
-}
-
 /// Multi-dimensional cursor for event streams: an `OffsetMap` describes the set of events
 /// given by the event streams of each included source up to the associated [`Offset`](struct.Offset.html).
 ///

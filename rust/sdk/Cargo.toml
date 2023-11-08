@@ -19,7 +19,6 @@ features = ["client"]
 default = ["client"]
 client = ["reqwest", "url", "bytes", "rand"]
 sqlite = ["rusqlite"]
-postgresql = ["postgres-types", "bytes"]
 arb = ["quickcheck", "rand"]
 with-tokio = ["tokio"]
 
@@ -45,7 +44,6 @@ num-traits = "0.2.14"
 once_cell = "1.9.0"
 pest = "2.1.3"
 pest_derive = "2.1.0"
-postgres-types = { version = "0.2.2", optional = true }
 quickcheck = { version = "1.0.3", optional = true }
 rand = { version = "0.8.4", optional = true }
 reqwest = { version = "0.11.8", features = [
