@@ -460,7 +460,7 @@ pub(crate) fn to_lines(stream: impl Stream<Item = Result<Bytes, reqwest::Error>>
 
 /// Request builder for event publishing.
 ///
-/// Warning: [`Publish`] implements the [`Future`] trait, as such it can be polled.
+/// Warning: [`Publish`] implements the [`Future`] trait and as such it can be polled.
 /// Calling _any_ [`Publish`] function after polling will result in a panic!
 pub enum Publish<'a> {
     Initial { client: &'a Ax, request: PublishRequest },
@@ -478,9 +478,15 @@ impl<'a> Publish<'a> {
 
     /// Add an event.
     ///
-    /// Subsequent calls to this function will not remove previous events.
+    /// This adds the given event to the list of events that will be emitted once this
+    /// publishing request is submitted by using `.await` on it.
     ///
-    /// Example:
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Publish`] will result in a panic.
+    ///
+    /// # Example
+    ///
     /// ```no_run
     /// use actyx_sdk::{tags, Ax, AxOpts, service::PublishResponse};
     /// async fn event_example() -> PublishResponse {
@@ -514,9 +520,15 @@ impl<'a> Publish<'a> {
 
     /// Add events from an iterable.
     ///
-    /// Subsequent calls to this function will not remove previous events.
+    /// This adds the given events to the list of events that will be emitted once this
+    /// publishing request is submitted by using `.await` on it.
     ///
-    /// Example:
+    /// # Panics
+    ///
+    ///  Calling this function after polling [`Publish`] will result in a panic.
+    ///
+    /// # Example
+    ///
     /// ```no_run
     /// use actyx_sdk::{tags, Ax, AxOpts, Payload, service::{PublishEvent, PublishResponse}};
     /// async fn events_example() -> PublishResponse {
@@ -618,6 +630,10 @@ impl<'a> Query<'a> {
     /// ```
     /// If you set the lower bound to `10`, only the last event will be returned.
     ///
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Query`] will result in a panic.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -712,6 +728,10 @@ impl<'a> Query<'a> {
     /// ```
     /// If you set the upper bound to `10`, the first two events will be returned.
     ///
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Query`] will result in a panic.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -791,6 +811,34 @@ impl<'a> Query<'a> {
     }
 
     /// Dual to [`Query::with_upper_bound`], removes the upper bound.
+    ///
+    /// When no upper bound is provided or is removed using this function
+    /// it will be filled in by Actyx when processing the query, the upper bound
+    /// will then be the currently known offsets (in other words, the "present").
+    ///
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Query`] will result in a panic.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{Ax, AxOpts};
+    /// use futures::stream::StreamExt;
+    /// async fn upper_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let present_offsets = service.offsets().await.unwrap().present;
+    ///     let mut response = service.query("FROM allEvents")
+    ///         .with_upper_bound(present_offsets)
+    ///         // Remove the upper bound (the example is obtuse for demonstration purposes)
+    ///         .without_upper_bound()
+    ///         .await
+    ///         .unwrap();
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
     pub fn without_upper_bound(mut self) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.upper_bound = None;
@@ -822,7 +870,12 @@ impl<'a> Query<'a> {
     /// { "offset": 1, "event": { "temperature": 10 } }
     /// ```
     ///
-    /// Example:
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Query`] will result in a panic.
+    ///
+    /// # Example
+    ///
     /// ```no_run
     /// use actyx_sdk::{Ax, AxOpts, service::Order};
     /// use futures::stream::StreamExt;
@@ -921,7 +974,12 @@ impl<'a> Subscribe<'a> {
     /// If you set the lower bound to `10`, the first event to be returned
     /// would be the last of the example.
     ///
-    /// Example:
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Subscribe`] will result in a panic.
+    ///
+    /// # Example
+    ///
     /// ```no_run
     /// use actyx_sdk::{Ax, AxOpts};
     /// use futures::stream::StreamExt;
@@ -1074,6 +1132,9 @@ impl<'a> SubscribeMonotonic<'a> {
     }
 
     // TODO: Figure out how this is different from the lower bound
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Subscribe`] will result in a panic.
     pub fn with_start_from(mut self, start_from: StartFrom) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
             request.from = start_from;
