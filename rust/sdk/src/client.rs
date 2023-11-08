@@ -604,7 +604,7 @@ impl<'a> Query<'a> {
         }
     }
 
-    /// Add a (inclusive) lower bound to the query.
+    /// Add a (exclusive) lower bound to the query.
     ///
     /// For more information on offsets, as well as lower and upper bounds refer to the
     /// [offsets and partitions](https://developer.actyx.com/docs/conceptual/event-streams#offsets-and-partitions) documentation page.
@@ -906,7 +906,7 @@ impl<'a> Subscribe<'a> {
         }
     }
 
-    /// Add a (inclusive) lower bound to the subscription query.
+    /// Add a (exclusive) lower bound to the subscription query.
     ///
     /// For more information on offsets, as well as lower and upper bounds refer to the
     /// [offsets and partitions](https://developer.actyx.com/docs/conceptual/event-streams#offsets-and-partitions) documentation page.
