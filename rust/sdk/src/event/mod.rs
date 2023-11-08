@@ -13,6 +13,11 @@ use crate::{
 mod opaque;
 mod payload;
 
+#[cfg(test)]
+mod test_util;
+#[cfg(test)]
+pub use test_util::*;
+
 pub use opaque::Opaque;
 pub use payload::Payload;
 

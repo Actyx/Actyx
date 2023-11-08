@@ -41,12 +41,6 @@ pub use timestamp::{LamportTimestamp, Timestamp};
 #[cfg(feature = "client")]
 pub use url::Url;
 
-#[cfg(test)]
-mod test_util;
-
-#[cfg(test)]
-pub use test_util::*;
-
 use derive_more::Display;
 #[derive(Debug, Display, PartialEq, Eq)]
 pub enum ParseError {

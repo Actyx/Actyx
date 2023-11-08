@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use actyx_sdk::{app_id, service::DirectoryChild, AppManifest, Ax, AxOpts};
+use actyx_sdk::{service::DirectoryChild, Ax, AxOpts};
 use asynchronous_codec::{BytesCodec, Framed};
 use futures::{
     future::{try_join_all, BoxFuture},
@@ -15,7 +15,6 @@ use reqwest::{multipart::Part, Body};
 use structopt::StructOpt;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_util::compat::*;
-use url::Url;
 
 #[derive(StructOpt)]
 struct Opt {

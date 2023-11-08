@@ -1,29 +1,23 @@
-#![cfg(feature = "client")]
-
-use actyx_sdk::{
-    app_id,
-    service::{EventService, Order, QueryRequest, QueryResponse},
-    AppManifest, Ax, AxOpts,
-};
+use actyx_sdk::{service::Order, Ax, AxOpts};
 use futures::stream::StreamExt;
-use url::Url;
 
+// This example demonstrates how to query events.
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
+    // Setup a default Ax client with default settings.
     let service = Ax::new(AxOpts::default()).await?;
 
-    // all events matching the given subscription
-    // sorted backwards, i.e. youngest to oldest
-    let request = QueryRequest {
-        lower_bound: None,
-        upper_bound: None,
-        query: "FROM 'sensor:temp-sensor1'".to_owned(),
-        order: Order::Desc,
-    };
-    let mut events = service.query(request).await?;
+    // Create a query
+    let mut events = service
+        .query("FROM 'sensor:temp-sensor'")
+        // Set the order for the received results
+        .with_order(Order::Desc)
+        .with_lower_bound(service.offsets().await?.present)
+        .await?;
 
-    while let Some(QueryResponse::Event(event)) = events.next().await {
-        println!("{}", event.payload.json_value());
+    // Consume the query result stream
+    while let Some(event) = events.next().await {
+        println!("{:?}", event);
     }
     Ok(())
 }

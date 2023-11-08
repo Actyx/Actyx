@@ -1,6 +1,4 @@
 use anyhow::Result;
-use async_trait::async_trait;
-use futures::stream::BoxStream;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt::Display, num::NonZeroU64, ops::AddAssign};
 
@@ -40,12 +38,12 @@ pub enum Order {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryRequest {
+    /// Query for which events should be returned.
+    pub query: String,
     /// Optional lower bound offset per stream.
     pub lower_bound: Option<OffsetMap>,
     /// Upper bound offset per stream.
     pub upper_bound: Option<OffsetMap>,
-    /// Query for which events should be returned.
-    pub query: String,
     /// Order in which events should be received.
     pub order: Order,
 }
@@ -54,10 +52,10 @@ pub struct QueryRequest {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeRequest {
-    /// Optional lower bound offset per stream.
-    pub lower_bound: Option<OffsetMap>,
     /// Query for which events should be returned.
     pub query: String,
+    /// Optional lower bound offset per stream.
+    pub lower_bound: Option<OffsetMap>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -306,6 +304,15 @@ pub struct PublishEvent {
     pub payload: Payload,
 }
 
+impl From<(TagSet, Payload)> for PublishEvent {
+    fn from(value: (TagSet, Payload)) -> Self {
+        Self {
+            tags: value.0,
+            payload: value.1,
+        }
+    }
+}
+
 /// Publication of a set of events
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -383,14 +390,14 @@ impl SessionId {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeMonotonicRequest {
+    /// Definition of the events to be received by this session, i.e. a selection of
+    /// tags coupled with other flags like “isLocal”.
+    pub query: String,
     /// This id uniquely identifies one particular session. Connecting again with this
     /// SessionId shall only be done after a TimeTravel message has been received. The
     /// subscription is stored with the Session and all previous state is destroyed
     /// upon receiving a different subscription for this session.
     pub session: SessionId,
-    /// Definition of the events to be received by this session, i.e. a selection of
-    /// tags coupled with other flags like “isLocal”.
-    pub query: String,
     /// The consumer may already have kept state and know at which point to resume a
     /// previously interrupted stream. In this case, StartFrom::Offsets is used,
     /// otherwise StartFrom::Snapshot indicates that the PondService shall figure
@@ -502,30 +509,6 @@ pub struct OffsetsResponse {
     pub present: OffsetMap,
     /// Number of events per [`StreamId`] pending replication to this node
     pub to_replicate: BTreeMap<StreamId, NonZeroU64>,
-}
-
-#[async_trait]
-/// A service providing retrieval of historic and live events, publishing of new events
-/// and access to information about current stream offsets.
-pub trait EventService: Clone + Send {
-    /// Returns known offsets across local and replicated streams.
-    async fn offsets(&self) -> Result<OffsetsResponse>;
-
-    /// Publishes a set of new events.
-    async fn publish(&self, request: PublishRequest) -> Result<PublishResponse>;
-
-    /// Query events known at the time the request was received by the service.
-    async fn query(&self, request: QueryRequest) -> Result<BoxStream<'static, QueryResponse>>;
-
-    /// Suscribe to events that are currently known by the service followed by new "live" events.
-    async fn subscribe(&self, request: SubscribeRequest) -> Result<BoxStream<'static, SubscribeResponse>>;
-
-    /// Subscribe to events that are currently known by the service followed by new "live" events until
-    /// the service learns about events that need to be sorted earlier than an event already received.
-    async fn subscribe_monotonic(
-        &self,
-        request: SubscribeMonotonicRequest,
-    ) -> Result<BoxStream<'static, SubscribeMonotonicResponse>>;
 }
 
 #[cfg(test)]
