@@ -343,14 +343,6 @@ pub struct PublishResponse {
     pub data: Vec<PublishResponseKey>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialOrd, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub enum StartFrom {
-    /// If the lower bound is given in, it filters out all events that are included
-    /// in the offset map.
-    LowerBound(OffsetMap),
-}
-
 /// The session identifier used in /subscribe_monotonic
 #[derive(Debug, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct SessionId(Box<str>);
@@ -402,8 +394,7 @@ pub struct SubscribeMonotonicRequest {
     /// previously interrupted stream. In this case, StartFrom::Offsets is used,
     /// otherwise StartFrom::Snapshot indicates that the PondService shall figure
     /// out where best to start out from, possibly sending a `State` message first.
-    #[serde(flatten)]
-    pub from: StartFrom,
+    pub from: OffsetMap,
 }
 
 /// The response to a monotonic subscription is a stream of events terminated by a time travel.

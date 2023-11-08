@@ -32,8 +32,8 @@ use std::time::Duration;
 use crate::{
     service::{
         AuthenticationResponse, FilesGetResponse, OffsetsResponse, Order, PublishEvent, PublishRequest,
-        PublishResponse, QueryRequest, QueryResponse, SessionId, StartFrom, SubscribeMonotonicRequest,
-        SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
+        PublishResponse, QueryRequest, QueryResponse, SessionId, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
+        SubscribeRequest, SubscribeResponse,
     },
     AppManifest, NodeId, OffsetMap, Payload, TagSet,
 };
@@ -1116,7 +1116,7 @@ impl<'a> SubscribeMonotonic<'a> {
             request: SubscribeMonotonicRequest {
                 query: query.into(),
                 session: SessionId::from("me"),
-                from: StartFrom::LowerBound(OffsetMap::empty()),
+                from: OffsetMap::empty(),
             },
         }
     }
@@ -1131,16 +1131,102 @@ impl<'a> SubscribeMonotonic<'a> {
         panic!("Calling SubscribeMonotonic::with_session_id after polling.")
     }
 
-    // TODO: Figure out how this is different from the lower bound
+    // TODO: there's info missing about the difference between Subscribe and SubscribeMonotonic
+    /// Add a (exclusive) lower bound to the subscription query.
+    ///
+    /// For more information on offsets, as well as lower and upper bounds refer to the
+    /// [offsets and partitions](https://developer.actyx.com/docs/conceptual/event-streams#offsets-and-partitions) documentation page.
+    ///
+    /// The lower bound limits the start of the query events.
+    /// As an example, consider the following (example) events:
+    /// ```json
+    /// { "offset": 1, "event": { "temperature": 10 } }
+    /// { "offset": 3, "event": { "temperature": 12 } }
+    /// { "offset": 14, "event": { "temperature": 9 } }
+    /// ```
+    /// If you set the lower bound to `10`, the first event to be returned
+    /// would be the last of the example.
+    ///
     /// # Panics
     ///
     /// Calling this function after polling [`Subscribe`] will result in a panic.
-    pub fn with_start_from(mut self, start_from: StartFrom) -> Self {
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{Ax, AxOpts};
+    /// use futures::stream::StreamExt;
+    /// async fn lower_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let present_offsets = service.offsets().await.unwrap().present;
+    ///     let mut response = service.subscribe("FROM allEvents")
+    ///         .with_lower_bound(present_offsets)
+    ///         .await
+    ///         .unwrap();
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Generating an `OffsetMap` out of thin air is usually not possible because they
+    /// require stream IDs — which require knowledge of the streams and so on.
+    /// Hence, a more involved and useful example requires you to perform a query to
+    /// get an offset map when the query finishes streaming all results.
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use futures::stream::StreamExt;
+    /// async fn lower_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     // We're publishing events for a completely functional example
+    ///     let publish_response = service
+    ///         .publish()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor1"),
+    ///             &serde_json::json!({ "temperature": 10 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor2"),
+    ///             &serde_json::json!({ "temperature": 21 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor3"),
+    ///             &serde_json::json!({ "temperature": 40 }),
+    ///         ).unwrap()
+    ///         .await.unwrap();
+    ///     // Query for the "halfway" event
+    ///     let mut query_response = service
+    ///         .query("FROM 'sensor:temp-sensor2'")
+    ///         .await
+    ///         .unwrap();
+    ///     // This loop is a dirty hack for demonstration purposes
+    ///     // in real world usage you will most likely be using the events
+    ///     // and keeping the offset map in the end.
+    ///     let offsets = loop {
+    ///         let result = query_response.next().await.unwrap();
+    ///         if let QueryResponse::Offsets(offsets) = result {
+    ///             break offsets.offsets;
+    ///         }
+    ///     };
+    ///     // Subcribe for all 'temperature' events with the previous query `OffsetMap`
+    ///     // as a lower bound. We're expecting to only see events after the "halfway"
+    ///     // event — {"temperature"}
+    ///     let mut subscribe_response = service
+    ///         .subscribe_monotonic("FROM 'temperature'")
+    ///         .with_lower_bound(offsets.clone())
+    ///         .await.unwrap();
+    ///     while let Some(response) = query_response.next().await {
+    ///         println!("{:?}", response);
+    ///     }
+    /// }
+    /// ```
+    pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
-            request.from = start_from;
+            request.from = lower_bound;
             return self;
         }
-        panic!("Calling SubscribeMonotonic::with_start_from after polling.")
+        panic!("Calling SubscribeMonotonic::with_lower_bound after polling.")
     }
 }
 
@@ -1264,7 +1350,7 @@ mod tests {
     use reqwest::Client;
 
     use crate::{
-        service::{Order, PublishEvent, StartFrom},
+        service::{Order, PublishEvent},
         tags, Ax, AxOpts, NodeId, OffsetMap, Payload,
     };
 
@@ -1412,10 +1498,9 @@ mod tests {
         let ax = new_test_client();
         let subscribe = ax
             .subscribe_monotonic("FROM allEvents")
-            .with_start_from(crate::service::StartFrom::LowerBound(OffsetMap::empty()));
+            .with_lower_bound(OffsetMap::empty());
         if let SubscribeMonotonic::Initial { request, .. } = subscribe {
-            let StartFrom::LowerBound(lower_bound) = request.from;
-            assert_eq!(lower_bound, OffsetMap::empty());
+            assert_eq!(request.from, OffsetMap::empty());
         }
     }
 }
