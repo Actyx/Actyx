@@ -133,7 +133,6 @@ impl Validator {
 mod test {
     use super::*;
     use serde_json::{json, Value};
-    use std::fs::File;
 
     #[derive(Debug, PartialEq, serde::Deserialize)]
     struct Spec {
@@ -153,7 +152,7 @@ mod test {
     #[test]
     fn validation() {
         let test_suite: serde_json::map::Map<_, _> =
-            serde_json::from_reader(std::fs::File::open("tests/validation.json").unwrap()).unwrap();
+            serde_json::from_reader(std::fs::File::open("resources/tests/validation.json").unwrap()).unwrap();
 
         for (name, spec) in test_suite.into_iter() {
             let Spec {
@@ -169,8 +168,13 @@ mod test {
 
     #[test]
     fn should_work_with_extra_formats() {
-        let schema_json: serde_json::Value =
-            serde_json::from_reader(File::open("tests/schemas/multiaddr.schema.json").unwrap()).unwrap();
+        let schema_json: serde_json::Value = serde_json::from_str(
+            r#"{
+                "type": "string",
+                "format": "multiaddr-with-peer-id"
+            }"#,
+        )
+        .unwrap();
         let validator = Validator::new(schema_json).unwrap();
 
         let res = validator.validate_with_defaults(Some(&json!(1)), &".".into());
