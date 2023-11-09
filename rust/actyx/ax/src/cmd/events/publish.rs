@@ -8,7 +8,6 @@ use actyx_sdk::{
     service::{PublishEvent, PublishRequest, PublishResponse},
     Payload, Tag, TagSet,
 };
-use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use futures::{channel::mpsc::channel, future::ready, SinkExt, Stream, StreamExt};
 use genawaiter::sync::Co;
@@ -38,32 +37,29 @@ pub struct PublishOpts {
     tag: Option<Vec<Tag>>,
 }
 
-fn load_json(input: String) -> ActyxOSResult<serde_json::Value> {
-    let i = if input == "@-" {
+/// Read the event:
+/// - Read from standard input if it starts with `@-`
+/// - Read from a file if it starts with a `@` instead
+/// - Otherwise, take the parameter at face value
+fn payload_from_opts(opts_payload: String) -> ActyxOSResult<Payload> {
+    let mut contents = String::new();
+    if opts_payload.starts_with("@-") {
         let stdin = std::io::stdin();
         let mut stdin = stdin.lock(); // locking is optional
 
-        let mut line = String::new();
-        while let Ok(n_bytes) = stdin.read_to_string(&mut line) {
-            if n_bytes == 0 {
-                break;
-            }
-        }
-        serde_json::from_str(&line)
-    } else if input.starts_with('@') {
-        let f: &str = input
-            .chars()
-            .next()
-            .map(|c| &input[c.len_utf8()..])
-            .ok_or_else(|| anyhow!("Malformed input"))
-            .ax_invalid_input()?;
-        let manifest_file = File::open(f).ax_invalid_input()?;
-        serde_json::from_reader(manifest_file)
+        stdin
+            .read_to_string(&mut contents)
+            .map_err(|err| ActyxOSError::new(ActyxOSCode::ERR_IO, err.to_string()))?;
+    } else if opts_payload.starts_with("@") {
+        File::open(&opts_payload[1..])
+            .ax_invalid_input()?
+            .read_to_string(&mut contents)
+            .map_err(|err| ActyxOSError::new(ActyxOSCode::ERR_IO, err.to_string()))?;
     } else {
-        serde_json::from_str(&input)
+        contents = opts_payload
     };
 
-    i.ax_invalid_input()
+    Payload::from_json_str(&contents).map_err(|msg| ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, msg))
 }
 
 pub struct EventsPublish;
@@ -75,8 +71,7 @@ impl AxCliCommand for EventsPublish {
         Box::new(
             GenStream::new(move |co: Co<_>| async move {
                 let tags = opts.tag.unwrap_or_default().into_iter().collect::<TagSet>();
-                let payload = Payload::from_json_value(load_json(opts.payload)?)
-                    .map_err(|msg| ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, msg))?;
+                let payload = payload_from_opts(opts.payload)?;
 
                 let (mut conn, peer) = opts.console_opt.connect().await?;
                 let (tx, mut rx) = channel(2);
