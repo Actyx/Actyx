@@ -35,22 +35,20 @@ fn main() -> anyhow::Result<()> {
         for (idx, machine) in sim.machines().iter().enumerate() {
             tracing::error!("{}", idx);
             api.run(machine.id(), |api| async move {
-                api.0
-                    .spawn_mut(|ax| {
-                        block_on(ax.publish().events((0..N).map(|i| PublishEvent {
-                            tags: tags!("a", "b"),
-                            payload: Payload::from_json_str(&format!("{}", i)).unwrap(),
-                        })))
-                    })
-                    .await??;
+                api.execute(|ax| {
+                    block_on(ax.publish().events((0..N).map(|i| PublishEvent {
+                        tags: tags!("a", "b"),
+                        payload: Payload::from_json_str(&format!("{}", i)).unwrap(),
+                    })))
+                })
+                .await??;
 
                 let upper_bound = api.offsets().await?.present;
                 let count = (&upper_bound - &OffsetMap::default()) as usize;
                 assert!(count >= N);
 
                 let result = api
-                    .0
-                    .spawn_mut(|ax| block_on(ax.query("FROM allEvents")))
+                    .execute(|ax| block_on(ax.query("FROM allEvents")))
                     .await??
                     .filter(|resp| future::ready(matches!(resp, QueryResponse::Event(_))))
                     .collect::<Vec<_>>()
@@ -86,8 +84,7 @@ fn main() -> anyhow::Result<()> {
 
                         let result = timeout(
                             Duration::from_secs(10),
-                            api.0
-                                .spawn_mut(move |ax| block_on(ax.query("FROM allEvents").with_upper_bound(upper_bound)))
+                            api.execute(move |ax| block_on(ax.query("FROM allEvents").with_upper_bound(upper_bound)))
                                 .await??
                                 .filter(|resp| future::ready(matches!(resp, QueryResponse::Event(_))))
                                 .collect::<Vec<_>>(),

@@ -57,7 +57,7 @@ fn main() {
                     api.run(machine.id(), move |client| async move {
                         let events = to_events(tags);
                         let e = events.clone(); // NOTE: Unsure how to do this better
-                        let meta = client.0.spawn_mut(|ax| block_on(ax.publish().events(e))).await??;
+                        let meta = client.execute(|ax| block_on(ax.publish().events(e))).await??;
                         let stream_0 = client.node_id().await.stream(0.into());
                         Result::<_, anyhow::Error>::Ok((stream_0, meta.data.last().map(|x| x.offset), events))
                     })
@@ -97,8 +97,7 @@ fn main() {
                         let round_tripped = timeout(
                             Duration::from_secs(5),
                             client
-                                .0
-                                .spawn_mut(|ax| block_on(ax.query("FROM allEvents").with_upper_bound(upper_bound)))
+                                .execute(|ax| block_on(ax.query("FROM allEvents").with_upper_bound(upper_bound)))
                                 .await??
                                 .filter_map(|resp| async move {
                                     match resp {
