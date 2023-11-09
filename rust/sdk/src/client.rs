@@ -13,11 +13,12 @@ use reqwest::{
     Client, RequestBuilder, Response, StatusCode,
 };
 use serde::{Deserialize, Serialize};
+#[allow(unused)]
+use std::time::Duration;
 use std::{
     fmt::Debug,
     str::FromStr,
     sync::{Arc, RwLock},
-    time::Duration,
 };
 use url::Url;
 
@@ -29,6 +30,7 @@ use crate::{
     },
     AppManifest, NodeId,
 };
+#[allow(unused)]
 use rand::Rng;
 
 pub struct AxOpts {
