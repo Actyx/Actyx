@@ -28,6 +28,7 @@ pub struct PublishOpts {
     console_opt: ConsoleOpt,
 
     /// Event payload, needs to be valid JSON.
+    ///
     /// You may also pass a file in using the syntax `@file.json` or
     /// have the command read from standard input using `@-`.
     payload: String,
