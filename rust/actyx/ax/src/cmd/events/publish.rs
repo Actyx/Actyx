@@ -44,23 +44,20 @@ pub struct PublishOpts {
 /// - Otherwise, take the parameter at face value
 fn payload_from_opts(opts_payload: String) -> ActyxOSResult<Payload> {
     let mut contents = String::new();
-    if opts_payload.starts_with("@-") {
-        let stdin = std::io::stdin();
-        let mut stdin = stdin.lock(); // locking is optional
-
-        stdin
-            .read_to_string(&mut contents)
-            .map_err(|err| ActyxOSError::new(ActyxOSCode::ERR_IO, err.to_string()))?;
-    } else if opts_payload.starts_with("@") {
-        File::open(&opts_payload[1..])
-            .ax_invalid_input()?
-            .read_to_string(&mut contents)
-            .map_err(|err| ActyxOSError::new(ActyxOSCode::ERR_IO, err.to_string()))?;
+    if let Some(stripped) = opts_payload.strip_prefix('@') {
+        if stripped == "-" {
+            let stdin = std::io::stdin();
+            let mut stdin = stdin.lock(); // locking is optional
+            stdin.read_to_string(&mut contents).ax_err(ActyxOSCode::ERR_IO)?;
+        } else {
+            File::open(&opts_payload[1..])
+                .and_then(|mut file| file.read_to_string(&mut contents))
+                .ax_err(ActyxOSCode::ERR_IO)?;
+        }
     } else {
         contents = opts_payload
-    };
-
-    Payload::from_json_str(&contents).map_err(|msg| ActyxOSError::new(ActyxOSCode::ERR_INVALID_INPUT, msg))
+    }
+    Payload::from_json_str(&contents).ax_invalid_input()
 }
 
 pub struct EventsPublish;

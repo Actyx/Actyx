@@ -58,23 +58,22 @@ struct SetSettingsCommand {
 }
 
 fn load_yml(input: String) -> Result<serde_yaml::Value> {
-    let i = if input == "@-" {
-        let stdin = std::io::stdin();
-        let mut stdin = stdin.lock(); // locking is optional
+    if let Some(stripped) = input.strip_prefix('@') {
+        if stripped == "-" {
+            let stdin = std::io::stdin();
+            let mut stdin = stdin.lock(); // locking is optional
 
-        let mut line = String::new();
-        stdin
-            .read_to_string(&mut line)
-            .map_err(|err| ActyxOSError::new(ActyxOSCode::ERR_IO, err.to_string()))?;
-        serde_yaml::from_str(&line)
-    } else if input.starts_with('@') {
-        let manifest_file = File::open(&input[1..]).ax_invalid_input()?;
-        serde_yaml::from_reader(manifest_file)
+            let mut line = String::new();
+            stdin.read_to_string(&mut line).ax_err(ActyxOSCode::ERR_IO)?;
+            serde_yaml::from_str(&line)
+        } else {
+            let manifest_file = File::open(&input[1..]).ax_err(ActyxOSCode::ERR_IO)?;
+            serde_yaml::from_reader(manifest_file)
+        }
     } else {
         serde_yaml::from_str(&input)
-    };
-
-    i.ax_invalid_input()
+    }
+    .ax_invalid_input()
 }
 
 pub async fn run(opts: SetOpt) -> Result<Output> {
