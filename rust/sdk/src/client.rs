@@ -1096,7 +1096,13 @@ impl<'a> FusedFuture for Subscribe<'a> {
     }
 }
 
-/// Request builder for subscriptions.
+/// Request builder for monotonic subscriptions.
+///
+/// Monotonic subscriptions keep track of the highest sort order
+/// ([`LamportTimestamp`](crate::timestamp::LamportTimestamp) and
+/// [`StreamId`](crate::scalars::StreamId)) seen so far, ending the stream with a
+/// [`SubscribeMonotonicResponse::TimeTravel`](SubscribeMonotonicResponse::TimeTravel)
+/// message if the next event would be out of order.
 ///
 /// Warning: [`SubscribeMonotonic`] implements the [`Future`] trait, as such it can be polled.
 /// Calling _any_ [`SubscribeMonotonic`] function after polling will result in a panic!
@@ -1116,7 +1122,7 @@ impl<'a> SubscribeMonotonic<'a> {
             request: SubscribeMonotonicRequest {
                 query: query.into(),
                 session: SessionId::from("me"),
-                from: OffsetMap::empty(),
+                lower_bound: OffsetMap::empty(),
             },
         }
     }
@@ -1223,7 +1229,7 @@ impl<'a> SubscribeMonotonic<'a> {
     /// ```
     pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
         if let Self::Initial { ref mut request, .. } = self {
-            request.from = lower_bound;
+            request.lower_bound = lower_bound;
             return self;
         }
         panic!("Calling SubscribeMonotonic::with_lower_bound after polling.")
@@ -1500,7 +1506,7 @@ mod tests {
             .subscribe_monotonic("FROM allEvents")
             .with_lower_bound(OffsetMap::empty());
         if let SubscribeMonotonic::Initial { request, .. } = subscribe {
-            assert_eq!(request.from, OffsetMap::empty());
+            assert_eq!(request.lower_bound, OffsetMap::empty());
         }
     }
 }

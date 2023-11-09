@@ -394,7 +394,7 @@ pub struct SubscribeMonotonicRequest {
     /// previously interrupted stream. In this case, StartFrom::Offsets is used,
     /// otherwise StartFrom::Snapshot indicates that the PondService shall figure
     /// out where best to start out from, possibly sending a `State` message first.
-    pub from: OffsetMap,
+    pub lower_bound: OffsetMap,
 }
 
 /// The response to a monotonic subscription is a stream of events terminated by a time travel.
