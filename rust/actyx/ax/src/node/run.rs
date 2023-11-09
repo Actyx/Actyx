@@ -2,8 +2,8 @@ use super::{
     util::{init_shutdown_ceremony, shutdown_ceremony},
     ApplicationState, BindTo, BindToOpts, Runtime,
 };
+use crate::util::version::NodeVersion;
 use anyhow::{anyhow, Context, Result};
-use build_util::version::NodeVersion;
 use derive_more::{Display, Error};
 use std::{convert::TryInto, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
@@ -43,7 +43,7 @@ struct NoColor;
         else).
         ",
     rename_all = "kebab-case",
-    version = env!("AX_VERSION"),
+    version = crate::util::version::VERSION.as_str(),
 )]
 pub struct RunOpts {
     /// Path where to store all the data of the Actyx node.

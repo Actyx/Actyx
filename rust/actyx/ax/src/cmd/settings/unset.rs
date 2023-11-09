@@ -31,7 +31,7 @@ struct RequestBody {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub struct UnsetOpt {
     #[structopt(flatten)]
     actual_opts: UnsetSettingsCommand,

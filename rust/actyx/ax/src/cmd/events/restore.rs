@@ -24,7 +24,7 @@ use structopt::StructOpt;
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// restore events from an event dump to a temporary topic
 pub struct RestoreOpts {
     /// file to read the dump from

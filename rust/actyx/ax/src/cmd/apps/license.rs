@@ -12,7 +12,7 @@ use regex::Regex;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub struct LicenseOpts {
     /// The secret key used to sign the license
     /// (this must match the AX_PUBLIC_KEY your `actyx` binary has been compiled with).

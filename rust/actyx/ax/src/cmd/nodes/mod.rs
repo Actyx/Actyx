@@ -8,7 +8,7 @@ use ls::LsOpts;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// get information about nodes
 pub enum NodesOpts {
     /// Show node info and status

@@ -14,7 +14,7 @@ use futures::{future::ready, Stream, StreamExt};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// issue a monotonic subscription
 pub struct SubscribeMonotonicOpts {
     #[structopt(flatten)]

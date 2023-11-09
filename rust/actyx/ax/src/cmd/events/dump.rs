@@ -7,6 +7,7 @@ use crate::{
             ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse,
         },
         gen_stream::GenStream,
+        version::VERSION,
     },
 };
 use actyx_sdk::service::{EventMeta, EventResponse, Order, QueryRequest};
@@ -25,7 +26,7 @@ use structopt::StructOpt;
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// dump events described by an AQL query into a file
 pub struct DumpOpts {
     /// selection of event data to include in the dump
@@ -202,7 +203,7 @@ impl AxCliCommand for EventsDump {
                 b.with_key("totalEvents", |b| b.encode_u64(offsets.present.size()));
                 b.with_key("timestamp", |b| b.encode_timestamp(now.into(), Precision::Nanos));
                 b.with_key("actyxVersion", |b| b.encode_str(node_info.version.to_string()));
-                b.with_key("axVersion", |b| b.encode_str(env!("AX_CLI_VERSION")));
+                b.with_key("axVersion", |b| b.encode_str(VERSION.as_str()));
                 b.with_key("settings", |b| b.encode_str(settings.to_string()));
                 b.with_key("connection", |b| {
                     b.encode_array(|b| {

@@ -7,7 +7,7 @@ use futures::{stream, FutureExt, Stream};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// request the node to shut down
 pub struct ShutdownOpts {
     #[structopt(flatten)]

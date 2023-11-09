@@ -78,7 +78,7 @@ impl AxCliCommand for UsersKeygen {
     }
 }
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// generate a user key
 pub struct KeygenOpts {
     /// Path in which to save the private key. The public key will be generated in the same

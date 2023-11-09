@@ -32,6 +32,7 @@ use crate::{
             ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
             TopicDeleteResponse, TopicLsResponse,
         },
+        version::NodeVersion,
         SocketAddrHelper,
     },
 };
@@ -41,7 +42,6 @@ use actyx_sdk::{
     tag, LamportTimestamp, NodeId, Payload,
 };
 use anyhow::{anyhow, bail, Context};
-use build_util::version::NodeVersion;
 use cbor_data::Cbor;
 use crossbeam::channel::Sender;
 use formats::NodesRequest;

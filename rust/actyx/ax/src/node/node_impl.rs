@@ -13,9 +13,11 @@ use super::{
     spawn_with_name,
     util::trigger_shutdown,
 };
-use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext};
+use crate::util::{
+    formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext},
+    version::NodeVersion,
+};
 use acto::ActoRef;
-use build_util::version::NodeVersion;
 use chrono::SecondsFormat;
 use crossbeam::{
     channel::{bounded, Receiver, Sender},

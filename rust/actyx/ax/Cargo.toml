@@ -13,8 +13,7 @@ name = "axlib"
 path = "src/lib.rs"
 
 [build-dependencies]
-prost-build = "0.9.0"
-build-util = { path = "../build-util" }
+winres = { git = "https://github.com/Actyx/winres", branch = "cross_compile" }
 
 [dependencies]
 acto = { version = "0.2.0", features = ["tokio"] }
@@ -26,7 +25,6 @@ backtrace = "0.3.63"
 banyan = "0.18.0"
 banyan-utils = "0.11.0"
 base64 = "0.13.0"
-build-util = { path = "../build-util" }
 byteorder = { version = "1.4.3", features = ["i128"] }
 bytes = "1.1.0"
 cbor-data = { version = "0.8.15", features = [

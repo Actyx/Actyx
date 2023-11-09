@@ -22,7 +22,7 @@ use std::{
 /// Example:
 ///
 /// ```rust
-/// use crate::crypto::SignedMessage;
+/// use axlib::crypto::SignedMessage;
 /// use std::convert::TryFrom;
 ///
 /// # let mut bytes = [0u8; 101];

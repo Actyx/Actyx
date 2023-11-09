@@ -13,7 +13,7 @@ use super::{Authority, AxCliCommand, KeyPathWrapper};
 
 /// manage topics
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub enum TopicsOpts {
     #[structopt(no_version)]
     Ls(LsOpts),

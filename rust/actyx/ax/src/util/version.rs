@@ -1,4 +1,5 @@
-use crate::formats::os_arch::OsArch;
+use crate::util::os_arch::OsArch;
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -47,24 +48,28 @@ pub struct NodeVersion {
     pub git_hash: String,
 }
 
+const GIT_HASH: &str = match option_env!("AX_GIT_HASH") {
+    Some(hash) => hash,
+    None => "",
+};
+
+lazy_static! {
+    pub static ref VERSION: String = NodeVersion::get().to_string();
+}
+
+#[cfg(debug_assertions)]
+const PROFILE: &str = "debug";
+#[cfg(not(debug_assertions))]
+const PROFILE: &str = "release";
+
 impl NodeVersion {
     /// Returns the version associated with ACTYX_VERSION (compile time env var)
     pub fn get() -> NodeVersion {
         NodeVersion {
-            profile: env!("AX_PROFILE").to_string(),
+            profile: PROFILE.to_string(),
             target: OsArch::current().into(),
-            version: env!("AX_VERSION").to_string(),
-            git_hash: env!("AX_GIT_HASH").to_string(),
-        }
-    }
-
-    /// Returns the version associated with ACTYX_VERSION_CLI (compile time env var)
-    pub fn get_cli() -> NodeVersion {
-        NodeVersion {
-            profile: env!("AX_PROFILE").to_string(),
-            target: OsArch::current().into(),
-            version: env!("AX_CLI_VERSION").to_string(),
-            git_hash: env!("AX_GIT_HASH").to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            git_hash: GIT_HASH.to_string(),
         }
     }
 

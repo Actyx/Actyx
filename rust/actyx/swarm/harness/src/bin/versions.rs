@@ -7,7 +7,7 @@ fn main() -> anyhow::Result<()> {
         tags, Payload,
     };
     use anyhow::Context;
-    use build_util::formats::os_arch::Arch;
+    use axlib::util::os_arch::Arch;
     use escargot::CargoBuild;
     use flate2::read::GzDecoder;
     use futures::{future::ready, StreamExt};

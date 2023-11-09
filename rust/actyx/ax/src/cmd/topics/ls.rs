@@ -123,7 +123,7 @@ impl AxCliCommand for TopicsList {
 
 /// List all topics
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub struct LsOpts {
     /// The IP addresses or <host>:<admin port> of the target nodes.
     #[structopt(name = "NODE", required = true)]

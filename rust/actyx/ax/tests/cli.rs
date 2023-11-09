@@ -1,5 +1,5 @@
 use assert_cmd::prelude::*;
-use build_util::version::NodeVersion;
+use axlib::util::version::NodeVersion;
 use maplit::btreemap;
 use predicates::prelude::*;
 use std::{collections::HashMap, path::PathBuf, process::Command};
@@ -121,7 +121,7 @@ fn internal_subcommand() {
 
 #[test]
 fn version() {
-    let first_line = format!("Actyx CLI {}\n", NodeVersion::get_cli());
+    let first_line = format!("Actyx CLI {}\n", NodeVersion::get());
     cli().arg("--version").assert().stdout(first_line).success();
 
     #[derive(PartialEq)]
@@ -161,7 +161,7 @@ fn version() {
         vec!["users", "add-key"] => Leaf,
     };
 
-    let first_line = |sub| format!("ax-{} {}\n", sub, NodeVersion::get_cli());
+    let first_line = |sub| format!("ax-{} {}\n", sub, NodeVersion::get());
     for (args, tpe) in commands {
         if tpe == Branch {
             cli()

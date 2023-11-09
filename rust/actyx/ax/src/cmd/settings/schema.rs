@@ -9,7 +9,7 @@ use std::str::FromStr;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// Gets a schema for a given scope.
 pub struct SchemaOpt {
     #[structopt(flatten)]

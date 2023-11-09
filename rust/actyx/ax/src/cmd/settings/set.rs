@@ -37,7 +37,7 @@ impl AxCliCommand for SettingsSet {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub struct SetOpt {
     #[structopt(flatten)]
     actual_opts: SetSettingsCommand,

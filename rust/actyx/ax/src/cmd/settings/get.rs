@@ -20,7 +20,7 @@ impl AxCliCommand for SettingsGet {
     }
 }
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// Gets settings for a specific scope.
 pub struct GetOpt {
     #[structopt(flatten)]

@@ -9,7 +9,7 @@ use TreesOpts::DumpTree;
 use self::{dump::DumpTreeOpts, explore::ExploreTreeOpts};
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub enum TreesOpts {
     /// Dump contents of banyan trees stored in sqlite. Works with either a
     /// single tree or a data blob.

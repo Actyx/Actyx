@@ -1,11 +1,9 @@
-use std::collections::BTreeMap;
-
-use build_util::version::NodeVersion;
-
 use super::ActyxOSResult;
+use crate::util::version::NodeVersion;
 use actyx_sdk::NodeId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 #[derive(Clone, Debug)]
 pub struct AdminProtocol();

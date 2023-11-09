@@ -124,7 +124,7 @@ impl AxCliCommand for TopicsDelete {
 
 /// Delete selected topic
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub struct DeleteOpts {
     /// The topic to delete.
     #[structopt(required = true)]

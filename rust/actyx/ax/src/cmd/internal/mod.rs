@@ -8,7 +8,7 @@ use futures::Future;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// do not use until instructed by Actyx
 pub enum InternalOpts {
     /// Interact with ax trees

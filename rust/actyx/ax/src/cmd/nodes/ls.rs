@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// show node overview
 pub struct LsOpts {
     /// the IP address or <host>:<admin port> of the nodes to list.

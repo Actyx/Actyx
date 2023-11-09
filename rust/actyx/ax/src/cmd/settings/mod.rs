@@ -16,7 +16,7 @@ use structopt::StructOpt;
 use unset::UnsetOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// manage node settings
 pub enum SettingsOpts {
     /// Configure settings of a node

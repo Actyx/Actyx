@@ -13,7 +13,7 @@ use std::{fs::File, io::Read};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// query the events API through the admin port
 pub struct QueryOpts {
     #[structopt(flatten)]

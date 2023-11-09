@@ -7,7 +7,6 @@ members = [
   "node-manager-bindings",
   "swarm/cli",
   "swarm/harness",
-  "build-util",
 ]
 resolver = "2"
 

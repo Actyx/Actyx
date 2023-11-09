@@ -4,10 +4,13 @@ use crate::{
     libp2p_streaming_response::{RequestReceived, Response, StreamingResponse, StreamingResponseConfig},
     private_key::AxPrivateKey,
     swarm::transport::build_transport,
-    util::formats::{
-        banyan_protocol::{BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse},
-        events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol, AdminRequest, AdminResponse,
+    util::{
+        formats::{
+            banyan_protocol::{BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse},
+            events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
+            ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol, AdminRequest, AdminResponse,
+        },
+        version::NodeVersion,
     },
 };
 use actyx_sdk::{
@@ -15,7 +18,6 @@ use actyx_sdk::{
     NodeId, Payload,
 };
 use anyhow::anyhow;
-use build_util::version::NodeVersion;
 use derive_more::From;
 use futures::{
     channel::mpsc::{self, channel, Receiver, Sender, TrySendError},

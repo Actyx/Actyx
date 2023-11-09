@@ -6,6 +6,7 @@ pub mod formats;
 pub mod gen_stream;
 pub mod immutable_sync;
 pub mod keepalivestream3;
+pub mod os_arch;
 pub mod pinned_resource;
 pub mod pinned_resource_sync;
 pub mod reentrant_safe_mutex;
@@ -14,6 +15,7 @@ pub mod serde_util;
 pub mod trace_poll;
 pub mod value_or_limit;
 pub mod variable;
+pub mod version;
 
 pub use self::value_or_limit::*;
 

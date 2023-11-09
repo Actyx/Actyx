@@ -19,7 +19,7 @@ use structopt::{
     about = concat!(
         "\nThe Actyx Command Line Interface (CLI) is a unified tool to manage your Actyx nodes.\n\n",
         include_str!("../../../../NOTICE")),
-    version = env!("AX_CLI_VERSION"),
+    version = axlib::util::version::VERSION.as_str(),
 )]
 struct Opt {
     #[structopt(subcommand)]

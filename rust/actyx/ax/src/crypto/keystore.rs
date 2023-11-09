@@ -161,7 +161,7 @@ impl KeyStore {
     /// Sign a message with the given key, returning only the signature bytes
     ///
     /// ```
-    /// let mut store = crate::crypto::KeyStore::default();
+    /// let mut store = axlib::crypto::KeyStore::default();
     /// let key = store.generate_key_pair().unwrap();
     /// let message = b"hello world";
     /// let signature = store.sign_detached(message, key).unwrap();

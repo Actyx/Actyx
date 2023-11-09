@@ -8,7 +8,7 @@ use futures::{stream::once, FutureExt, Stream};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub struct DevCertOpts {
     /// The secret key used to sign the certificate
     /// (this must match the AX_PUBLIC_KEY your `actyx` binary has been compiled with).
