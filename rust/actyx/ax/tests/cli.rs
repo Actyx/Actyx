@@ -121,7 +121,7 @@ fn internal_subcommand() {
 
 #[test]
 fn version() {
-    let first_line = format!("Actyx CLI {}\n", NodeVersion::get());
+    let first_line = format!("ax {}\n", NodeVersion::get());
     cli().arg("--version").assert().stdout(first_line).success();
 
     #[derive(PartialEq)]

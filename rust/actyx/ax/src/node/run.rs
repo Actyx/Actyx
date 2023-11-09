@@ -34,8 +34,8 @@ struct NoColor;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
-    name = "actyx",
-    about = "run the actyx database!",
+    name = "ax",
+    about = "run the ax distributed event database",
     help_message = "Print help information (use --help for more details)",
     after_help = "For one-off log verbosity override, you may start with the environment variable \
         RUST_LOG set to “debug” or “node=debug,info” (the former logs all debug messages while \
@@ -120,7 +120,7 @@ pub fn run(
     }
 
     if version {
-        println!("Actyx {}", NodeVersion::get());
+        println!("ax {}", NodeVersion::get());
     } else {
         let bind_to = if random {
             BindTo::random()?

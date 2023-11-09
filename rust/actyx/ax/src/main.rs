@@ -15,9 +15,9 @@ use structopt::{
 
 #[derive(StructOpt, Debug)]
 #[structopt(
-    name = "Actyx CLI",
+    name = "ax",
     about = concat!(
-        "\nThe Actyx Command Line Interface (CLI) is a unified tool to manage your Actyx nodes.\n\n",
+        "\nThe ax CLI is a unified tool to manage your ax nodes.\n\n",
         include_str!("../../../../NOTICE")),
     version = axlib::util::version::VERSION.as_str(),
 )]
@@ -48,7 +48,7 @@ enum CommandsOpt {
 
 impl StructOpt for CommandsOpt {
     fn clap<'a, 'b>() -> App<'a, 'b> {
-        let app = App::new("Actyx CLI").setting(AppSettings::SubcommandRequiredElseHelp);
+        let app = App::new("ax").setting(AppSettings::SubcommandRequiredElseHelp);
         Self::augment_clap(app)
     }
 
