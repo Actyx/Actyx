@@ -14,8 +14,8 @@ import {
 } from '../../common/types'
 import { AppState, AppAction, AppStateKey, AppActionKey } from './types'
 import { FatalError } from '../../common/ipc'
-import { ObsValcon } from '../util/valcon'
-import { ServReact } from '../util/serv-react'
+import { ObsValcon } from 'systemic-ts-utils/valcon'
+import { VaettirReact } from 'vaettir-react'
 import { FavoriteParams, NodeManagerAgent, NodeManagerAgentContext } from '../agents/node-manager'
 import { useStore } from '../store'
 
@@ -195,7 +195,7 @@ export const AppStateProvider: React.FC<{
 
   // This ObsValcon bridge the "snapshot" nature of react state into
   // getCurrent-able container
-  const nodeManagerAgentAllowedToWorkRef = useMemo(() => ObsValcon(false), [])
+  const nodeManagerAgentAllowedToWorkRef = useMemo(() => ObsValcon.make(false), [])
   const nodeManagerAgentAllowedToWork = state.key !== 'SetupUserKey'
   useEffect(() => {
     nodeManagerAgentAllowedToWorkRef.set(nodeManagerAgentAllowedToWork)
@@ -203,7 +203,7 @@ export const AppStateProvider: React.FC<{
 
   const favoriteAddressesControlRef = useMemo<FavoriteParams>(
     () =>
-      ObsValcon<null | {
+      ObsValcon.make<null | {
         initial: string[]
         set: (_: string[]) => unknown
       }>(null),
@@ -225,14 +225,17 @@ export const AppStateProvider: React.FC<{
     }
   }, [store])
 
-  const nodeTimeoutRef = useMemo<ObsValcon<number | null>>(() => ObsValcon<null | number>(null), [])
+  const nodeTimeoutRef = useMemo<ObsValcon<number | null>>(
+    () => ObsValcon.make<null | number>(null),
+    [],
+  )
   const nodeTimeout = (store.key === 'Loaded' && store.data.preferences.nodeTimeout) || null
   useEffect(() => {
     nodeTimeoutRef.set(nodeTimeout)
   }, [nodeTimeout])
 
   // Initialize NodeManagerAgent here
-  const nodeManagerAgent = ServReact.useOwned(() =>
+  const nodeManagerAgent = VaettirReact.useOwned(() =>
     NodeManagerAgent({
       allowedToWorkRef: nodeManagerAgentAllowedToWorkRef,
       favoriteParams: favoriteAddressesControlRef,

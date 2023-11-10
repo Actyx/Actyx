@@ -1,6 +1,8 @@
 import * as E from 'fp-ts/Either'
 import { OffsetInfo } from '../offsets'
-import { Obs, Serv } from '../util/serv'
+import { Obs, Vaettir, VaettirReact } from 'vaettir-react'
+import { ObsValcon } from 'systemic-ts-utils/valcon'
+import { IterCell } from 'systemic-ts-utils/iter-cell'
 import { NodeType, ReachableNodeUi, UiNode } from '../../common/types/nodes'
 import { safeErrorToStr, sleep } from '../../common/util'
 import { DEFAULT_TIMEOUT_SEC } from '../../common/consts'
@@ -13,9 +15,6 @@ import {
   TopicLsResponse,
 } from '../../common/types'
 import * as util from '../util'
-import { ServReact } from '../util/serv-react'
-import { ObsValcon } from '../util/valcon'
-import { ContainerCell, ContainerCellLazyCalc } from '../util/immutable-container'
 import { Favorite, FavoriteParams } from './favorite-manager'
 export { Favorite, FavoriteParams }
 
@@ -24,7 +23,7 @@ const POLLING_INTERVAL_MS = 1000
 // Agent definition
 // ================
 
-export const NodeManagerAgentContext = ServReact.Context.make<NodeManagerAgent>()
+export const NodeManagerAgentContext = VaettirReact.Context.make<NodeManagerAgent>()
 
 export type NodeManagerAgent = ReturnType<typeof NodeManagerAgent>
 
@@ -37,7 +36,7 @@ export const NodeManagerAgent = ({
   timeoutRef: ObsValcon<number | null>
   favoriteParams: FavoriteParams
 }) =>
-  Serv.build()
+  Vaettir.build()
     .channels((channels) => ({
       ...channels,
       onNodeDisconnect: Obs.make<string>(),
@@ -47,24 +46,24 @@ export const NodeManagerAgent = ({
       const favorites = Favorite(favoriteParams)
 
       const data = Object.seal({
-        trackedAddresses: ContainerCell(new Set()),
-        disconnectionPeriodExpiry: ContainerCell(new Map()),
-        connections: ContainerCell(new Map()),
-        nodeDetailsProviders: ContainerCell(new Map()),
+        trackedAddresses: IterCell.make(new Set()),
+        disconnectionPeriodExpiry: IterCell.make(new Map()),
+        connections: IterCell.make(new Map()),
+        nodeDetailsProviders: IterCell.make(new Map()),
         offsets: null as OffsetInfo | null,
       } as Internals)
 
-      const memoTrackedAddrs = ContainerCellLazyCalc(data.trackedAddresses, (trackedAddrs) =>
+      const memoTrackedAddrs = IterCell.Lazy.make(data.trackedAddresses, (trackedAddrs) =>
         Array.from(trackedAddrs),
       )
 
-      const memoReachableUINodes = ContainerCellLazyCalc(data.nodeDetailsProviders, (providers) =>
+      const memoReachableUINodes = IterCell.Lazy.make(data.nodeDetailsProviders, (providers) =>
         Array.from(providers.values())
           .map((provider) => provider.api.getAsReachableNodeUi())
           .filter((info): info is ReachableNodeUi => info !== null),
       )
 
-      const memoConnectedNodes = ContainerCellLazyCalc(data.connections, (connections) =>
+      const memoConnectedNodes = IterCell.Lazy.make(data.connections, (connections) =>
         Array.from(connections.entries())
           .map(([addr, connection]) => {
             if (!E.isRight(connection)) return null
@@ -73,10 +72,10 @@ export const NodeManagerAgent = ({
           .filter((x): x is { addr: string; peer: string } => x !== null),
       )
 
-      const memoNodeAsUINode = ContainerCellLazyCalc(data.trackedAddresses, (addresses) =>
-        ContainerCellLazyCalc(data.disconnectionPeriodExpiry, (disconnectionsExpiry) =>
-          ContainerCellLazyCalc(data.connections, (connections) =>
-            ContainerCellLazyCalc(data.nodeDetailsProviders, (infoproviders) => {
+      const memoNodeAsUINode = IterCell.Lazy.make(data.trackedAddresses, (addresses) =>
+        IterCell.Lazy.make(data.disconnectionPeriodExpiry, (disconnectionsExpiry) =>
+          IterCell.Lazy.make(data.connections, (connections) =>
+            IterCell.Lazy.make(data.nodeDetailsProviders, (infoproviders) => {
               const alltracked = Array.from(addresses)
 
               return alltracked.map(
@@ -119,7 +118,7 @@ export const NodeManagerAgent = ({
         // And refresh data.offsets
         channels.onNodeInfoChange.sub((addr) => {
           data.nodeDetailsProviders.mutate((x) => x)
-          data.offsets = OffsetInfo.of(memoReachableUINodes())
+          data.offsets = OffsetInfo.of(memoReachableUINodes.call())
           channels.change.emit()
         }),
       ]
@@ -157,10 +156,10 @@ export const NodeManagerAgent = ({
         ...makeExtendedControl(data),
 
         getOffsets: () => data.offsets,
-        getAllTrackedAddrs: memoTrackedAddrs,
-        getReachableUiNodes: memoReachableUINodes,
-        getConnectedNodes: memoConnectedNodes,
-        getNodesAsUiNode: () => memoNodeAsUINode()()()(),
+        getAllTrackedAddrs: memoTrackedAddrs.call,
+        getReachableUiNodes: memoReachableUINodes.call,
+        getConnectedNodes: memoConnectedNodes.call,
+        getNodesAsUiNode: () => memoNodeAsUINode.call().call().call().call(),
         getNodeAsUiNode: (addr: string) => {
           const isTracking = data.trackedAddresses.access().has(addr)
           return isTracking
@@ -220,21 +219,21 @@ type Internals = {
    * User-indicated addresses that needs to be tracked
    * IMMUTABLE, must be comparable with nodes === nodes
    */
-  trackedAddresses: ContainerCell<Set<string>>
+  trackedAddresses: IterCell<Set<string>>
   /**
    * After a disconnection, reconnectionAvailabilityTime records the timetstamp
    * which an address will be for reconnection
    */
-  disconnectionPeriodExpiry: ContainerCell<Map<string, Date>>
+  disconnectionPeriodExpiry: IterCell<Map<string, Date>>
   /**
    * "Connection" to nodes, containing either peer info or error
    * IMMUTABLE, must be comparable with nodes === nodes
    */
-  connections: ContainerCell<Map<string, ConnectionResult>>
+  connections: IterCell<Map<string, ConnectionResult>>
   /**
    * Contains agents providing node details asynchonously
    */
-  nodeDetailsProviders: ContainerCell<Map<string, NodeInfoProvider>>
+  nodeDetailsProviders: IterCell<Map<string, NodeInfoProvider>>
   offsets: null | OffsetInfo
 }
 

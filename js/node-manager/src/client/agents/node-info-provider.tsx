@@ -3,13 +3,13 @@
 // restart nodes
 
 import { getNodeDetails } from '../util'
-import { Serv } from '../util/serv'
 import { GetNodeDetailsResponse, NodeType, ReachableNodeUi } from '../../common/types/nodes'
 import { ipcRenderer } from 'electron'
+import { Vaettir } from 'vaettir-react'
+import { ObsValcon } from 'systemic-ts-utils/valcon'
 import { DEFAULT_TIMEOUT_SEC } from '../../common/consts'
 import deepEqual from 'deep-equal'
 import { sleep } from '../../common/util'
-import { ObsValcon } from '../util/valcon'
 
 const POLLING_INTERVAL_MS = 1000
 
@@ -28,7 +28,7 @@ export const NodeInfoProvider = ({
   emitDisconnect: () => unknown
   timeoutRef: ObsValcon<number | null>
 }) =>
-  Serv.build()
+  Vaettir.build()
     .api(({ isDestroyed }) => {
       const data = Object.seal({
         nodeInfo: null as null | NodeInfo,

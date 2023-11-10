@@ -344,7 +344,7 @@ const Screen = () => {
     query: { text: queryStr, node: selectedNodeAddr, results: allEvents },
   } = useAppState()
 
-  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
 
   const NUM_EVENTS_PER_PAGE = 250
 

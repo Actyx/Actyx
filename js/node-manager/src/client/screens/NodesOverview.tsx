@@ -68,7 +68,7 @@ const isFavorite = (store: StoreState, addr: string) =>
   store.key === 'Loaded' && store.data.preferences.favoriteNodeAddrs.includes(addr)
 
 const useSingleUiNode = (addr: string) => {
-  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
   const node: UiNode = nodeManagerAgent.api.getNodeAsUiNode(addr) || {
     type: NodeType.Fresh,
     addr,
@@ -374,7 +374,7 @@ const Search: React.FC<{ nodes: UiNode[]; addNodes: (addrs: string[]) => void }>
 const Screen: React.FC<{}> = () => {
   const { dispatch } = useAppState()
 
-  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
   const nodes = nodeManagerAgent.api.getNodesAsUiNode()
   const store = useStore()
 

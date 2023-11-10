@@ -183,7 +183,7 @@ const SwarmConnectivity: React.FC<{ nodes: UiNode[] }> = ({ nodes }) => {
 const NodeManager: React.FC = () => {
   const { state } = useAppState()
   const store = useStore()
-  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
   const data = {
     nodes: nodeManagerAgent.api.getNodesAsUiNode(),
     offsets: nodeManagerAgent.api.getOffsets(),
@@ -216,7 +216,7 @@ const NodeManager: React.FC = () => {
 }
 
 const Screen: React.FC = () => {
-  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
   const nodes = nodeManagerAgent.api.getNodesAsUiNode()
   const offsets = nodeManagerAgent.api.getOffsets()
   return (

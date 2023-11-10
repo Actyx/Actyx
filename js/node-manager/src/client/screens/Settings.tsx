@@ -47,7 +47,7 @@ const Screen: React.FC<{}> = () => {
   const [rejected, setRejected] = useState<string[]>([])
   const [errors, setErrors] = useState<Set<string>>(new Set())
 
-  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
 
   const reachableNodes = nodeManagerAgent.api.getReachableUiNodes()
 

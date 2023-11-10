@@ -228,7 +228,7 @@ interface Props {
 }
 
 export const SettingsEditor: React.FC<Props> = ({ node: { addr, details } }) => {
-  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
 
   const [state, dispatch] = useReducer(reducer, {
     key: 'NotDiverged',

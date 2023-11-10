@@ -178,7 +178,7 @@ const Peers: React.FC<{ node: ReachableNodeT }> = ({ node }) => {
 
 const Actions: React.FC<{ node: ReachableNodeT }> = ({ node: { addr } }) => {
   const [shuttingDown, setShuttingDown] = useState(false)
-  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
   return (
     <div className="">
       <Button
@@ -256,7 +256,7 @@ const Offsets: React.FC<{ node: ReachableNodeT }> = ({
     details: { offsets },
   },
 }) => {
-  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
   const allReachableNodes = nodeManagerAgent.api
     .getReachableUiNodes()
     .filter((n) => n.type === NodeType.Reachable) as ReachableNodeT[]
@@ -419,7 +419,7 @@ const ReachableNode: React.FC<{ node: ReachableNodeT }> = ({ node }) => (
 
 const Screen: React.FC<{ addr: string }> = ({ addr }) => {
   const { dispatch } = useAppState()
-  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
   const node = nodeManagerAgent.api.getNodeAsUiNode(addr)
   if (!node) {
     return (

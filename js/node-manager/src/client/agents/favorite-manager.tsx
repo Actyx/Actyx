@@ -1,9 +1,9 @@
 // Favorite Control
 // ================
 
-import { ContainerCell } from '../util/immutable-container'
-import { Obs, Serv } from '../util/serv-react'
-import { ObsValcon } from '../util/valcon'
+import { Vaettir, Obs } from 'vaettir-react'
+import { IterCell } from 'systemic-ts-utils/iter-cell'
+import { ObsValcon } from 'systemic-ts-utils/valcon'
 
 export type FavoriteParams = ObsValcon<null | {
   initial: string[]
@@ -11,7 +11,7 @@ export type FavoriteParams = ObsValcon<null | {
 }>
 
 export const Favorite = (param: FavoriteParams) =>
-  Serv.build()
+  Vaettir.build()
     .channels((channels) => ({
       ...channels,
       initialized: Obs.make<void>(),
@@ -19,7 +19,7 @@ export const Favorite = (param: FavoriteParams) =>
     .api(({ onDestroy, channels }) => {
       const data = {
         initialized: false,
-        favorites: ContainerCell(new Set()) as ContainerCell<Set<string>>,
+        favorites: IterCell.make(new Set()) as IterCell<Set<string>>,
       }
 
       const attemptInitialize = () => {
@@ -37,7 +37,7 @@ export const Favorite = (param: FavoriteParams) =>
 
       // The first time "initial" data from store is changed
       // set it to internal store
-      onDestroy(param.obs.sub(() => attemptInitialize()))
+      onDestroy(param.change.sub(() => attemptInitialize()))
       attemptInitialize()
 
       const persist = () => {
@@ -60,7 +60,7 @@ export const Favorite = (param: FavoriteParams) =>
           channels.change.emit()
         },
         getFavorites: () => data.favorites?.access() || [],
-        getFavoritesAsContainerCell: () => data.favorites,
+        getFavoritesAsIterCell: () => data.favorites,
       }
     })
     .finish()

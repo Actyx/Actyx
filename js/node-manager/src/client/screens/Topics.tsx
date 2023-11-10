@@ -214,7 +214,7 @@ const DeleteResultRow = ({ deleted }: { deleted: DeletedTopic }) => {
 }
 
 const Screen: React.FC<{}> = () => {
-  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
 
   const [checkedIxs, setCheckedIxs] = useState<Set<number>>(new Set())
   const [topics, setTopics] = useState<Either<{ nodeAddr: string; error: string }, FlatTopic>[]>([])

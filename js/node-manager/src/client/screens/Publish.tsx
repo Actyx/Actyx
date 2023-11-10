@@ -24,7 +24,7 @@ const Screen = () => {
 
   const payloadErrorDebounce = useDebouncer()
 
-  const nodeManagerAgent = NodeManagerAgentContext.use()
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
 
   const tags = tagsField
     .split(',')
