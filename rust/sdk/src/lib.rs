@@ -35,7 +35,7 @@ pub use app_manifest::AppManifest;
 #[cfg(feature = "internals")]
 pub use app_manifest::AppManifestIo;
 #[cfg(feature = "client")]
-pub use client::ActyxClient;
+pub use client::{Ax, AxOpts};
 pub use event::{Event, EventKey, Metadata, Opaque, Payload};
 pub use offset::{Offset, OffsetError, OffsetMap, OffsetOrMin};
 pub use scalars::{AppId, NodeId, StreamId, StreamNr};

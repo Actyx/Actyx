@@ -1,11 +1,18 @@
 use super::dump::Diag;
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
+    crypto::KeyPair,
     node_connection::request_banyan,
     private_key::{load_dev_cert, AxPrivateKey},
+    util::{
+        formats::{
+            banyan_protocol::{decode_dump_header, BanyanRequest, BanyanResponse},
+            ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
+        },
+        gen_stream::GenStream,
+    },
 };
 use cbor_data::{Cbor, CborBuilder, Encoder};
-use crypto::KeyPair;
 use futures::Stream;
 use std::{
     fs::File,
@@ -15,16 +22,9 @@ use std::{
 };
 use structopt::StructOpt;
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
-use util::{
-    formats::{
-        banyan_protocol::{decode_dump_header, BanyanRequest, BanyanResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
-    },
-    gen_stream::GenStream,
-};
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// restore events from an event dump to a temporary topic
 pub struct RestoreOpts {
     /// file to read the dump from

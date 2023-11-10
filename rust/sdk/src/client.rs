@@ -13,11 +13,12 @@ use reqwest::{
     Client, RequestBuilder, Response, StatusCode,
 };
 use serde::{Deserialize, Serialize};
+#[allow(unused)]
+use std::time::Duration;
 use std::{
     fmt::Debug,
     str::FromStr,
     sync::{Arc, RwLock},
-    time::Duration,
 };
 use url::Url;
 
@@ -29,7 +30,71 @@ use crate::{
     },
     AppManifest, NodeId,
 };
+#[allow(unused)]
 use rand::Rng;
+
+pub struct AxOpts {
+    pub url: url::Url,
+    pub manifest: AppManifest,
+}
+
+impl AxOpts {
+    /// Create an [`AxOpts`] with a custom URL and the default application manifest.
+    ///
+    /// This function is similar to:
+    /// ```no_run
+    /// # use actyx_sdk::AxOpts;
+    /// # fn opts() -> AxOpts {
+    /// AxOpts {
+    ///     url: "https://your.host:1234".parse().unwrap(),
+    ///     ..Default::default()
+    /// }.into()
+    /// # }
+    /// ```
+    pub fn url(url: &str) -> anyhow::Result<Self> {
+        Ok(Self {
+            url: Url::from_str(url)?,
+            ..Default::default()
+        })
+    }
+
+    /// Create an [`AxOpts`] with a custom application manifest and the default URL.
+    ///
+    /// This function is equivalent to:
+    /// ```no_run
+    /// # use actyx_sdk::{app_id, AppManifest, AxOpts};
+    /// # fn opts() -> AxOpts {
+    /// AxOpts {
+    ///     manifest: AppManifest {
+    ///         app_id: app_id!("com.example.app"),
+    ///         display_name: "Example manifest".to_string(),
+    ///         version: "0.1.0".to_string(),
+    ///         signature: None,
+    ///     },
+    ///     ..Default::default()
+    /// }.into()
+    /// # }
+    /// ```
+    pub fn manifest(manifest: AppManifest) -> anyhow::Result<Self> {
+        Ok(Self {
+            manifest,
+            ..Default::default()
+        })
+    }
+}
+
+impl Default for AxOpts {
+    /// Return a default set of options.
+    ///
+    /// The default URL is `https://localhost:4454`,
+    /// for the default manifest see [`AppManifest`].
+    fn default() -> Self {
+        Self {
+            url: url::Url::from_str("https://localhost:4454").unwrap(),
+            manifest: Default::default(),
+        }
+    }
+}
 
 /// Error type that is returned in the response body by the Event Service when requests fail
 ///
@@ -39,19 +104,10 @@ use rand::Rng;
 #[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq, Eq)]
 #[display(fmt = "error {} while {}: {}", error_code, context, error)]
 #[serde(rename_all = "camelCase")]
-pub struct ActyxClientError {
+pub struct AxError {
     pub error: serde_json::Value,
     pub error_code: u16,
     pub context: String,
-}
-
-#[derive(Clone)]
-pub struct ActyxClient {
-    client: Client,
-    base_url: Url,
-    token: Arc<RwLock<String>>,
-    app_manifest: AppManifest,
-    node_id: NodeId,
 }
 
 async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) -> anyhow::Result<String> {
@@ -66,10 +122,25 @@ async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) 
     Ok(token.token)
 }
 
-impl ActyxClient {
-    /// Configures connection to Actyx node with provided Url and AppManifest.
-    /// All path segments of the Url (if any) are discarded.
-    pub async fn new(origin: Url, app_manifest: AppManifest) -> anyhow::Result<Self> {
+#[derive(Clone)]
+pub struct Ax {
+    client: Client,
+    base_url: Url,
+    token: Arc<RwLock<String>>,
+    app_manifest: AppManifest,
+    node_id: NodeId,
+}
+
+impl Ax {
+    /// Instantiate a new [`Ax`] with the provided options.
+    ///
+    /// See [`AxOpts`] for more information.
+    pub async fn new(opts: AxOpts) -> anyhow::Result<Self> {
+        let origin = opts.url;
+        let app_manifest = opts.manifest;
+
+        // NOTE(duarte): we could probably validate this in the opts
+        // We would need to provide a `new` instead of letting users do struct instantiation by hand though
         anyhow::ensure!(!origin.cannot_be_a_base(), "{} is not a valid base address", origin);
         let mut base_url = origin;
         base_url.set_path("api/v2/");
@@ -187,7 +258,7 @@ impl ActyxClient {
             Ok(response)
         } else {
             let error_code = response.status().as_u16();
-            Err(ActyxClientError {
+            Err(AxError {
                 error: response
                     .json()
                     .await
@@ -211,7 +282,7 @@ impl ActyxClient {
             .text_with_charset("utf-8")
             .await
             .context(|| "Parsing response".to_string())?;
-        let cid = Cid::from_str(&hash).map_err(|e| ActyxClientError {
+        let cid = Cid::from_str(&hash).map_err(|e| AxError {
             error: serde_json::Value::String(e.to_string()),
             error_code: 102,
             context: format!("Tried to parse {} into a Cid", hash),
@@ -250,9 +321,9 @@ impl ActyxClient {
     }
 }
 
-impl Debug for ActyxClient {
+impl Debug for Ax {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ActyxClient")
+        f.debug_struct("Ax")
             .field("base_url", &self.base_url.as_str())
             .field("app_manifest", &self.app_manifest)
             .finish()
@@ -260,7 +331,7 @@ impl Debug for ActyxClient {
 }
 
 #[async_trait]
-impl EventService for ActyxClient {
+impl EventService for Ax {
     /// Returns known offsets across local and replicated streams.
     ///
     /// If an authorization error (code 401) is returned, it will try to re-authenticate.
@@ -397,9 +468,9 @@ pub(crate) trait WithContext {
 }
 impl<T, E> WithContext for std::result::Result<T, E>
 where
-    ActyxClientError: From<(String, E)>,
+    AxError: From<(String, E)>,
 {
-    type Output = std::result::Result<T, ActyxClientError>;
+    type Output = std::result::Result<T, AxError>;
 
     #[inline]
     fn context<F, C>(self, context: F) -> Self::Output
@@ -409,12 +480,12 @@ where
     {
         match self {
             Ok(value) => Ok(value),
-            Err(err) => Err(ActyxClientError::from((context().into(), err))),
+            Err(err) => Err(AxError::from((context().into(), err))),
         }
     }
 }
 
-impl From<(String, reqwest::Error)> for ActyxClientError {
+impl From<(String, reqwest::Error)> for AxError {
     fn from(e: (String, reqwest::Error)) -> Self {
         Self {
             error: serde_json::json!(format!("{:?}", e.1)),
@@ -424,7 +495,7 @@ impl From<(String, reqwest::Error)> for ActyxClientError {
     }
 }
 
-impl From<(String, serde_json::Error)> for ActyxClientError {
+impl From<(String, serde_json::Error)> for AxError {
     fn from(e: (String, serde_json::Error)) -> Self {
         Self {
             error: serde_json::json!(format!("{:?}", e.1)),
@@ -434,7 +505,7 @@ impl From<(String, serde_json::Error)> for ActyxClientError {
     }
 }
 
-impl From<(String, serde_cbor::Error)> for ActyxClientError {
+impl From<(String, serde_cbor::Error)> for AxError {
     fn from(e: (String, serde_cbor::Error)) -> Self {
         Self {
             error: serde_json::json!(format!("{:?}", e.1)),

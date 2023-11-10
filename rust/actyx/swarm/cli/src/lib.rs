@@ -1,19 +1,21 @@
 use actyx_sdk::{language::Query, Payload, TagSet, Timestamp};
 use anyhow::Result;
+pub use axlib::swarm::{EphemeralEventsConfig, EventRoute, GossipMessage, RetainConfig, RootMap, RootUpdate};
+use axlib::{
+    crypto::{KeyPair, PrivateKey},
+    swarm::{BanyanConfig, SwarmConfig},
+    trees::axtrees::AxKey,
+    util::SocketAddrHelper,
+};
 use cbor_data::{
     codec::{ReadCbor, WriteCbor},
     Cbor, CborBuilder,
 };
 use chrono::{DateTime, Utc};
-use crypto::{KeyPair, PrivateKey};
 pub use libp2p::{multiaddr, Multiaddr, PeerId};
 use parking_lot::Mutex;
 use std::{borrow::Borrow, convert::TryFrom, net::SocketAddr, path::PathBuf, sync::Arc};
 use structopt::StructOpt;
-use swarm::{BanyanConfig, SwarmConfig};
-pub use swarm::{EphemeralEventsConfig, EventRoute, GossipMessage, RetainConfig, RootMap, RootUpdate};
-use trees::axtrees::AxKey;
-use util::SocketAddrHelper;
 
 #[derive(Clone, Debug, StructOpt)]
 pub struct Config {

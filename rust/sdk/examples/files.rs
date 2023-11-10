@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use actyx_sdk::{app_id, service::DirectoryChild, ActyxClient, AppManifest};
+use actyx_sdk::{service::DirectoryChild, Ax, AxOpts};
 use asynchronous_codec::{BytesCodec, Framed};
 use futures::{
     future::{try_join_all, BoxFuture},
@@ -13,18 +13,6 @@ use reqwest::{multipart::Part, Body};
 use structopt::StructOpt;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_util::compat::*;
-use url::Url;
-
-async fn mk_http_client() -> anyhow::Result<ActyxClient> {
-    let app_manifest = AppManifest::trial(
-        app_id!("com.example.actyx-offsets"),
-        "Offsets Example".into(),
-        "0.1.0".into(),
-    )
-    .unwrap();
-    let url = Url::parse("http://localhost:4454").unwrap();
-    ActyxClient::new(url, app_manifest).await
-}
 
 #[derive(StructOpt)]
 struct Opt {
@@ -68,7 +56,7 @@ enum Command {
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
-    let service = mk_http_client().await?;
+    let service = Ax::new(AxOpts::default()).await?;
     match opt.command {
         Command::Add { file } => {
             let files: Box<dyn Iterator<Item = Part>> = if file.is_file() {
@@ -100,7 +88,7 @@ pub async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn list_file_or_dir(client: &ActyxClient, name_or_cid: String, level: usize) -> BoxFuture<'_, anyhow::Result<()>> {
+fn list_file_or_dir(client: &Ax, name_or_cid: String, level: usize) -> BoxFuture<'_, anyhow::Result<()>> {
     async move {
         let response = client.files_get(&name_or_cid).await?;
         match response {
@@ -124,11 +112,7 @@ fn list_file_or_dir(client: &ActyxClient, name_or_cid: String, level: usize) -> 
     .boxed()
 }
 
-fn get_file_or_dir(
-    client: ActyxClient,
-    name_or_cid: String,
-    write_to: PathBuf,
-) -> BoxFuture<'static, anyhow::Result<()>> {
+fn get_file_or_dir(client: Ax, name_or_cid: String, write_to: PathBuf) -> BoxFuture<'static, anyhow::Result<()>> {
     async move {
         match client.files_get(&name_or_cid).await? {
             actyx_sdk::service::FilesGetResponse::File { bytes, .. } => {

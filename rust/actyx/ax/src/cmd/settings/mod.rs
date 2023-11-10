@@ -3,18 +3,20 @@ mod schema;
 mod set;
 mod unset;
 
-use crate::cmd::AxCliCommand;
+use crate::{
+    cmd::AxCliCommand,
+    settings::{Scope, ScopeError},
+};
 use futures::Future;
 use get::GetOpt;
 use schema::SchemaOpt;
 use set::SetOpt;
-use settings::{Scope, ScopeError};
 use std::{convert::TryFrom, str::FromStr};
 use structopt::StructOpt;
 use unset::UnsetOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// manage node settings
 pub enum SettingsOpts {
     /// Configure settings of a node

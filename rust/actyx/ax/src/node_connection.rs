@@ -1,10 +1,23 @@
-use crate::{cmd::Authority, private_key::AxPrivateKey};
+use crate::{
+    cmd::Authority,
+    crypto::PublicKey,
+    libp2p_streaming_response::{RequestReceived, Response, StreamingResponse, StreamingResponseConfig},
+    private_key::AxPrivateKey,
+    swarm::transport::build_transport,
+    util::{
+        formats::{
+            banyan_protocol::{BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse},
+            events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
+            ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol, AdminRequest, AdminResponse,
+        },
+        version::NodeVersion,
+    },
+};
 use actyx_sdk::{
     service::{Diagnostic, EventResponse, PublishResponse},
     NodeId, Payload,
 };
 use anyhow::anyhow;
-use crypto::PublicKey;
 use derive_more::From;
 use futures::{
     channel::mpsc::{self, channel, Receiver, Sender, TrySendError},
@@ -23,7 +36,6 @@ use libp2p::{
     swarm::{dial_opts::DialOpts, DialError, NetworkBehaviour, SwarmBuilder, SwarmEvent},
     Multiaddr, PeerId,
 };
-use libp2p_streaming_response::{RequestReceived, Response, StreamingResponse, StreamingResponseConfig};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashMap},
@@ -33,16 +45,7 @@ use std::{
     task::Poll,
     time::Duration,
 };
-use swarm::transport::build_transport;
 use tokio::sync::mpsc::UnboundedSender;
-use util::{
-    formats::{
-        banyan_protocol::{BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse},
-        events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol, AdminRequest, AdminResponse,
-    },
-    version::NodeVersion,
-};
 
 #[derive(NetworkBehaviour)]
 #[behaviour(out_event = "OutEvent")]

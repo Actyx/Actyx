@@ -5,8 +5,11 @@ use actyx_sdk::{
     AppManifest, Payload, TagSet,
 };
 use netsim_embed::Netsim;
-use std::fmt::{Debug, Display};
-use std::{collections::BTreeMap, str::FromStr};
+use std::{
+    collections::BTreeMap,
+    fmt::{Debug, Display},
+    str::FromStr,
+};
 use swarm_cli::Command;
 
 pub fn app_manifest() -> AppManifest {

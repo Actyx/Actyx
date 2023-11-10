@@ -13,7 +13,7 @@ use keygen::KeygenOpts;
 use pubkey::PubkeyOpts;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// manage user keys
 pub enum UsersOpts {
     /// Install a user key into /admin/authorizedUsers of a local Actyx node that is not currently running.

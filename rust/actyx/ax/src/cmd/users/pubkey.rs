@@ -1,14 +1,14 @@
 use crate::{
     cmd::{AxCliCommand, KeyPathWrapper},
+    crypto::PublicKey,
     private_key::AxPrivateKey,
+    util::formats::ActyxOSResult,
 };
-use crypto::PublicKey;
 use futures::{stream::once, FutureExt, Stream};
 use structopt::StructOpt;
-use util::formats::ActyxOSResult;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub struct PubkeyOpts {
     /// File from which the identity (private key) for authentication is read.
     #[structopt(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]

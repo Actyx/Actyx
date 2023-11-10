@@ -1,11 +1,12 @@
-use crate::cmd::formats::Result;
-use crate::cmd::AxCliCommand;
+use crate::{
+    cmd::{formats::Result, AxCliCommand},
+    util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+};
 use futures::{stream, Stream, TryFutureExt};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -30,7 +31,7 @@ impl AxCliCommand for SwarmsKeygen {
     }
 }
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// generate swarm key
 pub struct KeygenOpts {
     /// Create file <output> and write the generated key to it.
@@ -71,8 +72,10 @@ pub async fn run(opt: KeygenOpts) -> Result<Output> {
 
 #[cfg(test)]
 mod test {
-    use crate::cmd::formats::Result;
-    use crate::cmd::swarms::keygen::{generate_key, run, store_key, KeygenOpts};
+    use crate::cmd::{
+        formats::Result,
+        swarms::keygen::{generate_key, run, store_key, KeygenOpts},
+    };
 
     #[tokio::test]
     pub async fn should_store_swarm_key() -> Result<()> {

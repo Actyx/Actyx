@@ -1,3 +1,10 @@
+use crate::{
+    trees::{
+        axtrees::{AxKeySeq, AxTrees, Sha256Digest},
+        AxTreeHeader,
+    },
+    util::formats::{ActyxOSResult, ActyxOSResultExt},
+};
 use actyx_sdk::Payload;
 use banyan::{
     chacha20,
@@ -14,17 +21,12 @@ use libipld::{
 };
 use std::{convert::TryFrom, io::Cursor, path::PathBuf};
 use structopt::StructOpt;
-use trees::{
-    axtrees::{AxKeySeq, AxTrees, Sha256Digest},
-    AxTreeHeader,
-};
-use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 use super::SqliteStore;
 use crate::cmd::AxCliCommand;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub struct DumpTreeOpts {
     /// Path to a sqlite blockstore (read-only access!)
     #[structopt(long)]
@@ -120,7 +122,8 @@ impl AxCliCommand for DumpTree {
     type Output = String;
     fn run(opts: DumpTreeOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         Box::new(stream::once(
-            async move { dump(opts).ax_err_ctx(util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "Dump failed") }.boxed(),
+            async move { dump(opts).ax_err_ctx(crate::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "Dump failed") }
+                .boxed(),
         ))
     }
 

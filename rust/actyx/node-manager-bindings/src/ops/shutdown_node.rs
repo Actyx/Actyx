@@ -1,9 +1,11 @@
 use crate::{types::Nothing, util::run_task};
-use axlib::node_connection::{request, Task};
+use axlib::{
+    node_connection::{request, Task},
+    util::formats::AdminRequest,
+};
 use futures::FutureExt;
 use neon::prelude::*;
 use serde::{Deserialize, Serialize};
-use util::formats::AdminRequest;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

@@ -1,16 +1,18 @@
-use crate::cmd::AxCliCommand;
+use crate::{
+    certs::SignedAppLicense,
+    cmd::AxCliCommand,
+    crypto::PrivateKey,
+    util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt},
+};
 use actyx_sdk::AppId;
-use certs::SignedAppLicense;
 use chrono::{DateTime, Utc};
-use crypto::PrivateKey;
 use futures::{stream::once, FutureExt, Stream};
 use lazy_static::lazy_static;
 use regex::Regex;
 use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt};
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub struct LicenseOpts {
     /// The secret key used to sign the license
     /// (this must match the AX_PUBLIC_KEY your `actyx` binary has been compiled with).

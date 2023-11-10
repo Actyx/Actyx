@@ -1,15 +1,15 @@
 use crate::{
     cmd::{formats::Result, AxCliCommand, ConsoleOpt},
     node_connection::{request_single, Task},
+    settings::Scope,
+    util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse},
 };
 use futures::{stream, Stream, TryFutureExt};
-use settings::Scope;
 use std::str::FromStr;
 use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// Gets a schema for a given scope.
 pub struct SchemaOpt {
     #[structopt(flatten)]

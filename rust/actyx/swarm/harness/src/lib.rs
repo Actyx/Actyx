@@ -6,7 +6,7 @@ use actyx_sdk::NodeId;
 use anyhow::{bail, Result};
 use async_std::{future, task};
 use futures::{
-    future::{select, Either},
+    future::{select, BoxFuture, Either},
     prelude::*,
 };
 use netsim_embed::{DelayBuffer, Ipv4Range, Machine, Netsim};
@@ -102,7 +102,7 @@ impl MultiaddrExt for Multiaddr {
 }
 
 pub fn setup_env() -> Result<()> {
-    ::util::setup_logger();
+    axlib::util::setup_logger();
     netsim_embed::unshare_user()?;
     Ok(())
 }
@@ -159,6 +159,7 @@ where
                 m.peer_id()
             );
         }
+
         f(sim).await
     })
 }
@@ -299,42 +300,60 @@ pub async fn fully_meshed<E>(sim: &mut Netsim<Command, E>, timeout: Duration) ->
 where
     E: Borrow<Event> + FromStr<Err = anyhow::Error> + Display + Send + 'static,
 {
-    let deadline = task::sleep(timeout);
-    futures::pin_mut!(deadline);
     let peers = sim.machines().iter().map(|m| m.peer_id()).collect::<Vec<_>>();
-    for (idx, machine) in sim.machines_mut().iter_mut().enumerate() {
-        let mut peers = peers
-            .iter()
-            .filter(|p| **p != peers[idx])
-            .copied()
-            .collect::<BTreeSet<_>>();
-        while !peers.is_empty() {
-            let res = {
-                let f = machine.select(|ev| m!(ev.borrow(), Event::Connected(p) => *p));
-                futures::pin_mut!(f);
-                match select(deadline.as_mut(), f).await {
-                    Either::Left(_) => Either::Left(()),
-                    Either::Right(r) => Either::Right(r),
+
+    let machines_promises = sim
+        .machines_mut()
+        .iter_mut()
+        .enumerate()
+        .map(|(idx, machine)| -> BoxFuture<Result<()>> {
+            let mut peers = peers
+                .iter()
+                .filter(|p| **p != peers[idx])
+                .copied()
+                .collect::<BTreeSet<_>>();
+            async move {
+                let deadline = task::sleep(timeout);
+                futures::pin_mut!(deadline);
+                while !peers.is_empty() {
+                    let res = {
+                        let f = machine.select(|ev| m!(ev.borrow(), Event::Connected(p) => *p));
+                        futures::pin_mut!(f);
+                        match select(deadline.as_mut(), f).await {
+                            Either::Left(_) => Either::Left(()),
+                            Either::Right(r) => Either::Right(r),
+                        }
+                    };
+                    match res {
+                        Either::Left(_) => {
+                            for e in machine.drain() {
+                                tracing::error!("got event {}", e);
+                            }
+                            bail!(
+                                "fully_meshed timed out after {:.1}sec ({}, {:?})",
+                                timeout.as_secs_f64(),
+                                idx,
+                                peers
+                            )
+                        }
+                        Either::Right((None, _)) => bail!("got not peer"),
+                        Either::Right((Some(p), _)) => {
+                            peers.remove(&p);
+                        }
+                    };
                 }
-            };
-            match res {
-                Either::Left(_) => {
-                    for e in machine.drain() {
-                        tracing::error!("got event {}", e);
-                    }
-                    bail!(
-                        "fully_meshed timed out after {:.1}sec ({}, {:?})",
-                        timeout.as_secs_f64(),
-                        idx,
-                        peers
-                    )
-                }
-                Either::Right((None, _)) => bail!("got not peer"),
-                Either::Right((Some(p), _)) => {
-                    peers.remove(&p);
-                }
+                Ok(())
             }
-        }
+            .boxed()
+        });
+
+    let res = futures::future::join_all(machines_promises).await;
+
+    let errors = res.into_iter().filter_map(|f| f.err()).collect::<Vec<_>>();
+
+    if !errors.is_empty() {
+        bail!(errors.into_iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n"))
     }
+
     Ok(())
 }

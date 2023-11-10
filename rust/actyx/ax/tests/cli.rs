@@ -1,9 +1,8 @@
 use assert_cmd::prelude::*;
+use axlib::util::version::NodeVersion;
 use maplit::btreemap;
 use predicates::prelude::*;
-use std::collections::HashMap;
-use std::{path::PathBuf, process::Command};
-use util::version::NodeVersion;
+use std::{collections::HashMap, path::PathBuf, process::Command};
 
 fn get_commands() -> HashMap<&'static str, Vec<&'static str>> {
     let apps = vec!["sign"];
@@ -122,7 +121,7 @@ fn internal_subcommand() {
 
 #[test]
 fn version() {
-    let first_line = format!("Actyx CLI {}\n", NodeVersion::get_cli());
+    let first_line = format!("ax {}\n", NodeVersion::get());
     cli().arg("--version").assert().stdout(first_line).success();
 
     #[derive(PartialEq)]
@@ -162,7 +161,7 @@ fn version() {
         vec!["users", "add-key"] => Leaf,
     };
 
-    let first_line = |sub| format!("ax-{} {}\n", sub, NodeVersion::get_cli());
+    let first_line = |sub| format!("ax-{} {}\n", sub, NodeVersion::get());
     for (args, tpe) in commands {
         if tpe == Branch {
             cli()

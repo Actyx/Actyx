@@ -1,12 +1,15 @@
-use crate::{cmd::AxCliCommand, private_key::AxPrivateKey};
-use certs::{app_manifest_signer, AppManifest, DeveloperCertificate};
+use crate::{
+    certs::{app_manifest_signer, AppManifest, DeveloperCertificate},
+    cmd::AxCliCommand,
+    private_key::AxPrivateKey,
+    util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+};
 use futures::{stream, Stream};
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// sign an app manifest
 pub struct SignOpts {
     /// Path to certificate that shall be used for signing

@@ -7,6 +7,11 @@
 import { Ord } from 'fp-ts/lib/Ord';
 import * as t from 'io-ts';
 
+// Warning: (ae-forgotten-export) The symbol "ActiveRequestGlobals" needs to be exported by the entry point index.d.ts
+//
+// @public
+const activeRequests: ActiveRequestGlobals;
+
 // @public
 export type Actyx = EventFns & {
     readonly nodeId: NodeId;
@@ -210,6 +215,13 @@ export type FixedStart = {
     latestEventKey: EventKey;
     horizon?: EventKey;
 };
+
+declare namespace globals {
+    export {
+        activeRequests
+    }
+}
+export { globals }
 
 // @public
 export type HasOffsetAndStream = {

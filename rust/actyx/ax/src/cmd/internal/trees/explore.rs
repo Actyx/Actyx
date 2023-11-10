@@ -1,11 +1,13 @@
+use crate::{
+    swarm::StreamAlias,
+    util::formats::{ActyxOSResult, ActyxOSResultExt},
+};
 use actyx_sdk::StreamId;
 use futures::{prelude::*, stream, Stream};
 use ipfs_sqlite_block_store::BlockStore;
 use libipld::{Cid, DefaultParams};
 use std::{convert::TryFrom, path::PathBuf};
 use structopt::StructOpt;
-use swarm::StreamAlias;
-use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 use crate::cmd::AxCliCommand;
 
@@ -21,7 +23,7 @@ enum List {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub struct ExploreTreeOpts {
     /// Path to a sqlite blockstore (read-only access!)
     #[structopt(long)]
@@ -65,7 +67,8 @@ impl AxCliCommand for ExploreTree {
     type Output = ();
     fn run(opts: ExploreTreeOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         Box::new(stream::once(
-            async move { run(opts).ax_err_ctx(util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "run failed") }.boxed(),
+            async move { run(opts).ax_err_ctx(crate::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "run failed") }
+                .boxed(),
         ))
     }
 

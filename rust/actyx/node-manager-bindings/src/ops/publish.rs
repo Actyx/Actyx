@@ -1,11 +1,13 @@
 use crate::util::run_task;
 use actyx_sdk::service::{PublishEvent, PublishRequest, PublishResponse};
-use axlib::node_connection::{publish as publish_impl, Task};
+use axlib::{
+    node_connection::{publish as publish_impl, Task},
+    util::formats::{ax_err, events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult},
+};
 use futures::{channel::mpsc::Sender, FutureExt, StreamExt};
 use libp2p::PeerId;
 use neon::prelude::*;
 use serde::{Deserialize, Serialize};
-use util::formats::{ax_err, events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -19,14 +21,14 @@ async fn publish(mut tx: Sender<Task>, peer: PeerId, data: Vec<PublishEvent>) ->
 
     match r {
         Err(err) => ax_err(
-            util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+            axlib::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
             format!("EventsRequests::Publish returned unexpected error: {:?}", err),
         ),
         Ok(mut stream) => {
             async {
                 let Some(result) = stream.next().await else {
                     return ax_err(
-                        util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+                        axlib::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
                         "EventsRequests::Publish returned empty".to_string(),
                     );
                 };

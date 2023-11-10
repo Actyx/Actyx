@@ -1,6 +1,13 @@
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::Task,
+    util::{
+        formats::{
+            events_protocol::{EventsRequest, EventsResponse},
+            ActyxOSCode, ActyxOSError, ActyxOSResult,
+        },
+        gen_stream::GenStream,
+    },
 };
 use actyx_sdk::{
     service::{PublishEvent, PublishRequest, PublishResponse},
@@ -10,16 +17,9 @@ use chrono::{DateTime, Utc};
 use futures::{channel::mpsc::channel, future::ready, SinkExt, Stream, StreamExt};
 use genawaiter::sync::Co;
 use structopt::StructOpt;
-use util::{
-    formats::{
-        events_protocol::{EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult,
-    },
-    gen_stream::GenStream,
-};
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// publish an event
 pub struct PublishOpts {
     #[structopt(flatten)]

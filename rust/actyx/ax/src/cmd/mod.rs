@@ -1,9 +1,9 @@
+use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult};
 use formats::Result;
 use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
 use serde::Serialize;
 use std::{fmt, net::ToSocketAddrs, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult};
 
 use crate::{
     node_connection::{connect, mk_swarm, Task},
@@ -14,7 +14,7 @@ use libp2p::{multiaddr::Protocol, Multiaddr, PeerId};
 pub mod apps;
 pub mod events;
 mod formats;
-pub(crate) mod internal;
+pub mod internal;
 pub mod nodes;
 pub mod settings;
 pub mod swarms;

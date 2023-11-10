@@ -9,7 +9,7 @@ use futures::Future;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// interact with the events API through the admin port
 pub enum EventsOpts {
     #[structopt(no_version)]

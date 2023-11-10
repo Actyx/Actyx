@@ -1,12 +1,14 @@
-use crate::cmd::AxCliCommand;
-use certs::{AppDomain, DeveloperCertificateInput, ManifestDeveloperCertificate};
-use crypto::{PrivateKey, PublicKey};
+use crate::{
+    certs::{AppDomain, DeveloperCertificateInput, ManifestDeveloperCertificate},
+    cmd::AxCliCommand,
+    crypto::{PrivateKey, PublicKey},
+    util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+};
 use futures::{stream::once, FutureExt, Stream};
 use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub struct DevCertOpts {
     /// The secret key used to sign the certificate
     /// (this must match the AX_PUBLIC_KEY your `actyx` binary has been compiled with).

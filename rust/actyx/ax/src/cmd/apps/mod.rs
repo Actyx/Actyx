@@ -9,7 +9,7 @@ use license::LicenseOpts;
 pub use sign::{create_signed_app_manifest, SignOpts};
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// manage app manifests
 pub enum AppsOpts {
     /// Create app or node license
