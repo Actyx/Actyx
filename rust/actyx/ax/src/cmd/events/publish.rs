@@ -27,10 +27,7 @@ pub struct PublishOpts {
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
 
-    /// Event payload, needs to be valid JSON.
-    ///
-    /// You may also pass a file in using the syntax `@file.json` or
-    /// have the command read from standard input using `@-`.
+    /// event payload (JSON) or @FILE for reading from a file (@- for stdin)
     payload: String,
 
     /// tag (can be given multiple times)
