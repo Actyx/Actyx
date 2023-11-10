@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct AppManifestIo {
+struct AppManifestIo {
     pub app_id: AppId,
     pub display_name: String,
     pub version: String,
@@ -79,12 +79,33 @@ impl AppManifest {
     }
 }
 
+impl Default for AppManifest {
+    /// Returns the default manifest.
+    ///
+    /// The default manifest has the application ID `com.example.trial`,
+    /// the display name "Trial App" and the version "0.0.1".
+    /// Since it is a trial application manifest, it does not have a signature.
+    fn default() -> Self {
+        Self::trial(
+            app_id!("com.example.trial"),
+            "Trial App".to_string(),
+            "0.0.1".to_string(),
+        )
+        .unwrap()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::convert::TryInto;
 
     use super::*;
     use crate::app_id;
+
+    #[test]
+    fn default_is_not_panicking() {
+        let _ = AppManifest::default();
+    }
 
     #[test]
     fn should_fail_on_non_example_trial() {
@@ -160,21 +181,5 @@ mod tests {
             "v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYWWNuNmlpWXllcFBKeEN6L3hEY3JkQklHcGlxYVRkQVBaakVuRnIzL2xBdGgzaXRzNU9PaTFORjU4M2xFcTJuSVJwOWtIZ1BFSTViTFNPQlFxN2lNQkE9PWlkZXZQdWJrZXl4LTBzaUdHN0dYSGpGaG5oRldya3RiaVZ2Vjgyb1dxTUVzdDBiOVVjWjZYRWd3PWphcHBEb21haW5zgWtjb20uYWN0eXguKmtheFNpZ25hdHVyZXhYekpYa0VkL1BnWjdkcEUzZDVDc0JSaWJHVjBRcE9ZcEhHa3dmV1JEVFNuclk1d25tWDN6YnhMNjA1TkdjK3huTnpKeHoyamp3N1VFemNPTlBrRXN0Q3c9Pf8=".into(),
         );
         assert_eq!(manifest, from_json);
-    }
-}
-
-impl Default for AppManifest {
-    /// Returns the default manifest.
-    ///
-    /// The default manifest has the application ID `com.example.trial`,
-    /// the display name "Trial App" and the version "0.0.1".
-    /// Since it is a trial application manifest, it does not have a signature.
-    fn default() -> Self {
-        Self {
-            app_id: app_id!("com.example.trial"),
-            display_name: "Trial App".to_string(),
-            version: "0.0.1".to_string(),
-            signature: None,
-        }
     }
 }

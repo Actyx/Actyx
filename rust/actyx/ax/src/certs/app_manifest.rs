@@ -2,8 +2,8 @@ use crate::{
     certs::{developer_certificate::ManifestDeveloperCertificate, signature::Signature},
     crypto::{PrivateKey, PublicKey},
 };
-use actyx_sdk::{AppId, AppManifest, AppManifestIo};
-use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
+use actyx_sdk::{AppId, AppManifest};
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -70,14 +70,7 @@ pub mod app_manifest_signer {
         let dev_signature = Signature::new(&hash_input, dev_privkey)?;
         let manifest_signature = AppManifestSignature::new(dev_signature, dev_cert);
         let manifest_signature_string: String = manifest_signature.try_into()?;
-        let manifest: AppManifest = AppManifestIo {
-            app_id,
-            display_name,
-            version,
-            signature: Some(manifest_signature_string),
-        }
-        .try_into()
-        .unwrap();
+        let manifest: AppManifest = AppManifest::signed(app_id, display_name, version, manifest_signature_string);
         Ok(manifest)
     }
 
@@ -112,10 +105,8 @@ mod tests {
     use std::str::FromStr;
 
     use crate::crypto::{PrivateKey, PublicKey};
-    use actyx_sdk::app_id;
 
     use crate::certs::{
-        app_domain::AppDomain,
         developer_certificate::{DeveloperCertificateInput, ManifestDeveloperCertificate},
         signature::Signature,
     };

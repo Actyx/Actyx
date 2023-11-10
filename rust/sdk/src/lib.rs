@@ -32,8 +32,6 @@ mod timestamp;
 pub mod types;
 
 pub use app_manifest::AppManifest;
-#[cfg(feature = "internals")]
-pub use app_manifest::AppManifestIo;
 #[cfg(feature = "client")]
 pub use client::{Ax, AxOpts};
 pub use event::{Event, EventKey, Metadata, Opaque, Payload};
