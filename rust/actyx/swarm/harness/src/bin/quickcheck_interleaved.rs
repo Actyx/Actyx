@@ -244,7 +244,7 @@ fn main() {
                         let events = to_events(tags);
                         tracing::debug!("Cmd {} / Node {}: Publishing {} events", cmd_id, node, events.len());
                         async move {
-                            client.0.spawn_mut(|ax| block_on(ax.publish().events(events))).await??;
+                            client.execute(|ax| block_on(ax.publish().events(events))).await??;
                             Result::<_, anyhow::Error>::Ok(())
                         }
                         .boxed()
@@ -262,7 +262,7 @@ fn main() {
                         let client = ApiClient::from_machine(sim.machine(id), app_manifest(), None).unwrap();
                         let query = to_query(tags).to_string();
                         async move {
-                            let mut req = client.0.spawn_mut(|ax| block_on(ax.subscribe(query))).await??;
+                            let mut req = client.execute(|ax| block_on(ax.subscribe(query))).await??;
                             let mut actual = 0;
                             if expected_cnt > 0 {
                                 while tokio::time::timeout(Duration::from_secs(10), req.next())

@@ -113,8 +113,7 @@ fn main() {
                             );
                             let _meta =
                                 client
-                                    .0
-                                    .spawn_mut(move |ax| {
+                                    .execute(move |ax| {
                                         block_on(ax.publish().events(
                                             (0..publish_chunk_size).map(|_| (tags!("my_test"), Payload::null())),
                                         ))
@@ -135,10 +134,7 @@ fn main() {
                 futs.push(
                     async move {
                         tracing::debug!("subscriber {} starting", id);
-                        let req = client
-                            .0
-                            .spawn_mut(|ax| block_on(ax.subscribe("FROM 'my_test'")))
-                            .await?;
+                        let req = client.execute(|ax| block_on(ax.subscribe("FROM 'my_test'"))).await?;
                         tracing::debug!(
                             "subscriber {} got {:?}",
                             id,

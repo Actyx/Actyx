@@ -62,9 +62,8 @@ fn main() -> anyhow::Result<()> {
             let start = api
                 .run(id, |api| async move {
                     let now = Timestamp::now();
-                    api.0
-                        // The move is necessary to force taking ownership of `n`
-                        .spawn_mut(move |ax| block_on(ax.publish().event(tags!("a"), &n).unwrap()))
+                    // The move is necessary to force taking ownership of `n`
+                    api.execute(move |ax| block_on(ax.publish().event(tags!("a"), &n).unwrap()))
                         .await??;
                     Ok(now)
                 })

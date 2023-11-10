@@ -2,6 +2,7 @@ use crate::m;
 use actyx_sdk::{AppManifest, Ax, AxOpts, NodeId, Url};
 use anyhow::{anyhow, Result};
 use async_std::task::block_on;
+use futures::channel::oneshot::Canceled;
 use netsim_embed::{Machine, Namespace};
 use netsim_embed::{MachineId, Netsim};
 use std::borrow::Borrow;
@@ -59,7 +60,7 @@ impl Api {
 }
 
 #[derive(Clone)]
-pub struct ApiClient(pub PinnedResource<Ax>);
+pub struct ApiClient(PinnedResource<Ax>);
 impl ApiClient {
     pub fn new(url: Url, manifest: AppManifest, namespace: Namespace) -> Self {
         Self(PinnedResource::new(move || {
@@ -101,5 +102,13 @@ impl ApiClient {
 
     pub async fn offsets(&self) -> Result<actyx_sdk::service::OffsetsResponse> {
         self.0.spawn_mut(|c| block_on(c.offsets())).await.unwrap()
+    }
+
+    pub fn execute<U, F>(&self, f: F) -> impl Future<Output = Result<U, Canceled>>
+    where
+        U: Send + 'static,
+        F: FnOnce(&mut Ax) -> U + Send + 'static,
+    {
+        self.0.spawn_mut(f)
     }
 }

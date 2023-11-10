@@ -142,7 +142,7 @@ fn main() {
             let mut present = OffsetMap::empty();
             let machine = sim.machines().first().unwrap();
             api.run(machine.id(), move |client| async move {
-                client.0.spawn_mut(|ax| block_on(ax.publish().events(events))).await??;
+                client.execute(|ax| block_on(ax.publish().events(events))).await??;
                 Ok(())
             })
             .await?;
@@ -154,8 +154,7 @@ fn main() {
             let (stream_0, max_offset) = api
                 .run(machine.id(), move |client| async move {
                     let meta = client
-                        .0
-                        .spawn_mut(|ax| block_on(ax.publish().events(make_events(1))))
+                        .execute(|ax| block_on(ax.publish().events(make_events(1))))
                         .await??;
                     let stream_0 = client.node_id().await.stream(1.into());
                     Ok((stream_0, meta.data.last().unwrap().offset))
@@ -187,8 +186,7 @@ fn main() {
                             let present = present.clone();
                             async move {
                                 let round_tripped = client
-                                    .0
-                                    .spawn_mut(|ax| block_on(ax.query("FROM allEvents").with_upper_bound(present)))
+                                    .execute(|ax| block_on(ax.query("FROM allEvents").with_upper_bound(present)))
                                     .await??
                                     .filter_map(|resp| async move {
                                         if let QueryResponse::Event(EventResponse {

@@ -149,14 +149,13 @@ mod versions {
         for i in machine_ids {
             let r = api
                 .run(*i, |api| async move {
-                    api.0
-                        .spawn_mut(|ax| {
-                            let tags = TagSet::from_iter([tag.parse().expect("A valid tag")]);
-                            let event = json!("1");
-                            block_on(ax.publish().event(tags, &event).unwrap())
-                        })
-                        .await
-                        .unwrap()
+                    api.execute(|ax| {
+                        let tags = TagSet::from_iter([tag.parse().expect("A valid tag")]);
+                        let event = json!("1");
+                        block_on(ax.publish().event(tags, &event).unwrap())
+                    })
+                    .await
+                    .unwrap()
                 })
                 .await?;
             tracing::info!("{} published: {:?}", i, r);
@@ -167,8 +166,7 @@ mod versions {
                 loop {
                     let alive_machines = api
                         .run(*i, |api| async move {
-                            api.0
-                                .spawn_mut(move |ax| block_on(ax.query(format!("FROM '{}'", tag))))
+                            api.execute(move |ax| block_on(ax.query(format!("FROM '{}'", tag))))
                                 .await
                                 .unwrap()
                         })
