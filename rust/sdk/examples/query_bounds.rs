@@ -8,7 +8,7 @@ async fn main() -> anyhow::Result<()> {
     let service = Ax::new(AxOpts::default()).await?;
 
     // Publish the events
-    service
+    let publish_response = service
         .publish()
         .event(
             tags!("temperature", "sensor:temp-sensor1"),

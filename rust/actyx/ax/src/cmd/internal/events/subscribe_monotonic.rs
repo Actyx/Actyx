@@ -2,10 +2,7 @@ use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::{request_events, EventDiagnostic},
 };
-use actyx_sdk::{
-    service::{StartFrom, SubscribeMonotonicRequest},
-    OffsetMap,
-};
+use actyx_sdk::{service::SubscribeMonotonicRequest, OffsetMap};
 use futures::{future::ready, Stream, StreamExt};
 use structopt::StructOpt;
 use util::{
@@ -36,7 +33,7 @@ impl AxCliCommand for EventsSubscribeMonotonic {
                 peer,
                 EventsRequest::SubscribeMonotonic(SubscribeMonotonicRequest {
                     session: "".into(),
-                    from: StartFrom::LowerBound(OffsetMap::default()),
+                    lower_bound: OffsetMap::default(),
                     query: opts.query,
                 }),
             )
