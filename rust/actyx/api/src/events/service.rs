@@ -394,7 +394,7 @@ impl EventService {
                 .into())
             }
         };
-        let mut lower_bound = request.from.clone();
+        let mut lower_bound = request.lower_bound.clone();
         let mut present = self.store.offsets().await?.present();
         present.union_with(&lower_bound);
 
@@ -427,7 +427,7 @@ impl EventService {
             .stop_on_error();
         let mut latest = self
             .store
-            .bounded_backward(tag_expr, OffsetMap::default(), request.from.clone())
+            .bounded_backward(tag_expr, OffsetMap::default(), request.lower_bound.clone())
             .await?
             .recv()
             .await
@@ -791,7 +791,7 @@ mod tests {
                 SubscribeMonotonicRequest {
                     query: q.to_owned(),
                     session: SessionId::from("wat"),
-                    from: StartFrom::LowerBound(OffsetMap::empty()),
+                    lower_bound: OffsetMap::empty(),
                 },
             )
             .await

@@ -56,9 +56,7 @@ pub enum EventsResponse {
 mod tests {
     use super::*;
     use actyx_sdk::{
-        app_id,
-        service::{Severity, StartFrom},
-        tags, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, Timestamp,
+        app_id, service::Severity, tags, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, Timestamp,
     };
     use std::collections::BTreeMap;
 
@@ -92,7 +90,7 @@ mod tests {
         assert_eq!(
             req(EventsRequest::SubscribeMonotonic(SubscribeMonotonicRequest {
                 session: "".into(),
-                from: StartFrom::LowerBound(OffsetMap::default()),
+                lower_bound: OffsetMap::default(),
                 query: "FROM allEvents".parse().unwrap(),
             })),
             r#"{"type":"subscribeMonotonic","query":"FROM allEvents","session":"","lowerBound":{}}"#
