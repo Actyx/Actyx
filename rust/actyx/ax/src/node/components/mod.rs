@@ -305,8 +305,10 @@ mod test {
     #[test]
     fn lifecycle_shutdown() -> Result<()> {
         let (tx, rx) = channel::bounded(42);
+        let (stx, _srx) = channel::bounded(42);
         let c = SimpleComponent::new(rx, Default::default());
         let h = c.spawn()?;
+        tx.send(ComponentRequest::RegisterSupervisor(stx)).unwrap();
         tx.send(ComponentRequest::Shutdown(ShutdownReason::TriggeredByHost))?;
         h.join().unwrap();
         Ok(())
@@ -439,8 +441,11 @@ mod test {
     #[test]
     fn respond_to_individual_request() -> Result<()> {
         let (tx, rx) = channel::bounded(42);
+        let (stx, _srx) = channel::bounded(42);
         let c = SimpleComponent::new(rx, Default::default());
         let h = c.spawn()?;
+        tx.send(ComponentRequest::RegisterSupervisor(stx)).unwrap();
+
         let (pong_tx, pong_rx) = channel::bounded(1);
 
         tx.send(ComponentRequest::Individual(SimpleRequest::Ping(pong_tx)))?;
