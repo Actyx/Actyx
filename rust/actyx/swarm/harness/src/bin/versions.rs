@@ -1,37 +1,54 @@
-#[cfg(target_os = "linux")]
-fn main() -> anyhow::Result<()> {
-    use actyx_sdk::{
-        service::{
-            EventMeta, EventResponse, EventService, Order, PublishEvent, PublishRequest, QueryRequest, QueryResponse,
-        },
-        tags, Payload,
-    };
-    use anyhow::Context;
-    use axlib::util::os_arch::Arch;
-    use escargot::CargoBuild;
-    use flate2::read::GzDecoder;
-    use futures::{future::ready, StreamExt};
-    use netsim_embed::{Ipv4Range, MachineId, Netsim};
-    use std::{
-        collections::{HashMap, HashSet},
-        fs::{create_dir, File},
-        path::{Path, PathBuf},
-        thread::sleep,
-        time::{Duration, Instant},
-    };
-    use swarm_cli::{Command, Event};
-    use swarm_harness::{api::Api, setup_env, util::app_manifest, MachineExt};
-    use tempdir::TempDir;
+use actyx_sdk::{
+    service::{
+        EventMeta, EventResponse, EventService, Order, PublishEvent, PublishRequest, QueryRequest, QueryResponse,
+    },
+    tags, Payload,
+};
+use anyhow::Context;
+use axlib::util::os_arch::Arch;
+use escargot::CargoBuild;
+use flate2::read::GzDecoder;
+use futures::{future::ready, StreamExt};
+use netsim_embed::{Ipv4Range, MachineId, Netsim};
+use std::{
+    collections::{HashMap, HashSet},
+    fs::{create_dir, File},
+    path::{Path, PathBuf},
+    thread::sleep,
+    time::{Duration, Instant},
+};
+use swarm_cli::{Command, Event};
+use swarm_harness::{api::Api, setup_env, util::app_manifest, MachineExt};
+use tempdir::TempDir;
 
-    fn get_version(tmp: &Path, version: &str) -> anyhow::Result<PathBuf> {
+enum VersionPathBuf {
+    Ax(PathBuf),    // new `ax run`
+    Actyx(PathBuf), // old `actyx` bin
+}
+
+impl VersionPathBuf {
+    fn to_command(&self) -> async_process::Command {
+        match self {
+            VersionPathBuf::Ax(path_buf) => {
+                let mut cmd = async_process::Command::new(path_buf);
+                cmd.arg("run");
+                cmd
+            }
+            VersionPathBuf::Actyx(path_buf) => async_process::Command::new(path_buf),
+        }
+    }
+
+    fn get_version(tmp: &Path, version: &str) -> anyhow::Result<VersionPathBuf> {
         if version == "current" {
-            Ok(CargoBuild::new()
-                .manifest_path(concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.toml"))
-                .current_release()
-                .bin("actyx")
-                .run()?
-                .path()
-                .to_owned())
+            Ok(VersionPathBuf::Ax(
+                CargoBuild::new()
+                    .manifest_path(concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.toml"))
+                    .current_release()
+                    .bin("ax")
+                    .run()?
+                    .path()
+                    .to_owned(),
+            ))
         } else {
             let arch = match Arch::current() {
                 Arch::x86_64 => "amd64",
@@ -58,10 +75,13 @@ fn main() -> anyhow::Result<()> {
             create_dir(&target).context("creating version dir")?;
             archive.unpack(&target)?;
 
-            Ok(target.join("actyx"))
+            Ok(VersionPathBuf::Actyx(target.join("actyx")))
         }
     }
+}
 
+#[cfg(target_os = "linux")]
+fn main() -> anyhow::Result<()> {
     let versions = ["2.0.0", "2.3.0", "2.5.0", "2.8.2", "2.10.0", "2.11.0", "current"];
 
     setup_env().context("setting up env")?;
@@ -76,9 +96,7 @@ fn main() -> anyhow::Result<()> {
         tracing::warn!("using network {:?}", sim.network(net).range());
 
         for (idx, version) in versions.iter().copied().enumerate() {
-            let mut cmd = async_process::Command::new(
-                get_version(tmp.join("bin").as_path(), version).with_context(|| format!("get_version({})", version))?,
-            );
+            let mut cmd = VersionPathBuf::get_version(tmp, version)?.to_command();
             cmd.args([
                 "--working-dir",
                 tmp.join(idx.to_string()).display().to_string().as_str(),
