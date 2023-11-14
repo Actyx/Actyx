@@ -1,5 +1,5 @@
 use actyx_sdk::{
-    service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest},
+    service::{Order, PublishEvent},
     tags, Ax, AxOpts, Payload,
 };
 use axlib::{
@@ -43,26 +43,24 @@ fn round_trip(c: &mut Criterion) {
                 let service = service.await.unwrap();
                 let offsets_before = service.offsets().await.unwrap();
                 service
-                    .publish(PublishRequest {
-                        data: input
+                    .publish()
+                    .events(
+                        input
                             .into_iter()
                             .map(|i| Payload::compact(&i).unwrap())
                             .map(|payload| PublishEvent {
                                 tags: tags!("my_tag"),
                                 payload,
-                            })
-                            .collect(),
-                    })
+                            }),
+                    )
                     .await
                     .unwrap();
                 let offsets_later = service.offsets().await.unwrap();
                 let x: Vec<_> = service
-                    .query(QueryRequest {
-                        lower_bound: Some(offsets_before.present),
-                        upper_bound: Some(offsets_later.present),
-                        order: Order::Asc,
-                        query: "FROM 'my_tag'".parse().unwrap(),
-                    })
+                    .query("FROM 'my_tag'")
+                    .with_order(Order::Asc)
+                    .with_lower_bound(offsets_before.present)
+                    .with_upper_bound(offsets_later.present)
                     .await
                     .unwrap()
                     .collect()

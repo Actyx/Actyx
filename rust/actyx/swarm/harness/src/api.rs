@@ -1,8 +1,9 @@
 use crate::m;
-use actyx_sdk::{service::EventService, AppManifest, Ax, AxOpts, NodeId, Url};
+use actyx_sdk::{AppManifest, Ax, AxOpts, NodeId, Url};
 use anyhow::{anyhow, Result};
 use async_std::task::block_on;
 use axlib::util::pinned_resource::PinnedResource;
+use futures::channel::oneshot::Canceled;
 use netsim_embed::{Machine, MachineId, Namespace, Netsim};
 use std::{borrow::Borrow, collections::BTreeMap, fmt::Display, future::Future, str::FromStr};
 use swarm_cli::{Command, Event};
@@ -93,42 +94,16 @@ impl ApiClient {
         let namespace = machine.namespace();
         Ok(ApiClient::new(origin, app_manifest, namespace))
     }
-}
 
-#[async_trait::async_trait]
-impl EventService for ApiClient {
-    async fn offsets(&self) -> Result<actyx_sdk::service::OffsetsResponse> {
+    pub async fn offsets(&self) -> Result<actyx_sdk::service::OffsetsResponse> {
         self.0.spawn_mut(|c| block_on(c.offsets())).await.unwrap()
     }
 
-    async fn publish(
-        &self,
-        request: actyx_sdk::service::PublishRequest,
-    ) -> Result<actyx_sdk::service::PublishResponse> {
-        self.0.spawn_mut(|c| block_on(c.publish(request))).await.unwrap()
-    }
-
-    async fn query(
-        &self,
-        request: actyx_sdk::service::QueryRequest,
-    ) -> Result<futures::stream::BoxStream<'static, actyx_sdk::service::QueryResponse>> {
-        self.0.spawn_mut(|c| block_on(c.query(request))).await.unwrap()
-    }
-
-    async fn subscribe(
-        &self,
-        request: actyx_sdk::service::SubscribeRequest,
-    ) -> Result<futures::stream::BoxStream<'static, actyx_sdk::service::SubscribeResponse>> {
-        self.0.spawn_mut(|c| block_on(c.subscribe(request))).await.unwrap()
-    }
-
-    async fn subscribe_monotonic(
-        &self,
-        request: actyx_sdk::service::SubscribeMonotonicRequest,
-    ) -> Result<futures::stream::BoxStream<'static, actyx_sdk::service::SubscribeMonotonicResponse>> {
-        self.0
-            .spawn_mut(|c| block_on(c.subscribe_monotonic(request)))
-            .await
-            .unwrap()
+    pub fn execute<U, F>(&self, f: F) -> impl Future<Output = Result<U, Canceled>>
+    where
+        U: Send + 'static,
+        F: FnOnce(&mut Ax) -> U + Send + 'static,
+    {
+        self.0.spawn_mut(f)
     }
 }

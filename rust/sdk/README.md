@@ -24,14 +24,14 @@ in order to see output.
 ```no_run
 use actyx_sdk::{
   app_id, AppManifest, Ax, AxOpts,
-  service::{EventService, Order, QueryRequest, QueryResponse},
+  service::{Order, QueryRequest, QueryResponse},
 };
 use futures::stream::StreamExt;
 use url::Url;
 
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
-  // add your app manifest, for brevity we will use one in trial mode
+  // Add your app manifest, for brevity we will use one in trial mode
   let manifest = AppManifest::trial(
       app_id!("com.example.my-awesome-app"),
       "display name".into(),
@@ -40,18 +40,15 @@ pub async fn main() -> anyhow::Result<()> {
 
   // Url of the locally running Actyx node
   let url = Url::parse("http://localhost:4454")?;
-  // create client for it
+
+  // Create client for it
   let service = Ax::new(AxOpts { url, manifest }).await?;
 
   // all events matching the given subscription
   // sorted backwards, i.e. youngest to oldest
   let mut events = service
-      .query(QueryRequest {
-          lower_bound: None,
-          upper_bound: None,
-          query: "FROM 'MyFish'".parse()?,
-          order: Order::Desc,
-      })
+      .query("FROM 'MyFish'")
+      .with_order(Order::Desc)
       .await?;
 
   // print out the payload of each event

@@ -1,11 +1,12 @@
 use anyhow::Result;
-use async_trait::async_trait;
 use bytes::Bytes;
 use derive_more::{Display, Error};
 use futures::{
-    future,
+    future::{self, BoxFuture, FusedFuture},
     stream::{iter, BoxStream, Stream, StreamExt},
+    FutureExt,
 };
+
 use libipld::Cid;
 use reqwest::{
     header::{CONTENT_DISPOSITION, CONTENT_TYPE},
@@ -13,26 +14,32 @@ use reqwest::{
     Client, RequestBuilder, Response, StatusCode,
 };
 use serde::{Deserialize, Serialize};
-#[allow(unused)]
-use std::time::Duration;
+
 use std::{
     fmt::Debug,
+    future::Future,
+    mem::replace,
+    pin::Pin,
     str::FromStr,
     sync::{Arc, RwLock},
 };
 use url::Url;
 
+#[cfg(feature = "with-tokio")]
+use rand::Rng;
+#[cfg(feature = "with-tokio")]
+use std::time::Duration;
+
 use crate::{
     service::{
-        AuthenticationResponse, EventService, FilesGetResponse, OffsetsResponse, PublishRequest, PublishResponse,
-        QueryRequest, QueryResponse, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest,
-        SubscribeResponse,
+        AuthenticationResponse, FilesGetResponse, OffsetsResponse, Order, PublishEvent, PublishRequest,
+        PublishResponse, QueryRequest, QueryResponse, SessionId, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
+        SubscribeRequest, SubscribeResponse,
     },
-    AppManifest, NodeId,
+    AppManifest, NodeId, OffsetMap, Payload, TagSet,
 };
-#[allow(unused)]
-use rand::Rng;
 
+/// [`Ax`]'s configuration options.
 pub struct AxOpts {
     pub url: url::Url,
     pub manifest: AppManifest,
@@ -41,7 +48,7 @@ pub struct AxOpts {
 impl AxOpts {
     /// Create an [`AxOpts`] with a custom URL and the default application manifest.
     ///
-    /// This function is similar to:
+    /// This function is similar manually constructing the following:
     /// ```no_run
     /// # use actyx_sdk::AxOpts;
     /// # fn opts() -> AxOpts {
@@ -60,7 +67,7 @@ impl AxOpts {
 
     /// Create an [`AxOpts`] with a custom application manifest and the default URL.
     ///
-    /// This function is equivalent to:
+    /// This function is similar manually constructing the following:
     /// ```no_run
     /// # use actyx_sdk::{app_id, AppManifest, AxOpts};
     /// # fn opts() -> AxOpts {
@@ -85,28 +92,14 @@ impl AxOpts {
 impl Default for AxOpts {
     /// Return a default set of options.
     ///
-    /// The default URL is `https://localhost:4454`,
+    /// The default URL is `http://localhost:4454`,
     /// for the default manifest see [`AppManifest`].
     fn default() -> Self {
         Self {
-            url: url::Url::from_str("https://localhost:4454").unwrap(),
+            url: url::Url::from_str("http://localhost:4454").unwrap(),
             manifest: Default::default(),
         }
     }
-}
-
-/// Error type that is returned in the response body by the Event Service when requests fail
-///
-/// The Event Service does not map client errors or internal errors to HTTP status codes,
-/// instead it gives more structured information using this data type, except when the request
-/// is not understood at all.
-#[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq, Eq)]
-#[display(fmt = "error {} while {}: {}", error_code, context, error)]
-#[serde(rename_all = "camelCase")]
-pub struct AxError {
-    pub error: serde_json::Value,
-    pub error_code: u16,
-    pub context: String,
 }
 
 async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) -> anyhow::Result<String> {
@@ -121,6 +114,7 @@ async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) 
     Ok(token.token)
 }
 
+/// The Actyx client.
 #[derive(Clone)]
 pub struct Ax {
     client: Client,
@@ -165,16 +159,17 @@ impl Ax {
         })
     }
 
+    /// Return the ID of the node [`Ax`] is connected to.
     pub fn node_id(&self) -> NodeId {
         self.node_id
     }
 
-    fn events_url(&self, path: &str) -> Url {
+    pub(crate) fn events_url(&self, path: &str) -> Url {
         // Safe to unwrap, because we fully control path creation
         self.base_url.join(&format!("events/{}", path)).unwrap()
     }
 
-    fn files_url(&self) -> Url {
+    pub(crate) fn files_url(&self) -> Url {
         self.base_url.join("files/").unwrap()
     }
 
@@ -190,7 +185,7 @@ impl Ax {
     /// If the service is unavailable (code 503), this method will retry to perform the
     /// request up to 10 times with exponentially increasing delay - currently,
     /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn do_request(&self, f: impl FnOnce(&Client) -> RequestBuilder) -> anyhow::Result<Response> {
+    pub(crate) async fn do_request(&self, f: impl FnOnce(&Client) -> RequestBuilder) -> anyhow::Result<Response> {
         let token = self.token.read().unwrap().clone();
         let builder = f(&self.client);
         let builder_clone = builder.try_clone();
@@ -269,6 +264,7 @@ impl Ax {
         }
     }
 
+    // TODO: #558
     pub async fn files_post(&self, files: impl IntoIterator<Item = reqwest::multipart::Part>) -> anyhow::Result<Cid> {
         let mut form = Form::new();
         for file in files {
@@ -289,6 +285,7 @@ impl Ax {
         Ok(cid)
     }
 
+    // TODO: #558
     pub async fn files_get(&self, cid_or_name: &str) -> anyhow::Result<FilesGetResponse> {
         let url = self.files_url().join(cid_or_name)?;
         let response = self.do_request(move |c| c.get(url)).await?;
@@ -318,26 +315,14 @@ impl Ax {
             })
         }
     }
-}
 
-impl Debug for Ax {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Ax")
-            .field("base_url", &self.base_url.as_str())
-            .field("app_manifest", &self.app_manifest)
-            .finish()
-    }
-}
-
-#[async_trait]
-impl EventService for Ax {
     /// Returns known offsets across local and replicated streams.
     ///
     /// If an authorization error (code 401) is returned, it will try to re-authenticate.
     /// If the service is unavailable (code 503), this method will retry to perform the
     /// request up to 10 times with exponentially increasing delay - currently,
     /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
+    pub async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
         let response = self.do_request(|c| c.get(self.events_url("offsets"))).await?;
         let bytes = response
             .bytes()
@@ -352,86 +337,101 @@ impl EventService for Ax {
         })?)
     }
 
-    /// Publishes a set of new events.
+    /// Returns a builder for publishing events.
     ///
-    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
-    /// If the service is unavailable (code 503), this method will retry to perform the
-    /// request up to 10 times with exponentially increasing delay - currently,
-    /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn publish(&self, request: PublishRequest) -> anyhow::Result<PublishResponse> {
-        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self
-            .do_request(|c| c.post(self.events_url("publish")).json(&body))
-            .await?;
-        let bytes = response
-            .bytes()
-            .await
-            .context(|| format!("getting body for GET {}", self.events_url("publish")))?;
-        Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
-            format!(
-                "deserializing publish response from {:?} received from GET {}",
-                bytes,
-                self.events_url("publish")
-            )
-        })?)
+    /// [`Publish`] implements the [`Future`] trait, thus, it can be `.await`ed.
+    ///
+    /// Example:
+    /// ```no_run
+    /// use actyx_sdk::{Ax, AxOpts, service::PublishResponse};
+    /// async fn publish_example() {
+    ///     let response = Ax::new(AxOpts::default())
+    ///         .await
+    ///         .unwrap()
+    ///         .publish()
+    ///         .await
+    ///         .unwrap();
+    ///     println!("{:?}", response);
+    /// }
+    /// ```
+    pub fn publish(&self) -> Publish<'_> {
+        Publish::new(self)
     }
 
-    /// Query events known at the time the request was received by the service.
+    /// Returns a builder to query events.
     ///
-    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
-    /// If the service is unavailable (code 503), this method will retry to perform the
-    /// request up to 10 times with exponentially increasing delay - currently,
-    /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn query(&self, request: QueryRequest) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
-        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self
-            .do_request(|c| c.post(self.events_url("query")).json(&body))
-            .await?;
-        let res = to_lines(response.bytes_stream())
-            .map(|bs| serde_json::from_slice(bs.as_ref()))
-            // FIXME this swallows deserialization errors, silently dropping event envelopes
-            .filter_map(|res| future::ready(res.ok()));
-        Ok(res.boxed())
+    /// Query order defined in the query itself takes precedence over options.
+    /// See [`Query::with_order`] for more information.
+    ///
+    /// [`Query`] implements the [`Future`] trait, thus, it can be `.await`ed.
+    ///
+    /// Example:
+    /// ```no_run
+    /// use actyx_sdk::{Ax, AxOpts, service::QueryResponse};
+    /// use futures::stream::StreamExt;
+    /// async fn query_example() {
+    ///     let mut response = Ax::new(AxOpts::default())
+    ///         .await
+    ///         .unwrap()
+    ///         .query("FROM allEvents")
+    ///         .await
+    ///         .unwrap();
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
+    pub fn query<Q: Into<String> + Send>(&self, query: Q) -> Query<'_> {
+        Query::new(self, query)
     }
 
-    /// Suscribe to events that are currently known by the service followed by new "live" events.
+    /// Returns a builder to subscribe to an event query.
     ///
-    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
-    /// If the service is unavailable (code 503), this method will retry to perform the
-    /// request up to 10 times with exponentially increasing delay - currently,
-    /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
-        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self
-            .do_request(|c| c.post(self.events_url("subscribe")).json(&body))
-            .await?;
-        let res = to_lines(response.bytes_stream())
-            .map(|bs| serde_json::from_slice(bs.as_ref()))
-            // FIXME this swallows deserialization errors, silently dropping event envelopes
-            .filter_map(|res| future::ready(res.ok()));
-        Ok(res.boxed())
+    /// [`Subscribe`] implements the [`Future`] trait, thus, it can be `.await`ed.
+    ///
+    /// Example:
+    /// ```no_run
+    /// use actyx_sdk::{Ax, AxOpts, service::SubscribeResponse};
+    /// use futures::stream::StreamExt;
+    /// async fn subscribe_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let mut subscribe_stream = service.subscribe("FROM 'example:tag'").await.unwrap();
+    ///     while let Some(response) = subscribe_stream.next().await {
+    ///         println!("{:?}", response)
+    ///     }
+    /// }
+    /// ```
+    pub fn subscribe<Q: Into<String> + Send>(&self, query: Q) -> Subscribe<'_> {
+        Subscribe::new(self, query)
     }
 
-    /// Subscribe to events that are currently known by the service followed by new "live" events until
-    /// the service learns about events that need to be sorted earlier than an event already received.
+    /// Returns a builder to subscribe to an event query.
     ///
-    /// If an authorization error (code 401) is returned, it will try to re-authenticate.
-    /// If the service is unavailable (code 503), this method will retry to perform the
-    /// request up to 10 times with exponentially increasing delay - currently,
-    /// this behavior is only available if the `with-tokio` feature is enabled.
-    async fn subscribe_monotonic(
-        &self,
-        request: SubscribeMonotonicRequest,
-    ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self
-            .do_request(|c| c.post(self.events_url("subscribe_monotonic")).json(&body))
-            .await?;
-        let res = to_lines(response.bytes_stream())
-            .map(|bs| serde_json::from_slice(bs.as_ref()))
-            // FIXME this swallows deserialization errors, silently dropping event envelopes
-            .filter_map(|res| future::ready(res.ok()));
-        Ok(res.boxed())
+    /// [`SubscribeMonotonic`] implements the [`Future`] trait, thus, it can be `.await`ed.
+    ///
+    /// Example:
+    /// ```no_run
+    /// use actyx_sdk::{Ax, AxOpts, service::SubscribeMonotonicResponse};
+    /// use futures::stream::StreamExt;
+    /// async fn subscribe_monotonic_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let mut subscribe_stream = service.subscribe_monotonic("FROM 'example:tag'").await.unwrap();
+    ///     while let Some(response) = subscribe_stream.next().await {
+    ///         println!("{:?}", response)
+    ///     }
+    /// }
+    /// ```
+    pub fn subscribe_monotonic<Q: Into<String> + Send>(&self, query: Q) -> SubscribeMonotonic<'_> {
+        SubscribeMonotonic::new(self, query)
+    }
+}
+
+impl Debug for Ax {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Ax")
+            .field("base_url", &self.base_url.as_str())
+            .field("app_manifest", &self.app_manifest)
+            .finish()
     }
 }
 
@@ -456,6 +456,837 @@ pub(crate) fn to_lines(stream: impl Stream<Item = Result<Bytes, reqwest::Error>>
         .map(|res| res.unwrap())
         .map(to_lines)
         .flatten()
+}
+
+/// Request builder for event publishing.
+///
+/// Warning: [`Publish`] implements the [`Future`] trait and as such it can be polled.
+/// Calling _any_ [`Publish`] function after polling will result in a panic!
+pub enum Publish<'a> {
+    Initial { client: &'a Ax, request: PublishRequest },
+    Pending(BoxFuture<'a, anyhow::Result<PublishResponse>>),
+    Void,
+}
+
+impl<'a> Publish<'a> {
+    fn new(client: &'a Ax) -> Self {
+        Self::Initial {
+            client,
+            request: PublishRequest { data: vec![] },
+        }
+    }
+
+    /// Add an event.
+    ///
+    /// This adds the given event to the list of events that will be emitted once this
+    /// publishing request is submitted by using `.await` on it.
+    ///
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Publish`] will result in a panic.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{tags, Ax, AxOpts, service::PublishResponse};
+    /// async fn event_example() -> PublishResponse {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     service
+    ///         .publish()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor1"),
+    ///             &serde_json::json!({ "temperature": 10 }),
+    ///         )
+    ///         .unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor2"),
+    ///             &serde_json::json!({ "temperature": 21 }),
+    ///         )
+    ///         .unwrap()
+    ///         .await
+    ///         .unwrap()
+    /// }
+    /// ```
+    pub fn event<E: Serialize>(mut self, tags: TagSet, event: &E) -> Result<Self, serde_cbor::Error> {
+        if let Self::Initial { ref mut request, .. } = self {
+            request.data.push(PublishEvent {
+                tags,
+                payload: Payload::compact(event)?,
+            });
+            return Ok(self);
+        }
+        panic!("Calling Publish::event after polling.")
+    }
+
+    /// Add events from an iterable.
+    ///
+    /// This adds the given events to the list of events that will be emitted once this
+    /// publishing request is submitted by using `.await` on it.
+    ///
+    /// # Panics
+    ///
+    ///  Calling this function after polling [`Publish`] will result in a panic.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{tags, Ax, AxOpts, Payload, service::{PublishEvent, PublishResponse}};
+    /// async fn events_example() -> PublishResponse {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     service
+    ///         .publish()
+    ///         .events([
+    ///             PublishEvent {
+    ///                 tags: tags!("temperature", "sensor:temp-sensor1"),
+    ///                 payload: Payload::compact(&serde_json::json!({ "temperature": 10 })).unwrap(),
+    ///             },
+    ///             PublishEvent {
+    ///                 tags: tags!("temperature", "sensor:temp-sensor2"),
+    ///                 payload: Payload::compact(&serde_json::json!({ "temperature": 27 })).unwrap(),
+    ///             },
+    ///         ])
+    ///         .await
+    ///         .unwrap()
+    /// }
+    /// ```
+    pub fn events<E: IntoIterator<Item = impl Into<PublishEvent>>>(mut self, events: E) -> Self {
+        if let Self::Initial { ref mut request, .. } = self {
+            request.data.extend(events.into_iter().map(Into::into));
+            return self;
+        }
+        panic!("Calling Publish::events after polling.");
+    }
+}
+
+impl<'a> Future for Publish<'a> {
+    type Output = anyhow::Result<PublishResponse>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+        let this = self.get_mut();
+        loop {
+            *this = match replace(this, Publish::Void) {
+                Publish::Initial { client, request } => {
+                    let publish_response = async move {
+                        let publish_url = client.events_url("publish");
+                        let response = client.do_request(|c| c.post(publish_url).json(&request)).await?;
+                        let body = response.bytes().await?;
+                        Ok(serde_json::from_slice::<PublishResponse>(&body)?)
+                    };
+                    Publish::Pending(publish_response.boxed())
+                }
+                Publish::Pending(mut publish_response_future) => {
+                    let polled = publish_response_future.poll_unpin(cx);
+                    if polled.is_pending() {
+                        *this = Publish::Pending(publish_response_future);
+                    }
+                    return polled;
+                }
+                Publish::Void => panic!("Polling a terminated Publish future"),
+            };
+        }
+    }
+}
+
+impl<'a> FusedFuture for Publish<'a> {
+    fn is_terminated(&self) -> bool {
+        matches!(self, Publish::Void)
+    }
+}
+
+/// Request builder for queries.
+///
+/// Warning: [`Query`] implements the [`Future`] trait, as such it can be polled.
+/// Calling _any_ [`Query`] function after polling will result in a panic!
+pub enum Query<'a> {
+    Initial { client: &'a Ax, request: QueryRequest },
+    Pending(BoxFuture<'a, anyhow::Result<BoxStream<'static, QueryResponse>>>),
+    Void,
+}
+
+impl<'a> Query<'a> {
+    fn new<Q: Into<String>>(client: &'a Ax, query: Q) -> Self {
+        Self::Initial {
+            client,
+            request: QueryRequest {
+                query: query.into(),
+                lower_bound: Some(OffsetMap::empty()),
+                upper_bound: None,
+                order: Order::Asc,
+            },
+        }
+    }
+
+    /// Add a (exclusive) lower bound to the query.
+    ///
+    /// For more information on offsets, as well as lower and upper bounds refer to the
+    /// [offsets and partitions](https://developer.actyx.com/docs/conceptual/event-streams#offsets-and-partitions) documentation page.
+    ///
+    /// The lower bound limits the start of the query events.
+    /// As an example, consider the following (example) events:
+    /// ```json
+    /// { "offset": 1, "event": { "temperature": 10 } }
+    /// { "offset": 3, "event": { "temperature": 12 } }
+    /// { "offset": 14, "event": { "temperature": 9 } }
+    /// ```
+    /// If you set the lower bound to `10`, only the last event will be returned.
+    ///
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Query`] will result in a panic.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{Ax, AxOpts, service::QueryResponse};
+    /// use futures::stream::StreamExt;
+    /// async fn lower_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     // It's not always the case that you need to read the past
+    ///     // hence, you can get the current offsets and read from then onwards
+    ///     let present_offsets = service.offsets().await.unwrap().present;
+    ///     let mut response = service.query("FROM allEvents")
+    ///         .with_lower_bound(present_offsets)
+    ///         .await
+    ///         .unwrap();
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Generating an `OffsetMap` out of thin air is usually not possible because they
+    /// require stream IDs — which require knowledge of the streams and so on.
+    /// Hence, a more involved and useful example requires you to perform a query to
+    /// get an offset map when the query finishes streaming all results.
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use futures::stream::StreamExt;
+    /// async fn lower_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     // We're publishing events for a completely functional example
+    ///     let publish_response = service
+    ///         .publish()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor1"),
+    ///             &serde_json::json!({ "temperature": 10 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor2"),
+    ///             &serde_json::json!({ "temperature": 21 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor3"),
+    ///             &serde_json::json!({ "temperature": 40 }),
+    ///         ).unwrap()
+    ///         .await.unwrap();
+    ///     // Query for the "halfway" event
+    ///     let mut query_response = service
+    ///         .query("FROM 'sensor:temp-sensor2'")
+    ///         .await
+    ///         .unwrap();
+    ///     // This loop is a bit of a dirty hack for demonstration purposes
+    ///     // in real world usage you will most likely be using the events
+    ///     // and keeping the offset map in the end.
+    ///     let offsets = loop {
+    ///         let result = query_response.next().await.unwrap();
+    ///         if let QueryResponse::Offsets(offsets) = result {
+    ///             break offsets.offsets;
+    ///         }
+    ///     };
+    ///     // Query for all 'temperature' events with the previous query `OffsetMap`
+    ///     // as a lower bound. We're expecting to only see events after the "halfway"
+    ///     // event — {"temperature"}
+    ///     let mut query_response = service
+    ///         .query("FROM 'temperature'")
+    ///         .with_lower_bound(offsets.clone())
+    ///         .await.unwrap();
+    ///     while let Some(response) = query_response.next().await {
+    ///         println!("{:?}", response);
+    ///     }
+    /// }
+    /// ```
+    pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
+        if let Self::Initial { ref mut request, .. } = self {
+            request.lower_bound = Some(lower_bound);
+            return self;
+        }
+        panic!("Calling Query::with_lower_bound after polling.")
+    }
+
+    /// Add an (inclusive) upper bound to the query.
+    ///
+    /// For more information on offsets, as well as lower and upper bounds refer to the
+    /// [offsets and partitions](https://developer.actyx.com/docs/conceptual/event-streams#offsets-and-partitions) documentation page.
+    ///
+    /// The upper bound limits the start of the query events.
+    /// As an example, consider the following (example) events:
+    /// ```json
+    /// { "offset": 1, "event": { "temperature": 10 } }
+    /// { "offset": 3, "event": { "temperature": 12 } }
+    /// { "offset": 14, "event": { "temperature": 9 } }
+    /// ```
+    /// If you set the upper bound to `10`, the first two events will be returned.
+    ///
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Query`] will result in a panic.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{Ax, AxOpts};
+    /// use futures::stream::StreamExt;
+    /// async fn upper_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let present_offsets = service.offsets().await.unwrap().present;
+    ///     let mut response = service.query("FROM allEvents")
+    ///         .with_upper_bound(present_offsets)
+    ///         .await
+    ///         .unwrap();
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Generating an `OffsetMap` out of thin air is usually not possible because they
+    /// require stream IDs — which require knowledge of the streams and so on.
+    /// Hence, a more involved and useful example requires you to perform a query to
+    /// get an offset map when the query finishes streaming all results.
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use futures::stream::StreamExt;
+    /// async fn upper_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     // We're publishing events for a completely functional example
+    ///     let publish_response = service
+    ///         .publish()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor1"),
+    ///             &serde_json::json!({ "temperature": 10 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor2"),
+    ///             &serde_json::json!({ "temperature": 21 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor3"),
+    ///             &serde_json::json!({ "temperature": 40 }),
+    ///         ).unwrap()
+    ///         .await.unwrap();
+    ///     // Query for the "halfway" event
+    ///     let mut query_response = service
+    ///         .query("FROM 'sensor:temp-sensor2'")
+    ///         .await
+    ///         .unwrap();
+    ///     // This loop is a bit of a dirty hack for demonstration purposes
+    ///     // in real world usage you will most likely be using the events
+    ///     // and keeping the offset map in the end.
+    ///     let offsets = loop {
+    ///         let result = query_response.next().await.unwrap();
+    ///         if let QueryResponse::Offsets(offsets) = result {
+    ///             break offsets.offsets;
+    ///         }
+    ///     };
+    ///     // Query for all 'temperature' events with the previous query `OffsetMap`
+    ///     // as an upper bound. We're expecting to only see events after the "halfway"
+    ///     // event — {"temperature"}
+    ///     let mut query_response = service
+    ///         .query("FROM 'temperature'")
+    ///         .with_upper_bound(offsets.clone())
+    ///         .await.unwrap();
+    ///     while let Some(response) = query_response.next().await {
+    ///         println!("{:?}", response);
+    ///     }
+    /// }
+    /// ```
+    pub fn with_upper_bound(mut self, upper_bound: OffsetMap) -> Self {
+        if let Self::Initial { ref mut request, .. } = self {
+            request.upper_bound = Some(upper_bound);
+            return self;
+        }
+        panic!("Calling Query::with_upper_bound after polling.")
+    }
+
+    /// Dual to [`Query::with_upper_bound`], removes the upper bound.
+    ///
+    /// When no upper bound is provided or is removed using this function
+    /// it will be filled in by Actyx when processing the query, the upper bound
+    /// will then be the currently known offsets (in other words, the "present").
+    ///
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Query`] will result in a panic.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{Ax, AxOpts};
+    /// use futures::stream::StreamExt;
+    /// async fn upper_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let present_offsets = service.offsets().await.unwrap().present;
+    ///     let mut response = service.query("FROM allEvents")
+    ///         .with_upper_bound(present_offsets)
+    ///         // Remove the upper bound (the example is obtuse for demonstration purposes)
+    ///         .without_upper_bound()
+    ///         .await
+    ///         .unwrap();
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
+    pub fn without_upper_bound(mut self) -> Self {
+        if let Self::Initial { ref mut request, .. } = self {
+            request.upper_bound = None;
+            return self;
+        }
+        panic!("Calling Query::without_upper_bound after polling.")
+    }
+
+    /// Set the query's event order.
+    ///
+    /// By default, this value is set to [`Order::Asc`], however,
+    /// order set in the query takes precedence over the order defined using this function.
+    /// The precedence order flows like so:
+    ///
+    /// 1. Explicit `ORDER` in query
+    /// 2. Inferred from `AGGREGATE` in query
+    /// 3. [`Query::with_order`] call
+    ///
+    /// As an example, consider the following (example) events:
+    /// ```json
+    /// { "offset": 1, "event": { "temperature": 10 } }
+    /// { "offset": 3, "event": { "temperature": 12 } }
+    /// { "offset": 14, "event": { "temperature": 9 } }
+    /// ```
+    /// If your query sets [`Order::Desc`], the result will instead look like:
+    /// ```json
+    /// { "offset": 14, "event": { "temperature": 9 } }
+    /// { "offset": 3, "event": { "temperature": 12 } }
+    /// { "offset": 1, "event": { "temperature": 10 } }
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Query`] will result in a panic.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{Ax, AxOpts, service::Order};
+    /// use futures::stream::StreamExt;
+    /// async fn order_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let mut response = service.query("FROM allEvents")
+    ///         .with_order(Order::Desc)
+    ///         .await
+    ///         .unwrap();
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
+    pub fn with_order(mut self, order: Order) -> Self {
+        if let Self::Initial { ref mut request, .. } = self {
+            request.order = order;
+            return self;
+        }
+        panic!("Calling Query::with_order after polling.")
+    }
+}
+
+impl<'a> Future for Query<'a> {
+    type Output = anyhow::Result<BoxStream<'static, QueryResponse>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+        let this = self.get_mut();
+        loop {
+            *this = match replace(this, Query::Void) {
+                Query::Initial { client, request } => {
+                    let query_response = async move {
+                        let query_url = client.events_url("query");
+                        let response = client.do_request(|c| c.post(query_url).json(&request)).await?;
+                        let response_stream = to_lines(response.bytes_stream())
+                            .map(|bytes| serde_json::from_slice::<QueryResponse>(&bytes))
+                            // FIXME this swallows deserialization errors, silently dropping event envelopes
+                            .filter_map(|res| future::ready(res.ok()))
+                            .boxed();
+                        Ok(response_stream)
+                    };
+                    Query::Pending(query_response.boxed())
+                }
+                Query::Pending(mut query_responses_future) => {
+                    let polled = query_responses_future.poll_unpin(cx);
+                    if polled.is_pending() {
+                        *this = Query::Pending(query_responses_future);
+                    }
+                    return polled;
+                }
+                Query::Void => panic!("Polling a terminated Query future"),
+            }
+        }
+    }
+}
+
+impl<'a> FusedFuture for Query<'a> {
+    fn is_terminated(&self) -> bool {
+        matches!(self, Query::Void)
+    }
+}
+
+/// Request builder for subscriptions.
+///
+/// Warning: [`Subscribe`] implements the [`Future`] trait, as such it can be polled.
+/// Calling _any_ [`Subscribe`] function after polling will result in a panic!
+pub enum Subscribe<'a> {
+    Initial { client: &'a Ax, request: SubscribeRequest },
+    Pending(BoxFuture<'a, anyhow::Result<BoxStream<'static, SubscribeResponse>>>),
+    Void,
+}
+
+impl<'a> Subscribe<'a> {
+    fn new<Q: Into<String>>(client: &'a Ax, query: Q) -> Self {
+        Self::Initial {
+            client,
+            request: SubscribeRequest {
+                query: query.into(),
+                lower_bound: Some(OffsetMap::empty()),
+            },
+        }
+    }
+
+    /// Add a (exclusive) lower bound to the subscription query.
+    ///
+    /// For more information on offsets, as well as lower and upper bounds refer to the
+    /// [offsets and partitions](https://developer.actyx.com/docs/conceptual/event-streams#offsets-and-partitions) documentation page.
+    ///
+    /// The lower bound limits the start of the query events.
+    /// As an example, consider the following (example) events:
+    /// ```json
+    /// { "offset": 1, "event": { "temperature": 10 } }
+    /// { "offset": 3, "event": { "temperature": 12 } }
+    /// { "offset": 14, "event": { "temperature": 9 } }
+    /// ```
+    /// If you set the lower bound to `10`, the first event to be returned
+    /// would be the last of the example.
+    ///
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Subscribe`] will result in a panic.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{Ax, AxOpts};
+    /// use futures::stream::StreamExt;
+    /// async fn lower_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let present_offsets = service.offsets().await.unwrap().present;
+    ///     let mut response = service.subscribe("FROM allEvents")
+    ///         .with_lower_bound(present_offsets)
+    ///         .await
+    ///         .unwrap();
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Generating an `OffsetMap` out of thin air is usually not possible because they
+    /// require stream IDs — which require knowledge of the streams and so on.
+    /// Hence, a more involved and useful example requires you to perform a query to
+    /// get an offset map when the query finishes streaming all results.
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use futures::stream::StreamExt;
+    /// async fn lower_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     // We're publishing events for a completely functional example
+    ///     let publish_response = service
+    ///         .publish()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor1"),
+    ///             &serde_json::json!({ "temperature": 10 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor2"),
+    ///             &serde_json::json!({ "temperature": 21 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor3"),
+    ///             &serde_json::json!({ "temperature": 40 }),
+    ///         ).unwrap()
+    ///         .await.unwrap();
+    ///     // Query for the "halfway" event
+    ///     let mut query_response = service
+    ///         .query("FROM 'sensor:temp-sensor2'")
+    ///         .await
+    ///         .unwrap();
+    ///     // This loop is a dirty hack for demonstration purposes
+    ///     // in real world usage you will most likely be using the events
+    ///     // and keeping the offset map in the end.
+    ///     let offsets = loop {
+    ///         let result = query_response.next().await.unwrap();
+    ///         if let QueryResponse::Offsets(offsets) = result {
+    ///             break offsets.offsets;
+    ///         }
+    ///     };
+    ///     // Subcribe for all 'temperature' events with the previous query `OffsetMap`
+    ///     // as a lower bound. We're expecting to only see events after the "halfway"
+    ///     // event — {"temperature"}
+    ///     let mut subscribe_response = service
+    ///         .subscribe("FROM 'temperature'")
+    ///         .with_lower_bound(offsets.clone())
+    ///         .await.unwrap();
+    ///     while let Some(response) = query_response.next().await {
+    ///         println!("{:?}", response);
+    ///     }
+    /// }
+    /// ```
+    pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
+        if let Self::Initial { ref mut request, .. } = self {
+            request.lower_bound = Some(lower_bound);
+            return self;
+        }
+        panic!("Calling Subscribe::with_lower_bound after polling.")
+    }
+}
+
+impl<'a> Future for Subscribe<'a> {
+    type Output = anyhow::Result<BoxStream<'static, SubscribeResponse>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+        let this = self.get_mut();
+        loop {
+            *this = match replace(this, Self::Void) {
+                Self::Initial { client, request } => {
+                    let query_response = async move {
+                        let query_url = client.events_url("subscribe");
+                        let response = client.do_request(|c| c.post(query_url).json(&request)).await?;
+                        let response_stream = to_lines(response.bytes_stream())
+                            .map(|bytes| serde_json::from_slice::<SubscribeResponse>(&bytes))
+                            // FIXME this swallows deserialization errors, silently dropping event envelopes
+                            .filter_map(|res| future::ready(res.ok()))
+                            .boxed();
+                        Ok(response_stream)
+                    };
+                    Self::Pending(query_response.boxed())
+                }
+                Self::Pending(mut query_responses_future) => {
+                    let polled = query_responses_future.poll_unpin(cx);
+                    if polled.is_pending() {
+                        *this = Self::Pending(query_responses_future);
+                    }
+                    return polled;
+                }
+                Self::Void => panic!("Polling a terminated Query future"),
+            }
+        }
+    }
+}
+
+impl<'a> FusedFuture for Subscribe<'a> {
+    fn is_terminated(&self) -> bool {
+        matches!(self, Subscribe::Void)
+    }
+}
+
+/// Request builder for monotonic subscriptions.
+///
+/// Monotonic subscriptions keep track of the highest sort order
+/// ([`LamportTimestamp`](crate::timestamp::LamportTimestamp) and
+/// [`StreamId`](crate::scalars::StreamId)) seen so far, ending the stream with a
+/// [`SubscribeMonotonicResponse::TimeTravel`](SubscribeMonotonicResponse::TimeTravel)
+/// message if the next event would be out of order.
+///
+/// Warning: [`SubscribeMonotonic`] implements the [`Future`] trait, as such it can be polled.
+/// Calling _any_ [`SubscribeMonotonic`] function after polling will result in a panic!
+pub enum SubscribeMonotonic<'a> {
+    Initial {
+        client: &'a Ax,
+        request: SubscribeMonotonicRequest,
+    },
+    Pending(BoxFuture<'a, anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>>>),
+    Void,
+}
+
+impl<'a> SubscribeMonotonic<'a> {
+    fn new<Q: Into<String>>(client: &'a Ax, query: Q) -> Self {
+        Self::Initial {
+            client,
+            request: SubscribeMonotonicRequest {
+                query: query.into(),
+                session: SessionId::from("me"),
+                lower_bound: OffsetMap::empty(),
+            },
+        }
+    }
+
+    // NOTE: Currently not being used. This is an "artifact" for future reference.
+    #[allow(dead_code)]
+    fn with_session_id<T: Into<SessionId>>(mut self, session_id: T) -> Self {
+        if let Self::Initial { ref mut request, .. } = self {
+            request.session = session_id.into();
+            return self;
+        }
+        panic!("Calling SubscribeMonotonic::with_session_id after polling.")
+    }
+
+    // TODO: there's info missing about the difference between Subscribe and SubscribeMonotonic
+    /// Add a (exclusive) lower bound to the subscription query.
+    ///
+    /// For more information on offsets, as well as lower and upper bounds refer to the
+    /// [offsets and partitions](https://developer.actyx.com/docs/conceptual/event-streams#offsets-and-partitions) documentation page.
+    ///
+    /// The lower bound limits the start of the query events.
+    /// As an example, consider the following (example) events:
+    /// ```json
+    /// { "offset": 1, "event": { "temperature": 10 } }
+    /// { "offset": 3, "event": { "temperature": 12 } }
+    /// { "offset": 14, "event": { "temperature": 9 } }
+    /// ```
+    /// If you set the lower bound to `10`, the first event to be returned
+    /// would be the last of the example.
+    ///
+    /// # Panics
+    ///
+    /// Calling this function after polling [`Subscribe`] will result in a panic.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{Ax, AxOpts};
+    /// use futures::stream::StreamExt;
+    /// async fn lower_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     let present_offsets = service.offsets().await.unwrap().present;
+    ///     let mut response = service.subscribe("FROM allEvents")
+    ///         .with_lower_bound(present_offsets)
+    ///         .await
+    ///         .unwrap();
+    ///     while let Some(event) = response.next().await {
+    ///         println!("{:?}", event);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Generating an `OffsetMap` out of thin air is usually not possible because they
+    /// require stream IDs — which require knowledge of the streams and so on.
+    /// Hence, a more involved and useful example requires you to perform a query to
+    /// get an offset map when the query finishes streaming all results.
+    ///
+    /// ```no_run
+    /// use actyx_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use futures::stream::StreamExt;
+    /// async fn lower_bound_example() {
+    ///     let service = Ax::new(AxOpts::default()).await.unwrap();
+    ///     // We're publishing events for a completely functional example
+    ///     let publish_response = service
+    ///         .publish()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor1"),
+    ///             &serde_json::json!({ "temperature": 10 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor2"),
+    ///             &serde_json::json!({ "temperature": 21 }),
+    ///         ).unwrap()
+    ///         .event(
+    ///             tags!("temperature", "sensor:temp-sensor3"),
+    ///             &serde_json::json!({ "temperature": 40 }),
+    ///         ).unwrap()
+    ///         .await.unwrap();
+    ///     // Query for the "halfway" event
+    ///     let mut query_response = service
+    ///         .query("FROM 'sensor:temp-sensor2'")
+    ///         .await
+    ///         .unwrap();
+    ///     // This loop is a dirty hack for demonstration purposes
+    ///     // in real world usage you will most likely be using the events
+    ///     // and keeping the offset map in the end.
+    ///     let offsets = loop {
+    ///         let result = query_response.next().await.unwrap();
+    ///         if let QueryResponse::Offsets(offsets) = result {
+    ///             break offsets.offsets;
+    ///         }
+    ///     };
+    ///     // Subcribe for all 'temperature' events with the previous query `OffsetMap`
+    ///     // as a lower bound. We're expecting to only see events after the "halfway"
+    ///     // event — {"temperature"}
+    ///     let mut subscribe_response = service
+    ///         .subscribe_monotonic("FROM 'temperature'")
+    ///         .with_lower_bound(offsets.clone())
+    ///         .await.unwrap();
+    ///     while let Some(response) = query_response.next().await {
+    ///         println!("{:?}", response);
+    ///     }
+    /// }
+    /// ```
+    pub fn with_lower_bound(mut self, lower_bound: OffsetMap) -> Self {
+        if let Self::Initial { ref mut request, .. } = self {
+            request.lower_bound = lower_bound;
+            return self;
+        }
+        panic!("Calling SubscribeMonotonic::with_lower_bound after polling.")
+    }
+}
+
+impl<'a> Future for SubscribeMonotonic<'a> {
+    type Output = anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>>;
+
+    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+        let this = self.get_mut();
+        loop {
+            *this = match replace(this, Self::Void) {
+                Self::Initial { client, request } => {
+                    let query_response = async move {
+                        let query_url = client.events_url("subscribe_monotonic");
+                        let response = client.do_request(|c| c.post(query_url).json(&request)).await?;
+                        let response_stream = to_lines(response.bytes_stream())
+                            .map(|bytes| serde_json::from_slice::<SubscribeMonotonicResponse>(&bytes))
+                            // FIXME this swallows deserialization errors, silently dropping event envelopes
+                            .filter_map(|res| future::ready(res.ok()))
+                            .boxed();
+                        Ok(response_stream)
+                    };
+                    Self::Pending(query_response.boxed())
+                }
+                Self::Pending(mut query_responses_future) => {
+                    let polled = query_responses_future.poll_unpin(cx);
+                    if polled.is_pending() {
+                        *this = Self::Pending(query_responses_future);
+                    }
+                    return polled;
+                }
+                Self::Void => panic!("Polling a terminated Query future"),
+            }
+        }
+    }
+}
+
+impl<'a> FusedFuture for SubscribeMonotonic<'a> {
+    fn is_terminated(&self) -> bool {
+        matches!(self, SubscribeMonotonic::Void)
+    }
+}
+
+/// Error type that is returned in the response body by the Event Service when requests fail
+///
+/// The Event Service does not map client errors or internal errors to HTTP status codes,
+/// instead it gives more structured information using this data type, except when the request
+/// is not understood at all.
+#[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq, Eq)]
+#[display(fmt = "error {} while {}: {}", error_code, context, error)]
+#[serde(rename_all = "camelCase")]
+pub struct AxError {
+    pub error: serde_json::Value,
+    pub error_code: u16,
+    pub context: String,
 }
 
 pub(crate) trait WithContext {
@@ -510,6 +1341,172 @@ impl From<(String, serde_cbor::Error)> for AxError {
             error: serde_json::json!(format!("{:?}", e.1)),
             error_code: 102,
             context: e.0,
+        }
+    }
+}
+
+/// Tests for the builder. Most of these are "dumb" as to keep sure the values or
+/// semantics aren't changed without a "purposeful" change — i.e. they are here to make
+/// you double check when you change semantics or ensure you didn't miss an `else` that
+/// leads to an unconditional panic (not that has ever happened...),
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, RwLock};
+
+    use reqwest::Client;
+
+    use crate::{
+        service::{Order, PublishEvent},
+        tags, Ax, AxOpts, NodeId, OffsetMap, Payload,
+    };
+
+    use super::{Publish, Query, Subscribe, SubscribeMonotonic};
+
+    /// The normal [`Ax::new`] connects to a client, the client returned by this
+    /// function is a "mock" client instead that allows us to test the builder
+    /// functions without requiring a connection to Actyx
+    fn new_test_client() -> Ax {
+        let opts = AxOpts::default();
+        let client = Client::new();
+
+        Ax {
+            client,
+            base_url: opts.url,
+            token: Arc::new(RwLock::new("empty_token".to_string())),
+            app_manifest: opts.manifest,
+            node_id: NodeId::new([
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ]),
+        }
+    }
+
+    #[test]
+    fn test_publish_event() {
+        let ax = new_test_client();
+        let publish = ax
+            .publish()
+            .event(tags!("test"), &"test_string")
+            .expect("The event payload should be serializable");
+
+        if let Publish::Initial { request, .. } = publish {
+            assert_eq!(
+                request.data,
+                vec![PublishEvent::from((
+                    tags!("test"),
+                    Payload::compact(&"test_string").expect("The event payload must be serializable")
+                ))]
+            )
+        }
+    }
+
+    #[test]
+    fn test_publish_events() {
+        let ax = new_test_client();
+        let publish = ax.publish().events([(
+            tags!("test"),
+            Payload::compact(&"test_string").expect("The event payload should be serializable"),
+        )]);
+
+        if let Publish::Initial { request, .. } = publish {
+            assert_eq!(
+                request.data,
+                vec![PublishEvent::from((
+                    tags!("test"),
+                    Payload::compact(&"test_string").expect("The event payload must be serializable")
+                ))]
+            )
+        }
+    }
+
+    #[test]
+    fn test_query() {
+        let ax = new_test_client();
+        let query = ax.query("FROM allEvents");
+        if let Query::Initial { request, .. } = query {
+            assert_eq!(request.query, "FROM allEvents");
+        }
+    }
+
+    #[test]
+    fn test_query_with_lower_bound() {
+        let ax = new_test_client();
+        let query = ax.query("FROM allEvents").with_lower_bound(OffsetMap::empty());
+        if let Query::Initial { request, .. } = query {
+            assert_eq!(request.lower_bound, Some(OffsetMap::empty()));
+        }
+    }
+
+    #[test]
+    fn test_query_with_upper_bound() {
+        let ax = new_test_client();
+        let query = ax.query("FROM allEvents").with_upper_bound(OffsetMap::empty());
+        if let Query::Initial { request, .. } = query {
+            assert_eq!(request.upper_bound, Some(OffsetMap::empty()));
+        }
+    }
+
+    #[test]
+    fn test_query_without_upper_bound() {
+        let ax = new_test_client();
+        let query = ax.query("FROM allEvents").without_upper_bound();
+        if let Query::Initial { request, .. } = query {
+            assert_eq!(request.upper_bound, None);
+        }
+    }
+
+    #[test]
+    fn test_query_with_order() {
+        let ax = new_test_client();
+        let query = ax.query("FROM allEvents").with_order(Order::Desc);
+        if let Query::Initial { request, .. } = query {
+            assert_eq!(request.order, Order::Desc);
+        }
+    }
+
+    #[test]
+    fn test_subcribe() {
+        let ax = new_test_client();
+        let subscribe = ax.subscribe("FROM allEvents");
+        if let Subscribe::Initial { request, .. } = subscribe {
+            assert_eq!(request.query, "FROM allEvents");
+        }
+    }
+
+    #[test]
+    fn test_subcribe_with_lower_bound() {
+        let ax = new_test_client();
+        let subscribe = ax.subscribe("FROM allEvents").with_lower_bound(OffsetMap::empty());
+        if let Subscribe::Initial { request, .. } = subscribe {
+            assert_eq!(request.lower_bound, Some(OffsetMap::empty()));
+        }
+    }
+
+    #[test]
+    fn test_subscribe_monotonic() {
+        let ax = new_test_client();
+        let subscribe = ax.subscribe_monotonic("FROM allEvents");
+        if let SubscribeMonotonic::Initial { request, .. } = subscribe {
+            assert_eq!(request.query, "FROM allEvents");
+        }
+    }
+
+    #[test]
+    fn test_subscribe_monotonic_with_session_id() {
+        let ax = new_test_client();
+        let subscribe = ax.subscribe_monotonic("FROM allEvents").with_session_id("session_id");
+        if let SubscribeMonotonic::Initial { request, .. } = subscribe {
+            assert_eq!(request.session.as_str(), "session_id");
+        }
+    }
+
+    #[test]
+    fn test_subscribe_monotonic_with_start_from() {
+        let ax = new_test_client();
+        let subscribe = ax
+            .subscribe_monotonic("FROM allEvents")
+            .with_lower_bound(OffsetMap::empty());
+        if let SubscribeMonotonic::Initial { request, .. } = subscribe {
+            assert_eq!(request.lower_bound, OffsetMap::empty());
         }
     }
 }

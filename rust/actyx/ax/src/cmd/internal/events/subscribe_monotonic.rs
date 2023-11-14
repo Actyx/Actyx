@@ -6,10 +6,7 @@ use crate::{
         gen_stream::GenStream,
     },
 };
-use actyx_sdk::{
-    service::{StartFrom, SubscribeMonotonicRequest},
-    OffsetMap,
-};
+use actyx_sdk::{service::SubscribeMonotonicRequest, OffsetMap};
 use futures::{future::ready, Stream, StreamExt};
 use structopt::StructOpt;
 
@@ -36,7 +33,7 @@ impl AxCliCommand for EventsSubscribeMonotonic {
                 peer,
                 EventsRequest::SubscribeMonotonic(SubscribeMonotonicRequest {
                     session: "".into(),
-                    from: StartFrom::LowerBound(OffsetMap::default()),
+                    lower_bound: OffsetMap::default(),
                     query: opts.query,
                 }),
             )

@@ -108,8 +108,9 @@ mod tests {
         let ax_private_key: PrivateKey = "0WBFFicIHbivRZXAlO7tPs7rCX6s7u2OIMJ2mx9nwg0w=".parse().unwrap();
         let ax_public_key = PublicKey::from(ax_private_key);
         let app_id = app_id!("com.actyx.auth-test");
-        let created_at = Utc.ymd(1970, 1, 1).and_hms(0, 1, 1);
-        let expires_at = Utc.ymd(1971, 1, 1).and_hms(0, 1, 1);
+        // There's no expect for some reason
+        let created_at = Utc.with_ymd_and_hms(1970, 1, 1, 0, 1, 1).unwrap();
+        let expires_at = Utc.with_ymd_and_hms(1971, 1, 1, 0, 1, 1).unwrap();
         let email: String = "customer@example.com".into();
 
         let serialized_license = serde_json::json!({

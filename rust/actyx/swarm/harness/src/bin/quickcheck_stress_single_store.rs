@@ -4,18 +4,14 @@ fn main() {
 
     use actyx_sdk::{
         language::TagExpr,
-        service::{EventMeta, EventResponse, EventService, SubscribeRequest, SubscribeResponse},
-        tags, Offset, Url,
+        service::{EventMeta, EventResponse, SubscribeResponse},
+        tags, Offset, Payload, Url,
     };
+    use async_std::task::block_on;
     use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
     use quickcheck::{empty_shrinker, Arbitrary, Gen, QuickCheck, TestResult};
     use swarm_cli::{Event, EventRoute};
-    use swarm_harness::{
-        api::ApiClient,
-        m, run_netsim, setup_env,
-        util::{app_manifest, to_events, to_publish},
-        HarnessOpts,
-    };
+    use swarm_harness::{api::ApiClient, m, run_netsim, setup_env, util::app_manifest, HarnessOpts};
 
     #[derive(Clone, Debug)]
     struct TestInput {
@@ -105,8 +101,6 @@ fn main() {
                 .enumerate()
                 .map(|(i, client)| {
                     async move {
-                        let tags = (0..publish_chunk_size).map(|_| tags!("my_test")).collect::<Vec<_>>();
-                        let events = to_events(tags.clone());
                         for c in 0..publish_chunks_per_client {
                             tracing::debug!(
                                 "Client {}/{}: Chunk {}/{} (chunk size {})",
@@ -116,7 +110,14 @@ fn main() {
                                 publish_chunks_per_client,
                                 publish_chunk_size,
                             );
-                            let _meta = client.publish(to_publish(events.clone())).await?;
+                            let _meta =
+                                client
+                                    .execute(move |ax| {
+                                        block_on(ax.publish().events(
+                                            (0..publish_chunk_size).map(|_| (tags!("my_test"), Payload::null())),
+                                        ))
+                                    })
+                                    .await??;
                         }
                         tracing::info!("Client {}/{} done", i + 1, concurrent_publishes);
                         Result::<_, anyhow::Error>::Ok(())
@@ -125,19 +126,14 @@ fn main() {
                 })
                 .collect::<FuturesUnordered<_>>();
 
-            let request = SubscribeRequest {
-                lower_bound: None,
-                query: "FROM 'my_test'".parse().unwrap(),
-            };
             for (id, client) in (0..concurrent_subscribes)
                 .map(|_| ApiClient::new(origin.clone(), app_manifest(), namespace))
                 .enumerate()
             {
-                let request = request.clone();
                 futs.push(
                     async move {
                         tracing::debug!("subscriber {} starting", id);
-                        let req = client.subscribe(request).await;
+                        let req = client.execute(|ax| block_on(ax.subscribe("FROM 'my_test'"))).await?;
                         tracing::debug!(
                             "subscriber {} got {:?}",
                             id,

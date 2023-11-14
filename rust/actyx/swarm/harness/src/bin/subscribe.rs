@@ -5,26 +5,12 @@ fn main() -> anyhow::Result<()> {
         time::Duration,
     };
 
-    use actyx_sdk::{
-        app_id,
-        language::Query,
-        service::{EventService, PublishEvent, PublishRequest},
-        tags, AppManifest, Payload, Timestamp,
-    };
+    use actyx_sdk::{app_id, language::Query, tags, AppManifest, Timestamp};
     use anyhow::Context;
-    use async_std::future::timeout;
+    use async_std::{future::timeout, task::block_on};
     use structopt::StructOpt;
     use swarm_cli::{Command, Event, TimedEvent};
     use swarm_harness::{api::Api, fully_meshed, m, util::format_offsets, HarnessOpts};
-
-    fn event(n: usize) -> PublishRequest {
-        PublishRequest {
-            data: vec![PublishEvent {
-                tags: tags!("a"),
-                payload: Payload::from_json_str(&format!("{}", n)).unwrap(),
-            }],
-        }
-    }
 
     #[allow(clippy::just_underscores_and_digits)]
     fn percentiles<T: Ord>(mut v: Vec<T>) -> (T, T, T) {
@@ -71,7 +57,9 @@ fn main() -> anyhow::Result<()> {
             let start = api
                 .run(id, |api| async move {
                     let now = Timestamp::now();
-                    api.publish(event(n)).await?;
+                    // The move is necessary to force taking ownership of `n`
+                    api.execute(move |ax| block_on(ax.publish().event(tags!("a"), &n).unwrap()))
+                        .await??;
                     Ok(now)
                 })
                 .await?;

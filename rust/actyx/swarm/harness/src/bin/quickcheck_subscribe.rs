@@ -6,18 +6,18 @@ fn main() {
     };
 
     use actyx_sdk::{
-        service::{EventMeta, EventResponse, EventService, QueryRequest, QueryResponse},
+        service::{EventMeta, EventResponse, QueryResponse},
         tag, OffsetMap, TagSet,
     };
     use anyhow::Context;
-    use async_std::future::timeout;
+    use async_std::{future::timeout, task::block_on};
     use futures::{stream::FuturesUnordered, StreamExt};
     use quickcheck::{Gen, QuickCheck, TestResult};
     use swarm_cli::Event;
     use swarm_harness::{
         api::Api,
         fully_meshed, run_netsim, setup_env,
-        util::{app_manifest, to_events, to_publish},
+        util::{app_manifest, to_events},
         HarnessOpts,
     };
 
@@ -56,7 +56,8 @@ fn main() {
                 .map(|(machine, tags)| {
                     api.run(machine.id(), move |client| async move {
                         let events = to_events(tags);
-                        let meta = client.publish(to_publish(events.clone())).await?;
+                        let e = events.clone(); // NOTE: Unsure how to do this better
+                        let meta = client.execute(|ax| block_on(ax.publish().events(e))).await??;
                         let stream_0 = client.node_id().await.stream(0.into());
                         Result::<_, anyhow::Error>::Ok((stream_0, meta.data.last().map(|x| x.offset), events))
                     })
@@ -92,45 +93,37 @@ fn main() {
                 .map(|m| m.id())
                 .map(|id| {
                     let upper_bound = present.clone();
-                    api.run(id, move |client| {
-                        let request = QueryRequest {
-                            lower_bound: None,
-                            upper_bound: Some(upper_bound),
-                            query: "FROM allEvents".parse().unwrap(),
-                            order: actyx_sdk::service::Order::Asc,
-                        };
-                        async move {
-                            let round_tripped = timeout(
-                                Duration::from_secs(5),
-                                client
-                                    .query(request)
-                                    .await?
-                                    .filter_map(|resp| async move {
-                                        match resp {
-                                            QueryResponse::Event(EventResponse {
-                                                meta: EventMeta::Event { key, meta },
-                                                payload,
-                                            }) if !meta.tags.contains(&tag!("files"))
-                                                && !meta.tags.contains(&tag!("event_routing"))
-                                                && !meta.tags.contains(&tag!("discovery")) =>
-                                            {
-                                                Some((key.stream, (meta.tags, payload)))
-                                            }
-                                            _ => None,
+                    api.run(id, move |client| async move {
+                        let round_tripped = timeout(
+                            Duration::from_secs(5),
+                            client
+                                .execute(|ax| block_on(ax.query("FROM allEvents").with_upper_bound(upper_bound)))
+                                .await??
+                                .filter_map(|resp| async move {
+                                    match resp {
+                                        QueryResponse::Event(EventResponse {
+                                            meta: EventMeta::Event { key, meta },
+                                            payload,
+                                        }) if !meta.tags.contains(&tag!("files"))
+                                            && !meta.tags.contains(&tag!("event_routing"))
+                                            && !meta.tags.contains(&tag!("discovery")) =>
+                                        {
+                                            Some((key.stream, (meta.tags, payload)))
                                         }
-                                    })
-                                    .collect::<Vec<_>>(),
-                            )
-                            .await
-                            .with_context(|| format!("query for {} timed out", id))?
-                            .into_iter()
-                            .fold(BTreeMap::default(), |mut acc, (stream, payload)| {
-                                acc.entry(stream).or_insert_with(Vec::new).push(payload);
-                                acc
-                            });
+                                        _ => None,
+                                    }
+                                })
+                                .collect::<Vec<_>>(),
+                        )
+                        .await
+                        .with_context(|| format!("query for {} timed out", id))?
+                        .into_iter()
+                        .fold(BTreeMap::default(), |mut acc, (stream, payload)| {
+                            acc.entry(stream).or_insert_with(Vec::new).push(payload);
+                            acc
+                        });
 
-                            Result::<_, anyhow::Error>::Ok(round_tripped)
-                        }
+                        Result::<_, anyhow::Error>::Ok(round_tripped)
                     })
                 })
                 .collect::<FuturesUnordered<_>>();

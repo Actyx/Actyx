@@ -4,11 +4,8 @@
 			"path": "sdk"
 		},
 		{
-			"path": "pond"
+			"path": "node-manager"
 		},
-		{
-			"path": "../integration"
-		}
 	],
 	"settings": {
 		"typescript.tsdk": "node_modules/typescript/lib"

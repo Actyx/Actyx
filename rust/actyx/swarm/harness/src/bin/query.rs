@@ -1,12 +1,14 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
     use actyx_sdk::{
-        app_id,
-        service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest, QueryResponse},
+        service::{PublishEvent, QueryResponse},
         tags, AppManifest, OffsetMap, Payload,
     };
     use anyhow::Context;
-    use async_std::{future::timeout, task::sleep};
+    use async_std::{
+        future::timeout,
+        task::{block_on, sleep},
+    };
     use futures::{future, StreamExt};
     use std::{
         net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -15,17 +17,6 @@ fn main() -> anyhow::Result<()> {
     use structopt::StructOpt;
     use swarm_cli::Event;
     use swarm_harness::{api::Api, fully_meshed, HarnessOpts};
-
-    fn make_events(n: usize) -> Vec<PublishEvent> {
-        (0..n)
-            .map(|i| PublishEvent {
-                tags: tags!("a", "b"),
-                payload: Payload::from_json_str(&format!("{}", i)).unwrap(),
-            })
-            .collect()
-    }
-
-    let app_manifest = AppManifest::trial(app_id!("com.example.query"), "Query test".into(), "0.1.0".into()).unwrap();
 
     const N: usize = 1000;
 
@@ -39,24 +30,26 @@ fn main() -> anyhow::Result<()> {
 
     swarm_harness::setup_env()?;
     swarm_harness::run_netsim(opts, move |mut sim| async move {
-        let api = Api::new(&mut sim, app_manifest)?;
+        let api = Api::new(&mut sim, AppManifest::default())?;
 
-        for machine in sim.machines() {
+        for (idx, machine) in sim.machines().iter().enumerate() {
+            tracing::error!("{}", idx);
             api.run(machine.id(), |api| async move {
-                api.publish(PublishRequest { data: make_events(N) }).await?;
+                api.execute(|ax| {
+                    block_on(ax.publish().events((0..N).map(|i| PublishEvent {
+                        tags: tags!("a", "b"),
+                        payload: Payload::from_json_str(&format!("{}", i)).unwrap(),
+                    })))
+                })
+                .await??;
 
                 let upper_bound = api.offsets().await?.present;
                 let count = (&upper_bound - &OffsetMap::default()) as usize;
                 assert!(count >= N);
 
                 let result = api
-                    .query(QueryRequest {
-                        lower_bound: None,
-                        upper_bound: Some(upper_bound),
-                        query: "FROM allEvents".parse()?,
-                        order: Order::Asc,
-                    })
-                    .await?
+                    .execute(|ax| block_on(ax.query("FROM allEvents")))
+                    .await??
                     .filter(|resp| future::ready(matches!(resp, QueryResponse::Event(_))))
                     .collect::<Vec<_>>()
                     .await;
@@ -91,15 +84,10 @@ fn main() -> anyhow::Result<()> {
 
                         let result = timeout(
                             Duration::from_secs(10),
-                            api.query(QueryRequest {
-                                lower_bound: None,
-                                upper_bound: Some(upper_bound),
-                                query: "FROM allEvents".parse()?,
-                                order: Order::Asc,
-                            })
-                            .await?
-                            .filter(|resp| future::ready(matches!(resp, QueryResponse::Event(_))))
-                            .collect::<Vec<_>>(),
+                            api.execute(move |ax| block_on(ax.query("FROM allEvents").with_upper_bound(upper_bound)))
+                                .await??
+                                .filter(|resp| future::ready(matches!(resp, QueryResponse::Event(_))))
+                                .collect::<Vec<_>>(),
                         )
                         .await
                         .with_context(|| format!("query for {} timed out", machine.id()))?;

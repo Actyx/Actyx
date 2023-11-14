@@ -4,16 +4,16 @@ fn main() {
 
     use actyx_sdk::{
         language::{Query, Source, TagAtom, TagExpr},
-        service::{EventService, SubscribeRequest},
         Tag, TagSet,
     };
+    use async_std::task::block_on;
     use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
     use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
     use swarm_cli::Event;
     use swarm_harness::{
         api::ApiClient,
         fully_meshed, run_netsim, setup_env,
-        util::{app_manifest, to_events, to_publish},
+        util::{app_manifest, to_events},
         HarnessOpts,
     };
 
@@ -244,7 +244,7 @@ fn main() {
                         let events = to_events(tags);
                         tracing::debug!("Cmd {} / Node {}: Publishing {} events", cmd_id, node, events.len());
                         async move {
-                            client.publish(to_publish(events.clone())).await?;
+                            client.execute(|ax| block_on(ax.publish().events(events))).await??;
                             Result::<_, anyhow::Error>::Ok(())
                         }
                         .boxed()
@@ -261,12 +261,8 @@ fn main() {
                         let id = machines[node % n_nodes];
                         let client = ApiClient::from_machine(sim.machine(id), app_manifest(), None).unwrap();
                         let query = to_query(tags).to_string();
-                        let request = SubscribeRequest {
-                            lower_bound: None,
-                            query,
-                        };
                         async move {
-                            let mut req = client.subscribe(request).await?;
+                            let mut req = client.execute(|ax| block_on(ax.subscribe(query))).await??;
                             let mut actual = 0;
                             if expected_cnt > 0 {
                                 while tokio::time::timeout(Duration::from_secs(10), req.next())
