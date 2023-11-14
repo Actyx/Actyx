@@ -1,12 +1,12 @@
 use anyhow::{anyhow, Error};
-use std::cmp::Ordering;
-use std::cmp::Reverse;
-use std::fmt;
-use std::fmt::Display;
-use std::str::FromStr;
+use std::{
+    cmp::{Ordering, Reverse},
+    fmt,
+    fmt::Display,
+    str::FromStr,
+};
 
-use crate::products::Product;
-use crate::versions::Version;
+use crate::{products::Product, versions::Version};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Release {

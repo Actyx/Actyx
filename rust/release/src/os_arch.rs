@@ -1,9 +1,13 @@
 #![allow(clippy::upper_case_acronyms)]
 
-use std::convert::TryFrom;
-use std::fmt;
-use std::fmt::{Display, Error as FmtError, Formatter};
-use std::{borrow::Borrow, ops::Sub, str::FromStr};
+use std::{
+    borrow::Borrow,
+    convert::TryFrom,
+    fmt,
+    fmt::{Display, Error as FmtError, Formatter},
+    ops::Sub,
+    str::FromStr,
+};
 
 /// This macro declares an enum where the variant names match their string representation
 ///

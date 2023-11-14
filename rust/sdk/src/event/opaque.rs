@@ -3,8 +3,7 @@ use cbor_data::{
     codec::{ReadCbor, WriteCbor},
     Cbor,
 };
-use serde::de::Error;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::sync::Arc;
 
 /// A ref-counted slice of memory holding a compact binary representation of an event payload

@@ -1,10 +1,13 @@
 #![cfg(target_os = "linux")]
 use actyx_sdk::service::OffsetsResponse;
 use anyhow::{anyhow, bail, ensure};
-use axlib::util::{os_arch::Arch, version::Version};
 use axlib::{
     cmd::ActyxCliResult,
-    util::formats::{ActyxOSCode, NodesInspectResponse},
+    util::{
+        formats::{ActyxOSCode, NodesInspectResponse},
+        os_arch::Arch,
+        version::Version,
+    },
 };
 use escargot::{format::Message, CargoBuild};
 use flate2::read::GzDecoder;

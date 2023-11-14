@@ -1,28 +1,22 @@
-use crate::changes::Change;
-use crate::products::Product;
-use crate::releases::Release;
-use crate::repo::get_changes_for_product;
-use crate::versions::apply_changes;
-use crate::versions_ignore_file::VersionsIgnoreFile;
+use crate::{
+    changes::Change, products::Product, releases::Release, repo::get_changes_for_product, versions::apply_changes,
+    versions_ignore_file::VersionsIgnoreFile,
+};
 use anyhow::anyhow;
-use chrono::SecondsFormat;
-use chrono::TimeZone;
+use chrono::{SecondsFormat, TimeZone};
 use git2::{Oid, Repository};
 use itertools::Itertools;
-use rayon::iter::IntoParallelRefIterator;
-use rayon::iter::ParallelIterator;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use semver::Version;
 use serde::Serialize;
-use std::cmp::Ordering;
-use std::collections::BTreeMap;
-use std::collections::BinaryHeap;
-use std::fmt;
-use std::io::Write;
-use std::str;
 use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BinaryHeap},
+    fmt,
     fs::File,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Write},
     path::Path,
+    str,
     str::FromStr,
 };
 use tempfile::NamedTempFile;

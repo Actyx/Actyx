@@ -843,8 +843,7 @@ mod tests {
 
     #[test]
     fn query() -> Result<()> {
-        use super::Num::*;
-        use super::{Arr, Ind, Obj};
+        use super::{Arr, Ind, Num::*, Obj};
         use crate::app_id;
         use SimpleExpr::*;
         use TagAtom::*;
