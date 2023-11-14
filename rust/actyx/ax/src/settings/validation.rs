@@ -131,6 +131,8 @@ impl Validator {
 
 #[cfg(test)]
 mod test {
+    use crate::settings::Scope;
+
     use super::*;
     use serde_json::{json, Value};
 
@@ -161,13 +163,14 @@ mod test {
                 result: expected,
             } = serde_json::from_value(spec).unwrap();
             let validator = Validator::new(schema).unwrap();
-            let result = validator.validate_with_defaults(input.as_ref(), &".".into());
+            let result = validator.validate_with_defaults(input.as_ref(), &Scope::root());
             assert_eq!(result, expected, "spec: \"{}\"", name);
         }
     }
 
     #[test]
     fn should_work_with_extra_formats() {
+        let root = Scope::root();
         let schema_json: serde_json::Value = serde_json::from_str(
             r#"{
                 "type": "string",
@@ -177,14 +180,14 @@ mod test {
         .unwrap();
         let validator = Validator::new(schema_json).unwrap();
 
-        let res = validator.validate_with_defaults(Some(&json!(1)), &".".into());
+        let res = validator.validate_with_defaults(Some(&json!(1)), &root);
         if let Err(Error::ValidationFailed(err)) = res {
             assert_eq!(err.errors.len(), 2);
         } else {
             panic!("Expected ValidationFailed, got {:?}", res);
         }
 
-        let res = validator.validate_with_defaults(Some(&json!("foo")), &".".into());
+        let res = validator.validate_with_defaults(Some(&json!("foo")), &root);
         if let Err(Error::ValidationFailed(err)) = res {
             assert_eq!(err.errors.len(), 1);
             assert_eq!(err.errors[0].title, "Format is wrong");
@@ -196,7 +199,7 @@ mod test {
             Some(&json!(
                 "/ip4/3.121.252.117/tcp/4001/p2p/QmaWM8pMoMYkJrdbUZkxHyUavH3tCxRdCC9NYCnXRfQ4Eg"
             )),
-            &".".into(),
+            &root,
         );
         assert!(res.is_ok(), "got Err: {:?}", res.err());
     }

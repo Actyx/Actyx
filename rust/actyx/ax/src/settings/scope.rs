@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 const HIERARCHY_SEPARATOR: char = '/';
 const ROOT_SCOPE: char = '.';
 
@@ -11,20 +13,25 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+// NOTE: we could replace our whole json pointer implementation with a library
+// reducing the code we need to manage and so on
+// however, this code is very pervasive in Actyx
+// also, existing implementations of json pointer dont seem to have the
+// diffing capability
 #[derive(Ord, Eq, PartialOrd, PartialEq, Clone, Debug)]
 pub struct Scope {
     pub tokens: Vec<String>,
 }
 
-impl std::convert::TryFrom<String> for Scope {
-    type Error = Error;
+impl FromStr for Scope {
+    type Err = Error;
 
-    fn try_from(value: String) -> Result<Self> {
-        if value == "." {
-            return Ok(Self { tokens: vec![] });
+    fn from_str(s: &str) -> Result<Self> {
+        if s == "." {
+            return Ok(Self::root());
         }
 
-        let tokens: Vec<String> = value.split(HIERARCHY_SEPARATOR).map(|x| x.to_string()).collect();
+        let tokens: Vec<String> = s.split(HIERARCHY_SEPARATOR).map(|x| x.to_string()).collect();
         let scope = Self { tokens };
         if scope.tokens.iter().all(|t| !t.is_empty()) {
             Ok(scope)
@@ -34,18 +41,19 @@ impl std::convert::TryFrom<String> for Scope {
     }
 }
 
-impl std::str::FromStr for Scope {
-    type Err = Error;
+impl TryFrom<&str> for Scope {
+    type Error = Error;
 
-    fn from_str(s: &str) -> Result<Self> {
-        Scope::try_from(s.to_string())
+    fn try_from(value: &str) -> Result<Self> {
+        FromStr::from_str(value)
     }
 }
 
-#[cfg(test)]
-impl std::convert::From<&'static str> for Scope {
-    fn from(value: &'static str) -> Self {
-        value.to_string().try_into().unwrap()
+impl TryFrom<String> for Scope {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self> {
+        FromStr::from_str(&value)
     }
 }
 
@@ -118,16 +126,17 @@ impl<'de> serde::de::Visitor<'de> for ScopeVisitor {
     where
         E: serde::de::Error,
     {
-        use std::str::FromStr;
         Scope::from_str(s).map_err(|_| serde::de::Error::invalid_value(serde::de::Unexpected::Str(s), &self))
     }
 }
 
 #[allow(clippy::len_without_is_empty)]
 impl Scope {
+    /// Return the root scope.
     pub fn root() -> Self {
         Self { tokens: vec![] }
     }
+
     pub fn append(&self, other: &Self) -> Self {
         let mut new_tokens = self.tokens.clone();
         let mut other_tokens = other.tokens.clone();
@@ -234,55 +243,41 @@ mod test {
 
     #[test]
     fn empty() {
-        vec!["", "/", "//", "/a", "a/", "/a/", "a//b"]
-            .into_iter()
-            .for_each(|s| {
-                assert!(std::panic::catch_unwind(|| Scope::from(s)).is_err());
-            });
+        for scope in ["", "/", "//", "/a", "a/", "/a/", "a//b"] {
+            assert!(Scope::try_from(scope).is_err());
+        }
     }
 
     #[test]
     fn to_string() {
-        let scope = "a/b/c";
-        assert_eq!(Scope::from(scope).to_string(), scope)
-    }
-
-    #[test]
-    fn into_string() {
-        let scope = "a/b/c";
-        let str: String = Scope::from("a/b/c").into();
-        assert_eq!(str, scope)
-    }
-
-    #[test]
-    fn ref_into_string() {
-        let str: String = (&Scope::from("a/b/c")).into();
-        assert_eq!(str, "a/b/c")
+        let scope = Scope::try_from("a/b/c").unwrap();
+        assert_eq!(&scope.to_string(), "a/b/c");
     }
 
     #[test]
     fn append() {
-        vec![
+        let test_input = [
             (".", ".", "."),
             (".", "a", "a"),
             ("a", ".", "a"),
             ("a/b", "c/d", "a/b/c/d"),
-        ]
-        .into_iter()
-        .for_each(|(input, other, expected)| {
+        ];
+        for (input, other, expected) in test_input {
+            let head = Scope::try_from(input).unwrap();
+            let tail = Scope::try_from(other).unwrap();
             assert_eq!(
-                Scope::from(input).append(&Scope::from(other)),
-                Scope::from(expected),
+                head.append(&tail),
+                Scope::try_from(expected).unwrap(),
                 "input was ({}, {})",
                 input,
                 other
             );
-        });
+        }
     }
 
     #[test]
     fn diff() {
-        vec![
+        let test_input = [
             ("a", "a", None),
             ("a", "a/b", None),
             ("a/a", "a/b", Some("a")),
@@ -294,74 +289,69 @@ mod test {
             ("a/b/c/d", "a/b/a/b", Some("c/d")),
             ("a.b.c", "a.b.c", None),
             ("a.b.c/d/e", "a.b.c", Some("d/e")),
-        ]
-        .into_iter()
-        .for_each(|(input, other, expected)| {
-            assert_eq!(
-                Scope::from(input).diff(&Scope::from(other)),
-                expected.map(Scope::from),
-                "input was: ({}, {})",
-                input,
-                other
-            )
-        });
+        ];
+        for (input, other, diff_result) in test_input {
+            let a = Scope::try_from(input).unwrap();
+            let b = Scope::try_from(other).unwrap();
+            let diff = a.diff(&b);
+            let expected_diff = diff_result.map(|diff| Scope::try_from(diff).unwrap());
+            assert_eq!(diff, expected_diff, "input was: ({}, {})", input, other)
+        }
     }
 
     #[test]
     fn starts_with() {
-        let my_first_scope: Scope = "first/scope/really".into();
-        let root_scope = Scope::root();
-        assert!(my_first_scope.starts_with(&"first".into()));
-        assert!(!Scope::from("first").starts_with(&my_first_scope));
-        assert!(!my_first_scope.starts_with(&"whatever".into()));
-        assert!(my_first_scope.starts_with(&root_scope));
-        assert!(!root_scope.starts_with(&my_first_scope));
+        let scope = Scope::try_from("first/scope/really").unwrap();
+        let first_scope = Scope::try_from("first").unwrap();
+        let other_scope = Scope::try_from("other").unwrap();
+        // Check that start_with validates the right and wrong scopes correctly
+        assert!(scope.starts_with(&first_scope));
+        assert!(!scope.starts_with(&other_scope));
+        // Every scope starts at the root scope
+        assert!(scope.starts_with(&Scope::root()));
     }
 
     #[test]
     fn first() {
-        vec![(".", None), ("a", Some("a")), ("a/b/c/d", Some("a"))]
-            .into_iter()
-            .for_each(|(input, expected)| {
-                let actual = Scope::from(input).first();
-                assert_eq!(actual, expected.map(String::from), "input was: [{}]", input)
-            });
+        let test_input = [(".", None), ("a", Some("a")), ("a/b/c/d", Some("a"))];
+        for (input, expected) in test_input {
+            let actual = Scope::try_from(input).unwrap().first();
+            assert_eq!(actual, expected.map(ToString::to_string), "input was: [{}]", input)
+        }
     }
 
     #[test]
     fn split_first() {
-        vec![(".", None), ("a", Some(("a", "."))), ("a/b/c/d", Some(("a", "b/c/d")))]
-            .into_iter()
-            .for_each(|(input, expected)| {
-                let actual = Scope::from(input).split_first();
-                assert_eq!(
-                    actual,
-                    expected.map(move |(head, tail)| (head.into(), tail.into())),
-                    "input was: [{}]",
-                    input
-                )
-            });
+        let test_input = [(".", None), ("a", Some(("a", "."))), ("a/b/c/d", Some(("a", "b/c/d")))];
+        for (input, expected) in test_input {
+            let actual = Scope::try_from(input).unwrap().split_first();
+            assert_eq!(
+                actual,
+                expected.map(move |(head, tail)| (Scope::try_from(head).unwrap(), Scope::try_from(tail).unwrap())),
+                "input was: [{}]",
+                input
+            )
+        }
     }
 
     #[test]
     fn split_last() {
-        vec![(".", None), ("a", Some((".", "a"))), ("a/b/c/d", Some(("a/b/c", "d")))]
-            .into_iter()
-            .for_each(|(input, expected)| {
-                let actual = Scope::from(input).split_last();
-                assert_eq!(
-                    actual,
-                    expected.map(|(init, last)| (init.into(), last.into())),
-                    "input was: [{}]",
-                    input
-                )
-            });
+        let test_input = [(".", None), ("a", Some((".", "a"))), ("a/b/c/d", Some(("a/b/c", "d")))];
+        for (input, expected) in test_input {
+            let actual = Scope::try_from(input).unwrap().split_last();
+            assert_eq!(
+                actual,
+                expected.map(|(init, last)| (Scope::try_from(init).unwrap(), Scope::try_from(last).unwrap())),
+                "input was: [{}]",
+                input
+            )
+        }
     }
 
     #[test]
     fn serialize() {
         assert_eq!(
-            serde_json::to_value(Scope::from("a/b/c")).unwrap(),
+            serde_json::to_value(Scope::try_from("a/b/c").unwrap()).unwrap(),
             serde_json::json!("a/b/c")
         );
     }
@@ -369,6 +359,6 @@ mod test {
     #[test]
     fn deserialize() {
         let scope: Scope = serde_json::from_value(serde_json::json!("a/b/c")).unwrap();
-        assert_eq!(scope, Scope::from("a/b/c"));
+        assert_eq!(scope, Scope::try_from("a/b/c").unwrap());
     }
 }
