@@ -262,6 +262,7 @@ fn err_response_size() {
 
 #[test]
 fn err_request_size() {
+    crate::util::setup_logger();
     test_setup(
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
             .to_owned(),
@@ -278,4 +279,5 @@ fn err_request_size() {
             );
         },
     );
+    panic!("woah");
 }

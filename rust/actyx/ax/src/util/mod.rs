@@ -49,8 +49,10 @@ pub fn setup_logger_with_level(level: u8) {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
         .with_env_filter(EnvFilter::new(env))
-        .with_writer(std::io::stderr)
-        .finish();
+        .with_writer(std::io::stderr);
+    #[cfg(test)]
+    let subscriber = subscriber.with_test_writer();
+    let subscriber = subscriber.finish();
     tracing::subscriber::set_global_default(subscriber).ok();
     log_panics::init();
 }
