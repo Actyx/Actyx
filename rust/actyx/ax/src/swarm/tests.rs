@@ -211,7 +211,7 @@ async fn must_not_lose_events_through_compaction() -> Result<()> {
     // compact continuously
     store.spawn_task(
         "compaction".to_owned(),
-        store.clone().compaction_loop(Duration::from_micros(0)),
+        store.clone().compaction_loop(Duration::from_micros(0)).boxed(),
     );
 
     let tags_query =

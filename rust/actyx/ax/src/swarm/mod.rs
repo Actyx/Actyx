@@ -42,7 +42,10 @@ use actyx_sdk::{
     tag,
 };
 pub use banyan::{store::BlockWriter, Forest as BanyanForest, StreamBuilder, Transaction as BanyanTransaction};
-use futures::{future, stream, Future, FutureExt, Stream, StreamExt, TryStreamExt};
+use futures::{
+    future::{self, BoxFuture},
+    stream, FutureExt, Stream, StreamExt, TryStreamExt,
+};
 pub use ipfs_embed::{Executor as IpfsEmbedExecutor, StorageConfig, StorageService};
 pub use libipld::codec::Codec as IpldCodec;
 use once_cell::sync::Lazy;
@@ -576,7 +579,7 @@ impl<'a> BanyanStoreGuard<'a> {
         let store = self.outer();
         self.spawn_task(
             format!("careful_ingestion({})", stream_id),
-            store.careful_ingestion(stream_id, stream.clone()),
+            store.careful_ingestion(stream_id, stream.clone()).boxed(),
         );
         tracing::debug!("publish new stream_id {}", stream_id);
         self.publish_new_stream_id(stream_id);
@@ -666,7 +669,7 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 
     /// Spawns a new task that will be shutdown when [`BanyanStore`] is dropped.
-    pub fn spawn_task(&mut self, name: String, task: impl Future<Output = ()> + Send + 'static) {
+    pub fn spawn_task(&mut self, name: String, task: BoxFuture<'static, ()>) {
         tracing::debug!("Spawning task '{}'!", name);
         let name2 = name.clone();
         let handle =
@@ -1072,35 +1075,40 @@ impl BanyanStore {
         drop(routing_table_span);
 
         tracing::info!("starting maintenance tasks");
-        banyan.spawn_task("cache_debug".to_owned(), async move {
-            loop {
-                tokio::time::sleep(Duration::from_secs(60)).await;
-                tracing::debug!(?branch_cache);
+        banyan.spawn_task(
+            "cache_debug".to_owned(),
+            async move {
+                loop {
+                    tokio::time::sleep(Duration::from_secs(60)).await;
+                    tracing::debug!(?branch_cache);
+                }
             }
-        });
+            .boxed(),
+        );
         banyan.spawn_task(
             "gossip_ingest".to_owned(),
-            Gossip::ingest(banyan.clone(), cfg.topic.clone(), swarm_observer.clone()).await?,
+            Gossip::ingest(banyan.clone(), cfg.topic.clone(), swarm_observer.clone())
+                .await?
+                .boxed(),
         );
         if cfg.enable_root_map {
             banyan.spawn_task(
                 "gossip_publish_root_map".to_owned(),
-                banyan.data.gossip.publish_root_map(
-                    banyan.clone(),
-                    cfg.topic.clone(),
-                    cfg.cadence_root_map,
-                    swarm_observer,
-                ),
+                banyan
+                    .data
+                    .gossip
+                    .publish_root_map(banyan.clone(), cfg.topic.clone(), cfg.cadence_root_map, swarm_observer)
+                    .boxed(),
             );
         }
         banyan.spawn_task(
             "compaction".to_owned(),
-            banyan.clone().compaction_loop(cfg.cadence_compact),
+            banyan.clone().compaction_loop(cfg.cadence_compact).boxed(),
         );
         if cfg.enable_discovery {
             banyan.spawn_task(
                 "discovery_ingest".to_owned(),
-                discovery::discovery_ingest(banyan.clone()),
+                discovery::discovery_ingest(banyan.clone()).boxed(),
             );
         }
         // if `cfg.enable_discovery` is not set, this function WON'T emit any
@@ -1113,18 +1121,19 @@ impl BanyanStore {
                 external_addrs,
                 cfg.enable_discovery,
                 peers,
-            )?,
+            )?
+            .boxed(),
         );
         if cfg.enable_metrics {
             banyan.spawn_task(
                 "metrics".to_owned(),
-                metrics::metrics(banyan.clone(), cfg.metrics_interval)?,
+                metrics::metrics(banyan.clone(), cfg.metrics_interval)?.boxed(),
             );
         }
 
         banyan.spawn_task(
             "prune_events".to_owned(),
-            prune::prune(banyan.clone(), cfg.ephemeral_event_config),
+            prune::prune(banyan.clone(), cfg.ephemeral_event_config).boxed(),
         );
 
         Ok(banyan)
@@ -1779,7 +1788,7 @@ impl BanyanStore {
         self.lock().tree_stream(stream_id)
     }
 
-    pub fn spawn_task(&self, name: String, task: impl Future<Output = ()> + Send + 'static) {
+    pub fn spawn_task(&self, name: String, task: BoxFuture<'static, ()>) {
         self.lock().spawn_task(name, task)
     }
 

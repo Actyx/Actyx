@@ -14,7 +14,11 @@ use actyx_sdk::{
 };
 use banyan::FilteredChunk;
 use derive_more::{Display, Error, From};
-use futures::{future, stream, Stream, StreamExt, TryStreamExt};
+use futures::{
+    future,
+    stream::{self, BoxStream},
+    StreamExt, TryStreamExt,
+};
 
 #[derive(Clone, Debug, Display, Error, From)]
 pub enum Error {
@@ -41,7 +45,7 @@ impl EventStore {
         self.banyan_store.node_id()
     }
 
-    fn forward_stream(&self, selection: StreamEventSelection) -> impl Stream<Item = Event<Payload>> {
+    fn forward_stream(&self, selection: StreamEventSelection) -> BoxStream<'static, Event<Payload>> {
         let stream_id = selection.stream_id;
         debug_assert!(self.banyan_store.has_stream(stream_id));
         debug_assert!(selection.from_exclusive < selection.to_inclusive);
@@ -51,13 +55,15 @@ impl EventStore {
             .data
             .forest
             .stream_trees_chunked(selection.tags_query, trees, range, &|_| ())
+            .boxed()
             .map_ok(move |chunk| stream::iter(events_from_chunk(stream_id, chunk)))
             .take_while(|x| future::ready(x.is_ok()))
             .filter_map(|x| future::ready(x.ok()))
             .flatten()
+            .boxed()
     }
 
-    fn backward_stream(&self, selection: StreamEventSelection) -> impl Stream<Item = Reverse<Event<Payload>>> {
+    fn backward_stream(&self, selection: StreamEventSelection) -> BoxStream<'static, Reverse<Event<Payload>>> {
         let stream_id = selection.stream_id;
         debug_assert!(selection.from_exclusive < selection.to_inclusive);
         debug_assert!(self.banyan_store.has_stream(stream_id));
@@ -67,10 +73,12 @@ impl EventStore {
             .data
             .forest
             .stream_trees_chunked_reverse(selection.tags_query, trees, range, &|_| ())
+            .boxed()
             .map_ok(move |chunk| stream::iter(events_from_chunk_rev(stream_id, chunk)))
             .take_while(|x| future::ready(x.is_ok()))
             .filter_map(|x| future::ready(x.ok()))
             .flatten()
+            .boxed()
     }
 
     async fn bounded_streams(
@@ -110,8 +118,8 @@ impl EventStore {
     }
 
     #[cfg(test)]
-    fn offsets(&self) -> impl Stream<Item = SwarmOffsets> {
-        self.banyan_store.data.offsets.new_observer()
+    fn offsets(&self) -> BoxStream<'static, SwarmOffsets> {
+        self.banyan_store.data.offsets.new_observer().boxed()
     }
 
     pub fn current_offsets(&self) -> SwarmOffsets {
@@ -130,14 +138,14 @@ impl EventStore {
         tag_expr: &TagExpr,
         from_offsets_excluding: OffsetMap,
         to_offsets_including: OffsetMap,
-    ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
+    ) -> Result<BoxStream<'static, Event<Payload>>, Error> {
         let this = self.clone();
         let event_streams = self
             .bounded_streams(tag_expr, from_offsets_excluding, to_offsets_including)
             .await?
             .into_iter()
             .map(|selection| this.forward_stream(selection));
-        Ok(MergeOrdered::new_fixed(event_streams))
+        Ok(MergeOrdered::new_fixed(event_streams).boxed())
     }
 
     pub async fn bounded_forward_per_stream(
@@ -145,14 +153,14 @@ impl EventStore {
         tag_expr: &TagExpr,
         from_offsets_excluding: OffsetMap,
         to_offsets_including: OffsetMap,
-    ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
+    ) -> Result<BoxStream<'static, Event<Payload>>, Error> {
         let this = self.clone();
         let event_streams = self
             .bounded_streams(tag_expr, from_offsets_excluding, to_offsets_including)
             .await?
             .into_iter()
             .map(move |selection| this.forward_stream(selection));
-        Ok(stream::iter(event_streams).merge_unordered())
+        Ok(stream::iter(event_streams).merge_unordered().boxed())
     }
 
     pub async fn bounded_backward(
@@ -160,27 +168,28 @@ impl EventStore {
         tag_expr: &TagExpr,
         from_offsets_excluding: OffsetMap,
         to_offsets_including: OffsetMap,
-    ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
+    ) -> Result<BoxStream<'static, Event<Payload>>, Error> {
         let this = self.clone();
         let event_streams = self
             .bounded_streams(tag_expr, from_offsets_excluding, to_offsets_including)
             .await?
             .into_iter()
-            .map(|selection| this.backward_stream(selection));
-        Ok(MergeOrdered::new_fixed(event_streams).map(|reverse| reverse.0))
+            .map(move |selection| this.backward_stream(selection));
+        Ok(MergeOrdered::new_fixed(event_streams).map(|reverse| reverse.0).boxed())
     }
 
     pub fn unbounded_forward_per_stream(
         &self,
         tag_expr: &TagExpr,
         from_offsets_excluding: OffsetMap,
-    ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
+    ) -> Result<BoxStream<'static, Event<Payload>>, Error> {
         let this = self.clone();
         let mk_tags_query = TagExprQuery::from_expr(tag_expr)?;
         let banyan_store = self.banyan_store.clone();
         Ok(self
             .banyan_store
             .stream_known_streams()
+            .boxed()
             .filter_map(move |stream_id| {
                 let local = banyan_store.is_local(stream_id);
                 let tags_query = mk_tags_query(local, stream_id);
@@ -196,7 +205,8 @@ impl EventStore {
                 })
             })
             .map(move |selection| this.forward_stream(selection))
-            .merge_unordered())
+            .merge_unordered()
+            .boxed())
     }
 }
 
@@ -258,7 +268,7 @@ mod tests {
         service::Order,
         tag, tags, OffsetOrMin, StreamId, Tag,
     };
-    use futures::future::try_join_all;
+    use futures::{future::try_join_all, Stream};
     use maplit::btreemap;
     use quickcheck::Arbitrary;
     use rand::{thread_rng, Rng};

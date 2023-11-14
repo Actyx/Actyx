@@ -25,6 +25,7 @@ use crate::{
     },
     util::variable::Writer,
 };
+use futures::FutureExt;
 use tokio::{runtime::Handle, sync::mpsc};
 
 const UNAUTHORIZED_TOKEN: &str = "AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ==";
@@ -64,13 +65,17 @@ async fn test_routes() -> (
     let event_store = {
         let store2 = store.clone();
         let (tx, mut rx) = mpsc::channel(100);
-        store.spawn_task("handler".to_owned(), async move {
-            let mut handler = EventStoreHandler::new(store2);
-            let runtime = Handle::current();
-            while let Some(request) = rx.recv().await {
-                handler.handle(request, &runtime);
+        store.spawn_task(
+            "handler".to_owned(),
+            async move {
+                let mut handler = EventStoreHandler::new(store2);
+                let runtime = Handle::current();
+                while let Some(request) = rx.recv().await {
+                    handler.handle(request, &runtime);
+                }
             }
-        });
+            .boxed(),
+        );
         EventStoreRef::new(move |e| tx.try_send(e).map_err(event_store_ref::Error::from))
     };
     let event_service = EventService::new(event_store, auth_args.node_id);

@@ -19,6 +19,7 @@ use actyx_sdk::{service::SwarmState, NodeId};
 use anyhow::Result;
 use chrono::{DateTime, SecondsFormat::Millis, Utc};
 use crossbeam::channel::{Receiver, Sender};
+use futures::FutureExt;
 use ipfs_embed::{Direction, PeerId};
 use libp2p::{multiaddr::Protocol, Multiaddr};
 use parking_lot::Mutex;
@@ -230,7 +231,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 let store = BanyanStore::new(swarm_config, swarm_observer).await?;
                 store.spawn_task(
                     "api".to_owned(),
-                    crate::api::run(node_info, store.clone(), event_store, blobs, bind_api, snd, swarm_state),
+                    crate::api::run(node_info, store.clone(), event_store, blobs, bind_api, snd, swarm_state).boxed(),
                 );
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;

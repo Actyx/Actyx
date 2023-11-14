@@ -17,7 +17,7 @@ use cbor_data::{
     codec::{CodecError, ReadCbor},
     Cbor,
 };
-use futures::{stream::StreamExt, TryStreamExt};
+use futures::{stream::StreamExt, FutureExt, TryStreamExt};
 use ipfs_embed::GossipEvent;
 use libp2p::PeerId;
 use parking_lot::Mutex;
@@ -99,16 +99,20 @@ async fn run(mut config: Config) -> Result<()> {
         let event_store = {
             let store = swarm.clone();
             let (tx, mut rx) = mpsc::channel::<EventStoreRequest>(10);
-            swarm.spawn_task("handler".to_owned(), async move {
-                let mut handler = EventStoreHandler::new(store);
-                let runtime = Handle::current();
-                while let Some(request) = rx.recv().await {
-                    let req = request.to_string();
-                    tracing::debug!("got request {}", req);
-                    handler.handle(request, &runtime);
-                    tracing::debug!("handled request {}", req);
+            swarm.spawn_task(
+                "handler".to_owned(),
+                async move {
+                    let mut handler = EventStoreHandler::new(store);
+                    let runtime = Handle::current();
+                    while let Some(request) = rx.recv().await {
+                        let req = request.to_string();
+                        tracing::debug!("got request {}", req);
+                        handler.handle(request, &runtime);
+                        tracing::debug!("handled request {}", req);
+                    }
                 }
-            });
+                .boxed(),
+            );
             EventStoreRef::new(move |e| tx.try_send(e).map_err(event_store_ref::Error::from))
         };
         let blobs = BlobStore::new(DbPath::Memory)?;
@@ -123,7 +127,8 @@ async fn run(mut config: Config) -> Result<()> {
                 Arc::new(Mutex::new(addr.into())),
                 tx,
                 swarm_state,
-            ),
+            )
+            .boxed(),
         );
         swarm
     } else {
