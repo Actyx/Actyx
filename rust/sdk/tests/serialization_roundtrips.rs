@@ -1,15 +1,14 @@
 use actyx_sdk::service::*;
 use serde_json::*;
 
-fn roundtrip<T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug>(json: Value) -> anyhow::Result<()> {
-    let value: T = from_value(json.clone())?;
-    let serialized = to_value(value)?;
-    anyhow::ensure!(json == serialized, "\nleft:  {:?}\nright: {:?}", json, serialized);
-    Ok(())
+fn roundtrip<T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug>(json: Value) {
+    let value: T = from_value(json.clone()).unwrap();
+    let serialized = to_value(value).unwrap();
+    assert_eq!(json, serialized)
 }
 
 #[test]
-fn roundtrips() -> anyhow::Result<()> {
+fn roundtrip_offsets_response() {
     roundtrip::<OffsetsResponse>(json!({
       "present": {
         "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 56
@@ -17,8 +16,11 @@ fn roundtrips() -> anyhow::Result<()> {
       "toReplicate": {
         "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 1
       }
-    }))?;
+    }))
+}
 
+#[test]
+fn roundtrip_publish_request() {
     roundtrip::<PublishRequest>(json!({
       "data": [
         {
@@ -34,8 +36,11 @@ fn roundtrips() -> anyhow::Result<()> {
           }
         }
       ]
-    }))?;
+    }))
+}
 
+#[test]
+fn roundtrip_publish_response() {
     roundtrip::<PublishResponse>(json!({
       "data": [
         {
@@ -51,8 +56,11 @@ fn roundtrips() -> anyhow::Result<()> {
           "timestamp": 1622110001582587u64
         }
       ]
-    }))?;
+    }))
+}
 
+#[test]
+fn roundtrip_query_request() {
     roundtrip::<QueryRequest>(json!({
       "lowerBound": {
         "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34
@@ -62,8 +70,11 @@ fn roundtrips() -> anyhow::Result<()> {
       },
       "query": "FROM ('tag-01' & ('tag-02' | 'tag-03')) END",
       "order": "desc"
-    }))?;
+    }))
+}
 
+#[test]
+fn roundtrip_query_response() {
     roundtrip::<QueryResponse>(json!({
       "type": "event",
       "lamport": 28,
@@ -75,15 +86,21 @@ fn roundtrips() -> anyhow::Result<()> {
       "payload": {
         "value": 2
       }
-    }))?;
+    }))
+}
 
+#[test]
+fn roundtrip_subscribe_request() {
     roundtrip::<SubscribeRequest>(json!({
       "lowerBound": {
         "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34,
       },
       "query": "FROM ('tag-01' & ('tag-02' | 'tag-03')) END",
-    }))?;
+    }))
+}
 
+#[test]
+fn roundtrip_subscribe_response() {
     roundtrip::<SubscribeResponse>(json!({
       "type": "event",
       "lamport": 28,
@@ -95,16 +112,22 @@ fn roundtrips() -> anyhow::Result<()> {
       "payload": {
         "value": 2
       }
-    }))?;
+    }))
+}
 
+#[test]
+fn roundtrip_subscribe_monotonic_request() {
     roundtrip::<SubscribeMonotonicRequest>(json!({
       "session": "my_session_id",
       "query": "FROM ('tag-01' & ('tag-02' | 'tag-03')) END",
       "lowerBound": {
         "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34
       }
-    }))?;
+    }))
+}
 
+#[test]
+fn roundtrip_subscribe_monotonic_timetravel() {
     roundtrip::<SubscribeMonotonicResponse>(json!({
       "type": "timeTravel",
       "newStart": {
@@ -112,8 +135,11 @@ fn roundtrips() -> anyhow::Result<()> {
         "stream": "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2",
         "offset": 34
       }
-    }))?;
+    }))
+}
 
+#[test]
+fn roundtrip_subscribe_monotonic_event() {
     roundtrip::<SubscribeMonotonicResponse>(json!({
       "type": "event",
       "lamport": 323,
@@ -127,8 +153,11 @@ fn roundtrips() -> anyhow::Result<()> {
         "fooArr": ["bar1", "bar2"]
       },
       "caughtUp": true
-    }))?;
+    }))
+}
 
+#[test]
+fn roundtrip_node_info_response() {
     roundtrip::<NodeInfoResponse>(json!({
       "connectedNodes": 12,
       "uptime": {
@@ -142,7 +171,4 @@ fn roundtrips() -> anyhow::Result<()> {
         }
       }
     }))
-    .unwrap();
-
-    Ok(())
 }

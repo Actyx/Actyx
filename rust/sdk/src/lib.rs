@@ -23,7 +23,6 @@ pub mod arb;
 mod client;
 mod event;
 pub mod language;
-pub mod legacy;
 mod offset;
 mod scalars;
 pub mod service;
@@ -41,12 +40,6 @@ pub use tags::{Tag, TagSet};
 pub use timestamp::{LamportTimestamp, Timestamp};
 #[cfg(feature = "client")]
 pub use url::Url;
-
-#[cfg(test)]
-mod test_util;
-
-#[cfg(test)]
-pub use test_util::*;
 
 use derive_more::Display;
 #[derive(Debug, Display, PartialEq, Eq)]

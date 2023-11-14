@@ -87,10 +87,6 @@ macro_rules! arcval_scalar {
 /// potentially loaded into memory multiple times. The [`arcval_scalar!`](../macro.arcval_scalar.html)
 /// macro makes it easy to tag data to denote different kinds of objects.
 ///
-/// This also serves as a helper type that allows an [`Arc`](https://doc.rust-lang.org/std/sync/struct.Arc.html)
-/// to be included in a data structure that is serialized/deserialized with
-/// [`Abomonation`](https://docs.rs/abomonation).
-///
 /// ```
 /// use actyx_sdk::types::ArcVal;
 ///

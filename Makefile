@@ -115,7 +115,9 @@ CARGO := RUST_BACKTRACE=1  cargo +$(BUILD_RUST_TOOLCHAIN)
 export GIT_COMMIT := $(shell git rev-parse HEAD)$(shell [ `git status --porcelain | wc -l` -gt 0 ] && echo _dirty)
 export ACTYX_VERSION_NODEMANAGER ?= $(or $(shell git log --format=%H | while read hash; do grep node-manager-.*$$hash versions && exit; done | (IFS="- " read n1 n2 v r; echo $$v)), 0.0.0)_dev-$(GIT_COMMIT)
 
-$(shell env GIT_COMMIT=$(GIT_COMMIT) | sort >&2)
+# This leaks a lot of information, we can either remove it or extend it
+# to only run when GITHUB_CI (or whatever it's called/similar) is NOT present
+# $(shell env GIT_COMMIT=$(GIT_COMMIT) | sort >&2)
 
 ifeq ($(origin ACTYX_VERSION), undefined)
   AXV :=
@@ -357,7 +359,6 @@ validate-node-manager-bindings:
 		npm run build
 
 node-manager-win:
-	env | sort
 	docker run \
 	  -e BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
 	  -v `pwd`:/src \

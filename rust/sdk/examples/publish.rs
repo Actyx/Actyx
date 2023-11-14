@@ -1,34 +1,27 @@
-use actyx_sdk::{
-    service::{EventService, PublishEvent, PublishRequest},
-    tags, Ax, AxOpts, Payload,
-};
-use futures::{stream, FutureExt, Stream, StreamExt, TryStreamExt};
+use actyx_sdk::{tags, Ax, AxOpts};
 
-fn counter() -> impl Stream<Item = i32> {
-    stream::iter(0..).then(|i| futures_timer::Delay::new(std::time::Duration::from_secs(1)).map(move |()| i))
-}
-
+// This example demonstrates how to publish events using the higher-level API.
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Setup a default Ax client with default settings.
     let service = Ax::new(AxOpts::default()).await?;
-    let mut results = counter().flat_map(|i| {
-        let request = PublishRequest {
-            data: vec![
-                PublishEvent {
-                    tags: tags!("com.actyx.examples.temperature", "sensor:temp-sensor1"),
-                    payload: Payload::compact(&serde_json::json!({ "counter": i })).unwrap(),
-                },
-                PublishEvent {
-                    tags: tags!("com.actyx.examples.temperature", "sensor:temp-sensor2"),
-                    payload: Payload::compact(&serde_json::json!({ "counter": i })).unwrap(),
-                },
-            ],
-        };
-        service.publish(request).into_stream()
-    });
 
-    while let Some(res) = results.try_next().await? {
-        println!("{}", serde_json::to_value(res)?);
-    }
+    // Publish the events
+    let publish_response = service
+        .publish()
+        // Serialization may fail and thus the `.event` call returns a `Result`
+        .event(
+            tags!("temperature", "sensor:temp-sensor1"),
+            &serde_json::json!({ "temperature": 10 }),
+        )?
+        // Multiple calls to `.event` are supported and all events will be published
+        .event(
+            tags!("temperature", "sensor:temp-sensor2"),
+            &serde_json::json!({ "temperature": 21 }),
+        )?
+        .await?;
+
+    // Print the response
+    println!("{:?}", publish_response);
     Ok(())
 }

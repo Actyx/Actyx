@@ -56,9 +56,7 @@ pub enum EventsResponse {
 mod tests {
     use super::*;
     use actyx_sdk::{
-        app_id,
-        service::{Severity, StartFrom},
-        tags, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, Timestamp,
+        app_id, service::Severity, tags, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, Timestamp,
     };
     use std::collections::BTreeMap;
 
@@ -80,22 +78,22 @@ mod tests {
                 query: "FROM allEvents".parse().unwrap(),
                 order: actyx_sdk::service::Order::Asc
             })),
-            r#"{"type":"query","lowerBound":null,"upperBound":null,"query":"FROM allEvents","order":"asc"}"#
+            r#"{"type":"query","query":"FROM allEvents","lowerBound":null,"upperBound":null,"order":"asc"}"#
         );
         assert_eq!(
             req(EventsRequest::Subscribe(SubscribeRequest {
                 lower_bound: None,
                 query: "FROM allEvents".parse().unwrap(),
             })),
-            r#"{"type":"subscribe","lowerBound":null,"query":"FROM allEvents"}"#
+            r#"{"type":"subscribe","query":"FROM allEvents","lowerBound":null}"#
         );
         assert_eq!(
             req(EventsRequest::SubscribeMonotonic(SubscribeMonotonicRequest {
                 session: "".into(),
-                from: StartFrom::LowerBound(OffsetMap::default()),
+                lower_bound: OffsetMap::default(),
                 query: "FROM allEvents".parse().unwrap(),
             })),
-            r#"{"type":"subscribeMonotonic","session":"","query":"FROM allEvents","lowerBound":{}}"#
+            r#"{"type":"subscribeMonotonic","query":"FROM allEvents","session":"","lowerBound":{}}"#
         );
     }
 

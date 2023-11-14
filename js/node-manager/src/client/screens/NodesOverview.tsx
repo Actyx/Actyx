@@ -354,12 +354,6 @@ const Screen: React.FC<{}> = () => {
   } = useAppState()
 
   const store = useStore()
-  const favoriteNodeAddrs = store.key === 'Loaded' ? store.data.preferences.favoriteNodeAddrs : []
-
-  useEffect(() => {
-    addNodes(favoriteNodeAddrs.filter((a) => !nodes.map((n) => n.addr).includes(a)))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [favoriteNodeAddrs])
 
   const inputValidator = (addr: string) =>
     addr !== '' && !nodes.map((n) => n.addr).includes(addr) && nodeAddrValid(addr)

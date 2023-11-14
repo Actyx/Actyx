@@ -82,7 +82,7 @@ impl ReadCbor for Opaque {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::from_cbor_me;
+    use crate::event::from_cbor_me;
     use libipld::{
         cbor::DagCborCodec,
         codec::Codec,

@@ -111,7 +111,7 @@ const DisconnectedNode = io.type({
   type: io.literal(NodeType.Disconnected),
   peer: io.string,
 })
-type DisconnectedNode = io.TypeOf<typeof DisconnectedNode>
+export type DisconnectedNode = io.TypeOf<typeof DisconnectedNode>
 
 export const Node = io.union([ReachableNode, UnauthorizedNode, DisconnectedNode])
 export type Node = io.TypeOf<typeof Node>

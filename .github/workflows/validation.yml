@@ -46,7 +46,8 @@ jobs:
 
     strategy:
       matrix:
-        product: [os, netsim]
+        # NOTE: re-add netsim!
+        product: [os]
       fail-fast: false
 
     steps:

@@ -93,7 +93,7 @@ cbor_via!(Payload => Opaque: |p| -> p.0.clone(), |o| -> Ok(Payload(o)));
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::from_cbor_me;
+    use crate::event::from_cbor_me;
     use cbor_data::{
         codec::{ReadCbor, WriteCbor},
         CborBuilder,

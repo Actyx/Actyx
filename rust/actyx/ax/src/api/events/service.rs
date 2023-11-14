@@ -18,7 +18,7 @@ use actyx_sdk::{
     language::{self, Arr, SimpleExpr, SpreadExpr},
     service::{
         Diagnostic, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse,
-        PublishResponseKey, QueryRequest, QueryResponse, Severity, StartFrom, SubscribeMonotonicRequest,
+        PublishResponseKey, QueryRequest, QueryResponse, Severity, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
     AppId, Event, EventKey, NodeId, OffsetMap, OffsetOrMin, Payload, TagSet, Timestamp,
@@ -396,9 +396,7 @@ impl EventService {
                 .into())
             }
         };
-        let mut lower_bound = match &request.from {
-            StartFrom::LowerBound(x) => x.clone(),
-        };
+        let mut lower_bound = request.lower_bound.clone();
         let mut present = self.store.offsets().await?.present();
         present.union_with(&lower_bound);
 
@@ -429,21 +427,19 @@ impl EventService {
             .unbounded_forward(tag_expr.clone(), lower_bound)
             .await?
             .stop_on_error();
-        let mut latest = match &request.from {
-            StartFrom::LowerBound(offsets) => self
-                .store
-                .bounded_backward(tag_expr, OffsetMap::default(), offsets.clone())
-                .await?
-                .recv()
-                .await
-                .transpose()?
-                .map(|event| event.key)
-                .unwrap_or(EventKey {
-                    lamport: 0.into(),
-                    stream: Default::default(),
-                    offset: 0.into(),
-                }),
-        };
+        let mut latest = self
+            .store
+            .bounded_backward(tag_expr, OffsetMap::default(), request.lower_bound.clone())
+            .await?
+            .recv()
+            .await
+            .transpose()?
+            .map(|event| event.key)
+            .unwrap_or(EventKey {
+                lamport: 0.into(),
+                stream: Default::default(),
+                offset: 0.into(),
+            });
 
         async fn send_and_timetravel(
             co: &Co<SubscribeMonotonicResponse>,
@@ -797,7 +793,7 @@ mod tests {
                 SubscribeMonotonicRequest {
                     query: q.to_owned(),
                     session: SessionId::from("wat"),
-                    from: StartFrom::LowerBound(OffsetMap::empty()),
+                    lower_bound: OffsetMap::empty(),
                 },
             )
             .await
