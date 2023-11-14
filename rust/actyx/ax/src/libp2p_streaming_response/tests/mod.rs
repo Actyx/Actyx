@@ -15,7 +15,6 @@ use libp2p::{
     Multiaddr, PeerId, Swarm, Transport,
 };
 use tokio::runtime::Runtime;
-use tracing_subscriber::{fmt::format::FmtSpan, util::SubscriberInitExt, EnvFilter};
 
 mod proto;
 
@@ -100,18 +99,9 @@ fn dbg<T: std::fmt::Debug>(x: T) -> String {
     format!("{:?}", x)
 }
 
-fn setup_logger() {
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
-        .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
-        .finish()
-        .try_init()
-        .ok();
-}
-
 #[test]
 fn smoke() {
-    setup_logger();
+    crate::util::setup_logger();
     let rt = Runtime::new().unwrap();
     let mut asker = test_swarm();
     let asker_id = *asker.local_peer_id();
@@ -163,7 +153,7 @@ where
     Fut: Future,
     L: Fn(String, PeerId, Sender<String>) + Send + 'static,
 {
-    setup_logger();
+    crate::util::setup_logger();
     let rt = Runtime::new().unwrap();
     let mut asker = test_swarm();
     let mut responder = test_swarm();
@@ -188,7 +178,7 @@ where
     F: FnOnce(Receiver<Response<String>>) -> Fut + Send + 'static,
     Fut: Future,
 {
-    setup_logger();
+    crate::util::setup_logger();
     let rt = Runtime::new().unwrap();
     let mut asker = test_swarm();
     let mut responder = fake_swarm(&rt, bytes);
