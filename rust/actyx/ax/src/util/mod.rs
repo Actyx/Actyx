@@ -38,7 +38,7 @@ pub fn setup_logger_with_level(level: u8) {
     tracing_log::LogTracer::init().ok();
     let env = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_| {
         match level {
-            0 => "warning",
+            0 => "warn",
             1 => "info",
             2 => "debug",
             _ => "trace",
