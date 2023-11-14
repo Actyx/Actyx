@@ -18,7 +18,7 @@ use structopt::{
     name = "ax",
     about = concat!(
         "\nThe ax CLI is a unified tool to manage your ax nodes.\n\n",
-        include_str!("../../../../NOTICE")),
+        include_str!("../NOTICE")),
     version = axlib::util::version::VERSION.as_str(),
 )]
 struct Opt {

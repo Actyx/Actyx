@@ -91,7 +91,7 @@ pub(crate) fn apply_system_schema(
     tracing::debug!("setting current schema for com.actyx");
     let schema: serde_json::Value = serde_json::from_slice(include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../protocols/json-schema/node-settings.schema.json"
+        "/resources/json-schema/node-settings.schema.json"
     )))
     .expect("embedded settings schema is not valid json");
     // check that embedded schema for com.actyx is a valid schema. If not, there is no point in going on.

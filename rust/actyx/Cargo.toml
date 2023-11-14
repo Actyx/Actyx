@@ -26,6 +26,3 @@ lto = "off"
 [patch.crates-io]
 banyan = { git = "https://github.com/Actyx/banyan", branch = "master" }
 banyan-utils = { git = "https://github.com/Actyx/banyan", branch = "master" }
-# cbor-data = { path = "../../../cbor-data" }
-# ipfs-embed = { path = "../../../ipfs-embed" }
-# libp2p = { path = "../../../rust-libp2p" }
