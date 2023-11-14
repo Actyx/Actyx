@@ -54,7 +54,9 @@ impl TryFrom<SystemTime> for Timestamp {
 
 impl From<Timestamp> for DateTime<Utc> {
     fn from(ts: Timestamp) -> DateTime<Utc> {
-        Utc.timestamp((ts.0 / 1_000_000) as i64, (ts.0 % 1_000_000) as u32 * 1000)
+        TimeZone::timestamp_micros(&Utc, ts.0 as i64)
+            .single()
+            .expect("Timestamp out of range")
     }
 }
 
