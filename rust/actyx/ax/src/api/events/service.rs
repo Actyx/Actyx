@@ -39,9 +39,6 @@ use std::{
 };
 use tokio::sync::mpsc;
 
-/// "Global" timeout for tests in this module
-const TIMEOUT: u64 = 5;
-
 #[derive(Clone)]
 pub struct EventService {
     store: EventStoreRef,
@@ -639,6 +636,9 @@ mod tests {
         sync::mpsc,
         time::timeout,
     };
+
+    /// "Global" timeout for tests in this module
+    const TIMEOUT: u64 = 5;
 
     #[derive(Debug, PartialEq, Eq)]
     enum SResp {
