@@ -638,7 +638,7 @@ mod tests {
     };
 
     /// "Global" timeout for tests in this module
-    const TIMEOUT: u64 = 5;
+    const TIMEOUT: Duration = Duration::from_secs(5);
 
     #[derive(Debug, PartialEq, Eq)]
     enum SResp {
@@ -838,7 +838,7 @@ mod tests {
         Runtime::new()
             .unwrap()
             .block_on(async {
-                timeout(Duration::from_secs(TIMEOUT), async {
+                timeout(TIMEOUT, async {
                     let store = BanyanStore::test_with_routing(
                         "lower_bound",
                         vec![EventRoute::new(
@@ -885,7 +885,7 @@ mod tests {
     fn time() {
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
-        rt.block_on(timeout(Duration::from_secs(TIMEOUT), async {
+        rt.block_on(timeout(TIMEOUT, async {
             let store = BanyanStore::test("time").await.unwrap();
             let (_node_id, service) = setup(&store);
 
@@ -920,7 +920,7 @@ mod tests {
     fn key() {
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
-        rt.block_on(timeout(Duration::from_secs(TIMEOUT), async {
+        rt.block_on(timeout(TIMEOUT, async {
             let store = BanyanStore::test("key").await.unwrap();
             let (_node_id, service) = setup(&store);
 
@@ -964,7 +964,7 @@ mod tests {
         Runtime::new()
             .unwrap()
             .block_on(async {
-                timeout(Duration::from_secs(TIMEOUT), async {
+                timeout(TIMEOUT, async {
                     let store = BanyanStore::test("limit").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
@@ -1033,7 +1033,7 @@ mod tests {
         Runtime::new()
             .unwrap()
             .block_on(async {
-                timeout(Duration::from_secs(TIMEOUT), async {
+                timeout(TIMEOUT, async {
                     let store = BanyanStore::test("lower_bound").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
@@ -1060,7 +1060,7 @@ mod tests {
         Runtime::new()
             .unwrap()
             .block_on(async {
-                timeout(Duration::from_secs(TIMEOUT), async {
+                timeout(TIMEOUT, async {
                     let store = BanyanStore::test("lower_bound").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
@@ -1089,7 +1089,7 @@ mod tests {
         Runtime::new()
             .unwrap()
             .block_on(async {
-                timeout(Duration::from_secs(TIMEOUT), async {
+                timeout(TIMEOUT, async {
                     let store = BanyanStore::test("lower_bound").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
@@ -1133,7 +1133,7 @@ ENDPRAGMA
         Runtime::new()
             .unwrap()
             .block_on(async {
-                timeout(Duration::from_secs(TIMEOUT), async {
+                timeout(TIMEOUT, async {
                     let store = BanyanStore::test("from_array").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
@@ -1171,7 +1171,7 @@ ENDPRAGMA
         Runtime::new()
             .unwrap()
             .block_on(async {
-                timeout(Duration::from_secs(TIMEOUT), async {
+                timeout(TIMEOUT, async {
                     let store = BanyanStore::test("lower_bound").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
@@ -1223,7 +1223,7 @@ ENDPRAGMA
         Runtime::new()
             .unwrap()
             .block_on(async {
-                timeout(Duration::from_secs(TIMEOUT), async {
+                timeout(TIMEOUT, async {
                     let store = BanyanStore::test("lower_bound").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
@@ -1323,7 +1323,7 @@ ENDPRAGMA
         Runtime::new()
             .unwrap()
             .block_on(async {
-                timeout(Duration::from_secs(TIMEOUT), async {
+                timeout(TIMEOUT, async {
                     let store = BanyanStore::test("lower_bound").await.unwrap();
                     let (_node_id, service) = setup(&store);
 
@@ -1351,7 +1351,7 @@ ENDPRAGMA
 
     #[tokio::test]
     async fn metadata_access() {
-        timeout(Duration::from_secs(TIMEOUT), async {
+        timeout(TIMEOUT, async {
             // The test requires setting up a new route to avoid counting offsets from N,
             // although lamport numbers work across streams, meaning we still need to count them
             // In this case, we expect two "implicit" events - the mappings for "default" and "lower_bound"
