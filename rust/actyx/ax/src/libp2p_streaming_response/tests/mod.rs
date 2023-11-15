@@ -279,5 +279,4 @@ fn err_request_size() {
             );
         },
     );
-    panic!("woah");
 }
