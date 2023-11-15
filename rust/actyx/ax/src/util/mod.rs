@@ -34,11 +34,25 @@ use std::{
 use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
 
 /// Sets up a logging and a panic handler that logs panics.
+///
+/// Panics are pushed into the `log` crate. We install the `tracing_log::LogTracer`
+/// so that all `log` logs (including the panics) get forwarded to `tracing`.
+///
+/// Because of the above, it is imperative that we enable logs to be captured by
+/// the `libtest` crate. This is done by calling `with_test_writer` (conditional
+/// on being in the `test` configuration).
+///
+/// To summarise: every test that may need to be debugged using tracing logs should
+/// call this function, which has been designed for this purpose. In particular, it
+/// can be called multiple times (like within the same test binary).
 pub fn setup_logger_with_level(level: u8) {
+    // feed `log` logs into the tracing ecosystem
     tracing_log::LogTracer::init().ok();
+
+    // fall back to a fixed level if RUST_LOG is not set
     let env = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_| {
         match level {
-            0 => "warning",
+            0 => "warn",
             1 => "info",
             2 => "debug",
             _ => "trace",
@@ -46,14 +60,21 @@ pub fn setup_logger_with_level(level: u8) {
         .to_owned()
     });
 
+    // install the `tracing` subscriber, ignoring if it has been set globally before
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
         .with_env_filter(EnvFilter::new(env))
-        .with_writer(std::io::stderr)
-        .finish();
+        .with_writer(std::io::stderr);
+    #[cfg(test)]
+    let subscriber = subscriber.with_test_writer();
+    let subscriber = subscriber.finish();
     tracing::subscriber::set_global_default(subscriber).ok();
+
+    // only start forwarding panics once the logging infrastructure is in place
     log_panics::init();
 }
+
+/// Sets up a logging, defaulting to `warn` level, see [`setup_logger_with_level`].
 pub fn setup_logger() {
     setup_logger_with_level(0);
 }
