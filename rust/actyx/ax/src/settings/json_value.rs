@@ -157,7 +157,7 @@ mod test {
     use serde_json::{json, Value};
 
     fn mp(value: serde_json::Value, scope: &'static str, force: bool) -> Result<serde_json::Value> {
-        super::mk_path(Some(&value), &scope.into(), Scope::root(), force)
+        super::mk_path(Some(&value), &scope.try_into().unwrap(), Scope::root(), force)
     }
 
     #[test]
@@ -280,7 +280,7 @@ mod test {
         let left = json!(["hello", "bye"]);
         let right = json!({"hello": "bye"});
         let p = left.diff(&right);
-        assert_eq!(p, maplit::btreeset!["hello".into(), Scope::root()]);
+        assert_eq!(p, maplit::btreeset!["hello".try_into().unwrap(), Scope::root()]);
     }
 
     #[test]
@@ -308,10 +308,10 @@ mod test {
         assert_eq!(
             diff,
             maplit::btreeset![
-                "root/sub1/prop".into(),
-                "root/sub1/someArray".into(),
-                "root/sub1/someOtherArray".into(),
-                "root/sub2/something/changed".into(),
+                "root/sub1/prop".try_into().unwrap(),
+                "root/sub1/someArray".try_into().unwrap(),
+                "root/sub1/someOtherArray".try_into().unwrap(),
+                "root/sub2/something/changed".try_into().unwrap(),
             ]
         );
     }
@@ -319,23 +319,23 @@ mod test {
     #[test]
     pub fn remove_at_empty() {
         assert_eq!(json!({}).remove_at(&Scope::root()), json!({}));
-        assert_eq!(json!({}).remove_at(&"a/b".into()), json!({}));
-        assert_eq!(json!({}).remove_at(&"a/0".into()), json!({}));
+        assert_eq!(json!({}).remove_at(&"a/b".try_into().unwrap()), json!({}));
+        assert_eq!(json!({}).remove_at(&"a/0".try_into().unwrap()), json!({}));
     }
 
     #[test]
     pub fn remove_at() {
-        assert_eq!(json!({ "foo": "bar" }).remove_at(&"foo".into()), json!({}));
+        assert_eq!(json!({ "foo": "bar" }).remove_at(&"foo".try_into().unwrap()), json!({}));
         assert_eq!(
-            json!({ "foo": { "bar": "baz" } }).remove_at(&"foo/bar".into()),
+            json!({ "foo": { "bar": "baz" } }).remove_at(&"foo/bar".try_into().unwrap()),
             json!({ "foo": {} }),
         );
         assert_eq!(
-            json!({ "foo": { "bar": "baz", "bar2": "baz2" } }).remove_at(&"foo/bar".into()),
+            json!({ "foo": { "bar": "baz", "bar2": "baz2" } }).remove_at(&"foo/bar".try_into().unwrap()),
             json!({ "foo": { "bar2": "baz2"} }),
         );
         assert_eq!(
-            json!({ "foo": ["bar", "baz"] }).remove_at(&"foo/1".into()),
+            json!({ "foo": ["bar", "baz"] }).remove_at(&"foo/1".try_into().unwrap()),
             json!({ "foo": ["bar"] }),
         );
     }
@@ -343,15 +343,15 @@ mod test {
     #[test]
     pub fn remove_at_ignore_nonexisting() {
         assert_eq!(
-            json!({ "foo": { "bar": "baz" } }).remove_at(&"foo/0".into()),
+            json!({ "foo": { "bar": "baz" } }).remove_at(&"foo/0".try_into().unwrap()),
             json!({ "foo": { "bar": "baz" } }),
         );
         assert_eq!(
-            json!({ "foo": ["bar", "baz"] }).remove_at(&"foo/2".into()),
+            json!({ "foo": ["bar", "baz"] }).remove_at(&"foo/2".try_into().unwrap()),
             json!({ "foo": ["bar", "baz"] }),
         );
         assert_eq!(
-            json!({ "foo": ["bar", "baz"] }).remove_at(&"foo/bar".into()),
+            json!({ "foo": ["bar", "baz"] }).remove_at(&"foo/bar".try_into().unwrap()),
             json!({ "foo": ["bar", "baz"] }),
         );
     }
@@ -359,16 +359,18 @@ mod test {
     #[test]
     pub fn update_at_create() {
         assert_eq!(
-            json!({}).update_at(&"a/b".into(), json!("value")).unwrap(),
+            json!({}).update_at(&"a/b".try_into().unwrap(), json!("value")).unwrap(),
             json!({"a": { "b": "value" } }),
         );
         assert_eq!(
-            json!({}).update_at(&"a/b/0".into(), json!("value")).unwrap(),
+            json!({})
+                .update_at(&"a/b/0".try_into().unwrap(), json!("value"))
+                .unwrap(),
             json!({"a": { "b": ["value"] } }),
         );
         assert_eq!(
             json!({"a": { "b": ["value"] } })
-                .update_at(&"a/b/1".into(), json!("value2"))
+                .update_at(&"a/b/1".try_into().unwrap(), json!("value2"))
                 .unwrap(),
             json!({"a": { "b": ["value", "value2"] } }),
         );
@@ -378,25 +380,25 @@ mod test {
     pub fn update_at_replace() {
         assert_eq!(
             json!({"a": { "b": "value" } })
-                .update_at(&"a/b".into(), json!("updated"))
+                .update_at(&"a/b".try_into().unwrap(), json!("updated"))
                 .unwrap(),
             json!({"a": { "b": "updated" } }),
         );
         assert_eq!(
             json!({"a": { "b": "value" } })
-                .update_at(&"a/b".into(), json!({ "c": "x" }))
+                .update_at(&"a/b".try_into().unwrap(), json!({ "c": "x" }))
                 .unwrap(),
             json!({"a": { "b": { "c": "x" } } }),
         );
         assert_eq!(
             json!({"a": { "b": { "c": "x" } } })
-                .update_at(&"a/b".into(), json!("value"))
+                .update_at(&"a/b".try_into().unwrap(), json!("value"))
                 .unwrap(),
             json!({"a": { "b": "value" } }),
         );
         assert_eq!(
             json!({"a": [{ "b": { "c": "x" } }] })
-                .update_at(&"a/0/b".into(), json!("value"))
+                .update_at(&"a/0/b".try_into().unwrap(), json!("value"))
                 .unwrap(),
             json!({"a": [{ "b": "value" }] }),
         );
@@ -408,7 +410,7 @@ mod test {
             format!(
                 "{}",
                 json!({"a": { "b": "x" } })
-                    .update_at(&"a/b/c".into(), json!("value"))
+                    .update_at(&"a/b/c".try_into().unwrap(), json!("value"))
                     .unwrap_err()
             ),
             "Value \"x\" at path a/b is not of type object or array.",
@@ -417,7 +419,7 @@ mod test {
             format!(
                 "{}",
                 json!({"a": [{ "b": "x" }] })
-                    .update_at(&"a/2".into(), json!("value"))
+                    .update_at(&"a/2".try_into().unwrap(), json!("value"))
                     .unwrap_err()
             ),
             "Index 2 invalid at path a.",
@@ -427,7 +429,7 @@ mod test {
     #[test]
     pub fn update_at_force() {
         assert_eq!(
-            json!({"a": { "b": "x" } }).update_at_force(&"a/b/c".into(), json!("value")),
+            json!({"a": { "b": "x" } }).update_at_force(&"a/b/c".try_into().unwrap(), json!("value")),
             json!({"a": { "b": { "c": "value" } } }),
         );
     }

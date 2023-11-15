@@ -326,22 +326,23 @@ mod tests {
     #[test]
     fn array() {
         let repo = Repository::new_in_memory();
-        repo.set_schema(&"com.actyx".into(), json!({})).unwrap();
-        repo.update_settings(&"com.actyx/a/b".into(), json!([]), false).unwrap();
+        repo.set_schema(&"com.actyx".try_into().unwrap(), json!({})).unwrap();
+        repo.update_settings(&"com.actyx/a/b".try_into().unwrap(), json!([]), false)
+            .unwrap();
         assert_eq!(
-            repo.get_settings(&"com.actyx".into(), true).unwrap(),
+            repo.get_settings(&"com.actyx".try_into().unwrap(), true).unwrap(),
             json!({ "a": { "b": [] } })
         );
-        repo.update_settings(&"com.actyx/a/b/0".into(), json!("hello"), false)
+        repo.update_settings(&"com.actyx/a/b/0".try_into().unwrap(), json!("hello"), false)
             .unwrap();
         assert_eq!(
-            repo.get_settings(&"com.actyx".into(), true).unwrap(),
+            repo.get_settings(&"com.actyx".try_into().unwrap(), true).unwrap(),
             json!({ "a": { "b": ["hello"] } })
         );
-        repo.update_settings(&"com.actyx/a/b/0".into(), json!("world"), false)
+        repo.update_settings(&"com.actyx/a/b/0".try_into().unwrap(), json!("world"), false)
             .unwrap();
         assert_eq!(
-            repo.get_settings(&"com.actyx".into(), true).unwrap(),
+            repo.get_settings(&"com.actyx".try_into().unwrap(), true).unwrap(),
             json!({ "a": { "b": ["world"] } })
         );
     }
