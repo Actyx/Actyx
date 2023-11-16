@@ -4,7 +4,6 @@ mod app_manifest;
 mod developer_certificate;
 mod signature;
 
-pub use actyx_sdk::AppManifest;
 pub use app_domain::AppDomain;
 pub use app_license::{AppLicense, AppLicenseType, Expiring, RequesterInfo, SignedAppLicense};
 pub use app_manifest::{app_manifest_signer, AppManifestSignature, AppManifestSignatureProps};
@@ -17,7 +16,7 @@ mod tests {
         certs::{developer_certificate::DeveloperCertificateInput, signature::Signature},
         crypto::PrivateKey,
     };
-    use actyx_sdk::app_id;
+    use actyx_sdk::{app_id, AppManifest};
     use std::str::FromStr;
 
     fn ax_private_key() -> PrivateKey {

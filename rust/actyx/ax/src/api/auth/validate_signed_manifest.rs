@@ -1,5 +1,5 @@
 use crate::{
-    certs::{app_manifest_signer, AppLicenseType, AppManifest, Expiring, SignedAppLicense},
+    certs::{app_manifest_signer, AppLicenseType, Expiring, SignedAppLicense},
     crypto::PublicKey,
 };
 
@@ -7,6 +7,7 @@ use crate::api::{
     formats::Licensing,
     rejections::{ApiError, UnauthorizedReason},
 };
+use actyx_sdk::AppManifest;
 use chrono::Utc;
 
 pub fn validate_signed_manifest(
@@ -67,10 +68,7 @@ mod tests {
     use crate::api::{formats::Licensing, rejections::ApiError};
 
     use super::*;
-    use crate::{
-        certs::AppManifest,
-        crypto::{PrivateKey, PublicKey},
-    };
+    use crate::crypto::{PrivateKey, PublicKey};
     use actyx_sdk::{app_id, AppId};
 
     struct TestFixture {

@@ -1,9 +1,10 @@
 use crate::{
-    certs::{app_manifest_signer, AppManifest, DeveloperCertificate},
+    certs::{app_manifest_signer, DeveloperCertificate},
     cmd::AxCliCommand,
     private_key::AxPrivateKey,
     util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
 };
+use actyx_sdk::AppManifest;
 use futures::{stream, Stream};
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;
