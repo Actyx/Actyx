@@ -1,7 +1,10 @@
 //! Actyx Naming Service
-use crate::trees::{
-    query::{LamportQuery, TagExprQuery, TimeQuery},
-    tags::{ScopedTag, ScopedTagSet, TagScope},
+use crate::{
+    swarm::BanyanStore,
+    trees::{
+        query::{LamportQuery, TagExprQuery, TimeQuery},
+        tags::{ScopedTag, ScopedTagSet, TagScope},
+    },
 };
 use actyx_sdk::{app_id, tag, tags, Payload};
 use derive_more::{Deref, Display, From};
@@ -10,8 +13,6 @@ use libipld::cid::Cid;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::Arc};
-
-use crate::api::BanyanStore;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum PersistenceLevel {
