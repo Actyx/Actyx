@@ -1,8 +1,5 @@
 use anyhow::anyhow;
-use axlib::{
-    certs::AppManifest,
-    cmd::apps::{create_signed_app_manifest, SignOpts},
-};
+use axlib::cmd::apps::{create_signed_app_manifest, SignOpts};
 use neon::{
     context::{Context, FunctionContext},
     result::JsResult,
@@ -12,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 use crate::util::run_task;
+use actyx_sdk::AppManifest;
 use futures::FutureExt;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
