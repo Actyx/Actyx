@@ -1,6 +1,8 @@
 use actyx_sdk::{app_id, tags, AppId, Payload};
-use axlib::swarm::BanyanStore;
-use axlib::trees::query::{LamportQuery, TagExprQuery, TimeQuery};
+use axlib::{
+    swarm::BanyanStore,
+    trees::query::{LamportQuery, TagExprQuery, TimeQuery},
+};
 use futures::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 

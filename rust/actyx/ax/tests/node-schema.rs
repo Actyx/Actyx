@@ -1,6 +1,8 @@
-use axlib::api::formats::Licensing;
-use axlib::node::node_settings::*;
-use axlib::settings::{Repository, Scope};
+use axlib::{
+    api::formats::Licensing,
+    node::node_settings::*,
+    settings::{Repository, Scope},
+};
 
 #[test]
 fn node_schema_in_sync() {
