@@ -1,6 +1,6 @@
-use api::formats::Licensing;
-use node::node_settings::*;
-use settings::Repository;
+use axlib::api::formats::Licensing;
+use axlib::node::node_settings::*;
+use axlib::settings::{Repository, Scope};
 
 #[test]
 fn node_schema_in_sync() {
@@ -41,12 +41,12 @@ fn node_schema_in_sync() {
     };
     let current_schema: serde_json::Value = serde_json::from_slice(include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../protocols/json-schema/node-settings.schema.json"
+        "/resources/json-schema/node-settings.schema.json"
     )))
     .unwrap();
 
     let repo = Repository::new_in_memory();
-    let scope: settings::Scope = "com.actyx".parse().unwrap();
+    let scope: Scope = "com.actyx".parse().unwrap();
     repo.set_schema(&scope, current_schema).unwrap();
     repo.update_settings(&scope, serde_json::to_value(&sample_settings).unwrap(), false)
         .unwrap();

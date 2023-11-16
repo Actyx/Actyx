@@ -1,7 +1,7 @@
-use serde_json::json;
-use settings::{
+use axlib::settings::{
     Database, Repository, RepositoryError as Error, Scope, ValidationError, ValidationErrorDescr, ValidationState,
 };
+use serde_json::json;
 use std::{fs, path::PathBuf, str::FromStr};
 use tempfile::{tempdir, TempDir};
 
