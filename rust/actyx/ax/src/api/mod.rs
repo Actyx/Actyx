@@ -4,6 +4,7 @@ mod auth;
 mod blob;
 mod events;
 mod files;
+mod hyper_serve;
 pub mod licensing;
 mod node;
 mod rejections;
@@ -11,7 +12,7 @@ mod rejections;
 mod tests;
 
 use crate::{
-    api::{api_util::hyper_serve::serve_it, files::FilePinner},
+    api::{files::FilePinner, hyper_serve::serve_it},
     ax_panic, balanced_or,
     swarm::{blob_store::BlobStore, event_store_ref::EventStoreRef, BanyanStore},
     util::{formats::NodeErrorContext, to_multiaddr, variable::Reader, SocketAddrHelper},
