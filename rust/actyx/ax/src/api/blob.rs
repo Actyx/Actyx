@@ -1,6 +1,6 @@
 use crate::{
     api::{
-        api_util::filters::{authenticate, header_or_query_token},
+        filters::{authenticate, header_or_query_token},
         rejections::ApiError,
         NodeInfo,
     },

@@ -16,7 +16,7 @@ use warp::{
 
 use crate::api::{
     ans::{ActyxName, ActyxNamingService},
-    api_util::filters::{authenticate_optional, header_or_query_token_opt},
+    filters::{authenticate_optional, header_or_query_token_opt},
     rejections::ApiError,
     NodeInfo,
 };

@@ -1,75 +1,10 @@
-pub mod filters;
-pub mod hyper_serve;
-pub(crate) mod macros;
-
-use std::{str::FromStr, time::Duration};
-
-use crate::{
-    api::licensing::Licensing,
-    crypto::{KeyStoreRef, PublicKey},
-    util::formats::NodeCycleCount,
-};
-use actyx_sdk::{AppId, NodeId, Timestamp};
-use chrono::{DateTime, Utc};
-use derive_more::Display;
+pub use crate::api::events::service::EventService;
+use crate::util::formats::NodeCycleCount;
+use actyx_sdk::{AppId, Timestamp};
 use serde::{Deserialize, Serialize};
-use warp::Rejection;
+use std::time::Duration;
 
-#[derive(Clone)]
-pub struct NodeInfo {
-    pub node_id: NodeId,
-    pub key_store: KeyStoreRef,
-    pub token_validity: u32,
-    pub cycles: NodeCycleCount,
-    pub ax_public_key: PublicKey,
-    pub licensing: Licensing,
-    pub started_at: DateTime<Utc>,
-}
-
-impl NodeInfo {
-    pub fn new(
-        node_id: NodeId,
-        key_store: KeyStoreRef,
-        cycles: NodeCycleCount,
-        licensing: Licensing,
-        started_at: DateTime<Utc>,
-    ) -> Self {
-        Self {
-            node_id,
-            key_store,
-            cycles,
-            token_validity: get_token_validity(),
-            ax_public_key: get_ax_public_key(),
-            licensing,
-            started_at,
-        }
-    }
-}
-
-pub(crate) fn get_ax_public_key() -> PublicKey {
-    PublicKey::from_str(option_env!("AX_PUBLIC_KEY").unwrap_or("075i62XGQJuXjv6nnLQyJzECZhF29acYvYeEOJ3kc5M8="))
-        .unwrap()
-}
-
-fn get_token_validity() -> u32 {
-    86400
-}
-
-#[derive(Debug, Display, Deserialize)]
-pub struct Token(String);
-
-impl From<String> for Token {
-    fn from(x: String) -> Self {
-        Self(x)
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub enum AppMode {
-    Trial,
-    Signed,
-}
+use super::AppMode;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -98,19 +33,8 @@ impl BearerToken {
     }
 }
 
-#[derive(Debug, Display)]
-pub struct Error(anyhow::Error); // anyhow::Error is sealed so we wrap it
-impl std::error::Error for Error {}
-impl warp::reject::Reject for Error {}
-
-pub fn reject(err: anyhow::Error) -> Rejection {
-    warp::reject::custom(Error(err))
-}
-
-pub type Result<T> = std::result::Result<T, Rejection>;
-
 #[cfg(test)]
-mod tests {
+mod bearer_token_tests {
     use actyx_sdk::{app_id, Timestamp};
     use std::time::Duration;
 

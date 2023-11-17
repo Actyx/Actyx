@@ -4,7 +4,7 @@ mod ws;
 
 use warp::{Filter, Rejection, Reply};
 
-use crate::api::api_util::NodeInfo;
+use crate::api::NodeInfo;
 use service::EventService;
 
 pub(crate) fn routes(

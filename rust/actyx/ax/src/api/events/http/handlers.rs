@@ -1,11 +1,7 @@
 use super::ndjson;
 
 use crate::{
-    api::{
-        api_util::{self, Result},
-        events::service::EventService,
-        rejections::ApiError,
-    },
+    api::{events::service::EventService, rejections::ApiError, Result},
     runtime::features::FeatureError,
     swarm::event_store_ref,
 };
@@ -78,7 +74,7 @@ fn reject(err: anyhow::Error) -> Rejection {
         Ok(e) => warp::reject::custom(ApiError::from(e)),
         Err(err) => {
             tracing::warn!("internal error: {:?}", err);
-            api_util::reject(err)
+            crate::api::reject(err)
         }
     }
 }

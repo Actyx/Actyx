@@ -1,33 +1,98 @@
 mod ans;
-mod api_util;
 mod auth;
+mod bearer_token;
 mod blob;
 mod events;
 mod files;
+mod filters;
+mod hyper_serve;
 pub mod licensing;
+pub(crate) mod macros;
 mod node;
 mod rejections;
 #[cfg(test)]
 mod tests;
 
+pub use crate::api::events::service::EventService;
 use crate::{
-    api::{api_util::hyper_serve::serve_it, files::FilePinner},
+    api::{files::FilePinner, hyper_serve::serve_it, licensing::Licensing},
     ax_panic, balanced_or,
+    crypto::{KeyStoreRef, PublicKey},
     swarm::{blob_store::BlobStore, event_store_ref::EventStoreRef, BanyanStore},
-    util::{formats::NodeErrorContext, to_multiaddr, variable::Reader, SocketAddrHelper},
+    util::{
+        formats::{NodeCycleCount, NodeErrorContext},
+        to_multiaddr,
+        variable::Reader,
+        SocketAddrHelper,
+    },
 };
-use actyx_sdk::service::SwarmState;
-use anyhow::Result;
+use actyx_sdk::{service::SwarmState, NodeId};
+use chrono::{DateTime, Utc};
 use crossbeam::channel::Sender;
+use derive_more::Display;
 use futures::future::try_join_all;
 use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
 use std::{fmt, sync::Arc};
 use warp::{cors, path, Filter, Rejection, Reply};
 
-pub use crate::api::{
-    api_util::{AppMode, BearerToken, NodeInfo, Token},
-    events::service::EventService,
-};
+#[derive(Clone)]
+pub struct NodeInfo {
+    pub node_id: NodeId,
+    pub key_store: KeyStoreRef,
+    pub token_validity: u32,
+    pub cycles: NodeCycleCount,
+    pub ax_public_key: PublicKey,
+    pub licensing: Licensing,
+    pub started_at: DateTime<Utc>,
+}
+
+impl NodeInfo {
+    pub fn new(
+        node_id: NodeId,
+        key_store: KeyStoreRef,
+        cycles: NodeCycleCount,
+        licensing: Licensing,
+        started_at: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            node_id,
+            key_store,
+            cycles,
+            token_validity: 86400,
+            ax_public_key: PublicKey::ax_public_key(),
+            licensing,
+            started_at,
+        }
+    }
+}
+
+#[derive(Debug, Display)]
+pub struct Error(anyhow::Error); // anyhow::Error is sealed so we wrap it
+impl std::error::Error for Error {}
+impl warp::reject::Reject for Error {}
+
+pub fn reject(err: anyhow::Error) -> Rejection {
+    warp::reject::custom(Error(err))
+}
+
+pub type Result<T> = std::result::Result<T, Rejection>;
+
+#[derive(Debug, Display, Deserialize)]
+pub struct Token(pub(crate) String);
+
+impl From<String> for Token {
+    fn from(x: String) -> Self {
+        Self(x)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum AppMode {
+    Trial,
+    Signed,
+}
 
 pub async fn run(
     node_info: NodeInfo,
@@ -57,7 +122,7 @@ pub async fn run(
             bind_to.lock().inject_bound_addr(i, addr);
             Ok(task)
         })
-        .collect::<Result<Vec<_>>>();
+        .collect::<anyhow::Result<Vec<_>>>();
     let tasks = match tasks {
         Ok(t) => t,
         Err(e) => {

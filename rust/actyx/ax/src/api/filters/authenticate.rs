@@ -3,11 +3,7 @@ use futures::FutureExt;
 use tracing::{debug, info};
 use warp::{reject, Filter, Rejection};
 
-use crate::api::{
-    api_util::{NodeInfo, Token},
-    auth::verify_token,
-    rejections::ApiError,
-};
+use crate::api::{auth::verify_token, rejections::ApiError, NodeInfo, Token};
 
 /// Tries to extract the value given to the `access_token` query parameter.
 pub fn query_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
@@ -131,7 +127,7 @@ pub(crate) fn authenticate(
 mod tests {
     use super::*;
     use crate::{
-        api::{licensing::Licensing, AppMode, BearerToken},
+        api::{bearer_token::BearerToken, licensing::Licensing, AppMode},
         crypto::{KeyStore, PrivateKey},
     };
     use actyx_sdk::{app_id, types::Binary, Timestamp};

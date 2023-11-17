@@ -4,7 +4,10 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     convert::TryFrom,
     fmt::{self, Debug, Display},
+    str::FromStr,
 };
+
+const DEFAULT_AX_PUBLIC_KEY_B64: &str = "075i62XGQJuXjv6nnLQyJzECZhF29acYvYeEOJ3kc5M8=";
 
 /// A public key, which also serves as identifier for the corresponding private key
 ///
@@ -30,7 +33,7 @@ impl Debug for PublicKey {
     }
 }
 
-impl std::str::FromStr for PublicKey {
+impl FromStr for PublicKey {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.is_empty() {
@@ -61,6 +64,10 @@ impl std::str::FromStr for PublicKey {
 }
 
 impl PublicKey {
+    pub(crate) fn ax_public_key() -> Self {
+        Self::from_str(option_env!("AX_PUBLIC_KEY").unwrap_or(DEFAULT_AX_PUBLIC_KEY_B64))
+            .expect("The default key should be a valid public key")
+    }
     /// Gets the underlying ed25519 public key for interop with rust crypto libs
     pub fn to_ed25519(self) -> ed25519_dalek::PublicKey {
         ed25519_dalek::PublicKey::from_bytes(&self.0[..]).unwrap()
@@ -210,7 +217,6 @@ impl<'de> Deserialize<'de> for PublicKey {
                 f.write_str("PublicKey")
             }
             fn visit_str<E: serde::de::Error>(self, string: &str) -> Result<Self::Value, E> {
-                use std::str::FromStr;
                 PublicKey::from_str(string).map_err(serde::de::Error::custom)
             }
         }

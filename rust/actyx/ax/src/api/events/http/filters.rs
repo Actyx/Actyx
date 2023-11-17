@@ -1,6 +1,6 @@
 use crate::api::{
-    api_util::filters::{accept_json, accept_ndjson, authenticate, header_or_query_token},
     events::{http::handlers, service::EventService},
+    filters::{accept_json, accept_ndjson, authenticate, header_or_query_token},
     NodeInfo,
 };
 use actyx_sdk::AppId;
