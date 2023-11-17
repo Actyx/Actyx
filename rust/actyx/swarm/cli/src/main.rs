@@ -32,10 +32,7 @@ use tokio::{
 use tracing_subscriber::fmt::format::FmtSpan;
 
 fn make_log_filename() -> String {
-    std::env::vars()
-        .find(|x| x.0 == "NETSIM_TEST_LOGFILE")
-        .map(|x| x.1)
-        .unwrap_or("unknown".to_string())
+    std::env::var("NETSIM_TEST_LOGFILE").unwrap_or("unknown".to_string())
 }
 
 #[tokio::main]
@@ -58,7 +55,6 @@ async fn main() {
     tracing::subscriber::set_global_default(subscriber).ok();
     log_panics::init();
 
-    axlib::util::setup_logger();
     if let Err(err) = run(config).await {
         tracing::error!("{}", err);
     }
