@@ -4,7 +4,11 @@ use axlib::{
     util::formats::{ActyxOSCode, AdminRequest, AdminResponse, TopicDeleteResponse},
 };
 use futures::FutureExt;
-use neon::prelude::*;
+use neon::{
+    context::{Context, FunctionContext},
+    result::JsResult,
+    types::JsUndefined,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

@@ -52,7 +52,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::ax_futures_util::prelude::*;
+    use crate::ax_futures_util::stream::AxStreamExt;
     use futures::{executor::block_on_stream, stream};
 
     #[test]

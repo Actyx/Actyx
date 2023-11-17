@@ -25,7 +25,7 @@ fn main() {
         .expect("TARGET not set")
         .split('-')
         .next()
-        .expect("TARGET has the wrong format")
+        .expect("TARGET should have the right format")
         .to_string();
 
     // Since target_arch armv7 does not exist, we add our own cfg parameter

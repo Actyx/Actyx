@@ -1,11 +1,10 @@
-use actyx_sdk::AppId;
-use warp::{filters::*, *};
-
 use crate::api::{
     api_util::filters::{accept_json, accept_ndjson, authenticate, header_or_query_token},
     events::{http::handlers, service::EventService},
     NodeInfo,
 };
+use actyx_sdk::AppId;
+use warp::{any, body, get, path, post, Filter, Rejection, Reply};
 
 pub fn with_service(
     event_service: EventService,

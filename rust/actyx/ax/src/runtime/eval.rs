@@ -636,7 +636,6 @@ mod tests {
     use super::*;
     use futures::executor::block_on;
     use quickcheck::{quickcheck, TestResult};
-    use spectral::{assert_that, string::StrAssertions};
 
     async fn eval(cx: &mut Context<'_>, s: &str) -> anyhow::Result<String> {
         cx.eval(&s.parse()?).await.map(|x| x.cbor().to_string())
@@ -731,9 +730,21 @@ mod tests {
         assert_eq!(eval(&mut cx, "FALSE & 12").await.unwrap(), "false");
         assert_eq!(eval(&mut cx, "TRUE | 12").await.unwrap(), "true");
 
-        assert_that(&eval(&mut cx, "NULL & 'x'").await.unwrap_err().to_string()).contains("null is not a bool");
-        assert_that(&eval(&mut cx, "FALSE | 12").await.unwrap_err().to_string()).contains("12 is not a bool");
-        assert_that(&eval(&mut cx, "!'a'").await.unwrap_err().to_string()).contains("\"a\" is not a bool");
+        assert!(eval(&mut cx, "NULL & 'x'")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("null is not a bool"));
+        assert!(eval(&mut cx, "FALSE | 12")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("12 is not a bool"));
+        assert!(eval(&mut cx, "!'a'")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("\"a\" is not a bool"));
     }
 
     #[tokio::test]
@@ -856,7 +867,11 @@ mod tests {
             "true"
         );
 
-        assert_that(&eval(&mut cx, "{'x':1}").await.unwrap_err().to_string()).contains("expected ident");
+        assert!(&eval(&mut cx, "{'x':1}")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("expected ident"));
     }
 
     #[tokio::test]
@@ -867,16 +882,26 @@ mod tests {
         assert_eq!(eval(&mut cx, "1+2*3^2%5").await.unwrap(), "4");
         assert_eq!(eval(&mut cx, "1.0+2.0*3.0^2.0%5.0").await.unwrap(), "4.0");
 
-        assert_that(
-            &eval(&mut cx, "12345678901234567890 + 12345678901234567890")
-                .await
-                .unwrap_err()
-                .to_string(),
-        )
-        .contains("integer overflow");
-        assert_that(&eval(&mut cx, "10.0 ^ 400").await.unwrap_err().to_string()).contains("floating-point overflow");
-        assert_that(&eval(&mut cx, "10.0 / 0").await.unwrap_err().to_string()).contains("floating-point overflow");
-        assert_that(&eval(&mut cx, "0.0 / 0").await.unwrap_err().to_string()).contains("not a number");
+        assert!(&eval(&mut cx, "12345678901234567890 + 12345678901234567890")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("integer overflow"));
+        assert!(&eval(&mut cx, "10.0 ^ 400")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("floating-point overflow"));
+        assert!(&eval(&mut cx, "10.0 / 0")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("floating-point overflow"));
+        assert!(&eval(&mut cx, "0.0 / 0")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("not a number"));
     }
 
     #[tokio::test]
@@ -915,8 +940,11 @@ mod tests {
             "\"c\""
         );
 
-        assert_that(&eval(&mut cx, "CASE FALSE => 1 ENDCASE").await.unwrap_err().to_string())
-            .contains("no case matched");
+        assert!(&eval(&mut cx, "CASE FALSE => 1 ENDCASE")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("no case matched"));
     }
 
     #[tokio::test]
@@ -936,8 +964,15 @@ mod tests {
         assert_eq!(eval(&mut cx, "IsDefined(1)").await.unwrap(), "true");
         assert_eq!(eval(&mut cx, "IsDefined(1 + '')").await.unwrap(), "false");
         assert_eq!(eval(&mut cx, "IsDefined(1 + '' ?? FALSE)").await.unwrap(), "true");
-        assert_that(&eval(&mut cx, "IsDefined()").await.unwrap_err().to_string()).contains("wrong number of arguments");
-        assert_that(&eval(&mut cx, "IsDefined(1, 2)").await.unwrap_err().to_string())
-            .contains("wrong number of arguments");
+        assert!(&eval(&mut cx, "IsDefined()")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("wrong number of arguments"));
+        assert!(&eval(&mut cx, "IsDefined(1, 2)")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("wrong number of arguments"));
     }
 }

@@ -1,7 +1,7 @@
-use assert_cmd::prelude::*;
+use assert_cmd::{assert::OutputAssertExt, cargo::CommandCargoExt};
 use axlib::util::version::NodeVersion;
 use maplit::btreemap;
-use predicates::prelude::*;
+use predicates::{prelude::predicate, str::starts_with};
 use std::{collections::HashMap, path::PathBuf, process::Command};
 
 fn get_commands() -> HashMap<&'static str, Vec<&'static str>> {
@@ -25,6 +25,14 @@ fn get_commands() -> HashMap<&'static str, Vec<&'static str>> {
 
 fn cli() -> Command {
     Command::cargo_bin("ax").unwrap()
+}
+#[test]
+fn cli_version() {
+    cli()
+        .arg("--version")
+        .assert()
+        .success()
+        .stdout(starts_with(format!("ax {}\n", NodeVersion::get())));
 }
 
 #[test]

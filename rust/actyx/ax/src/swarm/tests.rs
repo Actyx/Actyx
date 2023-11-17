@@ -1,8 +1,5 @@
 use crate::{
-    ax_futures_util::{
-        prelude::AxStreamExt,
-        stream::{interval, Drainer},
-    },
+    ax_futures_util::stream::{interval, AxStreamExt, Drainer},
     crypto::{KeyPair, KeyStore, PublicKey},
     swarm::{
         AxTreeExt, BanyanStore, EphemeralEventsConfig, EventRoute, EventRouteMappingEvent, SwarmConfig,

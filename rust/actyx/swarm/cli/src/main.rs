@@ -3,7 +3,7 @@ use actyx_sdk::{app_id, service::SwarmState, AppId, Payload};
 use anyhow::Result;
 use axlib::{
     api::{self, licensing::Licensing, NodeInfo},
-    ax_futures_util::prelude::AxStreamExt,
+    ax_futures_util::stream::AxStreamExt,
     crypto::{KeyPair, KeyStore},
     swarm::{
         blob_store::BlobStore,

@@ -250,9 +250,9 @@ validate: validate-rust validate-os validate-netsim validate-release validate-os
 .PHONY: diagnostics
 
 diagnostics:
-	@echo HOME = $HOME
+	@echo HOME = $(HOME)
 	@echo USER = $(shell whoami)
-	@echo PATH = $PATH
+	@echo PATH = ${PATH}
 	@echo PWD = $(shell pwd)
 
 .PHONY: validate-os
@@ -297,7 +297,7 @@ validate-netsim: diagnostics
 	NETSIM_TEST_LOGFILE=versions rust/actyx/target/release/versions
         # https://github.com/Actyx/Actyx/issues/160
 	# rust/actyx/target/release/health
-	NETSIM_TEST_LOGFILE=read_only 													rust/actyx/target/release/read_only
+	NETSIM_TEST_LOGFILE=read_only rust/actyx/target/release/read_only
 
 .PHONY: validate-os-android
 # execute linter for os-android
@@ -566,3 +566,10 @@ docker-build-and-push: assert-clean
 	cd docker/buildrs && bash ./build_and_push.sh
 	cd docker/musl && bash ./build_and_push.sh
 	cd docker/node-manager-win-builder && bash ./build_and_push.sh
+
+# Cargo will complain but formatting will still be done accordingly.
+.PHONY: fmt
+fmt:
+	cd rust/actyx && cargo fmt -- --config imports_granularity=Crate
+	cd rust/sdk && cargo fmt -- --config imports_granularity=Crate
+	cd rust/release && cargo fmt -- --config imports_granularity=Crate

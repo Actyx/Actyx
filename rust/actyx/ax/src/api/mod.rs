@@ -11,28 +11,23 @@ mod rejections;
 mod tests;
 
 use crate::{
-    swarm::{event_store_ref::EventStoreRef, BanyanStore},
-    util::formats::NodeErrorContext,
+    api::{api_util::hyper_serve::serve_it, files::FilePinner},
+    ax_panic, balanced_or,
+    swarm::{blob_store::BlobStore, event_store_ref::EventStoreRef, BanyanStore},
+    util::{formats::NodeErrorContext, to_multiaddr, variable::Reader, SocketAddrHelper},
 };
+use actyx_sdk::service::SwarmState;
 use anyhow::Result;
 use crossbeam::channel::Sender;
 use futures::future::try_join_all;
-use std::fmt;
-use warp::*;
+use parking_lot::Mutex;
+use std::{fmt, sync::Arc};
+use warp::{cors, path, Filter, Rejection, Reply};
 
 pub use crate::api::{
     api_util::{AppMode, BearerToken, NodeInfo, Token},
     events::service::EventService,
 };
-use crate::{
-    api::{api_util::hyper_serve::serve_it, files::FilePinner},
-    ax_panic, balanced_or,
-    swarm::blob_store::BlobStore,
-    util::{to_multiaddr, variable::Reader, SocketAddrHelper},
-};
-use actyx_sdk::service::SwarmState;
-use parking_lot::Mutex;
-use std::sync::Arc;
 
 pub async fn run(
     node_info: NodeInfo,

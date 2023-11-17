@@ -1,11 +1,5 @@
 use super::ndjson;
 
-use actyx_sdk::{
-    service::{PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
-    AppId,
-};
-use warp::*;
-
 use crate::{
     api::{
         api_util::{self, Result},
@@ -15,6 +9,11 @@ use crate::{
     runtime::features::FeatureError,
     swarm::event_store_ref,
 };
+use actyx_sdk::{
+    service::{PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
+    AppId,
+};
+use warp::{reply, Rejection, Reply};
 
 pub async fn offsets(_app_id: AppId, event_service: EventService) -> Result<impl Reply> {
     event_service
@@ -65,18 +64,18 @@ fn reject(err: anyhow::Error) -> Rejection {
     if let Some(e) = err.downcast_ref::<event_store_ref::Error>() {
         let cause = e.to_string();
         return match e {
-            event_store_ref::Error::Aborted => reject::custom(ApiError::Shutdown { cause }),
-            event_store_ref::Error::Overload => reject::custom(ApiError::Overloaded { cause }),
-            event_store_ref::Error::InvalidUpperBounds => reject::custom(ApiError::BadRequest { cause }),
-            event_store_ref::Error::TagExprError(_) => reject::custom(ApiError::BadRequest { cause }),
+            event_store_ref::Error::Aborted => warp::reject::custom(ApiError::Shutdown { cause }),
+            event_store_ref::Error::Overload => warp::reject::custom(ApiError::Overloaded { cause }),
+            event_store_ref::Error::InvalidUpperBounds => warp::reject::custom(ApiError::BadRequest { cause }),
+            event_store_ref::Error::TagExprError(_) => warp::reject::custom(ApiError::BadRequest { cause }),
         };
     }
     let err = match err.downcast::<ApiError>() {
-        Ok(e) => return reject::custom(e),
+        Ok(e) => return warp::reject::custom(e),
         Err(e) => e,
     };
     match err.downcast::<FeatureError>() {
-        Ok(e) => reject::custom(ApiError::from(e)),
+        Ok(e) => warp::reject::custom(ApiError::from(e)),
         Err(err) => {
             tracing::warn!("internal error: {:?}", err);
             api_util::reject(err)

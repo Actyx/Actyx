@@ -1,11 +1,17 @@
 use crate::{
+    api::{
+        api_util::NodeInfo, auth::create_token, files::FilePinner, licensing::Licensing, rejections, AppMode,
+        EventService,
+    },
     crypto::{KeyStore, KeyStoreRef, PrivateKey, PublicKey},
     swarm::{
         blob_store::BlobStore,
         event_store_ref::{self, EventStoreHandler, EventStoreRef},
         BanyanStore, DbPath,
     },
+    util::variable::Writer,
 };
+
 use actyx_sdk::{
     app_id,
     service::{AuthenticationResponse, SwarmState},
@@ -13,20 +19,12 @@ use actyx_sdk::{
 };
 use bytes::Bytes;
 use chrono::Utc;
+use futures::FutureExt;
 use hyper::Response;
 use parking_lot::lock_api::RwLock;
-use serde_json::*;
-use warp::*;
-
-use crate::{
-    api::{
-        api_util::NodeInfo, auth::create_token, files::FilePinner, licensing::Licensing, rejections, AppMode,
-        EventService,
-    },
-    util::variable::Writer,
-};
-use futures::FutureExt;
+use serde_json::json;
 use tokio::{runtime::Handle, sync::mpsc};
+use warp::{any, reject, test, Filter, Rejection, Reply};
 
 const UNAUTHORIZED_TOKEN: &str = "AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ==";
 
@@ -613,7 +611,7 @@ async fn bad_request_aql_feature() {
 
 #[tokio::test]
 async fn ws_aql_feature() -> anyhow::Result<()> {
-    fn to_json(m: ws::Message) -> anyhow::Result<serde_json::Value> {
+    fn to_json(m: warp::ws::Message) -> anyhow::Result<serde_json::Value> {
         Ok(m.to_str()
             .map_err(|_| anyhow::anyhow!("binary"))?
             .parse::<serde_json::Value>()?)

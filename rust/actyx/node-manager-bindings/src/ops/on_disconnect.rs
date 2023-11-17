@@ -2,7 +2,8 @@ use crate::Ctx;
 use axlib::node_connection::Task;
 use futures::SinkExt;
 use neon::{
-    prelude::{Context, FunctionContext, Object},
+    context::{Context, FunctionContext},
+    object::Object,
     result::JsResult,
     types::{JsBox, JsFunction, JsUndefined},
 };

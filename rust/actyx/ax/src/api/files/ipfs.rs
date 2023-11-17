@@ -6,7 +6,6 @@ use http::header::CONTENT_DISPOSITION;
 use libipld::cid::Cid;
 use percent_encoding::percent_decode_str;
 use std::{collections::VecDeque, path::Path, str::FromStr};
-use tracing::*;
 use warp::{
     host::Authority,
     http::header::{HeaderValue, CONTENT_TYPE},
@@ -46,13 +45,13 @@ impl FromStr for IpfsQuery {
 pub fn content_type_from_ext(name: &str) -> Option<String> {
     let ext = Path::new(name).extension()?.to_str()?;
     let mime = mime_guess::from_ext(ext).first_raw()?;
-    debug!("detected mime type {} from extension ({})", mime, ext);
+    tracing::debug!("detected mime type {} from extension ({})", mime, ext);
     Some(mime.into())
 }
 
 pub fn content_type_from_content(chunk: &[u8]) -> Option<&'static str> {
     let mime = tree_magic_mini::from_u8(chunk);
-    debug!("detected mime type {} from content", mime);
+    tracing::debug!("detected mime type {} from content", mime);
     Some(mime)
 }
 

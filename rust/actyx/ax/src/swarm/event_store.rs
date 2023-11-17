@@ -1,7 +1,7 @@
 use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
 use crate::{
-    ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered},
+    ax_futures_util::stream::{AxStreamExt, MergeOrdered},
     swarm::{selection::StreamEventSelection, BanyanStore, SwarmOffsets},
     trees::{
         axtrees::AxKey,

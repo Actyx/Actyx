@@ -6,8 +6,8 @@ use actyx_sdk::NodeId;
 use anyhow::{bail, Result};
 use async_std::{future, task};
 use futures::{
-    future::{select, BoxFuture, Either},
-    prelude::*,
+    future::{select, BoxFuture, Either, Future},
+    FutureExt,
 };
 use netsim_embed::{DelayBuffer, Ipv4Range, Machine, Netsim};
 use std::{

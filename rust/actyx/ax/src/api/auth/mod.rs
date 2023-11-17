@@ -1,17 +1,18 @@
 mod validate_signed_manifest;
 
-use crate::crypto::{PublicKey, SignedMessage};
 use actyx_sdk::{types::Binary, AppId, AppManifest, Timestamp};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use tracing::*;
-use warp::*;
+use warp::{body, post, reply, Filter, Rejection, Reply};
 
-use crate::api::{
-    api_util::{filters::accept_json, reject, NodeInfo, Token},
-    licensing::Licensing,
-    rejections::ApiError,
-    AppMode, BearerToken,
+use crate::{
+    api::{
+        api_util::{filters::accept_json, reject, NodeInfo, Token},
+        licensing::Licensing,
+        rejections::ApiError,
+        AppMode, BearerToken,
+    },
+    crypto::{PublicKey, SignedMessage},
 };
 
 use validate_signed_manifest::validate_signed_manifest;
@@ -44,7 +45,7 @@ pub(crate) fn create_token(
     };
     let bytes = serde_cbor::to_vec(&token)?;
     let signed = node_info.key_store.read().sign(bytes, vec![node_info.node_id.into()])?;
-    info!(target: "AUTH", "{}", mk_success_log_msg(&token));
+    tracing::info!(target: "AUTH", "{}", mk_success_log_msg(&token));
     Ok(base64::encode(signed).into())
 }
 
@@ -105,7 +106,7 @@ async fn handle_auth(node_info: NodeInfo, manifest: AppManifest) -> Result<impl 
         Ok((is_trial, app_id, version)) => create_token(node_info, app_id, version, is_trial)
             .map(|token| reply::json(&TokenResponse::new(token)))
             .map_err(reject),
-        Err(x) => Err(reject::custom(x)),
+        Err(x) => Err(warp::reject::custom(x)),
     }
 }
 

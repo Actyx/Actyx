@@ -11,7 +11,11 @@ use axlib::{
     util::{formats::ActyxOSCode, setup_logger},
 };
 use futures::channel::mpsc;
-use neon::prelude::*;
+use neon::{
+    context::{Context, ModuleContext},
+    result::NeonResult,
+    types::Finalize,
+};
 use tokio::runtime::Runtime;
 
 struct Ctx {
