@@ -14,7 +14,7 @@ use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use warp::*;
 
-use crate::api::formats::Licensing;
+use crate::api::licensing::Licensing;
 
 #[derive(Clone)]
 pub struct NodeInfo {

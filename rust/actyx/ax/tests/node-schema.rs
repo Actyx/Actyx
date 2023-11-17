@@ -1,5 +1,5 @@
 use axlib::{
-    api::formats::Licensing,
+    api::licensing::Licensing,
     node::node_settings::*,
     settings::{Repository, Scope},
 };

@@ -55,22 +55,25 @@ pub mod app_manifest_signer {
     use super::*;
 
     pub fn make_signed(
-        app_id: AppId,
-        display_name: String,
-        version: String,
+        manifest: &AppManifest,
         dev_privkey: PrivateKey,
         dev_cert: ManifestDeveloperCertificate,
     ) -> anyhow::Result<AppManifest> {
-        dev_cert.validate_app_id(&app_id)?;
+        dev_cert.validate_app_id(&manifest.app_id())?;
         let hash_input = AppManifestSignatureProps {
-            app_id: app_id.clone(),
-            display_name: display_name.clone(),
-            version: version.clone(),
+            app_id: manifest.app_id(),
+            display_name: manifest.display_name().into(),
+            version: manifest.version().into(),
         };
         let dev_signature = Signature::new(&hash_input, dev_privkey)?;
         let manifest_signature = AppManifestSignature::new(dev_signature, dev_cert);
         let manifest_signature_string: String = manifest_signature.try_into()?;
-        let manifest: AppManifest = AppManifest::signed(app_id, display_name, version, manifest_signature_string);
+        let manifest: AppManifest = AppManifest::signed(
+            manifest.app_id(),
+            manifest.display_name().into(),
+            manifest.version().into(),
+            manifest_signature_string,
+        );
         Ok(manifest)
     }
 

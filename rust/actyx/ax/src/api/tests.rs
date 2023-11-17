@@ -20,7 +20,7 @@ use warp::*;
 
 use crate::{
     api::{
-        api_util::NodeInfo, auth::create_token, files::FilePinner, formats::Licensing, rejections, AppMode,
+        api_util::NodeInfo, auth::create_token, files::FilePinner, licensing::Licensing, rejections, AppMode,
         EventService,
     },
     util::variable::Writer,

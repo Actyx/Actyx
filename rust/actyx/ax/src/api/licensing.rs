@@ -69,7 +69,7 @@ impl Default for Licensing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::api::{api_util::get_ax_public_key, formats::Licensing, rejections::ApiError};
+    use crate::api::{api_util::get_ax_public_key, licensing::Licensing, rejections::ApiError};
     use std::collections::BTreeMap;
 
     #[test]
