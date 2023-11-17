@@ -35,14 +35,8 @@ pub fn create_signed_app_manifest(opts: SignOpts) -> ActyxOSResult<AppManifest> 
     let app_manifest: AppManifest = serde_json::from_str(&app_manifest)
         .ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "Failed to deserialize app manifest")?;
 
-    let signed_manifest = app_manifest_signer::make_signed(
-        app_manifest.app_id(),
-        app_manifest.display_name().to_owned(),
-        app_manifest.version().to_owned(),
-        dev_privkey,
-        dev_cert.manifest_dev_cert(),
-    )
-    .ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "Failed to create signed manifest")?;
+    let signed_manifest = app_manifest_signer::make_signed(&app_manifest, dev_privkey, dev_cert.manifest_dev_cert())
+        .ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "Failed to create signed manifest")?;
     let serialized = serde_json::to_string(&signed_manifest)
         .ax_err_ctx(ActyxOSCode::ERR_IO, "Failed to serialize signed app manifest")?;
     fs::write(opts.path_to_manifest, serialized).ax_err_ctx(ActyxOSCode::ERR_IO, "Failed to overwrite app manifest")?;
