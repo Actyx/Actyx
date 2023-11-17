@@ -1,6 +1,6 @@
 use super::{Component, ComponentRequest};
 use crate::{
-    api::{formats::Licensing, NodeInfo},
+    api::{licensing::Licensing, NodeInfo},
     crypto::KeyStoreRef,
     node::{node_settings::Settings, BindTo},
     swarm::{

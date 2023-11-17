@@ -128,7 +128,7 @@ pub(crate) fn authenticate(
 mod tests {
     use super::*;
     use crate::{
-        api::{formats::Licensing, AppMode, BearerToken},
+        api::{licensing::Licensing, AppMode, BearerToken},
         crypto::{KeyStore, PrivateKey},
     };
     use actyx_sdk::{app_id, types::Binary, Timestamp};

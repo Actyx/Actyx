@@ -4,7 +4,7 @@ mod auth;
 mod blob;
 mod events;
 mod files;
-pub mod formats;
+pub mod licensing;
 mod node;
 mod rejections;
 #[cfg(test)]

@@ -4,7 +4,7 @@ use crate::{
 };
 
 use crate::api::{
-    formats::Licensing,
+    licensing::Licensing,
     rejections::{ApiError, UnauthorizedReason},
 };
 use actyx_sdk::AppManifest;
@@ -65,7 +65,7 @@ pub fn validate_signed_manifest(
 mod tests {
     use std::collections::BTreeMap;
 
-    use crate::api::{formats::Licensing, rejections::ApiError};
+    use crate::api::{licensing::Licensing, rejections::ApiError};
 
     use super::*;
     use crate::crypto::{PrivateKey, PublicKey};
