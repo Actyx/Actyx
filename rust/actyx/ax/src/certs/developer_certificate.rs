@@ -76,6 +76,11 @@ fn deserialize_dev_private_key<'de, D: Deserializer<'de>>(d: D) -> Result<Option
         .transpose()
 }
 
+// Serialize has been removed because we don’t serialize this type anymore: it only exists to read
+// previously generated developer certificates, which include the private key. Now, certificates
+// are derived purely from the public key (which was also true previously! we computed the public
+// from the private key) and the private key is loaded from their user key location (default or
+// specified otherwise).
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeveloperCertificate {

@@ -1,5 +1,3 @@
-#![deny(clippy::future_not_send)]
-
 mod actors;
 mod components;
 mod formats;

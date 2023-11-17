@@ -1,3 +1,5 @@
+#![deny(clippy::future_not_send)]
+
 mod consts;
 mod ops;
 mod types;

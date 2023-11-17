@@ -275,9 +275,9 @@ impl<T> std::fmt::Display for EventResponse<T> {
             }
             EventMeta::Event { key, meta } => {
                 let time = chrono::Local
-                    .timestamp_millis_opt(meta.timestamp.as_i64() / 1000)
+                    .timestamp_micros(meta.timestamp.as_i64())
                     .single()
-                    .expect("stored valid");
+                    .expect("source is a stored timestamp");
                 write!(
                     f,
                     "event at {} ({}, stream ID {})",

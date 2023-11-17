@@ -9,7 +9,7 @@
 //! ## BanyanStoreGuard
 //! temporary struct that is created when acquiring mutable access to the state.
 //! inside this you have mutable access to the state - but if you lock again you will deadlock.
-#![deny(clippy::future_not_send)]
+
 pub mod blob_store;
 mod discovery;
 pub mod event_store;

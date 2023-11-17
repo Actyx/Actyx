@@ -262,7 +262,7 @@ fn delete_name(
             let ans = ans.clone();
             async move {
                 if let Some(x) = ans
-                    .remove(cid_or_name)
+                    .remove(cid_or_name.into())
                     .await
                     .map_err(|_| warp::reject::custom(ApiError::Internal))?
                 {
@@ -293,7 +293,7 @@ fn update_name(
                     anyhow::bail!("Name must not be a CID")
                 } else {
                     let cid = Cid::from_str(&String::from_utf8(maybe_cid.to_vec())?)?;
-                    ans.set(name, cid, PersistenceLevel::Prefetch, true).await?;
+                    ans.set(name.into(), cid, PersistenceLevel::Prefetch, true).await?;
                     Ok(warp::reply())
                 }
             }

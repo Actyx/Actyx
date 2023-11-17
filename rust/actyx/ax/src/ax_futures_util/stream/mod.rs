@@ -187,7 +187,7 @@ impl<T: Sized + Stream> AxStreamExt for T {}
 ///
 /// When the returned iterator is exhausted, a noop waker will have been registered upstream.
 /// Normal usage will `.await` more elements later, which will install a proper waker.
-pub async fn ready_iter<St: Stream + Unpin>(stream: &mut St) -> Option<impl Iterator<Item = St::Item> + '_> {
+pub async fn ready_iter<St: Stream + Unpin + Send>(stream: &mut St) -> Option<impl Iterator<Item = St::Item> + '_> {
     stream.next().await.map(move |item| {
         once(item).chain(from_fn(move || {
             match stream.poll_next_unpin(&mut Context::from_waker(noop_waker_ref())) {

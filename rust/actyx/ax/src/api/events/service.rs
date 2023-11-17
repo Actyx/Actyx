@@ -662,7 +662,7 @@ mod tests {
         pub fn diag(s: &str) -> Self {
             Self::Diag(s.into())
         }
-        pub async fn next(mut s: Pin<&mut dyn Stream<Item = SubscribeResponse>>) -> Self {
+        pub async fn next(mut s: Pin<&mut (dyn Stream<Item = SubscribeResponse> + Send)>) -> Self {
             Self::from(timeout(Duration::from_millis(500), s.next()).await.unwrap().unwrap())
         }
     }

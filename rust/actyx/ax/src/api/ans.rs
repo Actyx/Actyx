@@ -120,12 +120,11 @@ impl ActyxNamingService {
 
     pub async fn set(
         &self,
-        name: impl Into<ActyxName>,
+        name: ActyxName,
         cid: Cid,
         level: PersistenceLevel,
         public: bool,
     ) -> anyhow::Result<Option<NameRecord>> {
-        let name: ActyxName = name.into();
         let record = NameRecordEvent::Add {
             name: name.clone(),
             cid,
@@ -149,8 +148,7 @@ impl ActyxNamingService {
         self.state.lock().get(&name.into()).cloned()
     }
 
-    pub async fn remove(&self, name: impl Into<ActyxName>) -> anyhow::Result<Option<NameRecord>> {
-        let name: ActyxName = name.into();
+    pub async fn remove(&self, name: ActyxName) -> anyhow::Result<Option<NameRecord>> {
         let record = NameRecordEvent::Remove { name: name.clone() };
         self.store
             .append(

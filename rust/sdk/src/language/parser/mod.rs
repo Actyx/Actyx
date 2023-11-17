@@ -366,16 +366,18 @@ fn r_timestamp(p: P) -> Result<Timestamp> {
         Ok(FixedOffset::east_opt(seconds)
             .expect("valid by construction above")
             .with_ymd_and_hms(year, month, day, hour, min, sec)
-            .unwrap()
+            .single()
+            .expect("ensured by the grammar")
             .with_nanosecond(nano)
-            .unwrap()
+            .expect("ensured by the grammar")
             .into())
     } else {
         Ok(Utc
             .with_ymd_and_hms(year, month, day, hour, min, sec)
-            .unwrap()
+            .single()
+            .expect("ensured by the grammar")
             .with_nanosecond(nano)
-            .unwrap()
+            .expect("ensured by the grammar")
             .into())
     }
 }
