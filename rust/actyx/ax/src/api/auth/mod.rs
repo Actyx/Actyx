@@ -8,7 +8,7 @@ use warp::{body, post, reply, Filter, Rejection, Reply};
 use crate::{
     api::{
         api_util::{filters::accept_json, reject, NodeInfo, Token},
-        formats::Licensing,
+        licensing::Licensing,
         rejections::ApiError,
         AppMode, BearerToken,
     },
@@ -128,7 +128,7 @@ mod tests {
     use warp::{reject::MethodNotAllowed, test, Filter, Rejection, Reply};
 
     use super::{route, validate_manifest, verify_token, AppMode, NodeInfo, TokenResponse};
-    use crate::api::{formats::Licensing, rejections::ApiError};
+    use crate::api::{licensing::Licensing, rejections::ApiError};
 
     fn test_route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
         let mut key_store = KeyStore::default();

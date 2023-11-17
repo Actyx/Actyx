@@ -1,5 +1,3 @@
-#![deny(clippy::future_not_send)]
-
 pub mod base64_blob;
 pub mod drainer;
 pub mod formats;

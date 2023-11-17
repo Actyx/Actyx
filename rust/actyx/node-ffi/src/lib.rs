@@ -1,3 +1,5 @@
+#![deny(clippy::future_not_send)]
+
 use axlib::node::{spawn_with_name, ApplicationState, BindTo, NodeError, Runtime, ShutdownReason};
 use crossbeam::channel::bounded;
 use ffi_support::{ErrorCode, ExternError, FfiStr};

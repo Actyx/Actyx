@@ -1,5 +1,3 @@
-#![deny(clippy::future_not_send)]
-
 mod database;
 mod formats;
 mod json_differ;

@@ -5,7 +5,7 @@ pub(crate) mod macros;
 use std::{str::FromStr, time::Duration};
 
 use crate::{
-    api::formats::Licensing,
+    api::licensing::Licensing,
     crypto::{KeyStoreRef, PublicKey},
     util::formats::NodeCycleCount,
 };

@@ -1,7 +1,7 @@
 use super::handler::Response;
 use crate::libp2p_streaming_response::Codec;
 use derive_more::{Display, Error, From};
-use futures::{channel::mpsc, AsyncReadExt, AsyncWriteExt};
+use futures::{channel::mpsc, AsyncReadExt, AsyncWriteExt, Future};
 use libp2p::{core::upgrade::NegotiationError, swarm::NegotiatedSubstream};
 use serde::de::DeserializeOwned;
 use std::io::ErrorKind;
@@ -80,30 +80,32 @@ impl ProtocolError {
     }
 }
 
-pub async fn write_msg(
-    io: &mut NegotiatedSubstream,
+pub fn write_msg<'a>(
+    io: &'a mut NegotiatedSubstream,
     msg: impl serde::Serialize,
     max_size: u32,
-    buffer: &mut Vec<u8>,
-) -> Result<(), ProtocolError> {
+    buffer: &'a mut Vec<u8>,
+) -> impl Future<Output = Result<(), ProtocolError>> + 'a {
     buffer.resize(4, 0);
     let res = serde_cbor::to_writer(&mut *buffer, &msg);
-    if let Err(e) = res {
-        let err = ProtocolError::Serde(e);
-        write_err(io, &err).await?;
-        return Err(err);
+    async move {
+        if let Err(e) = res {
+            let err = ProtocolError::Serde(e);
+            write_err(io, &err).await?;
+            return Err(err);
+        }
+        let size = buffer.len() - 4;
+        if size > (max_size as usize) {
+            tracing::debug!("message size {} too large (max = {})", size, max_size);
+            let err = ProtocolError::MessageTooLargeSent(size);
+            write_err(io, &err).await?;
+            return Err(err);
+        }
+        tracing::trace!("sending message of size {}", size);
+        buffer.as_mut_slice()[..4].copy_from_slice(&(size as u32).to_be_bytes());
+        io.write_all(buffer.as_slice()).await?;
+        Ok(())
     }
-    let size = buffer.len() - 4;
-    if size > (max_size as usize) {
-        tracing::debug!("message size {} too large (max = {})", size, max_size);
-        let err = ProtocolError::MessageTooLargeSent(size);
-        write_err(io, &err).await?;
-        return Err(err);
-    }
-    tracing::trace!("sending message of size {}", size);
-    buffer.as_mut_slice()[..4].copy_from_slice(&(size as u32).to_be_bytes());
-    io.write_all(buffer.as_slice()).await?;
-    Ok(())
 }
 
 pub async fn write_err(io: &mut NegotiatedSubstream, err: &ProtocolError) -> Result<(), std::io::Error> {

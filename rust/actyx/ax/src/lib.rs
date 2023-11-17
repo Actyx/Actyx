@@ -1,3 +1,5 @@
+#![deny(clippy::future_not_send)]
+
 pub mod api;
 pub mod ax_futures_util;
 pub mod certs;

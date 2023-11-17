@@ -1,6 +1,6 @@
 use crate::{
     api::{
-        api_util::NodeInfo, auth::create_token, files::FilePinner, formats::Licensing, rejections, AppMode,
+        api_util::NodeInfo, auth::create_token, files::FilePinner, licensing::Licensing, rejections, AppMode,
         EventService,
     },
     crypto::{KeyStore, KeyStoreRef, PrivateKey, PublicKey},
@@ -11,6 +11,7 @@ use crate::{
     },
     util::variable::Writer,
 };
+
 use actyx_sdk::{
     app_id,
     service::{AuthenticationResponse, SwarmState},
