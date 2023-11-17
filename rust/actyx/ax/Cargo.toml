@@ -161,7 +161,6 @@ quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 reqwest = { version = "0.11.12", features = ["blocking"] }
 serde_json = { version = "1.0.74", features = ["raw_value"] }
-spectral = "0.6.0"
 tokio = { version = "1.15.0", features = ["test-util"] }
 waker-fn = "1.1.0"
 
