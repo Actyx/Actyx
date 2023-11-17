@@ -566,3 +566,10 @@ docker-build-and-push: assert-clean
 	cd docker/buildrs && bash ./build_and_push.sh
 	cd docker/musl && bash ./build_and_push.sh
 	cd docker/node-manager-win-builder && bash ./build_and_push.sh
+
+# Cargo will complain but formatting will still be done accordingly.
+.PHONY: fmt
+fmt:
+	cd rust/actyx && cargo fmt -- --config imports_granularity=Crate
+	cd rust/sdk && cargo fmt -- --config imports_granularity=Crate
+	cd rust/release && cargo fmt -- --config imports_granularity=Crate
