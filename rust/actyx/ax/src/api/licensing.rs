@@ -69,7 +69,7 @@ impl Default for Licensing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::api::{get_ax_public_key, licensing::Licensing, rejections::ApiError};
+    use crate::api::{licensing::Licensing, rejections::ApiError};
     use std::collections::BTreeMap;
 
     #[test]
@@ -82,7 +82,7 @@ mod tests {
     #[test]
     fn is_node_licensed() {
         let licensing = Licensing::default();
-        let ax_key = get_ax_public_key();
+        let ax_key = PublicKey::ax_public_key();
         assert!(!licensing.is_node_licensed(&ax_key).unwrap());
 
         let licensing = Licensing {
