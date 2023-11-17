@@ -91,7 +91,7 @@ impl Default for AppManifest {
             "Trial App".to_string(),
             "0.0.1".to_string(),
         )
-        .unwrap()
+        .expect("Should be a valid app manifest")
     }
 }
 
