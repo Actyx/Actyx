@@ -13,18 +13,15 @@ mod tests;
 use crate::{
     api::{api_util::hyper_serve::serve_it, files::FilePinner},
     ax_panic, balanced_or,
-    swarm::blob_store::BlobStore,
-    swarm::{event_store_ref::EventStoreRef, BanyanStore},
-    util::formats::NodeErrorContext,
-    util::{to_multiaddr, variable::Reader, SocketAddrHelper},
+    swarm::{blob_store::BlobStore, event_store_ref::EventStoreRef, BanyanStore},
+    util::{formats::NodeErrorContext, to_multiaddr, variable::Reader, SocketAddrHelper},
 };
 use actyx_sdk::service::SwarmState;
 use anyhow::Result;
 use crossbeam::channel::Sender;
 use futures::future::try_join_all;
 use parking_lot::Mutex;
-use std::fmt;
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 use warp::{cors, path, Filter, Rejection, Reply};
 
 pub use crate::api::{
