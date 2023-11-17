@@ -3,8 +3,11 @@ use futures::FutureExt;
 use tracing::{debug, info};
 use warp::{reject, Filter, Rejection};
 
-use super::super::{NodeInfo, Token};
-use crate::api::{auth::verify_token, rejections::ApiError};
+use crate::api::{
+    api_util::{NodeInfo, Token},
+    auth::verify_token,
+    rejections::ApiError,
+};
 
 /// Tries to extract the value given to the `access_token` query parameter.
 pub fn query_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
