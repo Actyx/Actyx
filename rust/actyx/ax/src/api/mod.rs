@@ -6,6 +6,7 @@ mod events;
 mod files;
 mod hyper_serve;
 pub mod licensing;
+pub(crate) mod macros;
 mod node;
 mod rejections;
 #[cfg(test)]

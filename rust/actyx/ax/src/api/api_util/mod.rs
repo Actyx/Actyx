@@ -1,5 +1,4 @@
 pub mod filters;
-pub(crate) mod macros;
 
 use std::{str::FromStr, time::Duration};
 
