@@ -297,7 +297,7 @@ validate-netsim: diagnostics
 	NETSIM_TEST_LOGFILE=versions rust/actyx/target/release/versions
         # https://github.com/Actyx/Actyx/issues/160
 	# rust/actyx/target/release/health
-	NETSIM_TEST_LOGFILE=read_only 													rust/actyx/target/release/read_only
+	NETSIM_TEST_LOGFILE=read_only rust/actyx/target/release/read_only
 
 .PHONY: validate-os-android
 # execute linter for os-android
