@@ -32,7 +32,7 @@ impl<T> Bounded for ValueOrLimit<T> {
 
 /**
  * Marker trait for things that serialize as numbers, so we can not accidentally
- * serialize a ValueOrLimit<String>. Serializing ValueOrLimit<String> for a value
+ * serialize a `ValueOrLimit<String>`. Serializing `ValueOrLimit<String>` for a value
  * of "max" or "min" is not reversible.
  */
 pub trait SerializesAsNumber {}

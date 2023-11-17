@@ -29,7 +29,7 @@ pub enum NodeErrorContext {
 /// Wrapper around `panic!` making sure that the passed in arg evalutes to
 /// `anyhow::Error`. This is to be used in conjunction with the panic hook
 /// handler installed inside the `node` crate in order to pass an error object
-/// via a panic without information loss ([`nodecrate::util::init_panic_hook`]).
+/// via a panic without information loss ([`crate::node::util::init_panic_hook`]).
 macro_rules! ax_panic {
     ($x:expr) => {
         let y: anyhow::Error = $x;
