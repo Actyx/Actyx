@@ -5,7 +5,7 @@ mod ndjson;
 use warp::Filter;
 
 use crate::{
-    api::{api_util::NodeInfo, events::service::EventService},
+    api::{events::service::EventService, NodeInfo},
     balanced_or,
 };
 

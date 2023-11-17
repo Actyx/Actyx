@@ -61,7 +61,7 @@ pub fn root_serve(
                     true,
                     maybe_name,
                 )
-                .map_err(crate::api::api_util::reject)
+                .map_err(crate::api::reject)
             },
         )
 }
@@ -167,7 +167,7 @@ fn prefetch(
             pinner
                 .update(app_id, request.query)
                 .map(|_| Ok(http::StatusCode::NO_CONTENT))
-                .map_err(crate::api::api_util::reject)
+                .map_err(crate::api::reject)
         },
     )
 }
@@ -244,7 +244,7 @@ fn get(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
                     false,
                     maybe_name,
                 )
-                .map_err(crate::api::api_util::reject)
+                .map_err(crate::api::reject)
             },
         )
 }
@@ -297,7 +297,7 @@ fn update_name(
                     Ok(warp::reply())
                 }
             }
-            .map_err(crate::api::api_util::reject)
+            .map_err(crate::api::reject)
         })
 }
 
@@ -415,7 +415,7 @@ fn add(store: BanyanStore, node_info: NodeInfo) -> impl Filter<Extract = (impl R
             }
             .map_err(|e| {
                 tracing::error!("Error adding files {:#}", e);
-                crate::api::api_util::reject(e)
+                crate::api::reject(e)
             })
         })
 }

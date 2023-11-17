@@ -1,8 +1,5 @@
 use crate::{
-    api::{
-        api_util::NodeInfo, auth::create_token, files::FilePinner, licensing::Licensing, rejections, AppMode,
-        EventService,
-    },
+    api::{auth::create_token, files::FilePinner, licensing::Licensing, rejections, AppMode, EventService, NodeInfo},
     crypto::{KeyStore, KeyStoreRef, PrivateKey, PublicKey},
     swarm::{
         blob_store::BlobStore,

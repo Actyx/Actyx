@@ -5,9 +5,9 @@ use warp::Filter;
 use wsrpc::Service;
 
 use crate::api::{
-    api_util::NodeInfo,
     events::service::EventService,
     filters::{authenticate, query_token, query_token_ws},
+    NodeInfo,
 };
 
 mod offsets;

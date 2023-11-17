@@ -13,9 +13,8 @@ use warp::{any, get, path, reply, Filter, Rejection, Reply};
 
 use crate::{
     api::{
-        api_util::{reject, Result},
         filters::{accept_text, authenticate, header_or_query_token},
-        NodeInfo,
+        reject, NodeInfo, Result,
     },
     balanced_or,
 };
