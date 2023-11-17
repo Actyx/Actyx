@@ -225,7 +225,7 @@ mod tests {
     use super::{MergeOrdered, NewSourceMode};
     use crate::ax_futures_util::{
         future::future_helpers::{delay_ms, wait_for},
-        prelude::*,
+        stream::AxStreamExt,
     };
     use futures::{
         channel::oneshot,

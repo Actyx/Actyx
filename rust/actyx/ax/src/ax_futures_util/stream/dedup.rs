@@ -66,7 +66,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::ax_futures_util::{prelude::*, stream::drainer::Drainer};
+    use crate::ax_futures_util::stream::{drainer::Drainer, AxStreamExt};
     use futures::{
         channel::mpsc,
         executor::block_on,

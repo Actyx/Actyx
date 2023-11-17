@@ -17,7 +17,3 @@ impl<T: Send + 'static, E: Send + 'static> ReceiverExt<Result<T, E>> for Receive
 
 pub mod future;
 pub mod stream;
-
-pub mod prelude {
-    pub use crate::ax_futures_util::stream::AxStreamExt;
-}

@@ -28,60 +28,60 @@ pub mod transport;
 mod tests;
 
 pub use crate::swarm::{
+    gossip_protocol::{GossipMessage, RootMap, RootUpdate},
     sqlite::{StorageServiceStore, StorageServiceStoreWrite},
     sqlite_index_store::DbPath,
     streams::StreamAlias,
 };
 use crate::{
-    swarm::event_store::PersistenceMeta,
-    trees::{dnf::Dnf, query::TagExprQuery},
-};
-use actyx_sdk::{
-    app_id,
-    language::{TagAtom, TagExpr},
-    tag,
-};
-pub use banyan::{store::BlockWriter, Forest as BanyanForest, StreamBuilder, Transaction as BanyanTransaction};
-use futures::{
-    future::{self, BoxFuture},
-    stream, FutureExt, Stream, StreamExt, TryStreamExt,
-};
-pub use ipfs_embed::{Executor as IpfsEmbedExecutor, StorageConfig, StorageService};
-pub use libipld::codec::Codec as IpldCodec;
-use once_cell::sync::Lazy;
-pub use prune::{RetainConfig, StreamAge, StreamSize};
-use streams::{OwnStreamGuard, RemoteNodeInner};
-pub use unixfs_v1::{
-    dir::builder::{BufferingTreeBuilder, TreeOptions},
-    FlatUnixFs, PBLink, UnixFsType,
-};
-
-pub use crate::swarm::gossip_protocol::{GossipMessage, RootMap, RootUpdate};
-use crate::{
-    ax_futures_util::{
-        prelude::*,
-        stream::variable::{Observer, Variable},
+    ax_futures_util::stream::{
+        variable::{Observer, Variable},
+        AxStreamExt,
     },
     crypto::KeyPair,
     swarm::{
+        event_store::PersistenceMeta,
         gossip::Gossip,
         sqlite::{SqliteStore, SqliteStoreWrite},
         streams::{OwnStream, PublishedTree, ReplicatedStream},
     },
+    trees::{
+        axtrees::{AxKey, AxTrees, Sha256Digest},
+        dnf::Dnf,
+        query::TagExprQuery,
+        tags::{ScopedTag, ScopedTagSet},
+        AxTree, AxTreeHeader,
+    },
+    util::{
+        formats::NodeErrorContext,
+        reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
+        to_multiaddr, to_socket_addr, SocketAddrHelper,
+    },
 };
-use actyx_sdk::{AppId, LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, TagSet, Timestamp};
+use actyx_sdk::{
+    app_id,
+    language::{TagAtom, TagExpr},
+    tag, AppId, LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, TagSet, Timestamp,
+};
 use anyhow::{Context, Result};
 use banyan::{
     query::Query,
     store::{BranchCache, ReadOnlyStore},
     FilteredChunk, Secrets,
 };
+pub use banyan::{store::BlockWriter, Forest as BanyanForest, StreamBuilder, Transaction as BanyanTransaction};
 use fnv::FnvHashMap;
-use futures::channel::mpsc;
+use futures::{
+    channel::mpsc,
+    future::{self, BoxFuture},
+    stream, FutureExt, Stream, StreamExt, TryStreamExt,
+};
 use ipfs_embed::{
     config::BitswapConfig, identity::PublicKey::Ed25519, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent,
     Multiaddr, NetworkConfig, PeerId, SyncEvent, TempPin,
 };
+pub use ipfs_embed::{Executor as IpfsEmbedExecutor, StorageConfig, StorageService};
+pub use libipld::codec::Codec as IpldCodec;
 use libipld::{cbor::DagCborCodec, error::BlockNotFound};
 use libp2p::{
     dns::ResolverConfig,
@@ -90,7 +90,9 @@ use libp2p::{
     multiaddr::Protocol,
     ping,
 };
+use once_cell::sync::Lazy;
 use parking_lot::Mutex;
+pub use prune::{RetainConfig, StreamAge, StreamSize};
 use serde::{Deserialize, Serialize};
 use sqlite_index_store::SqliteIndexStore;
 use std::{
@@ -106,18 +108,10 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-
-use crate::{
-    trees::{
-        axtrees::{AxKey, AxTrees, Sha256Digest},
-        tags::{ScopedTag, ScopedTagSet},
-        AxTree, AxTreeHeader,
-    },
-    util::{
-        formats::NodeErrorContext,
-        reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
-        to_multiaddr, to_socket_addr, SocketAddrHelper,
-    },
+use streams::{OwnStreamGuard, RemoteNodeInner};
+pub use unixfs_v1::{
+    dir::builder::{BufferingTreeBuilder, TreeOptions},
+    FlatUnixFs, PBLink, UnixFsType,
 };
 use unixfs_v1::{
     dir::MaybeResolved,

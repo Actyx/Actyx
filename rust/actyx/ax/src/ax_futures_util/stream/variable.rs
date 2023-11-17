@@ -347,10 +347,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::ax_futures_util::{
-        prelude::AxStreamExt,
-        stream::{interval, Drainer},
-    };
+    use crate::ax_futures_util::stream::{interval, AxStreamExt, Drainer};
 
     use super::*;
     use tokio::time::Duration;

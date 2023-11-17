@@ -89,7 +89,7 @@ mod tests {
     use super::*;
     use crate::ax_futures_util::{
         future::future_helpers::{delay_ms, wait_for},
-        prelude::*,
+        stream::AxStreamExt,
     };
     use futures::{
         future::{ready, FutureExt},

@@ -77,7 +77,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::ax_futures_util::{future::future_helpers::wait_for, prelude::*};
+    use crate::ax_futures_util::{future::future_helpers::wait_for, stream::AxStreamExt};
     use futures::{
         channel::{mpsc, oneshot},
         stream::{self, StreamExt},
