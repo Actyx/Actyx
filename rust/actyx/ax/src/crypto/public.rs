@@ -7,7 +7,7 @@ use std::{
     str::FromStr,
 };
 
-pub const DEFAULT_AX_PUBLIC_KEY_B64: &str = "075i62XGQJuXjv6nnLQyJzECZhF29acYvYeEOJ3kc5M8=";
+const DEFAULT_AX_PUBLIC_KEY_B64: &str = "075i62XGQJuXjv6nnLQyJzECZhF29acYvYeEOJ3kc5M8=";
 
 /// A public key, which also serves as identifier for the corresponding private key
 ///
