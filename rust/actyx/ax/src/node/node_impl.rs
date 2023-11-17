@@ -426,14 +426,15 @@ mod test {
     use tempfile::TempDir;
     use tokio::sync::oneshot::channel;
 
+    const NODE_SETTINGS_SCHEMA: &[u8] = include_bytes!("../../resources/json-schema/node-settings.schema.json");
+
     #[tokio::test]
     async fn should_handle_settings_requests() {
         let (_runtime_tx, runtime_rx) = crossbeam::channel::bounded(8);
         let temp_dir = TempDir::new().unwrap();
         let runtime = Host::new(temp_dir.path().to_path_buf()).unwrap();
         let mut node = Node::new(runtime_rx, vec![], runtime).unwrap();
-        let schema =
-            serde_json::from_slice(include_bytes!("../../resources/json-schema/node-settings.schema.json")).unwrap();
+        let schema = serde_json::from_slice(NODE_SETTINGS_SCHEMA).unwrap();
         let scope = system_scope();
         let json = json!(
           {
@@ -603,8 +604,7 @@ mod test {
         let temp_dir = TempDir::new().unwrap();
         let runtime = Host::new(temp_dir.path().to_path_buf()).unwrap();
         let mut node = Node::new(runtime_rx, vec![], runtime).unwrap();
-        let schema =
-            serde_json::from_slice(include_bytes!("../../resources/json-schema/node-settings.schema.json")).unwrap();
+        let schema = serde_json::from_slice(NODE_SETTINGS_SCHEMA).unwrap();
         {
             let (response, rx) = channel();
             node.handle_settings_request(SettingsRequest::SetSchema {
