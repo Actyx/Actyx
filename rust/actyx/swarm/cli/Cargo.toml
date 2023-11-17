@@ -15,7 +15,7 @@ chrono = "0.4.19"
 crossbeam = "0.8.1"
 futures = { version = "0.3.19", package = "futures" }
 hex = "0.4.3"
-ipfs-embed = { version = "0.26.0", default-features = false, features = [
+ipfs-embed = { version = "0.26.1", default-features = false, features = [
   "tokio",
 ] }
 libp2p = { version = "0.50.0", default-features = false }
