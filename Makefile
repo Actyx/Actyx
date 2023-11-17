@@ -250,9 +250,9 @@ validate: validate-rust validate-os validate-netsim validate-release validate-os
 .PHONY: diagnostics
 
 diagnostics:
-	@echo HOME = $HOME
+	@echo HOME = $(HOME)
 	@echo USER = $(shell whoami)
-	@echo PATH = $PATH
+	@echo PATH = ${PATH}
 	@echo PWD = $(shell pwd)
 
 .PHONY: validate-os
