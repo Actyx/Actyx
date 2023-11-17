@@ -25,7 +25,7 @@ pub enum ProtocolError {
     #[display(fmt = "internal channel error")]
     Channel(mpsc::SendError),
     /// This variant is useful for implementing the function to pass to
-    /// [`with_spawner`](crate::v2::StreamingResponseConfig)
+    /// [`with_spawner`](crate::libp2p_streaming_response::StreamingResponseConfig)
     #[display(fmt = "spawned task failed (cancelled={})", _0)]
     JoinError(#[error(ignore)] bool),
 }

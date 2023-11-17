@@ -7,7 +7,7 @@
 ///
 /// It also applies `::warp::Filter::boxed` to each handler expression when in `debug_assertions`
 /// mode, improving compile time further.
-/// Source: https://github.com/seanmonstar/warp/issues/619#issuecomment-662716377
+/// Source: <https://github.com/seanmonstar/warp/issues/619#issuecomment-662716377>
 #[macro_export]
 macro_rules! balanced_or {
     // Case 0: Single expression
