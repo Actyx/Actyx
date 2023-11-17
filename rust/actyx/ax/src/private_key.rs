@@ -25,7 +25,7 @@ impl fmt::Display for AxPrivateKey {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 /// Wrapper around `crate::crypto::PrivateKey` for use inside ax's context. Most notably
-/// is the on disk format, which differs from [`crate::crypto::Keystore::dump`].
+/// is the on disk format, which differs from [`crate::crypto::keystore::Keystore::dump`].
 pub struct AxPrivateKey(PrivateKey);
 impl AxPrivateKey {
     fn default_user_identity_dir() -> ActyxOSResult<PathBuf> {

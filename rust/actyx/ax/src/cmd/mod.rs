@@ -64,7 +64,7 @@ impl FromStr for Authority {
 
 #[derive(StructOpt, Debug)]
 pub struct ConsoleOpt {
-    /// the IP address or <host>:<admin port> of the node to perform the operation on.
+    /// the IP address or `<host>:<admin port>` of the node to perform the operation on.
     #[structopt(name = "NODE", required = true)]
     authority: Authority,
     /// File from which the identity (private key) for authentication is read.

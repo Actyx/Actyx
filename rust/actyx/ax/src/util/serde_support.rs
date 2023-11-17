@@ -7,7 +7,7 @@ use std::{
 /// A wrapper for anything that implements FromStr to make it serde::Deserialize. Will turn
 /// Display to serde::Serialize. Probably should be used with Cid, PeerId and such.
 ///
-/// Monkeyd from: https://github.com/serde-rs/serde/issues/1316
+/// Monkeyd from: <https://github.com/serde-rs/serde/issues/1316>
 #[derive(Clone, Copy)]
 pub struct StringSerialized<T>(pub T);
 
