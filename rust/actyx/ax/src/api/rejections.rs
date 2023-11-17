@@ -1,8 +1,9 @@
+use std::error::Error;
+
 use crate::{runtime::features::FeatureError, util::serde_support::StringSerialized};
 use actyx_sdk::AppId;
 use derive_more::Display;
-use tracing::*;
-use warp::{http::StatusCode, *};
+use warp::{filters, http::StatusCode, reject, Rejection, Reply};
 
 #[derive(Debug, Display, Clone, PartialEq, Eq)]
 pub enum UnauthorizedReason {
@@ -156,11 +157,10 @@ pub fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
         ApiError::UnsupportedMediaType { msg: umt.to_string() }
     } else if let Some(e) = r.find::<ApiError>() {
         if let ApiError::AppUnauthorized { app_id, reason } = e {
-            info!(target: "AUTH", "Unauthorized app {}. {}.", app_id, reason)
+            tracing::info!(target: "AUTH", "Unauthorized app {}. {}.", app_id, reason)
         }
         e.to_owned()
     } else if let Some(e) = r.find::<filters::body::BodyDeserializeError>() {
-        use std::error::Error;
         ApiError::BadRequest {
             cause: e.source().map_or("unknown".to_string(), |e| e.to_string()),
         }
@@ -169,7 +169,7 @@ pub fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
     } else if r.find::<reject::MethodNotAllowed>().is_some() {
         ApiError::MethodNotAllowed
     } else {
-        warn!("unhandled rejection: {:?}", r);
+        tracing::warn!("unhandled rejection: {:?}", r);
         ApiError::Internal
     };
 

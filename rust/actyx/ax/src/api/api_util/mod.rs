@@ -5,6 +5,7 @@ pub(crate) mod macros;
 use std::{str::FromStr, time::Duration};
 
 use crate::{
+    api::formats::Licensing,
     crypto::{KeyStoreRef, PublicKey},
     util::formats::NodeCycleCount,
 };
@@ -12,9 +13,7 @@ use actyx_sdk::{AppId, NodeId, Timestamp};
 use chrono::{DateTime, Utc};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
-use warp::*;
-
-use crate::api::formats::Licensing;
+use warp::Rejection;
 
 #[derive(Clone)]
 pub struct NodeInfo {
@@ -102,10 +101,10 @@ impl BearerToken {
 #[derive(Debug, Display)]
 pub struct Error(anyhow::Error); // anyhow::Error is sealed so we wrap it
 impl std::error::Error for Error {}
-impl reject::Reject for Error {}
+impl warp::reject::Reject for Error {}
 
 pub fn reject(err: anyhow::Error) -> Rejection {
-    reject::custom(Error(err))
+    warp::reject::custom(Error(err))
 }
 
 pub type Result<T> = std::result::Result<T, Rejection>;

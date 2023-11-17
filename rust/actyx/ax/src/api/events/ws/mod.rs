@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use maplit::btreemap;
-use warp::*;
+use warp::Filter;
 use wsrpc::Service;
 
 use crate::api::{

@@ -1,7 +1,7 @@
-use assert_cmd::prelude::*;
+use assert_cmd::{assert::OutputAssertExt, cargo::CommandCargoExt};
 use axlib::util::version::NodeVersion;
 use maplit::btreemap;
-use predicates::prelude::*;
+use predicates::prelude::predicate;
 use std::{collections::HashMap, path::PathBuf, process::Command};
 
 fn get_commands() -> HashMap<&'static str, Vec<&'static str>> {

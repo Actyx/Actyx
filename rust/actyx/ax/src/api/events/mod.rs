@@ -2,7 +2,7 @@ mod http;
 pub mod service;
 mod ws;
 
-use warp::*;
+use warp::{Filter, Rejection, Reply};
 
 use crate::api::api_util::NodeInfo;
 use service::EventService;
