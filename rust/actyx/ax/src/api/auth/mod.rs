@@ -7,7 +7,8 @@ use warp::{body, post, reply, Filter, Rejection, Reply};
 
 use crate::{
     api::{
-        api_util::{filters::accept_json, reject, NodeInfo, Token},
+        api_util::{reject, NodeInfo, Token},
+        filters::accept_json,
         licensing::Licensing,
         rejections::ApiError,
         AppMode, BearerToken,

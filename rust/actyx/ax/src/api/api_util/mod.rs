@@ -1,5 +1,3 @@
-pub mod filters;
-
 use std::{str::FromStr, time::Duration};
 
 use crate::{
@@ -54,7 +52,7 @@ fn get_token_validity() -> u32 {
 }
 
 #[derive(Debug, Display, Deserialize)]
-pub struct Token(String);
+pub struct Token(pub(crate) String);
 
 impl From<String> for Token {
     fn from(x: String) -> Self {

@@ -21,7 +21,7 @@ use self::ipfs::{extract_query_from_host, extract_query_from_path, IpfsQuery};
 use crate::{
     api::{
         ans::{ActyxName, ActyxNamingService, PersistenceLevel},
-        api_util::filters::{authenticate, header_or_query_token},
+        filters::{authenticate, header_or_query_token},
         rejections::ApiError,
         NodeInfo,
     },

@@ -4,6 +4,7 @@ mod auth;
 mod blob;
 mod events;
 mod files;
+mod filters;
 mod hyper_serve;
 pub mod licensing;
 pub(crate) mod macros;
