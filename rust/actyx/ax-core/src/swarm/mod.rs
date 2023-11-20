@@ -1522,7 +1522,7 @@ impl BanyanStore {
         let mut guard = stream.transaction();
 
         // in case of error: stream builder state will be reverted, except for the cipher offset
-        let res = f(&mut txn, &mut *guard)?;
+        let res = f(&mut txn, &mut guard)?;
 
         let curr = guard.snapshot();
         if curr.link() == prev.link() {
