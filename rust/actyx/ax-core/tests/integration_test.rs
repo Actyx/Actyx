@@ -1,4 +1,4 @@
-use axlib::settings::{
+use ax_core::settings::{
     Database, Repository, RepositoryError as Error, Scope, ValidationError, ValidationErrorDescr, ValidationState,
 };
 use serde_json::json;

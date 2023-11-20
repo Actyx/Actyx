@@ -1,5 +1,5 @@
 use crate::{types::Nothing, util::run_task};
-use axlib::{
+use ax_core::{
     node_connection::{request_single, Task},
     util::formats::{AdminRequest, AdminResponse},
 };
@@ -33,7 +33,7 @@ pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                         Task::Admin(
                             peer_id,
                             AdminRequest::SettingsSet {
-                                scope: axlib::settings::Scope { tokens },
+                                scope: ax_core::settings::Scope { tokens },
                                 json: settings,
                                 ignore_errors: false,
                             },

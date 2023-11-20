@@ -1,5 +1,5 @@
 use anyhow::bail;
-use axlib::private_key::{AxPrivateKey, DEFAULT_PRIVATE_KEY_FILE_NAME};
+use ax_core::private_key::{AxPrivateKey, DEFAULT_PRIVATE_KEY_FILE_NAME};
 use neon::{
     context::{Context, FunctionContext},
     result::JsResult,

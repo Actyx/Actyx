@@ -1,4 +1,4 @@
-use axlib::settings::{Scope, Validator};
+use ax_core::settings::{Scope, Validator};
 use std::str::FromStr;
 
 #[test]

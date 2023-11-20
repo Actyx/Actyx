@@ -1,5 +1,5 @@
 use actyx_sdk::{app_id, language};
-use axlib::{
+use ax_core::{
     runtime::{
         eval::{Context, RootContext},
         query::Query,

@@ -2,7 +2,7 @@ use actyx_sdk::{
     service::{Order, PublishEvent},
     tags, Ax, AxOpts, Payload,
 };
-use axlib::{
+use ax_core::{
     node::{BindTo, Runtime},
     util::SocketAddrHelper,
 };
@@ -16,7 +16,7 @@ use tempfile::tempdir;
 fn round_trip(c: &mut Criterion) {
     let dir = tempdir().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let _x = axlib::node::ApplicationState::spawn(
+    let _x = ax_core::node::ApplicationState::spawn(
         dir.path().into(),
         Runtime::Linux,
         BindTo {

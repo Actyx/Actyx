@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use axlib::cmd::apps::{create_signed_app_manifest, SignOpts};
+use ax_core::cmd::apps::{create_signed_app_manifest, SignOpts};
 use neon::{
     context::{Context, FunctionContext},
     result::JsResult,

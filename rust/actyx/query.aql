@@ -1,3 +1,0 @@
-PRAGMA features := aggregate
-
-FROM allEvents AGGREGATE LAST(_) AGGREGATE MAX(_)

@@ -5,7 +5,7 @@ version = "0.1.0"
 authors = ["Actyx AG"]
 
 [dependencies]
-ax = { path = "../ax" }
+ax_core = { path = "../ax-core" }
 
 anyhow = "1.0.52"
 crossbeam = "0.8.1"

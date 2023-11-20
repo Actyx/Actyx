@@ -6,7 +6,7 @@ mod types;
 mod util;
 
 use crate::util::{create_default_private_key, default_private_key};
-use axlib::{
+use ax_core::{
     node_connection::{mk_swarm, Task},
     util::{formats::ActyxOSCode, setup_logger},
 };

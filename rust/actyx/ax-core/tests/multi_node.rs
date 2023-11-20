@@ -1,5 +1,5 @@
 use actyx_sdk::{app_id, tags, AppId, Payload};
-use axlib::{
+use ax_core::{
     swarm::BanyanStore,
     trees::query::{LamportQuery, TagExprQuery, TimeQuery},
 };
@@ -13,7 +13,7 @@ struct MyEvent {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn banyan_multi_node() {
-    axlib::util::setup_logger();
+    ax_core::util::setup_logger();
     let s1 = BanyanStore::test("a").await.unwrap();
     let s2 = BanyanStore::test("b").await.unwrap();
     s1.ipfs()

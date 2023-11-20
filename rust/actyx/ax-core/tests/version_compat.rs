@@ -1,7 +1,7 @@
 #![cfg(target_os = "linux")]
 use actyx_sdk::service::OffsetsResponse;
 use anyhow::{anyhow, bail, ensure};
-use axlib::{
+use ax_core::{
     cmd::ActyxCliResult,
     util::{
         formats::{ActyxOSCode, NodesInspectResponse},
@@ -231,7 +231,7 @@ fn with_api(
     mut log: impl Write + Clone + Send + 'static,
     f: impl FnOnce(u16, &Path) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    axlib::util::setup_logger();
+    ax_core::util::setup_logger();
     setup();
 
     let workdir = tempdir()?;

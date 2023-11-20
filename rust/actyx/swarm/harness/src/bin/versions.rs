@@ -6,7 +6,7 @@ mod versions {
     };
     use anyhow::Context;
     use async_std::task::block_on;
-    use axlib::util::os_arch::Arch;
+    use ax_core::util::os_arch::Arch;
     use escargot::CargoBuild;
     use flate2::read::GzDecoder;
     use futures::{future::ready, StreamExt};

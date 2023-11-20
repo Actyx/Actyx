@@ -1,6 +1,6 @@
 use crate::util::run_task;
 use actyx_sdk::service::{PublishEvent, PublishRequest, PublishResponse};
-use axlib::{
+use ax_core::{
     node_connection::{publish as publish_impl, Task},
     util::formats::{ax_err, events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult},
 };
@@ -25,14 +25,14 @@ async fn publish(mut tx: Sender<Task>, peer: PeerId, data: Vec<PublishEvent>) ->
 
     match r {
         Err(err) => ax_err(
-            axlib::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+            ax_core::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
             format!("EventsRequests::Publish returned unexpected error: {:?}", err),
         ),
         Ok(mut stream) => {
             async {
                 let Some(result) = stream.next().await else {
                     return ax_err(
-                        axlib::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+                        ax_core::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
                         "EventsRequests::Publish returned empty".to_string(),
                     );
                 };

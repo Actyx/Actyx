@@ -1,4 +1,4 @@
-use axlib::{
+use ax_core::{
     api::licensing::Licensing,
     node::node_settings::*,
     settings::{Repository, Scope},

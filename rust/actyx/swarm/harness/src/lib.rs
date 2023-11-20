@@ -102,7 +102,7 @@ impl MultiaddrExt for Multiaddr {
 }
 
 pub fn setup_env() -> Result<()> {
-    axlib::util::setup_logger();
+    ax_core::util::setup_logger();
     netsim_embed::unshare_user()?;
     Ok(())
 }

@@ -2,7 +2,7 @@ use crate::m;
 use actyx_sdk::{AppManifest, Ax, AxOpts, NodeId, Url};
 use anyhow::{anyhow, Result};
 use async_std::task::block_on;
-use axlib::util::pinned_resource::PinnedResource;
+use ax_core::util::pinned_resource::PinnedResource;
 use futures::channel::oneshot::Canceled;
 use netsim_embed::{Machine, MachineId, Namespace, Netsim};
 use std::{borrow::Borrow, collections::BTreeMap, fmt::Display, future::Future, str::FromStr};

@@ -15,7 +15,7 @@ default-features = false
 features = ["napi-6", "event-queue-api"]
 
 [dependencies]
-ax = { path = "../ax" }
+ax_core = { path = "../ax-core" }
 actyx_sdk = { path = "../../sdk" }
 anyhow = "1.0.52"
 tokio = { version = "1.15.0", features = ["full"], package = "tokio" }

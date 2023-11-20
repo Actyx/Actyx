@@ -1,7 +1,7 @@
 use actyx_sdk::{language::Query, Payload, TagSet, Timestamp};
 use anyhow::Result;
-pub use axlib::swarm::{EphemeralEventsConfig, EventRoute, GossipMessage, RetainConfig, RootMap, RootUpdate};
-use axlib::{
+pub use ax_core::swarm::{EphemeralEventsConfig, EventRoute, GossipMessage, RetainConfig, RootMap, RootUpdate};
+use ax_core::{
     crypto::{KeyPair, PrivateKey},
     swarm::{BanyanConfig, SwarmConfig},
     trees::axtrees::AxKey,
