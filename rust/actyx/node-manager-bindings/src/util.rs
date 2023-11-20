@@ -3,6 +3,7 @@ use anyhow::Result;
 use axlib::{
     node_connection::Task,
     private_key::{AxPrivateKey, DEFAULT_PRIVATE_KEY_FILE_NAME},
+    util::formats::{ActyxOSCode, ActyxOSResult},
 };
 use futures::{channel::mpsc::Sender, future::BoxFuture};
 use neon::{
@@ -13,7 +14,6 @@ use neon::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::convert::TryFrom;
-use util::formats::{ActyxOSCode, ActyxOSResult};
 
 pub fn to_stringified<Se: Serialize>(s: Se) -> Result<String> {
     Ok(serde_json::to_string(&s)?)

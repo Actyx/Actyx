@@ -1,19 +1,19 @@
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::{request_events, EventDiagnostic},
+    runtime::value::Value,
+    util::{
+        formats::{events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+        gen_stream::GenStream,
+    },
 };
 use actyx_sdk::service::{Order, QueryRequest};
 use futures::{future::ready, Stream, StreamExt};
-use runtime::value::Value;
 use std::{fs::File, io::Read};
 use structopt::StructOpt;
-use util::{
-    formats::{events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
-    gen_stream::GenStream,
-};
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// query the events API through the admin port
 pub struct QueryOpts {
     #[structopt(flatten)]

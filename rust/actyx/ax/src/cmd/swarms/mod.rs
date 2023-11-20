@@ -1,16 +1,15 @@
 pub mod keygen;
 
-use crate::cmd::swarms::keygen::KeygenOpts;
-use crate::cmd::AxCliCommand;
+use crate::cmd::{swarms::keygen::KeygenOpts, AxCliCommand};
 use futures::Future;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// manage swarms
 pub enum SwarmsOpts {
-    #[structopt(no_version)]
     /// Generate a new swarm key.
+    #[structopt(no_version)]
     Keygen(KeygenOpts),
 }
 

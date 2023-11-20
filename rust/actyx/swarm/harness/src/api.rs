@@ -2,16 +2,11 @@ use crate::m;
 use actyx_sdk::{AppManifest, Ax, AxOpts, NodeId, Url};
 use anyhow::{anyhow, Result};
 use async_std::task::block_on;
+use axlib::util::pinned_resource::PinnedResource;
 use futures::channel::oneshot::Canceled;
-use netsim_embed::{Machine, Namespace};
-use netsim_embed::{MachineId, Netsim};
-use std::borrow::Borrow;
-use std::collections::BTreeMap;
-use std::fmt::Display;
-use std::future::Future;
-use std::str::FromStr;
+use netsim_embed::{Machine, MachineId, Namespace, Netsim};
+use std::{borrow::Borrow, collections::BTreeMap, fmt::Display, future::Future, str::FromStr};
 use swarm_cli::{Command, Event};
-use util::pinned_resource::PinnedResource;
 
 pub struct Api {
     machines: BTreeMap<MachineId, ApiClient>,

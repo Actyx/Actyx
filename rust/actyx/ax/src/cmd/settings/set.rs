@@ -1,13 +1,13 @@
 use crate::{
     cmd::{formats::Result, AxCliCommand, ConsoleOpt},
     node_connection::{request_single, Task},
+    util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse},
 };
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read};
 use structopt::StructOpt;
 use tracing::*;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -36,7 +36,7 @@ impl AxCliCommand for SettingsSet {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub struct SetOpt {
     #[structopt(flatten)]
     actual_opts: SetSettingsCommand,
@@ -47,13 +47,13 @@ pub struct SetOpt {
 #[derive(StructOpt, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SetSettingsCommand {
-    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
     /// Scope for which you want to set the given settings; use `/` for the the root scope.
-    scope: settings::Scope,
-    #[structopt(name = "VALUE")]
+    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
+    scope: crate::settings::Scope,
     /// The value you want to set for the given scope as a YAML or JSON string.
     /// You may also pass in a file using the syntax `@file.yml` or have the
     /// command read from stdin using `@-`.
+    #[structopt(name = "VALUE")]
     input: String,
 }
 
@@ -82,7 +82,7 @@ pub async fn run(opts: SetOpt) -> Result<Output> {
     let scope = opts.actual_opts.scope.clone();
     let scope2 = scope.clone();
     let json = serde_json::to_value(settings).ax_err_ctx(
-        util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+        crate::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
         "cannot parse provided value",
     )?;
     let (mut conn, peer) = opts.console_opt.connect().await?;

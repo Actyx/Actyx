@@ -5,8 +5,10 @@ use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use std::fmt::{self, Formatter};
-use std::ops::Deref;
+use std::{
+    fmt::{self, Formatter},
+    ops::Deref,
+};
 
 /// Helper macro to create interned string types
 ///

@@ -1,6 +1,14 @@
 use crate::{
     cmd::{AxCliCommand, ConsoleOpt},
     node_connection::{request_single, Task},
+    util::{
+        formats::{
+            events_protocol::{EventsRequest, EventsResponse},
+            ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse,
+        },
+        gen_stream::GenStream,
+        version::VERSION,
+    },
 };
 use actyx_sdk::service::{EventMeta, EventResponse, Order, QueryRequest};
 use cbor_data::{value::Precision, CborBuilder, Encoder, Writer};
@@ -16,35 +24,28 @@ use std::{
 };
 use structopt::StructOpt;
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
-use util::{
-    formats::{
-        events_protocol::{EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse,
-    },
-    gen_stream::GenStream,
-};
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// dump events described by an AQL query into a file
 pub struct DumpOpts {
-    #[structopt(name = "QUERY", required = true)]
     /// selection of event data to include in the dump
+    #[structopt(name = "QUERY", required = true)]
     query: String,
-    #[structopt(long, short, value_name = "FILE")]
     /// file to write the dump to
+    #[structopt(long, short, value_name = "FILE")]
     output: Option<PathBuf>,
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
-    #[structopt(long, short)]
     /// suppress progress information on stderr
+    #[structopt(long, short)]
     quiet: bool,
-    #[structopt(long, value_name = "TOKEN")]
     /// send dump via the cloud (start restore first to get the token)
+    #[structopt(long, value_name = "TOKEN")]
     cloud: Option<String>,
-    #[structopt(long, value_name = "URL")]
     /// base URL where to find the cloudmirror (only for --cloud)
     /// defaults to wss://cloudmirror.actyx.net/forward
+    #[structopt(long, value_name = "URL")]
     url: Option<String>,
 }
 
@@ -202,7 +203,7 @@ impl AxCliCommand for EventsDump {
                 b.with_key("totalEvents", |b| b.encode_u64(offsets.present.size()));
                 b.with_key("timestamp", |b| b.encode_timestamp(now.into(), Precision::Nanos));
                 b.with_key("actyxVersion", |b| b.encode_str(node_info.version.to_string()));
-                b.with_key("axVersion", |b| b.encode_str(env!("AX_CLI_VERSION")));
+                b.with_key("axVersion", |b| b.encode_str(VERSION.as_str()));
                 b.with_key("settings", |b| b.encode_str(settings.to_string()));
                 b.with_key("connection", |b| {
                     b.encode_array(|b| {

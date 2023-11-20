@@ -22,12 +22,7 @@ fn main() -> anyhow::Result<()> {
         (_50, _95, _99)
     }
 
-    let app_manifest = AppManifest {
-        app_id: app_id!("com.example.query"),
-        display_name: "Query test".into(),
-        version: "0.1.0".into(),
-        signature: None,
-    };
+    let app_manifest = AppManifest::trial(app_id!("com.example.query"), "Query test".into(), "0.1.0".into()).unwrap();
 
     const REPETITIONS: usize = 1000;
 

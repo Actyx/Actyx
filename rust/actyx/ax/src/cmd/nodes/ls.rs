@@ -4,25 +4,25 @@ use crate::{
     cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand, KeyPathWrapper},
     node_connection::{connect, mk_swarm, request_single, Task},
     private_key::AxPrivateKey,
+    util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesLsResponse},
 };
 use futures::{channel::mpsc, future::join_all, stream, Stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesLsResponse};
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// show node overview
 pub struct LsOpts {
-    #[structopt(name = "NODE", required = true)]
     /// the IP address or <host>:<admin port> of the nodes to list.
+    #[structopt(name = "NODE", required = true)]
     authority: Vec<Authority>,
-    #[structopt(short, long)]
     /// File from which the identity (private key) for authentication is read.
+    #[structopt(short, long)]
     identity: Option<KeyPathWrapper>,
-    #[structopt(short, long, default_value = "5")]
     /// maximal wait time (in seconds, max. 255) for establishing a connection to the node
+    #[structopt(short, long, default_value = "5")]
     timeout: u8,
 }
 

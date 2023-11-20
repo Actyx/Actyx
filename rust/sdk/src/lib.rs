@@ -32,7 +32,7 @@ pub mod types;
 
 pub use app_manifest::AppManifest;
 #[cfg(feature = "client")]
-pub use client::{Ax, AxOpts};
+pub use client::{Ax, AxOpts, Publish, Query, Subscribe, SubscribeMonotonic};
 pub use event::{Event, EventKey, Metadata, Opaque, Payload};
 pub use offset::{Offset, OffsetError, OffsetMap, OffsetOrMin};
 pub use scalars::{AppId, NodeId, StreamId, StreamNr};

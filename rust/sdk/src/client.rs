@@ -14,6 +14,7 @@ use reqwest::{
     Client, RequestBuilder, Response, StatusCode,
 };
 use serde::{Deserialize, Serialize};
+
 use std::{
     fmt::Debug,
     future::Future,
@@ -71,12 +72,11 @@ impl AxOpts {
     /// # use actyx_sdk::{app_id, AppManifest, AxOpts};
     /// # fn opts() -> AxOpts {
     /// AxOpts {
-    ///     manifest: AppManifest {
-    ///         app_id: app_id!("com.example.app"),
-    ///         display_name: "Example manifest".to_string(),
-    ///         version: "0.1.0".to_string(),
-    ///         signature: None,
-    ///     },
+    ///     manifest: AppManifest::trial(
+    ///         app_id!("com.example.app"),
+    ///         "Example manifest".to_string(),
+    ///         "0.1.0".to_string()
+    ///     ).unwrap(),
     ///     ..Default::default()
     /// }.into()
     /// # }

@@ -1,8 +1,7 @@
 use crate::{products::Product, versions::VersionImpact};
 use anyhow::{anyhow, Error};
 use regex::Regex;
-use std::fmt::Display;
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct ChangeKind {

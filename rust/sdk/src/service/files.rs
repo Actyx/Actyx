@@ -73,8 +73,7 @@ pub enum FilesGetResponse {
 mod serde_str {
     //! Serializes fields annotated with `#[serde(with = "::util::serde_str")]` with their !
     //! `Display` implementation, deserializes fields using `FromStr`.
-    use std::fmt::Display;
-    use std::str::FromStr;
+    use std::{fmt::Display, str::FromStr};
 
     use serde::{de, Deserialize, Deserializer, Serializer};
 

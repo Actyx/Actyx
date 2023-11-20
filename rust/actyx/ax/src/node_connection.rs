@@ -1,10 +1,23 @@
-use crate::{cmd::Authority, private_key::AxPrivateKey};
+use crate::{
+    cmd::Authority,
+    crypto::PublicKey,
+    libp2p_streaming_response::{RequestReceived, Response, StreamingResponse, StreamingResponseConfig},
+    private_key::AxPrivateKey,
+    swarm::transport::build_transport,
+    util::{
+        formats::{
+            banyan_protocol::{BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse},
+            events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
+            ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol, AdminRequest, AdminResponse,
+        },
+        version::NodeVersion,
+    },
+};
 use actyx_sdk::{
     service::{Diagnostic, EventResponse, PublishResponse},
     NodeId, Payload,
 };
 use anyhow::anyhow;
-use crypto::PublicKey;
 use derive_more::From;
 use futures::{
     channel::mpsc::{self, channel, Receiver, Sender, TrySendError},
@@ -23,7 +36,6 @@ use libp2p::{
     swarm::{dial_opts::DialOpts, DialError, NetworkBehaviour, SwarmBuilder, SwarmEvent},
     Multiaddr, PeerId,
 };
-use libp2p_streaming_response::{RequestReceived, Response, StreamingResponse, StreamingResponseConfig};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashMap},
@@ -33,16 +45,7 @@ use std::{
     task::Poll,
     time::Duration,
 };
-use swarm::transport::build_transport;
 use tokio::sync::mpsc::UnboundedSender;
-use util::{
-    formats::{
-        banyan_protocol::{BanyanProtocol, BanyanProtocolName, BanyanRequest, BanyanResponse},
-        events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol, AdminRequest, AdminResponse,
-    },
-    version::NodeVersion,
-};
 
 #[derive(NetworkBehaviour)]
 #[behaviour(out_event = "OutEvent")]
@@ -311,7 +314,7 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
                             }
                             let (tx, rx) = mpsc::channel(128);
                             swarm.behaviour_mut().admin.request(peer_id, request, tx);
-                            forward_stream(rx, channel, |ev| ev);
+                            forward_stream(rx, channel, Box::new(|ev| ev));
                         }
                         Task::Events(peer_id, request, mut channel) => {
                             if unsupported_proto(
@@ -329,7 +332,7 @@ pub async fn mk_swarm(key: AxPrivateKey) -> ActyxOSResult<(impl Future<Output = 
                             let buffer = if has_back_pressure { 128 } else { 100000 };
                             let (tx, rx) = mpsc::channel(buffer);
                             swarm.behaviour_mut().events.request(peer_id, request, tx);
-                            forward_stream(rx, channel, Ok);
+                            forward_stream(rx, channel, Box::new(Ok));
                         }
                         Task::Banyan(peer_id, request, mut channel) => {
                             if unsupported_proto(infos.get(&peer_id), &["/actyx/banyan/create"], &mut channel) {
@@ -404,29 +407,32 @@ fn is_prefix(left: &Multiaddr, right: &Multiaddr) -> bool {
 fn forward_stream<T: Send + 'static, U: Send + 'static>(
     mut rx: Receiver<Response<T>>,
     mut tx: Sender<ActyxOSResult<U>>,
-    transform: impl Fn(T) -> ActyxOSResult<U> + Send + 'static,
+    transform: Box<dyn Fn(T) -> ActyxOSResult<U> + Send + 'static>,
 ) {
-    tokio::spawn(async move {
-        while let Some(ev) = rx.next().await {
-            match ev {
-                Response::Msg(ev) => {
-                    let ev = transform(ev);
-                    if let Err(e) = tx.feed(ev).await {
-                        tracing::error!("cannot transfer result: {}", e);
+    tokio::spawn(
+        async move {
+            while let Some(ev) = rx.next().await {
+                match ev {
+                    Response::Msg(ev) => {
+                        let ev = transform(ev);
+                        if let Err(e) = tx.feed(ev).await {
+                            tracing::error!("cannot transfer result: {}", e);
+                            return;
+                        }
+                    }
+                    Response::Error(e) => {
+                        if let Err(ee) = tx.feed(Err(ActyxOSCode::ERR_IO.with_message(e.to_string()))).await {
+                            tracing::error!("cannot transfer error {}: {}", e, ee);
+                        }
                         return;
                     }
-                }
-                Response::Error(e) => {
-                    if let Err(ee) = tx.feed(Err(ActyxOSCode::ERR_IO.with_message(e.to_string()))).await {
-                        tracing::error!("cannot transfer error {}: {}", e, ee);
-                    }
-                    return;
-                }
-                Response::Finished => return,
-            };
+                    Response::Finished => return,
+                };
+            }
+            tracing::error!("response stream ended abruptly");
         }
-        tracing::error!("response stream ended abruptly");
-    });
+        .boxed(),
+    );
 }
 
 fn unsupported_proto<T: Debug>(

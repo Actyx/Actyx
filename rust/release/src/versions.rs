@@ -1,7 +1,6 @@
 pub use semver::Version;
 
-use crate::changes::Change;
-use crate::products::Product;
+use crate::{changes::Change, products::Product};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub enum VersionImpact {

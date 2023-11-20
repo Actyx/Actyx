@@ -274,7 +274,10 @@ impl<T> std::fmt::Display for EventResponse<T> {
                 write!(f, "composite event")
             }
             EventMeta::Event { key, meta } => {
-                let time = chrono::Local.timestamp_millis(meta.timestamp.as_i64() / 1000);
+                let time = chrono::Local
+                    .timestamp_micros(meta.timestamp.as_i64())
+                    .single()
+                    .expect("source is a stored timestamp");
                 write!(
                     f,
                     "event at {} ({}, stream ID {})",

@@ -13,7 +13,7 @@ use super::{
 };
 use crate::{language::SortKey, service::Order, tags::Tag, Timestamp};
 use anyhow::{bail, ensure, Result};
-use chrono::{FixedOffset, TimeZone, Utc};
+use chrono::{FixedOffset, TimeZone, Timelike, Utc};
 use once_cell::sync::Lazy;
 use pest::{
     pratt_parser::{Assoc, Op, PrattParser},
@@ -363,12 +363,22 @@ fn r_timestamp(p: P) -> Result<Timestamp> {
         if sign.as_str() == "-" {
             seconds = -seconds;
         }
-        Ok(FixedOffset::east(seconds)
-            .ymd(year, month, day)
-            .and_hms_nano(hour, min, sec, nano)
+        Ok(FixedOffset::east_opt(seconds)
+            .expect("valid by construction above")
+            .with_ymd_and_hms(year, month, day, hour, min, sec)
+            .single()
+            .expect("ensured by the grammar")
+            .with_nanosecond(nano)
+            .expect("ensured by the grammar")
             .into())
     } else {
-        Ok(Utc.ymd(year, month, day).and_hms_nano(hour, min, sec, nano).into())
+        Ok(Utc
+            .with_ymd_and_hms(year, month, day, hour, min, sec)
+            .single()
+            .expect("ensured by the grammar")
+            .with_nanosecond(nano)
+            .expect("ensured by the grammar")
+            .into())
     }
 }
 
@@ -843,8 +853,7 @@ mod tests {
 
     #[test]
     fn query() -> Result<()> {
-        use super::Num::*;
-        use super::{Arr, Ind, Obj};
+        use super::{Arr, Ind, Num::*, Obj};
         use crate::app_id;
         use SimpleExpr::*;
         use TagAtom::*;

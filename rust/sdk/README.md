@@ -32,12 +32,11 @@ use url::Url;
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
   // Add your app manifest, for brevity we will use one in trial mode
-  let manifest = AppManifest::new(
+  let manifest = AppManifest::trial(
       app_id!("com.example.my-awesome-app"),
       "display name".into(),
       "0.1.0".into(),
-      None,
-  );
+  ).unwrap();
 
   // Url of the locally running Actyx node
   let url = Url::parse("http://localhost:4454")?;

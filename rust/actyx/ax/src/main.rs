@@ -1,11 +1,12 @@
-mod cmd;
-mod node_connection;
-mod private_key;
-
-use cmd::{
-    apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
-    swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
+use anyhow::Result;
+use axlib::{
+    cmd::{
+        self, apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
+        swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
+    },
+    node,
 };
+use futures::Future;
 use std::process::exit;
 use structopt::{
     clap::{App, AppSettings, ArgMatches, ErrorKind, SubCommand},
@@ -14,11 +15,11 @@ use structopt::{
 
 #[derive(StructOpt, Debug)]
 #[structopt(
-    name = "Actyx CLI",
+    name = "ax",
     about = concat!(
-        "\nThe Actyx Command Line Interface (CLI) is a unified tool to manage your Actyx nodes.\n\n",
-        include_str!("../../../../NOTICE")),
-    version = env!("AX_CLI_VERSION"),
+        "\nThe ax CLI is a unified tool to manage your ax nodes.\n\n",
+        include_str!("../NOTICE")),
+    version = axlib::util::version::VERSION.as_str(),
 )]
 struct Opt {
     #[structopt(subcommand)]
@@ -42,11 +43,12 @@ enum CommandsOpt {
     Internal(InternalOpts),
     Events(EventsOpts),
     Topics(TopicsOpts),
+    Run(node::run::RunOpts),
 }
 
 impl StructOpt for CommandsOpt {
     fn clap<'a, 'b>() -> App<'a, 'b> {
-        let app = App::new("Actyx CLI").setting(AppSettings::SubcommandRequiredElseHelp);
+        let app = App::new("ax").setting(AppSettings::SubcommandRequiredElseHelp);
         Self::augment_clap(app)
     }
 
@@ -58,6 +60,7 @@ impl StructOpt for CommandsOpt {
 impl StructOptInternal for CommandsOpt {
     fn augment_clap<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
         let app = app.subcommands(vec![
+            node::run::RunOpts::augment_clap(SubCommand::with_name("run")),
             AppsOpts::augment_clap(SubCommand::with_name("apps")).setting(AppSettings::SubcommandRequiredElseHelp),
             SettingsOpts::augment_clap(SubCommand::with_name("settings"))
                 .setting(AppSettings::SubcommandRequiredElseHelp),
@@ -92,6 +95,7 @@ impl StructOptInternal for CommandsOpt {
             }
             ("events", Some(matches)) => Some(CommandsOpt::Events(EventsOpts::from_clap(matches))),
             ("topics", Some(matches)) => Some(CommandsOpt::Topics(TopicsOpts::from_clap(matches))),
+            ("run", Some(matches)) => Some(CommandsOpt::Run(node::run::RunOpts::from_clap(matches))),
             _ => None,
         }
     }
@@ -103,7 +107,7 @@ fn superpowers() -> bool {
 }
 
 #[tokio::main(flavor = "multi_thread")]
-async fn main() {
+async fn main() -> Result<()> {
     let Opt {
         command,
         json,
@@ -123,16 +127,21 @@ async fn main() {
         },
     };
 
-    util::setup_logger_with_level(verbosity);
-
     match command {
-        CommandsOpt::Apps(opts) => cmd::apps::run(opts, json).await,
-        CommandsOpt::Nodes(opts) => cmd::nodes::run(opts, json).await,
-        CommandsOpt::Settings(opts) => cmd::settings::run(opts, json).await,
-        CommandsOpt::Swarms(opts) => cmd::swarms::run(opts, json).await,
-        CommandsOpt::Users(opts) => cmd::users::run(opts, json).await,
-        CommandsOpt::Internal(opts) => cmd::internal::run(opts, json).await,
-        CommandsOpt::Events(opts) => cmd::events::run(opts, json).await,
-        CommandsOpt::Topics(opts) => cmd::topics::run(opts, json).await,
+        CommandsOpt::Run(opts) => node::run::run(opts)?,
+        CommandsOpt::Apps(opts) => with_logger(cmd::apps::run(opts, json), verbosity).await,
+        CommandsOpt::Nodes(opts) => with_logger(cmd::nodes::run(opts, json), verbosity).await,
+        CommandsOpt::Settings(opts) => with_logger(cmd::settings::run(opts, json), verbosity).await,
+        CommandsOpt::Swarms(opts) => with_logger(cmd::swarms::run(opts, json), verbosity).await,
+        CommandsOpt::Users(opts) => with_logger(cmd::users::run(opts, json), verbosity).await,
+        CommandsOpt::Internal(opts) => with_logger(cmd::internal::run(opts, json), verbosity).await,
+        CommandsOpt::Events(opts) => with_logger(cmd::events::run(opts, json), verbosity).await,
+        CommandsOpt::Topics(opts) => with_logger(cmd::topics::run(opts, json), verbosity).await,
     }
+    Ok(())
+}
+
+async fn with_logger<T>(fut: impl Future<Output = T>, verbosity: u8) -> T {
+    axlib::util::setup_logger_with_level(verbosity);
+    fut.await
 }

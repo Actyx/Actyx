@@ -252,23 +252,13 @@ validate: validate-rust validate-os validate-netsim validate-release validate-os
 diagnostics:
 	@echo HOME = $(HOME)
 	@echo USER = $(shell whoami)
-	@echo PATH = $(PATH)
+	@echo PATH = ${PATH}
 	@echo PWD = $(shell pwd)
-
-define mkRustTestRule=
-$(TARGET_NAME): cargo-init make-always
-  $(eval TARGET_PATH:=rust/$(word 3, $(subst -, ,$(TARGET_NAME))))
-	cd $(TARGET_PATH) && $(CARGO) fmt --all -- --check
-	cd $(TARGET_PATH) && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) --all-targets -- -D warnings
-	cd $(TARGET_PATH) && $(CARGO) test --locked --all-features -j $(CARGO_TEST_JOBS)
-endef
-
-$(foreach TARGET_NAME,$(rust-validation),$(eval $(mkRustTestRule)))
 
 .PHONY: validate-os
 # execute fmt check, clippy and tests for rust/actyx
 validate-os: diagnostics
-	cd rust/actyx && $(CARGO) fmt --all -- --check
+	cd rust/actyx && $(CARGO) fmt --all -- --check --config imports_granularity=Crate
 	cd rust/actyx && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) -- -D warnings
 	cd rust/actyx && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 	cd rust/actyx && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
@@ -276,7 +266,7 @@ validate-os: diagnostics
 .PHONY: validate-rust
 # execute fmt check, clippy and tests for rust/actyx
 validate-rust: diagnostics
-	cd rust/sdk && $(CARGO) fmt --all -- --check
+	cd rust/sdk && $(CARGO) fmt --all -- --check --config imports_granularity=Crate
 	cd rust/sdk && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) -- -D warnings
 	cd rust/sdk && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 	cd rust/sdk && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
@@ -284,30 +274,30 @@ validate-rust: diagnostics
 .PHONY: validate-release
 # execute fmt check, clippy and tests for rust/actyx
 validate-release: diagnostics
-	cd rust/release && $(CARGO) fmt --all -- --check
+	cd rust/release && $(CARGO) fmt --all -- --check --config imports_granularity=Crate
 	cd rust/release && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) -- -D warnings
 	cd rust/release && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 
 validate-netsim: diagnostics
 	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release -j $(CARGO_BUILD_JOBS)
-	rust/actyx/target/release/gossip --n-nodes 8 --enable-fast-path
-	rust/actyx/target/release/gossip --n-nodes 8 --enable-slow-path
-	rust/actyx/target/release/gossip --n-nodes 8 --enable-root-map
-	rust/actyx/target/release/gossip_protocol --n-nodes 8
-	rust/actyx/target/release/root_map --n-nodes 8 --enable-root-map
-	rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
-	rust/actyx/target/release/discovery_multi_net
-	rust/actyx/target/release/discovery_external
-	rust/actyx/target/release/subscribe --n-nodes 8
-	rust/actyx/target/release/query --n-nodes 8
-	rust/actyx/target/release/quickcheck_subscribe
-	rust/actyx/target/release/quickcheck_interleaved
-	rust/actyx/target/release/quickcheck_stress_single_store
-	rust/actyx/target/release/quickcheck_ephemeral
-	rust/actyx/target/release/versions
+	NETSIM_TEST_LOGFILE=gossip-8-fast rust/actyx/target/release/gossip --n-nodes 8 --enable-fast-path
+	NETSIM_TEST_LOGFILE=gossip-8-slow rust/actyx/target/release/gossip --n-nodes 8 --enable-slow-path
+	NETSIM_TEST_LOGFILE=gossip-8-root rust/actyx/target/release/gossip --n-nodes 8 --enable-root-map
+	NETSIM_TEST_LOGFILE=gossip_protocol-8 rust/actyx/target/release/gossip_protocol --n-nodes 8
+	NETSIM_TEST_LOGFILE=rootmap rust/actyx/target/release/root_map --n-nodes 8 --enable-root-map
+	NETSIM_TEST_LOGFILE=discovery rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
+	NETSIM_TEST_LOGFILE=discovery_multi_net rust/actyx/target/release/discovery_multi_net
+	NETSIM_TEST_LOGFILE=discovery_external rust/actyx/target/release/discovery_external
+	NETSIM_TEST_LOGFILE=subscribe rust/actyx/target/release/subscribe --n-nodes 8
+	NETSIM_TEST_LOGFILE=query rust/actyx/target/release/query --n-nodes 8
+	NETSIM_TEST_LOGFILE=quickcheck_subscribe rust/actyx/target/release/quickcheck_subscribe
+	NETSIM_TEST_LOGFILE=quickcheck_interleaved rust/actyx/target/release/quickcheck_interleaved
+	NETSIM_TEST_LOGFILE=quickcheck_stress_single_store rust/actyx/target/release/quickcheck_stress_single_store
+	NETSIM_TEST_LOGFILE=quickcheck_ephemeral rust/actyx/target/release/quickcheck_ephemeral
+	NETSIM_TEST_LOGFILE=versions rust/actyx/target/release/versions
         # https://github.com/Actyx/Actyx/issues/160
 	# rust/actyx/target/release/health
-	rust/actyx/target/release/read_only
+	NETSIM_TEST_LOGFILE=read_only rust/actyx/target/release/read_only
 
 .PHONY: validate-os-android
 # execute linter for os-android
@@ -576,3 +566,10 @@ docker-build-and-push: assert-clean
 	cd docker/buildrs && bash ./build_and_push.sh
 	cd docker/musl && bash ./build_and_push.sh
 	cd docker/node-manager-win-builder && bash ./build_and_push.sh
+
+# Cargo will complain but formatting will still be done accordingly.
+.PHONY: fmt
+fmt:
+	cd rust/actyx && cargo fmt -- --config imports_granularity=Crate
+	cd rust/sdk && cargo fmt -- --config imports_granularity=Crate
+	cd rust/release && cargo fmt -- --config imports_granularity=Crate

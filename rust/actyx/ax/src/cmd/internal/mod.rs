@@ -2,25 +2,23 @@ mod events;
 mod shutdown;
 mod trees;
 
-use self::events::EventsOpts;
-use self::shutdown::ShutdownOpts;
-use self::trees::TreesOpts;
+use self::{events::EventsOpts, shutdown::ShutdownOpts, trees::TreesOpts};
 use crate::cmd::AxCliCommand;
 use futures::Future;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 /// do not use until instructed by Actyx
 pub enum InternalOpts {
-    #[structopt(no_version)]
     /// Interact with ax trees
+    #[structopt(no_version)]
     Trees(TreesOpts),
-    #[structopt(no_version)]
     /// Request the node to shut down
-    Shutdown(ShutdownOpts),
     #[structopt(no_version)]
+    Shutdown(ShutdownOpts),
     /// Query the events API
+    #[structopt(no_version)]
     Events(EventsOpts),
 }
 

@@ -4,14 +4,16 @@ mod ls;
 use futures::Future;
 use structopt::StructOpt;
 
-use self::delete::{DeleteOpts, TopicsDelete};
-use self::ls::{LsOpts, TopicsList};
+use self::{
+    delete::{DeleteOpts, TopicsDelete},
+    ls::{LsOpts, TopicsList},
+};
 
 use super::{Authority, AxCliCommand, KeyPathWrapper};
 
 /// manage topics
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub enum TopicsOpts {
     #[structopt(no_version)]
     Ls(LsOpts),

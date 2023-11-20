@@ -6,8 +6,8 @@ use actyx_sdk::NodeId;
 use anyhow::{bail, Result};
 use async_std::{future, task};
 use futures::{
-    future::{select, BoxFuture, Either},
-    prelude::*,
+    future::{select, BoxFuture, Either, Future},
+    FutureExt,
 };
 use netsim_embed::{DelayBuffer, Ipv4Range, Machine, Netsim};
 use std::{
@@ -102,7 +102,7 @@ impl MultiaddrExt for Multiaddr {
 }
 
 pub fn setup_env() -> Result<()> {
-    ::util::setup_logger();
+    axlib::util::setup_logger();
     netsim_embed::unshare_user()?;
     Ok(())
 }

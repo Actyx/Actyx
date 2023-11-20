@@ -1,7 +1,14 @@
 #![cfg(target_os = "linux")]
 use actyx_sdk::service::OffsetsResponse;
 use anyhow::{anyhow, bail, ensure};
-use axlib::cmd::ActyxCliResult;
+use axlib::{
+    cmd::ActyxCliResult,
+    util::{
+        formats::{ActyxOSCode, NodesInspectResponse},
+        os_arch::Arch,
+        version::Version,
+    },
+};
 use escargot::{format::Message, CargoBuild};
 use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;
@@ -21,10 +28,6 @@ use std::{
 };
 use tar::Archive;
 use tempfile::tempdir;
-use util::{
-    formats::{os_arch::Arch, ActyxOSCode, NodesInspectResponse},
-    version::Version,
-};
 
 trait Opts: Sized {
     type Out;
@@ -51,8 +54,9 @@ impl std::fmt::Display for Log {
 }
 
 struct Binaries {
-    ax: Vec<(Version, PathBuf)>,
+    cli: Vec<(Version, PathBuf)>,
     actyx: Vec<(Version, PathBuf)>,
+    ax: Vec<(Version, PathBuf)>,
 }
 
 const VERSIONS: &str = "../../../versions";
@@ -62,7 +66,7 @@ fn setup() -> &'static Binaries {
     static INIT: OnceCell<Binaries> = OnceCell::new();
     INIT.get_or_init(|| {
         // build needed binaries for quicker execution
-        for bin in &["actyx", "ax"] {
+        for bin in &["ax"] {
             eprintln!("building {}", bin);
             for msg in CargoBuild::new()
                 .manifest_path("../Cargo.toml")
@@ -104,10 +108,12 @@ fn setup() -> &'static Binaries {
             .unwrap_or_else(|e| panic!("cannot create {}: {}", storage_dir.display(), e));
 
         let mut actyx = vec![];
+        let mut cli = vec![];
         let mut ax = vec![];
 
         // the newest versions may not yet be uploaded, especially when validating the release PR
         let mut may_skip_actyx = true;
+        let mut may_skip_cli = true;
         let mut may_skip_ax = true;
         for line in BufReader::new(File::open(VERSIONS).unwrap_or_else(|e| panic!("cannot open {}: {}", VERSIONS, e)))
             .lines()
@@ -136,14 +142,25 @@ fn setup() -> &'static Binaries {
                 if version == Version::new(1, 1, 5) {
                     continue;
                 }
-                let path = download("actyx-cli", "ax", version, &storage_dir, &mut may_skip_ax);
+                let path = download("actyx-cli", "ax", version, &storage_dir, &mut may_skip_cli);
+                if let Some(path) = path {
+                    cli.push((version, path))
+                }
+            }
+            if line.starts_with("ax-") {
+                let end = line
+                    .find(' ')
+                    .unwrap_or_else(|| panic!("malformatted `ax-` line in versions"));
+                let version =
+                    Version::from_str(&line[3..end]).unwrap_or_else(|_e| panic!("malformed version {}", line));
+                let path = download("ax", "ax", version, &storage_dir, &mut may_skip_ax);
                 if let Some(path) = path {
                     ax.push((version, path))
                 }
             }
         }
 
-        Binaries { actyx, ax }
+        Binaries { actyx, cli, ax }
     })
 }
 
@@ -209,12 +226,12 @@ fn run(bin: &str) -> anyhow::Result<Command> {
 }
 
 fn with_api(
-    mut cmd: Command,
+    cmd: &mut Command,
     use_stdout: bool,
     mut log: impl Write + Clone + Send + 'static,
     f: impl FnOnce(u16, &Path) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    util::setup_logger();
+    axlib::util::setup_logger();
     setup();
 
     let workdir = tempdir()?;
@@ -341,51 +358,56 @@ fn o(s: &str) -> &OsStr {
 fn all_ax() -> anyhow::Result<()> {
     let binaries = setup();
     let log = Log::default();
-    let result = with_api(run("actyx").unwrap(), false, log.clone(), |port, identity| {
-        for (version, ax) in &binaries.ax {
-            println!("testing {}", version);
-            if *version >= Version::new(2, 1, 0) {
+    let result = with_api(
+        run("ax").unwrap().args(["run"]),
+        false,
+        log.clone(),
+        |port, identity| {
+            for (version, ax) in binaries.cli.iter().chain(binaries.ax.iter()) {
+                println!("testing {}", version);
+                if *version >= Version::new(2, 1, 0) {
+                    let out = Command::new(ax)
+                        .args([
+                            o("events"),
+                            o("offsets"),
+                            o("-ji"),
+                            identity.as_os_str(),
+                            o(&format!("localhost:{}", port)),
+                        ])
+                        .env("RUST_LOG", "info")
+                        .output()?;
+                    println!(
+                        "offsets out:\n{}\nerr:\n{}---\n",
+                        String::from_utf8_lossy(&out.stdout),
+                        String::from_utf8_lossy(&out.stderr)
+                    );
+                    ensure!(out.status.success());
+                }
                 let out = Command::new(ax)
                     .args([
-                        o("events"),
-                        o("offsets"),
+                        o("nodes"),
+                        o("inspect"),
                         o("-ji"),
                         identity.as_os_str(),
                         o(&format!("localhost:{}", port)),
                     ])
-                    .env("RUST_LOG", "info")
+                    .env("RUST_LOG", "debug")
                     .output()?;
                 println!(
-                    "offsets out:\n{}\nerr:\n{}---\n",
+                    "out:\n{}\nerr:\n{}---\n",
                     String::from_utf8_lossy(&out.stdout),
                     String::from_utf8_lossy(&out.stderr)
                 );
                 ensure!(out.status.success());
+                let inspect = serde_json::from_slice::<ActyxCliResult<NodesInspectResponse>>(&out.stdout)?;
+                let ActyxCliResult::OK { result, .. } = inspect else {
+                    bail!("cli error: {:?}", inspect)
+                };
+                ensure!(result.admin_addrs.contains(&format!("/ip4/127.0.0.1/tcp/{}", port)));
             }
-            let out = Command::new(ax)
-                .args([
-                    o("nodes"),
-                    o("inspect"),
-                    o("-ji"),
-                    identity.as_os_str(),
-                    o(&format!("localhost:{}", port)),
-                ])
-                .env("RUST_LOG", "debug")
-                .output()?;
-            println!(
-                "out:\n{}\nerr:\n{}---\n",
-                String::from_utf8_lossy(&out.stdout),
-                String::from_utf8_lossy(&out.stderr)
-            );
-            ensure!(out.status.success());
-            let inspect = serde_json::from_slice::<ActyxCliResult<NodesInspectResponse>>(&out.stdout)?;
-            let ActyxCliResult::OK { result, .. } = inspect else {
-                bail!("cli error: {:?}", inspect)
-            };
-            ensure!(result.admin_addrs.contains(&format!("/ip4/127.0.0.1/tcp/{}", port)));
-        }
-        Ok(())
-    });
+            Ok(())
+        },
+    );
     if result.is_err() {
         println!("{}", log);
     }
@@ -396,11 +418,11 @@ fn all_ax() -> anyhow::Result<()> {
 fn all_actyx() -> anyhow::Result<()> {
     let binaries = setup();
     let ax = run("ax")?;
-    for (version, actyx) in &binaries.actyx {
+    for (version, actyx) in binaries.actyx.iter().chain(binaries.ax.iter()) {
         let log = Log::default();
         let use_stdout_before = Version::new(2, 1, 0);
         let result = with_api(
-            Command::new(actyx),
+            &mut Command::new(actyx),
             *version < use_stdout_before,
             log.clone(),
             |port, identity| {

@@ -23,6 +23,8 @@ async fn main() -> anyhow::Result<()> {
             &serde_json::json!({ "temperature": 40 }),
         )?
         .await?;
+    // Print publish response for demonstration purposes
+    println!("{:?}", publish_response);
 
     let mut query_response = service.query("FROM 'sensor:temp-sensor2'").await?;
     let offsets = loop {

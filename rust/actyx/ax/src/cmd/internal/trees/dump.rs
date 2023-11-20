@@ -1,3 +1,10 @@
+use crate::{
+    trees::{
+        axtrees::{AxKeySeq, AxTrees, Sha256Digest},
+        AxTreeHeader,
+    },
+    util::formats::{ActyxOSResult, ActyxOSResultExt},
+};
 use actyx_sdk::Payload;
 use banyan::{
     chacha20,
@@ -14,36 +21,31 @@ use libipld::{
 };
 use std::{convert::TryFrom, io::Cursor, path::PathBuf};
 use structopt::StructOpt;
-use trees::{
-    axtrees::{AxKeySeq, AxTrees, Sha256Digest},
-    AxTreeHeader,
-};
-use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 use super::SqliteStore;
 use crate::cmd::AxCliCommand;
 
 #[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[structopt(version = crate::util::version::VERSION.as_str())]
 pub struct DumpTreeOpts {
-    #[structopt(long)]
     /// Path to a sqlite blockstore (read-only access!)
+    #[structopt(long)]
     block_store: PathBuf,
-    #[structopt(long)]
     /// Index password to use
+    #[structopt(long)]
     index_pass: Option<String>,
-    #[structopt(long)]
     /// Value password to use
-    value_pass: Option<String>,
     #[structopt(long)]
+    value_pass: Option<String>,
     /// Dump a tree with a given root. Per default, only the extracted values are
     /// being printed. Set the --with-keys flag to emit those as well.
+    #[structopt(long)]
     root: Option<Sha256Digest>,
-    #[structopt(long)]
     /// Dump the raw block data as json
-    block: Option<Sha256Digest>,
     #[structopt(long)]
+    block: Option<Sha256Digest>,
     /// When dumping all values from a tree, also include the keys.
+    #[structopt(long)]
     with_keys: bool,
     /// Output dot. Sample usage: `ax _internal trees dump --block-store ..
     /// --dot --root .. | dot -Tpng > out.png`
@@ -120,7 +122,8 @@ impl AxCliCommand for DumpTree {
     type Output = String;
     fn run(opts: DumpTreeOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         Box::new(stream::once(
-            async move { dump(opts).ax_err_ctx(util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "Dump failed") }.boxed(),
+            async move { dump(opts).ax_err_ctx(crate::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "Dump failed") }
+                .boxed(),
         ))
     }
 

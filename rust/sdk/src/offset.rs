@@ -19,8 +19,10 @@ use serde::{
     Deserialize, Deserializer, Serialize,
 };
 
-use crate::event::{Event, EventKey};
-use crate::scalars::StreamId;
+use crate::{
+    event::{Event, EventKey},
+    scalars::StreamId,
+};
 use cbor_data::{cbor_via, codec::CodecError};
 
 /// Maximum possible offset
