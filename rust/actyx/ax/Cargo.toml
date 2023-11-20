@@ -19,9 +19,14 @@ tokio = { version = "1.15.0", features = ["full"] }
 
 [dev-dependencies]
 assert_cmd = "2.0.12"
+ax_sdk = { path = "../../sdk" }
 escargot = "0.5.8"
+flate2 = "1.0.28"
 maplit = "1.0.2"
+once_cell = "1.18.0"
 parking_lot = "0.12.1"
 predicates = "3.0.4"
+reqwest = "0.11.22"
 serde_json = "1.0.108"
+tar = "0.4.40"
 tempfile = "3.8.1"
