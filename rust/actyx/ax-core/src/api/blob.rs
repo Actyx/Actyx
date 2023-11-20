@@ -7,7 +7,7 @@ use crate::{
     balanced_or,
     swarm::blob_store::{BlobStore, BlobTooLarge},
 };
-use actyx_sdk::AppId;
+use ax_sdk::AppId;
 use bytes::Bytes;
 use http::StatusCode;
 use std::{borrow::Cow, convert::TryFrom};

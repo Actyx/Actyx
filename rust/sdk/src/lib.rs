@@ -4,14 +4,8 @@
 #![allow(clippy::unreadable_literal)]
 #![allow(clippy::inconsistent_digit_grouping)]
 
-#[macro_use]
-#[cfg(test)]
-extern crate serde_json;
-#[allow(unused_imports)]
-#[macro_use]
-extern crate actyx_sdk_macros;
 #[doc(hidden)]
-pub use actyx_sdk_macros::*;
+pub use ax_sdk_macros::*;
 
 #[macro_use]
 mod scalar;

@@ -3,57 +3,6 @@
 version = 3
 
 [[package]]
-name = "actyx_sdk"
-version = "0.3.0"
-dependencies = [
- "actyx_sdk_macros",
- "anyhow",
- "asynchronous-codec",
- "base64 0.13.1",
- "bytes",
- "cbor-data",
- "chrono",
- "derive_more",
- "futures",
- "futures-timer",
- "hex",
- "im",
- "intern-arc",
- "lazy_static",
- "libipld",
- "maplit",
- "multibase",
- "num-traits",
- "once_cell",
- "pest",
- "pest_derive",
- "quickcheck",
- "quickcheck_derive",
- "rand",
- "reqwest",
- "rusqlite",
- "serde",
- "serde-transcode",
- "serde_cbor",
- "serde_json",
- "structopt",
- "tokio",
- "tokio-util 0.6.10",
- "tracing",
- "unicode-normalization",
- "url",
-]
-
-[[package]]
-name = "actyx_sdk_macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -171,6 +120,57 @@ name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
+
+[[package]]
+name = "ax_sdk"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "asynchronous-codec",
+ "ax_sdk_macros",
+ "base64 0.13.1",
+ "bytes",
+ "cbor-data",
+ "chrono",
+ "derive_more",
+ "futures",
+ "futures-timer",
+ "hex",
+ "im",
+ "intern-arc",
+ "lazy_static",
+ "libipld",
+ "maplit",
+ "multibase",
+ "num-traits",
+ "once_cell",
+ "pest",
+ "pest_derive",
+ "quickcheck",
+ "quickcheck_derive",
+ "rand",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde-transcode",
+ "serde_cbor",
+ "serde_json",
+ "structopt",
+ "tokio",
+ "tokio-util 0.6.10",
+ "tracing",
+ "unicode-normalization",
+ "url",
+]
+
+[[package]]
+name = "ax_sdk_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
 
 [[package]]
 name = "backtrace"

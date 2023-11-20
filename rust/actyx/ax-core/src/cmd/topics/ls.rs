@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicLsResponse};
-use actyx_sdk::NodeId;
+use ax_sdk::NodeId;
 use futures::{channel::mpsc, future::join_all, stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};

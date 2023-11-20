@@ -6,7 +6,7 @@ use crate::{
         gen_stream::GenStream,
     },
 };
-use actyx_sdk::{service::SubscribeMonotonicRequest, OffsetMap};
+use ax_sdk::{service::SubscribeMonotonicRequest, OffsetMap};
 use futures::{future::ready, Stream, StreamExt};
 use structopt::StructOpt;
 

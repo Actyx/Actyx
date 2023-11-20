@@ -419,8 +419,8 @@ mod test {
         },
         util::formats::NodeName,
     };
-    use actyx_sdk::language::TagExpr;
     use anyhow::Result;
+    use ax_sdk::language::TagExpr;
     use futures::executor::block_on;
     use serde_json::json;
     use tempfile::TempDir;

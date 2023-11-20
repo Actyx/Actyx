@@ -1,4 +1,4 @@
-use actyx_sdk::{tags, Tag};
+use ax_sdk::{tags, Tag};
 use cbor_tag_index::TagIndex;
 use libipld::{
     cbor::{DagCbor, DagCborCodec},

@@ -4,7 +4,7 @@ use crate::{
     private_key::AxPrivateKey,
     util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
 };
-use actyx_sdk::AppManifest;
+use ax_sdk::AppManifest;
 use futures::{stream, Stream};
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;

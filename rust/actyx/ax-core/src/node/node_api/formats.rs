@@ -1,5 +1,5 @@
 use crate::util::formats::{ActyxOSResult, NodesLsResponse};
-use actyx_sdk::NodeId;
+use ax_sdk::NodeId;
 use tokio::sync::oneshot::Sender;
 
 #[derive(Debug)]

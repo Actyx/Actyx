@@ -6,7 +6,7 @@ use crate::{
         value::Value,
     },
 };
-use actyx_sdk::{
+use ax_sdk::{
     language::{self, Arr, Galactus, Tactic, TagAtom},
     service::Order,
     AppId,
@@ -222,7 +222,7 @@ impl Feeder {
 mod tests {
     use super::*;
     use crate::{runtime::eval::RootContext, swarm::event_store_ref::EventStoreRef};
-    use actyx_sdk::{app_id, OffsetMap};
+    use ax_sdk::{app_id, OffsetMap};
 
     fn store() -> EventStoreRef {
         EventStoreRef::new(|_x| Err(crate::swarm::event_store_ref::Error::Aborted))

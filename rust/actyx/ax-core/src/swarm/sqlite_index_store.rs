@@ -1,6 +1,6 @@
 use crate::ax_futures_util::stream::variable::{Observer, Variable};
-use actyx_sdk::{LamportTimestamp, StreamId};
 use anyhow::{Context, Result};
+use ax_sdk::{LamportTimestamp, StreamId};
 use parking_lot::Mutex;
 use rusqlite::{backup, params, Connection, OpenFlags};
 use std::{collections::BTreeSet, convert::TryFrom, path::PathBuf, sync::Arc, time::Duration};
@@ -148,7 +148,7 @@ impl SqliteIndexStore {
 
     /// current lamport timestamp, for testing
     #[cfg(test)]
-    pub fn lamport(&self) -> actyx_sdk::LamportTimestamp {
+    pub fn lamport(&self) -> ax_sdk::LamportTimestamp {
         self.lamport.get()
     }
 }

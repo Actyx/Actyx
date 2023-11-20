@@ -6,8 +6,8 @@ use crate::{
     },
 };
 use acto::ActoRef;
-use actyx_sdk::{LamportTimestamp, NodeId, Offset, StreamNr, Timestamp};
 use anyhow::Result;
+use ax_sdk::{LamportTimestamp, NodeId, Offset, StreamNr, Timestamp};
 use cbor_data::{
     codec::{CodecError, ReadCbor, WriteCbor},
     Cbor, CborBuilder,

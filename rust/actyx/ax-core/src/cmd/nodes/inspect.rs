@@ -8,7 +8,7 @@ use crate::{
         version::NodeVersion,
     },
 };
-use actyx_sdk::NodeId;
+use ax_sdk::NodeId;
 use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};

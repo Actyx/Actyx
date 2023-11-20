@@ -4,7 +4,7 @@ use crate::{
     crypto::PrivateKey,
     util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt},
 };
-use actyx_sdk::AppId;
+use ax_sdk::AppId;
 use chrono::{DateTime, Utc};
 use futures::{stream::once, FutureExt, Stream};
 use lazy_static::lazy_static;

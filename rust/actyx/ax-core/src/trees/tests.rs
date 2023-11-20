@@ -7,7 +7,7 @@ use crate::{
         AxTree,
     },
 };
-use actyx_sdk::{language::SortKey, tag, tags, LamportTimestamp, Payload, StreamId, TagSet, Timestamp};
+use ax_sdk::{language::SortKey, tag, tags, LamportTimestamp, Payload, StreamId, TagSet, Timestamp};
 use banyan::{
     query::{AllQuery, OffsetRangeQuery, Query},
     store::{BranchCache, MemStore},

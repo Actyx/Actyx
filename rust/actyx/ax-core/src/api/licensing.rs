@@ -3,7 +3,7 @@ use crate::{
     certs::{AppLicenseType, Expiring, SignedAppLicense},
     crypto::PublicKey,
 };
-use actyx_sdk::AppId;
+use ax_sdk::AppId;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

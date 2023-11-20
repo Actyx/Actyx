@@ -3,11 +3,11 @@ use crate::runtime::{
     eval::Context,
     value::Value,
 };
-use actyx_sdk::{
+use anyhow::anyhow;
+use ax_sdk::{
     language::{AggrOp, Galactus, Num, SimpleExpr, Tactic, Var},
     service::{EventMeta, Order},
 };
-use anyhow::anyhow;
 use cbor_data::Encoder;
 use futures::{future::BoxFuture, FutureExt};
 use std::{cmp::Ordering, marker::PhantomData, ops::AddAssign, sync::Arc};
@@ -444,7 +444,7 @@ mod tests {
         },
         swarm::event_store_ref::EventStoreRef,
     };
-    use actyx_sdk::{app_id, language, tags, EventKey, Metadata, NodeId};
+    use ax_sdk::{app_id, language, tags, EventKey, Metadata, NodeId};
 
     fn a(s: &str) -> Box<dyn Processor> {
         let s = format!("FROM 'x' AGGREGATE {}", s);

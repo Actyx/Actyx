@@ -13,11 +13,11 @@ use crate::{
         version::NodeVersion,
     },
 };
-use actyx_sdk::{
+use anyhow::anyhow;
+use ax_sdk::{
     service::{Diagnostic, EventResponse, PublishResponse},
     NodeId, Payload,
 };
-use anyhow::anyhow;
 use derive_more::From;
 use futures::{
     channel::mpsc::{self, channel, Receiver, Sender, TrySendError},

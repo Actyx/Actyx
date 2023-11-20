@@ -24,9 +24,9 @@ impl libipld::store::StoreParams for StoreParams {
 }
 
 /// Type alias for the actyx flavour of banyan trees
-pub type AxTree = banyan::Tree<axtrees::AxTrees, actyx_sdk::Payload>;
+pub type AxTree = banyan::Tree<axtrees::AxTrees, ax_sdk::Payload>;
 /// Type alias for builders
-pub type AxStreamBuilder = banyan::StreamBuilder<axtrees::AxTrees, actyx_sdk::Payload>;
+pub type AxStreamBuilder = banyan::StreamBuilder<axtrees::AxTrees, ax_sdk::Payload>;
 /// Type alias for links
 pub type AxLink = axtrees::Sha256Digest;
 /// Actyx event key

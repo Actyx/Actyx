@@ -11,7 +11,7 @@ use crate::{
         gen_stream::GenStream,
     },
 };
-use actyx_sdk::{
+use ax_sdk::{
     service::{PublishEvent, PublishRequest, PublishResponse},
     Payload, Tag, TagSet,
 };

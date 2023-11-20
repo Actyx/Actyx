@@ -1,4 +1,4 @@
-use actyx_sdk::{
+use ax_sdk::{
     service::{SubscribeMonotonicRequest, SubscribeMonotonicResponse},
     AppId,
 };

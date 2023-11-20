@@ -13,7 +13,7 @@ use std::{
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
 ///
 /// ```
-/// use actyx_sdk::Timestamp;
+/// use ax_sdk::Timestamp;
 /// use chrono::{DateTime, Utc, TimeZone};
 ///
 /// let timestamp = Timestamp::now();

@@ -1,4 +1,3 @@
-use actyx_sdk::{app_id, language};
 use ax_core::{
     runtime::{
         eval::{Context, RootContext},
@@ -7,6 +6,7 @@ use ax_core::{
     },
     swarm::{self, event_store_ref::EventStoreRef},
 };
+use ax_sdk::{app_id, language};
 use cbor_data::Encoder;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use futures::executor::block_on;

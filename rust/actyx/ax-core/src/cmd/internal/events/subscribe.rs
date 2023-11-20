@@ -7,7 +7,7 @@ use crate::{
         gen_stream::GenStream,
     },
 };
-use actyx_sdk::service::SubscribeRequest;
+use ax_sdk::service::SubscribeRequest;
 use futures::{future::ready, Stream, StreamExt};
 use std::{fs::File, io::Read};
 use structopt::StructOpt;

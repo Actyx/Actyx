@@ -1,5 +1,5 @@
 [package]
-name = "actyx_sdk_macros"
+name = "ax_sdk_macros"
 version = "0.1.0"
 authors = ["Actyx AG <developer@actyx.io>"]
 edition = "2018"

@@ -13,7 +13,7 @@ use crate::{
         BanyanStore,
     },
 };
-use actyx_sdk::{
+use ax_sdk::{
     app_id,
     language::{self, Arr, SimpleExpr, SpreadExpr},
     service::{
@@ -622,7 +622,7 @@ mod tests {
         event_store_ref::{self, EventStoreHandler},
         BanyanStore, EventRoute,
     };
-    use actyx_sdk::{
+    use ax_sdk::{
         app_id,
         language::TagExpr,
         service::{EventMeta, EventResponse, SessionId},

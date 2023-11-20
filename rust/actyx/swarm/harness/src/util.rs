@@ -1,5 +1,5 @@
 use crate::MachineExt;
-use actyx_sdk::{
+use ax_sdk::{
     app_id,
     service::{OffsetsResponse, PublishEvent, PublishRequest},
     AppManifest, Payload, TagSet,

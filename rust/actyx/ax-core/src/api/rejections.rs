@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::{runtime::features::FeatureError, util::serde_support::StringSerialized};
-use actyx_sdk::AppId;
+use ax_sdk::AppId;
 use derive_more::Display;
 use warp::{filters, http::StatusCode, reject, Rejection, Reply};
 

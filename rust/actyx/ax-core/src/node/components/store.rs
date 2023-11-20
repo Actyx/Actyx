@@ -15,8 +15,8 @@ use crate::{
     },
 };
 use acto::ActoRef;
-use actyx_sdk::{service::SwarmState, NodeId};
 use anyhow::Result;
+use ax_sdk::{service::SwarmState, NodeId};
 use chrono::{DateTime, SecondsFormat::Millis, Utc};
 use crossbeam::channel::{Receiver, Sender};
 use futures::FutureExt;

@@ -1,5 +1,4 @@
 #![cfg(target_os = "linux")]
-use actyx_sdk::service::OffsetsResponse;
 use anyhow::{anyhow, bail, ensure};
 use ax_core::{
     cmd::ActyxCliResult,
@@ -9,6 +8,7 @@ use ax_core::{
         version::Version,
     },
 };
+use ax_sdk::service::OffsetsResponse;
 use escargot::{format::Message, CargoBuild};
 use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;

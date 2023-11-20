@@ -1,4 +1,4 @@
-use actyx_sdk::{tags, Ax, AxOpts};
+use ax_sdk::{tags, Ax, AxOpts};
 
 // This example demonstrates how to publish events using the higher-level API.
 #[tokio::main]

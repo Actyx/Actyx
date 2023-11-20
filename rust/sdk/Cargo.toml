@@ -1,6 +1,6 @@
 [package]
-name = "actyx_sdk"
-version = "0.3.0"
+name = "ax_sdk"
+version = "0.2.0"
 authors = ["Actyx AG <developer@actyx.io>"]
 edition = "2021"
 description = "Tools for interacting with the services of an Actyx node"
@@ -23,7 +23,7 @@ arb = ["quickcheck", "rand"]
 with-tokio = ["tokio"]
 
 [dependencies]
-actyx_sdk_macros = { version = "0.1", path = "../sdk_macros" }
+ax_sdk_macros = { version = "0.1", path = "../sdk_macros" }
 anyhow = "1.0.52"
 base64 = "0.13.0"
 bytes = { version = "1.1.0", optional = true }

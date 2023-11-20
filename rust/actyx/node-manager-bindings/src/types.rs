@@ -1,5 +1,5 @@
-use actyx_sdk::{service::OffsetsResponse, NodeId};
 use ax_core::util::formats::NodesInspectResponse;
+use ax_sdk::{service::OffsetsResponse, NodeId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

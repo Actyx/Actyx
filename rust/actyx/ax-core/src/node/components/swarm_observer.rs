@@ -4,7 +4,7 @@ use crate::{
     util::variable::Writer,
 };
 use acto::{ActoCell, ActoInput, ActoRuntime};
-use actyx_sdk::{
+use ax_sdk::{
     service::{PeerStatus, SwarmState},
     NodeId, Offset, OffsetMap, StreamId, Timestamp,
 };

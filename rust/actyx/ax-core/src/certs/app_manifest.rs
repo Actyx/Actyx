@@ -2,7 +2,7 @@ use crate::{
     certs::{developer_certificate::ManifestDeveloperCertificate, signature::Signature},
     crypto::{PrivateKey, PublicKey},
 };
-use actyx_sdk::{AppId, AppManifest};
+use ax_sdk::{AppId, AppManifest};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 

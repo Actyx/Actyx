@@ -2,11 +2,11 @@
 fn main() {
     use std::{collections::BTreeMap, str::FromStr, time::Duration};
 
-    use actyx_sdk::{
+    use async_std::task::block_on;
+    use ax_sdk::{
         language::{Query, Source, TagAtom, TagExpr},
         Tag, TagSet,
     };
-    use async_std::task::block_on;
     use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
     use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
     use swarm_cli::Event;

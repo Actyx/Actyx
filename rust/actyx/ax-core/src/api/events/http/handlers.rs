@@ -5,7 +5,7 @@ use crate::{
     runtime::features::FeatureError,
     swarm::event_store_ref,
 };
-use actyx_sdk::{
+use ax_sdk::{
     service::{PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
     AppId,
 };

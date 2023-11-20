@@ -6,7 +6,8 @@ use std::{
 };
 
 use crate::swarm::{Block, Ipfs};
-use actyx_sdk::{
+use anyhow::Context;
+use ax_sdk::{
     app_id,
     language::{Query, StaticQuery},
     service::{
@@ -15,7 +16,6 @@ use actyx_sdk::{
     },
     tags, AppId, Metadata, Payload, Timestamp,
 };
-use anyhow::Context;
 use chrono::Utc;
 use futures::{pin_mut, stream, Future, StreamExt};
 use libipld::{cbor::DagCborCodec, multihash::Code, Cid, DagCbor};

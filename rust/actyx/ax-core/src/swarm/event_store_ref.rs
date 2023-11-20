@@ -5,7 +5,7 @@ use crate::{
     },
     trees::query::TagExprError,
 };
-use actyx_sdk::{language::TagExpr, AppId, Event, OffsetMap, Payload, TagSet};
+use ax_sdk::{language::TagExpr, AppId, Event, OffsetMap, Payload, TagSet};
 use futures::{Future, Stream, StreamExt};
 use parking_lot::Mutex;
 use std::{

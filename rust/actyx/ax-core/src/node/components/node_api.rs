@@ -7,8 +7,8 @@ use crate::{
     },
     util::SocketAddrHelper,
 };
-use actyx_sdk::NodeId;
 use anyhow::Result;
+use ax_sdk::NodeId;
 use crossbeam::channel::{Receiver, Sender};
 use libp2p::PeerId;
 use parking_lot::Mutex;

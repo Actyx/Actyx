@@ -4,7 +4,7 @@ use crate::runtime::{
     query::Query,
     value::Value,
 };
-use actyx_sdk::{
+use ax_sdk::{
     language::{self, NonEmptyVec, SimpleExpr, SpreadExpr},
     service::Order,
 };

@@ -8,7 +8,7 @@ use crate::{
         query::{TagExprError, TagExprQuery},
     },
 };
-use actyx_sdk::{
+use ax_sdk::{
     language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
     Payload, StreamId, StreamNr, TagSet, Timestamp,
 };
@@ -262,7 +262,7 @@ mod tests {
     };
 
     use crate::ax_futures_util::stream::Drainer;
-    use actyx_sdk::{
+    use ax_sdk::{
         app_id,
         language::{TagAtom, TagExpr},
         service::Order,

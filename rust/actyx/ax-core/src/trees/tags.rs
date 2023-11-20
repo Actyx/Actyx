@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io, iter::FromIterator};
 
-use actyx_sdk::{Tag, TagSet};
+use ax_sdk::{Tag, TagSet};
 use libipld::{
     cbor::DagCborCodec,
     codec::{Decode, Encode},
@@ -11,7 +11,7 @@ use vec_collections::VecSet2;
 #[macro_export]
 macro_rules! stags {
     ($($args:tt)*) => {{
-        let res = ::actyx_sdk::tags!($($args)*);
+        let res = ::ax_sdk::tags!($($args)*);
         $crate::trees::tags::ScopedTagSet::from(res)
     }};
 }

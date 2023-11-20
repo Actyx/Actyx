@@ -1,5 +1,5 @@
 use crate::{api::licensing::Licensing, util::formats::LogSeverity};
-use actyx_sdk::language::TagExpr;
+use ax_sdk::language::TagExpr;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -60,7 +60,7 @@ pub struct LogLevels {
 mod tag_expr {
     use std::str::FromStr;
 
-    use actyx_sdk::language::TagExpr;
+    use ax_sdk::language::TagExpr;
     use serde::{de::Visitor, Deserializer, Serializer};
 
     pub fn serialize<S>(value: &TagExpr, serializer: S) -> Result<S::Ok, S::Error>

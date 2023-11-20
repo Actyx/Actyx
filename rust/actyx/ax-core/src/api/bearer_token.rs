@@ -1,6 +1,6 @@
 pub use crate::api::events::service::EventService;
 use crate::util::formats::NodeCycleCount;
-use actyx_sdk::{AppId, Timestamp};
+use ax_sdk::{AppId, Timestamp};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -35,7 +35,7 @@ impl BearerToken {
 
 #[cfg(test)]
 mod bearer_token_tests {
-    use actyx_sdk::{app_id, Timestamp};
+    use ax_sdk::{app_id, Timestamp};
     use std::time::Duration;
 
     use super::{AppMode, BearerToken};

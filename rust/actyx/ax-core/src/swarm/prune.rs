@@ -5,7 +5,7 @@ use crate::{
         query::{OffsetQuery, TimeQuery},
     },
 };
-use actyx_sdk::{Payload, Timestamp};
+use ax_sdk::{Payload, Timestamp};
 use banyan::{query::AndQuery, Tree};
 use futures::future::{join_all, FutureExt};
 use lazy_static::lazy_static;
@@ -473,7 +473,7 @@ mod test {
     use std::{collections::BTreeMap, iter::once, str::FromStr, sync::Arc};
 
     use crate::{ax_futures_util::stream::AxStreamExt, trees::query::TagExprQuery};
-    use actyx_sdk::{app_id, language::TagExpr, tags, AppId, Payload, StreamNr};
+    use ax_sdk::{app_id, language::TagExpr, tags, AppId, Payload, StreamNr};
     use futures::{future, StreamExt, TryStreamExt};
     use tokio::time::{sleep, timeout};
 

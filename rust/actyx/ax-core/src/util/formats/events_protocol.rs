@@ -1,5 +1,5 @@
 use crate::libp2p_streaming_response::Codec;
-use actyx_sdk::{
+use ax_sdk::{
     service::{
         Diagnostic, EventResponse, OffsetsResponse, PublishRequest, PublishResponse, QueryRequest,
         SubscribeMonotonicRequest, SubscribeRequest,
@@ -55,7 +55,7 @@ pub enum EventsResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyx_sdk::{
+    use ax_sdk::{
         app_id, service::Severity, tags, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, Timestamp,
     };
     use std::collections::BTreeMap;
@@ -76,7 +76,7 @@ mod tests {
                 lower_bound: None,
                 upper_bound: None,
                 query: "FROM allEvents".parse().unwrap(),
-                order: actyx_sdk::service::Order::Asc
+                order: ax_sdk::service::Order::Asc
             })),
             r#"{"type":"query","query":"FROM allEvents","lowerBound":null,"upperBound":null,"order":"asc"}"#
         );

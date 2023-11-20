@@ -4,7 +4,7 @@ use crate::{
     swarm::BanyanStore,
     util::{variable::Reader, version::NodeVersion},
 };
-use actyx_sdk::{
+use ax_sdk::{
     service::{NodeInfoResponse, SwarmState},
     AppId, NodeId,
 };

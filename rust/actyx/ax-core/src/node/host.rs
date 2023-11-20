@@ -1,7 +1,7 @@
 use super::{node_settings::Settings, node_storage::NodeStorage, settings::system_scope, util::make_keystore};
 use crate::{crypto::KeyStoreRef, util::formats::NodeCycleCount};
-use actyx_sdk::NodeId;
 use anyhow::{Context, Result};
+use ax_sdk::NodeId;
 use derive_more::Display;
 use std::path::PathBuf;
 

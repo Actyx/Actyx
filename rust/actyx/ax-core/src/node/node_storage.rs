@@ -1,8 +1,8 @@
 use std::{convert::TryFrom, path::Path, str::FromStr, sync::Arc};
 
 use crate::{crypto::PublicKey, util::formats::NodeCycleCount};
-use actyx_sdk::NodeId;
 use anyhow::{bail, Context};
+use ax_sdk::NodeId;
 use derive_more::{Display, Error};
 use parking_lot::Mutex;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};

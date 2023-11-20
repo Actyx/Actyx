@@ -17,51 +17,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actyx_sdk"
-version = "0.3.0"
-dependencies = [
- "actyx_sdk_macros",
- "anyhow",
- "base64 0.13.1",
- "bytes",
- "cbor-data",
- "chrono",
- "derive_more",
- "futures 0.3.29",
- "im",
- "intern-arc",
- "lazy_static",
- "libipld",
- "maplit",
- "multibase",
- "num-traits",
- "once_cell",
- "pest",
- "pest_derive",
- "quickcheck",
- "rand 0.8.5",
- "reqwest",
- "rusqlite",
- "serde",
- "serde-transcode",
- "serde_cbor",
- "serde_json",
- "tokio",
- "tracing",
- "unicode-normalization",
- "url",
-]
-
-[[package]]
-name = "actyx_sdk_macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "addr"
 version = "0.11.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -632,11 +587,11 @@ name = "ax_core"
 version = "0.2.0"
 dependencies = [
  "acto",
- "actyx_sdk",
  "anyhow",
  "assert_cmd",
  "async-trait",
  "atty",
+ "ax_sdk",
  "backtrace",
  "banyan",
  "banyan-utils",
@@ -740,6 +695,51 @@ dependencies = [
  "wsrpc",
  "zeroize",
  "zstd",
+]
+
+[[package]]
+name = "ax_sdk"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "ax_sdk_macros",
+ "base64 0.13.1",
+ "bytes",
+ "cbor-data",
+ "chrono",
+ "derive_more",
+ "futures 0.3.29",
+ "im",
+ "intern-arc",
+ "lazy_static",
+ "libipld",
+ "maplit",
+ "multibase",
+ "num-traits",
+ "once_cell",
+ "pest",
+ "pest_derive",
+ "quickcheck",
+ "rand 0.8.5",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde-transcode",
+ "serde_cbor",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "unicode-normalization",
+ "url",
+]
+
+[[package]]
+name = "ax_sdk_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -4306,9 +4306,9 @@ dependencies = [
 name = "node-manager-bindings"
 version = "0.1.0"
 dependencies = [
- "actyx_sdk",
  "anyhow",
  "ax_core",
+ "ax_sdk",
  "futures 0.3.29",
  "libp2p",
  "neon",
@@ -6404,10 +6404,10 @@ name = "swarm-cli"
 version = "0.1.0"
 dependencies = [
  "acto",
- "actyx_sdk",
  "anyhow",
  "async-process",
  "ax_core",
+ "ax_sdk",
  "cbor-data",
  "chrono",
  "crossbeam",
@@ -6430,7 +6430,6 @@ dependencies = [
 name = "swarm-harness"
 version = "0.1.0"
 dependencies = [
- "actyx_sdk",
  "anyhow",
  "async-global-executor",
  "async-io 1.8.0",
@@ -6438,6 +6437,7 @@ dependencies = [
  "async-std",
  "async-trait",
  "ax_core",
+ "ax_sdk",
  "escargot",
  "flate2",
  "futures 0.3.29",

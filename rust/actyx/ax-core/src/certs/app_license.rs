@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use crate::crypto::{PrivateKey, PublicKey};
-use actyx_sdk::AppId;
 use anyhow::Context;
+use ax_sdk::AppId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -89,7 +89,7 @@ impl FromStr for SignedAppLicense {
 #[cfg(test)]
 mod tests {
     use crate::crypto::{PrivateKey, PublicKey};
-    use actyx_sdk::{app_id, AppId};
+    use ax_sdk::{app_id, AppId};
     use chrono::{DateTime, TimeZone, Utc};
 
     use crate::certs::{app_license::SignedAppLicense, signature::InvalidSignature};

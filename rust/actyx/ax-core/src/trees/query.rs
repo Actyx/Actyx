@@ -5,7 +5,7 @@ use std::{
     ops::{BitAndAssign, Range, RangeFrom, RangeTo},
 };
 
-use actyx_sdk::{
+use ax_sdk::{
     language::{self, SortKey, TagAtom},
     tag, StreamId, Timestamp,
 };
@@ -476,7 +476,7 @@ mod tests {
     use crate::{stags, trees::TagIndex};
 
     use super::*;
-    use actyx_sdk::{
+    use ax_sdk::{
         language::{TagAtom, TagExpr},
         tags, NodeId, Tag,
     };

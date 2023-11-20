@@ -1,5 +1,5 @@
 use crate::runtime::value::ValueKind;
-use actyx_sdk::language::{AggrOp, BinOp};
+use ax_sdk::language::{AggrOp, BinOp};
 use derive_more::{Display, Error};
 
 #[derive(Debug, Display, Error)]

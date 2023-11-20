@@ -1,5 +1,5 @@
 use crate::trees::query::TagExprQuery;
-use actyx_sdk::{language::TagExpr, OffsetMap, OffsetOrMin, StreamId};
+use ax_sdk::{language::TagExpr, OffsetMap, OffsetOrMin, StreamId};
 
 /// A precise selection of events, possibly unbounded in size.
 ///
@@ -25,8 +25,8 @@ pub struct EventSelection {
 
 impl EventSelection {
     #[cfg(test)]
-    pub fn matches<T>(&self, local: bool, event: &actyx_sdk::Event<T>) -> bool {
-        use actyx_sdk::TagSet;
+    pub fn matches<T>(&self, local: bool, event: &ax_sdk::Event<T>) -> bool {
+        use ax_sdk::TagSet;
         let query = TagExprQuery::from_expr(&self.tag_expr).unwrap()(local, event.key.stream);
         query.is_all()
             || query.terms().any(|t| {

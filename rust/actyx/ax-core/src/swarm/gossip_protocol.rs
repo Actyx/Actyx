@@ -2,7 +2,7 @@
 //!
 //! [libipld]: https://crates.io/crates/libipld
 use crate::swarm::Block;
-use actyx_sdk::{LamportTimestamp, Offset, StreamId, Timestamp};
+use ax_sdk::{LamportTimestamp, Offset, StreamId, Timestamp};
 use cbor_data::{
     codec::{CodecError, ReadCbor, WriteCbor},
     Encoder, ItemKind, Visitor,
@@ -310,7 +310,7 @@ impl ReadCbor for RootMap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyx_sdk::NodeId;
+    use ax_sdk::NodeId;
     use cbor_data::{Cbor, CborBuilder};
     use libipld::multihash::{Code, MultihashDigest};
     use quickcheck::Arbitrary;

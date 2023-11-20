@@ -1,4 +1,4 @@
-use actyx_sdk::{AppId, LamportTimestamp, TagSet, Timestamp};
+use ax_sdk::{AppId, LamportTimestamp, TagSet, Timestamp};
 use banyan::{
     index::{CompactSeq, Summarizable},
     TreeTypes,

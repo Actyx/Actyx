@@ -2,12 +2,12 @@ use crate::{
     runtime::{error::RuntimeError, query::Query, value::Value},
     swarm::event_store_ref::EventStoreRef,
 };
-use actyx_sdk::{
+use anyhow::{anyhow, bail, ensure};
+use ax_sdk::{
     language::{BinOp, Ind, Index, Num, SimpleExpr, TagAtom, TagExpr},
     service::{EventMeta, Order},
     OffsetMap, Tag, Timestamp,
 };
-use anyhow::{anyhow, bail, ensure};
 use cbor_data::{
     value::{self as cbor_value, Precision},
     CborBuilder, CborOwned, CborValue, Encoder, PathElement, WithOutput, Writer,

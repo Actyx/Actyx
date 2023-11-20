@@ -5,7 +5,7 @@ use crate::{
     },
     util::formats::{ActyxOSResult, ActyxOSResultExt},
 };
-use actyx_sdk::Payload;
+use ax_sdk::Payload;
 use banyan::{
     chacha20,
     store::{BranchCache, ReadOnlyStore},

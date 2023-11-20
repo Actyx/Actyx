@@ -1,5 +1,5 @@
 use crate::crypto::{private::PrivateKey, public::PublicKey};
-use actyx_sdk::NodeId;
+use ax_sdk::NodeId;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Debug};
 

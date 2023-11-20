@@ -1,6 +1,6 @@
 use super::ActyxOSResult;
 use crate::util::version::NodeVersion;
-use actyx_sdk::NodeId;
+use ax_sdk::NodeId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

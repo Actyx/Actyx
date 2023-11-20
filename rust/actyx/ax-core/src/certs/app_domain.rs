@@ -1,4 +1,4 @@
-use actyx_sdk::AppId;
+use ax_sdk::AppId;
 use derive_more::{Display, Error};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -39,7 +39,7 @@ impl FromStr for AppDomain {
 mod tests {
     use std::str::FromStr;
 
-    use actyx_sdk::AppId;
+    use ax_sdk::AppId;
 
     use crate::certs::app_domain::InvalidAppDomainForm;
 

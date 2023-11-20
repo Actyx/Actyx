@@ -1,5 +1,4 @@
 use acto::ActoRef;
-use actyx_sdk::{app_id, service::SwarmState, AppId, Payload};
 use anyhow::Result;
 use ax_core::{
     api::{self, licensing::Licensing, NodeInfo},
@@ -13,6 +12,7 @@ use ax_core::{
     trees::{query::TagExprQuery, AxKey},
     util::variable::Writer,
 };
+use ax_sdk::{app_id, service::SwarmState, AppId, Payload};
 use cbor_data::{
     codec::{CodecError, ReadCbor},
     Cbor,
@@ -253,8 +253,8 @@ async fn run(mut config: Config) -> Result<()> {
             }
             Command::SubscribeQuery(q) => {
                 let from = match q.source {
-                    actyx_sdk::language::Source::Events { from, .. } => from,
-                    actyx_sdk::language::Source::Array(_) => unimplemented!(),
+                    ax_sdk::language::Source::Events { from, .. } => from,
+                    ax_sdk::language::Source::Array(_) => unimplemented!(),
                 };
                 let tags_query = TagExprQuery::from_expr(&from).unwrap();
                 let this = swarm.clone();

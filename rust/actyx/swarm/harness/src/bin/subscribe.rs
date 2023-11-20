@@ -5,9 +5,9 @@ fn main() -> anyhow::Result<()> {
         time::Duration,
     };
 
-    use actyx_sdk::{app_id, language::Query, tags, AppManifest, Timestamp};
     use anyhow::Context;
     use async_std::{future::timeout, task::block_on};
+    use ax_sdk::{app_id, language::Query, tags, AppManifest, Timestamp};
     use structopt::StructOpt;
     use swarm_cli::{Command, Event, TimedEvent};
     use swarm_harness::{api::Api, fully_meshed, m, util::format_offsets, HarnessOpts};

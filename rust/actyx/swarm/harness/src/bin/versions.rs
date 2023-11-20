@@ -1,12 +1,12 @@
 #[cfg(target_os = "linux")]
 mod versions {
-    use actyx_sdk::{
-        service::{EventMeta, EventResponse, QueryResponse},
-        StreamId, TagSet,
-    };
     use anyhow::Context;
     use async_std::task::block_on;
     use ax_core::util::os_arch::Arch;
+    use ax_sdk::{
+        service::{EventMeta, EventResponse, QueryResponse},
+        StreamId, TagSet,
+    };
     use escargot::CargoBuild;
     use flate2::read::GzDecoder;
     use futures::{future::ready, StreamExt};

@@ -1,4 +1,3 @@
-use actyx_sdk::{language::Query, Payload, TagSet, Timestamp};
 use anyhow::Result;
 pub use ax_core::swarm::{EphemeralEventsConfig, EventRoute, GossipMessage, RetainConfig, RootMap, RootUpdate};
 use ax_core::{
@@ -7,6 +6,7 @@ use ax_core::{
     trees::axtrees::AxKey,
     util::SocketAddrHelper,
 };
+use ax_sdk::{language::Query, Payload, TagSet, Timestamp};
 use cbor_data::{
     codec::{ReadCbor, WriteCbor},
     Cbor, CborBuilder,
@@ -362,7 +362,7 @@ fn target_dir() -> std::path::PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyx_sdk::tags;
+    use ax_sdk::tags;
 
     #[test]
     fn test_command() -> Result<()> {

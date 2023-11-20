@@ -7,7 +7,7 @@ use crate::api::{
     licensing::Licensing,
     rejections::{ApiError, UnauthorizedReason},
 };
-use actyx_sdk::AppManifest;
+use ax_sdk::AppManifest;
 use chrono::Utc;
 
 pub fn validate_signed_manifest(
@@ -69,7 +69,7 @@ mod tests {
 
     use super::*;
     use crate::crypto::{PrivateKey, PublicKey};
-    use actyx_sdk::{app_id, AppId};
+    use ax_sdk::{app_id, AppId};
 
     struct TestFixture {
         ax_public_key: PublicKey,
