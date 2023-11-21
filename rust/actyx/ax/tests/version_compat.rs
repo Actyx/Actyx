@@ -337,7 +337,7 @@ fn get_offsets(api: u16, identity: &Path) -> anyhow::Result<ActyxCliResult<Offse
             o("offsets"),
             o("-ji"),
             identity.as_os_str(),
-            o(&format!("localhost:{}", api)),
+            o(&format!("127.0.0.1:{}", api)),
         ])
         .env("RUST_LOG", "debug")
         .output()?;
@@ -372,7 +372,7 @@ fn all_ax() -> anyhow::Result<()> {
                             o("offsets"),
                             o("-ji"),
                             identity.as_os_str(),
-                            o(&format!("localhost:{}", port)),
+                            o(&format!("127.0.0.1:{}", port)),
                         ])
                         .env("RUST_LOG", "info")
                         .output()?;
@@ -389,7 +389,7 @@ fn all_ax() -> anyhow::Result<()> {
                         o("inspect"),
                         o("-ji"),
                         identity.as_os_str(),
-                        o(&format!("localhost:{}", port)),
+                        o(&format!("127.0.0.1:{}", port)),
                     ])
                     .env("RUST_LOG", "debug")
                     .output()?;
@@ -433,7 +433,7 @@ fn all_actyx() -> anyhow::Result<()> {
                         o("inspect"),
                         o("-ji"),
                         identity.as_os_str(),
-                        o(&format!("localhost:{}", port)),
+                        o(&format!("127.0.0.1:{}", port)),
                     ])
                     .env("RUST_LOG", "debug")
                     .output()?;
