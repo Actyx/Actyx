@@ -1,7 +1,7 @@
 # See https://github.com/rust-embedded/cross#supported-targets.
 # ARG TARGET=x86_64-unknown-linux-musl
 ARG TARGET=armv7-unknown-linux-musleabihf
-FROM rustembedded/cross:${TARGET}-0.2.1 as crossbuild-amd64
+FROM ghcr.io/cross-rs/${TARGET}:0.2.5 as crossbuild-amd64
 ARG TARGET
 ARG BUILD_RUST_TOOLCHAIN=1.72.1
 
