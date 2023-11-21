@@ -29,15 +29,12 @@ impl<T> Opts for Option<T> {
 fn setup() {
     static INIT: Once = Once::new();
     INIT.call_once(|| {
+        // This makes the path consistent, it works since its the same project we're building using escargot
+        let cargo_path = concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml");
         // build needed binaries for quicker execution
         for bin in &["ax"] {
             eprintln!("building {}", bin);
-            for msg in CargoBuild::new()
-                .manifest_path("../Cargo.toml")
-                .bin(*bin)
-                .exec()
-                .unwrap()
-            {
+            for msg in CargoBuild::new().manifest_path(cargo_path).bin(*bin).exec().unwrap() {
                 let msg = msg.unwrap();
                 let msg = msg.decode().unwrap();
                 match msg {
@@ -74,11 +71,8 @@ impl std::fmt::Display for Log {
 }
 
 fn run(bin: &str) -> anyhow::Result<Command> {
-    Ok(CargoBuild::new()
-        .manifest_path("../Cargo.toml")
-        .bin(bin)
-        .run()?
-        .command())
+    let cargo_path = concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml");
+    Ok(CargoBuild::new().manifest_path(cargo_path).bin(bin).run()?.command())
 }
 
 fn with_api(
