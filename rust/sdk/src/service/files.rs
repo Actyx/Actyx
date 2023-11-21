@@ -14,7 +14,7 @@ use crate::language::{Query, StaticQuery};
 /// must evaluate to a single hash. This collected set of hashes is pinned on the local node for
 /// the given [`Duration`].
 /// ```
-/// use actyx_sdk::{service::PrefetchRequest, language::Query};
+/// use ax_sdk::{service::PrefetchRequest, language::Query};
 /// use std::time::Duration;
 ///
 /// let now = chrono::Utc::now();

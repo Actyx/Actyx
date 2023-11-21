@@ -24,7 +24,7 @@ pub struct StaticQuery(pub Query<'static>);
 /// see the [docs](https://developer.actyx.com/docs/reference/aql).
 ///
 /// ```
-/// use actyx_sdk::language::Query;
+/// use ax_sdk::language::Query;
 ///
 /// let query = Query::parse(r#"
 /// FROM 'mytag1' & 'mytag2' -- the only mandatory part

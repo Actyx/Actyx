@@ -1,13 +1,12 @@
 use anyhow::Result;
-use axlib::{
+use ax_core::{
     cmd::{
         self, apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
         swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
     },
     node,
 };
-use futures::Future;
-use std::process::exit;
+use std::{future::Future, process::exit};
 use structopt::{
     clap::{App, AppSettings, ArgMatches, ErrorKind, SubCommand},
     StructOpt, StructOptInternal,
@@ -19,7 +18,7 @@ use structopt::{
     about = concat!(
         "\nThe ax CLI is a unified tool to manage your ax nodes.\n\n",
         include_str!("../NOTICE")),
-    version = axlib::util::version::VERSION.as_str(),
+    version = ax_core::util::version::VERSION.as_str(),
 )]
 struct Opt {
     #[structopt(subcommand)]
@@ -142,6 +141,6 @@ async fn main() -> Result<()> {
 }
 
 async fn with_logger<T>(fut: impl Future<Output = T>, verbosity: u8) -> T {
-    axlib::util::setup_logger_with_level(verbosity);
+    ax_core::util::setup_logger_with_level(verbosity);
     fut.await
 }

@@ -1,4 +1,4 @@
-use axlib::util::formats::{
+use ax_core::util::formats::{
     events_protocol::{EventsRequest, EventsResponse},
     ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse,
 };
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use tokio::time::{timeout, Duration};
 
 use crate::{consts::DEFAULT_TIMEOUT_SEC, types::*, util::*};
-use axlib::node_connection::{request_single, Task};
+use ax_core::node_connection::{request_single, Task};
 use futures::channel::mpsc::Sender;
 use libp2p::PeerId;
 
@@ -30,7 +30,7 @@ async fn get_node_details(mut tx: Sender<Task>, peer: PeerId) -> ActyxOSResult<C
             Task::Admin(
                 peer,
                 AdminRequest::SettingsGet {
-                    scope: axlib::settings::Scope {
+                    scope: ax_core::settings::Scope {
                         tokens: vec!["com.actyx".to_string()],
                     },
                     no_defaults: false,
@@ -48,7 +48,7 @@ async fn get_node_details(mut tx: Sender<Task>, peer: PeerId) -> ActyxOSResult<C
             Task::Admin(
                 peer,
                 AdminRequest::SettingsSchema {
-                    scope: axlib::settings::Scope {
+                    scope: ax_core::settings::Scope {
                         tokens: vec!["com.actyx".to_string()],
                     },
                 },

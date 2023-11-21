@@ -1,4 +1,4 @@
-use actyx_sdk::{tags, Ax, AxOpts};
+use ax_sdk::{tags, Ax, AxOpts};
 use futures::{stream, FutureExt, StreamExt, TryStreamExt};
 use rand::Rng;
 

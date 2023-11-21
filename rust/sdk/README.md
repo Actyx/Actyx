@@ -22,7 +22,7 @@ in order to see output.
 > _Note: this example needs the `client` feature to compile._
 
 ```no_run
-use actyx_sdk::{
+use ax_sdk::{
   app_id, AppManifest, Ax, AxOpts,
   service::{Order, QueryRequest, QueryResponse},
 };

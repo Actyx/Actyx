@@ -1,7 +1,6 @@
 #![cfg(target_os = "linux")]
-use actyx_sdk::service::OffsetsResponse;
 use anyhow::{anyhow, bail, ensure};
-use axlib::{
+use ax_core::{
     cmd::ActyxCliResult,
     util::{
         formats::{ActyxOSCode, NodesInspectResponse},
@@ -9,6 +8,7 @@ use axlib::{
         version::Version,
     },
 };
+use ax_sdk::service::OffsetsResponse;
 use escargot::{format::Message, CargoBuild};
 use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;
@@ -231,7 +231,7 @@ fn with_api(
     mut log: impl Write + Clone + Send + 'static,
     f: impl FnOnce(u16, &Path) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    axlib::util::setup_logger();
+    ax_core::util::setup_logger();
     setup();
 
     let workdir = tempdir()?;
@@ -337,7 +337,7 @@ fn get_offsets(api: u16, identity: &Path) -> anyhow::Result<ActyxCliResult<Offse
             o("offsets"),
             o("-ji"),
             identity.as_os_str(),
-            o(&format!("localhost:{}", api)),
+            o(&format!("127.0.0.1:{}", api)),
         ])
         .env("RUST_LOG", "debug")
         .output()?;
@@ -372,7 +372,7 @@ fn all_ax() -> anyhow::Result<()> {
                             o("offsets"),
                             o("-ji"),
                             identity.as_os_str(),
-                            o(&format!("localhost:{}", port)),
+                            o(&format!("127.0.0.1:{}", port)),
                         ])
                         .env("RUST_LOG", "info")
                         .output()?;
@@ -389,7 +389,7 @@ fn all_ax() -> anyhow::Result<()> {
                         o("inspect"),
                         o("-ji"),
                         identity.as_os_str(),
-                        o(&format!("localhost:{}", port)),
+                        o(&format!("127.0.0.1:{}", port)),
                     ])
                     .env("RUST_LOG", "debug")
                     .output()?;
@@ -433,7 +433,7 @@ fn all_actyx() -> anyhow::Result<()> {
                         o("inspect"),
                         o("-ji"),
                         identity.as_os_str(),
-                        o(&format!("localhost:{}", port)),
+                        o(&format!("127.0.0.1:{}", port)),
                     ])
                     .env("RUST_LOG", "debug")
                     .output()?;

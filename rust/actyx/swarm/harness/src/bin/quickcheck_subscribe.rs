@@ -5,12 +5,12 @@ fn main() {
         time::{Duration, Instant},
     };
 
-    use actyx_sdk::{
+    use anyhow::Context;
+    use async_std::{future::timeout, task::block_on};
+    use ax_sdk::{
         service::{EventMeta, EventResponse, QueryResponse},
         tag, OffsetMap, TagSet,
     };
-    use anyhow::Context;
-    use async_std::{future::timeout, task::block_on};
     use futures::{stream::FuturesUnordered, StreamExt};
     use quickcheck::{Gen, QuickCheck, TestResult};
     use swarm_cli::Event;
@@ -149,7 +149,7 @@ fn main() {
     QuickCheck::new()
         .gen(Gen::new(30))
         .tests(2)
-        .quickcheck(publish_all_subscribe_all as fn(Vec<Vec<actyx_sdk::TagSet>>) -> TestResult)
+        .quickcheck(publish_all_subscribe_all as fn(Vec<Vec<ax_sdk::TagSet>>) -> TestResult)
 }
 
 #[cfg(not(target_os = "linux"))]

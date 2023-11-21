@@ -1,5 +1,5 @@
 use crate::Ctx;
-use axlib::node_connection::Task;
+use ax_core::node_connection::Task;
 use futures::SinkExt;
 use neon::{
     context::{Context, FunctionContext},

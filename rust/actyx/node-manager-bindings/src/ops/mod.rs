@@ -2,8 +2,8 @@ macro_rules! filter {
     ($req:path => $res:path) => {
         |res| match res {
             $res(r) => Ok(r),
-            r => axlib::util::formats::ax_err(
-                axlib::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+            r => ax_core::util::formats::ax_err(
+                ax_core::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
                 format!("{} returned mismatched response: {:?}", stringify!($req), r),
             ),
         }

@@ -5,6 +5,9 @@
     },
     {
       "path": "sdk"
+    },
+    {
+      "path": "sdk_macros"
     }
   ],
   "settings": {

@@ -1,9 +1,9 @@
 use crate::util::run_task;
-use actyx_sdk::service::{Order, QueryRequest};
-use axlib::{
+use ax_core::{
     node_connection::{request_events, EventDiagnostic, Task},
     util::formats::{ax_err, events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult},
 };
+use ax_sdk::service::{Order, QueryRequest};
 use futures::{channel::mpsc::Sender, FutureExt, StreamExt};
 use libp2p::PeerId;
 use neon::{
@@ -42,7 +42,7 @@ async fn do_query(mut tx: Sender<Task>, peer: PeerId, query: String) -> ActyxOSR
     match r {
         Err(err) if err.code() == ActyxOSCode::ERR_UNSUPPORTED => Ok(Res { events: None }),
         Err(err) => ax_err(
-            axlib::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+            ax_core::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
             format!("EventsRequests::Query returned unexpected error: {:?}", err),
         ),
         Ok(mut stream) => {

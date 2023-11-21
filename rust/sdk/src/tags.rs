@@ -22,12 +22,12 @@ use unicode_normalization::UnicodeNormalization;
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyx_sdk::{tag, Tag};
+/// use ax_sdk::{tag, Tag};
 /// let tag: Tag = tag!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyx_sdk::{tag, tags::Tag};
+/// use ax_sdk::{tag, tags::Tag};
 /// let tag: Tag = tag!("");
 /// ```
 #[macro_export]
@@ -47,7 +47,7 @@ macro_rules! tag {
 ///  - normal expressions (enclosed in parens if multiple tokens)
 ///
 /// ```rust
-/// use actyx_sdk::{tag, Tag, tags, TagSet};
+/// use ax_sdk::{tag, Tag, tags, TagSet};
 /// use std::collections::BTreeSet;
 ///
 /// let tags: TagSet = tags!("a", "events:b");
@@ -104,7 +104,7 @@ impl Tag {
     /// # Example
     ///
     /// ```
-    /// use actyx_sdk::{TagSet, tags, tag};
+    /// use ax_sdk::{TagSet, tags, tag};
     /// let tags: TagSet = tag!("machine").with_id("Drill-404");
     /// assert_eq!(tags, tags!("machine", "machine:Drill-404"));
     /// ```
@@ -167,7 +167,7 @@ impl Encode<DagCborCodec> for Tag {
 /// Concatenate another part to this tag
 ///
 /// ```
-/// # use actyx_sdk::{tag, Tag};
+/// # use ax_sdk::{tag, Tag};
 /// let user_tag = tag!("user:") + "Bob";
 /// let machine_tag = tag!("machine:") + format!("{}-{}", "thing", 42);
 ///

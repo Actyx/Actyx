@@ -5,16 +5,16 @@ version = "0.1.0"
 authors = ["Actyx AG"]
 
 [dependencies]
-actyx_sdk = { path = "../../../sdk", features = [
-    "client",
-    "arb",
-    "with-tokio",
-] }
-ax = { path = "../../ax" }
+ax_sdk = { path = "../../../sdk", features = ["client", "arb", "with-tokio"] }
+ax_core = { path = "../../ax-core" }
 anyhow = "1.0.52"
-async-global-executor = { version = "2.0.2", features = ["tokio"] }
+async-global-executor = { version = "2.0.2", default-features = false, features = [
+    "tokio",
+] }
+# required to avoid building rustix 0.37, which fails on macos
+async-io = "~1.8"
 async-process = "1.3.0"
-async-std = "1.10.0"
+async-std = { version = "1.10.0", default-features = false }
 async-trait = "0.1.52"
 escargot = "0.5.7"
 flate2 = "1.0.22"

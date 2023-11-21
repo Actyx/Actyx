@@ -1,4 +1,4 @@
-use actyx_sdk::{service::PublishEvent, tags, Ax, AxOpts, Payload};
+use ax_sdk::{service::PublishEvent, tags, Ax, AxOpts, Payload};
 
 // This example demonstrates how to publish events by constructing them
 // with their low-level API

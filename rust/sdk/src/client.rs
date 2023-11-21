@@ -50,7 +50,7 @@ impl AxOpts {
     ///
     /// This function is similar manually constructing the following:
     /// ```no_run
-    /// # use actyx_sdk::AxOpts;
+    /// # use ax_sdk::AxOpts;
     /// # fn opts() -> AxOpts {
     /// AxOpts {
     ///     url: "https://your.host:1234".parse().unwrap(),
@@ -69,7 +69,7 @@ impl AxOpts {
     ///
     /// This function is similar manually constructing the following:
     /// ```no_run
-    /// # use actyx_sdk::{app_id, AppManifest, AxOpts};
+    /// # use ax_sdk::{app_id, AppManifest, AxOpts};
     /// # fn opts() -> AxOpts {
     /// AxOpts {
     ///     manifest: AppManifest::trial(
@@ -343,7 +343,7 @@ impl Ax {
     ///
     /// Example:
     /// ```no_run
-    /// use actyx_sdk::{Ax, AxOpts, service::PublishResponse};
+    /// use ax_sdk::{Ax, AxOpts, service::PublishResponse};
     /// async fn publish_example() {
     ///     let response = Ax::new(AxOpts::default())
     ///         .await
@@ -367,7 +367,7 @@ impl Ax {
     ///
     /// Example:
     /// ```no_run
-    /// use actyx_sdk::{Ax, AxOpts, service::QueryResponse};
+    /// use ax_sdk::{Ax, AxOpts, service::QueryResponse};
     /// use futures::stream::StreamExt;
     /// async fn query_example() {
     ///     let mut response = Ax::new(AxOpts::default())
@@ -391,7 +391,7 @@ impl Ax {
     ///
     /// Example:
     /// ```no_run
-    /// use actyx_sdk::{Ax, AxOpts, service::SubscribeResponse};
+    /// use ax_sdk::{Ax, AxOpts, service::SubscribeResponse};
     /// use futures::stream::StreamExt;
     /// async fn subscribe_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -411,7 +411,7 @@ impl Ax {
     ///
     /// Example:
     /// ```no_run
-    /// use actyx_sdk::{Ax, AxOpts, service::SubscribeMonotonicResponse};
+    /// use ax_sdk::{Ax, AxOpts, service::SubscribeMonotonicResponse};
     /// use futures::stream::StreamExt;
     /// async fn subscribe_monotonic_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -488,7 +488,7 @@ impl<'a> Publish<'a> {
     /// # Example
     ///
     /// ```no_run
-    /// use actyx_sdk::{tags, Ax, AxOpts, service::PublishResponse};
+    /// use ax_sdk::{tags, Ax, AxOpts, service::PublishResponse};
     /// async fn event_example() -> PublishResponse {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
     ///     service
@@ -530,7 +530,7 @@ impl<'a> Publish<'a> {
     /// # Example
     ///
     /// ```no_run
-    /// use actyx_sdk::{tags, Ax, AxOpts, Payload, service::{PublishEvent, PublishResponse}};
+    /// use ax_sdk::{tags, Ax, AxOpts, Payload, service::{PublishEvent, PublishResponse}};
     /// async fn events_example() -> PublishResponse {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
     ///     service
@@ -637,7 +637,7 @@ impl<'a> Query<'a> {
     /// # Examples
     ///
     /// ```no_run
-    /// use actyx_sdk::{Ax, AxOpts, service::QueryResponse};
+    /// use ax_sdk::{Ax, AxOpts, service::QueryResponse};
     /// use futures::stream::StreamExt;
     /// async fn lower_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -660,7 +660,7 @@ impl<'a> Query<'a> {
     /// get an offset map when the query finishes streaming all results.
     ///
     /// ```no_run
-    /// use actyx_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use ax_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
     /// use futures::stream::StreamExt;
     /// async fn lower_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -735,7 +735,7 @@ impl<'a> Query<'a> {
     /// # Examples
     ///
     /// ```no_run
-    /// use actyx_sdk::{Ax, AxOpts};
+    /// use ax_sdk::{Ax, AxOpts};
     /// use futures::stream::StreamExt;
     /// async fn upper_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -756,7 +756,7 @@ impl<'a> Query<'a> {
     /// get an offset map when the query finishes streaming all results.
     ///
     /// ```no_run
-    /// use actyx_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use ax_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
     /// use futures::stream::StreamExt;
     /// async fn upper_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -823,7 +823,7 @@ impl<'a> Query<'a> {
     /// # Example
     ///
     /// ```no_run
-    /// use actyx_sdk::{Ax, AxOpts};
+    /// use ax_sdk::{Ax, AxOpts};
     /// use futures::stream::StreamExt;
     /// async fn upper_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -877,7 +877,7 @@ impl<'a> Query<'a> {
     /// # Example
     ///
     /// ```no_run
-    /// use actyx_sdk::{Ax, AxOpts, service::Order};
+    /// use ax_sdk::{Ax, AxOpts, service::Order};
     /// use futures::stream::StreamExt;
     /// async fn order_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -981,7 +981,7 @@ impl<'a> Subscribe<'a> {
     /// # Example
     ///
     /// ```no_run
-    /// use actyx_sdk::{Ax, AxOpts};
+    /// use ax_sdk::{Ax, AxOpts};
     /// use futures::stream::StreamExt;
     /// async fn lower_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -1002,7 +1002,7 @@ impl<'a> Subscribe<'a> {
     /// get an offset map when the query finishes streaming all results.
     ///
     /// ```no_run
-    /// use actyx_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use ax_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
     /// use futures::stream::StreamExt;
     /// async fn lower_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -1160,7 +1160,7 @@ impl<'a> SubscribeMonotonic<'a> {
     /// # Example
     ///
     /// ```no_run
-    /// use actyx_sdk::{Ax, AxOpts};
+    /// use ax_sdk::{Ax, AxOpts};
     /// use futures::stream::StreamExt;
     /// async fn lower_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -1181,7 +1181,7 @@ impl<'a> SubscribeMonotonic<'a> {
     /// get an offset map when the query finishes streaming all results.
     ///
     /// ```no_run
-    /// use actyx_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use ax_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
     /// use futures::stream::StreamExt;
     /// async fn lower_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();

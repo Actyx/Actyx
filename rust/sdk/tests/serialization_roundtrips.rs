@@ -1,4 +1,4 @@
-use actyx_sdk::service::{
+use ax_sdk::service::{
     NodeInfoResponse, OffsetsResponse, PublishRequest, PublishResponse, QueryRequest, QueryResponse,
     SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
 };

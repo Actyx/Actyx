@@ -1,12 +1,12 @@
-use actyx_sdk::{language::Query, Payload, TagSet, Timestamp};
 use anyhow::Result;
-pub use axlib::swarm::{EphemeralEventsConfig, EventRoute, GossipMessage, RetainConfig, RootMap, RootUpdate};
-use axlib::{
+pub use ax_core::swarm::{EphemeralEventsConfig, EventRoute, GossipMessage, RetainConfig, RootMap, RootUpdate};
+use ax_core::{
     crypto::{KeyPair, PrivateKey},
     swarm::{BanyanConfig, SwarmConfig},
     trees::axtrees::AxKey,
     util::SocketAddrHelper,
 };
+use ax_sdk::{language::Query, Payload, TagSet, Timestamp};
 use cbor_data::{
     codec::{ReadCbor, WriteCbor},
     Cbor, CborBuilder,
@@ -362,7 +362,7 @@ fn target_dir() -> std::path::PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyx_sdk::tags;
+    use ax_sdk::tags;
 
     #[test]
     fn test_command() -> Result<()> {

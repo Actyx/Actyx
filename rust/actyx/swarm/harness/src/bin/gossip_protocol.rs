@@ -1,8 +1,8 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
-    use actyx_sdk::{language::TagExpr, tags, LamportTimestamp, Offset, Payload, StreamNr};
     use async_std::future::timeout;
-    use axlib::crypto::peer_id_to_node_id;
+    use ax_core::crypto::peer_id_to_node_id;
+    use ax_sdk::{language::TagExpr, tags, LamportTimestamp, Offset, Payload, StreamNr};
     use std::{
         str::FromStr,
         time::{Duration, Instant},

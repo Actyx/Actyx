@@ -17,51 +17,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actyx_sdk"
-version = "0.3.0"
-dependencies = [
- "actyx_sdk_macros",
- "anyhow",
- "base64 0.13.1",
- "bytes",
- "cbor-data",
- "chrono",
- "derive_more",
- "futures 0.3.29",
- "im",
- "intern-arc",
- "lazy_static",
- "libipld",
- "maplit",
- "multibase",
- "num-traits",
- "once_cell",
- "pest",
- "pest_derive",
- "quickcheck",
- "rand 0.8.5",
- "reqwest",
- "rusqlite",
- "serde",
- "serde-transcode",
- "serde_cbor",
- "serde_json",
- "tokio",
- "tracing",
- "unicode-normalization",
- "url",
-]
-
-[[package]]
-name = "actyx_sdk_macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "addr"
 version = "0.11.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -381,7 +336,7 @@ version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81953c529336010edd6d8e358f886d9581267795c61b19475b71314bffa46d35"
 dependencies = [
- "concurrent-queue",
+ "concurrent-queue 2.3.0",
  "event-listener 2.5.3",
  "futures-core",
 ]
@@ -392,7 +347,7 @@ version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d37875bd9915b7d67c2f117ea2c30a0989874d0b2cb694fe25403c85763c0c9e"
 dependencies = [
- "concurrent-queue",
+ "concurrent-queue 2.3.0",
  "event-listener 3.1.0",
  "event-listener-strategy",
  "futures-core",
@@ -420,7 +375,7 @@ checksum = "4b0c4a4f319e45986f347ee47fef8bf5e81c9abc3f6f58dc2391439f30df65f0"
 dependencies = [
  "async-lock 2.8.0",
  "async-task",
- "concurrent-queue",
+ "concurrent-queue 2.3.0",
  "fastrand 2.0.1",
  "futures-lite 1.13.0",
  "slab",
@@ -434,7 +389,7 @@ checksum = "f1b6f5d7df27bd294849f8eec66ecfc63d11814df7a4f5d74168a2394467b776"
 dependencies = [
  "async-channel 1.9.0",
  "async-executor",
- "async-io 1.13.0",
+ "async-io 1.8.0",
  "async-lock 2.8.0",
  "blocking",
  "futures-lite 1.13.0",
@@ -444,22 +399,22 @@ dependencies = [
 
 [[package]]
 name = "async-io"
-version = "1.13.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fc5b45d93ef0529756f812ca52e44c221b35341892d3dcc34132ac02f3dd2af"
+checksum = "0ab006897723d9352f63e2b13047177c3982d8d79709d713ce7747a8f19fd1b0"
 dependencies = [
- "async-lock 2.8.0",
  "autocfg",
- "cfg-if",
- "concurrent-queue",
+ "concurrent-queue 1.2.4",
  "futures-lite 1.13.0",
+ "libc",
  "log",
+ "once_cell",
  "parking",
  "polling 2.8.0",
- "rustix 0.37.27",
  "slab",
  "socket2 0.4.10",
  "waker-fn",
+ "winapi",
 ]
 
 [[package]]
@@ -470,12 +425,12 @@ checksum = "41ed9d5715c2d329bf1b4da8d60455b99b187f27ba726df2883799af9af60997"
 dependencies = [
  "async-lock 3.1.0",
  "cfg-if",
- "concurrent-queue",
+ "concurrent-queue 2.3.0",
  "futures-io",
  "futures-lite 2.0.1",
  "parking",
  "polling 3.3.0",
- "rustix 0.38.22",
+ "rustix",
  "slab",
  "tracing",
  "waker-fn",
@@ -508,14 +463,14 @@ version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea6438ba0a08d81529c69b36700fa2f95837bfe3e776ab39cde9c14d9149da88"
 dependencies = [
- "async-io 1.13.0",
+ "async-io 1.8.0",
  "async-lock 2.8.0",
  "async-signal",
  "blocking",
  "cfg-if",
  "event-listener 3.1.0",
  "futures-lite 1.13.0",
- "rustix 0.38.22",
+ "rustix",
  "windows-sys 0.48.0",
 ]
 
@@ -531,7 +486,7 @@ dependencies = [
  "cfg-if",
  "futures-core",
  "futures-io",
- "rustix 0.38.22",
+ "rustix",
  "signal-hook-registry",
  "slab",
  "windows-sys 0.48.0",
@@ -545,7 +500,7 @@ checksum = "62565bb4402e926b29953c785397c6dc0391b7b446e45008b0049eb43cec6f5d"
 dependencies = [
  "async-channel 1.9.0",
  "async-global-executor",
- "async-io 1.13.0",
+ "async-io 1.8.0",
  "async-lock 2.8.0",
  "crossbeam-utils",
  "futures-channel",
@@ -620,12 +575,35 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 name = "ax"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "assert_cmd",
+ "ax_core",
+ "ax_sdk",
+ "escargot",
+ "flate2",
+ "maplit",
+ "once_cell",
+ "parking_lot 0.12.1",
+ "predicates 3.0.4",
+ "reqwest",
+ "serde_json",
+ "structopt",
+ "tar",
+ "tempfile",
+ "tokio",
+ "winres",
+]
+
+[[package]]
+name = "ax_core"
+version = "0.2.0"
+dependencies = [
  "acto",
- "actyx_sdk",
  "anyhow",
  "assert_cmd",
  "async-trait",
  "atty",
+ "ax_sdk",
  "backtrace",
  "banyan",
  "banyan-utils",
@@ -726,10 +704,54 @@ dependencies = [
  "void",
  "waker-fn",
  "warp",
- "winres",
  "wsrpc",
  "zeroize",
  "zstd",
+]
+
+[[package]]
+name = "ax_sdk"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "ax_sdk_macros",
+ "base64 0.13.1",
+ "bytes",
+ "cbor-data",
+ "chrono",
+ "derive_more",
+ "futures 0.3.29",
+ "im",
+ "intern-arc",
+ "lazy_static",
+ "libipld",
+ "maplit",
+ "multibase",
+ "num-traits",
+ "once_cell",
+ "pest",
+ "pest_derive",
+ "quickcheck",
+ "rand 0.8.5",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde-transcode",
+ "serde_cbor",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "unicode-normalization",
+ "url",
+]
+
+[[package]]
+name = "ax_sdk_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -1020,6 +1042,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2bd12c1caf447e69cd4528f47f94d203fd2582878ecb9e9465484c4148a8223"
 
 [[package]]
+name = "cache-padded"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "981520c98f422fcc584dc1a95c334e6953900b9106bc47a9839b81790009eb21"
+
+[[package]]
 name = "cached"
 version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1266,6 +1294,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a31c789563b815f77f4250caee12365734369f942439b7defd71e18a48197130"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "concurrent-queue"
+version = "1.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af4780a44ab5696ea9e28294517f1fffb421a83a25af521333c838635509db9c"
+dependencies = [
+ "cache-padded",
 ]
 
 [[package]]
@@ -2036,7 +2073,7 @@ version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d93877bcde0eb80ca09131a08d23f0a5c18a620b01db137dba666d18cd9b30c2"
 dependencies = [
- "concurrent-queue",
+ "concurrent-queue 2.3.0",
  "parking",
  "pin-project-lite",
 ]
@@ -2778,7 +2815,7 @@ version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbb892e5777fe09e16f3d44de7802f4daa7267ecbe8c466f19d94e25bb0c303e"
 dependencies = [
- "async-io 1.13.0",
+ "async-io 1.8.0",
  "core-foundation",
  "fnv",
  "futures 0.3.29",
@@ -2881,17 +2918,6 @@ dependencies = [
  "loom",
  "once_cell",
  "parking_lot 0.11.2",
-]
-
-[[package]]
-name = "io-lifetimes"
-version = "1.0.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eae7b9aee968036d54dce06cebaefd919e4472e753296daccd6d344e3e2df0c2"
-dependencies = [
- "hermit-abi 0.3.3",
- "libc",
- "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -3740,12 +3766,6 @@ checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef53942eb7bf7ff43a617b3e2c1c4a5ecf5944a7c1bc12d7ee39bbb15e5c1519"
-
-[[package]]
-name = "linux-raw-sys"
 version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "969488b55f8ac402214f3f5fd243ebb7206cf82de60d3172994707a4bcc2b829"
@@ -4207,7 +4227,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c0e99608e5e6c3631a0d6e86b08506ff9c058ae4eb7dee5f13207dd4c116c16"
 dependencies = [
  "async-global-executor",
- "async-io 1.13.0",
+ "async-io 1.8.0",
  "futures 0.3.29",
  "libpacket",
  "rand 0.8.5",
@@ -4221,7 +4241,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83710638e06632fbb962734b93c52b7b1d6959ca5f2685ec35458a3088627c9e"
 dependencies = [
  "async-global-executor",
- "async-io 1.13.0",
+ "async-io 1.8.0",
  "async-process",
  "async-std",
  "futures 0.3.29",
@@ -4282,7 +4302,7 @@ name = "node-ffi"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "ax",
+ "ax_core",
  "crossbeam",
  "ffi-support",
  "futures 0.3.29",
@@ -4298,9 +4318,9 @@ dependencies = [
 name = "node-manager-bindings"
 version = "0.1.0"
 dependencies = [
- "actyx_sdk",
  "anyhow",
- "ax",
+ "ax_core",
+ "ax_sdk",
  "futures 0.3.29",
  "libp2p",
  "neon",
@@ -4807,7 +4827,7 @@ dependencies = [
  "autocfg",
  "bitflags 1.3.2",
  "cfg-if",
- "concurrent-queue",
+ "concurrent-queue 2.3.0",
  "libc",
  "log",
  "pin-project-lite",
@@ -4821,9 +4841,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e53b6af1f60f36f8c2ac2aad5459d75a5a9b4be1e8cdd40264f315d78193e531"
 dependencies = [
  "cfg-if",
- "concurrent-queue",
+ "concurrent-queue 2.3.0",
  "pin-project-lite",
- "rustix 0.38.22",
+ "rustix",
  "tracing",
  "windows-sys 0.48.0",
 ]
@@ -4908,8 +4928,11 @@ checksum = "6dfc28575c2e3f19cb3c73b93af36460ae898d426eba6fc15b9bd2a5220758a0"
 dependencies = [
  "anstyle",
  "difflib",
+ "float-cmp",
  "itertools 0.11.0",
+ "normalize-line-endings",
  "predicates-core",
+ "regex",
 ]
 
 [[package]]
@@ -5793,20 +5816,6 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.37.27"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fea8ca367a3a01fe35e6943c400addf443c0f57670e6ec51196f71a4b8762dd2"
-dependencies = [
- "bitflags 1.3.2",
- "errno",
- "io-lifetimes",
- "libc",
- "linux-raw-sys 0.3.8",
- "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "rustix"
 version = "0.38.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80109a168d9bc0c7f483083244543a6eb0dba02295d33ca268145e6190d6df0c"
@@ -5814,7 +5823,7 @@ dependencies = [
  "bitflags 2.4.1",
  "errno",
  "libc",
- "linux-raw-sys 0.4.11",
+ "linux-raw-sys",
  "windows-sys 0.48.0",
 ]
 
@@ -6410,10 +6419,10 @@ name = "swarm-cli"
 version = "0.1.0"
 dependencies = [
  "acto",
- "actyx_sdk",
  "anyhow",
  "async-process",
- "ax",
+ "ax_core",
+ "ax_sdk",
  "cbor-data",
  "chrono",
  "crossbeam",
@@ -6436,13 +6445,14 @@ dependencies = [
 name = "swarm-harness"
 version = "0.1.0"
 dependencies = [
- "actyx_sdk",
  "anyhow",
  "async-global-executor",
+ "async-io 1.8.0",
  "async-process",
  "async-std",
  "async-trait",
- "ax",
+ "ax_core",
+ "ax_sdk",
  "escargot",
  "flate2",
  "futures 0.3.29",
@@ -6558,7 +6568,7 @@ dependencies = [
  "cfg-if",
  "fastrand 2.0.1",
  "redox_syscall 0.4.1",
- "rustix 0.38.22",
+ "rustix",
  "windows-sys 0.48.0",
 ]
 
@@ -7737,7 +7747,7 @@ dependencies = [
  "either",
  "home",
  "once_cell",
- "rustix 0.38.22",
+ "rustix",
 ]
 
 [[package]]

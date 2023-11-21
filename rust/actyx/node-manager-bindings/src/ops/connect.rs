@@ -1,5 +1,5 @@
 use crate::util::run_task;
-use axlib::node_connection::connect;
+use ax_core::node_connection::connect;
 use futures::FutureExt;
 use neon::{
     context::{Context, FunctionContext},

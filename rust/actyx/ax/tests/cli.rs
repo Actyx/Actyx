@@ -1,5 +1,5 @@
 use assert_cmd::{assert::OutputAssertExt, cargo::CommandCargoExt};
-use axlib::util::version::NodeVersion;
+use ax_core::util::version::NodeVersion;
 use maplit::btreemap;
 use predicates::{prelude::predicate, str::starts_with};
 use std::{collections::HashMap, path::PathBuf, process::Command};

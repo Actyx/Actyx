@@ -22,12 +22,12 @@ use std::{
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyx_sdk::{app_id, AppId};
+/// use ax_sdk::{app_id, AppId};
 /// let app_id: AppId = app_id!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyx_sdk::{app_id, AppId};
+/// use ax_sdk::{app_id, AppId};
 /// let app_id: AppId = app_id!("");
 /// ```
 #[macro_export]

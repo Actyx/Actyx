@@ -98,6 +98,7 @@ mod tests {
         codec::{ReadCbor, WriteCbor},
         CborBuilder,
     };
+    use serde_json::json;
 
     #[test]
     fn payload_dag_cbor_roundtrip() -> anyhow::Result<()> {

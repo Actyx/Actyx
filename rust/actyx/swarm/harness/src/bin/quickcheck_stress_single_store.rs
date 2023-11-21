@@ -2,12 +2,12 @@
 fn main() {
     use std::{str::FromStr, time::Duration};
 
-    use actyx_sdk::{
+    use async_std::task::block_on;
+    use ax_sdk::{
         language::TagExpr,
         service::{EventMeta, EventResponse, SubscribeResponse},
         tags, Offset, Payload, Url,
     };
-    use async_std::task::block_on;
     use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
     use quickcheck::{empty_shrinker, Arbitrary, Gen, QuickCheck, TestResult};
     use swarm_cli::{Event, EventRoute};

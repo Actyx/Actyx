@@ -2,9 +2,9 @@
 
 pub mod api;
 
-use actyx_sdk::NodeId;
 use anyhow::{bail, Result};
 use async_std::{future, task};
+use ax_sdk::NodeId;
 use futures::{
     future::{select, BoxFuture, Either, Future},
     FutureExt,
@@ -102,7 +102,7 @@ impl MultiaddrExt for Multiaddr {
 }
 
 pub fn setup_env() -> Result<()> {
-    axlib::util::setup_logger();
+    ax_core::util::setup_logger();
     netsim_embed::unshare_user()?;
     Ok(())
 }

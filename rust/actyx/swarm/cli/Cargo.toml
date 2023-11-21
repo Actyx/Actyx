@@ -6,10 +6,10 @@ authors = ["Actyx AG"]
 
 [dependencies]
 acto = "0.2.9"
-actyx_sdk = { path = "../../../sdk" }
+ax_sdk = { path = "../../../sdk" }
 anyhow = "1.0.52"
 async-process = "1.3.0"
-ax = { path = "../../ax" }
+ax_core = { path = "../../ax-core" }
 cbor-data = "0.8.7"
 chrono = "0.4.19"
 crossbeam = "0.8.1"
