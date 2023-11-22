@@ -15,7 +15,7 @@
             <Component Id="DummyComponentToDisallowNetworkInstall" Location="local" Directory="INSTALLFOLDER" Guid="86849215-45EC-43C8-9313-D9CE37210811" />
             <Feature Id="Core" Title="Core" Description="Core functionality of Actyx" Level="1" AllowAdvertise='no' Absent='disallow' InstallDefault='local'>
                 <Component Id="Core" Guid="974bc210-5eb2-11ec-bf63-0242ac130002" Directory="INSTALLFOLDER">
-                    <File Id="Actyx" Name="actyx.exe" Source="$(var.actyxexepath)" />
+                    <File Id="Actyx" Name="ax.exe" Source="$(var.actyxexepath)" />
                     <File Id="DeleteRuntimeFilesBatch" Name="delete_runtime_files.bat" Source="/src/wix/actyx-installer/delete_runtime_files.bat" />
                     <RemoveFolder Id="INSTALLFOLDER" On="uninstall" />
                 </Component>
