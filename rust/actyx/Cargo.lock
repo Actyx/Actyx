@@ -653,6 +653,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "once_cell",
+ "openssl",
  "parking_lot 0.12.1",
  "percent-encoding",
  "pin-project",
