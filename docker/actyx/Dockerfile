@@ -37,10 +37,10 @@ COPY NOTICE NOTICE
 
 RUN cargo install \
     --target ${CARGO_BUILD_TARGET} \
-    --path rust/actyx/node \
+    --path rust/actyx/ax \
     --locked \
     ${CARGO_BUILD_ARGS} \
-    --bin actyx
+    --bin ax
 
 # final prod image
 FROM --platform=$TARGETPLATFORM alpine:3.13
@@ -49,7 +49,7 @@ RUN addgroup -g 1000 -S actyx && \
 
 COPY --from=build --chown=1000:1000 /usr/local/cargo/bin/actyx /usr/bin/actyx
 
-CMD ["actyx", "--working-dir", "/data/actyx-data", "--bind-admin", "0.0.0.0:4458", "--bind-api", "0.0.0.0:4454", "--bind-swarm", "0.0.0.0:4001"]
+CMD ["ax", "run" "--working-dir", "/data/actyx-data", "--bind-admin", "0.0.0.0:4458", "--bind-api", "0.0.0.0:4454", "--bind-swarm", "0.0.0.0:4001"]
 
 ARG GIT_COMMIT
 
