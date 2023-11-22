@@ -9,6 +9,10 @@ RUN cd make-4.4.1 && ./configure && make
 ARG TARGET
 FROM ghcr.io/cross-rs/${TARGET}:0.2.5 as crossbuild-amd64
 
+# Argument needs to be refreshed across several images
+# https://docs.docker.com/engine/reference/builder/#scope
+ARG TARGET
+
 # Passed in by the build_and_push.script
 ARG BUILD_RUST_TOOLCHAIN
 
