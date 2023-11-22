@@ -5,6 +5,7 @@ version = "0.2.0"
 authors = ["Actyx AG"]
 
 [dependencies]
+cc = "=1.0.83"
 acto = { version = "0.2.0", features = ["tokio"] }
 ax_sdk = { version = "0.2.0", default-features = false, features = [
   "sqlite",
