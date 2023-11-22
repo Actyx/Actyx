@@ -612,7 +612,6 @@ dependencies = [
  "bytes",
  "cbor-data",
  "cbor-tag-index",
- "cc",
  "cfg-if",
  "chacha20poly1305 0.9.1",
  "chrono",
