@@ -1,13 +1,13 @@
-ARG CROSSVER=0.2.1
+ARG CROSSVER=0.2.5
 
 # Poor man's mapping from buildx arch scheme to cargo
-FROM --platform=$BUILDPLATFORM rustembedded/cross:aarch64-unknown-linux-musl-${CROSSVER} AS build-linux-arm64
+FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/aarch64-unknown-linux-musl:${CROSSVER} AS build-linux-arm64
 ENV CARGO_BUILD_TARGET=aarch64-unknown-linux-musl
-FROM --platform=$BUILDPLATFORM rustembedded/cross:x86_64-unknown-linux-musl-${CROSSVER} AS build-linux-amd64
+FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/x86_64-unknown-linux-musl:${CROSSVER} AS build-linux-amd64
 ENV CARGO_BUILD_TARGET=x86_64-unknown-linux-musl
-FROM --platform=$BUILDPLATFORM rustembedded/cross:arm-unknown-linux-musleabi-${CROSSVER} AS build-linux-armv6
+FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/arm-unknown-linux-musleabi:${CROSSVER} AS build-linux-armv6
 ENV CARGO_BUILD_TARGET=arm-unknown-linux-musleabi
-FROM --platform=$BUILDPLATFORM rustembedded/cross:armv7-unknown-linux-musleabihf-${CROSSVER} AS build-linux-armv7
+FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/armv7-unknown-linux-musleabihf:${CROSSVER} AS build-linux-armv7
 ENV CARGO_BUILD_TARGET=armv7-unknown-linux-musleabihf
 
 # actual build image
@@ -33,7 +33,6 @@ FROM --platform=$BUILDPLATFORM crossbuild AS build
 
 # all dependencies needed for building
 COPY rust rust
-COPY protocols protocols
 COPY NOTICE NOTICE
 
 RUN cargo install \
