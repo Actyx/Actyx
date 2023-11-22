@@ -1,3 +1,9 @@
+# Argument needs to be refreshed across several images
+# https://docs.docker.com/engine/reference/builder/#scope
+# Left without value to force specification on build
+ARG TARGET
+ARG BUILD_RUST_TOOLCHAIN
+
 # First we need to build GNU Make 4.4.1, see the following link for more information:
 # https://github.com/rust-lang/cc-rs/issues/905
 FROM ubuntu:20.04 as makebuild
@@ -9,11 +15,7 @@ RUN cd make-4.4.1 && ./configure && make
 ARG TARGET
 FROM ghcr.io/cross-rs/${TARGET}:0.2.5 as crossbuild-amd64
 
-# Argument needs to be refreshed across several images
-# https://docs.docker.com/engine/reference/builder/#scope
 ARG TARGET
-
-# Passed in by the build_and_push.script
 ARG BUILD_RUST_TOOLCHAIN
 
 COPY --from=makebuild /make-4.4.1/make /usr/bin/make
