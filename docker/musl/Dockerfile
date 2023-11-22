@@ -1,17 +1,16 @@
-ARG TARGET=armv7-unknown-linux-musleabihf
-
-# first we need to build GNU Make 4.4.1
+# First we need to build GNU Make 4.4.1, see the following link for more information:
+# https://github.com/rust-lang/cc-rs/issues/905
 FROM ubuntu:20.04 as makebuild
 RUN apt-get update && apt-get install -y build-essential curl
 RUN curl -L https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz | tar xz
 RUN cd make-4.4.1 && ./configure && make
 
 # See https://github.com/rust-embedded/cross#supported-targets.
-# ARG TARGET=x86_64-unknown-linux-musl
 ARG TARGET
 FROM ghcr.io/cross-rs/${TARGET}:0.2.5 as crossbuild-amd64
-ARG TARGET
-ARG BUILD_RUST_TOOLCHAIN=1.72.1
+
+# Passed in by the build_and_push.script
+ARG BUILD_RUST_TOOLCHAIN
 
 COPY --from=makebuild /make-4.4.1/make /usr/bin/make
 
