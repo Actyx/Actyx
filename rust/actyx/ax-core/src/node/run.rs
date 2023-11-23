@@ -90,6 +90,8 @@ pub struct RunOpts {
     log_json: Option<Color>,
 }
 
+// This method does not belong here, it belongs in ax-core
+// we need to extract this and it's friends
 pub fn run(
     RunOpts {
         working_dir,
@@ -146,7 +148,7 @@ pub fn run(
         #[cfg(target_os = "windows")]
         let runtime: Runtime = Runtime::Windows;
         #[cfg(target_os = "android")]
-        let runtime: Runtime = Runtime::Android;
+        panic!("Unsupported platform");
 
         let app_handle = ApplicationState::spawn(working_dir, runtime, bind_to, log_no_color, log_as_json)?;
 
