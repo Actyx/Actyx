@@ -12,7 +12,6 @@ ax_sdk = { version = "0.2.0", default-features = false, features = [
 ], path = "../../sdk" }
 anyhow = "1.0.66"
 async-trait = "0.1.52"
-atty = "0.2.14"
 backtrace = "0.3.63"
 banyan = "0.18.0"
 banyan-utils = "0.11.0"

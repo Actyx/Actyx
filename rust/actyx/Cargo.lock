@@ -577,6 +577,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
+ "atty",
  "ax_core",
  "ax_sdk",
  "escargot",
@@ -602,7 +603,6 @@ dependencies = [
  "anyhow",
  "assert_cmd",
  "async-trait",
- "atty",
  "ax_sdk",
  "backtrace",
  "banyan",
