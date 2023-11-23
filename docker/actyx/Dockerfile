@@ -5,8 +5,6 @@ FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/aarch64-unknown-linux-musl:${CRO
 ENV CARGO_BUILD_TARGET=aarch64-unknown-linux-musl
 FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/x86_64-unknown-linux-musl:${CROSSVER} AS build-linux-amd64
 ENV CARGO_BUILD_TARGET=x86_64-unknown-linux-musl
-FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/arm-unknown-linux-musleabi:${CROSSVER} AS build-linux-armv6
-ENV CARGO_BUILD_TARGET=arm-unknown-linux-musleabi
 FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/armv7-unknown-linux-musleabihf:${CROSSVER} AS build-linux-armv7
 ENV CARGO_BUILD_TARGET=armv7-unknown-linux-musleabihf
 
