@@ -2,6 +2,10 @@
   Configuration of Windows Service Wrapper for Actyx
   See the following link for schema and friends:
   https://github.com/winsw/winsw/blob/v3/docs/xml-config-file.md
+
+  If you break the Actyx Service at runtime, you can fix it on the machine by hand
+  as this file will be available after installation. After fixing it, you can then
+  uninstall Actyx again.
 -->
 
 <service>
@@ -25,7 +29,6 @@
   <serviceaccount>
     <user>LocalService</user>
   </serviceaccount>
-
 
   <!--
       OPTION: onfailure
