@@ -57,10 +57,6 @@ pub struct RunOpts {
     #[structopt(short, long, hidden = true)]
     pub random: bool,
 
-    /// This does not do anything; kept for backward-compatibility
-    #[structopt(long)]
-    pub background: bool,
-
     #[structopt(long)]
     pub version: bool,
 

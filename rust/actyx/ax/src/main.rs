@@ -158,7 +158,6 @@ pub fn run(
         bind_options,
         random,
         version,
-        background,
         log_color,
         log_json,
     }: RunOpts,
@@ -176,11 +175,6 @@ pub fn run(
         Some(Color::Auto) => is_no_tty,
         None => false,
     };
-
-    // NOTE: maybe it's time we remove this this
-    if background {
-        eprintln!("Notice: the `--background` flag is no longer used and will just be ignored.")
-    }
 
     if version {
         println!("ax {}", NodeVersion::get());
