@@ -50,9 +50,9 @@ endif
 #############################
 ##### Configuration variables
 #############################
-architectures = aarch64 x86_64 armv7 arm
-unix-bins = actyx ax
-windows-bins = actyx.exe ax.exe actyx-x64.msi
+architectures = aarch64 x86_64 armv7
+unix-bins = ax
+windows-bins = ax.exe actyx-x64.msi
 android-bins = actyx.apk
 
 CARGO_TEST_JOBS ?= 8
@@ -66,13 +66,12 @@ export BUILD_RUST_TOOLCHAIN ?= 1.72.1
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 22ae1a3749cf153afa8d50c39494a36a820cf443
+export LATEST_STABLE_IMAGE_VERSION := 3bfa52039d5cd166e8cd9509d447fea251ab82d1
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
 target-linux-x86_64 = x86_64-unknown-linux-musl
 target-linux-armv7 = armv7-unknown-linux-musleabihf
-target-linux-arm = arm-unknown-linux-musleabi
 target-windows-x86_64 = x86_64-pc-windows-gnu
 target-macos-x86_64 = x86_64-apple-darwin
 target-macos-aarch64 = aarch64-apple-darwin
@@ -81,7 +80,6 @@ target-macos-aarch64 = aarch64-apple-darwin
 target-nonmusl-linux-aarch64 = aarch64-unknown-linux-gnu
 target-nonmusl-linux-x86_64 = x86_64-unknown-linux-gnu
 target-nonmusl-linux-armv7 = armv7-unknown-linux-gnueabihf
-target-nonmusl-linux-arm = arm-unknown-linux-gnueabi
 target-nonmusl-windows-x86_64 = x86_64-pc-windows-gnu
 
 # Mapping from arch to Docker buildx platform
@@ -101,7 +99,7 @@ image-darwin = actyx/util:osxbuilder-8e34cf39fdef055e223be03d19f21d96ca911154
 
 # list all os-arch and binary names
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 macos-aarch64
-binaries = ax ax.exe actyx actyx.exe
+binaries = ax ax.exe
 
 # targets for which we need a .so file for android
 android_so_targets = x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
@@ -223,7 +221,6 @@ prepare-docker:
 	docker pull actyx/util:musl-aarch64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/util:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/util:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
-	docker pull actyx/util:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
 	# used to build the node manager for windows on linux
 	docker pull actyx/util:node-manager-win-builder-$(IMAGE_VERSION)
 
@@ -295,7 +292,7 @@ validate-netsim: diagnostics
 	NETSIM_TEST_LOGFILE=quickcheck_stress_single_store rust/actyx/target/release/quickcheck_stress_single_store
 	NETSIM_TEST_LOGFILE=quickcheck_ephemeral rust/actyx/target/release/quickcheck_ephemeral
 	NETSIM_TEST_LOGFILE=versions rust/actyx/target/release/versions
-        # https://github.com/Actyx/Actyx/issues/160
+	# https://github.com/Actyx/Actyx/issues/160
 	# rust/actyx/target/release/health
 	NETSIM_TEST_LOGFILE=read_only rust/actyx/target/release/read_only
 
@@ -365,7 +362,6 @@ node-manager-mac-linux:
 		npm run build && \
 		npm run dist && \
 		npm run artifacts
-
 
 # combines all the .so files to build actyxos on android
 android-libaxosnodeffi: \
@@ -505,7 +501,7 @@ dist/bin/actyx.apk: jvm/os-android/app/build/outputs/bundle/release/app-release.
 	mv -f universal.apk dist/bin/actyx.apk
 
 # Windows MSI build recipe. Requires Docker to work
-dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/actyx.exe make-always
+dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/ax.exe make-always
 	docker run \
 	  -v `pwd`:/src \
 	  -e WIN_CODESIGN_CERTIFICATE \

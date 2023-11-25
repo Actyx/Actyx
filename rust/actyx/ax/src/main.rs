@@ -1,10 +1,15 @@
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
 use ax_core::{
     cmd::{
         self, apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
         swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
     },
-    node,
+    node::{
+        self, init_shutdown_ceremony,
+        run::{Color, RunOpts},
+        shutdown_ceremony, ApplicationState, BindTo, Runtime,
+    },
+    util::version::NodeVersion,
 };
 use std::{future::Future, process::exit};
 use structopt::{
@@ -127,7 +132,7 @@ async fn main() -> Result<()> {
     };
 
     match command {
-        CommandsOpt::Run(opts) => node::run::run(opts)?,
+        CommandsOpt::Run(opts) => run(opts)?,
         CommandsOpt::Apps(opts) => with_logger(cmd::apps::run(opts, json), verbosity).await,
         CommandsOpt::Nodes(opts) => with_logger(cmd::nodes::run(opts, json), verbosity).await,
         CommandsOpt::Settings(opts) => with_logger(cmd::settings::run(opts, json), verbosity).await,
@@ -143,4 +148,70 @@ async fn main() -> Result<()> {
 async fn with_logger<T>(fut: impl Future<Output = T>, verbosity: u8) -> T {
     ax_core::util::setup_logger_with_level(verbosity);
     fut.await
+}
+
+// This method does not belong here, it belongs in ax-core
+// we need to extract this and it's friends
+pub fn run(
+    RunOpts {
+        working_dir,
+        bind_options,
+        random,
+        version,
+        log_color,
+        log_json,
+    }: RunOpts,
+) -> Result<()> {
+    let is_no_tty = atty::isnt(atty::Stream::Stderr);
+    let log_no_color = match log_color {
+        Some(Color::On) => false,
+        Some(Color::Off) => true,
+        Some(Color::Auto) => is_no_tty,
+        None => false,
+    };
+    let log_as_json = match log_json {
+        Some(Color::On) => true,
+        Some(Color::Off) => false,
+        Some(Color::Auto) => is_no_tty,
+        None => false,
+    };
+
+    if version {
+        println!("ax {}", NodeVersion::get());
+        return Ok(());
+    }
+
+    let bind_to = if random {
+        BindTo::random()?
+    } else {
+        bind_options.try_into()?
+    };
+    let working_dir = working_dir.ok_or_else(|| anyhow!("empty")).or_else(|_| -> Result<_> {
+        Ok(std::env::current_dir()
+            .context("getting current working directory")?
+            .join("actyx-data"))
+    })?;
+
+    std::fs::create_dir_all(working_dir.clone())
+        .with_context(|| format!("creating working directory `{}`", working_dir.display()))?;
+    // printed by hand since things can fail before logging is set up and we want the user to know this
+    eprintln!("using data directory `{}`", working_dir.display());
+
+    // must be done before starting the application
+    init_shutdown_ceremony();
+
+    if cfg!(target_os = "android") {
+        panic!("Unsupported platform");
+    } else {
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        let runtime = Runtime::Linux;
+        #[cfg(target_os = "windows")]
+        let runtime = Runtime::Windows;
+
+        let app_handle = ApplicationState::spawn(working_dir, runtime, bind_to, log_no_color, log_as_json)?;
+
+        shutdown_ceremony(app_handle)?;
+    }
+
+    Ok(())
 }
