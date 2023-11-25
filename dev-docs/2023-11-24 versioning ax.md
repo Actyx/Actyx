@@ -1,4 +1,9 @@
 # Versioning Ax and friends
+|  |  |
+| --- | --- |
+| date | 2023-11-24 |
+| status | proposed |
+| persons | @jmg-duarte, @rkuhn |
 
 In this document there will be three main "players" (as of writing, the names are not
 fixed), I start by introducing them and their relevance to the project, then proceed
@@ -72,6 +77,8 @@ Following this, we now have:
 From the previous list, the new publishing "rules" become:
 
 `ax-core`
+- Breaking changes
+  - will create a major bump in `ax-core`
 - Features
   - will create a minor bump in `ax-core`
 - Fixes
@@ -84,7 +91,6 @@ From the previous list, the new publishing "rules" become:
   - will create a minor bump in `ax`
 
 - Fixes
-  - will create a patch bump to `node` (?)
   - will create a patch bump to `ax-core`
   - will create a patch bump to `ax` (from the dependency version update)
 
@@ -104,3 +110,6 @@ For example:
 ```rust
 pub const NODE_VERSION: &str = "2.17.0"
 ```
+
+We can further extend other components' `build.rs` with the ability to check if
+`NODE_VERSION` and `CARGO_PKG_VERSION` match.
