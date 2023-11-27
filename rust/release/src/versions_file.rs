@@ -205,7 +205,11 @@ impl VersionsFile {
             let product = current.release.product;
             let repo = Repository::open_from_env()?;
             let ts = repo.find_commit(current.commit)?.time().seconds();
-            let time = chrono::Utc.timestamp(ts, 0).to_rfc3339_opts(SecondsFormat::Secs, true);
+            let time = chrono::Utc
+                .timestamp_opt(ts, 0)
+                .single()
+                .expect("a single timestamp")
+                .to_rfc3339_opts(SecondsFormat::Secs, true);
             if product == previous.release.product {
                 let changes = self.calculate_changes_for_version(&product, &current.release.version, ignore)?;
                 let entry = map.entry(product.to_string()).or_default();

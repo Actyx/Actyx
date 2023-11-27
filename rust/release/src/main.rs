@@ -248,7 +248,10 @@ fn main() -> Result<(), Error> {
             // commit versions file with change sets in commit message
             let head = repo.head()?;
             let commit = head.as_commit().unwrap();
-            let ts = Utc.timestamp(commit.time().seconds(), 0);
+            let ts = Utc
+                .timestamp_opt(commit.time().seconds(), 0)
+                .single()
+                .expect("a single timestamp");
             writeln!(
                 changelog,
                 r#"Actyx Release
