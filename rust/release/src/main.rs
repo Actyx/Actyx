@@ -44,16 +44,16 @@ struct Opts {
     cmd: Command,
 }
 #[derive(Parser)]
-#[clap(version = "1.0", author = "Actyx AG", about = "Releases from Cosmos")]
+#[clap(version = "1.0", author = env!("CARGO_PKG_AUTHORS"), about = env!("CARGO_PKG_DESCRIPTION"))]
 enum Command {
     /// Computes current version
     Version {
-        /// Product (actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
+        /// Product (ax, ax-core, actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
         product: Product,
     },
     /// Computes past versions
     Versions {
-        /// Product (actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
+        /// Product (ax, ax-core, actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
         product: Product,
         /// Show the git commit hash next to the version
         #[clap(long, short)]
@@ -381,7 +381,12 @@ Overview:"#
                     log::debug!("Temp dir for {}: {}", release, tmp.path().display());
 
                     let needed_write = AtomicBool::new(false);
-                    let out = OsArch::all()
+                    let os_arch = if product == Product::Ax {
+                        OsArch::ax_all()
+                    } else {
+                        OsArch::all()
+                    };
+                    let out = os_arch
                         .par_iter()
                         .map(|os_arch| {
                             log::debug!("creating publisher for arch {}", os_arch);
