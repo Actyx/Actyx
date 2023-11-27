@@ -51,6 +51,8 @@ use std::{
 use structopt::StructOpt;
 use util::init_panic_hook;
 
+pub const DATABANK_VERSION: &str = "2.17.0";
+
 // Rust defaults to use the system allocator, which seemed to be the fastest
 // allocator generally available for our use case [0]. For production, the Actyx
 // binaries are compiled statically using the musl toolchain. The allocator

@@ -1,4 +1,4 @@
-use crate::util::os_arch::OsArch;
+use crate::{node::DATABANK_VERSION, util::os_arch::OsArch};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -63,12 +63,12 @@ const PROFILE: &str = "debug";
 const PROFILE: &str = "release";
 
 impl NodeVersion {
-    /// Returns the version associated with ACTYX_VERSION (compile time env var)
+    /// Returns the current node version, associated with the `DATABANK_VERSION` constant.
     pub fn get() -> NodeVersion {
         NodeVersion {
             profile: PROFILE.to_string(),
             target: OsArch::current().into(),
-            version: env!("CARGO_PKG_VERSION").to_string(),
+            version: DATABANK_VERSION.to_string(),
             git_hash: GIT_HASH.to_string(),
         }
     }
