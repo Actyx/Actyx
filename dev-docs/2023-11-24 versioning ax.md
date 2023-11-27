@@ -111,12 +111,8 @@ up-to-date version.
 
 ## Enforcement
 
-Versions will keep being updated by the `release` tool, which will require updating
-according to this change.
-
 At the time of writing, the `databank` version is to be moved from `CARGO_PKG_VERSION`
 to a separate, in-code, string dictating its current version.
-
 
 For example:
 
