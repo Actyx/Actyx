@@ -1,4 +1,12 @@
-<!-- Configuration of Windows Service Wrapper for Actyx -->
+<!--
+  Configuration of Windows Service Wrapper for Actyx
+  See the following link for schema and friends:
+  https://github.com/winsw/winsw/blob/v3/docs/xml-config-file.md
+
+  If you break the Actyx Service at runtime, you can fix it on the machine by hand
+  as this file will be available after installation. After fixing it, you can then
+  uninstall Actyx again.
+-->
 
 <service>
   <!-- ID of the service. It should be unique accross the Windows system-->
@@ -11,7 +19,8 @@
   <description>A windows service wrapper for Actyx</description>
 
   <!-- Path to the executable, which should be started -->
-  <executable>%BASE%\actyx.exe</executable>
+  <executable>%BASE%\ax.exe</executable>
+  <arguments>run</arguments>
 
   <!--
       OPTION: serviceaccount
@@ -20,7 +29,6 @@
   <serviceaccount>
     <user>LocalService</user>
   </serviceaccount>
-
 
   <!--
       OPTION: onfailure
@@ -37,7 +45,7 @@
     -->
   <priority>Normal</priority>
 
-  <!-- 
+  <!--
       OPTION: stoptimeout
       Time to wait for the service to gracefully shutdown the executable before we forcibly kill it
       Default value: 15 seconds
@@ -88,8 +96,8 @@
         * roll-by-time - Roll logs based on time
         * rotate - Rotate logs based on size, (8 logs, 10MB each). This mode is deprecated, use "roll"
       Default mode: append
-      
-      Each mode has different settings. 
+
+      Each mode has different settings.
       See https://github.com/kohsuke/winsw/blob/master/doc/loggingAndErrorReporting.md for more details
     -->
   <log mode="roll-by-size">

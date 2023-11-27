@@ -23,7 +23,7 @@ libp2p = { version = "0.50.0", default-features = false }
 maplit = "1.0.2"
 petgraph = "0.6.0"
 quickcheck = "1.0.3"
-reqwest = { version = "0.11.8", features = ["blocking"] }
+reqwest = { version = "0.11.22", default-features = false, features = ["blocking", "rustls-tls"] }
 structopt = "0.3.25"
 swarm-cli = { path = "../cli" }
 tar = "0.4.38"

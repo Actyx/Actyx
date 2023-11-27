@@ -1,4 +1,7 @@
-FROM justmoon/wix
+# This image uses WiX 3.8
+# Check the following link for more information:
+# https://hub.docker.com/r/justmoon/wix/dockerfile
+FROM justmoon/wix@sha256:c59ebe3f3a215e3188db6ce8f582c738d4016ed34201e6859cbe1f02f6aeb716
 # The justmoon/wix image sets us up as `wix`; we switch back to root here for apt, etc.
 USER root
 RUN apt-get update && \

@@ -1,15 +1,11 @@
-use super::{
-    util::{init_shutdown_ceremony, shutdown_ceremony},
-    ApplicationState, BindTo, BindToOpts, Runtime,
-};
-use crate::util::version::NodeVersion;
-use anyhow::{anyhow, Context, Result};
+use super::BindToOpts;
+use anyhow::Result;
 use derive_more::{Display, Error};
-use std::{convert::TryInto, path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
 #[derive(Debug)]
-enum Color {
+pub enum Color {
     Off,
     Auto,
     On,
@@ -30,7 +26,7 @@ impl FromStr for Color {
 
 #[derive(Debug, Display, Error)]
 #[display(fmt = "allowed values are 1, on, true, 0, off, false, auto (case insensitive)")]
-struct NoColor;
+pub struct NoColor;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
@@ -53,20 +49,16 @@ pub struct RunOpts {
         long_help = "Path where to store all the data of the Actyx node. \
             Defaults to creating <current working dir>/actyx-data"
     )]
-    working_dir: Option<PathBuf>,
+    pub working_dir: Option<PathBuf>,
 
     #[structopt(flatten)]
-    bind_options: BindToOpts,
+    pub bind_options: BindToOpts,
 
     #[structopt(short, long, hidden = true)]
-    random: bool,
-
-    /// This does not do anything; kept for backward-compatibility
-    #[structopt(long)]
-    background: bool,
+    pub random: bool,
 
     #[structopt(long)]
-    version: bool,
+    pub version: bool,
 
     /// Control whether to use ANSI color sequences in log output.
     #[structopt(
@@ -77,7 +69,7 @@ pub struct RunOpts {
             (default is on, auto only uses colour when stderr is a terminal). \
             Defaults to 1."
     )]
-    log_color: Option<Color>,
+    pub log_color: Option<Color>,
 
     /// Output logs as JSON objects (one per line)
     #[structopt(
@@ -87,71 +79,5 @@ pub struct RunOpts {
             1, true, on or if stderr is not a terminal and the value is auto \
             (all case insensitive). Defaults to 0."
     )]
-    log_json: Option<Color>,
-}
-
-pub fn run(
-    RunOpts {
-        working_dir,
-        bind_options,
-        random,
-        version,
-        background,
-        log_color,
-        log_json,
-    }: RunOpts,
-) -> Result<()> {
-    let is_no_tty = atty::isnt(atty::Stream::Stderr);
-    let log_no_color = match log_color {
-        Some(Color::On) => false,
-        Some(Color::Off) => true,
-        Some(Color::Auto) => is_no_tty,
-        None => false,
-    };
-    let log_as_json = match log_json {
-        Some(Color::On) => true,
-        Some(Color::Off) => false,
-        Some(Color::Auto) => is_no_tty,
-        None => false,
-    };
-
-    if background {
-        eprintln!("Notice: the `--background` flag is no longer used and will just be ignored.")
-    }
-
-    if version {
-        println!("ax {}", NodeVersion::get());
-    } else {
-        let bind_to = if random {
-            BindTo::random()?
-        } else {
-            bind_options.try_into()?
-        };
-        let working_dir = working_dir.ok_or_else(|| anyhow!("empty")).or_else(|_| -> Result<_> {
-            Ok(std::env::current_dir()
-                .context("getting current working directory")?
-                .join("actyx-data"))
-        })?;
-
-        std::fs::create_dir_all(working_dir.clone())
-            .with_context(|| format!("creating working directory `{}`", working_dir.display()))?;
-        // printed by hand since things can fail before logging is set up and we want the user to know this
-        eprintln!("using data directory `{}`", working_dir.display());
-
-        // must be done before starting the application
-        init_shutdown_ceremony();
-
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
-        let runtime: Runtime = Runtime::Linux;
-        #[cfg(target_os = "windows")]
-        let runtime: Runtime = Runtime::Windows;
-        #[cfg(target_os = "android")]
-        let runtime: Runtime = Runtime::Android;
-
-        let app_handle = ApplicationState::spawn(working_dir, runtime, bind_to, log_no_color, log_as_json)?;
-
-        shutdown_ceremony(app_handle)?;
-    }
-
-    Ok(())
+    pub log_json: Option<Color>,
 }

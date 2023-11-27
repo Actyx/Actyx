@@ -1,13 +1,11 @@
-ARG CROSSVER=0.2.1
+ARG CROSSVER=0.2.5
 
 # Poor man's mapping from buildx arch scheme to cargo
-FROM --platform=$BUILDPLATFORM rustembedded/cross:aarch64-unknown-linux-musl-${CROSSVER} AS build-linux-arm64
+FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/aarch64-unknown-linux-musl:${CROSSVER} AS build-linux-arm64
 ENV CARGO_BUILD_TARGET=aarch64-unknown-linux-musl
-FROM --platform=$BUILDPLATFORM rustembedded/cross:x86_64-unknown-linux-musl-${CROSSVER} AS build-linux-amd64
+FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/x86_64-unknown-linux-musl:${CROSSVER} AS build-linux-amd64
 ENV CARGO_BUILD_TARGET=x86_64-unknown-linux-musl
-FROM --platform=$BUILDPLATFORM rustembedded/cross:arm-unknown-linux-musleabi-${CROSSVER} AS build-linux-armv6
-ENV CARGO_BUILD_TARGET=arm-unknown-linux-musleabi
-FROM --platform=$BUILDPLATFORM rustembedded/cross:armv7-unknown-linux-musleabihf-${CROSSVER} AS build-linux-armv7
+FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/armv7-unknown-linux-musleabihf:${CROSSVER} AS build-linux-armv7
 ENV CARGO_BUILD_TARGET=armv7-unknown-linux-musleabihf
 
 # actual build image
@@ -33,24 +31,23 @@ FROM --platform=$BUILDPLATFORM crossbuild AS build
 
 # all dependencies needed for building
 COPY rust rust
-COPY protocols protocols
 COPY NOTICE NOTICE
 
 RUN cargo install \
     --target ${CARGO_BUILD_TARGET} \
-    --path rust/actyx/node \
+    --path rust/actyx/ax \
     --locked \
     ${CARGO_BUILD_ARGS} \
-    --bin actyx
+    --bin ax
 
 # final prod image
 FROM --platform=$TARGETPLATFORM alpine:3.13
 RUN addgroup -g 1000 -S actyx && \
     adduser -u 1000 -S actyx -G actyx
 
-COPY --from=build --chown=1000:1000 /usr/local/cargo/bin/actyx /usr/bin/actyx
+COPY --from=build --chown=1000:1000 /usr/local/cargo/bin/ax /usr/bin/ax
 
-CMD ["actyx", "--working-dir", "/data/actyx-data", "--bind-admin", "0.0.0.0:4458", "--bind-api", "0.0.0.0:4454", "--bind-swarm", "0.0.0.0:4001"]
+CMD ["ax", "run" "--working-dir", "/data/actyx-data", "--bind-admin", "0.0.0.0:4458", "--bind-api", "0.0.0.0:4454", "--bind-swarm", "0.0.0.0:4001"]
 
 ARG GIT_COMMIT
 
