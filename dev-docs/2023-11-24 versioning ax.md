@@ -3,7 +3,7 @@
 | --- | --- |
 | date | 2023-11-24 |
 | status | proposed |
-| persons | @jmg-duarte, @rkuhn |
+| persons | @jmg-duarte, @rkuhn, @Kelerchian |
 
 In this document there will be three main "players" (as of writing, the names are not
 fixed), I start by introducing them and their relevance to the project, then proceed
@@ -22,9 +22,11 @@ The three main players are:
 - `ax-core` - the library resulting of extracting the core functionality from the
   `actyx` binary such that it can be exposed for other uses, such as being embedded
   in an application
-- `node` - the node component from `actyx`, which can be thought of as the inner Actyx
-  "stack", the main difference between the `node` and `ax-core` is precisely the reason
-  behind this document as it should become evident
+- `databank` - the old `node` component from `actyx`, which can be thought of as the inner Actyx
+  "stack". We work off of the following definition:
+  > A databank is a repository of information about one or more subjects, that is, a
+  > database which is organized in a way that facilitates local or remote information
+  > retrieval and is able to process many continual queries over a long period of time.
 
 ## The Problem
 
@@ -56,22 +58,18 @@ by means of `cargo install ax`, and we need to be careful not to break their use
 
 Furthermore, the core "runnable" functionality — i.e. the `node` — was part of `actyx`
 but is now part of `ax-core` which needs to be versioned as a library, as such, changes
-to the library require bumps, which may not reflect on the `node`'s version.
+to the library require bumps, which may not reflect on the `databank`'s version.
 
 ## The Solution
 
 To that end, we have decided to publish `ax-core` with its own version, starting at
-`0.2.0` and inside it, the `node` will keep the previous `actyx` version and the CLI
-will get a new scheme to ensure that users are able to know which version of `actyx`
-the CLI has available.
-
-The new scheme consists in ensuring that the MAJOR and MINOR versions of `ax` are the
-same as the `node` version, PATCH will reflect other changes to the CLI.
+`0.2.0` and inside it, the `databank` will keep the existing `actyx` version, the CLI
+will move with the `databank` version.
 
 Following this, we now have:
 
 - `ax-core` at version `0.2.0`
-- `node` at version `2.17`
+- `databank` at version `2.17`
 - `ax` at version `2.17.0`
 
 From the previous list, the new publishing "rules" become:
@@ -84,32 +82,49 @@ From the previous list, the new publishing "rules" become:
 - Fixes
   - will create a patch bump in `ax-core`
 
-`node`
+`databank`
+- Breaking changes
+  - will create a major bump in `databank`
+  - will create a major bump in `ax-core`
+  - will create a major bump in `ax`
+
 - Features
-  - will create a minor bump in `node`
+  - will create a minor bump in `databank`
   - will create a minor bump in `ax-core`
   - will create a minor bump in `ax`
 
 - Fixes
   - will create a patch bump to `ax-core`
-  - will create a patch bump to `ax` (from the dependency version update)
+  - will create a patch bump to `ax`
 
 `ax`
-- Features & Fixes
-  - will create a patch bump to `ax`
+ - Moves with `databank`
+
+Publishing an `ax-core` release does not require a new `ax` release.
+
+`ax` is to be released independently from `ax-core`, however, when publishing a new
+release for `ax`, it will contain the latest `ax-core` release. Furthermore, version
+bumps to `databank` will imply new `ax-core` and `ax` releases.
+
+When developing, `ax` should always depend on the `ax-core` path and its most
+up-to-date version.
 
 ## Enforcement
 
 Versions will keep being updated by the `release` tool, which will require updating
 according to this change.
 
-The `node` version will be kept in a Rust file to be managed by the `release` tool.
+At the time of writing, the `databank` version is to be moved from `CARGO_PKG_VERSION`
+to a separate, in-code, string dictating its current version.
+
 
 For example:
 
 ```rust
-pub const NODE_VERSION: &str = "2.17.0"
+pub const DATABANK_VERSION: &str = "2.17.0"
 ```
 
-We can further extend other components' `build.rs` with the ability to check if
-`NODE_VERSION` and `CARGO_PKG_VERSION` match.
+As it stands, the release
+process is still being decided on, whether it is going to be done by hand or through
+the `release` tool.
+
