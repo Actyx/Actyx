@@ -62,7 +62,7 @@ mod tests {
     use super::*;
     #[test]
     fn add_to_enum() {
-        assert_eq!(Product::ALL.len(), 8);
+        assert_eq!(Product::ALL.len(), 9);
     }
 
     #[test]
