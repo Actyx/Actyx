@@ -1,5 +1,5 @@
+import { NodeType, ReachableNodeUi } from '../../common/types/nodes'
 import React, { useEffect } from 'react'
-import { NodeType, UiNode } from 'common/types'
 import Select from 'react-select'
 import semver from 'semver'
 
@@ -8,7 +8,7 @@ export const NodeSelector = ({
   selectedNodeAddr,
   onChange,
 }: {
-  nodes: UiNode[]
+  nodes: ReachableNodeUi[]
   selectedNodeAddr: string | undefined
   onChange: (val: { label: string; value: string; disabled: boolean } | null) => unknown
 }) => {

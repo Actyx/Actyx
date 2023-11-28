@@ -91,7 +91,9 @@
     "react-json-view": "^1.21.3",
     "react-select": "^4.3.1",
     "semver": "^7.3.5",
+    "systemic-ts-utils": "^0.2.5",
     "uuid": "^8.3.2",
+    "vaettir-react": "^0.1.7",
     "webpack": "^4.0.0"
   },
   "devDependencies": {

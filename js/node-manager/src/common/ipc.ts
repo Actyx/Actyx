@@ -8,7 +8,6 @@ import {
   CreateUserKeyPairResponse,
   GenerateSwarmKeyRequest,
   GenerateSwarmKeyResponse,
-  GetNodeDetailsResponse,
   GetNodeDetailsRequest,
   SetSettingsRequest,
   SetSettingsResponse,
@@ -23,6 +22,7 @@ import {
   TopicDeleteRequest,
   TopicDeleteResponse,
 } from './types'
+import { GetNodeDetailsResponse } from 'common/types/nodes'
 
 export const enum IpcFromClient {
   SelectFolder = 'select-folder',

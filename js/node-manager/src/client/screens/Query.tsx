@@ -4,15 +4,16 @@ import { useAppState } from '../app-state'
 import clsx from 'clsx'
 import { Button } from '../components/basics'
 import { NodeSelector } from '../components/NodeSelector'
-import { useCtrlEnter, useKeydown } from '../components/hooks/use-keycapture'
+import { useCtrlEnter } from '../components/hooks/use-keycapture'
 import AceEditor from 'react-ace'
 import 'ace-builds/src-noconflict/mode-sql'
 import { EventDiagnostic, Diagnostic, EventResponse } from '../../common/types'
 import ReactJson from 'react-json-view'
 import { saveToClipboard } from '../util'
 import { ClipboardCheckedIcon, ClipboardIcon } from '../components/icons'
-import { safeErrorToStr } from 'common/util'
+import { safeErrorToStr } from '../../common/util'
 import { BackgroundColor, BackgroundColorSpectrum } from '../tailwind'
+import { NodeManagerAgentContext } from '../agents/node-manager'
 
 type RowProps = {
   accentColor?: BackgroundColorSpectrum
@@ -339,10 +340,11 @@ const Results = ({
 
 const Screen = () => {
   const {
-    data: { nodes },
-    actions: { query, setQueryState },
+    actions: { setQueryState },
     query: { text: queryStr, node: selectedNodeAddr, results: allEvents },
   } = useAppState()
+
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
 
   const NUM_EVENTS_PER_PAGE = 250
 
@@ -429,7 +431,10 @@ const Screen = () => {
     setQueryState((s) => ({ ...s, results: [] }))
     setCurrentPageIndex(0)
     try {
-      const { events } = await query({ addr: selectedNodeAddr, query: queryStr })
+      const { events } = await nodeManagerAgent.api.query({
+        addr: selectedNodeAddr,
+        query: queryStr,
+      })
       if (!events) {
         console.log(`node doesn't support querying`)
         setQueryRunning(false)
@@ -487,7 +492,7 @@ const Screen = () => {
               />
               <div className="flex flex-row pt-3 justify-stretch items-stretch gap-3">
                 <NodeSelector
-                  nodes={nodes}
+                  nodes={nodeManagerAgent.api.getReachableUiNodes()}
                   selectedNodeAddr={selectedNodeAddr}
                   onChange={(v) =>
                     v

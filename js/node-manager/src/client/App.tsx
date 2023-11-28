@@ -22,6 +22,9 @@ import { waitForFatalError } from './util'
 import { FatalError as FatalErrorT } from '../common/ipc'
 import { StoreProvider } from './store'
 
+// TODO: Turn StoreProvider and AppStateProvider into a "ProviderStack" where the top stack can be a dependency of the bottom stack
+// TODO: Turn setFatalError into a Provider so that it can be accessed via context
+
 const Root = () => {
   const [fatalError, setFatalError] = useState<null | FatalErrorT>(null)
 
@@ -33,17 +36,17 @@ const Root = () => {
 
   return (
     <StoreProvider>
-        <AppStateProvider setFatalError={setFatalError}>
-          {fatalError !== null ? (
-            <FatalError error={fatalError} />
-          ) : (
-            <div className="h-full w-full max-h-screen max-w-screen overflow-hidden">
-              <div className="bg-gray-100 p-0 h-full">
-                <Content />
-              </div>
+      <AppStateProvider setFatalError={setFatalError}>
+        {fatalError !== null ? (
+          <FatalError error={fatalError} />
+        ) : (
+          <div className="h-full w-full max-h-screen max-w-screen overflow-hidden">
+            <div className="bg-gray-100 p-0 h-full">
+              <Content />
             </div>
-          )}
-        </AppStateProvider>
+          </div>
+        )}
+      </AppStateProvider>
     </StoreProvider>
   )
 }

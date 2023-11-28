@@ -4,9 +4,10 @@ import { Layout } from '../components/Layout'
 import React, { useEffect, useMemo, useState } from 'react'
 import AceEditor from 'react-ace'
 import clsx from 'clsx'
-import { NodeType, ReachableNodeUi } from '../../common/types'
+import { NodeType } from '../../common/types/nodes'
 import { get, set, parse } from 'json-pointer'
 import { validateAgainstSchema } from '../components/SettingsEditor'
+import { NodeManagerAgentContext } from '../agents/node-manager'
 
 // Handles case where `set` cannot set root path
 // Because require('json-pointer').set throws when `path` is empty
@@ -37,8 +38,7 @@ const Screen: React.FC<{}> = () => {
    */
   const {
     settings: { path, json },
-    actions: { setSettingJson, setSettingPath, setSettings },
-    data: { nodes },
+    actions: { setSettingJson, setSettingPath },
   } = useAppState()
   const [accept, setAccept] = useState(0)
   const [reject, setReject] = useState(0)
@@ -46,6 +46,10 @@ const Screen: React.FC<{}> = () => {
   const [writing, setWriting] = useState(false)
   const [rejected, setRejected] = useState<string[]>([])
   const [errors, setErrors] = useState<Set<string>>(new Set())
+
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
+
+  const reachableNodes = nodeManagerAgent.api.getReachableUiNodes()
 
   const [common, invalid] = useMemo(() => {
     let pointer: string[] = []
@@ -55,19 +59,17 @@ const Screen: React.FC<{}> = () => {
       console.error(`cannot parse pointer ${path}:`, e)
       return [undefined, true]
     }
-    const c = nodes
-      .filter((x): x is ReachableNodeUi => x.type === NodeType.Reachable)
-      .reduce((acc, node) => {
-        if (acc === undefined) return acc
-        try {
-          const found = JSON.stringify(get(node.details.settings, pointer), undefined, 2)
-          return acc === '' ? found : acc === found ? acc : undefined
-        } catch (e) {
-          return acc
-        }
-      }, '' as string | undefined)
+    const c = reachableNodes.reduce((acc, node) => {
+      if (acc === undefined) return acc
+      try {
+        const found = JSON.stringify(get(node.details.settings, pointer), undefined, 2)
+        return acc === '' ? found : acc === found ? acc : undefined
+      } catch (e) {
+        return acc
+      }
+    }, '' as string | undefined)
     return [c, false]
-  }, [path, nodes])
+  }, [path, reachableNodes])
 
   const setPath = (p: string) => {
     if (p === path) return
@@ -91,14 +93,13 @@ const Screen: React.FC<{}> = () => {
     } catch (e) {
       setErrors(new Set([`${e}`]))
       setAccept(0)
-      setReject(nodes.length)
+      setReject(reachableNodes.length)
       return
     }
     let a = 0
     let r = 0
     const e: string[] = []
-    for (const node of nodes) {
-      if (node.type !== NodeType.Reachable) continue
+    for (const node of reachableNodes) {
       const { settings, settingsSchema } = node.details
       let s: object = JSON.parse(JSON.stringify(settings))
       s = setOrReplace(s, path, val)
@@ -129,10 +130,10 @@ const Screen: React.FC<{}> = () => {
   const apply = async () => {
     setWriting(true)
     const res = await Promise.all(
-      nodes.map(async (node) => {
+      reachableNodes.map(async (node) => {
         if (node.type !== NodeType.Reachable || json === null) return
         try {
-          await setSettings(node.addr, JSON.parse(json), parse(path))
+          await nodeManagerAgent.api.setSettings(node.addr, JSON.parse(json), parse(path))
           return
         } catch {
           return node.addr

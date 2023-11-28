@@ -9,12 +9,12 @@ import { useCtrlEnter } from '../components/hooks/use-keycapture'
 import { useAppState, Actions } from '../app-state'
 import 'ace-builds/src-noconflict/mode-json'
 import 'ace-builds/src-noconflict/mode-text'
-import { PublishResponse } from 'common/types'
+import { PublishResponse } from '../../common/types'
+import { NodeManagerAgent, NodeManagerAgentContext } from '../agents/node-manager'
 
 const Screen = () => {
   const {
-    data: { nodes },
-    actions: { setPublishState, publish },
+    actions: { setPublishState },
     publish: { node: selectedNodeAddr, tagsField, payloadField },
   } = useAppState()
 
@@ -23,6 +23,8 @@ const Screen = () => {
   const [isPublishing, setIsPublishing] = useState(false)
 
   const payloadErrorDebounce = useDebouncer()
+
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
 
   const tags = tagsField
     .split(',')
@@ -35,7 +37,7 @@ const Screen = () => {
     : async () => {
         const promise = publishImpl({
           payloadField,
-          publishFn: publish,
+          publishFn: nodeManagerAgent.api.publish,
           selectedNodeAddr,
           tags,
         })
@@ -96,7 +98,7 @@ const Screen = () => {
         </div>
         <div className="z-10 flex flex-row justify-stretch items-stretch gap-3">
           <NodeSelector
-            nodes={nodes}
+            nodes={nodeManagerAgent.api.getReachableUiNodes()}
             selectedNodeAddr={selectedNodeAddr}
             onChange={(node) =>
               setPublishState((prev) => ({ ...prev, node: node?.value || undefined }))
@@ -194,7 +196,7 @@ const publishImpl = ({
   selectedNodeAddr,
   payloadField,
 }: {
-  publishFn: Actions['publish']
+  publishFn: NodeManagerAgent['api']['publish']
   payloadField: string
   selectedNodeAddr: string
   tags: string[]

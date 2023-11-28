@@ -1,13 +1,13 @@
 import React, { useEffect, useReducer, useState } from 'react'
 import clsx from 'clsx'
-import { ReachableNodeUi } from '../../common/types'
 import deepEqual from 'deep-equal'
 import { JsonEditor } from './JsonEditor'
 import { Button } from './basics'
 import { isValidMultiAddr, isValidMultiAddrWithPeerId } from '../../common/util'
 import Ajv from 'ajv'
 import draft6 from 'ajv/lib/refs/json-schema-draft-06.json'
-import { useAppState } from '../app-state'
+import { ReachableNodeUi } from '../../common/types/nodes'
+import { NodeManagerAgentContext } from '../agents/node-manager'
 
 const eq = (a: Settings, b: Settings): boolean => deepEqual(a, b, { strict: false })
 
@@ -228,9 +228,7 @@ interface Props {
 }
 
 export const SettingsEditor: React.FC<Props> = ({ node: { addr, details } }) => {
-  const {
-    actions: { setSettings },
-  } = useAppState()
+  const nodeManagerAgent = NodeManagerAgentContext.borrowListen()
 
   const [state, dispatch] = useReducer(reducer, {
     key: 'NotDiverged',
@@ -257,7 +255,7 @@ export const SettingsEditor: React.FC<Props> = ({ node: { addr, details } }) => 
   const updateSettings = async () => {
     dispatch({ key: 'SavingToRemote', settings: state.editor })
     if (state.editor !== null) {
-      await setSettings(addr, state.editor, [])
+      await nodeManagerAgent.api.setSettings(addr, state.editor, [])
       dispatch({ key: 'Initial', initial: state.editor })
     }
   }

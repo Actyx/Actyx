@@ -6,7 +6,6 @@ import {
   GenerateSwarmKeyRequest,
   GenerateSwarmKeyResponse,
   GetNodeDetailsRequest,
-  GetNodeDetailsResponse,
   PublishRequest,
   PublishResponse,
   QueryRequest,
@@ -24,6 +23,7 @@ import { isLeft } from 'fp-ts/lib/Either'
 import reporter from 'io-ts-reporters'
 import * as io from 'io-ts'
 import * as native from './native'
+import { GetNodeDetailsResponse } from 'common/types/nodes'
 
 const runAndDecode = <T>(
   task: native.AsyncTask,
