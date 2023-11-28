@@ -21,7 +21,7 @@ pub enum Product {
     CSharpSdk,
     #[display(fmt = "ax")]
     Ax,
-    #[display(fmt = "ax-core")]
+    #[display(fmt = "ax_core")]
     AxCore,
 }
 
@@ -52,7 +52,7 @@ impl FromStr for Product {
             "rust-sdk" => Ok(Product::RustSdk),
             "csharp-sdk" => Ok(Product::CSharpSdk),
             "ax" => Ok(Product::Ax),
-            "ax-core" => Ok(Product::AxCore),
+            "ax_core" => Ok(Product::AxCore),
             _ => Err(anyhow!("unknown product {}", s)),
         }
     }
@@ -76,7 +76,7 @@ mod tests {
         assert_eq!(Product::from_str("rust-sdk")?, RustSdk);
         assert_eq!(Product::from_str("csharp-sdk")?, CSharpSdk);
         assert_eq!(Product::from_str("ax")?, Ax);
-        assert_eq!(Product::from_str("ax-core")?, AxCore);
+        assert_eq!(Product::from_str("ax_core")?, AxCore);
         Ok(())
     }
 
@@ -91,6 +91,6 @@ mod tests {
         assert_eq!(format!("{}", RustSdk), "rust-sdk");
         assert_eq!(format!("{}", CSharpSdk), "csharp-sdk");
         assert_eq!(format!("{}", Ax), "ax");
-        assert_eq!(format!("{}", AxCore), "ax-core");
+        assert_eq!(format!("{}", AxCore), "ax_core");
     }
 }

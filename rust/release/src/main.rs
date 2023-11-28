@@ -48,12 +48,12 @@ struct Opts {
 enum Command {
     /// Computes current version
     Version {
-        /// Product (ax, ax-core, actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
+        /// Product (ax, ax_core, actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
         product: Product,
     },
     /// Computes past versions
     Versions {
-        /// Product (ax, ax-core, actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
+        /// Product (ax, ax_core, actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
         product: Product,
         /// Show the git commit hash next to the version
         #[clap(long, short)]
