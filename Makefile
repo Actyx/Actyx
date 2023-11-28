@@ -86,7 +86,6 @@ target-nonmusl-windows-x86_64 = x86_64-pc-windows-gnu
 docker-platform-x86_64 = linux/amd64
 docker-platform-aarch64 = linux/arm64/v8
 docker-platform-armv7 = linux/arm/v7
-docker-platform-arm = linux/arm/v6
 
 # Mapping from os to builder image name
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)

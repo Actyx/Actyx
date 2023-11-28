@@ -6,6 +6,7 @@ authors = ["Actyx AG"]
 
 [build-dependencies]
 winres = { git = "https://github.com/Actyx/winres", branch = "cross_compile" }
+ax_core = { version = "0.2.0", path = "../ax-core" }
 
 [dependencies]
 anyhow = "1.0.66"

@@ -14,3 +14,5 @@ pub mod settings;
 pub mod swarm;
 pub mod trees;
 pub mod util;
+
+pub use node::DATABANK_VERSION;

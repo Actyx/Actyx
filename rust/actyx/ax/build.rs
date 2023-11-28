@@ -1,3 +1,4 @@
+use ax_core::DATABANK_VERSION;
 use winres::WindowsResource;
 
 pub fn add_icon_to_bin_when_building_for_win(icon_path: &str) {
@@ -18,5 +19,9 @@ pub fn add_icon_to_bin_when_building_for_win(icon_path: &str) {
 }
 
 fn main() {
+    if std::env::var("CARGO_PKG_VERSION").unwrap() != DATABANK_VERSION {
+        panic!("ax version MUST match the ax_core::DATABANK_VERSION");
+    }
+
     add_icon_to_bin_when_building_for_win("./assets/actyxcli.ico");
 }
