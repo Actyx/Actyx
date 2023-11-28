@@ -6,13 +6,11 @@ use crate::{
 };
 use futures::{stream, Stream, TryFutureExt};
 use std::str::FromStr;
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = crate::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// Gets a schema for a given scope.
 pub struct SchemaOpt {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 }
 

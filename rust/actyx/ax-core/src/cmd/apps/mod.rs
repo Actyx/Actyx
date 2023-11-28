@@ -3,20 +3,16 @@ mod sign;
 
 use crate::cmd::AxCliCommand;
 use futures::Future;
-use structopt::StructOpt;
 
 use license::LicenseOpts;
 pub use sign::{create_signed_app_manifest, SignOpts};
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = crate::util::version::VERSION.as_str())]
+#[derive(clap::Subcommand, Clone, Debug)]
 /// manage app manifests
 pub enum AppsOpts {
     /// Create app or node license
-    #[structopt(no_version)]
     License(LicenseOpts),
     /// Sign application manifest
-    #[structopt(no_version)]
     Sign(SignOpts),
 }
 

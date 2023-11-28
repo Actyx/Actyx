@@ -9,24 +9,22 @@ use chrono::{DateTime, Utc};
 use futures::{stream::once, FutureExt, Stream};
 use lazy_static::lazy_static;
 use regex::Regex;
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = crate::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct LicenseOpts {
     /// The secret key used to sign the license
     /// (this must match the AX_PUBLIC_KEY your `actyx` binary has been compiled with).
-    #[structopt(long, short = "A", env, hide_env_values = true)]
+    #[arg(long, short = 'A', env, hide_env_values = true)]
     ax_secret_key: PrivateKey,
 
     /// The app id of the app to create a license for,
     /// use `com.actyx.node` to create a node license.
-    #[structopt(long)]
+    #[arg(long)]
     app_id: AppId,
 
     /// An expiration date time in ISO 8601 (i.e. 2014-11-28T12:00:09Z),
     /// takes precedence over `--expires-in`.
-    #[structopt(long)]
+    #[arg(long)]
     expires_at: Option<DateTime<Utc>>,
 
     /// The amount of time in which the license should expire.
@@ -42,11 +40,11 @@ pub struct LicenseOpts {
     /// Note: Years are considered to be 365 days long and months to be 30 days long.
     ///
     /// For example: "1Y 3M 4h" means that the license should expire in 1 year, 3 months and 4 hours.
-    #[structopt(long, short = "e", parse(try_from_str = parse_expires_in))]
+    #[arg(long, short = 'e', value_parser = parse_expires_in)]
     expires_in: Option<DateTime<Utc>>,
 
     /// Requester's email address
-    #[structopt(long)]
+    #[arg(long)]
     email: String,
 }
 

@@ -2,9 +2,8 @@ use super::BindToOpts;
 use anyhow::Result;
 use derive_more::{Display, Error};
 use std::{path::PathBuf, str::FromStr};
-use structopt::StructOpt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Color {
     Off,
     Auto,
@@ -28,22 +27,20 @@ impl FromStr for Color {
 #[display(fmt = "allowed values are 1, on, true, 0, off, false, auto (case insensitive)")]
 pub struct NoColor;
 
-#[derive(StructOpt, Debug)]
-#[structopt(
+#[derive(clap::Parser, Debug, Clone)]
+#[command(
     name = "ax",
     about = "run the ax distributed event database",
-    help_message = "Print help information (use --help for more details)",
     after_help = "For one-off log verbosity override, you may start with the environment variable \
         RUST_LOG set to “debug” or “node=debug,info” (the former logs all debug messages while \
         the latter logs at debug level for the “node” code module and info level for everything \
         else).
         ",
-    rename_all = "kebab-case",
-    version = crate::util::version::VERSION.as_str(),
+    rename_all = "kebab-case"
 )]
 pub struct RunOpts {
     /// Path where to store all the data of the Actyx node.
-    #[structopt(
+    #[arg(
         long,
         env = "ACTYX_PATH",
         long_help = "Path where to store all the data of the Actyx node. \
@@ -51,17 +48,17 @@ pub struct RunOpts {
     )]
     pub working_dir: Option<PathBuf>,
 
-    #[structopt(flatten)]
+    #[command(flatten)]
     pub bind_options: BindToOpts,
 
-    #[structopt(short, long, hidden = true)]
+    #[arg(short, long, hide = true)]
     pub random: bool,
 
-    #[structopt(long)]
+    #[arg(long)]
     pub version: bool,
 
     /// Control whether to use ANSI color sequences in log output.
-    #[structopt(
+    #[arg(
         long,
         env = "ACTYX_COLOR",
         long_help = "Control whether to use ANSI color sequences in log output. \
@@ -72,7 +69,7 @@ pub struct RunOpts {
     pub log_color: Option<Color>,
 
     /// Output logs as JSON objects (one per line)
-    #[structopt(
+    #[arg(
         long,
         env = "ACTYX_LOG_JSON",
         long_help = "Output logs as JSON objects (one per line) if the value is \

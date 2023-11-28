@@ -11,99 +11,101 @@ use ax_core::{
     },
     util::version::NodeVersion,
 };
+use clap::{ArgAction, Parser};
 use std::{future::Future, process::exit};
-use structopt::{
-    clap::{App, AppSettings, ArgMatches, ErrorKind, SubCommand},
-    StructOpt, StructOptInternal,
-};
 
-#[derive(StructOpt, Debug)]
-#[structopt(
+#[derive(clap::Parser, Clone, Debug)]
+#[command(
     name = "ax",
     about = concat!(
         "\nThe ax CLI is a unified tool to manage your ax nodes.\n\n",
         include_str!("../NOTICE")),
     version = ax_core::util::version::VERSION.as_str(),
+    disable_help_subcommand = true,
+    action = ArgAction::Version
 )]
 struct Opt {
-    #[structopt(subcommand)]
+    #[command(subcommand)]
     command: CommandsOpt,
     /// Format output as JSON
-    #[structopt(long, short, global = true)]
+    #[arg(long, short, global = true)]
     json: bool,
-    #[structopt(short, parse(from_occurrences), global = true)]
+    /// Set verbosity
+    #[arg(short, global = true, action = ArgAction::Count)]
     verbosity: u8,
 }
 
-#[derive(Debug)]
+#[derive(clap::Subcommand, Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 enum CommandsOpt {
-    // structopt will use the enum variant name in lowercase as a subcommand
-    Apps(AppsOpts),
-    Settings(SettingsOpts),
-    Swarms(SwarmsOpts),
-    Nodes(NodesOpts),
-    Users(UsersOpts),
-    Internal(InternalOpts),
-    Events(EventsOpts),
-    Topics(TopicsOpts),
+    // clap 3 use variant order to order displayed help subcommands
     Run(node::run::RunOpts),
+    #[command(subcommand, arg_required_else_help(true))]
+    Events(EventsOpts),
+    #[command(subcommand, arg_required_else_help(true))]
+    Nodes(NodesOpts),
+    #[command(subcommand, arg_required_else_help(true))]
+    Topics(TopicsOpts),
+    #[command(subcommand, arg_required_else_help(true))]
+    Swarms(SwarmsOpts),
+    #[command(subcommand, arg_required_else_help(true))]
+    Apps(AppsOpts),
+    #[command(subcommand, arg_required_else_help(true))]
+    Settings(SettingsOpts),
+    #[command(subcommand, arg_required_else_help(true))]
+    Users(UsersOpts),
+    #[command(subcommand, arg_required_else_help(true), hide = !superpowers())]
+    Internal(InternalOpts),
 }
 
-impl StructOpt for CommandsOpt {
-    fn clap<'a, 'b>() -> App<'a, 'b> {
-        let app = App::new("ax").setting(AppSettings::SubcommandRequiredElseHelp);
-        Self::augment_clap(app)
-    }
+// NOTE: Reimplement superpower check for internal
 
-    fn from_clap(matches: &ArgMatches<'_>) -> Self {
-        Self::from_subcommand(matches.subcommand()).expect("wat")
-    }
-}
+// impl FromArgMatches for CliSub {
+//     fn from_arg_matches(matches: &ArgMatches) -> Result<Self, Error> {
+//         match matches.subcommand() {
+//             Some(("add", args)) => Ok(Self::Add(AddArgs::from_arg_matches(args)?)),
+//             Some(("remove", args)) => Ok(Self::Remove(RemoveArgs::from_arg_matches(args)?)),
+//             Some((_, _)) => Err(Error::raw(
+//                 ErrorKind::InvalidSubcommand,
+//                 "Valid subcommands are `add` and `remove`",
+//             )),
+//             None => Err(Error::raw(
+//                 ErrorKind::MissingSubcommand,
+//                 "Valid subcommands are `add` and `remove`",
+//             )),
+//         }
+//     }
+//     fn update_from_arg_matches(&mut self, matches: &ArgMatches) -> Result<(), Error> {
+//         match matches.subcommand() {
+//             Some(("add", args)) => *self = Self::Add(AddArgs::from_arg_matches(args)?),
+//             Some(("remove", args)) => *self = Self::Remove(RemoveArgs::from_arg_matches(args)?),
+//             Some((_, _)) => {
+//                 return Err(Error::raw(
+//                     ErrorKind::InvalidSubcommand,
+//                     "Valid subcommands are `add` and `remove`",
+//                 ))
+//             }
+//             None => (),
+//         };
+//         Ok(())
+//     }
+// }
 
-impl StructOptInternal for CommandsOpt {
-    fn augment_clap<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
-        let app = app.subcommands(vec![
-            node::run::RunOpts::augment_clap(SubCommand::with_name("run")),
-            AppsOpts::augment_clap(SubCommand::with_name("apps")).setting(AppSettings::SubcommandRequiredElseHelp),
-            SettingsOpts::augment_clap(SubCommand::with_name("settings"))
-                .setting(AppSettings::SubcommandRequiredElseHelp),
-            SwarmsOpts::augment_clap(SubCommand::with_name("swarms")).setting(AppSettings::SubcommandRequiredElseHelp),
-            NodesOpts::augment_clap(SubCommand::with_name("nodes")).setting(AppSettings::SubcommandRequiredElseHelp),
-            UsersOpts::augment_clap(SubCommand::with_name("users")).setting(AppSettings::SubcommandRequiredElseHelp),
-            EventsOpts::augment_clap(SubCommand::with_name("events")).setting(AppSettings::SubcommandRequiredElseHelp),
-            TopicsOpts::augment_clap(SubCommand::with_name("topics").setting(AppSettings::SubcommandRequiredElseHelp)),
-        ]);
-        if superpowers() {
-            app.subcommand(
-                InternalOpts::augment_clap(SubCommand::with_name("internal"))
-                    .setting(AppSettings::SubcommandRequiredElseHelp),
-            )
-        } else {
-            app
-        }
-    }
-
-    fn from_subcommand<'a>(sub: (&'a str, Option<&'a ArgMatches<'_>>)) -> Option<Self>
-    where
-        Self: std::marker::Sized,
-    {
-        match sub {
-            ("apps", Some(matches)) => Some(CommandsOpt::Apps(AppsOpts::from_clap(matches))),
-            ("settings", Some(matches)) => Some(CommandsOpt::Settings(SettingsOpts::from_clap(matches))),
-            ("swarms", Some(matches)) => Some(CommandsOpt::Swarms(SwarmsOpts::from_clap(matches))),
-            ("nodes", Some(matches)) => Some(CommandsOpt::Nodes(NodesOpts::from_clap(matches))),
-            ("users", Some(matches)) => Some(CommandsOpt::Users(UsersOpts::from_clap(matches))),
-            ("internal", Some(matches)) if superpowers() => {
-                Some(CommandsOpt::Internal(InternalOpts::from_clap(matches)))
-            }
-            ("events", Some(matches)) => Some(CommandsOpt::Events(EventsOpts::from_clap(matches))),
-            ("topics", Some(matches)) => Some(CommandsOpt::Topics(TopicsOpts::from_clap(matches))),
-            ("run", Some(matches)) => Some(CommandsOpt::Run(node::run::RunOpts::from_clap(matches))),
-            _ => None,
-        }
-    }
-}
+// impl Subcommand for CliSub {
+//     fn augment_subcommands(cmd: Command) -> Command {
+//         cmd.subcommand(AddArgs::augment_args(Command::new("add")))
+//             .subcommand(RemoveArgs::augment_args(Command::new("remove")))
+//             .subcommand_required(true)
+//     }
+//     fn augment_subcommands_for_update(cmd: Command) -> Command {
+//         cmd.subcommand(AddArgs::augment_args(Command::new("add")))
+//             .subcommand(RemoveArgs::augment_args(Command::new("remove")))
+//             .subcommand_required(true)
+//     }
+//     fn has_subcommand(name: &str) -> bool {
+//         matches!(name, "add" | "remove")
+//     }
+// }
 
 fn superpowers() -> bool {
     let var = std::env::var("HERE_BE_DRAGONS").unwrap_or_default();
@@ -116,14 +118,14 @@ async fn main() -> Result<()> {
         command,
         json,
         verbosity,
-    } = match Opt::from_args_safe() {
+    } = match Opt::try_parse() {
         Ok(o) => o,
-        Err(e) => match e.kind {
-            ErrorKind::HelpDisplayed => {
-                println!("{}\n", e.message);
+        Err(e) => match e.kind() {
+            clap::error::ErrorKind::DisplayHelp => {
+                println!("{}\n", e.to_string());
                 exit(0)
             }
-            ErrorKind::VersionDisplayed => {
+            clap::error::ErrorKind::DisplayVersion => {
                 println!();
                 exit(0)
             }

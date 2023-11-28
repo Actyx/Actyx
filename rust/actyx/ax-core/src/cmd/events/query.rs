@@ -10,13 +10,11 @@ use crate::{
 use ax_sdk::service::{Order, QueryRequest};
 use futures::{future::ready, Stream, StreamExt};
 use std::{fs::File, io::Read};
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = crate::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// query the events API through the admin port
 pub struct QueryOpts {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
     /// event API query (read from file if the argument starts with @)
     query: String,

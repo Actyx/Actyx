@@ -10,13 +10,11 @@ use crate::{
 use ax_sdk::service::SubscribeRequest;
 use futures::{future::ready, Stream, StreamExt};
 use std::{fs::File, io::Read};
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = crate::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// subscribe to events
 pub struct SubscribeOpts {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
     /// event API query
     query: String,

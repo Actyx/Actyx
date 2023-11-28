@@ -20,39 +20,37 @@ use libipld::{
     json::DagJsonCodec,
 };
 use std::{convert::TryFrom, io::Cursor, path::PathBuf};
-use structopt::StructOpt;
 
 use super::SqliteStore;
 use crate::cmd::AxCliCommand;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = crate::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct DumpTreeOpts {
     /// Path to a sqlite blockstore (read-only access!)
-    #[structopt(long)]
+    #[arg(long)]
     block_store: PathBuf,
     /// Index password to use
-    #[structopt(long)]
+    #[arg(long)]
     index_pass: Option<String>,
     /// Value password to use
-    #[structopt(long)]
+    #[arg(long)]
     value_pass: Option<String>,
     /// Dump a tree with a given root. Per default, only the extracted values are
     /// being printed. Set the --with-keys flag to emit those as well.
-    #[structopt(long)]
+    #[arg(long)]
     root: Option<Sha256Digest>,
     /// Dump the raw block data as json
-    #[structopt(long)]
+    #[arg(long)]
     block: Option<Sha256Digest>,
     /// When dumping all values from a tree, also include the keys.
-    #[structopt(long)]
+    #[arg(long)]
     with_keys: bool,
     /// Output dot. Sample usage: `ax _internal trees dump --block-store ..
     /// --dot --root .. | dot -Tpng > out.png`
-    #[structopt(long)]
+    #[arg(long)]
     dot: bool,
     /// Output all values, one per line
-    #[structopt(long)]
+    #[arg(long)]
     values: bool,
 }
 

@@ -5,22 +5,20 @@ use crate::{
     util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
 };
 use futures::{stream::once, FutureExt, Stream};
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = crate::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct DevCertOpts {
     /// The secret key used to sign the certificate
     /// (this must match the AX_PUBLIC_KEY your `actyx` binary has been compiled with).
-    #[structopt(long, short = "A", env, hide_env_values = true)]
+    #[arg(long, short = 'A', env, hide_env_values = true)]
     ax_secret_key: PrivateKey,
 
     /// The developer's public key.
-    #[structopt(long, short)]
+    #[arg(long, short)]
     dev_public_key: PublicKey,
 
     /// The app id domains for which to certify the developer.
-    #[structopt(long, short)]
+    #[arg(long, short)]
     app_domains: Vec<AppDomain>,
 }
 

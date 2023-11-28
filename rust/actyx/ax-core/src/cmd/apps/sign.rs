@@ -7,10 +7,8 @@ use crate::{
 use ax_sdk::AppManifest;
 use futures::{stream, Stream};
 use std::{fs, path::PathBuf};
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = crate::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// sign an app manifest
 pub struct SignOpts {
     /// Path to certificate that shall be used for signing

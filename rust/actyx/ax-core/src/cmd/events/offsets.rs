@@ -10,13 +10,11 @@ use ax_sdk::service::OffsetsResponse;
 use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
 use std::collections::BTreeSet;
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = crate::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// obtain currently known offsets and replication targets
 pub struct OffsetsOpts {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 }
 

@@ -12,24 +12,18 @@ use get::GetOpt;
 use schema::SchemaOpt;
 use set::SetOpt;
 use std::{convert::TryFrom, str::FromStr};
-use structopt::StructOpt;
 use unset::UnsetOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = crate::util::version::VERSION.as_str())]
+#[derive(clap::Subcommand, Debug, Clone)]
 /// manage node settings
 pub enum SettingsOpts {
     /// Configure settings of a node
-    #[structopt(no_version)]
     Set(SetOpt),
     /// Remove settings from a node
-    #[structopt(no_version)]
     Unset(UnsetOpt),
     /// Get settings from a node
-    #[structopt(no_version)]
     Get(GetOpt),
     /// Get setting schemas from a node
-    #[structopt(no_version)]
     Schema(SchemaOpt),
 }
 

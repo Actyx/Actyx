@@ -9,20 +9,18 @@ use crate::{
 use futures::{channel::mpsc, future::join_all, stream, Stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = crate::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// show node overview
 pub struct LsOpts {
     /// the IP address or <host>:<admin port> of the nodes to list.
-    #[structopt(name = "NODE", required = true)]
+    #[arg(name = "NODE", required = true)]
     authority: Vec<Authority>,
     /// File from which the identity (private key) for authentication is read.
-    #[structopt(short, long)]
+    #[arg(short, long)]
     identity: Option<KeyPathWrapper>,
     /// maximal wait time (in seconds, max. 255) for establishing a connection to the node
-    #[structopt(short, long, default_value = "5")]
+    #[arg(short, long, default_value = "5")]
     timeout: u8,
 }
 

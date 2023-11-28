@@ -5,13 +5,11 @@ use crate::{
     util::formats::ActyxOSResult,
 };
 use futures::{stream::once, FutureExt, Stream};
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = crate::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct PubkeyOpts {
     /// File from which the identity (private key) for authentication is read.
-    #[structopt(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
+    #[arg(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     identity: Option<KeyPathWrapper>,
 }
 

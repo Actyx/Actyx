@@ -7,7 +7,6 @@ use crate::{
 };
 use futures::{stream, Stream};
 use std::{convert::TryFrom, path::PathBuf, str::FromStr};
-use structopt::StructOpt;
 
 fn lock_working_dir(working_dir: impl AsRef<std::path::Path>) -> ActyxOSResult<fslock::LockFile> {
     let path = working_dir.as_ref().join("lockfile");
@@ -71,14 +70,13 @@ impl AxCliCommand for UsersAddKey {
     }
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = crate::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// add own user key to a given Actyx data directory
 pub struct AddKeyOpts {
     /// Path to the `actyx-data` folder you wish to modify
-    #[structopt(name = "PATH", required = true)]
+    #[arg(name = "PATH", required = true)]
     path: PathBuf,
     /// File from which the identity (private key) for authentication is read.
-    #[structopt(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
+    #[arg(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     identity: Option<KeyPathWrapper>,
 }
