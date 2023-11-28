@@ -127,29 +127,10 @@ impl OsArch {
         Arch::current() == arch
     }
 
-    /// As `ax` was introduced, the `linux-arm` architecture was dropped.
-    /// This method is in every way the same as `all`,
-    /// except it does not return said architecture.
-    pub fn ax_all() -> Vec<Self> {
-        [
-            "android-any",
-            "linux-aarch64",
-            "linux-armv7",
-            "linux-x86_64",
-            "macos-aarch64",
-            "macos-x86_64",
-            "windows-x86_64",
-        ]
-        .iter()
-        .map(|x| TryFrom::try_from(x.to_string()).unwrap())
-        .collect()
-    }
-
     pub fn all() -> Vec<Self> {
         [
             "android-any",
             "linux-aarch64",
-            "linux-arm",
             "linux-armv7",
             "linux-x86_64",
             "macos-aarch64",

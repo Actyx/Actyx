@@ -381,12 +381,7 @@ Overview:"#
                     log::debug!("Temp dir for {}: {}", release, tmp.path().display());
 
                     let needed_write = AtomicBool::new(false);
-                    let os_arch = if product == Product::Ax {
-                        OsArch::ax_all()
-                    } else {
-                        OsArch::all()
-                    };
-                    let out = os_arch
+                    let out = OsArch::all()
                         .par_iter()
                         .map(|os_arch| {
                             log::debug!("creating publisher for arch {}", os_arch);

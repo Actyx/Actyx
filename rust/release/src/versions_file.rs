@@ -208,7 +208,7 @@ impl VersionsFile {
             let time = chrono::Utc
                 .timestamp_opt(ts, 0)
                 .single()
-                .expect("a single timestamp")
+                .expect("git timestamps should be valid")
                 .to_rfc3339_opts(SecondsFormat::Secs, true);
             if product == previous.release.product {
                 let changes = self.calculate_changes_for_version(&product, &current.release.version, ignore)?;
