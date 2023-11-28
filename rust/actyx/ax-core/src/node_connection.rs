@@ -1,5 +1,5 @@
 use crate::{
-    cmd::Authority,
+    authority::Authority,
     crypto::PublicKey,
     libp2p_streaming_response::{RequestReceived, Response, StreamingResponse, StreamingResponseConfig},
     private_key::AxPrivateKey,

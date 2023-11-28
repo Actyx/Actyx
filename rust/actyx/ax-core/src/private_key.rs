@@ -10,11 +10,33 @@ use crate::{
     util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt},
 };
 use libp2p::identity;
+use rand::RngCore;
 
-use crate::{certs::DeveloperCertificate, cmd::get_data_dir};
+use crate::certs::DeveloperCertificate;
 
 const PUB_KEY_FILE_EXTENSION: &str = "pub";
 pub const DEFAULT_PRIVATE_KEY_FILE_NAME: &str = "id";
+
+// NOTE: I'm not sure where to put this
+/// Generate a Swarm Key
+pub fn generate_key() -> String {
+    let mut key = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut key);
+    base64::encode(key)
+}
+
+/// Returns the data directory for Actyx. Does not create the folders!
+/// https://docs.rs/dirs/3.0.1/dirs/fn.config_dir.html
+///
+/// Platform    Value                               Example
+/// Linux       $XDG_CONFIG_HOME or $HOME/.config   /home/alice/.config
+/// macOS       $HOME/Library/Application Support   /Users/Alice/Library/Application Support
+/// Windows     {FOLDERID_RoamingAppData}           C:\Users\Alice\AppData\Roaming
+fn get_data_dir() -> ActyxOSResult<PathBuf> {
+    let data_dir = dirs::config_dir().ok_or_else(|| ActyxOSError::internal("Can't get user's config dir"))?;
+
+    Ok(data_dir.join("actyx"))
+}
 
 impl fmt::Display for AxPrivateKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -33,7 +55,7 @@ impl AxPrivateKey {
         Ok(p.join("keys").join("users"))
     }
     /// Returns the default path for storing user keys
-    pub(crate) fn default_user_identity_path() -> ActyxOSResult<PathBuf> {
+    pub fn default_user_identity_path() -> ActyxOSResult<PathBuf> {
         let p = Self::default_user_identity_dir()?;
         Ok(p.join(DEFAULT_PRIVATE_KEY_FILE_NAME))
     }
@@ -59,7 +81,7 @@ impl AxPrivateKey {
     }
 
     /// Try to read a private key from a given `path`.
-    pub(crate) fn from_file(path: impl AsRef<Path>) -> ActyxOSResult<Self> {
+    pub fn from_file(path: impl AsRef<Path>) -> ActyxOSResult<Self> {
         let path = path.as_ref();
         let mut s = fs::read_to_string(path).map_err(|e| {
             if e.kind() == ErrorKind::NotFound {

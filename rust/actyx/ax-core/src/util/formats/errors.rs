@@ -8,12 +8,7 @@ pub type ActyxOSResult<T> = Result<T, ActyxOSError>;
 pub fn ax_err<T>(code: ActyxOSCode, message: String) -> ActyxOSResult<T> {
     Err(ActyxOSError { code, message })
 }
-#[macro_export]
-macro_rules! ax_bail {
-    ($code:expr, $fmt:expr, $($arg:tt)*) => {
-        return $crate::util::formats::ax_err($code, format!($fmt, $($arg)*));
-    };
-}
+
 pub trait ActyxOSResultExt<T> {
     fn ax_err(self, code: ActyxOSCode) -> ActyxOSResult<T>;
     fn ax_invalid_input(self) -> ActyxOSResult<T>;

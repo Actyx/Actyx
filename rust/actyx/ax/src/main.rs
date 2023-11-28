@@ -1,9 +1,11 @@
+mod cmd;
+
+use crate::cmd::{
+    apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
+    swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
+};
 use anyhow::{anyhow, Context, Result};
 use ax_core::{
-    cmd::{
-        self, apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
-        swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
-    },
     node::{
         self, init_shutdown_ceremony,
         run::{Color, RunOpts},
