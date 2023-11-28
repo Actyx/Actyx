@@ -1,4 +1,4 @@
-use crate::{node::DATABANK_VERSION, util::os_arch::OsArch};
+use crate::node::DATABANK_VERSION;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -48,13 +48,40 @@ pub struct NodeVersion {
     pub git_hash: String,
 }
 
-const GIT_HASH: &str = match option_env!("AX_GIT_HASH") {
+// The hash is provided by GitHub actions, for more information, see:
+// https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
+const GIT_HASH: &str = match option_env!("GITHUB_SHA") {
     Some(hash) => hash,
-    None => "",
+    // This is for cargo installations and builds
+    None => "cargo",
 };
 
 lazy_static! {
     pub static ref VERSION: String = NodeVersion::get().to_string();
+}
+
+const fn os() -> &'static str {
+    #[cfg(target_arch = "i686")]
+    return "x86";
+    #[cfg(target_arch = "x86_64")]
+    return "x86_64";
+    #[cfg(target_arch = "aarch64")]
+    return "aarch64";
+    #[cfg(target_arch = "android")]
+    return "android";
+    #[cfg(target_arch = "arm")]
+    return "arm";
+}
+
+const fn arch() -> &'static str {
+    #[cfg(target_os = "linux")]
+    return "linux";
+    #[cfg(target_os = "windows")]
+    return "windows";
+    #[cfg(target_os = "macos")]
+    return "macos";
+    #[cfg(target_os = "android")]
+    return "android";
 }
 
 #[cfg(debug_assertions)]
@@ -67,7 +94,7 @@ impl NodeVersion {
     pub fn get() -> NodeVersion {
         NodeVersion {
             profile: PROFILE.to_string(),
-            target: OsArch::current().into(),
+            target: format!("{}-{}", os(), arch()),
             version: DATABANK_VERSION.to_string(),
             git_hash: GIT_HASH.to_string(),
         }
