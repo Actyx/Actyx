@@ -64,7 +64,7 @@ pub async fn run(opt: KeygenOpts) -> ActyxOSResult<Output> {
 
 #[cfg(test)]
 mod test {
-    use ax_core::private_key::generate_key;
+    use ax_core::{private_key::generate_key, util::formats::ActyxOSResult};
 
     use crate::cmd::swarms::keygen::{run, store_key, KeygenOpts};
 

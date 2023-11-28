@@ -6,7 +6,7 @@ use futures::Future;
 use structopt::StructOpt;
 
 use license::LicenseOpts;
-pub use sign::SignOpts;
+use sign::SignOpts;
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = ax_core::util::version::VERSION.as_str())]

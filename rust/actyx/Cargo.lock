@@ -582,6 +582,7 @@ dependencies = [
  "ax_sdk",
  "banyan",
  "banyan-utils",
+ "base64 0.13.1",
  "cbor-data",
  "chrono",
  "console",
