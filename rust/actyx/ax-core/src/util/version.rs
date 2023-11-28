@@ -73,7 +73,7 @@ impl NodeVersion {
     pub fn get() -> NodeVersion {
         NodeVersion {
             profile: PROFILE.to_string(),
-            target: format!("{}-{}", os(), arch()),
+            target: format!("{}-{}", OS, ARCH),
             version: DATABANK_VERSION.to_string(),
             git_hash: GIT_HASH.to_string(),
         }

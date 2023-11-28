@@ -7,7 +7,7 @@ use std::vec::Vec;
 // https://doc.rust-lang.org/cargo/appendix/glossary.html#target
 fn main() {
     let target = std::env::var("TARGET").expect("TARGET to be defined");
-    let target = target.split("-").collect::<Vec<_>>();
+    let target = target.split('-').collect::<Vec<_>>();
     let target_arch = target[0];
     let target_sys = target[2];
     println!("cargo:rustc-env=TARGET_ARCH={}", target_arch);
