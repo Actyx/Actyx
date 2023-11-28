@@ -5,7 +5,6 @@ use ax_core::{
 };
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
-use structopt::StructOpt;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -30,20 +29,20 @@ struct RequestBody {
     scope: ax_core::settings::Scope,
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+
+#[derive(clap::Parser, Clone, Debug)]
 pub struct UnsetOpt {
-    #[structopt(flatten)]
+    #[command(flatten)]
     actual_opts: UnsetSettingsCommand,
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 }
 
-#[derive(StructOpt, Debug, Serialize)]
+#[derive(clap::Parser, Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct UnsetSettingsCommand {
     /// Scope for which you want to unset the settings; use `/` for the root scope.
-    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
+    #[arg(name = "SCOPE", value_parser = super::parse_scope)]
     scope: ax_core::settings::Scope,
 }
 

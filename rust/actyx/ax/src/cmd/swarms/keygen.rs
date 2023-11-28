@@ -4,7 +4,6 @@ use ax_core::util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use structopt::StructOpt;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -28,12 +27,12 @@ impl AxCliCommand for SwarmsKeygen {
         }
     }
 }
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+
+#[derive(clap::Parser, Clone, Debug)]
 /// generate swarm key
 pub struct KeygenOpts {
     /// Create file <output> and write the generated key to it.
-    #[structopt(short, long, parse(from_os_str))]
+    #[arg(short, long)]
     pub(crate) output: Option<PathBuf>,
 }
 

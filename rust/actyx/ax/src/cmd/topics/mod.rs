@@ -2,7 +2,6 @@ mod delete;
 mod ls;
 
 use futures::Future;
-use structopt::StructOpt;
 
 use self::{
     delete::{DeleteOpts, TopicsDelete},
@@ -12,12 +11,9 @@ use self::{
 use super::{Authority, AxCliCommand};
 
 /// manage topics
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 pub enum TopicsOpts {
-    #[structopt(no_version)]
     Ls(LsOpts),
-    #[structopt(no_version)]
     Delete(DeleteOpts),
 }
 

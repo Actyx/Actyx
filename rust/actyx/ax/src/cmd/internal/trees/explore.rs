@@ -5,11 +5,10 @@ use futures::{prelude::*, stream, Stream};
 use ipfs_sqlite_block_store::BlockStore;
 use libipld::{Cid, DefaultParams};
 use std::{convert::TryFrom, path::PathBuf};
-use structopt::StructOpt;
 
 use crate::cmd::AxCliCommand;
 
-#[derive(Debug, StructOpt)]
+#[derive(clap::ValueEnum, Debug, Clone)]
 enum List {
     /// List all aliases that resolve to stream ids, and their respective root
     /// hashes
@@ -20,13 +19,11 @@ enum List {
     Blocks,
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct ExploreTreeOpts {
     /// Path to a sqlite blockstore (read-only access!)
-    #[structopt(long)]
+    #[arg(long)]
     block_store: PathBuf,
-    #[structopt(flatten)]
     command: List,
 }
 

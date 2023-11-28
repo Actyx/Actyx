@@ -42,13 +42,13 @@ use formats::ExternalEvent;
 use host::Host;
 use node_impl::{ComponentChannel, NodeProcessResult, NodeWrapper};
 use settings::SettingsRequest;
+use std::str::FromStr;
 use std::{
     convert::TryInto,
     net::{IpAddr, Ipv4Addr, ToSocketAddrs},
     path::PathBuf,
     thread,
 };
-use structopt::StructOpt;
 use util::init_panic_hook;
 
 // Rust defaults to use the system allocator, which seemed to be the fastest
@@ -237,12 +237,11 @@ impl BindTo {
     }
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct BindToOpts {
     /// Port to bind to for management connections.
-    #[structopt(
+    #[arg(
         long,
-        parse(try_from_str = parse_port_maybe_host),
         default_value = "4458",
         long_help = "Port to bind to for management connections. Specifying a single number is \
             equivalent to “0.0.0.0:<port> [::]:<port>”, thus specifying 0 usually selects \
@@ -253,9 +252,8 @@ pub struct BindToOpts {
     bind_admin: Vec<PortOrHostPort<4458>>,
 
     /// Port to bind to for intra swarm connections.
-    #[structopt(
+    #[arg(
         long,
-        parse(try_from_str = parse_port_maybe_host),
         default_value = "4001",
         long_help = "Port to bind to for intra swarm connections. \
             The same rules apply as for the admin port."
@@ -263,9 +261,8 @@ pub struct BindToOpts {
     bind_swarm: Vec<PortOrHostPort<4001>>,
 
     /// Port to bind to for the API used by apps.
-    #[structopt(
+    #[arg(
         long,
-        parse(try_from_str = parse_port_maybe_host),
         default_value = "localhost",
         long_help = "Port to bind to for the API used by apps. \
             The same rules apply as for the admin port, except that giving only a port binds \
@@ -294,10 +291,18 @@ impl TryInto<BindTo> for BindToOpts {
 // to localhost. An escape hatch is needed for certain situations, like
 // containerization though. Changing the default ports however might be
 // necessary more frequently, and this is why that is offered here primarily.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum PortOrHostPort<const DEFAULT: u16> {
     Port(u16),
     HostPort(SocketAddrHelper),
+}
+
+impl<const N: u16> FromStr for PortOrHostPort<N> {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        parse_port_maybe_host::<N>(s)
+    }
 }
 
 fn parse_port_maybe_host<const N: u16>(src: &str) -> Result<PortOrHostPort<N>, String> {

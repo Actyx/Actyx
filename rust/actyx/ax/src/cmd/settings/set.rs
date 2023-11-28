@@ -6,7 +6,6 @@ use ax_core::{
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read};
-use structopt::StructOpt;
 use tracing::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -35,25 +34,25 @@ impl AxCliCommand for SettingsSet {
     }
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+
+#[derive(clap::Parser, Clone, Debug)]
 pub struct SetOpt {
-    #[structopt(flatten)]
+    #[command(flatten)]
     actual_opts: SetSettingsCommand,
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 }
 
-#[derive(StructOpt, Debug, Serialize)]
+#[derive(clap::Parser, Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SetSettingsCommand {
     /// Scope for which you want to set the given settings; use `/` for the the root scope.
-    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
+    #[arg(name = "SCOPE", value_parser = super::parse_scope)]
     scope: ax_core::settings::Scope,
     /// The value you want to set for the given scope as a YAML or JSON string.
     /// You may also pass in a file using the syntax `@file.yml` or have the
     /// command read from stdin using `@-`.
-    #[structopt(name = "VALUE")]
+    #[arg(name = "VALUE")]
     input: String,
 }
 

@@ -11,13 +11,11 @@ use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// show node details
 pub struct InspectOpts {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 }
 

@@ -16,11 +16,7 @@ ax_sdk = { version = "0.2.0", default-features = false, features = [
 anyhow = "1.0.66"
 atty = "0.2.14"
 ax_core = { version = "0.2.0", path = "../ax-core" }
-structopt = { version = "0.3.25", features = [
-  "color",
-  "wrap_help",
-  "suggestions",
-] }
+clap = { version = "4.4.8", features = ["derive", "env"] }
 tokio = { version = "1.15.0", features = ["full"] }
 serde = { version = "1.0.133", features = ["derive"] }
 serde_json = "1.0.108"
