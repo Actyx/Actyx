@@ -59,15 +59,13 @@ jobs:
         working-directory: rust/release/target/release
         run: |
           set -e
-          echo "ACTYX_VERSION=$(./cosmos-release get-actyx-version actyx)" >> "$GITHUB_OUTPUT"
-          echo "ACTYX_VERSION_CLI=$(./cosmos-release get-actyx-version cli)" >> "$GITHUB_OUTPUT"
-          echo "ACTYX_VERSION_NODEMANAGER=$(./cosmos-release get-actyx-version node-manager)" >> "$GITHUB_OUTPUT"
-          echo "ACTYX_VERSION_TSSDK=$(./cosmos-release get-actyx-version ts-sdk)" >> "$GITHUB_OUTPUT"
-          echo "ACTYX_VERSION_RUSTSDK=$(./cosmos-release get-actyx-version rust-sdk)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION=$(./release get-actyx-version ax)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION_NODEMANAGER=$(./release get-actyx-version node-manager)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION_TSSDK=$(./release get-actyx-version ts-sdk)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION_RUSTSDK=$(./release get-actyx-version rust-sdk)" >> "$GITHUB_OUTPUT"
 
     outputs:
       ACTYX_VERSION: ${{ steps.calculate-versions.outputs.ACTYX_VERSION }}
-      ACTYX_VERSION_CLI: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_TSSDK: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ steps.calculate-versions.outputs.ACTYX_VERSION_RUSTSDK }}
@@ -78,7 +76,6 @@ jobs:
 
     env:
       ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
-      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
@@ -103,7 +100,6 @@ jobs:
 
     env:
       ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
-      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
@@ -128,7 +124,6 @@ jobs:
 
     env:
       ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
-      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
@@ -155,7 +150,6 @@ jobs:
 
     env:
       ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
-      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
@@ -180,7 +174,6 @@ jobs:
 
     env:
       ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
-      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
@@ -215,7 +208,6 @@ jobs:
 
     env:
       ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
-      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
@@ -241,7 +233,6 @@ jobs:
 
     env:
       ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
-      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
@@ -264,7 +255,6 @@ jobs:
 
     env:
       ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
-      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
@@ -290,7 +280,6 @@ jobs:
       PYTHON_PATH: /usr/local/bin/python
 
       ACTYX_VERSION: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION }}
-      ACTYX_VERSION_CLI: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_CLI }}
       ACTYX_VERSION_NODEMANAGER: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_NODEMANAGER }}
       ACTYX_VERSION_TSSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_TSSDK }}
       ACTYX_VERSION_RUSTSDK: ${{ needs.calculate-actyx-version.outputs.ACTYX_VERSION_RUSTSDK }}
