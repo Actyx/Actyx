@@ -3,6 +3,8 @@ mod schema;
 mod set;
 mod unset;
 
+use std::str::FromStr;
+
 use crate::cmd::AxCliCommand;
 use ax_core::settings::{Scope, ScopeError};
 use futures::Future;

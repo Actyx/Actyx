@@ -6,7 +6,7 @@ use futures::Future;
 use structopt::StructOpt;
 
 use license::LicenseOpts;
-pub use sign::{create_signed_app_manifest, SignOpts};
+pub use sign::SignOpts;
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = ax_core::util::version::VERSION.as_str())]

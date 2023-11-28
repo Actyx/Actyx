@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use ax_core::cmd::apps::{create_signed_app_manifest, SignOpts};
+use ax_core::certs::app_manifest_signer::sign_manifest_from_files;
 use neon::{
     context::{Context, FunctionContext},
     result::JsResult,
@@ -29,11 +29,8 @@ pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                  path_to_manifest,
              }| {
                 async move {
-                    create_signed_app_manifest(SignOpts {
-                        path_to_certificate,
-                        path_to_manifest,
-                    })
-                    .map_err(|e| anyhow!("error signing manifest: {}", e))
+                    sign_manifest_from_files(path_to_certificate, path_to_manifest)
+                        .map_err(|e| anyhow!("error signing manifest: {}", e))
                 }
                 .boxed()
             },

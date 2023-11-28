@@ -1,6 +1,6 @@
-use crate::cmd::{AxCliCommand, KeyPathWrapper};
+use crate::cmd::AxCliCommand;
 use ax_core::{
-    private_key::AxPrivateKey,
+    private_key::{AxPrivateKey, KeyPathWrapper},
     settings::{Database, Repository, Scope, DB_FILENAME},
     util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult},
 };

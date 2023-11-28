@@ -1,5 +1,9 @@
-use crate::cmd::{AxCliCommand, KeyPathWrapper};
-use ax_core::{crypto::PublicKey, private_key::AxPrivateKey, util::formats::ActyxOSResult};
+use crate::cmd::AxCliCommand;
+use ax_core::{
+    crypto::PublicKey,
+    private_key::{AxPrivateKey, KeyPathWrapper},
+    util::formats::ActyxOSResult,
+};
 use futures::{stream::once, FutureExt, Stream};
 use structopt::StructOpt;
 

@@ -1,5 +1,6 @@
 use ax_core::authority::Authority;
-use ax_core::util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult};
+use ax_core::private_key::KeyPathWrapper;
+use ax_core::util::formats::ActyxOSResult;
 use ax_core::{
     node_connection::{connect, mk_swarm, Task},
     private_key::AxPrivateKey,
@@ -7,7 +8,6 @@ use ax_core::{
 use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
 use libp2p::PeerId;
 use serde::Serialize;
-use std::{fmt, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
 pub mod apps;
@@ -34,58 +34,11 @@ pub struct ConsoleOpt {
 
 impl ConsoleOpt {
     pub async fn connect(&self) -> ActyxOSResult<(Sender<Task>, PeerId)> {
-        let key = if let Some(key_path) = &self.identity {
-            AxPrivateKey::try_from(key_path)
-        } else {
-            let private_key_path = AxPrivateKey::default_user_identity_path()?;
-            AxPrivateKey::from_file(&private_key_path).map_err(move |e| {
-                if e.code() == ActyxOSCode::ERR_PATH_INVALID {
-                    ActyxOSError::new(
-                        ActyxOSCode::ERR_USER_UNAUTHENTICATED,
-                        format!(
-                            "Unable to authenticate with node since no user keys found in \"{}\". \
-                             To create user keys, run ax users keygen.",
-                            private_key_path.display()
-                        ),
-                    )
-                } else {
-                    e
-                }
-            })
-        }?;
+        let key = AxPrivateKey::try_from(&self.identity)?;
         let (task, mut channel) = mk_swarm(key).await?;
         tokio::spawn(task);
         let peer_id = connect(&mut channel, self.authority.clone()).await?;
         Ok((channel, peer_id))
-    }
-}
-
-#[derive(Debug)]
-/// Newtype wrapper around a path to key material, to be used with
-/// structopt/clap.
-pub struct KeyPathWrapper(PathBuf);
-
-impl FromStr for KeyPathWrapper {
-    type Err = ActyxOSError;
-    fn from_str(s: &str) -> ActyxOSResult<Self> {
-        Ok(Self(s.into()))
-    }
-}
-
-impl fmt::Display for KeyPathWrapper {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.display())
-    }
-}
-
-impl TryFrom<&KeyPathWrapper> for AxPrivateKey {
-    type Error = ActyxOSError;
-    fn try_from(path: &KeyPathWrapper) -> ActyxOSResult<AxPrivateKey> {
-        path.0
-            .to_str()
-            .and_then(|s| s.parse::<AxPrivateKey>().ok())
-            .ok_or(ActyxOSError::internal(""))
-            .or_else(|_| AxPrivateKey::from_file(&path.0))
     }
 }
 

@@ -9,7 +9,7 @@ use self::{
     ls::{LsOpts, TopicsList},
 };
 
-use super::{Authority, AxCliCommand, KeyPathWrapper};
+use super::{Authority, AxCliCommand};
 
 /// manage topics
 #[derive(StructOpt, Debug)]
