@@ -2,7 +2,7 @@
 mod versions {
     use anyhow::Context;
     use async_std::task::block_on;
-    use ax_core::util::os_arch::Arch;
+    use ax_core::util::version::ARCH;
     use ax_sdk::{
         service::{EventMeta, EventResponse, QueryResponse},
         StreamId, TagSet,
@@ -50,14 +50,7 @@ mod versions {
                         .to_owned(),
                 ))
             } else {
-                let arch = match Arch::current() {
-                    Arch::x86_64 => "amd64",
-                    Arch::aarch64 => "arm64",
-                    Arch::arm => "arm",
-                    Arch::armv7 => "armhf",
-                    x => panic!("unsupported arch: {}", x),
-                };
-                let name = format!("actyx-{}-linux-{}", version, arch);
+                let name = format!("actyx-{}-linux-{}", version, ARCH);
                 let url = format!("https://axartifacts.blob.core.windows.net/releases/{}.tar.gz", name);
                 let target = tmp.join(&name);
                 let tgz = tmp.join(format!("{}.tgz", name));

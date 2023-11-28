@@ -60,8 +60,8 @@ lazy_static! {
     pub static ref VERSION: String = NodeVersion::get().to_string();
 }
 
-const ARCH: &str = env!("TARGET_ARCH");
-const OS: &str = env!("TARGET_SYS");
+pub const ARCH: &str = env!("TARGET_ARCH");
+pub const OS: &str = env!("TARGET_SYS");
 
 #[cfg(debug_assertions)]
 const PROFILE: &str = "debug";

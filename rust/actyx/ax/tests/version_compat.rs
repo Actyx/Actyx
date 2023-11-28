@@ -4,8 +4,7 @@ use ax_core::{
     cmd::ActyxCliResult,
     util::{
         formats::{ActyxOSCode, NodesInspectResponse},
-        os_arch::Arch,
-        version::Version,
+        version::{Version, ARCH},
     },
 };
 use ax_sdk::service::OffsetsResponse;
@@ -165,14 +164,7 @@ fn setup() -> &'static Binaries {
 }
 
 fn download(package: &str, bin: &str, version: Version, dst_dir: &Path, may_skip: &mut bool) -> Option<PathBuf> {
-    let arch = match Arch::current() {
-        Arch::x86_64 => "amd64",
-        Arch::aarch64 => "arm64",
-        Arch::arm => "arm",
-        Arch::armv7 => "armhf",
-        x => panic!("unsupported arch: {}", x),
-    };
-    let name = format!("{}-{}-linux-{}", package, version, arch);
+    let name = format!("{}-{}-linux-{}", package, version, ARCH);
     let url = format!("{}/{}.tar.gz", ROOT_URL, name);
     let target = dst_dir.join(&name);
 
