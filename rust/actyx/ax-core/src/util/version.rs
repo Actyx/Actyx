@@ -60,32 +60,8 @@ lazy_static! {
     pub static ref VERSION: String = NodeVersion::get().to_string();
 }
 
-const fn arch() -> &'static str {
-    #[cfg(target_arch = "i686")]
-    return "x86";
-    #[cfg(target_arch = "x86_64")]
-    return "x86_64";
-    #[cfg(target_arch = "aarch64")]
-    return "aarch64";
-    #[cfg(target_arch = "android")]
-    return "android";
-    #[cfg(target_arch = "arm")]
-    return "arm";
-    // not officially documented but let's see
-    #[cfg(target_arch = "armv7")]
-    return "armv6";
-}
-
-const fn os() -> &'static str {
-    #[cfg(target_os = "linux")]
-    return "linux";
-    #[cfg(target_os = "windows")]
-    return "windows";
-    #[cfg(target_os = "macos")]
-    return "macos";
-    #[cfg(target_os = "android")]
-    return "android";
-}
+const ARCH: &str = env!("TARGET_ARCH");
+const OS: &str = env!("TARGET_SYS");
 
 #[cfg(debug_assertions)]
 const PROFILE: &str = "debug";
