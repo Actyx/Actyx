@@ -4,7 +4,7 @@ use ax_core::{
     cmd::ActyxCliResult,
     util::{
         formats::{ActyxOSCode, NodesInspectResponse},
-        version::{Version, ARCH},
+        version::Version,
     },
 };
 use ax_sdk::service::OffsetsResponse;
@@ -164,7 +164,14 @@ fn setup() -> &'static Binaries {
 }
 
 fn download(package: &str, bin: &str, version: Version, dst_dir: &Path, may_skip: &mut bool) -> Option<PathBuf> {
-    let name = format!("{}-{}-linux-{}", package, version, ARCH);
+    // This is a bit of an abuse but we're currently running this only on 64-bit Linux
+    // hence taking the liberty to "force" this here. For a reference, the previous
+    // mapping was:
+    // - x86_64 => amd64
+    // - aarch64 => arm64
+    // - arm => arm (stopped being supported during the move to ax)
+    // - armv7 => armhf
+    let name = format!("{}-{}-linux-amd64", package, version);
     let url = format!("{}/{}.tar.gz", ROOT_URL, name);
     let target = dst_dir.join(&name);
 
@@ -177,6 +184,9 @@ fn download(package: &str, bin: &str, version: Version, dst_dir: &Path, may_skip
     }
 
     let resp = reqwest::blocking::get(&url).unwrap_or_else(|e| panic!("making request to {}: {}", url, e));
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        panic!("did not find {}", url);
+    }
     let gzip = GzDecoder::new(resp);
     let mut archive = Archive::new(gzip);
     let entries = match archive.entries() {
