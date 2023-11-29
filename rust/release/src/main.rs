@@ -1,4 +1,4 @@
-use anyhow::{Context, Error};
+use anyhow::{bail, Context, Error};
 use chrono::{TimeZone, Utc};
 use clap::Parser;
 use repo::RepoWrapper;
@@ -10,6 +10,7 @@ use std::{
     path::PathBuf,
     sync::atomic::{AtomicBool, Ordering},
 };
+use toml_edit::Document;
 use versions_file::{VersionLine, VersionsFile};
 use versions_ignore_file::VersionsIgnoreFile;
 
@@ -274,6 +275,19 @@ Overview:"#
             for (product, v) in new_versions {
                 let new_version = v.new_version.unwrap();
 
+                if !dry_run {
+                    // This pathing abuses the fact that we control where this is run from: CI
+                    // and in CI this is *usually* run in the rust/release path
+                    match product {
+                        Product::Ax => update_package_version(PathBuf::from("../actyx/ax/Cargo.toml"), &new_version)?,
+                        Product::AxCore => {
+                            update_package_version(PathBuf::from("../actyx/ax_core/Cargo.toml"), &new_version)?
+                        }
+                        // We're not updating TOMLs for anything else
+                        _ => (),
+                    };
+                }
+
                 writeln!(changelog, "* {}\t\t{}", product, new_version)?;
                 for (commit, change) in v.changes {
                     writeln!(changelog, "    * {}: {} [{}]", change.kind, change.message, commit)?;
@@ -433,5 +447,21 @@ Overview:"#
             }
         }
     }
+    Ok(())
+}
+
+fn update_package_version(path: PathBuf, version: &Version) -> Result<(), Error> {
+    // Read the toml
+    let cargo_toml_contents = if !path.is_file() {
+        std::fs::read_to_string(&path)?
+    } else {
+        bail!("{:?} is not a file", path);
+    };
+    // Parse it
+    let mut cargo_toml = cargo_toml_contents.parse::<Document>()?;
+    // Update the value
+    cargo_toml["package"]["version"] = toml_edit::value(version.to_string());
+    // Write it back
+    std::fs::write(&path, cargo_toml.to_string())?;
     Ok(())
 }
