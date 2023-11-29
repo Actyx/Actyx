@@ -13,7 +13,7 @@ use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use std::{
-    env,
+    env::{self, consts::ARCH},
     ffi::OsStr,
     fmt::Write,
     fs::File,
@@ -24,7 +24,6 @@ use std::{
     sync::Arc,
     thread,
     time::{Duration, Instant},
-    unreachable,
 };
 use tar::Archive;
 use tempfile::tempdir;
@@ -66,31 +65,30 @@ fn setup() -> &'static Binaries {
     static INIT: OnceCell<Binaries> = OnceCell::new();
     INIT.get_or_init(|| {
         // build needed binaries for quicker execution
-        for bin in &["ax"] {
-            eprintln!("building {}", bin);
-            for msg in CargoBuild::new()
-                .manifest_path("../Cargo.toml")
-                .bin(*bin)
-                .exec()
-                .unwrap()
-            {
-                let msg = msg.unwrap();
-                let msg = msg.decode().unwrap();
-                match msg {
-                    Message::BuildFinished(x) => eprintln!("{:?}", x),
-                    Message::CompilerArtifact(a) => {
-                        if !a.fresh {
-                            eprintln!("{:?}", a.package_id)
-                        }
+        let bin = "ax";
+        eprintln!("building {}", bin);
+        for msg in CargoBuild::new()
+            .manifest_path("../Cargo.toml")
+            .bin(bin)
+            .exec()
+            .unwrap()
+        {
+            let msg = msg.unwrap();
+            let msg = msg.decode().unwrap();
+            match msg {
+                Message::BuildFinished(x) => eprintln!("{:?}", x),
+                Message::CompilerArtifact(a) => {
+                    if !a.fresh {
+                        eprintln!("{:?}", a.package_id)
                     }
-                    Message::CompilerMessage(s) => {
-                        if let Some(msg) = s.message.rendered {
-                            eprintln!("{}", msg)
-                        }
-                    }
-                    Message::BuildScriptExecuted(_) => {}
-                    Message::Unknown => {}
                 }
+                Message::CompilerMessage(s) => {
+                    if let Some(msg) = s.message.rendered {
+                        eprintln!("{}", msg)
+                    }
+                }
+                Message::BuildScriptExecuted(_) => {}
+                Message::Unknown => {}
             }
         }
 
@@ -168,8 +166,7 @@ fn download(package: &str, bin: &str, version: Version, dst_dir: &Path, may_skip
     let arch = match ARCH {
         "x86_64" => "amd64",
         "aarch64" => "arm64",
-        "arm" => "arm",
-        "armv7" => "armhf",
+        "arm" => "armhf",
         _ => unreachable!("unsupported architecture"),
     };
     let name = format!("{}-{}-linux-{}", package, version, arch);
@@ -188,6 +185,7 @@ fn download(package: &str, bin: &str, version: Version, dst_dir: &Path, may_skip
     if resp.status() == reqwest::StatusCode::NOT_FOUND {
         panic!("did not find {}", url);
     }
+
     let gzip = GzDecoder::new(resp);
     let mut archive = Archive::new(gzip);
     let entries = match archive.entries() {

@@ -2,7 +2,6 @@
 mod versions {
     use anyhow::Context;
     use async_std::task::block_on;
-    use ax_core::util::version::ARCH;
     use ax_sdk::{
         service::{EventMeta, EventResponse, QueryResponse},
         StreamId, TagSet,
@@ -13,6 +12,7 @@ mod versions {
     use netsim_embed::{Ipv4Range, MachineId, Netsim};
     use std::{
         collections::{HashMap, HashSet},
+        env::consts::ARCH,
         fs::{create_dir, File},
         path::{Path, PathBuf},
         time::{Duration, Instant},
@@ -50,7 +50,13 @@ mod versions {
                         .to_owned(),
                 ))
             } else {
-                let name = format!("actyx-{}-linux-{}", version, ARCH);
+                let arch = match ARCH {
+                    "x86_64" => "amd64",
+                    "aarch64" => "arm64",
+                    "arm" => "armhf",
+                    _ => unreachable!("unsupported architecture"),
+                };
+                let name = format!("actyx-{}-linux-{}", version, arch);
                 let url = format!("https://axartifacts.blob.core.windows.net/releases/{}.tar.gz", name);
                 let target = tmp.join(&name);
                 let tgz = tmp.join(format!("{}.tgz", name));
