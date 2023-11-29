@@ -67,7 +67,7 @@ pub mod app_manifest_signer {
     /// Will load both from the file system and, if successful, overwrite the original
     /// manifest with its signed version.
     pub fn sign_manifest_from_files(certificate_path: PathBuf, manifest_path: PathBuf) -> ActyxOSResult<AppManifest> {
-        let dev_cert = fs::read_to_string(&certificate_path)
+        let dev_cert = fs::read_to_string(certificate_path)
             .ax_err_ctx(ActyxOSCode::ERR_IO, "Failed to read developer certificate")?;
         let dev_cert: DeveloperCertificate = serde_json::from_str(&dev_cert).ax_err_ctx(
             ActyxOSCode::ERR_INVALID_INPUT,

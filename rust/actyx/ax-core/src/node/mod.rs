@@ -42,11 +42,11 @@ use formats::ExternalEvent;
 use host::Host;
 use node_impl::{ComponentChannel, NodeProcessResult, NodeWrapper};
 use settings::SettingsRequest;
-use std::str::FromStr;
 use std::{
     convert::TryInto,
     net::{IpAddr, Ipv4Addr, ToSocketAddrs},
     path::PathBuf,
+    str::FromStr,
     thread,
 };
 use util::init_panic_hook;

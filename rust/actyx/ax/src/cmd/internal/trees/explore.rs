@@ -1,5 +1,7 @@
-use ax_core::swarm::StreamAlias;
-use ax_core::util::formats::{ActyxOSResult, ActyxOSResultExt};
+use ax_core::{
+    swarm::StreamAlias,
+    util::formats::{ActyxOSResult, ActyxOSResultExt},
+};
 use ax_sdk::StreamId;
 use futures::{prelude::*, stream, Stream};
 use ipfs_sqlite_block_store::BlockStore;

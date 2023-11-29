@@ -1,9 +1,8 @@
-use ax_core::authority::Authority;
-use ax_core::private_key::KeyPathWrapper;
-use ax_core::util::formats::ActyxOSResult;
 use ax_core::{
+    authority::Authority,
     node_connection::{connect, mk_swarm, Task},
-    private_key::AxPrivateKey,
+    private_key::{AxPrivateKey, KeyPathWrapper},
+    util::formats::ActyxOSResult,
 };
 use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
 use libp2p::PeerId;
