@@ -24,6 +24,7 @@ use std::{
     sync::Arc,
     thread,
     time::{Duration, Instant},
+    unreachable,
 };
 use tar::Archive;
 use tempfile::tempdir;
@@ -164,14 +165,14 @@ fn setup() -> &'static Binaries {
 }
 
 fn download(package: &str, bin: &str, version: Version, dst_dir: &Path, may_skip: &mut bool) -> Option<PathBuf> {
-    // This is a bit of an abuse but we're currently running this only on 64-bit Linux
-    // hence taking the liberty to "force" this here. For a reference, the previous
-    // mapping was:
-    // - x86_64 => amd64
-    // - aarch64 => arm64
-    // - arm => arm (stopped being supported during the move to ax)
-    // - armv7 => armhf
-    let name = format!("{}-{}-linux-amd64", package, version);
+    let arch = match ARCH {
+        "x86_64" => "amd64",
+        "aarch64" => "arm64",
+        "arm" => "arm",
+        "armv7" => "armhf",
+        _ => unreachable!("unsupported architecture"),
+    };
+    let name = format!("{}-{}-linux-{}", package, version, arch);
     let url = format!("{}/{}.tar.gz", ROOT_URL, name);
     let target = dst_dir.join(&name);
 
