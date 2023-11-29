@@ -54,9 +54,6 @@ pub struct RunOpts {
     #[arg(short, long, hide = true)]
     pub random: bool,
 
-    #[arg(long)]
-    pub version: bool,
-
     /// Control whether to use ANSI color sequences in log output.
     #[arg(
         long,

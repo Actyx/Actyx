@@ -5,16 +5,13 @@ use crate::cmd::{
     swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
 };
 use anyhow::{anyhow, Context, Result};
-use ax_core::{
-    node::{
-        self, init_shutdown_ceremony,
-        run::{Color, RunOpts},
-        shutdown_ceremony, ApplicationState, BindTo, Runtime,
-    },
-    util::version::NodeVersion,
+use ax_core::node::{
+    self, init_shutdown_ceremony,
+    run::{Color, RunOpts},
+    shutdown_ceremony, ApplicationState, BindTo, Runtime,
 };
 use clap::{ArgAction, Parser};
-use std::{future::Future, process::exit};
+use std::future::Future;
 
 #[derive(clap::Parser, Clone, Debug)]
 #[command(
@@ -23,8 +20,8 @@ use std::{future::Future, process::exit};
         "\nThe ax CLI is a unified tool to manage your ax nodes.\n\n",
         include_str!("../NOTICE")),
     version = ax_core::util::version::VERSION.as_str(),
-    disable_help_subcommand = true,
-    action = ArgAction::Version
+    propagate_version = true,
+    disable_help_subcommand = true
 )]
 struct Opt {
     #[command(subcommand)]
@@ -60,55 +57,6 @@ enum CommandsOpt {
     Internal(InternalOpts),
 }
 
-// NOTE: Reimplement superpower check for internal
-
-// impl FromArgMatches for CliSub {
-//     fn from_arg_matches(matches: &ArgMatches) -> Result<Self, Error> {
-//         match matches.subcommand() {
-//             Some(("add", args)) => Ok(Self::Add(AddArgs::from_arg_matches(args)?)),
-//             Some(("remove", args)) => Ok(Self::Remove(RemoveArgs::from_arg_matches(args)?)),
-//             Some((_, _)) => Err(Error::raw(
-//                 ErrorKind::InvalidSubcommand,
-//                 "Valid subcommands are `add` and `remove`",
-//             )),
-//             None => Err(Error::raw(
-//                 ErrorKind::MissingSubcommand,
-//                 "Valid subcommands are `add` and `remove`",
-//             )),
-//         }
-//     }
-//     fn update_from_arg_matches(&mut self, matches: &ArgMatches) -> Result<(), Error> {
-//         match matches.subcommand() {
-//             Some(("add", args)) => *self = Self::Add(AddArgs::from_arg_matches(args)?),
-//             Some(("remove", args)) => *self = Self::Remove(RemoveArgs::from_arg_matches(args)?),
-//             Some((_, _)) => {
-//                 return Err(Error::raw(
-//                     ErrorKind::InvalidSubcommand,
-//                     "Valid subcommands are `add` and `remove`",
-//                 ))
-//             }
-//             None => (),
-//         };
-//         Ok(())
-//     }
-// }
-
-// impl Subcommand for CliSub {
-//     fn augment_subcommands(cmd: Command) -> Command {
-//         cmd.subcommand(AddArgs::augment_args(Command::new("add")))
-//             .subcommand(RemoveArgs::augment_args(Command::new("remove")))
-//             .subcommand_required(true)
-//     }
-//     fn augment_subcommands_for_update(cmd: Command) -> Command {
-//         cmd.subcommand(AddArgs::augment_args(Command::new("add")))
-//             .subcommand(RemoveArgs::augment_args(Command::new("remove")))
-//             .subcommand_required(true)
-//     }
-//     fn has_subcommand(name: &str) -> bool {
-//         matches!(name, "add" | "remove")
-//     }
-// }
-
 fn superpowers() -> bool {
     let var = std::env::var("HERE_BE_DRAGONS").unwrap_or_default();
     var == "zøg" || var == "zoeg"
@@ -120,20 +68,7 @@ async fn main() -> Result<()> {
         command,
         json,
         verbosity,
-    } = match Opt::try_parse() {
-        Ok(o) => o,
-        Err(e) => match e.kind() {
-            clap::error::ErrorKind::DisplayHelp => {
-                println!("{}\n", e.to_string());
-                exit(0)
-            }
-            clap::error::ErrorKind::DisplayVersion => {
-                println!();
-                exit(0)
-            }
-            _ => e.exit(),
-        },
-    };
+    } = Opt::parse();
 
     match command {
         CommandsOpt::Run(opts) => run(opts)?,
@@ -161,7 +96,6 @@ pub fn run(
         working_dir,
         bind_options,
         random,
-        version,
         log_color,
         log_json,
     }: RunOpts,
@@ -179,11 +113,6 @@ pub fn run(
         Some(Color::Auto) => is_no_tty,
         None => false,
     };
-
-    if version {
-        println!("ax {}", NodeVersion::get());
-        return Ok(());
-    }
 
     let bind_to = if random {
         BindTo::random()?

@@ -61,7 +61,7 @@ impl FromStr for Authority {
     }
 }
 
-#[derive(clap::Parser, Debug)]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct ConsoleOpt {
     /// the IP address or `<host>:<admin port>` of the node to perform the operation on.
     #[arg(name = "NODE", required = true)]
@@ -81,7 +81,7 @@ impl ConsoleOpt {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Newtype wrapper around a path to key material, to be used with
 /// structopt/clap.
 pub struct KeyPathWrapper(PathBuf);

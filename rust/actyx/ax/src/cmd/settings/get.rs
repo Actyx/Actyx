@@ -35,7 +35,6 @@ struct GetSettingsCommand {
     #[arg(long = "no-defaults")]
     no_defaults: bool,
     /// Scope from which you want to get the settings.
-
     #[arg(name = "SCOPE", value_parser = super::parse_scope)]
     scope: ax_core::settings::Scope,
 }

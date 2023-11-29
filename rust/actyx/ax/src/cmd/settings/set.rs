@@ -34,7 +34,6 @@ impl AxCliCommand for SettingsSet {
     }
 }
 
-
 #[derive(clap::Parser, Clone, Debug)]
 pub struct SetOpt {
     #[command(flatten)]

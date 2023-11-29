@@ -29,7 +29,6 @@ struct RequestBody {
     scope: ax_core::settings::Scope,
 }
 
-
 #[derive(clap::Parser, Clone, Debug)]
 pub struct UnsetOpt {
     #[command(flatten)]
