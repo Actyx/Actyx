@@ -63,6 +63,7 @@ fn reject(err: anyhow::Error) -> Rejection {
     if let Some(e) = err.downcast_ref::<event_store_ref::Error>() {
         let cause = e.to_string();
         return match e {
+            event_store_ref::Error::Timeout => reject::custom(ApiError::Timeout),
             event_store_ref::Error::Aborted => reject::custom(ApiError::Shutdown { cause }),
             event_store_ref::Error::Overload => reject::custom(ApiError::Overloaded { cause }),
             event_store_ref::Error::InvalidUpperBounds => reject::custom(ApiError::BadRequest { cause }),

@@ -31,6 +31,8 @@ pub enum Error {
     Overload,
     #[display(fmt = "Query bounds out of range: upper bound must be within the known present.")]
     InvalidUpperBounds,
+    #[display(fmt = "Query timed out while fetching events.")]
+    Timeout,
     #[display(fmt = "AQL Error: {}", _0)]
     TagExprError(TagExprError),
 }
