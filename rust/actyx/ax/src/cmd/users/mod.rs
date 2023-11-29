@@ -12,7 +12,7 @@ use keygen::KeygenOpts;
 use pubkey::PubkeyOpts;
 
 /// manage user keys
-#[derive(clap::Parser, Clone, Debug)]
+#[derive(clap::Subcommand, Clone, Debug)]
 pub enum UsersOpts {
     /// Install a user key into /admin/authorizedUsers of a local Actyx node that is not currently running.
     AddKey(AddKeyOpts),

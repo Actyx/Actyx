@@ -11,7 +11,7 @@ use self::{
 use super::{Authority, AxCliCommand};
 
 /// manage topics
-#[derive(clap::Parser, Clone, Debug)]
+#[derive(clap::Subcommand, Clone, Debug)]
 pub enum TopicsOpts {
     Ls(LsOpts),
     Delete(DeleteOpts),

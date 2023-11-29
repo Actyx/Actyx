@@ -6,7 +6,7 @@ use futures::Future;
 use inspect::InspectOpts;
 use ls::LsOpts;
 
-#[derive(clap::Parser, Clone, Debug)]
+#[derive(clap::Subcommand, Clone, Debug)]
 /// get information about nodes
 pub enum NodesOpts {
     /// Show node info and status

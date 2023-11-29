@@ -7,7 +7,7 @@ mod restore;
 use super::AxCliCommand;
 use futures::Future;
 
-#[derive(clap::Parser, Clone, Debug)]
+#[derive(clap::Subcommand, Clone, Debug)]
 /// interact with the events API through the admin port
 pub enum EventsOpts {
     Offsets(offsets::OffsetsOpts),

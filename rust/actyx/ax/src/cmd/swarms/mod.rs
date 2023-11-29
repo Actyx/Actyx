@@ -3,7 +3,7 @@ pub mod keygen;
 use crate::cmd::{swarms::keygen::KeygenOpts, AxCliCommand};
 use futures::Future;
 
-#[derive(clap::Parser, Clone, Debug)]
+#[derive(clap::Subcommand, Clone, Debug)]
 /// manage swarms
 pub enum SwarmsOpts {
     /// Generate a new swarm key.
