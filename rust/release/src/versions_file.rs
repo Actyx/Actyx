@@ -26,6 +26,7 @@ const HEADER: &str = r#"# Last releases of all Actyx products
 # The machine-readable product names are: actyx, node-manager,
 # cli, pond, ts-sdk, rust-sdk, docs, csharp-sdk"#;
 
+#[derive(Clone)]
 pub struct CalculationResult {
     pub prev_commit: Oid,
     pub prev_version: Version,

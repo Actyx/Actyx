@@ -272,25 +272,8 @@ Overview:"#
 
             writeln!(changelog, "-------------------------")?;
             writeln!(changelog, "Detailed changelog:")?;
-            for (product, v) in new_versions {
+            for (product, v) in new_versions.clone() {
                 let new_version = v.new_version.unwrap();
-
-                if !dry_run {
-                    // This pathing abuses the fact that we control where this is run from: CI
-                    // and in CI this is *usually* run in the rust/release path
-                    match product {
-                        Product::Ax => update_package_version(
-                            PathBuf::from("../actyx/ax/Cargo.toml").canonicalize()?,
-                            &new_version,
-                        )?,
-                        Product::AxCore => update_package_version(
-                            PathBuf::from("../actyx/ax_core/Cargo.toml").canonicalize()?,
-                            &new_version,
-                        )?,
-                        // We're not updating TOMLs for anything else
-                        _ => (),
-                    };
-                }
 
                 writeln!(changelog, "* {}\t\t{}", product, new_version)?;
                 for (commit, change) in v.changes {
@@ -321,6 +304,28 @@ Overview:"#
                 println!("-------------------------\n");
                 println!("Branch to create {}", branch_name);
             } else {
+                // This pathing abuses the fact that we control where this is run from: CI
+                // and in CI this is *usually* run in the rust/release path
+                let ax_cargo = PathBuf::from("../actyx/ax/Cargo.toml").canonicalize()?;
+                let ax_core_cargo = PathBuf::from("../actyx/ax-core/Cargo.toml").canonicalize()?;
+                for (product, v) in new_versions {
+                    let new_version = v.new_version.unwrap();
+                    match product {
+                        Product::Ax => {
+                            eprint!("0.1) Writing new version to \"{}\" ... ", ax_cargo.display());
+                            update_package_version(&ax_cargo, &new_version)?;
+                            repo.add_file(&ax_cargo)?;
+                        }
+                        Product::AxCore => {
+                            eprint!("0.2) Writing new version to \"{}\" ... ", ax_core_cargo.display());
+                            update_package_version(&ax_core_cargo, &new_version)?;
+                            repo.add_file(&ax_core_cargo)?;
+                        }
+                        // We're not updating TOMLs for anything else
+                        _ => (),
+                    };
+                }
+
                 eprint!("1) Writing new versions to \"{}\" ... ", input_file.display());
                 version_file.persist(&input_file)?;
                 eprintln!("Done.");
@@ -454,7 +459,7 @@ Overview:"#
     Ok(())
 }
 
-fn update_package_version(path: PathBuf, version: &Version) -> Result<(), Error> {
+fn update_package_version(path: &PathBuf, version: &Version) -> Result<(), Error> {
     // Read the toml
     let cargo_toml_contents = if !path.is_file() {
         bail!("{:?} is not a file", path);
