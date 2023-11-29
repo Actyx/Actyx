@@ -45,7 +45,7 @@ struct Opts {
     cmd: Command,
 }
 #[derive(Parser)]
-#[clap(version = "1.0", author = env!("CARGO_PKG_AUTHORS"), about = env!("CARGO_PKG_DESCRIPTION"))]
+#[clap(version = "1.0", author, about)]
 enum Command {
     /// Computes current version
     Version {
@@ -314,6 +314,16 @@ Overview:"#
                         Product::Ax => {
                             eprint!("0.1) Writing new version to \"{}\" ... ", ax_cargo.display());
                             update_package_version(&ax_cargo, &new_version)?;
+                            std::fs::write(
+                                PathBuf::from("../actyx/ax-core/node/version.rs").canonicalize()?,
+                                format!(
+                                    r#"/// The databank version.
+///
+/// This version is kept automatically!
+pub const DATABANK_VERSION: &str = "{}";"#,
+                                    new_version.to_string()
+                                ),
+                            )?;
                             repo.add_file(&ax_cargo)?;
                         }
                         Product::AxCore => {
