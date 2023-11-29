@@ -57,7 +57,7 @@ warrants more care when publishing, since it means that users will be consuming 
 by means of `cargo install ax`, and we need to be careful not to break their use cases.
 
 Furthermore, the core "runnable" functionality — i.e. the `node` / `databank` — was part of `actyx`
-but is now part of `ax-core` which needs to be versioned as a library, as such, changes
+but is now part of `ax-core` which needs to be versioned as a library based on its Rust function signatures. As such, changes
 to the library require bumps, which may not reflect on the `databank`'s version.
 
 ## The Solution
