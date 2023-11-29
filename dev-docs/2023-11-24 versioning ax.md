@@ -69,7 +69,7 @@ will move with the `databank` version.
 Following this, we now have:
 
 - `ax-core` at version `0.2.0`
-- `databank` at version `2.17`
+- `databank` at version `2.17.0`
 - `ax` at version `2.17.0`
 
 From the previous list, the new publishing "rules" become:
