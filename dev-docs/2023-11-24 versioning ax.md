@@ -56,7 +56,7 @@ the versions of commands, but we are going to be publishing `ax` on crates.io, a
 warrants more care when publishing, since it means that users will be consuming this
 by means of `cargo install ax`, and we need to be careful not to break their use cases.
 
-Furthermore, the core "runnable" functionality — i.e. the `node` — was part of `actyx`
+Furthermore, the core "runnable" functionality — i.e. the `node` / `databank` — was part of `actyx`
 but is now part of `ax-core` which needs to be versioned as a library, as such, changes
 to the library require bumps, which may not reflect on the `databank`'s version.
 
