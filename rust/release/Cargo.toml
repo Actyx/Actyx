@@ -1,5 +1,5 @@
 [package]
-name = "release"
+name = "cosmos-release"
 version = "0.1.0"
 authors = ["Actyx AG"]
 description = "Actyx release tool"

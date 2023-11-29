@@ -59,10 +59,10 @@ jobs:
         working-directory: rust/release/target/release
         run: |
           set -e
-          echo "ACTYX_VERSION=$(./release get-actyx-version ax)" >> "$GITHUB_OUTPUT"
-          echo "ACTYX_VERSION_NODEMANAGER=$(./release get-actyx-version node-manager)" >> "$GITHUB_OUTPUT"
-          echo "ACTYX_VERSION_TSSDK=$(./release get-actyx-version ts-sdk)" >> "$GITHUB_OUTPUT"
-          echo "ACTYX_VERSION_RUSTSDK=$(./release get-actyx-version rust-sdk)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION=$(./cosmos-release get-actyx-version ax)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION_NODEMANAGER=$(./cosmos-release get-actyx-version node-manager)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION_TSSDK=$(./cosmos-release get-actyx-version ts-sdk)" >> "$GITHUB_OUTPUT"
+          echo "ACTYX_VERSION_RUSTSDK=$(./cosmos-release get-actyx-version rust-sdk)" >> "$GITHUB_OUTPUT"
 
     outputs:
       ACTYX_VERSION: ${{ steps.calculate-versions.outputs.ACTYX_VERSION }}
