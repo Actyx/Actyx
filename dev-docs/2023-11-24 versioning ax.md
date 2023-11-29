@@ -23,7 +23,7 @@ The three main players are:
   `actyx` binary such that it can be exposed for other uses, such as being embedded
   in an application
 - `databank` - the old `node` component from `actyx`, which can be thought of as the inner Actyx
-  "stack". We work off of the following definition:
+  "stack", comprising data storage, network protocols, querying facilities etc. We work off of the following definition:
   > A databank is a repository of information about one or more subjects, that is, a
   > database which is organized in a way that facilitates local or remote information
   > retrieval and is able to process many continual queries over a long period of time.
