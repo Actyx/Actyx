@@ -279,10 +279,14 @@ Overview:"#
                     // This pathing abuses the fact that we control where this is run from: CI
                     // and in CI this is *usually* run in the rust/release path
                     match product {
-                        Product::Ax => update_package_version(PathBuf::from("../actyx/ax/Cargo.toml"), &new_version)?,
-                        Product::AxCore => {
-                            update_package_version(PathBuf::from("../actyx/ax_core/Cargo.toml"), &new_version)?
-                        }
+                        Product::Ax => update_package_version(
+                            PathBuf::from("../actyx/ax/Cargo.toml").canonicalize()?,
+                            &new_version,
+                        )?,
+                        Product::AxCore => update_package_version(
+                            PathBuf::from("../actyx/ax_core/Cargo.toml").canonicalize()?,
+                            &new_version,
+                        )?,
                         // We're not updating TOMLs for anything else
                         _ => (),
                     };
@@ -453,9 +457,9 @@ Overview:"#
 fn update_package_version(path: PathBuf, version: &Version) -> Result<(), Error> {
     // Read the toml
     let cargo_toml_contents = if !path.is_file() {
-        std::fs::read_to_string(&path)?
-    } else {
         bail!("{:?} is not a file", path);
+    } else {
+        std::fs::read_to_string(&path)?
     };
     // Parse it
     let mut cargo_toml = cargo_toml_contents.parse::<Document>()?;
