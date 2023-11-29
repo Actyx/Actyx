@@ -464,13 +464,13 @@ fn update_package_version(path: &PathBuf, version: &Version) -> Result<(), Error
     let cargo_toml_contents = if !path.is_file() {
         bail!("{:?} is not a file", path);
     } else {
-        std::fs::read_to_string(&path)?
+        std::fs::read_to_string(path)?
     };
     // Parse it
     let mut cargo_toml = cargo_toml_contents.parse::<Document>()?;
     // Update the value
     cargo_toml["package"]["version"] = toml_edit::value(version.to_string());
     // Write it back
-    std::fs::write(&path, cargo_toml.to_string())?;
+    std::fs::write(path, cargo_toml.to_string())?;
     Ok(())
 }
