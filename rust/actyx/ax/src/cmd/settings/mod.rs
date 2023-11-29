@@ -11,7 +11,7 @@ use futures::Future;
 use get::GetOpt;
 use schema::SchemaOpt;
 use set::SetOpt;
-use std::{convert::TryFrom, str::FromStr};
+use std::convert::TryFrom;
 use unset::UnsetOpt;
 
 #[derive(clap::Subcommand, Debug, Clone)]
