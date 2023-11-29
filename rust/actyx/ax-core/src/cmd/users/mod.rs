@@ -11,7 +11,7 @@ use devcert::DevCertOpts;
 use keygen::KeygenOpts;
 use pubkey::PubkeyOpts;
 
-#[derive(clap::Parser, Clone, Debug)]
+#[derive(clap::Subcommand, Clone, Debug)]
 /// manage user keys
 pub enum UsersOpts {
     /// Install a user key into /admin/authorizedUsers of a local Actyx node that is not currently running.
