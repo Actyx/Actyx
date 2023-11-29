@@ -9,10 +9,9 @@ use ax_core::{
         run::{Color, RunOpts},
         shutdown_ceremony, ApplicationState, BindTo, Runtime,
     },
-    util::version::NodeVersion,
 };
 use clap::{ArgAction, Parser};
-use std::{future::Future, process::exit};
+use std::future::Future;
 
 #[derive(clap::Parser, Clone, Debug)]
 #[command(
@@ -21,6 +20,7 @@ use std::{future::Future, process::exit};
         "\nThe ax CLI is a unified tool to manage your ax nodes.\n\n",
         include_str!("../NOTICE")),
     version = ax_core::util::version::VERSION.as_str(),
+    propagate_version = true,
     disable_help_subcommand = true,
     action = ArgAction::Version
 )]
@@ -118,20 +118,7 @@ async fn main() -> Result<()> {
         command,
         json,
         verbosity,
-    } = match Opt::try_parse() {
-        Ok(o) => o,
-        Err(e) => match e.kind() {
-            clap::error::ErrorKind::DisplayHelp => {
-                println!("{}\n", e.to_string());
-                exit(0)
-            }
-            clap::error::ErrorKind::DisplayVersion => {
-                println!();
-                exit(0)
-            }
-            _ => e.exit(),
-        },
-    };
+    } = Opt::parse();
 
     match command {
         CommandsOpt::Run(opts) => run(opts)?,
@@ -159,7 +146,6 @@ pub fn run(
         working_dir,
         bind_options,
         random,
-        version,
         log_color,
         log_json,
     }: RunOpts,
@@ -177,11 +163,6 @@ pub fn run(
         Some(Color::Auto) => is_no_tty,
         None => false,
     };
-
-    if version {
-        println!("ax {}", NodeVersion::get());
-        return Ok(());
-    }
 
     let bind_to = if random {
         BindTo::random()?

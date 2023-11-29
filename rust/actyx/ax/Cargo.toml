@@ -11,7 +11,7 @@ winres = { git = "https://github.com/Actyx/winres", branch = "cross_compile" }
 anyhow = "1.0.66"
 atty = "0.2.14"
 ax_core = { version = "0.2.0", path = "../ax-core" }
-clap = { version = "4.4.8", features = ["derive", "env"] }
+clap = { version = "4.4.8", features = ["derive", "env", "wrap_help"] }
 tokio = { version = "1.15.0", features = ["full"] }
 
 [dev-dependencies]
