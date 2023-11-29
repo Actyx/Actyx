@@ -10,6 +10,7 @@ mod node_storage;
 pub mod run;
 pub mod settings;
 mod util;
+mod version;
 
 pub use components::swarm_observer::SwarmObserver;
 pub use node_impl::NodeError;
@@ -51,7 +52,7 @@ use std::{
 use structopt::StructOpt;
 use util::init_panic_hook;
 
-pub const DATABANK_VERSION: &str = "2.17.0";
+pub use version::DATABANK_VERSION;
 
 // Rust defaults to use the system allocator, which seemed to be the fastest
 // allocator generally available for our use case [0]. For production, the Actyx
