@@ -1,10 +1,10 @@
-use anyhow::{bail, Context, Error};
+use anyhow::{anyhow, bail, Context, Error};
 use chrono::{TimeZone, Utc};
 use clap::Parser;
 use repo::RepoWrapper;
 use semver::Version;
 use std::{
-    env,
+    env::{self, current_dir, current_exe},
     fmt::Write,
     fs::OpenOptions,
     path::PathBuf,
@@ -304,18 +304,27 @@ Overview:"#
                 println!("-------------------------\n");
                 println!("Branch to create {}", branch_name);
             } else {
-                // This pathing abuses the fact that we control where this is run from: CI
-                // and in CI this is *usually* run in the rust/release path
-                let ax_cargo = PathBuf::from("../actyx/ax/Cargo.toml").canonicalize()?;
-                let ax_core_cargo = PathBuf::from("../actyx/ax-core/Cargo.toml").canonicalize()?;
+                // We expect the binary to not have been moved outside of the target folder
+                let cwd = current_exe()?;
+                let actyx_folder = cwd
+                    .ancestors()
+                    .skip(4)
+                    .next()
+                    .ok_or(anyhow!("failed to get the current directory parent"))?;
+                let ax_cargo = actyx_folder.join(PathBuf::from("actyx/ax/Cargo.toml")).canonicalize()?;
+                let ax_core_cargo = actyx_folder
+                    .join(PathBuf::from("actyx/ax-core/Cargo.toml"))
+                    .canonicalize()?;
+
                 for (product, v) in new_versions {
                     let new_version = v.new_version.unwrap();
                     match product {
                         Product::Ax => {
                             eprint!("0.1) Writing new version to \"{}\" ... ", ax_cargo.display());
                             update_package_version(&ax_cargo, &new_version)?;
+                            let version_rs = PathBuf::from("../actyx/ax-core/node/version.rs").canonicalize()?;
                             std::fs::write(
-                                PathBuf::from("../actyx/ax-core/node/version.rs").canonicalize()?,
+                                &version_rs,
                                 format!(
                                     r#"/// The databank version.
 ///
@@ -325,6 +334,7 @@ pub const DATABANK_VERSION: &str = "{}";"#,
                                 ),
                             )?;
                             repo.add_file(&ax_cargo)?;
+                            repo.add_file(&version_rs)?;
                         }
                         Product::AxCore => {
                             eprint!("0.2) Writing new version to \"{}\" ... ", ax_core_cargo.display());
@@ -471,11 +481,7 @@ pub const DATABANK_VERSION: &str = "{}";"#,
 
 fn update_package_version(path: &PathBuf, version: &Version) -> Result<(), Error> {
     // Read the toml
-    let cargo_toml_contents = if !path.is_file() {
-        bail!("{:?} is not a file", path);
-    } else {
-        std::fs::read_to_string(path)?
-    };
+    let cargo_toml_contents = std::fs::read_to_string(path)?;
     // Parse it
     let mut cargo_toml = cargo_toml_contents.parse::<Document>()?;
     // Update the value

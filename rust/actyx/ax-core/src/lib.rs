@@ -15,4 +15,4 @@ pub mod swarm;
 pub mod trees;
 pub mod util;
 
-pub use node::DATABANK_VERSION;
+pub use node::version::DATABANK_VERSION;
