@@ -7,7 +7,6 @@ pub mod migration;
 mod node_api;
 mod node_impl;
 mod node_storage;
-pub mod run;
 pub mod settings;
 mod util;
 
@@ -42,13 +41,7 @@ use formats::ExternalEvent;
 use host::Host;
 use node_impl::{ComponentChannel, NodeProcessResult, NodeWrapper};
 use settings::SettingsRequest;
-use std::{
-    convert::TryInto,
-    net::{IpAddr, Ipv4Addr, ToSocketAddrs},
-    path::PathBuf,
-    str::FromStr,
-    thread,
-};
+use std::{net::ToSocketAddrs, path::PathBuf, str::FromStr, thread};
 use util::init_panic_hook;
 
 // Rust defaults to use the system allocator, which seemed to be the fastest
@@ -237,53 +230,6 @@ impl BindTo {
     }
 }
 
-#[derive(clap::Parser, Clone, Debug)]
-pub struct BindToOpts {
-    /// Port to bind to for management connections.
-    #[arg(
-        long,
-        default_value = "4458",
-        long_help = "Port to bind to for management connections. Specifying a single number is \
-            equivalent to “0.0.0.0:<port> [::]:<port>”, thus specifying 0 usually selects \
-            different ports for IPv4 and IPv6. Specify 0.0.0.0:<port> to only use IPv4, or \
-            [::]:<port> for only IPv6; you may also specify other names or addresses or leave off \
-            the port number."
-    )]
-    bind_admin: Vec<PortOrHostPort<4458>>,
-
-    /// Port to bind to for intra swarm connections.
-    #[arg(
-        long,
-        default_value = "4001",
-        long_help = "Port to bind to for intra swarm connections. \
-            The same rules apply as for the admin port."
-    )]
-    bind_swarm: Vec<PortOrHostPort<4001>>,
-
-    /// Port to bind to for the API used by apps.
-    #[arg(
-        long,
-        default_value = "localhost",
-        long_help = "Port to bind to for the API used by apps. \
-            The same rules apply as for the admin port, except that giving only a port binds \
-            to 127.0.0.1 only. The default port is 4454."
-    )]
-    bind_api: Vec<PortOrHostPort<4454>>,
-}
-
-impl TryInto<BindTo> for BindToOpts {
-    type Error = anyhow::Error;
-    fn try_into(self) -> anyhow::Result<BindTo> {
-        let api = fold(
-            |port| SocketAddrHelper::from_ip_port(IpAddr::V4(Ipv4Addr::LOCALHOST), port),
-            self.bind_api,
-        )?;
-        let admin = fold(SocketAddrHelper::unspecified, self.bind_admin)?;
-        let swarm = fold(SocketAddrHelper::unspecified, self.bind_swarm)?;
-        Ok(BindTo { admin, swarm, api })
-    }
-}
-
 // This supports plain ports, host:port combinations and multiaddrs (although
 // only the subset which `SocketAddrHelper` supports), host:port combination is
 // an undocumented feature. Users should be nudged to build local first apps,
@@ -292,7 +238,7 @@ impl TryInto<BindTo> for BindToOpts {
 // containerization though. Changing the default ports however might be
 // necessary more frequently, and this is why that is offered here primarily.
 #[derive(Debug, Clone)]
-enum PortOrHostPort<const DEFAULT: u16> {
+pub enum PortOrHostPort<const DEFAULT: u16> {
     Port(u16),
     HostPort(SocketAddrHelper),
 }
@@ -327,43 +273,6 @@ fn parse_port_maybe_host<const N: u16>(src: &str) -> Result<PortOrHostPort<N>, S
         \n  as multiaddr:   {:#}\n  as IP or name:  {:#}",
         src, port, host_string, multiaddr, sock_addr
     ))
-}
-
-fn fold<const N: u16>(
-    port: impl FnOnce(u16) -> anyhow::Result<SocketAddrHelper>,
-    input: Vec<PortOrHostPort<N>>,
-) -> anyhow::Result<SocketAddrHelper> {
-    if input.is_empty() {
-        anyhow::bail!("no value provided");
-    }
-    let mut found_port = None;
-    let mut host_port: Option<SocketAddrHelper> = None;
-    for i in input.into_iter() {
-        match i {
-            PortOrHostPort::Port(p) => {
-                if found_port.is_some() {
-                    anyhow::bail!("Multiple single port directives not supported");
-                } else if host_port.is_some() {
-                    anyhow::bail!("Both port directive and host:port combination not supported");
-                } else {
-                    found_port.replace(p);
-                }
-            }
-            PortOrHostPort::HostPort(addr) => {
-                if found_port.is_some() {
-                    anyhow::bail!("Both port directive and host:port combination not supported");
-                } else if let Some(x) = host_port.as_mut() {
-                    x.append(addr);
-                } else {
-                    let _ = host_port.replace(addr);
-                }
-            }
-        }
-    }
-    found_port
-        .map(port)
-        .or_else(|| host_port.map(Ok))
-        .expect("Input must not be empty")
 }
 
 impl ApplicationState {

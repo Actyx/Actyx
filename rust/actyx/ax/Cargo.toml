@@ -62,6 +62,7 @@ tracing-log = { version = "0.1.2", features = ["std"] }
 tracing-subscriber = { version = "0.3.16", features = ["json", "env-filter"] }
 itertools = "0.10.5"
 rand = { version = "0.7" }
+derive_more = "0.99.17"
 
 
 [dev-dependencies]

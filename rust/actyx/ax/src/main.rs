@@ -1,17 +1,14 @@
 mod cmd;
 
 use crate::cmd::{
-    apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
+    apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, run::Color, settings::SettingsOpts,
     swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
 };
 use anyhow::{anyhow, Context, Result};
-use ax_core::node::{
-    self, init_shutdown_ceremony,
-    run::{Color, RunOpts},
-    shutdown_ceremony, ApplicationState, BindTo, Runtime,
-};
+use ax_core::node::{init_shutdown_ceremony, shutdown_ceremony, ApplicationState, BindTo, Runtime};
 use clap::{ArgAction, Args, Parser};
 use clap_complete::Shell;
+use cmd::run::RunOpts;
 use std::{future::Future, process::exit};
 
 #[derive(clap::Parser, Clone, Debug)]
@@ -39,7 +36,7 @@ struct Opt {
 #[allow(clippy::large_enum_variant)]
 enum CommandsOpt {
     // clap 3 use variant order to order displayed help subcommands
-    Run(node::run::RunOpts),
+    Run(RunOpts),
     #[command(subcommand, arg_required_else_help(true))]
     Events(EventsOpts),
     #[command(subcommand, arg_required_else_help(true))]

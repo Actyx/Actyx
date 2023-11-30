@@ -2,6 +2,7 @@ pub mod apps;
 pub mod events;
 pub mod internal;
 pub mod nodes;
+pub mod run;
 pub mod settings;
 pub mod swarms;
 pub mod topics;
