@@ -10,7 +10,7 @@ winres = { git = "https://github.com/Actyx/winres", branch = "cross_compile" }
 [dependencies]
 anyhow = "1.0.66"
 atty = "0.2.14"
-ax_core = { version = "0.2.0", path = "../ax-core" }
+ax_core = { version = "=0.2.0", path = "../ax-core" }
 structopt = { version = "0.3.25", features = [
   "color",
   "wrap_help",
