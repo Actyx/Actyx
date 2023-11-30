@@ -80,7 +80,7 @@ const Page: React.FC<{ data: ReleaseHistory }> = ({ data: history }) => {
             (history.ax && (
               <>
                 Note: new versions of Actyx are now bundled with <code>ax</code> and are runnable
-                via <code>ax run</code>
+                via the <code>ax run</code>
                 command.
               </>
             )) ||
