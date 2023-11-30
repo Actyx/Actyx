@@ -321,7 +321,7 @@ Overview:"#
 ///
 /// This version is kept automatically!
 pub const DATABANK_VERSION: &str = "{}";"#,
-                                    new_version.to_string()
+                                    new_version
                                 ),
                             )?;
                             repo.add_file(&ax_cargo)?;
