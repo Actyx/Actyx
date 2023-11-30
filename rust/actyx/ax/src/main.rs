@@ -10,8 +10,9 @@ use ax_core::node::{
     run::{Color, RunOpts},
     shutdown_ceremony, ApplicationState, BindTo, Runtime,
 };
-use clap::{ArgAction, Parser};
-use std::future::Future;
+use clap::{ArgAction, Args, Parser};
+use clap_complete::Shell;
+use std::{future::Future, process::exit};
 
 #[derive(clap::Parser, Clone, Debug)]
 #[command(
@@ -55,6 +56,13 @@ enum CommandsOpt {
     Users(UsersOpts),
     #[command(subcommand, arg_required_else_help(true), hide = !superpowers())]
     Internal(InternalOpts),
+    /// Generate completion scripts for your shell
+    ///
+    /// For example, on bash use `eval "$(ax complete bash)"` to setup completion.
+    /// On zsh it works analogously, but you need to ensure that `compinit` has been run before.
+    Complete {
+        shell: Shell,
+    },
 }
 
 fn superpowers() -> bool {
@@ -80,6 +88,11 @@ async fn main() -> Result<()> {
         CommandsOpt::Internal(opts) => with_logger(cmd::internal::run(opts, json), verbosity).await,
         CommandsOpt::Events(opts) => with_logger(cmd::events::run(opts, json), verbosity).await,
         CommandsOpt::Topics(opts) => with_logger(cmd::topics::run(opts, json), verbosity).await,
+        CommandsOpt::Complete { shell } => {
+            let mut cmd = Opt::augment_args(clap::Command::new("ax"));
+            clap_complete::generate(shell, &mut cmd, "ax", &mut std::io::stdout());
+            exit(0);
+        }
     }
     Ok(())
 }
