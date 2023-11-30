@@ -1,18 +1,16 @@
 #![cfg(target_os = "linux")]
 use anyhow::{anyhow, bail, ensure};
-use ax_core::{
-    cmd::ActyxCliResult,
-    util::{
-        formats::{ActyxOSCode, NodesInspectResponse},
-        os_arch::Arch,
-        version::Version,
-    },
+use ax_core::util::{
+    formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, NodesInspectResponse},
+    os_arch::Arch,
+    version::Version,
 };
 use ax_sdk::service::OffsetsResponse;
 use escargot::{format::Message, CargoBuild};
 use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
 use std::{
     env,
     ffi::OsStr,
@@ -28,6 +26,27 @@ use std::{
 };
 use tar::Archive;
 use tempfile::tempdir;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
+#[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
+pub enum ActyxCliResult<T> {
+    OK { code: String, result: T },
+    ERROR(ActyxOSError),
+}
+const OK: &str = "OK";
+impl<T> From<ActyxOSResult<T>> for ActyxCliResult<T> {
+    fn from(res: ActyxOSResult<T>) -> Self {
+        match res {
+            Ok(result) => ActyxCliResult::OK {
+                code: OK.to_owned(),
+                result,
+            },
+            Err(err) => ActyxCliResult::ERROR(err),
+        }
+    }
+}
 
 trait Opts: Sized {
     type Out;

@@ -1,6 +1,8 @@
 use crate::cmd::AxCliCommand;
-use ax_core::private_key::generate_key;
-use ax_core::util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
+use ax_core::{
+    private_key::generate_key,
+    util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+};
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
