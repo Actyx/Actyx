@@ -20,30 +20,28 @@ use std::{
     net::TcpStream,
     path::PathBuf,
 };
-use structopt::StructOpt;
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// restore events from an event dump to a temporary topic
 pub struct RestoreOpts {
     /// file to read the dump from
-    #[structopt(long, short = "I", value_name = "FILE")]
+    #[arg(long, short = 'I', value_name = "FILE")]
     input: Option<PathBuf>,
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
     /// suppress progress information on stderr
-    #[structopt(long, short)]
+    #[arg(long, short)]
     quiet: bool,
     /// load dump via the cloud and store it as the given filename
-    #[structopt(long, value_name = "FILE")]
+    #[arg(long, value_name = "FILE")]
     cloud: Option<PathBuf>,
     /// location to read developer certificate from
-    #[structopt(long, value_name = "FILE")]
+    #[arg(long, value_name = "FILE")]
     cert: Option<PathBuf>,
     /// base URL where to find the cloudmirror (only for --cloud)
     /// defaults to wss://cloudmirror.actyx.net/forward
-    #[structopt(long, value_name = "URL")]
+    #[arg(long, value_name = "URL")]
     url: Option<String>,
 }
 pub const URL: &str = "wss://cloudmirror.actyx.net/forward";

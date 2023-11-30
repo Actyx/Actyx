@@ -17,20 +17,18 @@ use chrono::{DateTime, Utc};
 use futures::{channel::mpsc::channel, future::ready, SinkExt, Stream, StreamExt};
 use genawaiter::sync::Co;
 use std::{fs::File, io::Read};
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// publish an event
 pub struct PublishOpts {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 
     /// event payload (JSON) or @FILE for reading from a file (@- for stdin)
     payload: String,
 
     /// tag (can be given multiple times)
-    #[structopt(long, short)]
+    #[arg(long, short)]
     tag: Option<Vec<Tag>>,
 }
 
