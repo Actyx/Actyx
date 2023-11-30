@@ -11,9 +11,10 @@ const Col = ({ width, children, className = '' }) => (
 
 const ReleasesList: React.FC<{
   product: Product
+  subtitle?: React.ReactNode
   productDisplayName: string
   releases: Release[]
-}> = ({ product, productDisplayName, releases: allReleases }) => {
+}> = ({ product, productDisplayName, releases: allReleases, subtitle }) => {
   const [showAll, setShowAll] = useState(false)
   const NUM_SHOW_INITIAL = 3
   const releases = showAll
@@ -26,6 +27,7 @@ const ReleasesList: React.FC<{
     <Row>
       <Col width="12">
         <h2>{productDisplayName}</h2>
+        {subtitle && <p>{subtitle}</p>}
         <ul>
           {releases.map(({ version, time, changes }, i) => (
             <li key={product + version}>
@@ -67,7 +69,24 @@ const Page: React.FC<{ data: ReleaseHistory }> = ({ data: history }) => {
             <h1 className={styles.heading}>Releases</h1>
           </Col>
         </Row>
-        <ReleasesList productDisplayName="Actyx" product="actyx" releases={history.actyx} />
+        {history['ax'] && history['ax'].length > 0 && (
+          <ReleasesList productDisplayName="Ax" product="ax" releases={history.ax} />
+        )}
+        <ReleasesList
+          productDisplayName="Actyx"
+          product="actyx"
+          releases={history.actyx}
+          subtitle={
+            (history.ax && (
+              <>
+                Note: new versions of Actyx are now bundled with <code>ax</code> and are runnable
+                via the <code>ax run</code>
+                command.
+              </>
+            )) ||
+            null
+          }
+        />
         <ReleasesList
           productDisplayName="Actyx Node Manager"
           product="node-manager"
