@@ -23,6 +23,7 @@ arb = ["quickcheck", "rand"]
 with-tokio = ["tokio"]
 
 [dependencies]
+ax_types = {version = "0.1.0", path = "../actyx/ax-types" }
 ax_sdk_macros = { version = "0.1", path = "../sdk_macros" }
 anyhow = "1.0.52"
 base64 = "0.13.0"

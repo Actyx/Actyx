@@ -4,6 +4,8 @@
 members = [
   "ax",
   "ax-core",
+  "ax-types",
+  "ax-macros",
   "node-ffi",
   "node-manager-bindings",
   "swarm/cli",
