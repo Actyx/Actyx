@@ -1,16 +1,5 @@
-use ax_core::{
-    authority::Authority,
-    node_connection::{connect, mk_swarm, Task},
-    private_key::{AxPrivateKey, KeyPathWrapper},
-    util::formats::ActyxOSResult,
-};
-use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
-use libp2p::PeerId;
-use serde::Serialize;
-
 pub mod apps;
 pub mod events;
-mod formats;
 pub mod internal;
 pub mod nodes;
 pub mod settings;
@@ -18,7 +7,37 @@ pub mod swarms;
 pub mod topics;
 pub mod users;
 
-pub use formats::ActyxCliResult;
+use ax_core::{
+    authority::Authority,
+    node_connection::{connect, mk_swarm, Task},
+    private_key::{AxPrivateKey, KeyPathWrapper},
+    util::formats::{ActyxOSError, ActyxOSResult},
+};
+use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
+use libp2p::PeerId;
+use serde::{Deserialize, Serialize};
+use structopt::StructOpt;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
+#[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
+pub enum ActyxCliResult<T> {
+    OK { code: String, result: T },
+    ERROR(ActyxOSError),
+}
+const OK: &str = "OK";
+impl<T> From<ActyxOSResult<T>> for ActyxCliResult<T> {
+    fn from(res: ActyxOSResult<T>) -> Self {
+        match res {
+            Ok(result) => ActyxCliResult::OK {
+                code: OK.to_owned(),
+                result,
+            },
+            Err(err) => ActyxCliResult::ERROR(err),
+        }
+    }
+}
 
 #[derive(clap::Parser, Clone, Debug)]
 pub struct ConsoleOpt {

@@ -16,7 +16,7 @@ pub enum AppsOpts {
     Sign(SignOpts),
 }
 
-pub fn run(opts: AppsOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin> {
+pub(crate) fn run(opts: AppsOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin> {
     match opts {
         AppsOpts::Sign(opt) => sign::AppsSign::output(opt, json),
         AppsOpts::License(opt) => license::AppsLicense::output(opt, json),
