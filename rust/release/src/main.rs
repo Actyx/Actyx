@@ -1,10 +1,10 @@
-use anyhow::{anyhow, bail, Context, Error};
+use anyhow::{anyhow, Context, Error};
 use chrono::{TimeZone, Utc};
 use clap::Parser;
 use repo::RepoWrapper;
 use semver::Version;
 use std::{
-    env::{self, current_dir, current_exe},
+    env::{self, current_exe},
     fmt::Write,
     fs::OpenOptions,
     path::PathBuf,
@@ -308,8 +308,7 @@ Overview:"#
                 let cwd = current_exe()?;
                 let actyx_folder = cwd
                     .ancestors()
-                    .skip(4)
-                    .next()
+                    .nth(4)
                     .ok_or(anyhow!("failed to get the current directory parent"))?;
                 let ax_cargo = actyx_folder.join(PathBuf::from("actyx/ax/Cargo.toml")).canonicalize()?;
                 let ax_core_cargo = actyx_folder
