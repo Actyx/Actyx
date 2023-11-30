@@ -16,7 +16,6 @@ use ax_core::{
 use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
 use libp2p::PeerId;
 use serde::{Deserialize, Serialize};
-use structopt::StructOpt;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
