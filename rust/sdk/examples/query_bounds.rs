@@ -1,4 +1,7 @@
-use ax_sdk::{service::QueryResponse, tags, Ax, AxOpts};
+use ax_sdk::{
+    types::{service::QueryResponse, tags},
+    Ax, AxOpts,
+};
 use futures::stream::StreamExt;
 
 // This example demonstrates how to query events using `with_lower_bound`.
