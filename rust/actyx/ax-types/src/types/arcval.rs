@@ -14,11 +14,10 @@ use std::{
 ///
 /// This type is a building block for handling large amounts of data with recurring heap-allocated
 /// values, like strings for event types and entity names, but also binary data blocks that are
-/// potentially loaded into memory multiple times. The [`arcval_scalar!`](../macro.arcval_scalar.html)
-/// macro makes it easy to tag data to denote different kinds of objects.
+/// potentially loaded into memory multiple times.
 ///
 /// ```
-/// use ax_sdk::types::ArcVal;
+/// use ax_types::types::ArcVal;
 ///
 /// let s: ArcVal<str> = ArcVal::clone_from_unsized("hello");
 /// let b: ArcVal<[u8; 5]> = ArcVal::from_sized([49, 50, 51, 52, 53]);

@@ -34,6 +34,13 @@ pub enum Order {
     StreamAsc,
 }
 
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for Order {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        *g.choose(&[Order::Asc, Order::Desc, Order::StreamAsc]).unwrap()
+    }
+}
+
 /// Query for a bounded set of events across multiple event streams.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -73,6 +80,31 @@ pub enum EventMeta {
         meta: Metadata,
     },
 }
+
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for EventMeta {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        enum Kind {
+            S,
+            E,
+            R,
+        }
+        match g.choose(&[Kind::S, Kind::E, Kind::R]).unwrap() {
+            Kind::S => EventMeta::Synthetic,
+            Kind::E => EventMeta::Event {
+                key: quickcheck::Arbitrary::arbitrary(g),
+                meta: quickcheck::Arbitrary::arbitrary(g),
+            },
+            Kind::R => EventMeta::Range {
+                from_key: quickcheck::Arbitrary::arbitrary(g),
+                to_key: quickcheck::Arbitrary::arbitrary(g),
+                from_time: quickcheck::Arbitrary::arbitrary(g),
+                to_time: quickcheck::Arbitrary::arbitrary(g),
+            },
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum EventMetaIo {

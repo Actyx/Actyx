@@ -621,6 +621,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ax_aql"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ax_types",
+ "chrono",
+ "derive_more",
+ "num-traits",
+ "once_cell",
+ "pest",
+ "pest_derive",
+ "quickcheck",
+ "serde",
+ "unicode-normalization",
+]
+
+[[package]]
 name = "ax_core"
 version = "0.2.0"
 dependencies = [
@@ -628,7 +645,9 @@ dependencies = [
  "anyhow",
  "assert_cmd",
  "async-trait",
+ "ax_aql",
  "ax_sdk",
+ "ax_types",
  "backtrace",
  "banyan",
  "banyan-utils",
@@ -747,14 +766,35 @@ name = "ax_sdk"
 version = "0.2.0"
 dependencies = [
  "anyhow",
- "ax_sdk_macros",
+ "ax_aql",
  "ax_types",
+ "bytes",
+ "derive_more",
+ "futures 0.3.29",
+ "libipld",
+ "reqwest",
+ "serde",
+ "serde_cbor",
+ "serde_json",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "ax_types"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "asynchronous-codec",
+ "ax_macros",
  "base64 0.13.1",
  "bytes",
  "cbor-data",
  "chrono",
  "derive_more",
  "futures 0.3.29",
+ "futures-timer",
+ "hex",
  "im",
  "intern-arc",
  "lazy_static",
@@ -766,6 +806,7 @@ dependencies = [
  "pest",
  "pest_derive",
  "quickcheck",
+ "quickcheck_derive",
  "rand 0.8.5",
  "reqwest",
  "rusqlite",
@@ -773,38 +814,12 @@ dependencies = [
  "serde-transcode",
  "serde_cbor",
  "serde_json",
+ "structopt",
  "tokio",
+ "tokio-util 0.6.10",
  "tracing",
  "unicode-normalization",
  "url",
-]
-
-[[package]]
-name = "ax_sdk_macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "ax_types"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ax_macros",
- "base64 0.13.1",
- "cbor-data",
- "derive_more",
- "intern-arc",
- "libipld",
- "once_cell",
- "quickcheck",
- "quickcheck_derive",
- "serde",
- "serde_json",
- "unicode-normalization",
 ]
 
 [[package]]
@@ -2241,9 +2256,9 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "form_urlencoded"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a62bc1cf6f830c2ec14a513a9fb124d0a213a629668a4186f329db21fe045652"
+checksum = "e13624c2627564efccf4934284bdd98cbaa14e79b0b5a141218e507b3a823456"
 dependencies = [
  "percent-encoding",
 ]
@@ -2559,7 +2574,7 @@ dependencies = [
  "indexmap 2.1.0",
  "slab",
  "tokio",
- "tokio-util",
+ "tokio-util 0.7.10",
  "tracing",
 ]
 
@@ -2836,9 +2851,9 @@ dependencies = [
 
 [[package]]
 name = "idna"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d20d6b07bfbc108882d88ed8e37d39636dcc260e15e30c45e6ba089610b917c"
+checksum = "634d9b1461af396cad843f47fdba5597a4f9e6ddd4bfb6ff5d85028c25cb12f6"
 dependencies = [
  "unicode-bidi",
  "unicode-normalization",
@@ -3744,7 +3759,7 @@ dependencies = [
  "thiserror",
  "tinytemplate",
  "tokio",
- "tokio-util",
+ "tokio-util 0.7.10",
  "webrtc",
 ]
 
@@ -4600,9 +4615,9 @@ dependencies = [
 
 [[package]]
 name = "percent-encoding"
-version = "2.3.0"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b2a4787296e9989611394c33f193f676704af1686e70b8f8033ab5ba9a35a94"
+checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 
 [[package]]
 name = "pest"
@@ -5650,7 +5665,7 @@ dependencies = [
  "system-configuration",
  "tokio",
  "tokio-rustls",
- "tokio-util",
+ "tokio-util 0.7.10",
  "tower-service",
  "url",
  "wasm-bindgen",
@@ -6735,6 +6750,21 @@ dependencies = [
 
 [[package]]
 name = "tokio-util"
+version = "0.6.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36943ee01a6d67977dd3f84a5a1d2efeb4ada3a1ae771cadfaa535d9d9fc6507"
+dependencies = [
+ "bytes",
+ "futures-core",
+ "futures-io",
+ "futures-sink",
+ "log",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
+name = "tokio-util"
 version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5419f34732d9eb6ee4c3578b7989078579b7f039cbbb9ca2c4da015749371e15"
@@ -7154,12 +7184,12 @@ dependencies = [
 
 [[package]]
 name = "url"
-version = "2.4.1"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "143b538f18257fac9cad154828a57c6bf5157e1aa604d4816b5995bf6de87ae5"
+checksum = "31e6302e3bb753d46e83516cae55ae196fc0c309407cf11ab35cc51a4c2a4633"
 dependencies = [
  "form_urlencoded",
- "idna 0.4.0",
+ "idna 0.5.0",
  "percent-encoding",
 ]
 
@@ -7341,7 +7371,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-tungstenite",
- "tokio-util",
+ "tokio-util 0.7.10",
  "tower-service",
  "tracing",
 ]

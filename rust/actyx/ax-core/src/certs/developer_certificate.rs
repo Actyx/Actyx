@@ -1,5 +1,5 @@
 use crate::crypto::{PrivateKey, PublicKey};
-use ax_sdk::AppId;
+use ax_types::AppId;
 use derive_more::{Display, Error};
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -112,7 +112,7 @@ impl DeveloperCertificate {
 #[cfg(test)]
 mod tests {
     use crate::crypto::{PrivateKey, PublicKey};
-    use ax_sdk::app_id;
+    use ax_types::app_id;
 
     use crate::certs::developer_certificate::{
         AppDomain, DeveloperCertificate, DeveloperCertificateInput, InvalidAppId,

@@ -1,5 +1,5 @@
 use crate::crypto::{private::PrivateKey, public::PublicKey};
-use ax_sdk::NodeId;
+use ax_types::NodeId;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Debug};
 

@@ -4,10 +4,8 @@ use crate::runtime::{
     query::Query,
     value::Value,
 };
-use ax_sdk::{
-    language::{self, NonEmptyVec, SimpleExpr, SpreadExpr},
-    service::Order,
-};
+use ax_aql::{NonEmptyVec, SimpleExpr, SpreadExpr};
+use ax_types::service::Order;
 
 mod aggregate;
 use futures::{future::BoxFuture, FutureExt};
@@ -57,14 +55,14 @@ impl Operation {
     }
 }
 
-impl From<language::Operation> for Operation {
-    fn from(op: language::Operation) -> Self {
+impl From<ax_aql::Operation> for Operation {
+    fn from(op: ax_aql::Operation) -> Self {
         match op {
-            language::Operation::Filter(f) => Self::Filter(f),
-            language::Operation::Select(s) => Self::Select(s),
-            language::Operation::Aggregate(a) => Self::Aggregate(a),
-            language::Operation::Limit(l) => Self::Limit(l),
-            language::Operation::Binding(n, e) => Self::Binding(n, e),
+            ax_aql::Operation::Filter(f) => Self::Filter(f),
+            ax_aql::Operation::Select(s) => Self::Select(s),
+            ax_aql::Operation::Aggregate(a) => Self::Aggregate(a),
+            ax_aql::Operation::Limit(l) => Self::Limit(l),
+            ax_aql::Operation::Binding(n, e) => Self::Binding(n, e),
         }
     }
 }

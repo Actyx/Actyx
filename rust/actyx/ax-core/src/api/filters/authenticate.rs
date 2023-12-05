@@ -1,4 +1,4 @@
-use ax_sdk::AppId;
+use ax_types::AppId;
 use futures::FutureExt;
 use tracing::{debug, info};
 use warp::{reject, Filter, Rejection};
@@ -130,7 +130,7 @@ mod tests {
         api::{bearer_token::BearerToken, licensing::Licensing, AppMode},
         crypto::{KeyStore, PrivateKey},
     };
-    use ax_sdk::{app_id, types::Binary, Timestamp};
+    use ax_types::{app_id, types::Binary, Timestamp};
     use chrono::Utc;
     use parking_lot::RwLock;
     use std::sync::Arc;

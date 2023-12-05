@@ -1,9 +1,10 @@
 use super::{render::render_number, Num};
+use derive_more::{Display, Error};
 use num_traits::Pow;
 use std::{cmp::Ordering, convert::TryFrom};
 use Num::*;
 
-#[derive(Debug, Clone, derive_more::Display, derive_more::Error)]
+#[derive(Debug, Clone, Display, Error)]
 pub enum NumError {
     #[display(fmt = "integer overflow")]
     IntOverflow,

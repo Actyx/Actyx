@@ -1,10 +1,10 @@
 use std::collections::BTreeSet;
 
-use ax_sdk::language::{self, TagAtom};
+use ax_aql::TagAtom;
 
 // invariant: none of the sets are ever empty
 #[derive(Debug, PartialEq, Eq)]
-pub struct Dnf(pub BTreeSet<BTreeSet<language::TagAtom>>);
+pub struct Dnf(pub BTreeSet<BTreeSet<ax_aql::TagAtom>>);
 
 impl Dnf {
     pub fn or(self, other: Dnf) -> Self {
@@ -30,7 +30,7 @@ impl Dnf {
         }
         Dnf(ret)
     }
-    fn insert_unless_redundant(aa: &mut BTreeSet<BTreeSet<language::TagAtom>>, b: BTreeSet<language::TagAtom>) {
+    fn insert_unless_redundant(aa: &mut BTreeSet<BTreeSet<ax_aql::TagAtom>>, b: BTreeSet<ax_aql::TagAtom>) {
         let mut to_remove = vec![];
         for a in aa.iter() {
             if a.iter().next() == Some(&TagAtom::AllEvents) || a.is_subset(&b) {
@@ -50,8 +50,8 @@ impl Dnf {
     }
 }
 
-impl From<&language::TagAtom> for Dnf {
-    fn from(a: &language::TagAtom) -> Self {
+impl From<&ax_aql::TagAtom> for Dnf {
+    fn from(a: &ax_aql::TagAtom) -> Self {
         let mut s = BTreeSet::new();
         s.insert(a.clone());
         let mut s2 = BTreeSet::new();
@@ -60,13 +60,13 @@ impl From<&language::TagAtom> for Dnf {
     }
 }
 
-impl From<&language::TagExpr> for Dnf {
-    fn from(tag_expr: &language::TagExpr) -> Self {
-        fn dnf(expr: &language::TagExpr) -> Dnf {
+impl From<&ax_aql::TagExpr> for Dnf {
+    fn from(tag_expr: &ax_aql::TagExpr) -> Self {
+        fn dnf(expr: &ax_aql::TagExpr) -> Dnf {
             match expr {
-                language::TagExpr::Or(o) => dnf(&o.0).or(dnf(&o.1)),
-                language::TagExpr::And(a) => dnf(&a.0).and(dnf(&a.1)),
-                language::TagExpr::Atom(a) => a.into(),
+                ax_aql::TagExpr::Or(o) => dnf(&o.0).or(dnf(&o.1)),
+                ax_aql::TagExpr::And(a) => dnf(&a.0).and(dnf(&a.1)),
+                ax_aql::TagExpr::Atom(a) => a.into(),
             }
         }
         dnf(tag_expr)
@@ -75,10 +75,8 @@ impl From<&language::TagExpr> for Dnf {
 
 #[cfg(test)]
 mod tests {
-    use ax_sdk::{
-        language::{TagAtom, TagExpr},
-        Tag,
-    };
+    use ax_aql::{TagAtom, TagExpr};
+    use ax_types::Tag;
 
     use super::*;
     use std::str::FromStr;

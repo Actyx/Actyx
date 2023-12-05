@@ -22,7 +22,7 @@ use std::{
 ///
 /// This is how it works:
 /// ```no_run
-/// use ax_sdk::{app_id, AppId};
+/// use ax_types::{app_id, AppId};
 /// let app_id: AppId = app_id!("abc");
 /// ```
 /// This does not compile:
@@ -211,6 +211,17 @@ impl ReadCbor for NodeId {
     }
 }
 
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for NodeId {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        let x = u128::arbitrary(g);
+        let mut bytes = [0u8; 32];
+        bytes[0..16].copy_from_slice(&x.to_be_bytes());
+        bytes[16..32].copy_from_slice(&x.to_le_bytes());
+        NodeId(bytes)
+    }
+}
+
 /// The unique identifier of a single event stream emitted by an Actyx node
 ///
 /// The emitting node — identified by its [`NodeId`](struct.NodeId.html) — may emit multiple
@@ -314,6 +325,17 @@ impl TryFrom<String> for StreamId {
         Self::parse_str(&value).context("parsing StreamId")
     }
 }
+
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for StreamId {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        Self {
+            node_id: NodeId::arbitrary(g),
+            stream_nr: StreamNr::arbitrary(g),
+        }
+    }
+}
+
 #[cfg(feature = "sqlite")]
 mod sqlite {
     use super::*;
@@ -370,6 +392,13 @@ impl fmt::Display for StreamNr {
 }
 
 cbor_via!(StreamNr => u64: |x| -> x.0, FROM);
+
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for StreamNr {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        u64::arbitrary(g).into()
+    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -1,5 +1,5 @@
 use crate::MachineExt;
-use ax_sdk::{
+use ax_sdk::types::{
     app_id,
     service::{OffsetsResponse, PublishEvent, PublishRequest},
     AppManifest, Payload, TagSet,

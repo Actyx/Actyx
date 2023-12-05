@@ -26,7 +26,7 @@ use crate::{
         SocketAddrHelper,
     },
 };
-use ax_sdk::{service::SwarmState, NodeId};
+use ax_types::{service::SwarmState, NodeId};
 use chrono::{DateTime, Utc};
 use crossbeam::channel::Sender;
 use derive_more::Display;

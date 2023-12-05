@@ -28,7 +28,7 @@ use crate::{
 use acto::ActoRuntime;
 use actors::Actors;
 use anyhow::Context;
-use ax_sdk::service::SwarmState;
+use ax_types::service::SwarmState;
 use components::{
     android::{Android, FfiMessage},
     logging::Logging,

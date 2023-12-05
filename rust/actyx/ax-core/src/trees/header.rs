@@ -1,5 +1,5 @@
 use crate::trees::axtrees::Sha256Digest;
-use ax_sdk::LamportTimestamp;
+use ax_types::LamportTimestamp;
 use libipld::{
     cbor::DagCborCodec,
     codec::{Decode, Encode},

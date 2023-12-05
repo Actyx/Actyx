@@ -3,7 +3,7 @@ use ax_core::{
     node_connection::{request_events, EventDiagnostic, Task},
     util::formats::{ax_err, events_protocol::EventsRequest, ActyxOSCode, ActyxOSResult},
 };
-use ax_sdk::service::{Order, QueryRequest};
+use ax_sdk::types::service::{Order, QueryRequest};
 use futures::{channel::mpsc::Sender, FutureExt, StreamExt};
 use libp2p::PeerId;
 use neon::{

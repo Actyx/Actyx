@@ -1,4 +1,4 @@
-use super::{parser::query_from_str, render::render_query, Query, StaticQuery};
+use crate::language::{parser::query_from_str, render::render_query, Query, StaticQuery};
 use serde::{Deserialize, Serialize};
 
 impl<'a> Query<'a> {

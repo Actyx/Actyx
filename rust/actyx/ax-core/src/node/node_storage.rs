@@ -2,7 +2,7 @@ use std::{convert::TryFrom, path::Path, str::FromStr, sync::Arc};
 
 use crate::{crypto::PublicKey, util::formats::NodeCycleCount};
 use anyhow::{bail, Context};
-use ax_sdk::NodeId;
+use ax_types::NodeId;
 use derive_more::{Display, Error};
 use parking_lot::Mutex;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};

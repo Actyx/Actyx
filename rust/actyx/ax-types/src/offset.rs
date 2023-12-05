@@ -219,6 +219,32 @@ impl Decode<DagCborCodec> for OffsetOrMin {
     }
 }
 
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for OffsetOrMin {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        if bool::arbitrary(g) {
+            let offset: Offset = quickcheck::Arbitrary::arbitrary(g);
+            Self::from(offset)
+        } else {
+            OffsetOrMin::MIN
+        }
+    }
+}
+
+#[derive(Debug, derive_more::Display, derive_more::Error)]
+pub enum OffsetError {
+    #[display(fmt = "number too large")]
+    TooLarge,
+    #[display(fmt = "negative number")]
+    Negative,
+}
+
+impl From<OffsetError> for CodecError {
+    fn from(oe: OffsetError) -> Self {
+        Self::custom(oe)
+    }
+}
+
 /// Event offset within a stream
 ///
 /// The event offset is not a number, it rather is an identifier that can be compared
@@ -249,20 +275,6 @@ impl From<u32> for Offset {
     }
 }
 
-#[derive(Debug, derive_more::Display, derive_more::Error)]
-pub enum OffsetError {
-    #[display(fmt = "number too large")]
-    TooLarge,
-    #[display(fmt = "negative number")]
-    Negative,
-}
-
-impl From<OffsetError> for CodecError {
-    fn from(oe: OffsetError) -> Self {
-        Self::custom(oe)
-    }
-}
-
 impl TryFrom<u64> for Offset {
     type Error = OffsetError;
 
@@ -286,6 +298,14 @@ impl TryFrom<i64> for Offset {
         } else {
             Ok(Offset(value))
         }
+    }
+}
+
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for Offset {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        let offset: u32 = quickcheck::Arbitrary::arbitrary(g);
+        Self::from(offset)
     }
 }
 
@@ -762,6 +782,14 @@ impl BitOr for &OffsetMap {
 impl BitOrAssign for OffsetMap {
     fn bitor_assign(&mut self, rhs: Self) {
         *self = &*self | &rhs;
+    }
+}
+
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for OffsetMap {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        let inner: BTreeMap<StreamId, Offset> = quickcheck::Arbitrary::arbitrary(g);
+        Self::from(inner)
     }
 }
 

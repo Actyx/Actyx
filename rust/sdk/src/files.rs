@@ -3,10 +3,10 @@
 //! Check the examples for a complete example for adding, listing, and retrieving files.
 use std::time::Duration;
 
-pub use libipld::Cid;
+use libipld::Cid;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::language::{Query, StaticQuery};
+use ax_aql::{Query, StaticQuery};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

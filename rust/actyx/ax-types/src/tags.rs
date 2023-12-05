@@ -22,12 +22,12 @@ use unicode_normalization::UnicodeNormalization;
 ///
 /// This is how it works:
 /// ```no_run
-/// use ax_sdk::{tag, Tag};
+/// use ax_types::{tag, Tag};
 /// let tag: Tag = tag!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use ax_sdk::{tag, tags::Tag};
+/// use ax_types::{tag, tags::Tag};
 /// let tag: Tag = tag!("");
 /// ```
 #[macro_export]
@@ -47,7 +47,7 @@ macro_rules! tag {
 ///  - normal expressions (enclosed in parens if multiple tokens)
 ///
 /// ```rust
-/// use ax_sdk::{tag, Tag, tags, TagSet};
+/// use ax_types::{tag, Tag, tags, TagSet};
 /// use std::collections::BTreeSet;
 ///
 /// let tags: TagSet = tags!("a", "events:b");
@@ -104,7 +104,7 @@ impl Tag {
     /// # Example
     ///
     /// ```
-    /// use ax_sdk::{TagSet, tags, tag};
+    /// use ax_types::{TagSet, tags, tag};
     /// let tags: TagSet = tag!("machine").with_id("Drill-404");
     /// assert_eq!(tags, tags!("machine", "machine:Drill-404"));
     /// ```
@@ -167,7 +167,7 @@ impl Encode<DagCborCodec> for Tag {
 /// Concatenate another part to this tag
 ///
 /// ```
-/// # use ax_sdk::{tag, Tag};
+/// # use ax_types::{tag, Tag};
 /// let user_tag = tag!("user:") + "Bob";
 /// let machine_tag = tag!("machine:") + format!("{}-{}", "thing", 42);
 ///
@@ -180,6 +180,23 @@ impl<T: Into<String>> Add<T> for Tag {
     type Output = Tag;
     fn add(self, rhs: T) -> Self::Output {
         Tag::from_str(&(self.0.to_string() + rhs.into().as_str())).unwrap()
+    }
+}
+
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for Tag {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        let size = g.size().max(1);
+        let inner: String = (0..size).map(|_| char::arbitrary(g)).collect();
+        inner.parse().expect("non empty string")
+    }
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+        let str: String = self.to_string();
+        Box::new(
+            str.shrink()
+                .filter(|x| !x.is_empty())
+                .map(|x| x.parse().expect("non empty")),
+        )
     }
 }
 
@@ -433,6 +450,18 @@ impl SubAssign<&TagSet> for TagSet {
 impl BitAndAssign<&TagSet> for TagSet {
     fn bitand_assign(&mut self, rhs: &TagSet) {
         self.0.retain(|tag| rhs.contains(tag))
+    }
+}
+
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for TagSet {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        let inner: Vec<Tag> = quickcheck::Arbitrary::arbitrary(g);
+        inner.into()
+    }
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+        let tags: Vec<Tag> = self.iter().collect();
+        Box::new(tags.shrink().map(Into::into))
     }
 }
 

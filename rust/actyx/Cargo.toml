@@ -3,9 +3,10 @@
 [workspace]
 members = [
   "ax",
+  "ax-aql",
   "ax-core",
-  "ax-types",
   "ax-macros",
+  "ax-types",
   "node-ffi",
   "node-manager-bindings",
   "swarm/cli",

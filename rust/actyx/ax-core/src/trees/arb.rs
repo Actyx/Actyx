@@ -1,6 +1,6 @@
 use std::{convert::TryFrom, ops::Range};
 
-use ax_sdk::{LamportTimestamp, Tag, TagSet, Timestamp};
+use ax_types::{LamportTimestamp, Tag, TagSet, Timestamp};
 use quickcheck::{Arbitrary, Gen};
 
 use crate::trees::{

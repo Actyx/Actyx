@@ -6,7 +6,7 @@ use ax_core::{
         gen_stream::GenStream,
     },
 };
-use ax_sdk::{service::SubscribeMonotonicRequest, OffsetMap};
+use ax_sdk::types::{service::SubscribeMonotonicRequest, OffsetMap};
 use futures::{future::ready, Stream, StreamExt};
 use structopt::StructOpt;
 

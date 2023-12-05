@@ -4,11 +4,12 @@ mod render;
 
 pub use self::{
     non_empty::NonEmptyVec,
+    parser::AqlTimestamp,
     rewrite_impl::{Galactus, Tactic},
 };
 
 use self::render::render_tag_expr;
-use crate::{service::Order, tags::Tag, AppId, EventKey, LamportTimestamp, StreamId, Timestamp};
+use ax_types::{service::Order, AppId, EventKey, LamportTimestamp, StreamId, Tag, Timestamp};
 use std::{fmt::Display, num::NonZeroU64, ops::Deref, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -24,7 +25,7 @@ pub struct StaticQuery(pub Query<'static>);
 /// see the [docs](https://developer.actyx.com/docs/reference/aql).
 ///
 /// ```
-/// use ax_sdk::language::Query;
+/// use ax_aql::Query;
 ///
 /// let query = Query::parse(r#"
 /// FROM 'mytag1' & 'mytag2' -- the only mandatory part
@@ -789,12 +790,6 @@ mod for_tests {
         }
     }
 
-    impl Arbitrary for Order {
-        fn arbitrary(g: &mut Gen) -> Self {
-            *g.choose(&[Order::Asc, Order::Desc, Order::StreamAsc]).unwrap()
-        }
-    }
-
     impl Arbitrary for Source {
         fn arbitrary(g: &mut Gen) -> Self {
             if bool::arbitrary(g) {
@@ -861,6 +856,15 @@ mod for_tests {
                         ops: ops.clone(),
                     })),
             )
+        }
+    }
+
+    impl Arbitrary for SortKey {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                lamport: Arbitrary::arbitrary(g),
+                stream: Arbitrary::arbitrary(g),
+            }
         }
     }
 

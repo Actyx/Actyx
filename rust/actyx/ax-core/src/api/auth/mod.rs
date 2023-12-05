@@ -1,6 +1,6 @@
 mod validate_signed_manifest;
 
-use ax_sdk::{types::Binary, AppId, AppManifest, Timestamp};
+use ax_types::{types::Binary, AppId, AppManifest, Timestamp};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use warp::{body, post, reply, Filter, Rejection, Reply};
@@ -118,7 +118,7 @@ pub(crate) fn route(node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,),
 #[cfg(test)]
 mod tests {
     use crate::crypto::{KeyStore, PrivateKey, PublicKey};
-    use ax_sdk::{app_id, AppManifest};
+    use ax_types::{app_id, AppManifest};
     use chrono::Utc;
     use hyper::http;
     use parking_lot::lock_api::RwLock;

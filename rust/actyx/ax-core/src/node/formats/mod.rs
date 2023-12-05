@@ -3,7 +3,7 @@ use super::{
     settings::SettingsRequest,
 };
 use crate::util::formats::NodeName;
-use ax_sdk::NodeId;
+use ax_types::NodeId;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 

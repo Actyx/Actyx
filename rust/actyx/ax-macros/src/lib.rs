@@ -86,7 +86,7 @@ macro_rules! lit {
 /// This works:
 ///
 /// ```rust
-/// use actyx_sdk_macros::assert_len;
+/// use ax_macros::assert_len;
 ///
 /// // this is normally emitted by macro_rules
 /// #[allow(dead_code)]
@@ -97,7 +97,7 @@ macro_rules! lit {
 /// This does not compile:
 ///
 /// ```compile_fail
-/// use actyx_sdk_macros::assert_len;
+/// use ax_macros::assert_len;
 ///
 /// type X = assert_len!(r##"123456"##, ..5);
 /// ```
@@ -111,7 +111,7 @@ macro_rules! lit {
 /// macro_rules! transform {
 ///     ($expr:expr) => {{
 ///         mod y {
-///             actyx_sdk_macros::assert_len! {
+///             ax_macros::assert_len! {
 ///                 $expr,
 ///                 1..5,
 ///                 pub fn x() -> usize { ($expr).len() }, // it was a string literal

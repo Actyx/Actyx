@@ -5,7 +5,7 @@ use ax_core::{
     },
     util::formats::{ActyxOSResult, ActyxOSResultExt},
 };
-use ax_sdk::Payload;
+use ax_sdk::types::Payload;
 use banyan::{
     chacha20,
     store::{BranchCache, ReadOnlyStore},

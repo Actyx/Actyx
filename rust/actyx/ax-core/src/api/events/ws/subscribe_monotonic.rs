@@ -1,4 +1,4 @@
-use ax_sdk::{
+use ax_types::{
     service::{SubscribeMonotonicRequest, SubscribeMonotonicResponse},
     AppId,
 };

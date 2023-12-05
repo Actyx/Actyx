@@ -37,7 +37,7 @@ use crate::{
     },
 };
 use anyhow::{anyhow, bail, Context};
-use ax_sdk::{
+use ax_types::{
     app_id,
     service::{QueryResponse, SubscribeMonotonicResponse, SubscribeResponse},
     tag, LamportTimestamp, NodeId, Payload,

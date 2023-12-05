@@ -10,7 +10,7 @@ use ax_core::{
         version::VERSION,
     },
 };
-use ax_sdk::service::{EventMeta, EventResponse, Order, QueryRequest};
+use ax_sdk::types::service::{EventMeta, EventResponse, Order, QueryRequest};
 use cbor_data::{value::Precision, CborBuilder, Encoder, Writer};
 use chrono::{DateTime, Duration, Local, Utc};
 use console::{user_attended_stderr, Term};

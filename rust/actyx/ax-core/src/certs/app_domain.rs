@@ -1,4 +1,4 @@
-use ax_sdk::AppId;
+use ax_types::AppId;
 use derive_more::{Display, Error};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -39,7 +39,7 @@ impl FromStr for AppDomain {
 mod tests {
     use std::str::FromStr;
 
-    use ax_sdk::AppId;
+    use ax_types::AppId;
 
     use crate::certs::app_domain::InvalidAppDomainForm;
 

@@ -3,7 +3,7 @@ use crate::{
     swarm::{AxStreamBuilder, Cid, Link, RootPath, RootSource, Tree},
     trees::{axtrees::AxTrees, AxTree, AxTreeHeader},
 };
-use ax_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr};
+use ax_types::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr};
 use banyan::StreamTransaction;
 use fnv::FnvHashMap;
 use futures::{

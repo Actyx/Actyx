@@ -25,19 +25,16 @@ use std::{
 };
 use url::Url;
 
-#[cfg(feature = "with-tokio")]
-use rand::Rng;
-#[cfg(feature = "with-tokio")]
-use std::time::Duration;
-
-use crate::{
+use ax_types::{
     service::{
-        AuthenticationResponse, FilesGetResponse, OffsetsResponse, Order, PublishEvent, PublishRequest,
-        PublishResponse, QueryRequest, QueryResponse, SessionId, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
-        SubscribeRequest, SubscribeResponse,
+        AuthenticationResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse, QueryRequest,
+        QueryResponse, SessionId, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest,
+        SubscribeResponse,
     },
     AppManifest, NodeId, OffsetMap, Payload, TagSet,
 };
+
+use crate::files::FilesGetResponse;
 
 /// [`Ax`]'s configuration options.
 pub struct AxOpts {
@@ -212,14 +209,16 @@ impl Ax {
                     .context(|| format!("sending {} {}", method, url))?;
             }
 
-            #[cfg(feature = "with-tokio")]
+            #[cfg(feature = "tokio")]
             {
+                // This block implements exponential backoffs
+                use rand::Rng;
                 let mut retries = 10;
-                let mut delay = Duration::from_secs(0);
+                let mut delay = std::time::Duration::from_secs(0);
                 loop {
                     if response.status() == StatusCode::SERVICE_UNAVAILABLE && retries > 0 {
                         retries -= 1;
-                        delay = delay * 2 + Duration::from_millis(rand::thread_rng().gen_range(10..200));
+                        delay = delay * 2 + std::time::Duration::from_millis(rand::thread_rng().gen_range(10..200));
                         tracing::debug!(
                             "Actyx Node is overloaded, retrying {} {} with a delay of {:?}",
                             method,
@@ -1355,12 +1354,12 @@ mod tests {
 
     use reqwest::Client;
 
-    use crate::{
+    use ax_types::{
         service::{Order, PublishEvent},
-        tags, Ax, AxOpts, NodeId, OffsetMap, Payload,
+        tags, NodeId, OffsetMap, Payload,
     };
 
-    use super::{Publish, Query, Subscribe, SubscribeMonotonic};
+    use super::{Ax, AxOpts, Publish, Query, Subscribe, SubscribeMonotonic};
 
     /// The normal [`Ax::new`] connects to a client, the client returned by this
     /// function is a "mock" client instead that allows us to test the builder

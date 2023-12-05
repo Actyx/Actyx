@@ -409,8 +409,6 @@ impl NodeWrapper {
 
 #[cfg(test)]
 mod test {
-    use std::{collections::BTreeMap, str::FromStr};
-
     use super::*;
     use crate::{
         node::{
@@ -420,9 +418,10 @@ mod test {
         util::formats::NodeName,
     };
     use anyhow::Result;
-    use ax_sdk::language::TagExpr;
+    use ax_aql::TagExpr;
     use futures::executor::block_on;
     use serde_json::json;
+    use std::{collections::BTreeMap, str::FromStr};
     use tempfile::TempDir;
     use tokio::sync::oneshot::channel;
 

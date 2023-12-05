@@ -55,7 +55,7 @@ pub use payload::Payload;
 ///
 /// ```rust
 /// use serde::{Deserialize, Serialize};
-/// use ax_sdk::{Event, Payload};
+/// use ax_types::{Event, Payload};
 ///
 /// #[derive(Serialize, Deserialize, Debug, Clone)]
 /// struct MyPayload {
@@ -108,6 +108,17 @@ pub struct Metadata {
     pub app_id: AppId,
 }
 
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for Metadata {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        Self {
+            timestamp: quickcheck::Arbitrary::arbitrary(g),
+            tags: quickcheck::Arbitrary::arbitrary(g),
+            app_id: quickcheck::Arbitrary::arbitrary(g),
+        }
+    }
+}
+
 impl Event<Payload> {
     /// Try to extract the given type from the generic payload and return a new
     /// event envelope if successful. The produced payload is deserialized as efficiently
@@ -144,4 +155,15 @@ impl EventKey {
         stream: NodeId::new([0; 32]).stream(StreamNr::new(0)),
         offset: Offset::new(0),
     };
+}
+
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for EventKey {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        Self {
+            lamport: quickcheck::Arbitrary::arbitrary(g),
+            stream: quickcheck::Arbitrary::arbitrary(g),
+            offset: quickcheck::Arbitrary::arbitrary(g),
+        }
+    }
 }

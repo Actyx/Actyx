@@ -5,7 +5,7 @@ use ax_core::util::{
     os_arch::Arch,
     version::Version,
 };
-use ax_sdk::service::OffsetsResponse;
+use ax_sdk::types::service::OffsetsResponse;
 use escargot::{format::Message, CargoBuild};
 use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;

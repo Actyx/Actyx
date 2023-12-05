@@ -13,7 +13,7 @@ use std::{
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
 ///
 /// ```
-/// use ax_sdk::Timestamp;
+/// use ax_types::Timestamp;
 /// use chrono::{DateTime, Utc, TimeZone};
 ///
 /// let timestamp = Timestamp::now();
@@ -27,7 +27,7 @@ use std::{
     Copy, Clone, Debug, Default, From, Into, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, DagCbor,
 )]
 #[ipld(repr = "value")]
-pub struct Timestamp(u64);
+pub struct Timestamp(pub u64);
 
 cbor_via!(Timestamp => u64: |x| -> x.0, FROM);
 
@@ -110,6 +110,13 @@ impl Add<std::time::Duration> for Timestamp {
     }
 }
 
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for Timestamp {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        Timestamp::new(u64::arbitrary(g) & ((2 << 53) - 1))
+    }
+}
+
 /// A logical timestamp taken from a [`Lamport clock`](https://en.wikipedia.org/wiki/Lamport_timestamps)
 ///
 /// The lamport clock in an Actyx system is increased by the Actyx node whenever:
@@ -159,11 +166,18 @@ impl Add<u64> for LamportTimestamp {
     }
 }
 
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for LamportTimestamp {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        LamportTimestamp::new(u64::arbitrary(g))
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use std::time::Duration;
-
     use super::*;
+    use libipld::{cbor::DagCborCodec, codec::assert_roundtrip, ipld};
+    use std::time::Duration;
 
     #[test]
     fn timestamp_add_u64() {
@@ -200,12 +214,6 @@ mod test {
         assert_eq!(Timestamp(30) - Timestamp(3), 27);
         assert_eq!(Timestamp(30) - Timestamp(300), 0);
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use libipld::{cbor::DagCborCodec, codec::assert_roundtrip, ipld};
 
     #[test]
     fn timestamp_libipld() {

@@ -14,7 +14,7 @@ use crate::{
     },
 };
 use anyhow::anyhow;
-use ax_sdk::{
+use ax_types::{
     service::{Diagnostic, EventResponse, PublishResponse},
     NodeId, Payload,
 };

@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Context, Result};
-use ax_sdk::NodeId;
+use ax_types::NodeId;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     convert::TryFrom,

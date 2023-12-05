@@ -6,7 +6,7 @@ use crate::{
         tags::{ScopedTag, ScopedTagSet, TagScope},
     },
 };
-use ax_sdk::{app_id, tag, tags, Payload};
+use ax_types::{app_id, tag, tags, Payload};
 use derive_more::{Deref, Display, From};
 use futures::{StreamExt, TryFutureExt};
 use libipld::cid::Cid;

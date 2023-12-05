@@ -5,7 +5,7 @@ use crate::{
         query::{OffsetQuery, TimeQuery},
     },
 };
-use ax_sdk::{Payload, Timestamp};
+use ax_types::{Payload, Timestamp};
 use banyan::{query::AndQuery, Tree};
 use futures::future::{join_all, FutureExt};
 use lazy_static::lazy_static;
@@ -470,18 +470,20 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
 
 #[cfg(test)]
 mod test {
-    use std::{collections::BTreeMap, iter::once, str::FromStr, sync::Arc};
-
-    use crate::{ax_futures_util::stream::AxStreamExt, trees::query::TagExprQuery};
-    use ax_sdk::{app_id, language::TagExpr, tags, AppId, Payload, StreamNr};
-    use futures::{future, StreamExt, TryStreamExt};
-    use tokio::time::{sleep, timeout};
-
     use super::*;
-    use crate::swarm::{BanyanConfig, EventRoute, SwarmConfig};
+    use crate::{
+        ax_futures_util::stream::AxStreamExt,
+        swarm::{BanyanConfig, EventRoute, SwarmConfig},
+        trees::query::TagExprQuery,
+    };
     use acto::ActoRef;
+    use ax_aql::TagExpr;
+    use ax_types::{app_id, tags, AppId, Payload, StreamNr};
+    use futures::{future, StreamExt, TryStreamExt};
     use itertools::Either;
     use parking_lot::Mutex;
+    use std::{collections::BTreeMap, iter::once, sync::Arc};
+    use tokio::time::{sleep, timeout};
 
     fn app_id() -> AppId {
         app_id!("test")

@@ -2,7 +2,7 @@ use std::{future::Future, io::Write, time::Duration};
 
 use crate::swarm::{internal_app_id, BanyanStore};
 use anyhow::Result;
-use ax_sdk::{tags, Payload};
+use ax_types::{tags, Payload};
 use libipld::{
     cbor::{
         cbor::MajorKind,
