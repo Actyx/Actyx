@@ -1097,40 +1097,46 @@ mod tests {
 
     #[test]
     fn interpolation() {
-        Runtime::new().unwrap().block_on(async {
-            let store = BanyanStore::test("lower_bound").await.unwrap();
-            let (_node_id, service) = setup(&store);
+        Runtime::new()
+            .unwrap()
+            .block_on(async {
+                timeout(TIMEOUT, async {
+                    let store = BanyanStore::test("lower_bound").await.unwrap();
+                    let (_node_id, service) = setup(&store);
 
-            publish(&service, tags!("a1"), 2).await;
-            publish(&service, tags!("a2"), 3).await;
-            publish(&service, tags!("a3"), 1).await;
+                    publish(&service, tags!("a1"), 2).await;
+                    publish(&service, tags!("a2"), 3).await;
+                    publish(&service, tags!("a3"), 1).await;
 
-            assert_eq!(
-                query(
-                    &service,
-                    "FEATURES(zøg subQuery interpolation binding) \
+                    assert_eq!(
+                        query(
+                            &service,
+                            "FEATURES(zøg subQuery interpolation binding) \
                             FROM 'a1' LET x := _ SELECT \
                                 FROM `a{_}` SELECT \
                                     FROM `a{_}` SELECT `x = {x} y = {_}`"
-                )
-                .await,
-                vec!["[[\"x = 2 y = 1\"]]", "offsets"]
-            );
+                        )
+                        .await,
+                        vec!["[[\"x = 2 y = 1\"]]", "offsets"]
+                    );
 
-            assert_eq!(
-                query(
-                    &service,
-                    r#"PRAGMA features := interpolation
+                    assert_eq!(
+                        query(
+                            &service,
+                            r#"PRAGMA features := interpolation
 PRAGMA events
 {"time":"2011-06-17T18:30+02:00","appId":"test","payload":null}
 ENDPRAGMA
                             FROM appId(test) SELECT `{(TIME(_))[0]}`
                             "#
-                )
-                .await,
-                vec!["\"2011-06-17T16:30:00.000000Z\"", "offsets"]
-            )
-        });
+                        )
+                        .await,
+                        vec!["\"2011-06-17T16:30:00.000000Z\"", "offsets"]
+                    )
+                })
+                .await
+            })
+            .unwrap();
     }
 
     #[test]
