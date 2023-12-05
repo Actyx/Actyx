@@ -5,7 +5,6 @@ use ax_core::{
 };
 use futures::{stream, Stream};
 use serde::Serialize;
-use structopt::StructOpt;
 
 pub struct SettingsGet();
 impl AxCliCommand for SettingsGet {
@@ -19,24 +18,24 @@ impl AxCliCommand for SettingsGet {
         serde_yaml::to_string(&result).unwrap_or_else(|_| "Unkown error converting settings to yaml".into())
     }
 }
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+
+#[derive(clap::Parser, Clone, Debug)]
 /// Gets settings for a specific scope.
 pub struct GetOpt {
-    #[structopt(flatten)]
+    #[command(flatten)]
     actual_opts: GetSettingsCommand,
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 }
 
-#[derive(StructOpt, Debug, Serialize)]
+#[derive(clap::Parser, Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct GetSettingsCommand {
     /// Only return settings explicitly set by the user and skip default values.
-    #[structopt(long = "no-defaults")]
+    #[arg(long = "no-defaults")]
     no_defaults: bool,
     /// Scope from which you want to get the settings.
-    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
+    #[arg(name = "SCOPE", value_parser = super::parse_scope)]
     scope: ax_core::settings::Scope,
 }
 

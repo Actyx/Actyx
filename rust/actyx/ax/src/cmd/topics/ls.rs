@@ -10,7 +10,6 @@ use futures::{channel::mpsc, future::join_all, stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use structopt::StructOpt;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "connection")]
@@ -119,16 +118,15 @@ impl AxCliCommand for TopicsList {
 }
 
 /// List all topics
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct LsOpts {
     /// The IP addresses or <host>:<admin port> of the target nodes.
-    #[structopt(name = "NODE", required = true)]
+    #[arg(name = "NODE", required = true)]
     authority: Vec<Authority>,
     /// The private key file to use for authentication.
-    #[structopt(short, long)]
+    #[arg(short, long)]
     identity: Option<KeyPathWrapper>,
     /// Timeout time for the operation (in seconds, with a maximum of 255).
-    #[structopt(short, long, default_value = "5")]
+    #[arg(short, long, default_value = "5")]
     timeout: u8,
 }

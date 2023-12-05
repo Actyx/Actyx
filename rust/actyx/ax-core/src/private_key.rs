@@ -157,7 +157,7 @@ pub fn load_dev_cert(path: Option<PathBuf>) -> ActyxOSResult<DeveloperCertificat
     serde_json::from_str(&s).ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "reading developer certificate")
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Newtype wrapper around a path to key material, to be used with
 /// structopt/clap.
 pub struct KeyPathWrapper(PathBuf);

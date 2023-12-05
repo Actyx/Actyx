@@ -9,6 +9,7 @@ export type Release = {
   changes: Change[]
 }
 export type ReleaseHistory = {
+  ax?: Release[]
   actyx: Release[]
   cli: Release[]
   'node-manager': Release[]

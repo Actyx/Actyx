@@ -8,13 +8,11 @@ use ax_core::{
 };
 use ax_sdk::types::{service::SubscribeMonotonicRequest, OffsetMap};
 use futures::{future::ready, Stream, StreamExt};
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// issue a monotonic subscription
 pub struct SubscribeMonotonicOpts {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
     /// event API query
     query: String,

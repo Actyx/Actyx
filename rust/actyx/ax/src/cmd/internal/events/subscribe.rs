@@ -10,13 +10,11 @@ use ax_core::{
 use ax_sdk::types::service::SubscribeRequest;
 use futures::{future::ready, Stream, StreamExt};
 use std::{fs::File, io::Read};
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// subscribe to events
 pub struct SubscribeOpts {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
     /// event API query
     query: String,

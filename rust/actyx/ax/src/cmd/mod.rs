@@ -2,6 +2,7 @@ pub mod apps;
 pub mod events;
 pub mod internal;
 pub mod nodes;
+pub mod run;
 pub mod settings;
 pub mod swarms;
 pub mod topics;
@@ -16,7 +17,6 @@ use ax_core::{
 use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
 use libp2p::PeerId;
 use serde::{Deserialize, Serialize};
-use structopt::StructOpt;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
@@ -39,13 +39,13 @@ impl<T> From<ActyxOSResult<T>> for ActyxCliResult<T> {
     }
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct ConsoleOpt {
     /// the IP address or `<host>:<admin port>` of the node to perform the operation on.
-    #[structopt(name = "NODE", required = true)]
+    #[arg(name = "NODE", required = true)]
     authority: Authority,
     /// File from which the identity (private key) for authentication is read.
-    #[structopt(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
+    #[arg(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     identity: Option<KeyPathWrapper>,
 }
 
@@ -74,7 +74,7 @@ pub(crate) mod consts {
 }
 
 pub trait AxCliCommand {
-    type Opt: StructOpt;
+    type Opt: clap::Parser;
     type Output: Serialize + 'static;
     const WRAP: bool = true;
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin>;

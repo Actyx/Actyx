@@ -3,10 +3,8 @@ use ax_core::{certs::app_manifest_signer::sign_manifest_from_files, util::format
 use ax_sdk::types::AppManifest;
 use futures::{stream, Stream};
 use std::path::PathBuf;
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// sign an app manifest
 pub struct SignOpts {
     /// Path to certificate that shall be used for signing

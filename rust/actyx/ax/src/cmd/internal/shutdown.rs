@@ -4,13 +4,11 @@ use ax_core::{
     util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest},
 };
 use futures::{stream, FutureExt, Stream};
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+#[derive(clap::Parser, Clone, Debug)]
 /// request the node to shut down
 pub struct ShutdownOpts {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 }
 

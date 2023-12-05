@@ -4,19 +4,17 @@ mod explore;
 use crate::cmd::AxCliCommand;
 use ax_core::trees::axtrees::Sha256Digest;
 use futures::Future;
-use structopt::StructOpt;
 use TreesOpts::DumpTree;
 
 use self::{dump::DumpTreeOpts, explore::ExploreTreeOpts};
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = ax_core::util::version::VERSION.as_str())]
+#[derive(clap::Subcommand, Clone, Debug)]
 pub enum TreesOpts {
     /// Dump contents of banyan trees stored in sqlite. Works with either a
     /// single tree or a data blob.
-    #[structopt(name = "dump", no_version)]
+    #[command(name = "dump")]
     DumpTree(DumpTreeOpts),
-    #[structopt(name = "explore", no_version)]
+    #[command(name = "explore")]
     ExploreTree(ExploreTreeOpts),
 }
 
