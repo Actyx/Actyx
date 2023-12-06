@@ -231,20 +231,6 @@ impl quickcheck::Arbitrary for OffsetOrMin {
     }
 }
 
-#[derive(Debug, derive_more::Display, derive_more::Error)]
-pub enum OffsetError {
-    #[display(fmt = "number too large")]
-    TooLarge,
-    #[display(fmt = "negative number")]
-    Negative,
-}
-
-impl From<OffsetError> for CodecError {
-    fn from(oe: OffsetError) -> Self {
-        Self::custom(oe)
-    }
-}
-
 /// Event offset within a stream
 ///
 /// The event offset is not a number, it rather is an identifier that can be compared
@@ -272,6 +258,20 @@ impl From<u32> for Offset {
     fn from(value: u32) -> Offset {
         // An u32 is guaranteed to fit into an offset
         Self(value as i64)
+    }
+}
+
+#[derive(Debug, derive_more::Display, derive_more::Error)]
+pub enum OffsetError {
+    #[display(fmt = "number too large")]
+    TooLarge,
+    #[display(fmt = "negative number")]
+    Negative,
+}
+
+impl From<OffsetError> for CodecError {
+    fn from(oe: OffsetError) -> Self {
+        Self::custom(oe)
     }
 }
 
