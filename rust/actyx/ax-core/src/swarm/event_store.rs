@@ -14,14 +14,13 @@ use ax_types::{
     StreamNr, TagSet, Timestamp,
 };
 use banyan::FilteredChunk;
-use derive_more::{Display, Error, From};
 use futures::{
     future,
     stream::{self, BoxStream},
     StreamExt, TryStreamExt,
 };
 
-#[derive(Clone, Debug, Display, Error, From)]
+#[derive(Clone, Debug, derive_more::Display, derive_more::Error, derive_more::From)]
 pub enum Error {
     #[display(fmt = "Upper bounds must be within the current offsets’ present.")]
     InvalidUpperBounds,

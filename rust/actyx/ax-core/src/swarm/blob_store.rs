@@ -1,12 +1,11 @@
 use crate::swarm::DbPath;
 use ax_types::{AppId, Timestamp};
-use derive_more::{Display, Error};
 use parking_lot::Mutex;
 use rusqlite::{named_params, params, Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 
-#[derive(Debug, Display, Error)]
+#[derive(Debug, derive_more::Display, derive_more::Error)]
 #[display(fmt = "stored blob is too large after compression: {}bytes", size)]
 pub struct BlobTooLarge {
     #[error(ignore)]

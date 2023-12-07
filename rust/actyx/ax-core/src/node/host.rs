@@ -2,10 +2,9 @@ use super::{node_settings::Settings, node_storage::NodeStorage, settings::system
 use crate::{crypto::KeyStoreRef, util::formats::NodeCycleCount};
 use anyhow::{Context, Result};
 use ax_types::NodeId;
-use derive_more::Display;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Display)]
+#[derive(Debug, Clone, derive_more::Display)]
 #[display(fmt = "data directory `{}` is locked by another Actyx process", _0)]
 pub struct WorkdirLocked(String);
 impl std::error::Error for WorkdirLocked {}

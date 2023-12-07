@@ -3,7 +3,7 @@ use anyhow::{anyhow, Error};
 use derive_more::{Display, From};
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Display, From)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, derive_more::Display, derive_more::From)]
 pub enum Product {
     #[display(fmt = "actyx")]
     Actyx,

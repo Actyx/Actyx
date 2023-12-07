@@ -8,18 +8,27 @@ pub use admin_protocol::*;
 pub use errors::*;
 pub use logs::*;
 
-use derive_more::{AsRef, Display, From, Into};
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
 
 /// Keeps track of how many times a node was restarted
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, From)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, derive_more::From)]
 pub struct NodeCycleCount(u64);
 
-#[derive(Deserialize, PartialEq, Eq, Clone, Debug, From, Into, AsRef, Display)]
+#[derive(
+    Deserialize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    derive_more::From,
+    derive_more::Into,
+    derive_more::AsRef,
+    derive_more::Display,
+)]
 pub struct NodeName(pub String);
 
-#[derive(Debug, Display)]
+#[derive(Debug, derive_more::Display)]
 pub enum NodeErrorContext {
     #[display(fmt = "Bind failed on port {} for {}", addr, component)]
     BindFailed { addr: Multiaddr, component: String },
@@ -39,10 +48,9 @@ macro_rules! ax_panic {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::sync::Arc;
 
-    #[derive(Clone, Debug, Display, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, derive_more::Display)]
     #[display(fmt = "Whatever")]
     struct MyCustomError {
         the_answer: usize,

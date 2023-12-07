@@ -1,6 +1,5 @@
 use anyhow::Result;
 use bytes::Bytes;
-use derive_more::{Display, Error};
 use futures::{
     future::{self, BoxFuture, FusedFuture},
     stream::{iter, BoxStream, Stream, StreamExt},
@@ -1279,7 +1278,7 @@ impl<'a> FusedFuture for SubscribeMonotonic<'a> {
 /// The Event Service does not map client errors or internal errors to HTTP status codes,
 /// instead it gives more structured information using this data type, except when the request
 /// is not understood at all.
-#[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, derive_more::Error, derive_more::Display)]
 #[display(fmt = "error {} while {}: {}", error_code, context, error)]
 #[serde(rename_all = "camelCase")]
 pub struct AxError {

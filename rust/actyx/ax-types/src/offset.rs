@@ -1,14 +1,8 @@
-use std::{
-    cmp::Ordering,
-    collections::{BTreeMap, BTreeSet},
-    convert::TryFrom,
-    fmt::{self, Debug},
-    io::{Read, Seek, SeekFrom, Write},
-    iter::FromIterator,
-    ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
+use crate::{
+    event::{Event, EventKey},
+    scalars::StreamId,
 };
-
-use derive_more::{Display, From, Into};
+use cbor_data::{cbor_via, codec::CodecError};
 use libipld::{
     cbor::DagCborCodec,
     codec::{Decode, Encode},
@@ -18,12 +12,15 @@ use serde::{
     de::{Error, Visitor},
     Deserialize, Deserializer, Serialize,
 };
-
-use crate::{
-    event::{Event, EventKey},
-    scalars::StreamId,
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+    convert::TryFrom,
+    fmt::{self, Debug},
+    io::{Read, Seek, SeekFrom, Write},
+    iter::FromIterator,
+    ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
 };
-use cbor_data::{cbor_via, codec::CodecError};
 
 /// Maximum possible offset
 ///
@@ -42,7 +39,21 @@ const MAX_SAFE_INT: i64 = 9_007_199_254_740_991;
 /// the available set of values.
 ///
 /// The `MIN` value is not a valid offset, it is sorted before [`Offset::ZERO`](struct.Offset.html#associatedconstant.ZERO).
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, From, Into, Display)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Serialize,
+    Deserialize,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    derive_more::From,
+    derive_more::Into,
+    derive_more::Display,
+)]
 pub struct OffsetOrMin(#[serde(with = "i64_from_minus_one")] i64);
 
 mod i64_from_minus_one {
@@ -238,7 +249,7 @@ impl quickcheck::Arbitrary for OffsetOrMin {
 /// find the successor or predecessor, respectively. `incr` does not return an option
 /// because for the use-case of naming events within a stream it is impossible to exhaust
 /// the available set of values.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, Display)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, derive_more::Display)]
 pub struct Offset(#[serde(deserialize_with = "offset_i64")] i64);
 
 impl Offset {

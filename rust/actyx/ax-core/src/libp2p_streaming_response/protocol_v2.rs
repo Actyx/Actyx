@@ -1,12 +1,11 @@
 use super::handler::Response;
 use crate::libp2p_streaming_response::Codec;
-use derive_more::{Display, Error, From};
 use futures::{channel::mpsc, AsyncReadExt, AsyncWriteExt, Future};
 use libp2p::{core::upgrade::NegotiationError, swarm::NegotiatedSubstream};
 use serde::de::DeserializeOwned;
 use std::io::ErrorKind;
 
-#[derive(Error, Display, Debug, From)]
+#[derive(Debug, derive_more::Error, derive_more::Display, derive_more::From)]
 pub enum ProtocolError {
     #[display(fmt = "timeout while waiting for request receive confirmation")]
     Timeout,

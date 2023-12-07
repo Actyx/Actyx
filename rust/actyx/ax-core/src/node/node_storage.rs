@@ -3,12 +3,11 @@ use std::{convert::TryFrom, path::Path, str::FromStr, sync::Arc};
 use crate::{crypto::PublicKey, util::formats::NodeCycleCount};
 use anyhow::{bail, Context};
 use ax_types::NodeId;
-use derive_more::{Display, Error};
 use parking_lot::Mutex;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use tracing::*;
 
-#[derive(Debug, Clone, Copy, Display, Error)]
+#[derive(Debug, Clone, Copy, derive_more::Display, derive_more::Error)]
 #[display(
     fmt = "Attempting to start Actyx v2.9+ with a data directory from Actyx v2.8 or earlier.\n\
            See the documentation for when and how migration is supported. Meanwhile, you can start from a\n\
@@ -16,7 +15,7 @@ use tracing::*;
 )]
 pub struct WrongVersionV2_8;
 
-#[derive(Debug, Clone, Copy, Display, Error)]
+#[derive(Debug, Clone, Copy, derive_more::Display, derive_more::Error)]
 #[display(
     fmt = "Attempting to start Actyx v2 with a data directory from ActyxOS v1.1, which is currently not supported.\n\
            See the documentation for when and how migration is supported. Meanwhile, you can start from a\n\
@@ -24,7 +23,7 @@ pub struct WrongVersionV2_8;
 )]
 pub struct WrongVersionV1;
 
-#[derive(Debug, Clone, Copy, Display, Error)]
+#[derive(Debug, Clone, Copy, derive_more::Display, derive_more::Error)]
 #[display(
     fmt = "Attempting to start Actyx v2 with a data directory from ActyxOS v1.0, which is currently not supported.\n\
            See the documentation for when and how migration is supported. Meanwhile, you can start from a\n\
@@ -32,7 +31,7 @@ pub struct WrongVersionV1;
 )]
 pub struct WrongVersionV0;
 
-#[derive(Debug, Clone, Copy, Display)]
+#[derive(Debug, Clone, Copy, derive_more::Display)]
 #[display(
     fmt = "Attempting to start Actyx v2 with a data directory from a future version (schema ID is {})",
     _0

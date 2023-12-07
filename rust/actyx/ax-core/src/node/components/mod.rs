@@ -1,7 +1,6 @@
 use super::{formats::ShutdownReason, node_settings::Settings, util::spawn_with_name};
 use anyhow::Result;
 use crossbeam::{channel, select};
-use derive_more::{Display, From};
 use std::thread::JoinHandle;
 
 pub mod android;
@@ -71,7 +70,7 @@ macro_rules! state_change {
     };
 }
 
-#[derive(Debug, Clone, Eq, PartialOrd, Ord, PartialEq, Display, From)]
+#[derive(Debug, Clone, Eq, PartialOrd, Ord, PartialEq, derive_more::Display, derive_more::From)]
 pub struct ComponentType(String);
 
 impl From<&str> for ComponentType {

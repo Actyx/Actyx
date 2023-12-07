@@ -3,7 +3,6 @@ use ax_core::{
     node::{BindTo, PortOrHostPort},
     util::SocketAddrHelper,
 };
-use derive_more::{Display, Error};
 use std::{
     convert::TryInto,
     net::{IpAddr, Ipv4Addr},
@@ -31,7 +30,7 @@ impl FromStr for Color {
     }
 }
 
-#[derive(Debug, Display, Error)]
+#[derive(Debug, derive_more::Display, derive_more::Error)]
 #[display(fmt = "allowed values are 1, on, true, 0, off, false, auto (case insensitive)")]
 pub struct NoColor;
 

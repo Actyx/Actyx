@@ -1,11 +1,10 @@
 use crate::crypto::{PrivateKey, PublicKey};
 use ax_types::AppId;
-use derive_more::{Display, Error};
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::certs::{app_domain::AppDomain, signature::Signature};
 
-#[derive(Debug, Display, Error)]
+#[derive(Debug, derive_more::Display, derive_more::Error)]
 #[display(fmt = "AppId '{}' is not allowed in app_domains '{:?}'", app_id, app_domains)]
 pub struct InvalidAppId {
     app_id: AppId,

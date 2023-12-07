@@ -20,7 +20,7 @@ use crate::trees::{
     tags::{ScopedTag, ScopedTagSet, TagScope},
 };
 
-#[derive(Debug, derive_more::Display, derive_more::Error, Clone)]
+#[derive(Debug, Clone, derive_more::Display, derive_more::Error)]
 pub enum TagExprError {
     #[display(fmt = "Lamport timestamp restrictions must be the same on all branches")]
     InconsistentLamport,

@@ -29,7 +29,6 @@ use crate::{
 use ax_types::{service::SwarmState, NodeId};
 use chrono::{DateTime, Utc};
 use crossbeam::channel::Sender;
-use derive_more::Display;
 use futures::future::try_join_all;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -67,7 +66,7 @@ impl NodeInfo {
     }
 }
 
-#[derive(Debug, Display)]
+#[derive(Debug, derive_more::Display)]
 pub struct Error(anyhow::Error); // anyhow::Error is sealed so we wrap it
 impl std::error::Error for Error {}
 impl warp::reject::Reject for Error {}
@@ -78,7 +77,7 @@ pub fn reject(err: anyhow::Error) -> Rejection {
 
 pub type Result<T> = std::result::Result<T, Rejection>;
 
-#[derive(Debug, Display, Deserialize)]
+#[derive(Debug, Deserialize, derive_more::Display)]
 pub struct Token(pub(crate) String);
 
 impl From<String> for Token {
