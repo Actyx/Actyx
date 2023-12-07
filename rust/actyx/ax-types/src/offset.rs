@@ -438,29 +438,6 @@ impl Decode<DagCborCodec> for Offset {
     }
 }
 
-#[cfg(feature = "sqlite")]
-mod sqlite {
-    use super::*;
-    use rusqlite::{
-        types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef},
-        ToSql,
-    };
-
-    impl FromSql for Offset {
-        fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-            value
-                .as_i64()
-                .and_then(|o| Offset::try_from(o).map_err(|_| FromSqlError::OutOfRange(o)))
-        }
-    }
-
-    impl ToSql for Offset {
-        fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-            Ok(ToSqlOutput::from(self.0))
-        }
-    }
-}
-
 /// Multi-dimensional cursor for event streams: an `OffsetMap` describes the set of events
 /// given by the event streams of each included source up to the associated [`Offset`](struct.Offset.html).
 ///

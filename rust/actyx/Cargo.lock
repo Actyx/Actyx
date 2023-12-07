@@ -810,10 +810,13 @@ dependencies = [
  "derive_more",
  "futures 0.3.29",
  "libipld",
+ "rand 0.8.5",
  "reqwest",
  "serde",
  "serde_cbor",
  "serde_json",
+ "tokio",
+ "tokio-util 0.6.10",
  "tracing",
  "url",
 ]

@@ -1,19 +1,27 @@
+use crate::files::FilesGetResponse;
 use anyhow::Result;
+use ax_types::{
+    service::{
+        AuthenticationResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse, QueryRequest,
+        QueryResponse, SessionId, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest,
+        SubscribeResponse,
+    },
+    AppManifest, NodeId, OffsetMap, Payload, TagSet,
+};
 use bytes::Bytes;
 use futures::{
     future::{self, BoxFuture, FusedFuture},
     stream::{iter, BoxStream, Stream, StreamExt},
     FutureExt,
 };
-
 use libipld::Cid;
+use rand::Rng;
 use reqwest::{
     header::{CONTENT_DISPOSITION, CONTENT_TYPE},
     multipart::Form,
     Client, RequestBuilder, Response, StatusCode,
 };
 use serde::{Deserialize, Serialize};
-
 use std::{
     fmt::Debug,
     future::Future,
@@ -23,17 +31,6 @@ use std::{
     sync::{Arc, RwLock},
 };
 use url::Url;
-
-use ax_types::{
-    service::{
-        AuthenticationResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse, QueryRequest,
-        QueryResponse, SessionId, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest,
-        SubscribeResponse,
-    },
-    AppManifest, NodeId, OffsetMap, Payload, TagSet,
-};
-
-use crate::files::FilesGetResponse;
 
 /// [`Ax`]'s configuration options.
 pub struct AxOpts {
@@ -208,33 +205,28 @@ impl Ax {
                     .context(|| format!("sending {} {}", method, url))?;
             }
 
-            #[cfg(feature = "tokio")]
-            {
-                // This block implements exponential backoffs
-                use rand::Rng;
-                let mut retries = 10;
-                let mut delay = std::time::Duration::from_secs(0);
-                loop {
-                    if response.status() == StatusCode::SERVICE_UNAVAILABLE && retries > 0 {
-                        retries -= 1;
-                        delay = delay * 2 + std::time::Duration::from_millis(rand::thread_rng().gen_range(10..200));
-                        tracing::debug!(
-                            "Actyx Node is overloaded, retrying {} {} with a delay of {:?}",
-                            method,
-                            url,
-                            delay
-                        );
-                        tokio::time::sleep(delay).await;
-                        response = builder
-                            .try_clone()
-                            .expect("Already cloned it once")
-                            .header("Authorization", &format!("Bearer {}", token))
-                            .send()
-                            .await
-                            .context(|| format!("sending {} {}", method, url))?;
-                    } else {
-                        break;
-                    }
+            let mut retries = 10;
+            let mut delay = std::time::Duration::from_secs(0);
+            loop {
+                if response.status() == StatusCode::SERVICE_UNAVAILABLE && retries > 0 {
+                    retries -= 1;
+                    delay = delay * 2 + std::time::Duration::from_millis(rand::thread_rng().gen_range(10..200));
+                    tracing::debug!(
+                        "Actyx Node is overloaded, retrying {} {} with a delay of {:?}",
+                        method,
+                        url,
+                        delay
+                    );
+                    tokio::time::sleep(delay).await;
+                    response = builder
+                        .try_clone()
+                        .expect("Already cloned it once")
+                        .header("Authorization", &format!("Bearer {}", token))
+                        .send()
+                        .await
+                        .context(|| format!("sending {} {}", method, url))?;
+                } else {
+                    break;
                 }
             }
         } else {
