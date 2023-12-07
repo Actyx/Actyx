@@ -183,7 +183,7 @@ impl TryFrom<&Option<KeyPathWrapper>> for AxPrivateKey {
             path.0
                 .to_str()
                 .and_then(|s| s.parse::<AxPrivateKey>().ok())
-                .ok_or(ActyxOSError::internal(""))
+                .ok_or(ActyxOSError::internal("failed to parse private key"))
                 .or_else(|_| AxPrivateKey::from_file(&path.0))
         } else {
             let private_key_path = AxPrivateKey::default_user_identity_path()?;
