@@ -7,6 +7,7 @@ use std::{
     convert::{TryFrom, TryInto},
     fmt::{self, Debug, Display, Formatter},
     ops::{Add, Sub},
+    str::FromStr,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -107,6 +108,19 @@ impl Add<std::time::Duration> for Timestamp {
     type Output = Timestamp;
     fn add(self, duration: std::time::Duration) -> Self::Output {
         Self(self.0.saturating_add(duration.as_micros() as u64))
+    }
+}
+
+impl FromStr for Timestamp {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let ts = iso8601_timestamp::Timestamp::parse(s).ok_or(anyhow::anyhow!("failed to parse timestamp"))?;
+
+        Ok(Self(u64::try_from(
+            ts.duration_since(iso8601_timestamp::Timestamp::UNIX_EPOCH)
+                .whole_microseconds(),
+        )?))
     }
 }
 

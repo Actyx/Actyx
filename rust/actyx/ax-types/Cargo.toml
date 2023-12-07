@@ -19,6 +19,9 @@ sqlite = ["rusqlite"]
 
 [dependencies]
 ax_macros = { version = "0.1", path = "../ax-macros" }
+
+iso8601-timestamp = "0.2.13"
+
 anyhow = "1.0.52"
 base64 = "0.13.0"
 bytes = { version = "1.1.0", optional = true }

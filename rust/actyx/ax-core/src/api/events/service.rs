@@ -13,7 +13,7 @@ use crate::{
         BanyanStore,
     },
 };
-use ax_aql::{AqlTimestamp, Arr, SimpleExpr, SpreadExpr};
+use ax_aql::{Arr, SimpleExpr, SpreadExpr};
 use ax_types::{
     app_id,
     service::{
@@ -607,10 +607,7 @@ async fn store_line(store: &BanyanStore, line: &str) -> anyhow::Result<()> {
     let line: Line = serde_json::from_str(line)?;
     let timestamp = line
         .timestamp
-        .or_else(|| {
-            line.time
-                .and_then(|t| t.parse::<AqlTimestamp>().map(Timestamp::from).ok())
-        })
+        .or_else(|| line.time.and_then(|t| t.parse::<Timestamp>().ok()))
         .unwrap_or_else(Timestamp::now);
     let app_id = line.app_id.unwrap_or_else(|| app_id!("com.actyx.test"));
     let events = vec![(line.tags.unwrap_or_default(), line.payload)];

@@ -4,7 +4,6 @@ mod render;
 
 pub use self::{
     non_empty::NonEmptyVec,
-    parser::AqlTimestamp,
     rewrite_impl::{Galactus, Tactic},
 };
 

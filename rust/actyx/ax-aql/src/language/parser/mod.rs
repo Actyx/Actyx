@@ -665,29 +665,6 @@ impl FromStr for SimpleExpr {
     }
 }
 
-pub struct AqlTimestamp(u64);
-
-impl From<Timestamp> for AqlTimestamp {
-    fn from(value: Timestamp) -> Self {
-        Self(value.0)
-    }
-}
-
-impl From<AqlTimestamp> for Timestamp {
-    fn from(value: AqlTimestamp) -> Self {
-        Self(value.0)
-    }
-}
-
-impl FromStr for AqlTimestamp {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let p = Aql::parse(Rule::main_timestamp, s)?.single()?.single()?;
-        r_timestamp(p).map(AqlTimestamp::from)
-    }
-}
-
 impl FromStr for super::var::Var {
     type Err = anyhow::Error;
 
