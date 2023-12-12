@@ -9,6 +9,7 @@ mod node_impl;
 mod node_storage;
 pub mod settings;
 mod util;
+pub(crate) mod version;
 
 pub use components::swarm_observer::SwarmObserver;
 pub use node_impl::NodeError;

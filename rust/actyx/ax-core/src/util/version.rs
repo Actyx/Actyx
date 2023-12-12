@@ -1,8 +1,29 @@
-use crate::util::os_arch::OsArch;
+use crate::DATABANK_VERSION;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{
+    env::consts::{ARCH, OS},
+    str::FromStr,
+};
 
+// The hash is provided by GitHub actions, for more information, see:
+// https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
+const GIT_HASH: &str = match option_env!("GIT_HASH") {
+    Some(hash) => hash,
+    // This is for cargo installations and builds
+    None => "cargo",
+};
+
+#[cfg(debug_assertions)]
+const PROFILE: &str = "debug";
+#[cfg(not(debug_assertions))]
+const PROFILE: &str = "release";
+
+lazy_static! {
+    pub static ref VERSION: String = NodeVersion::get().to_string();
+}
+
+// NOTE: This can be replaced with the `semver` crate
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Version {
     major: u8,
@@ -39,6 +60,7 @@ impl std::fmt::Display for Version {
     }
 }
 
+// *May* be able to replace this structure with a single string using `const_format`
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeVersion {
@@ -48,27 +70,13 @@ pub struct NodeVersion {
     pub git_hash: String,
 }
 
-const GIT_HASH: &str = match option_env!("AX_GIT_HASH") {
-    Some(hash) => hash,
-    None => "",
-};
-
-lazy_static! {
-    pub static ref VERSION: String = NodeVersion::get().to_string();
-}
-
-#[cfg(debug_assertions)]
-const PROFILE: &str = "debug";
-#[cfg(not(debug_assertions))]
-const PROFILE: &str = "release";
-
 impl NodeVersion {
-    /// Returns the version associated with ACTYX_VERSION (compile time env var)
+    /// Returns the current node version, associated with the `DATABANK_VERSION` constant.
     pub fn get() -> NodeVersion {
         NodeVersion {
             profile: PROFILE.to_string(),
-            target: OsArch::current().into(),
-            version: env!("CARGO_PKG_VERSION").to_string(),
+            target: format!("{}-{}", OS, ARCH),
+            version: DATABANK_VERSION.to_string(),
             git_hash: GIT_HASH.to_string(),
         }
     }
