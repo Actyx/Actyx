@@ -93,11 +93,8 @@ docker-platform-arm = linux/arm/v6
 # Mapping from os to builder image name
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
-# see https://github.com/Actyx/osxbuilder
-# This image is for GitHub-hosted runners
-# image-darwin = actyx/util:osxbuilder-bfb3a4d511386569c70ef919026d476edb864c79
 # This image is for the self-hosted runners
-image-darwin = actyx/util:osxbuilder-8e34cf39fdef055e223be03d19f21d96ca911154
+image-darwin = docker pull ghcr.io/actyx/osxbuilder:445876eadcf144b88ec4893636a80fb5e12301be
 
 # list all os-arch and binary names
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 macos-aarch64
