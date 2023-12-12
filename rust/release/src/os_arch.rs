@@ -131,7 +131,6 @@ impl OsArch {
         [
             "android-any",
             "linux-aarch64",
-            "linux-arm",
             "linux-armv7",
             "linux-x86_64",
             "macos-aarch64",

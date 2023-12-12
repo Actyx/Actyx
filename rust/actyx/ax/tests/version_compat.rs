@@ -4,7 +4,6 @@ use ax_core::{
     cmd::ActyxCliResult,
     util::{
         formats::{ActyxOSCode, NodesInspectResponse},
-        os_arch::Arch,
         version::Version,
     },
 };
@@ -14,7 +13,7 @@ use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use std::{
-    env,
+    env::{self, consts::ARCH},
     ffi::OsStr,
     fmt::Write,
     fs::File,
@@ -66,31 +65,30 @@ fn setup() -> &'static Binaries {
     static INIT: OnceCell<Binaries> = OnceCell::new();
     INIT.get_or_init(|| {
         // build needed binaries for quicker execution
-        for bin in &["ax"] {
-            eprintln!("building {}", bin);
-            for msg in CargoBuild::new()
-                .manifest_path("../Cargo.toml")
-                .bin(*bin)
-                .exec()
-                .unwrap()
-            {
-                let msg = msg.unwrap();
-                let msg = msg.decode().unwrap();
-                match msg {
-                    Message::BuildFinished(x) => eprintln!("{:?}", x),
-                    Message::CompilerArtifact(a) => {
-                        if !a.fresh {
-                            eprintln!("{:?}", a.package_id)
-                        }
+        let bin = "ax";
+        eprintln!("building {}", bin);
+        for msg in CargoBuild::new()
+            .manifest_path("../Cargo.toml")
+            .bin(bin)
+            .exec()
+            .unwrap()
+        {
+            let msg = msg.unwrap();
+            let msg = msg.decode().unwrap();
+            match msg {
+                Message::BuildFinished(x) => eprintln!("{:?}", x),
+                Message::CompilerArtifact(a) => {
+                    if !a.fresh {
+                        eprintln!("{:?}", a.package_id)
                     }
-                    Message::CompilerMessage(s) => {
-                        if let Some(msg) = s.message.rendered {
-                            eprintln!("{}", msg)
-                        }
-                    }
-                    Message::BuildScriptExecuted(_) => {}
-                    Message::Unknown => {}
                 }
+                Message::CompilerMessage(s) => {
+                    if let Some(msg) = s.message.rendered {
+                        eprintln!("{}", msg)
+                    }
+                }
+                Message::BuildScriptExecuted(_) => {}
+                Message::Unknown => {}
             }
         }
 
@@ -165,12 +163,11 @@ fn setup() -> &'static Binaries {
 }
 
 fn download(package: &str, bin: &str, version: Version, dst_dir: &Path, may_skip: &mut bool) -> Option<PathBuf> {
-    let arch = match Arch::current() {
-        Arch::x86_64 => "amd64",
-        Arch::aarch64 => "arm64",
-        Arch::arm => "arm",
-        Arch::armv7 => "armhf",
-        x => panic!("unsupported arch: {}", x),
+    let arch = match ARCH {
+        "x86_64" => "amd64",
+        "aarch64" => "arm64",
+        "arm" => "armhf",
+        _ => unreachable!("unsupported architecture"),
     };
     let name = format!("{}-{}-linux-{}", package, version, arch);
     let url = format!("{}/{}.tar.gz", ROOT_URL, name);
@@ -185,6 +182,10 @@ fn download(package: &str, bin: &str, version: Version, dst_dir: &Path, may_skip
     }
 
     let resp = reqwest::blocking::get(&url).unwrap_or_else(|e| panic!("making request to {}: {}", url, e));
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        panic!("did not find {}", url);
+    }
+
     let gzip = GzDecoder::new(resp);
     let mut archive = Archive::new(gzip);
     let entries = match archive.entries() {

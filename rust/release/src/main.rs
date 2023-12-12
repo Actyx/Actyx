@@ -1,15 +1,16 @@
-use anyhow::{Context, Error};
+use anyhow::{anyhow, Context, Error};
 use chrono::{TimeZone, Utc};
 use clap::Parser;
 use repo::RepoWrapper;
 use semver::Version;
 use std::{
-    env,
+    env::{self, current_exe},
     fmt::Write,
     fs::OpenOptions,
     path::PathBuf,
     sync::atomic::{AtomicBool, Ordering},
 };
+use toml_edit::Document;
 use versions_file::{VersionLine, VersionsFile};
 use versions_ignore_file::VersionsIgnoreFile;
 
@@ -44,16 +45,16 @@ struct Opts {
     cmd: Command,
 }
 #[derive(Parser)]
-#[clap(version = "1.0", author = "Actyx AG", about = "Releases from Cosmos")]
+#[clap(version = "1.0", author, about)]
 enum Command {
     /// Computes current version
     Version {
-        /// Product (actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
+        /// Product (ax, ax_core, actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
         product: Product,
     },
     /// Computes past versions
     Versions {
-        /// Product (actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
+        /// Product (ax, ax_core, actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
         product: Product,
         /// Show the git commit hash next to the version
         #[clap(long, short)]
@@ -248,7 +249,10 @@ fn main() -> Result<(), Error> {
             // commit versions file with change sets in commit message
             let head = repo.head()?;
             let commit = head.as_commit().unwrap();
-            let ts = Utc.timestamp(commit.time().seconds(), 0);
+            let ts = Utc
+                .timestamp_opt(commit.time().seconds(), 0)
+                .single()
+                .expect("a single timestamp");
             writeln!(
                 changelog,
                 r#"Actyx Release
@@ -268,7 +272,7 @@ Overview:"#
 
             writeln!(changelog, "-------------------------")?;
             writeln!(changelog, "Detailed changelog:")?;
-            for (product, v) in new_versions {
+            for (product, v) in new_versions.clone() {
                 let new_version = v.new_version.unwrap();
 
                 writeln!(changelog, "* {}\t\t{}", product, new_version)?;
@@ -300,6 +304,51 @@ Overview:"#
                 println!("-------------------------\n");
                 println!("Branch to create {}", branch_name);
             } else {
+                // We expect the binary to not have been moved outside of the target folder
+                let cwd = current_exe()?;
+                // We're looking for the `Actyx/rust` folder
+                let rust_folder = cwd
+                    .ancestors()
+                    .nth(4)
+                    .ok_or(anyhow!("failed to get the current directory parent"))?;
+                let ax_cargo = rust_folder.join(PathBuf::from("actyx/ax/Cargo.toml")).canonicalize()?;
+                let ax_core_cargo = rust_folder
+                    .join(PathBuf::from("actyx/ax-core/Cargo.toml"))
+                    .canonicalize()?;
+
+                for (product, v) in new_versions {
+                    let new_version = v.new_version.unwrap();
+                    match product {
+                        Product::Ax => {
+                            eprintln!("0.1) Writing new version to \"{}\" ... ", ax_cargo.display());
+                            update_package_version(&ax_cargo, &new_version)?;
+                            let version_rs = rust_folder
+                                .join(PathBuf::from("actyx/ax-core/src/node/version.rs"))
+                                .canonicalize()?;
+                            eprintln!("0.2) Writing new version to \"{}\" ... ", version_rs.display());
+                            std::fs::write(
+                                &version_rs,
+                                format!(
+                                    r#"/// The databank version.
+///
+/// This version is kept automatically!
+pub const DATABANK_VERSION: &str = "{}";"#,
+                                    new_version
+                                ),
+                            )?;
+                            repo.add_file(&ax_cargo)?;
+                            repo.add_file(&version_rs)?;
+                        }
+                        Product::AxCore => {
+                            eprint!("0.3) Writing new version to \"{}\" ... ", ax_core_cargo.display());
+                            update_package_version(&ax_core_cargo, &new_version)?;
+                            repo.add_file(&ax_core_cargo)?;
+                        }
+                        // We're not updating TOMLs for anything else
+                        _ => (),
+                    };
+                }
+
                 eprint!("1) Writing new versions to \"{}\" ... ", input_file.display());
                 version_file.persist(&input_file)?;
                 eprintln!("Done.");
@@ -430,5 +479,17 @@ Overview:"#
             }
         }
     }
+    Ok(())
+}
+
+fn update_package_version(path: &PathBuf, version: &Version) -> Result<(), Error> {
+    // Read the toml
+    let cargo_toml_contents = std::fs::read_to_string(path)?;
+    // Parse it
+    let mut cargo_toml = cargo_toml_contents.parse::<Document>()?;
+    // Update the value
+    cargo_toml["package"]["version"] = toml_edit::value(version.to_string());
+    // Write it back
+    std::fs::write(path, cargo_toml.to_string())?;
     Ok(())
 }

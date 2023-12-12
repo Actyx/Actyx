@@ -442,6 +442,66 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
         (Product::TsSdk, _) => {}
         (Product::RustSdk, _) => {}
         (Product::CSharpSdk, _) => {}
+        (Product::AxCore, _) => {}
+        (Product::Ax, OS::android) => {
+            out.push((
+                format!("{}-binaries/actyx.apk", os_arch.os,),
+                TargetArtifact::Blob {
+                    pre_processing: PreProcessing::None,
+                    file_name: format!("Actyx-{}.apk", version),
+                    local_result: None,
+                },
+            ));
+        }
+        (Product::Ax, OS::windows) => {
+            if os_arch.arch == Arch::x86_64 {
+                out.push((
+                    format!("{}-binaries/{}/actyx-x64.msi", os_arch.os, os_arch),
+                    TargetArtifact::Blob {
+                        pre_processing: PreProcessing::None,
+                        file_name: format!("actyx-{}-x64.msi", version),
+                        local_result: None,
+                    },
+                ));
+            }
+        }
+        (Product::Ax, OS::linux) => {
+            let output_arch = match os_arch.arch {
+                Arch::x86_64 => "amd64",
+                Arch::aarch64 => "arm64",
+                Arch::armv7 => "armhf",
+                Arch::arm => panic!("arm is not supported for the ax binary"),
+                _ => unreachable!(),
+            };
+            out.push((
+                format!("{}-binaries/{}/ax", os_arch.os, os_arch),
+                TargetArtifact::Blob {
+                    pre_processing: PreProcessing::TarGz {
+                        binary_name: Some("ax".into()),
+                    },
+                    file_name: format!("ax-{}-linux-{}.tar.gz", version, output_arch),
+                    local_result: None,
+                },
+            ));
+        }
+        (Product::Ax, OS::macos) => {
+            let output_arch = match os_arch.arch {
+                Arch::x86_64 => "intel",
+                Arch::aarch64 => "arm",
+                _ => unreachable!(),
+            };
+            out.push((
+                format!("{}-binaries/{}/ax", os_arch.os, os_arch),
+                TargetArtifact::Blob {
+                    pre_processing: PreProcessing::Zip {
+                        binary_name: Some("ax".into()),
+                    },
+                    file_name: format!("ax-{}-macos-{}.zip", version, output_arch),
+                    local_result: None,
+                },
+            ));
+        }
+        (Product::Ax, _) => {}
     };
 
     out.into_iter()
