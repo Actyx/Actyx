@@ -94,7 +94,7 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # This image is for the self-hosted runners
-image-darwin = docker pull ghcr.io/actyx/osxbuilder:445876eadcf144b88ec4893636a80fb5e12301be
+image-darwin = ghcr.io/actyx/osxbuilder:445876eadcf144b88ec4893636a80fb5e12301be
 
 # list all os-arch and binary names
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 macos-aarch64
