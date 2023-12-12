@@ -23,7 +23,7 @@ use tempfile::NamedTempFile;
 
 const HEADER: &str = r#"# Last releases of all Actyx products
 # Each line contains <release> <commit-hash>
-# The machine-readable product names are: actyx, node-manager,
+# The machine-readable product names are: ax, ax_core, actyx, node-manager,
 # cli, pond, ts-sdk, rust-sdk, docs, csharp-sdk"#;
 
 #[derive(Clone)]

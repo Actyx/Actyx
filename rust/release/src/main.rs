@@ -320,11 +320,12 @@ Overview:"#
                     let new_version = v.new_version.unwrap();
                     match product {
                         Product::Ax => {
-                            eprint!("0.1) Writing new version to \"{}\" ... ", ax_cargo.display());
+                            eprintln!("0.1) Writing new version to \"{}\" ... ", ax_cargo.display());
                             update_package_version(&ax_cargo, &new_version)?;
                             let version_rs = rust_folder
-                                .join(PathBuf::from("actyx/ax-core/node/version.rs"))
+                                .join(PathBuf::from("actyx/ax-core/src/node/version.rs"))
                                 .canonicalize()?;
+                            eprintln!("0.2) Writing new version to \"{}\" ... ", version_rs.display());
                             std::fs::write(
                                 &version_rs,
                                 format!(
@@ -335,11 +336,12 @@ pub const DATABANK_VERSION: &str = "{}";"#,
                                     new_version
                                 ),
                             )?;
+                            panic!("uh");
                             repo.add_file(&ax_cargo)?;
                             repo.add_file(&version_rs)?;
                         }
                         Product::AxCore => {
-                            eprint!("0.2) Writing new version to \"{}\" ... ", ax_core_cargo.display());
+                            eprint!("0.3) Writing new version to \"{}\" ... ", ax_core_cargo.display());
                             update_package_version(&ax_core_cargo, &new_version)?;
                             repo.add_file(&ax_core_cargo)?;
                         }
