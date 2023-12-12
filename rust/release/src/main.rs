@@ -336,7 +336,6 @@ pub const DATABANK_VERSION: &str = "{}";"#,
                                     new_version
                                 ),
                             )?;
-                            panic!("uh");
                             repo.add_file(&ax_cargo)?;
                             repo.add_file(&version_rs)?;
                         }
