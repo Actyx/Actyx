@@ -306,12 +306,13 @@ Overview:"#
             } else {
                 // We expect the binary to not have been moved outside of the target folder
                 let cwd = current_exe()?;
-                let actyx_folder = cwd
+                // We're looking for the `Actyx/rust` folder
+                let rust_folder = cwd
                     .ancestors()
                     .nth(4)
                     .ok_or(anyhow!("failed to get the current directory parent"))?;
-                let ax_cargo = actyx_folder.join(PathBuf::from("actyx/ax/Cargo.toml")).canonicalize()?;
-                let ax_core_cargo = actyx_folder
+                let ax_cargo = rust_folder.join(PathBuf::from("actyx/ax/Cargo.toml")).canonicalize()?;
+                let ax_core_cargo = rust_folder
                     .join(PathBuf::from("actyx/ax-core/Cargo.toml"))
                     .canonicalize()?;
 
@@ -321,7 +322,9 @@ Overview:"#
                         Product::Ax => {
                             eprint!("0.1) Writing new version to \"{}\" ... ", ax_cargo.display());
                             update_package_version(&ax_cargo, &new_version)?;
-                            let version_rs = PathBuf::from("../actyx/ax-core/node/version.rs").canonicalize()?;
+                            let version_rs = rust_folder
+                                .join(PathBuf::from("actyx/ax-core/node/version.rs"))
+                                .canonicalize()?;
                             std::fs::write(
                                 &version_rs,
                                 format!(
