@@ -59,10 +59,9 @@ use crate::{
     },
 };
 use anyhow::{Context, Result};
-use ax_sdk::{
-    app_id,
-    language::{TagAtom, TagExpr},
-    tag, AppId, LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, TagSet, Timestamp,
+use ax_aql::{TagAtom, TagExpr};
+use ax_types::{
+    app_id, tag, AppId, LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, TagSet, Timestamp,
 };
 use banyan::{
     query::Query,
@@ -1393,7 +1392,7 @@ impl BanyanStore {
             stream_nr: number,
         };
         let events = vec![(
-            ax_sdk::tags!("event_routing"),
+            ax_types::tags!("event_routing"),
             Event::compact(&event).expect("Should be a valid event."),
         )];
         self.append0(
@@ -1942,7 +1941,8 @@ mod test_match_tag_set {
     use std::str::FromStr;
 
     use crate::trees::dnf::Dnf;
-    use ax_sdk::{language::TagExpr, tags, AppId};
+    use ax_aql::TagExpr;
+    use ax_types::{tags, AppId};
 
     use crate::swarm::{internal_app_id, MatchTagSet};
 
@@ -2090,7 +2090,8 @@ impl RoutingTable {
 mod test_routing_table {
     use std::str::FromStr;
 
-    use ax_sdk::{language::TagExpr, tags, StreamNr};
+    use ax_aql::TagExpr;
+    use ax_types::{tags, StreamNr};
 
     use crate::swarm::{internal_app_id, RoutingTable, DEFAULT_STREAM_NUMBER};
 

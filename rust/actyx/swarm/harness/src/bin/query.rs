@@ -5,7 +5,7 @@ fn main() -> anyhow::Result<()> {
         future::timeout,
         task::{block_on, sleep},
     };
-    use ax_sdk::{
+    use ax_sdk::types::{
         service::{PublishEvent, QueryResponse},
         tags, AppManifest, OffsetMap, Payload,
     };

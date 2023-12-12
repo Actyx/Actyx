@@ -1,30 +1,39 @@
 #[cfg(target_os = "linux")]
-fn main() {
+
+mod quickcheck_stress_single_store {
     use std::{str::FromStr, time::Duration};
 
     use async_std::task::block_on;
     use ax_sdk::{
-        language::TagExpr,
-        service::{EventMeta, EventResponse, SubscribeResponse},
-        tags, Offset, Payload, Url,
+        aql::TagExpr,
+        types::{
+            service::{EventMeta, EventResponse, SubscribeResponse},
+            tags, Offset, Payload,
+        },
+        Url,
     };
     use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
-    use quickcheck::{empty_shrinker, Arbitrary, Gen, QuickCheck, TestResult};
+    use quickcheck::{Arbitrary, Gen, TestResult};
     use swarm_cli::{Event, EventRoute};
-    use swarm_harness::{api::ApiClient, m, run_netsim, setup_env, util::app_manifest, HarnessOpts};
+    use swarm_harness::{api::ApiClient, m, run_netsim, util::app_manifest, HarnessOpts};
 
     #[derive(Clone, Debug)]
-    struct TestInput {
-        concurrent_publishes: u8,
-        publish_chunk_size: u8,
-        publish_chunks_per_client: u8,
-        concurrent_subscribes: u8,
+    pub struct TestInput {
+        pub concurrent_publishes: u8,
+        pub publish_chunk_size: u8,
+        pub publish_chunks_per_client: u8,
+        pub concurrent_subscribes: u8,
     }
+
     impl Arbitrary for TestInput {
         fn arbitrary(g: &mut Gen) -> Self {
+            // max: 16
             let concurrent_publishes = (u8::arbitrary(g) >> 4).max(1);
+            // max: 64
             let publish_chunk_size = (u8::arbitrary(g) >> 2).max(1);
+            // max: 16
             let publish_chunks_per_client = (u8::arbitrary(g) >> 4).max(1);
+            // max: 255
             let concurrent_subscribes = u8::arbitrary(g).max(1);
             Self {
                 concurrent_publishes,
@@ -33,13 +42,9 @@ fn main() {
                 concurrent_subscribes,
             }
         }
-        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            // Don't shrink
-            empty_shrinker()
-        }
     }
 
-    fn stress_single_store(input: TestInput) -> quickcheck::TestResult {
+    pub fn stress_single_store(input: TestInput) -> quickcheck::TestResult {
         let TestInput {
             concurrent_publishes,
             publish_chunk_size,
@@ -182,12 +187,20 @@ fn main() {
             }
         }
     }
+}
 
-    setup_env().unwrap();
+#[cfg(target_os = "linux")]
+fn main() {
+    use quickcheck::{QuickCheck, TestResult};
+    use quickcheck_stress_single_store::{stress_single_store, TestInput};
+
+    swarm_harness::setup_env().unwrap();
     QuickCheck::new()
         .tests(2)
-        .quickcheck(stress_single_store as fn(TestInput) -> TestResult)
+        .quickcheck(stress_single_store as fn(TestInput) -> TestResult);
 }
 
 #[cfg(not(target_os = "linux"))]
-fn main() {}
+fn main() {
+    panic!("this test can only run on Linux")
+}

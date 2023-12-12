@@ -2,10 +2,9 @@ use std::{convert::TryInto, str::FromStr};
 
 use crate::crypto::{KeyPair, PrivateKey, PublicKey};
 use anyhow::Context;
-use derive_more::{Display, Error};
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Debug, Display, Error)]
+#[derive(Debug, derive_more::Display, derive_more::Error)]
 #[display(fmt = "Invalid signature for provided input.")]
 pub struct InvalidSignature();
 

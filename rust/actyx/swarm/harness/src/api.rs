@@ -2,7 +2,10 @@ use crate::m;
 use anyhow::{anyhow, Result};
 use async_std::task::block_on;
 use ax_core::util::pinned_resource::PinnedResource;
-use ax_sdk::{AppManifest, Ax, AxOpts, NodeId, Url};
+use ax_sdk::{
+    types::{AppManifest, NodeId},
+    Ax, AxOpts, Url,
+};
 use futures::channel::oneshot::Canceled;
 use netsim_embed::{Machine, MachineId, Namespace, Netsim};
 use std::{borrow::Borrow, collections::BTreeMap, fmt::Display, future::Future, str::FromStr};
@@ -95,7 +98,7 @@ impl ApiClient {
         Ok(ApiClient::new(origin, app_manifest, namespace))
     }
 
-    pub async fn offsets(&self) -> Result<ax_sdk::service::OffsetsResponse> {
+    pub async fn offsets(&self) -> Result<ax_sdk::types::service::OffsetsResponse> {
         self.0.spawn_mut(|c| block_on(c.offsets())).await.unwrap()
     }
 

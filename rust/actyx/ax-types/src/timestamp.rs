@@ -7,13 +7,14 @@ use std::{
     convert::{TryFrom, TryInto},
     fmt::{self, Debug, Display, Formatter},
     ops::{Add, Sub},
+    str::FromStr,
     time::{SystemTime, UNIX_EPOCH},
 };
 
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
 ///
 /// ```
-/// use ax_sdk::Timestamp;
+/// use ax_types::Timestamp;
 /// use chrono::{DateTime, Utc, TimeZone};
 ///
 /// let timestamp = Timestamp::now();
@@ -27,7 +28,7 @@ use std::{
     Copy, Clone, Debug, Default, From, Into, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, DagCbor,
 )]
 #[ipld(repr = "value")]
-pub struct Timestamp(u64);
+pub struct Timestamp(pub u64);
 
 cbor_via!(Timestamp => u64: |x| -> x.0, FROM);
 
@@ -110,6 +111,26 @@ impl Add<std::time::Duration> for Timestamp {
     }
 }
 
+impl FromStr for Timestamp {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let ts = iso8601_timestamp::Timestamp::parse(s).ok_or(anyhow::anyhow!("failed to parse timestamp"))?;
+
+        Ok(Self(u64::try_from(
+            ts.duration_since(iso8601_timestamp::Timestamp::UNIX_EPOCH)
+                .whole_microseconds(),
+        )?))
+    }
+}
+
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for Timestamp {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        Timestamp::new(u64::arbitrary(g) & ((2 << 53) - 1))
+    }
+}
+
 /// A logical timestamp taken from a [`Lamport clock`](https://en.wikipedia.org/wiki/Lamport_timestamps)
 ///
 /// The lamport clock in an Actyx system is increased by the Actyx node whenever:
@@ -159,11 +180,18 @@ impl Add<u64> for LamportTimestamp {
     }
 }
 
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for LamportTimestamp {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        LamportTimestamp::new(u64::arbitrary(g))
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use std::time::Duration;
-
     use super::*;
+    use libipld::{cbor::DagCborCodec, codec::assert_roundtrip, ipld};
+    use std::time::Duration;
 
     #[test]
     fn timestamp_add_u64() {
@@ -200,12 +228,6 @@ mod test {
         assert_eq!(Timestamp(30) - Timestamp(3), 27);
         assert_eq!(Timestamp(30) - Timestamp(300), 0);
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use libipld::{cbor::DagCborCodec, codec::assert_roundtrip, ipld};
 
     #[test]
     fn timestamp_libipld() {

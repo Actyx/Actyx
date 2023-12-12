@@ -19,7 +19,6 @@ use chacha20poly1305::{
     aead::{AeadInPlace, NewAead},
     XChaCha20Poly1305,
 };
-use derive_more::{Display, Error};
 use parking_lot::RwLock;
 use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -71,7 +70,7 @@ impl std::fmt::Debug for KeyStore {
     }
 }
 
-#[derive(Debug, Display, Error)]
+#[derive(Debug, derive_more::Display, derive_more::Error)]
 #[display(fmt = "unknown KeyStore version {}", _0)]
 pub struct UnknownVersion(#[error(ignore)] u8);
 

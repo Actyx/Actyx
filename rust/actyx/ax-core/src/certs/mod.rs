@@ -16,7 +16,7 @@ mod tests {
         certs::{developer_certificate::DeveloperCertificateInput, signature::Signature},
         crypto::PrivateKey,
     };
-    use ax_sdk::{app_id, AppManifest};
+    use ax_types::{app_id, AppManifest};
     use std::str::FromStr;
 
     fn ax_private_key() -> PrivateKey {

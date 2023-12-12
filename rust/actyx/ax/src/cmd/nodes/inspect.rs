@@ -6,7 +6,7 @@ use ax_core::{
         version::NodeVersion,
     },
 };
-use ax_sdk::NodeId;
+use ax_sdk::types::NodeId;
 use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};

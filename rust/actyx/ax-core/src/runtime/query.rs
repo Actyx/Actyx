@@ -6,11 +6,8 @@ use crate::{
         value::Value,
     },
 };
-use ax_sdk::{
-    language::{self, Arr, Galactus, Tactic, TagAtom},
-    service::Order,
-    AppId,
-};
+use ax_aql::{Arr, Galactus, Tactic, TagAtom};
+use ax_types::{service::Order, AppId};
 use futures::{stream, StreamExt};
 
 pub struct Pragmas<'a>(Vec<(&'a str, &'a str)>);
@@ -29,12 +26,12 @@ impl<'a> Pragmas<'a> {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Query {
     pub features: Vec<String>,
-    pub source: language::Source,
+    pub source: ax_aql::Source,
     pub stages: Vec<Operation>,
 }
 
 impl Query {
-    pub fn from(q: language::Query<'_>, app_id: AppId) -> (Self, Pragmas<'_>) {
+    pub fn from(q: ax_aql::Query<'_>, app_id: AppId) -> (Self, Pragmas<'_>) {
         struct Q(AppId);
         impl Galactus for Q {
             fn visit_tag_atom(&mut self, tag: &TagAtom) -> Tactic<TagAtom, Self> {
@@ -67,11 +64,11 @@ impl Query {
     }
 
     /// run a query in the given evaluation context and collect all results
-    pub async fn eval(query: &language::Query<'static>, cx: &Context<'_>) -> Result<Vec<Value>, anyhow::Error> {
+    pub async fn eval(query: &ax_aql::Query<'static>, cx: &Context<'_>) -> Result<Vec<Value>, anyhow::Error> {
         let mut feeder = Query::feeder_from(&query.ops);
 
         let (mut stream, cx) = match &query.source {
-            language::Source::Events { from, order } => {
+            ax_aql::Source::Events { from, order } => {
                 let tag_expr = cx.eval_from(from).await?.into_owned();
                 let (stream, cx) = if order.or_else(|| feeder.preferred_order()) == Some(Order::Desc) {
                     let stream = cx
@@ -105,7 +102,7 @@ impl Query {
                     .left_stream();
                 (stream, cx)
             }
-            language::Source::Array(Arr { items }) => (
+            ax_aql::Source::Array(Arr { items }) => (
                 stream::iter(items.iter()).then(|expr| cx.eval(expr)).right_stream(),
                 cx.child(),
             ),
@@ -138,7 +135,7 @@ impl Query {
         Feeder::new(processors)
     }
 
-    pub fn feeder_from(stages: &[language::Operation]) -> Feeder {
+    pub fn feeder_from(stages: &[ax_aql::Operation]) -> Feeder {
         let processors = stages
             .iter()
             .map(|s| Operation::from(s.clone()).make_processor())
@@ -222,7 +219,7 @@ impl Feeder {
 mod tests {
     use super::*;
     use crate::{runtime::eval::RootContext, swarm::event_store_ref::EventStoreRef};
-    use ax_sdk::{app_id, OffsetMap};
+    use ax_types::{app_id, OffsetMap};
 
     fn store() -> EventStoreRef {
         EventStoreRef::new(|_x| Err(crate::swarm::event_store_ref::Error::Aborted))
@@ -231,7 +228,7 @@ mod tests {
         Context::root(order, store(), OffsetMap::empty(), OffsetMap::empty())
     }
     fn feeder(q: &str) -> Feeder {
-        Query::from(language::Query::parse(q).unwrap(), app_id!("com.actyx.test"))
+        Query::from(ax_aql::Query::parse(q).unwrap(), app_id!("com.actyx.test"))
             .0
             .make_feeder()
     }

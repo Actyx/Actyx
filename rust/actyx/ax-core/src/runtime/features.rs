@@ -1,5 +1,5 @@
 use crate::runtime::{operation::Operation, query::Query};
-use ax_sdk::language::{Arr, SimpleExpr, TagAtom, TagExpr, Traverse};
+use ax_aql::{Arr, SimpleExpr, TagAtom, TagExpr, Traverse};
 use std::{collections::BTreeSet, str::FromStr};
 
 #[derive(Debug, Clone, derive_more::Display, PartialEq, Eq)]
@@ -103,8 +103,8 @@ impl Features {
     pub fn from_query(q: &Query) -> Self {
         let mut features = Self::new();
         match { &q.source } {
-            ax_sdk::language::Source::Events { from, .. } => features_tag(&mut features, from),
-            ax_sdk::language::Source::Array(Arr { items }) => {
+            ax_aql::Source::Events { from, .. } => features_tag(&mut features, from),
+            ax_aql::Source::Array(Arr { items }) => {
                 features.add(fromArray);
                 for e in items.iter() {
                     if e.spread {
@@ -228,8 +228,8 @@ fn features_simple(feat: &mut Features, expr: &SimpleExpr) {
     expr.traverse(&mut |e| match e {
         SimpleExpr::SubQuery(q) => {
             match { &q.source } {
-                ax_sdk::language::Source::Events { from, .. } => features_tag(feat, from),
-                ax_sdk::language::Source::Array(Arr { items }) => {
+                ax_aql::Source::Events { from, .. } => features_tag(feat, from),
+                ax_aql::Source::Array(Arr { items }) => {
                     feat.add(fromArray);
                     for e in items.iter() {
                         features_simple(feat, e);
@@ -259,7 +259,7 @@ fn features_simple(feat: &mut Features, expr: &SimpleExpr) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ax_sdk::{app_id, language};
+    use ax_types::app_id;
     use maplit::btreeset;
     use FeatureError::*;
 
@@ -267,11 +267,11 @@ mod tests {
         String::from(s)
     }
     fn f(s: &str) -> Features {
-        let q = Query::from(language::Query::parse(s).unwrap(), app_id!("com.actyx.test")).0;
+        let q = Query::from(ax_aql::Query::parse(s).unwrap(), app_id!("com.actyx.test")).0;
         Features::from_query(&q)
     }
     fn q(s: &str) -> Result<(), FeatureError> {
-        let q = Query::from(language::Query::parse(s).unwrap(), app_id!("com.actyx.test")).0;
+        let q = Query::from(ax_aql::Query::parse(s).unwrap(), app_id!("com.actyx.test")).0;
         Features::from_query(&q).validate(&q.features, Endpoint::Query)
     }
 

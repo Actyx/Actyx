@@ -1,8 +1,7 @@
 use crate::runtime::value::ValueKind;
-use ax_sdk::language::{AggrOp, BinOp};
-use derive_more::{Display, Error};
+use ax_aql::{AggrOp, BinOp};
 
-#[derive(Debug, Display, Error)]
+#[derive(Debug, derive_more::Display, derive_more::Error)]
 pub enum RuntimeError {
     #[display(fmt = "variable `{}` is not bound", _0)]
     NotBound(#[error(ignore)] String),
@@ -37,7 +36,7 @@ pub enum RuntimeError {
     NotSupported(#[error(ignore)] String),
 }
 
-#[derive(Debug, Display, Error)]
+#[derive(Debug, derive_more::Display, derive_more::Error)]
 pub enum RuntimeFailure {
     #[display(fmt = "anti-input cannot be processed in saturated LIMIT")]
     AntiInputInLimit,

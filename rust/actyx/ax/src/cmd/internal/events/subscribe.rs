@@ -7,7 +7,7 @@ use ax_core::{
         gen_stream::GenStream,
     },
 };
-use ax_sdk::service::SubscribeRequest;
+use ax_sdk::types::service::SubscribeRequest;
 use futures::{future::ready, Stream, StreamExt};
 use std::{fs::File, io::Read};
 

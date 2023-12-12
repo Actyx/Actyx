@@ -8,19 +8,19 @@ use crate::{
         query::{TagExprError, TagExprQuery},
     },
 };
-use ax_sdk::{
-    language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
-    Payload, StreamId, StreamNr, TagSet, Timestamp,
+use ax_aql::TagExpr;
+use ax_types::{
+    AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin, Payload, StreamId,
+    StreamNr, TagSet, Timestamp,
 };
 use banyan::FilteredChunk;
-use derive_more::{Display, Error, From};
 use futures::{
     future,
     stream::{self, BoxStream},
     StreamExt, TryStreamExt,
 };
 
-#[derive(Clone, Debug, Display, Error, From)]
+#[derive(Clone, Debug, derive_more::Display, derive_more::Error, derive_more::From)]
 pub enum Error {
     #[display(fmt = "Upper bounds must be within the current offsets’ present.")]
     InvalidUpperBounds,
@@ -262,12 +262,8 @@ mod tests {
     };
 
     use crate::ax_futures_util::stream::Drainer;
-    use ax_sdk::{
-        app_id,
-        language::{TagAtom, TagExpr},
-        service::Order,
-        tag, tags, OffsetOrMin, StreamId, Tag,
-    };
+    use ax_aql::{TagAtom, TagExpr};
+    use ax_types::{app_id, service::Order, tag, tags, OffsetOrMin, StreamId, Tag};
     use futures::{future::try_join_all, Stream};
     use maplit::btreemap;
     use quickcheck::Arbitrary;

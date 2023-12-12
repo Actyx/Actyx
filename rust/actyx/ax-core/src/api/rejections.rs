@@ -1,11 +1,10 @@
 use std::error::Error;
 
 use crate::{runtime::features::FeatureError, util::serde_support::StringSerialized};
-use ax_sdk::AppId;
-use derive_more::Display;
+use ax_types::AppId;
 use warp::{filters, http::StatusCode, reject, Rejection, Reply};
 
-#[derive(Debug, Display, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, derive_more::Display)]
 pub enum UnauthorizedReason {
     #[display(fmt = "no license found")]
     NoLicense,
@@ -19,7 +18,7 @@ pub enum UnauthorizedReason {
     Expired,
 }
 
-#[derive(Debug, Display, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, derive_more::Display)]
 pub enum ApiError {
     #[display(fmt = "The requested resource could not be found.")]
     NotFound,

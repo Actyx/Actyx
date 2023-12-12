@@ -1,25 +1,8 @@
-/*
- * Copyright 2020 Actyx AG
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 //! Supporting macros for the Actyx SDK
 //!
 //! The macros exported here are in this separate crate due to current restrictions on
 //! proc_macros in Rust. Please see the [Actyx SDK](https://docs.rs/actyx_sdk) for
 //! more information.
-
-extern crate proc_macro;
 
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
@@ -94,17 +77,6 @@ macro_rules! lit {
         })
     };
 }
-#[rustfmt::skip]
-macro_rules! range {
-    ($from:ident, $to:ident, $limits:ident) => {
-        ExprRange {
-            $from,
-            $to,
-            $limits,
-            ..
-        }
-    };
-}
 
 /// This macro takes a string and a range and asserts that the string’s length
 /// lies within this range. Due to the limitations of proc_macros this macro
@@ -114,7 +86,7 @@ macro_rules! range {
 /// This works:
 ///
 /// ```rust
-/// use actyx_sdk_macros::assert_len;
+/// use ax_macros::assert_len;
 ///
 /// // this is normally emitted by macro_rules
 /// #[allow(dead_code)]
@@ -125,7 +97,7 @@ macro_rules! range {
 /// This does not compile:
 ///
 /// ```compile_fail
-/// use actyx_sdk_macros::assert_len;
+/// use ax_macros::assert_len;
 ///
 /// type X = assert_len!(r##"123456"##, ..5);
 /// ```
@@ -139,7 +111,7 @@ macro_rules! range {
 /// macro_rules! transform {
 ///     ($expr:expr) => {{
 ///         mod y {
-///             actyx_sdk_macros::assert_len! {
+///             ax_macros::assert_len! {
 ///                 $expr,
 ///                 1..5,
 ///                 pub fn x() -> usize { ($expr).len() }, // it was a string literal
@@ -219,16 +191,16 @@ fn assert_len_impl(input: proc_macro::TokenStream) -> Result<TokenStream, Error>
     } = syn::parse(input)?;
 
     let parsed = match (literal, range) {
-        (lit!(Str, s), range!(from, to, limits)) => {
-            let (from, to) = parse_range(from, to, limits)?;
+        (lit!(Str, s), ExprRange { start, limits, end, .. }) => {
+            let (from, to) = parse_range(start, end, limits)?;
             Some(Args {
                 lit: Str::Chars(s),
                 min: from,
                 max: to,
             })
         }
-        (lit!(ByteStr, s), range!(from, to, limits)) => {
-            let (from, to) = parse_range(from, to, limits)?;
+        (lit!(ByteStr, s), ExprRange { start, limits, end, .. }) => {
+            let (from, to) = parse_range(start, end, limits)?;
             Some(Args {
                 lit: Str::Bytes(s),
                 min: from,

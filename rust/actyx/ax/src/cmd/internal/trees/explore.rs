@@ -2,7 +2,7 @@ use ax_core::{
     swarm::StreamAlias,
     util::formats::{ActyxOSResult, ActyxOSResultExt},
 };
-use ax_sdk::StreamId;
+use ax_sdk::types::StreamId;
 use futures::{prelude::*, stream, Stream};
 use ipfs_sqlite_block_store::BlockStore;
 use libipld::{Cid, DefaultParams};

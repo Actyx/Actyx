@@ -1,15 +1,11 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    convert::TryFrom,
-    sync::Arc,
-    time::Duration,
+use crate::{
+    api::EventService,
+    swarm::{Block, Ipfs},
 };
-
-use crate::swarm::{Block, Ipfs};
 use anyhow::Context;
-use ax_sdk::{
+use ax_aql::{Query, StaticQuery};
+use ax_types::{
     app_id,
-    language::{Query, StaticQuery},
     service::{
         EventMeta, EventResponse, Order, PublishEvent, PublishRequest, QueryRequest, QueryResponse, SubscribeRequest,
         SubscribeResponse,
@@ -20,10 +16,14 @@ use chrono::Utc;
 use futures::{pin_mut, stream, Future, StreamExt};
 use libipld::{cbor::DagCborCodec, multihash::Code, Cid, DagCbor};
 use serde::{Deserialize, Deserializer, Serialize};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    convert::TryFrom,
+    sync::Arc,
+    time::Duration,
+};
 use tokio::{sync::mpsc, task::JoinHandle, time::MissedTickBehavior};
 use tokio_stream::wrappers::{IntervalStream, ReceiverStream};
-
-use crate::api::EventService;
 
 type UpdatePrefetch = (AppId, Query<'static>);
 

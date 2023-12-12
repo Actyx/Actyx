@@ -1,12 +1,11 @@
 use crate::swarm::DbPath;
-use ax_sdk::{AppId, Timestamp};
-use derive_more::{Display, Error};
+use ax_types::{AppId, Timestamp};
 use parking_lot::Mutex;
 use rusqlite::{named_params, params, Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 
-#[derive(Debug, Display, Error)]
+#[derive(Debug, derive_more::Display, derive_more::Error)]
 #[display(fmt = "stored blob is too large after compression: {}bytes", size)]
 pub struct BlobTooLarge {
     #[error(ignore)]
@@ -234,7 +233,7 @@ mod tests {
     #[test]
     fn put_get_delete() {
         let store = BlobStore::new(DbPath::Memory).unwrap();
-        let app_id = ax_sdk::app_id!("me");
+        let app_id = ax_types::app_id!("me");
 
         assert_eq!(store.blob_get(app_id.clone(), "blob".into()).unwrap(), None);
 
@@ -253,7 +252,7 @@ mod tests {
     #[test]
     fn delete_other() {
         let store = BlobStore::new(DbPath::Memory).unwrap();
-        let app_id = ax_sdk::app_id!("me");
+        let app_id = ax_types::app_id!("me");
         store
             .blob_put(app_id.clone(), "ab/cd".into(), "application/xyz".into(), b"blob")
             .unwrap();
@@ -283,7 +282,7 @@ mod tests {
     #[test]
     fn put_same() {
         let store = BlobStore::new(DbPath::Memory).unwrap();
-        let app_id = ax_sdk::app_id!("me");
+        let app_id = ax_types::app_id!("me");
         store
             .blob_put(app_id.clone(), "blob".into(), "application/xyz".into(), b"abcd")
             .unwrap();
@@ -299,7 +298,7 @@ mod tests {
     #[test]
     fn put_parent() {
         let store = BlobStore::new(DbPath::Memory).unwrap();
-        let app_id = ax_sdk::app_id!("me");
+        let app_id = ax_types::app_id!("me");
         store
             .blob_put(app_id.clone(), "a/b".into(), "application/xyz".into(), b"abcd")
             .unwrap();
@@ -312,7 +311,7 @@ mod tests {
     #[test]
     fn put_child() {
         let store = BlobStore::new(DbPath::Memory).unwrap();
-        let app_id = ax_sdk::app_id!("me");
+        let app_id = ax_types::app_id!("me");
         store
             .blob_put(app_id.clone(), "a/b".into(), "application/xyz".into(), b"abcd")
             .unwrap();
@@ -328,7 +327,7 @@ mod tests {
     #[test]
     fn put_other() {
         let store = BlobStore::new(DbPath::Memory).unwrap();
-        let app_id = ax_sdk::app_id!("me");
+        let app_id = ax_types::app_id!("me");
         store
             .blob_put(app_id.clone(), "a/b".into(), "application/xyz".into(), b"abcd")
             .unwrap();

@@ -6,7 +6,7 @@ use ax_core::{
     },
     swarm::{self, event_store_ref::EventStoreRef},
 };
-use ax_sdk::{app_id, language};
+use ax_types::app_id;
 use cbor_data::Encoder;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use futures::executor::block_on;
@@ -32,7 +32,7 @@ const QUERY: &str = "FROM allEvents FILTER _.x > 3 | _.y = 'hello' SELECT [_.x +
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("nnop", |b| {
         let mut query = Query::from(
-            language::Query::parse("FROM allEvents").unwrap(),
+            ax_aql::Query::parse("FROM allEvents").unwrap(),
             app_id!("com.actyx.test"),
         )
         .0
@@ -42,7 +42,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| black_box(block_on(query.feed(Some(value.clone()), &cx))));
     });
     c.bench_function("feed value", |b| {
-        let mut query = Query::from(language::Query::parse(QUERY).unwrap(), app_id!("com.actyx.test"))
+        let mut query = Query::from(ax_aql::Query::parse(QUERY).unwrap(), app_id!("com.actyx.test"))
             .0
             .make_feeder();
         let (value, cx) = v();

@@ -1,17 +1,14 @@
-#![cfg(feature = "client")]
-
-use std::{
-    io::Write,
-    path::{Path, PathBuf},
-};
-
 use asynchronous_codec::{BytesCodec, Framed};
-use ax_sdk::{service::DirectoryChild, Ax, AxOpts};
+use ax_sdk::{files::DirectoryChild, Ax, AxOpts};
 use futures::{
     future::{try_join_all, BoxFuture},
     FutureExt,
 };
 use reqwest::{multipart::Part, Body};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+};
 use structopt::StructOpt;
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_util::compat::*;
@@ -78,10 +75,10 @@ pub async fn main() -> anyhow::Result<()> {
             println!("Please find your output in {}", output.display());
         }
         Command::Cat { name_or_cid } => match service.files_get(&name_or_cid).await? {
-            ax_sdk::service::FilesGetResponse::File { bytes, .. } => {
+            ax_sdk::files::FilesGetResponse::File { bytes, .. } => {
                 std::io::stdout().lock().write_all(&bytes[..])?;
             }
-            ax_sdk::service::FilesGetResponse::Directory { .. } => {
+            ax_sdk::files::FilesGetResponse::Directory { .. } => {
                 anyhow::bail!("{} is a directory", name_or_cid);
             }
         },
@@ -94,10 +91,10 @@ fn list_file_or_dir(client: &Ax, name_or_cid: String, level: usize) -> BoxFuture
     async move {
         let response = client.files_get(&name_or_cid).await?;
         match response {
-            ax_sdk::service::FilesGetResponse::File { name, bytes, mime } if level == 0 => {
+            ax_sdk::files::FilesGetResponse::File { name, bytes, mime } if level == 0 => {
                 println!("{} ({}): {}", name, mime, bytes.len());
             }
-            ax_sdk::service::FilesGetResponse::Directory { name, cid, children } => {
+            ax_sdk::files::FilesGetResponse::Directory { name, cid, children } => {
                 let indent = level * 4;
                 if indent == 0 {
                     println!("{:<34}{:<10}{:<10}", name, 0, cid);
@@ -117,11 +114,11 @@ fn list_file_or_dir(client: &Ax, name_or_cid: String, level: usize) -> BoxFuture
 fn get_file_or_dir(client: Ax, name_or_cid: String, write_to: PathBuf) -> BoxFuture<'static, anyhow::Result<()>> {
     async move {
         match client.files_get(&name_or_cid).await? {
-            ax_sdk::service::FilesGetResponse::File { bytes, .. } => {
+            ax_sdk::files::FilesGetResponse::File { bytes, .. } => {
                 let mut file = File::create(write_to).await?;
                 file.write_all(&bytes[..]).await?;
             }
-            ax_sdk::service::FilesGetResponse::Directory { children, .. } => {
+            ax_sdk::files::FilesGetResponse::Directory { children, .. } => {
                 std::fs::create_dir_all(&write_to)?;
                 let futs = children.into_iter().map(|DirectoryChild { cid, name, .. }| {
                     get_file_or_dir(client.clone(), cid.to_string(), write_to.join(name))

@@ -7,7 +7,7 @@ use ax_core::{
         gen_stream::GenStream,
     },
 };
-use ax_sdk::service::{Order, QueryRequest};
+use ax_sdk::types::service::{Order, QueryRequest};
 use futures::{future::ready, Stream, StreamExt};
 use std::{fs::File, io::Read};
 

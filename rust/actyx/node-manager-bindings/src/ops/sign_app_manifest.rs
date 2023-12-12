@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 use crate::util::run_task;
-use ax_sdk::AppManifest;
+use ax_sdk::types::AppManifest;
 use futures::FutureExt;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

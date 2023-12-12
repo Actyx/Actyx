@@ -1,7 +1,10 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
     use async_std::future::timeout;
-    use ax_sdk::{language::Query, tags, Payload};
+    use ax_sdk::{
+        aql::Query,
+        types::{tags, Payload},
+    };
     use netsim_embed::{Ipv4Range, MachineId, Netsim, NetworkId};
     use std::{
         collections::BTreeMap,

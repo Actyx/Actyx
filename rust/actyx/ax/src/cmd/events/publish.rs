@@ -9,7 +9,7 @@ use ax_core::{
         gen_stream::GenStream,
     },
 };
-use ax_sdk::{
+use ax_sdk::types::{
     service::{PublishEvent, PublishRequest, PublishResponse},
     Payload, Tag, TagSet,
 };

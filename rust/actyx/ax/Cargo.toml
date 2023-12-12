@@ -8,14 +8,12 @@ authors = ["Actyx AG"]
 winres = { git = "https://github.com/Actyx/winres", branch = "cross_compile" }
 
 [dependencies]
+ax_sdk = { version = "0.2.0", path = "../../sdk" }
+ax_core = { version = "0.2.0", path = "../ax-core" }
+
 # too much features, trim later
-ax_sdk = { version = "0.2.0", default-features = false, features = [
-  "sqlite",
-  "arb",
-], path = "../../sdk" }
 anyhow = "1.0.66"
 atty = "0.2.14"
-ax_core = { version = "0.2.0", path = "../ax-core" }
 clap = { version = "4.4.8", features = ["derive", "env", "wrap_help"] }
 clap_complete = "4.4.4"
 tokio = { version = "1.15.0", features = ["full"] }

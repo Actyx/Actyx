@@ -11,8 +11,9 @@ use super::{
     non_empty::NonEmptyVec, AggrOp, Arr, FuncCall, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, Source,
     SpreadExpr, TagAtom, TagExpr,
 };
-use crate::{language::SortKey, service::Order, tags::Tag, Timestamp};
+use crate::SortKey;
 use anyhow::{bail, ensure, Result};
+use ax_types::{service::Order, Tag, Timestamp};
 use chrono::{FixedOffset, TimeZone, Timelike, Utc};
 use once_cell::sync::Lazy;
 use pest::{
@@ -664,15 +665,6 @@ impl FromStr for SimpleExpr {
     }
 }
 
-impl FromStr for Timestamp {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let p = Aql::parse(Rule::main_timestamp, s)?.single()?.single()?;
-        r_timestamp(p)
-    }
-}
-
 impl FromStr for super::var::Var {
     type Err = anyhow::Error;
 
@@ -689,7 +681,8 @@ pub fn is_ident(s: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{language::var::Var, tag, NodeId, StreamId};
+    use crate::Var;
+    use ax_types::{tag, NodeId, StreamId};
     use pest::{fails_with, Parser};
     use std::convert::TryFrom;
 
@@ -750,7 +743,7 @@ mod tests {
             )
                 .into())
         );
-        let stream = NodeId([
+        let stream = NodeId::new([
             12, 65, 70, 28, 130, 74, 44, 32, 196, 20, 97, 200, 36, 162, 194, 12, 65, 70, 28, 130, 74, 44, 32, 196, 20,
             97, 200, 36, 162, 194, 12, 65,
         ])
@@ -854,7 +847,7 @@ mod tests {
     #[test]
     fn query() -> Result<()> {
         use super::{Arr, Ind, Num::*, Obj};
-        use crate::app_id;
+        use ax_types::app_id;
         use SimpleExpr::*;
         use TagAtom::*;
         use TagExpr::Atom;
@@ -885,7 +878,7 @@ mod tests {
                     .and(Atom(FromLamport(
                         SortKey {
                             lamport: 10.into(),
-                            stream: NodeId([
+                            stream: NodeId::new([
                                 12, 65, 70, 28, 130, 74, 44, 32, 196, 20, 97, 200, 36, 162, 194, 12, 65, 70, 28, 130,
                                 74, 44, 32, 196, 20, 97, 200, 36, 162, 194, 12, 65
                             ])

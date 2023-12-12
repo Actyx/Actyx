@@ -2,9 +2,10 @@ use ax_core::{
     node::{BindTo, Runtime},
     util::SocketAddrHelper,
 };
-use ax_sdk::{
+use ax_sdk::{Ax, AxOpts};
+use ax_types::{
     service::{Order, PublishEvent},
-    tags, Ax, AxOpts, Payload,
+    tags, Payload,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use futures::StreamExt;

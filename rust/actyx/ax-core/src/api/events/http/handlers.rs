@@ -5,7 +5,7 @@ use crate::{
     runtime::features::FeatureError,
     swarm::event_store_ref,
 };
-use ax_sdk::{
+use ax_types::{
     service::{PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
     AppId,
 };

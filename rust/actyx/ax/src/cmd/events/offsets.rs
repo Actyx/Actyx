@@ -6,7 +6,7 @@ use ax_core::{
         ActyxOSError, ActyxOSResult,
     },
 };
-use ax_sdk::service::OffsetsResponse;
+use ax_sdk::types::service::OffsetsResponse;
 use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
 use std::collections::BTreeSet;

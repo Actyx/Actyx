@@ -3,10 +3,10 @@
 //! Check the examples for a complete example for adding, listing, and retrieving files.
 use std::time::Duration;
 
-pub use libipld::Cid;
+use libipld::Cid;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::language::{Query, StaticQuery};
+use ax_aql::{Query, StaticQuery};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -14,7 +14,7 @@ use crate::language::{Query, StaticQuery};
 /// must evaluate to a single hash. This collected set of hashes is pinned on the local node for
 /// the given [`Duration`].
 /// ```
-/// use ax_sdk::{service::PrefetchRequest, language::Query};
+/// use ax_sdk::{files::PrefetchRequest, aql::Query};
 /// use std::time::Duration;
 ///
 /// let now = chrono::Utc::now();

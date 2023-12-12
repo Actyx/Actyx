@@ -5,16 +5,15 @@ version = "0.2.0"
 authors = ["Actyx AG"]
 
 [dependencies]
+ax_sdk = { version = "0.2.0", path = "../../sdk" }
+ax_aql = { version = "0.1.0", path = "../ax-aql" }
+ax_types = { version = "0.1.0", path = "../ax-types", features = ["sqlite"] }
+
 acto = { version = "0.2.0", features = ["tokio"] }
-ax_sdk = { version = "0.2.0", default-features = false, features = [
-  "sqlite",
-  "arb",
-], path = "../../sdk" }
 anyhow = "1.0.66"
 async-trait = "0.1.52"
 backtrace = "0.3.63"
 banyan = "0.18.0"
-banyan-utils = "0.11.0"
 base64 = "0.13.0"
 byteorder = { version = "1.4.3", features = ["i128"] }
 bytes = "1.1.0"
@@ -27,7 +26,6 @@ cbor-tag-index = "0.3.0"
 cfg-if = "1.0.0"
 chacha20poly1305 = { version = "0.9.0", features = ["std"] }
 chrono = { version = "0.4.19", features = ["serde"] }
-console = "0.15.0"
 crossbeam = "0.8.1"
 curve25519-dalek = "3.2.0"
 derive_more = "0.99.17"
@@ -36,7 +34,6 @@ ed25519-dalek = { version = "1.0.1", features = [
   "serde",
 ], default-features = false }
 ffi-support = "0.4.4"
-flate2 = "1.0.22"
 fnv = "1.0.7"
 fslock = "=0.1.6"
 futures = { version = "0.3.19", features = ["compat"], package = "futures" }
@@ -90,7 +87,6 @@ prost-derive = "0.9.0"
 quickcheck = { version = "1.0.3", optional = true }
 rand = { version = "0.7" }
 range-collections = "0.1.1"
-rayon = "1.5.1"
 regex = "1.7"
 rusqlite = { version = "0.26.3", features = ["bundled", "backup", "hooks"] }
 serde = { version = "1.0.133", features = ["derive"] }
@@ -102,7 +98,6 @@ sha2 = "0.9.9"
 signal-hook = "0.3.13"
 smallvec = { version = "1.10.0", features = ["const_generics", "write"] }
 socket2 = "0.4.2"
-tar = "0.4.38"
 tempfile = "3.3.0"
 thiserror = "1.0.30"
 tokio = { version = "1.15.0", features = ["full"], package = "tokio" }
@@ -131,7 +126,6 @@ zeroize = "1.2.0"
 zstd = "0.9.2"
 
 [dev-dependencies]
-ax_sdk = { path = "../../sdk", features = ["client"] }
 anyhow = { version = "1.0.52", features = ["backtrace"] }
 assert_cmd = "2.0.2"
 criterion = { version = "0.3.5", features = ["html_reports", "async_tokio"] }

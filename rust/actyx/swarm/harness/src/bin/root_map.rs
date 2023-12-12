@@ -1,7 +1,10 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
     use async_std::future::timeout;
-    use ax_sdk::{language::Query, tags, Payload};
+    use ax_sdk::{
+        aql::Query,
+        types::{tags, Payload},
+    };
     use std::time::Duration;
     use structopt::StructOpt;
     use swarm_cli::{Command, Event};

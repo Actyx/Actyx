@@ -1,6 +1,6 @@
 use crate::cmd::AxCliCommand;
 use ax_core::{certs::app_manifest_signer::sign_manifest_from_files, util::formats::ActyxOSResult};
-use ax_sdk::AppManifest;
+use ax_sdk::types::AppManifest;
 use futures::{stream, Stream};
 use std::path::PathBuf;
 

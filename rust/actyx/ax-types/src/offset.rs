@@ -1,14 +1,8 @@
-use std::{
-    cmp::Ordering,
-    collections::{BTreeMap, BTreeSet},
-    convert::TryFrom,
-    fmt::{self, Debug},
-    io::{Read, Seek, SeekFrom, Write},
-    iter::FromIterator,
-    ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
+use crate::{
+    event::{Event, EventKey},
+    scalars::StreamId,
 };
-
-use derive_more::{Display, From, Into};
+use cbor_data::{cbor_via, codec::CodecError};
 use libipld::{
     cbor::DagCborCodec,
     codec::{Decode, Encode},
@@ -18,12 +12,15 @@ use serde::{
     de::{Error, Visitor},
     Deserialize, Deserializer, Serialize,
 };
-
-use crate::{
-    event::{Event, EventKey},
-    scalars::StreamId,
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+    convert::TryFrom,
+    fmt::{self, Debug},
+    io::{Read, Seek, SeekFrom, Write},
+    iter::FromIterator,
+    ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
 };
-use cbor_data::{cbor_via, codec::CodecError};
 
 /// Maximum possible offset
 ///
@@ -42,7 +39,21 @@ const MAX_SAFE_INT: i64 = 9_007_199_254_740_991;
 /// the available set of values.
 ///
 /// The `MIN` value is not a valid offset, it is sorted before [`Offset::ZERO`](struct.Offset.html#associatedconstant.ZERO).
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, From, Into, Display)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Serialize,
+    Deserialize,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    derive_more::From,
+    derive_more::Into,
+    derive_more::Display,
+)]
 pub struct OffsetOrMin(#[serde(with = "i64_from_minus_one")] i64);
 
 mod i64_from_minus_one {
@@ -219,6 +230,18 @@ impl Decode<DagCborCodec> for OffsetOrMin {
     }
 }
 
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for OffsetOrMin {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        if bool::arbitrary(g) {
+            let offset: Offset = quickcheck::Arbitrary::arbitrary(g);
+            Self::from(offset)
+        } else {
+            OffsetOrMin::MIN
+        }
+    }
+}
+
 /// Event offset within a stream
 ///
 /// The event offset is not a number, it rather is an identifier that can be compared
@@ -226,7 +249,7 @@ impl Decode<DagCborCodec> for OffsetOrMin {
 /// find the successor or predecessor, respectively. `incr` does not return an option
 /// because for the use-case of naming events within a stream it is impossible to exhaust
 /// the available set of values.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, Display)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, derive_more::Display)]
 pub struct Offset(#[serde(deserialize_with = "offset_i64")] i64);
 
 impl Offset {
@@ -286,6 +309,14 @@ impl TryFrom<i64> for Offset {
         } else {
             Ok(Offset(value))
         }
+    }
+}
+
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for Offset {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        let offset: u32 = quickcheck::Arbitrary::arbitrary(g);
+        Self::from(offset)
     }
 }
 
@@ -404,29 +435,6 @@ impl Decode<DagCborCodec> for Offset {
         let raw = u64::decode(c, r)?;
         let validated = Offset::try_from(raw).map_err(|e| anyhow::anyhow!("{}", e))?;
         Ok(validated)
-    }
-}
-
-#[cfg(feature = "sqlite")]
-mod sqlite {
-    use super::*;
-    use rusqlite::{
-        types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef},
-        ToSql,
-    };
-
-    impl FromSql for Offset {
-        fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-            value
-                .as_i64()
-                .and_then(|o| Offset::try_from(o).map_err(|_| FromSqlError::OutOfRange(o)))
-        }
-    }
-
-    impl ToSql for Offset {
-        fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-            Ok(ToSqlOutput::from(self.0))
-        }
     }
 }
 
@@ -762,6 +770,14 @@ impl BitOr for &OffsetMap {
 impl BitOrAssign for OffsetMap {
     fn bitor_assign(&mut self, rhs: Self) {
         *self = &*self | &rhs;
+    }
+}
+
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for OffsetMap {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        let inner: BTreeMap<StreamId, Offset> = quickcheck::Arbitrary::arbitrary(g);
+        Self::from(inner)
     }
 }
 

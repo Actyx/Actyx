@@ -10,87 +10,14 @@ use std::{
     ops::Deref,
 };
 
-/// Helper macro to create interned string types
-///
-/// ```
-/// use ax_sdk::arcval_scalar;
-///
-/// arcval_scalar! {
-///     /// some docs
-///     pub struct Name(str);
-/// }
-///
-/// arcval_scalar! { struct Private(str) }
-///
-/// let n: Name = Name::from("Bob");
-/// let p: Private = Private::from("x".to_owned());
-/// ```
-///
-/// The declared wrapper struct derives instances for the standard library traits
-/// Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash. You can add more with the
-/// usual `#[derive()]` attribute.
-#[macro_export]
-macro_rules! arcval_scalar {
-    ($($(#[$attr:meta])* $vis:vis struct $id:ident(str)$(;)?)*) => {
-        $(
-            $(#[$attr])*
-            #[repr(transparent)]
-            #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
-            $vis struct $id($crate::types::ArcVal<str>);
-            impl ::std::ops::Deref for $id {
-                type Target = str;
-                fn deref(&self) -> &str {
-                    &*self.0
-                }
-            }
-            impl From<String> for $id {
-                fn from(s: String) -> Self {
-                    Self($crate::types::ArcVal::from_boxed(s.into()))
-                }
-            }
-            impl<'a> From<&'a str> for $id {
-                fn from(s: &'a str) -> Self {
-                    Self($crate::types::ArcVal::clone_from_unsized(s))
-                }
-            }
-            impl From<::std::sync::Arc<str>> for $id {
-                fn from(s: ::std::sync::Arc<str>) -> Self {
-                    Self($crate::types::ArcVal::from(s))
-                }
-            }
-            impl From<$crate::types::ArcVal<str>> for $id {
-                fn from(s: $crate::types::ArcVal<str>) -> Self {
-                    Self(s)
-                }
-            }
-            impl Into<$crate::types::ArcVal<str>> for $id {
-                fn into(self) -> $crate::types::ArcVal<str> {
-                    self.0
-                }
-            }
-            impl ::std::fmt::Display for $id {
-                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                    ::std::write!(f, "{}", self.0)
-                }
-            }
-            impl Default for $id {
-                fn default() -> Self {
-                    Self::from("")
-                }
-            }
-        )*
-    };
-}
-
 /// Interned and reference-counted immutable value
 ///
 /// This type is a building block for handling large amounts of data with recurring heap-allocated
 /// values, like strings for event types and entity names, but also binary data blocks that are
-/// potentially loaded into memory multiple times. The [`arcval_scalar!`](../macro.arcval_scalar.html)
-/// macro makes it easy to tag data to denote different kinds of objects.
+/// potentially loaded into memory multiple times.
 ///
 /// ```
-/// use ax_sdk::types::ArcVal;
+/// use ax_types::types::ArcVal;
 ///
 /// let s: ArcVal<str> = ArcVal::clone_from_unsized("hello");
 /// let b: ArcVal<[u8; 5]> = ArcVal::from_sized([49, 50, 51, 52, 53]);

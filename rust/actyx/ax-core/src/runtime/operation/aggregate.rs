@@ -4,10 +4,8 @@ use crate::runtime::{
     value::Value,
 };
 use anyhow::anyhow;
-use ax_sdk::{
-    language::{AggrOp, Galactus, Num, SimpleExpr, Tactic, Var},
-    service::{EventMeta, Order},
-};
+use ax_aql::{AggrOp, Galactus, Num, SimpleExpr, Tactic, Var};
+use ax_types::service::{EventMeta, Order};
 use cbor_data::Encoder;
 use futures::{future::BoxFuture, FutureExt};
 use std::{cmp::Ordering, marker::PhantomData, ops::AddAssign, sync::Arc};
@@ -444,11 +442,11 @@ mod tests {
         },
         swarm::event_store_ref::EventStoreRef,
     };
-    use ax_sdk::{app_id, language, tags, EventKey, Metadata, NodeId};
+    use ax_types::{app_id, tags, EventKey, Metadata, NodeId};
 
     fn a(s: &str) -> Box<dyn Processor> {
         let s = format!("FROM 'x' AGGREGATE {}", s);
-        let q = Query::from(language::Query::parse(&s).unwrap(), app_id!("com.actyx.test")).0;
+        let q = Query::from(ax_aql::Query::parse(&s).unwrap(), app_id!("com.actyx.test")).0;
         match q.stages.into_iter().next().unwrap() {
             Operation::Aggregate(a) => aggregate(&a),
             _ => panic!(),

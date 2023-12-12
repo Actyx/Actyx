@@ -1,4 +1,4 @@
-use ax_sdk::service::{
+use ax_types::service::{
     NodeInfoResponse, OffsetsResponse, PublishRequest, PublishResponse, QueryRequest, QueryResponse,
     SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
 };

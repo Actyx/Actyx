@@ -4,8 +4,8 @@ fn main() {
 
     use async_std::task::block_on;
     use ax_sdk::{
-        language::{Query, Source, TagAtom, TagExpr},
-        Tag, TagSet,
+        aql::{Query, Source, TagAtom, TagExpr},
+        types::{Tag, TagSet},
     };
     use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
     use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};

@@ -5,7 +5,7 @@ use ax_core::{
     private_key::{AxPrivateKey, KeyPathWrapper},
     util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicLsResponse},
 };
-use ax_sdk::NodeId;
+use ax_sdk::types::NodeId;
 use futures::{channel::mpsc, future::join_all, stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
