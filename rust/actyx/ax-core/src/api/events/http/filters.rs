@@ -3,7 +3,7 @@ use crate::api::{
     filters::{accept_json, accept_ndjson, authenticate, header_or_query_token},
     NodeInfo,
 };
-use ax_sdk::AppId;
+use ax_types::AppId;
 use warp::{any, body, get, path, post, Filter, Rejection, Reply};
 
 pub fn with_service(

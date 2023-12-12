@@ -28,11 +28,10 @@ fn cli() -> Command {
 }
 #[test]
 fn cli_version() {
-    cli()
-        .arg("--version")
-        .assert()
-        .success()
-        .stdout(starts_with(format!("ax {}\n", NodeVersion::get())));
+    cli().arg("--version").assert().success().stdout(starts_with(format!(
+        "ax {}\n",
+        ax_core::util::version::VERSION.as_str()
+    )));
 }
 
 #[test]
@@ -109,22 +108,28 @@ fn cli_fail_on_missing_identity() {
 
 #[test]
 fn internal_subcommand() {
-    cli().args(["internal", "help"]).assert().failure();
+    use predicate::str::contains;
+    use predicates::prelude::*;
     cli()
         .env("HERE_BE_DRAGONS", "wrong")
-        .args(["internal", "help"])
         .assert()
-        .failure();
+        .failure()
+        .stderr(contains("internal").not());
+    cli()
+        .args(["internal"])
+        .assert()
+        .failure()
+        .stderr(contains("do not use until instructed by Actyx"));
     cli()
         .env("HERE_BE_DRAGONS", "zøg")
-        .args(["internal", "help"])
         .assert()
-        .success();
+        .failure()
+        .stderr(contains("internal"));
     cli()
         .env("HERE_BE_DRAGONS", "zoeg")
-        .args(["internal", "help"])
         .assert()
-        .success();
+        .failure()
+        .stderr(contains("internal"));
 }
 
 #[test]
@@ -137,7 +142,6 @@ fn version() {
         Branch,
         Leaf,
     }
-    use predicate::str::starts_with;
     use std::iter::once;
     use Type::*;
 
@@ -170,21 +174,20 @@ fn version() {
     };
 
     let first_line = |sub| format!("ax-{} {}\n", sub, NodeVersion::get());
+
     for (args, tpe) in commands {
         if tpe == Branch {
             cli()
-                .args(&*args)
+                .args(args.iter().chain(&["--version"]))
                 .env("HERE_BE_DRAGONS", "zøg")
                 .assert()
-                .failure()
-                .stderr(starts_with(&*first_line(args.join("-"))));
+                .success()
+                .stdout(starts_with(&*first_line(args.join("-"))));
         }
-        let name = args.join("-");
         cli()
             .args(&*args.into_iter().chain(once("--help")).collect::<Vec<_>>())
             .env("HERE_BE_DRAGONS", "zøg")
             .assert()
-            .success()
-            .stdout(starts_with(&*first_line(name)));
+            .success();
     }
 }

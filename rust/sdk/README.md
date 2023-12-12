@@ -23,8 +23,11 @@ in order to see output.
 
 ```no_run
 use ax_sdk::{
-  app_id, AppManifest, Ax, AxOpts,
-  service::{Order, QueryRequest, QueryResponse},
+  Ax, AxOpts,
+  types::{
+    app_id, AppManifest,
+    service::{Order, QueryRequest, QueryResponse},
+  }
 };
 use futures::stream::StreamExt;
 use url::Url;

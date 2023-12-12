@@ -7,7 +7,8 @@ use crate::{
         AxTree,
     },
 };
-use ax_sdk::{language::SortKey, tag, tags, LamportTimestamp, Payload, StreamId, TagSet, Timestamp};
+use ax_aql::SortKey;
+use ax_types::{tag, tags, LamportTimestamp, Payload, StreamId, TagSet, Timestamp};
 use banyan::{
     query::{AllQuery, OffsetRangeQuery, Query},
     store::{BranchCache, MemStore},

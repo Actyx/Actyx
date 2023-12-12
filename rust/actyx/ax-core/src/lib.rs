@@ -1,9 +1,9 @@
 #![deny(clippy::future_not_send)]
 
 pub mod api;
+pub mod authority;
 pub mod ax_futures_util;
 pub mod certs;
-pub mod cmd;
 pub mod crypto;
 pub mod libp2p_streaming_response;
 pub mod node;

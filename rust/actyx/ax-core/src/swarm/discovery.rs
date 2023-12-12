@@ -46,7 +46,7 @@ use crate::{
     },
 };
 use anyhow::Result;
-use ax_sdk::{tag, tags, Payload, Timestamp};
+use ax_types::{tag, tags, Payload, Timestamp};
 use fnv::{FnvHashMap, FnvHashSet};
 use futures::stream::{Stream, StreamExt};
 use ipfs_embed::multiaddr;

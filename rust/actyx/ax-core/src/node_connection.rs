@@ -1,5 +1,5 @@
 use crate::{
-    cmd::Authority,
+    authority::Authority,
     crypto::PublicKey,
     libp2p_streaming_response::{RequestReceived, Response, StreamingResponse, StreamingResponseConfig},
     private_key::AxPrivateKey,
@@ -14,7 +14,7 @@ use crate::{
     },
 };
 use anyhow::anyhow;
-use ax_sdk::{
+use ax_types::{
     service::{Diagnostic, EventResponse, PublishResponse},
     NodeId, Payload,
 };

@@ -1,4 +1,5 @@
-use ax_sdk::{tags, Ax, AxOpts};
+use ax_sdk::{Ax, AxOpts};
+use ax_types::tags;
 use futures::{stream, FutureExt, StreamExt, TryStreamExt};
 use rand::Rng;
 

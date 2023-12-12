@@ -1,20 +1,27 @@
+use crate::files::FilesGetResponse;
 use anyhow::Result;
+use ax_types::{
+    service::{
+        AuthenticationResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse, QueryRequest,
+        QueryResponse, SessionId, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest,
+        SubscribeResponse,
+    },
+    AppManifest, NodeId, OffsetMap, Payload, TagSet,
+};
 use bytes::Bytes;
-use derive_more::{Display, Error};
 use futures::{
     future::{self, BoxFuture, FusedFuture},
     stream::{iter, BoxStream, Stream, StreamExt},
     FutureExt,
 };
-
 use libipld::Cid;
+use rand::Rng;
 use reqwest::{
     header::{CONTENT_DISPOSITION, CONTENT_TYPE},
     multipart::Form,
     Client, RequestBuilder, Response, StatusCode,
 };
 use serde::{Deserialize, Serialize};
-
 use std::{
     fmt::Debug,
     future::Future,
@@ -24,20 +31,6 @@ use std::{
     sync::{Arc, RwLock},
 };
 use url::Url;
-
-#[cfg(feature = "with-tokio")]
-use rand::Rng;
-#[cfg(feature = "with-tokio")]
-use std::time::Duration;
-
-use crate::{
-    service::{
-        AuthenticationResponse, FilesGetResponse, OffsetsResponse, Order, PublishEvent, PublishRequest,
-        PublishResponse, QueryRequest, QueryResponse, SessionId, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
-        SubscribeRequest, SubscribeResponse,
-    },
-    AppManifest, NodeId, OffsetMap, Payload, TagSet,
-};
 
 /// [`Ax`]'s configuration options.
 pub struct AxOpts {
@@ -69,7 +62,7 @@ impl AxOpts {
     ///
     /// This function is similar manually constructing the following:
     /// ```no_run
-    /// # use ax_sdk::{app_id, AppManifest, AxOpts};
+    /// # use ax_sdk::{types::{app_id, AppManifest}, AxOpts};
     /// # fn opts() -> AxOpts {
     /// AxOpts {
     ///     manifest: AppManifest::trial(
@@ -212,31 +205,28 @@ impl Ax {
                     .context(|| format!("sending {} {}", method, url))?;
             }
 
-            #[cfg(feature = "with-tokio")]
-            {
-                let mut retries = 10;
-                let mut delay = Duration::from_secs(0);
-                loop {
-                    if response.status() == StatusCode::SERVICE_UNAVAILABLE && retries > 0 {
-                        retries -= 1;
-                        delay = delay * 2 + Duration::from_millis(rand::thread_rng().gen_range(10..200));
-                        tracing::debug!(
-                            "Actyx Node is overloaded, retrying {} {} with a delay of {:?}",
-                            method,
-                            url,
-                            delay
-                        );
-                        tokio::time::sleep(delay).await;
-                        response = builder
-                            .try_clone()
-                            .expect("Already cloned it once")
-                            .header("Authorization", &format!("Bearer {}", token))
-                            .send()
-                            .await
-                            .context(|| format!("sending {} {}", method, url))?;
-                    } else {
-                        break;
-                    }
+            let mut retries = 10;
+            let mut delay = std::time::Duration::from_secs(0);
+            loop {
+                if response.status() == StatusCode::SERVICE_UNAVAILABLE && retries > 0 {
+                    retries -= 1;
+                    delay = delay * 2 + std::time::Duration::from_millis(rand::thread_rng().gen_range(10..200));
+                    tracing::debug!(
+                        "Actyx Node is overloaded, retrying {} {} with a delay of {:?}",
+                        method,
+                        url,
+                        delay
+                    );
+                    tokio::time::sleep(delay).await;
+                    response = builder
+                        .try_clone()
+                        .expect("Already cloned it once")
+                        .header("Authorization", &format!("Bearer {}", token))
+                        .send()
+                        .await
+                        .context(|| format!("sending {} {}", method, url))?;
+                } else {
+                    break;
                 }
             }
         } else {
@@ -343,7 +333,7 @@ impl Ax {
     ///
     /// Example:
     /// ```no_run
-    /// use ax_sdk::{Ax, AxOpts, service::PublishResponse};
+    /// use ax_sdk::{Ax, AxOpts, types::service::PublishResponse};
     /// async fn publish_example() {
     ///     let response = Ax::new(AxOpts::default())
     ///         .await
@@ -367,7 +357,7 @@ impl Ax {
     ///
     /// Example:
     /// ```no_run
-    /// use ax_sdk::{Ax, AxOpts, service::QueryResponse};
+    /// use ax_sdk::{Ax, AxOpts, types::service::QueryResponse};
     /// use futures::stream::StreamExt;
     /// async fn query_example() {
     ///     let mut response = Ax::new(AxOpts::default())
@@ -391,7 +381,7 @@ impl Ax {
     ///
     /// Example:
     /// ```no_run
-    /// use ax_sdk::{Ax, AxOpts, service::SubscribeResponse};
+    /// use ax_sdk::{Ax, AxOpts, types::service::SubscribeResponse};
     /// use futures::stream::StreamExt;
     /// async fn subscribe_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -411,7 +401,7 @@ impl Ax {
     ///
     /// Example:
     /// ```no_run
-    /// use ax_sdk::{Ax, AxOpts, service::SubscribeMonotonicResponse};
+    /// use ax_sdk::{Ax, AxOpts, types::service::SubscribeMonotonicResponse};
     /// use futures::stream::StreamExt;
     /// async fn subscribe_monotonic_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -488,7 +478,7 @@ impl<'a> Publish<'a> {
     /// # Example
     ///
     /// ```no_run
-    /// use ax_sdk::{tags, Ax, AxOpts, service::PublishResponse};
+    /// use ax_sdk::{Ax, AxOpts, types::{tags, service::PublishResponse}};
     /// async fn event_example() -> PublishResponse {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
     ///     service
@@ -530,7 +520,7 @@ impl<'a> Publish<'a> {
     /// # Example
     ///
     /// ```no_run
-    /// use ax_sdk::{tags, Ax, AxOpts, Payload, service::{PublishEvent, PublishResponse}};
+    /// use ax_sdk::{types::{tags, Payload, service::{PublishEvent, PublishResponse}}, Ax, AxOpts};
     /// async fn events_example() -> PublishResponse {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
     ///     service
@@ -637,7 +627,7 @@ impl<'a> Query<'a> {
     /// # Examples
     ///
     /// ```no_run
-    /// use ax_sdk::{Ax, AxOpts, service::QueryResponse};
+    /// use ax_sdk::{Ax, AxOpts, types::service::QueryResponse};
     /// use futures::stream::StreamExt;
     /// async fn lower_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -660,7 +650,7 @@ impl<'a> Query<'a> {
     /// get an offset map when the query finishes streaming all results.
     ///
     /// ```no_run
-    /// use ax_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use ax_sdk::{types::{tags, Offset, service::QueryResponse}, Ax, AxOpts};
     /// use futures::stream::StreamExt;
     /// async fn lower_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -756,7 +746,7 @@ impl<'a> Query<'a> {
     /// get an offset map when the query finishes streaming all results.
     ///
     /// ```no_run
-    /// use ax_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use ax_sdk::{types::{tags, Offset, service::QueryResponse}, Ax, AxOpts};
     /// use futures::stream::StreamExt;
     /// async fn upper_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -877,7 +867,7 @@ impl<'a> Query<'a> {
     /// # Example
     ///
     /// ```no_run
-    /// use ax_sdk::{Ax, AxOpts, service::Order};
+    /// use ax_sdk::{Ax, AxOpts, types::service::Order};
     /// use futures::stream::StreamExt;
     /// async fn order_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -1002,7 +992,7 @@ impl<'a> Subscribe<'a> {
     /// get an offset map when the query finishes streaming all results.
     ///
     /// ```no_run
-    /// use ax_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use ax_sdk::{types::{tags, Offset, service::QueryResponse}, Ax, AxOpts};
     /// use futures::stream::StreamExt;
     /// async fn lower_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -1181,7 +1171,7 @@ impl<'a> SubscribeMonotonic<'a> {
     /// get an offset map when the query finishes streaming all results.
     ///
     /// ```no_run
-    /// use ax_sdk::{service::QueryResponse, tags, Ax, AxOpts, Offset};
+    /// use ax_sdk::{types::{tags, Offset, service::QueryResponse}, Ax, AxOpts};
     /// use futures::stream::StreamExt;
     /// async fn lower_bound_example() {
     ///     let service = Ax::new(AxOpts::default()).await.unwrap();
@@ -1280,7 +1270,7 @@ impl<'a> FusedFuture for SubscribeMonotonic<'a> {
 /// The Event Service does not map client errors or internal errors to HTTP status codes,
 /// instead it gives more structured information using this data type, except when the request
 /// is not understood at all.
-#[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, derive_more::Error, derive_more::Display)]
 #[display(fmt = "error {} while {}: {}", error_code, context, error)]
 #[serde(rename_all = "camelCase")]
 pub struct AxError {
@@ -1355,12 +1345,12 @@ mod tests {
 
     use reqwest::Client;
 
-    use crate::{
+    use ax_types::{
         service::{Order, PublishEvent},
-        tags, Ax, AxOpts, NodeId, OffsetMap, Payload,
+        tags, NodeId, OffsetMap, Payload,
     };
 
-    use super::{Publish, Query, Subscribe, SubscribeMonotonic};
+    use super::{Ax, AxOpts, Publish, Query, Subscribe, SubscribeMonotonic};
 
     /// The normal [`Ax::new`] connects to a client, the client returned by this
     /// function is a "mock" client instead that allows us to test the builder

@@ -1,5 +1,6 @@
 use crate::trees::query::TagExprQuery;
-use ax_sdk::{language::TagExpr, OffsetMap, OffsetOrMin, StreamId};
+use ax_aql::TagExpr;
+use ax_types::{OffsetMap, OffsetOrMin, StreamId};
 
 /// A precise selection of events, possibly unbounded in size.
 ///
@@ -25,8 +26,8 @@ pub struct EventSelection {
 
 impl EventSelection {
     #[cfg(test)]
-    pub fn matches<T>(&self, local: bool, event: &ax_sdk::Event<T>) -> bool {
-        use ax_sdk::TagSet;
+    pub fn matches<T>(&self, local: bool, event: &ax_types::Event<T>) -> bool {
+        use ax_types::TagSet;
         let query = TagExprQuery::from_expr(&self.tag_expr).unwrap()(local, event.key.stream);
         query.is_all()
             || query.terms().any(|t| {

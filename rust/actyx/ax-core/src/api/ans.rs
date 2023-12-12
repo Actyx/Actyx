@@ -6,8 +6,7 @@ use crate::{
         tags::{ScopedTag, ScopedTagSet, TagScope},
     },
 };
-use ax_sdk::{app_id, tag, tags, Payload};
-use derive_more::{Deref, Display, From};
+use ax_types::{app_id, tag, tags, Payload};
 use futures::{StreamExt, TryFutureExt};
 use libipld::cid::Cid;
 use parking_lot::Mutex;
@@ -45,7 +44,19 @@ pub struct NameRecord {
     pub public: bool,
 }
 
-#[derive(Deref, Display, Clone, Debug, From, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Ord,
+    PartialOrd,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    derive_more::Display,
+    derive_more::Deref,
+    derive_more::From,
+)]
 #[from(forward)]
 pub struct ActyxName(String);
 

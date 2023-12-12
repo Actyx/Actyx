@@ -6,9 +6,6 @@
     {
       "path": "sdk"
     },
-    {
-      "path": "sdk_macros"
-    }
   ],
   "settings": {
     "rust-analyzer.showUnlinkedFileNotification": false

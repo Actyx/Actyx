@@ -1,17 +1,16 @@
-use ax_sdk::AppId;
-use derive_more::{Display, Error};
+use ax_types::AppId;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{iter::repeat, str::FromStr};
 
-#[derive(Debug, Display, Error)]
+#[derive(Debug, derive_more::Display, derive_more::Error)]
 #[display(fmt = "Required form '<tld>.<apex>.*'. Received: {}.", input)]
 pub struct InvalidAppDomainForm {
     input: String,
 }
 
 // MVP required form  <tld>.<apex>.*, which allows any subdomain as well. com.example.*.info is currently not supported.
-#[derive(Debug, Display, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, derive_more::Display)]
 pub struct AppDomain(String);
 
 impl AppDomain {
@@ -39,7 +38,7 @@ impl FromStr for AppDomain {
 mod tests {
     use std::str::FromStr;
 
-    use ax_sdk::AppId;
+    use ax_types::AppId;
 
     use crate::certs::app_domain::InvalidAppDomainForm;
 

@@ -2,7 +2,7 @@ use crate::{
     certs::{developer_certificate::ManifestDeveloperCertificate, signature::Signature},
     crypto::{PrivateKey, PublicKey},
 };
-use ax_sdk::{AppId, AppManifest};
+use ax_types::{AppId, AppManifest};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -52,7 +52,44 @@ impl FromStr for AppManifestSignature {
 }
 
 pub mod app_manifest_signer {
+    use std::{fs, path::PathBuf};
+
+    use crate::{
+        certs::DeveloperCertificate,
+        private_key::AxPrivateKey,
+        util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+    };
+
     use super::*;
+
+    /// Sign a given manifest with the given certificate.
+    ///
+    /// Will load both from the file system and, if successful, overwrite the original
+    /// manifest with its signed version.
+    pub fn sign_manifest_from_files(certificate_path: PathBuf, manifest_path: PathBuf) -> ActyxOSResult<AppManifest> {
+        let dev_cert = fs::read_to_string(certificate_path)
+            .ax_err_ctx(ActyxOSCode::ERR_IO, "Failed to read developer certificate")?;
+        let dev_cert: DeveloperCertificate = serde_json::from_str(&dev_cert).ax_err_ctx(
+            ActyxOSCode::ERR_INVALID_INPUT,
+            "Failed to deserialize developer certificate",
+        )?;
+        let dev_privkey = dev_cert.private_key().map(ActyxOSResult::Ok).unwrap_or_else(|| {
+            Ok(AxPrivateKey::from_file(AxPrivateKey::default_user_identity_path()?)?.to_private())
+        })?;
+        let app_manifest =
+            fs::read_to_string(&manifest_path).ax_err_ctx(ActyxOSCode::ERR_IO, "Failed to read app manifest")?;
+        let app_manifest: AppManifest = serde_json::from_str(&app_manifest)
+            .ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "Failed to deserialize app manifest")?;
+
+        let signed_manifest =
+            app_manifest_signer::make_signed(&app_manifest, dev_privkey, dev_cert.manifest_dev_cert())
+                .ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "Failed to create signed manifest")?;
+        let serialized = serde_json::to_string(&signed_manifest)
+            .ax_err_ctx(ActyxOSCode::ERR_IO, "Failed to serialize signed app manifest")?;
+        fs::write(&manifest_path, serialized).ax_err_ctx(ActyxOSCode::ERR_IO, "Failed to overwrite app manifest")?;
+
+        Ok(signed_manifest)
+    }
 
     pub fn make_signed(
         manifest: &AppManifest,

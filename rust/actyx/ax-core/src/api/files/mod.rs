@@ -1,21 +1,5 @@
-use std::{fmt::Write, path::Path, str::FromStr, time::Duration};
-
-use crate::swarm::{BanyanStore, Block, BufferingTreeBuilder, TreeOptions};
-use anyhow::Context;
-use ax_sdk::{
-    app_id,
-    service::{DirectoryChild, FilesGetResponse, PrefetchRequest},
-    tags, AppId, Payload,
-};
-use bytes::{BufMut, Bytes};
-use futures::prelude::*;
-use http::{header::CACHE_CONTROL, Uri};
-use libipld::cid::Cid;
-use serde::Serialize;
-use warp::{
-    path::{self, FullPath},
-    Buf, Filter, Rejection, Reply,
-};
+mod ipfs;
+mod pinner;
 
 use self::ipfs::{extract_query_from_host, extract_query_from_path, IpfsQuery};
 use crate::{
@@ -26,11 +10,23 @@ use crate::{
         NodeInfo,
     },
     balanced_or,
+    swarm::{BanyanStore, Block, BufferingTreeBuilder, TreeOptions},
 };
-pub(crate) use pinner::FilePinner;
+use anyhow::Context;
+use ax_sdk::files::{DirectoryChild, FilesGetResponse, PrefetchRequest};
+use ax_types::{app_id, tags, AppId, Payload};
+use bytes::{BufMut, Bytes};
+use futures::prelude::*;
+use http::{header::CACHE_CONTROL, Uri};
+use libipld::Cid;
+use serde::Serialize;
+use std::{fmt::Write, path::Path, str::FromStr, time::Duration};
+use warp::{
+    path::{self, FullPath},
+    Buf, Filter, Rejection, Reply,
+};
 
-mod ipfs;
-mod pinner;
+pub(crate) use pinner::FilePinner;
 
 /// Serve GET requests for the server's root, interpreting the full path as a directory query.
 /// GET http://:id.actyx.localhost:<port>/query/into/the/directory

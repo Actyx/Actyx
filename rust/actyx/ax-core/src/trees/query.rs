@@ -5,10 +5,8 @@ use std::{
     ops::{BitAndAssign, Range, RangeFrom, RangeTo},
 };
 
-use ax_sdk::{
-    language::{self, SortKey, TagAtom},
-    tag, StreamId, Timestamp,
-};
+use ax_aql::{SortKey, TagAtom};
+use ax_types::{tag, StreamId, Timestamp};
 use banyan::{
     index::{BranchIndex, CompactSeq, LeafIndex},
     query::Query,
@@ -22,7 +20,7 @@ use crate::trees::{
     tags::{ScopedTag, ScopedTagSet, TagScope},
 };
 
-#[derive(Debug, derive_more::Display, derive_more::Error, Clone)]
+#[derive(Debug, Clone, derive_more::Display, derive_more::Error)]
 pub enum TagExprError {
     #[display(fmt = "Lamport timestamp restrictions must be the same on all branches")]
     InconsistentLamport,
@@ -286,7 +284,7 @@ impl TagExprQuery {
         Self { tags, lamport, time }
     }
 
-    pub fn from_expr(tag_expr: &language::TagExpr) -> Result<impl Fn(bool, StreamId) -> Self, TagExprError> {
+    pub fn from_expr(tag_expr: &ax_aql::TagExpr) -> Result<impl Fn(bool, StreamId) -> Self, TagExprError> {
         let dnf = Dnf::from(tag_expr).0;
 
         let mut terms = vec![];
@@ -476,10 +474,8 @@ mod tests {
     use crate::{stags, trees::TagIndex};
 
     use super::*;
-    use ax_sdk::{
-        language::{TagAtom, TagExpr},
-        tags, NodeId, Tag,
-    };
+    use ax_aql::{TagAtom, TagExpr};
+    use ax_types::{tags, NodeId, Tag};
 
     fn l(tag: &'static str) -> TagExpr {
         TagExpr::Atom(TagAtom::Tag(Tag::from_str(tag).unwrap()))

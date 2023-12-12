@@ -4,7 +4,8 @@ pub mod api;
 
 use anyhow::{bail, Result};
 use async_std::{future, task};
-use ax_sdk::NodeId;
+use ax_core::swarm::{EphemeralEventsConfig, EventRoute};
+use ax_sdk::types::NodeId;
 use futures::{
     future::{select, BoxFuture, Either, Future},
     FutureExt,
@@ -19,7 +20,7 @@ use std::{
     time::{Duration, Instant},
 };
 use structopt::StructOpt;
-use swarm_cli::{multiaddr, Command, Config, EphemeralEventsConfig, Event, EventRoute, Multiaddr, PeerId};
+use swarm_cli::{multiaddr, Command, Config, Event, Multiaddr, PeerId};
 use tempdir::TempDir;
 
 pub mod util;

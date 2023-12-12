@@ -13,9 +13,9 @@ use crate::{
         BanyanStore,
     },
 };
-use ax_sdk::{
+use ax_aql::{Arr, SimpleExpr, SpreadExpr};
+use ax_types::{
     app_id,
-    language::{self, Arr, SimpleExpr, SpreadExpr},
     service::{
         Diagnostic, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse,
         PublishResponseKey, QueryRequest, QueryResponse, Severity, SubscribeMonotonicRequest,
@@ -32,7 +32,7 @@ use futures::{
 use genawaiter::sync::{Co, Gen};
 use serde::Deserialize;
 use std::{
-    convert::TryFrom,
+    convert::{From, TryFrom},
     num::NonZeroU64,
     ops::Deref,
     task::{self, Poll},
@@ -93,7 +93,7 @@ impl EventService {
         app_id: AppId,
         request: QueryRequest,
     ) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
-        let query = language::Query::parse(&request.query).map_err(|e| ApiError::BadRequest {
+        let query = ax_aql::Query::parse(&request.query).map_err(|e| ApiError::BadRequest {
             cause: format!("{:#}", e),
         })?;
 
@@ -137,7 +137,7 @@ impl EventService {
             );
             let mut cx = cx.child();
             let mut stream = match &query.source {
-                language::Source::Events { from, order } => {
+                ax_aql::Source::Events { from, order } => {
                     let order = order.or_else(|| feeder.preferred_order()).unwrap_or(request_order);
                     cx.order = order;
                     let tag_expr = match cx.eval_from(from).await {
@@ -177,7 +177,7 @@ impl EventService {
                         })
                         .left_stream()
                 }
-                language::Source::Array(Arr { items }) => stream::iter(items.iter())
+                ax_aql::Source::Array(Arr { items }) => stream::iter(items.iter())
                     .flat_map(|SpreadExpr { expr, spread }| {
                         let cx = &cx;
                         async move {
@@ -253,14 +253,14 @@ impl EventService {
         app_id: AppId,
         request: SubscribeRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
-        let query = language::Query::parse(&request.query).map_err(|e| ApiError::BadRequest {
+        let query = ax_aql::Query::parse(&request.query).map_err(|e| ApiError::BadRequest {
             cause: format!("{:#}", e),
         })?;
 
         let (query, pragmas) = Query::from(query, app_id);
         let tag_expr = match &query.source {
-            language::Source::Events { from, .. } => from.clone(),
-            language::Source::Array(_) => {
+            ax_aql::Source::Events { from, .. } => from.clone(),
+            ax_aql::Source::Array(_) => {
                 return Err(FeatureError::Unsupported {
                     features: Feature::fromArray.to_string(),
                     endpoint: Endpoint::Subscribe.to_string(),
@@ -381,14 +381,14 @@ impl EventService {
         app_id: AppId,
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        let query = language::Query::parse(&request.query).map_err(|e| ApiError::BadRequest {
+        let query = ax_aql::Query::parse(&request.query).map_err(|e| ApiError::BadRequest {
             cause: format!("{:#}", e),
         })?;
 
         let (query, pragmas) = Query::from(query, app_id);
         let tag_expr = match &query.source {
-            language::Source::Events { from, .. } => from.clone(),
-            language::Source::Array(_) => {
+            ax_aql::Source::Events { from, .. } => from.clone(),
+            ax_aql::Source::Array(_) => {
                 return Err(FeatureError::Unsupported {
                     features: Feature::fromArray.to_string(),
                     endpoint: Endpoint::Subscribe.to_string(),
@@ -607,7 +607,7 @@ async fn store_line(store: &BanyanStore, line: &str) -> anyhow::Result<()> {
     let line: Line = serde_json::from_str(line)?;
     let timestamp = line
         .timestamp
-        .or_else(|| line.time.and_then(|t| t.parse().ok()))
+        .or_else(|| line.time.and_then(|t| t.parse::<Timestamp>().ok()))
         .unwrap_or_else(Timestamp::now);
     let app_id = line.app_id.unwrap_or_else(|| app_id!("com.actyx.test"));
     let events = vec![(line.tags.unwrap_or_default(), line.payload)];
@@ -622,9 +622,9 @@ mod tests {
         event_store_ref::{self, EventStoreHandler},
         BanyanStore, EventRoute,
     };
-    use ax_sdk::{
+    use ax_aql::TagExpr;
+    use ax_types::{
         app_id,
-        language::TagExpr,
         service::{EventMeta, EventResponse, SessionId},
         tags, Metadata, TagSet,
     };

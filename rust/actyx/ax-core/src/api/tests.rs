@@ -8,8 +8,7 @@ use crate::{
     },
     util::variable::Writer,
 };
-
-use ax_sdk::{
+use ax_types::{
     app_id,
     service::{AuthenticationResponse, SwarmState},
     NodeId,
@@ -726,7 +725,7 @@ async fn ws_aql_feature() -> anyhow::Result<()> {
 mod files {
     use std::{collections::BTreeMap, time::Duration};
 
-    use ax_sdk::service::DirectoryChild;
+    use ax_sdk::files::DirectoryChild;
     use maplit::btreemap;
 
     use super::*;
@@ -809,8 +808,8 @@ mod files {
             .reply(&route)
             .await;
         assert_eq!(resp.status(), http::StatusCode::OK);
-        let listing: ax_sdk::service::FilesGetResponse = serde_json::from_slice(resp.body())?;
-        let expected = ax_sdk::service::FilesGetResponse::Directory {
+        let listing: ax_sdk::files::FilesGetResponse = serde_json::from_slice(resp.body())?;
+        let expected = ax_sdk::files::FilesGetResponse::Directory {
             name: "/".into(),
             cid: "bafybeih3rdoefyjmhg2wcu34njtwjc6kz44voehswqpr2dnplqjiv3opzi"
                 .parse()

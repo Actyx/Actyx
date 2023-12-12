@@ -1,4 +1,8 @@
-use ax_sdk::{service::PublishEvent, tags, Ax, AxOpts, Payload};
+use ax_sdk::{
+    types::{service::PublishEvent, Payload},
+    Ax, AxOpts,
+};
+use ax_types::tags;
 
 // This example demonstrates how to publish events by constructing them
 // with their low-level API

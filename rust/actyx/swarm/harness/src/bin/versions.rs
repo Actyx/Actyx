@@ -2,7 +2,7 @@
 mod versions {
     use anyhow::Context;
     use async_std::task::block_on;
-    use ax_sdk::{
+    use ax_sdk::types::{
         service::{EventMeta, EventResponse, QueryResponse},
         StreamId, TagSet,
     };

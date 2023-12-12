@@ -1,5 +1,5 @@
 use crate::{types::Nothing, util::run_task};
-use ax_core::cmd::swarms::keygen::generate_key;
+use ax_core::private_key::generate_key;
 use futures::FutureExt;
 use neon::{
     context::{Context, FunctionContext},
