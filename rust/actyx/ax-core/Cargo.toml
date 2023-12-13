@@ -1,8 +1,16 @@
 [package]
-edition = "2021"
 name = "ax_core"
 version = "0.2.0"
-authors = ["Actyx AG"]
+authors = ["Actyx AG <developer@actyx.io>"]
+edition = "2021"
+description = "Core library implementing the functions of ax"
+readme = "README.md"
+documentation = "https://docs.rs/ax-core"
+homepage = "https://developer.actyx.com/"
+repository = "https://github.com/Actyx/Actyx"
+license = "Apache-2.0"
+keywords = ["distributed", "decentralized", "event-sourcing"]
+categories = ["network-programming"]
 
 [dependencies]
 ax_sdk = { version = "0.2.0", path = "../../sdk" }

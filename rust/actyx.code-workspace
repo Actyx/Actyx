@@ -6,6 +6,9 @@
     {
       "path": "sdk"
     },
+    {
+      "path": "release"
+    }
   ],
   "settings": {
     "rust-analyzer.showUnlinkedFileNotification": false

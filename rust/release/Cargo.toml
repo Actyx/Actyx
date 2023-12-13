@@ -2,7 +2,7 @@
 name = "cosmos-release"
 version = "0.1.0"
 authors = ["Actyx AG"]
-description = "Actyx release tool"
+description = "Actyx release tool (for internal use only)"
 edition = "2021"
 
 [dependencies]

@@ -3,7 +3,7 @@ name = "ax_sdk"
 version = "0.2.0"
 authors = ["Actyx AG <developer@actyx.io>"]
 edition = "2021"
-description = "Tools for interacting with the services of an Actyx node"
+description = "Tools for interacting with the services of an ax node"
 readme = "README.md"
 documentation = "https://docs.rs/actyx_sdk"
 homepage = "https://developer.actyx.com/"
@@ -51,39 +51,31 @@ chrono = "0.4.31"
 [[example]]
 name = "files"
 path = "examples/files.rs"
-required-features = ["with_tokio"]
 
 [[example]]
 name = "query"
 path = "examples/query.rs"
-required-features = ["with_tokio"]
 
 [[example]]
 name = "publish"
 path = "examples/publish.rs"
-required-features = ["with_tokio"]
 
 [[example]]
 name = "publish_events"
 path = "examples/publish_events.rs"
-required-features = ["with_tokio"]
 
 [[example]]
 name = "publish_stream"
 path = "examples/publish_stream.rs"
-required-features = ["with_tokio"]
 
 [[example]]
 name = "query_bounds"
 path = "examples/query_bounds.rs"
-required-features = ["with_tokio"]
 
 [[example]]
 name = "subscribe_monotonic"
 path = "examples/subscribe_monotonic.rs"
-required-features = ["with_tokio"]
 
 [[example]]
 name = "subscribe"
 path = "examples/subscribe.rs"
-required-features = ["with_tokio"]
