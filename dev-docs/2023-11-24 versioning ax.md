@@ -1,4 +1,5 @@
 # Versioning Ax and friends
+
 |  |  |
 | --- | --- |
 | date | 2023-11-24 |
@@ -12,6 +13,7 @@ to explain the considered solution.
 ## "Players"
 
 The three main players are:
+
 - `ax` - the result of merging 3 tools:
   - the previously existing `ax` CLI tool,
     which handled several aspects of running an Actyx swarm;
@@ -38,7 +40,7 @@ As they were separate tools, they were versioned separately; at the time of writ
 
 It is clear they have very different versions and this is where the problem starts.
 
-By SemVer's definition, the CLI did not suffer a change dramatic enought to warrant a
+By SemVer's definition, the CLI did not suffer a change dramatic enough to warrant a
 breaking change, but at the same time, it is no longer the same tool users are used to.
 
 `actyx` itself did not suffer major changes either, we deprecated some platforms but
@@ -75,6 +77,7 @@ Following this, we now have:
 From the previous list, the new publishing "rules" become:
 
 `ax-core`
+
 - Breaking changes
   - will create a major bump in `ax-core`
 - Features
@@ -83,6 +86,7 @@ From the previous list, the new publishing "rules" become:
   - will create a patch bump in `ax-core`
 
 `databank`
+
 - Breaking changes
   - will create a major bump in `databank`
   - will create a major bump in `ax-core`
@@ -98,7 +102,8 @@ From the previous list, the new publishing "rules" become:
   - will create a patch bump to `ax`
 
 `ax`
- - Moves with `databank`
+
+- Moves with `databank`
 
 Publishing an `ax-core` release does not require a new `ax` release.
 
@@ -123,4 +128,3 @@ pub const DATABANK_VERSION: &str = "2.17.0"
 As it stands, the release
 process is still being decided on, whether it is going to be done by hand or through
 the `release` tool.
-
