@@ -678,6 +678,7 @@ dependencies = [
  "pest_derive",
  "quickcheck",
  "serde",
+ "tracing",
  "unicode-normalization",
 ]
 

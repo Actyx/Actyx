@@ -53,11 +53,13 @@ impl TryFrom<SystemTime> for Timestamp {
     }
 }
 
-impl From<Timestamp> for DateTime<Utc> {
-    fn from(ts: Timestamp) -> DateTime<Utc> {
+impl TryFrom<Timestamp> for DateTime<Utc> {
+    type Error = anyhow::Error;
+
+    fn try_from(ts: Timestamp) -> Result<Self, Self::Error> {
         TimeZone::timestamp_micros(&Utc, ts.0 as i64)
             .single()
-            .expect("Timestamp out of range")
+            .ok_or_else(|| anyhow::anyhow!("supplied timestamp {} is out of range for DateTime<Utc>", ts.0))
     }
 }
 

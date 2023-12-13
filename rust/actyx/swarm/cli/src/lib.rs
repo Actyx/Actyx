@@ -341,7 +341,12 @@ impl std::str::FromStr for TimedEvent {
 
 impl std::fmt::Display for TimedEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}", DateTime::<Utc>::from(self.timestamp), self.event)
+        write!(
+            f,
+            "{} {}",
+            DateTime::<Utc>::try_from(self.timestamp).unwrap(),
+            self.event
+        )
     }
 }
 

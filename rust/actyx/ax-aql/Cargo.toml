@@ -17,6 +17,7 @@ num-traits = "0.2.17"
 anyhow = "1.0.75"
 unicode-normalization = "0.1.22"
 serde = {version="1.0.193", features = ["derive"]}
+tracing = "0.1.40"
 
 [dev-dependencies]
 quickcheck = "1.0.3"

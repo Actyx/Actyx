@@ -105,12 +105,20 @@ impl Display for Value {
                 "{}/{}@{} - {}/{}@{}: {}",
                 u64::from(from_key.lamport),
                 from_key.stream.abbreviate(),
-                DateTime::from(from_time)
+                DateTime::try_from(from_time)
+                    .map_err(|e| {
+                        tracing::error!("cannot render timestamp: {e}");
+                        std::fmt::Error
+                    })?
                     .with_timezone(&Local)
                     .to_rfc3339_opts(SecondsFormat::Micros, false),
                 u64::from(to_key.lamport),
                 to_key.stream.abbreviate(),
-                DateTime::from(to_time)
+                DateTime::try_from(to_time)
+                    .map_err(|e| {
+                        tracing::error!("cannot render timestamp: {e}");
+                        std::fmt::Error
+                    })?
                     .with_timezone(&Local)
                     .to_rfc3339_opts(SecondsFormat::Micros, false),
                 self.value
@@ -121,7 +129,11 @@ impl Display for Value {
                 "{}/{}@{}: {}",
                 u64::from(key.lamport),
                 key.stream.abbreviate(),
-                DateTime::from(meta.timestamp)
+                DateTime::try_from(meta.timestamp)
+                    .map_err(|e| {
+                        tracing::error!("cannot render timestamp: {e}");
+                        std::fmt::Error
+                    })?
                     .with_timezone(&Local)
                     .to_rfc3339_opts(SecondsFormat::Micros, false),
                 self.value

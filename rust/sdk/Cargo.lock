@@ -110,6 +110,7 @@ dependencies = [
  "pest",
  "pest_derive",
  "serde",
+ "tracing",
  "unicode-normalization",
 ]
 

@@ -901,7 +901,9 @@ mod tests {
             let meta = publish(&service, tags!("a"), 2).await;
             publish(&service, tags!("a"), 3).await;
 
-            let t = DateTime::from(meta.timestamp).to_rfc3339_opts(SecondsFormat::Micros, false);
+            let t = DateTime::try_from(meta.timestamp)
+                .unwrap()
+                .to_rfc3339_opts(SecondsFormat::Micros, false);
 
             // tests for correctly parsing `TIME > 7s ago` are in SDK (language/mod.rs)
             assert_eq!(

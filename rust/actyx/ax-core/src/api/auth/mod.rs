@@ -16,7 +16,7 @@ use crate::{
 use validate_signed_manifest::validate_signed_manifest;
 
 fn mk_success_log_msg(token: &BearerToken) -> String {
-    let expiration_time: DateTime<Utc> = token.expiration().into();
+    let expiration_time: DateTime<Utc> = token.expiration().try_into().expect("generated timestamp");
     let mode = match token.app_mode {
         AppMode::Trial => "trial",
         AppMode::Signed => "production",

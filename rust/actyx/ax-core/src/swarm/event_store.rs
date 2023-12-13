@@ -725,7 +725,11 @@ mod tests {
 
         let time = {
             let events = events.clone();
-            move |i: usize| DateTime::<Utc>::from(events[i].3).to_rfc3339_opts(SecondsFormat::Micros, true)
+            move |i: usize| {
+                DateTime::<Utc>::try_from(events[i].3)
+                    .unwrap()
+                    .to_rfc3339_opts(SecondsFormat::Micros, true)
+            }
         };
         let lamport = move |i: usize| events[i].0.as_i64();
 

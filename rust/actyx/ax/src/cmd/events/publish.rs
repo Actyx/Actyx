@@ -97,7 +97,7 @@ impl AxCliCommand for EventsPublish {
 
         let mut s = String::new();
         for key in result.data {
-            let ts = DateTime::<Utc>::from(key.timestamp);
+            let ts = DateTime::<Utc>::try_from(key.timestamp).expect("generated timestamp");
             writeln!(&mut s, "published event {}/{} at {}", key.stream, key.offset, ts).unwrap();
         }
         s

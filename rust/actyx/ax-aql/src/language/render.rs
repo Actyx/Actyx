@@ -129,7 +129,8 @@ pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
         SimpleExpr::TimeLiteral(t) => write!(
             w,
             "TIME({})",
-            DateTime::<Utc>::from(*t)
+            DateTime::<Utc>::try_from(*t)
+                .expect("should have been parsed correctly")
                 .with_timezone(&Local)
                 .to_rfc3339_opts(SecondsFormat::Micros, true)
         ),
@@ -227,7 +228,10 @@ pub fn render_tag_expr(w: &mut impl Write, e: &TagExpr, _parent: Option<&TagExpr
 
 fn render_timestamp(w: &mut impl Write, e: Timestamp) -> Result {
     use chrono::prelude::*;
-    let dt: DateTime<Utc> = e.into();
+    let dt: DateTime<Utc> = e.try_into().map_err(|e| {
+        tracing::error!("cannot render timestamp: {e}");
+        std::fmt::Error
+    })?;
     let str = if dt.hour() == 0 && dt.minute() == 0 && dt.second() == 0 && dt.nanosecond() == 0 {
         dt.format("%Y-%m-%dZ").to_string()
     } else {

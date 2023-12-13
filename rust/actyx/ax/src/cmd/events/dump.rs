@@ -4,7 +4,7 @@ use ax_core::{
     util::{
         formats::{
             events_protocol::{EventsRequest, EventsResponse},
-            ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse,
+            ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse,
         },
         gen_stream::GenStream,
         version::VERSION,
@@ -276,7 +276,11 @@ impl AxCliCommand for EventsDump {
                         let now = Local::now();
                         if now - last_printed > Duration::milliseconds(100) {
                             last_printed = now;
-                            diag.status(format!("event {} ({})", count, DateTime::<Utc>::from(meta.timestamp)))?;
+                            diag.status(format!(
+                                "event {} ({})",
+                                count,
+                                DateTime::<Utc>::try_from(meta.timestamp).ax_err(ActyxOSCode::ERR_INTERNAL_ERROR)?
+                            ))?;
                         }
                     }
                     EventsResponse::Diagnostic(d) => diag.log(format!("diagnostic {:?}: {}", d.severity, d.message))?,
