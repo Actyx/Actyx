@@ -19,9 +19,9 @@ use std::{
 ///
 /// let timestamp = Timestamp::now();
 /// let micros_since_epoch: u64 = timestamp.into();
-/// let date_time: DateTime<Utc> = timestamp.into();
+/// let date_time: DateTime<Utc> = timestamp.try_into().unwrap();
 ///
-/// assert_eq!(timestamp.as_i64() * 1000, date_time.timestamp_nanos());
+/// assert_eq!(timestamp.as_i64() * 1000, date_time.timestamp_nanos_opt().unwrap());
 /// assert_eq!(Timestamp::from(date_time), timestamp);
 /// ```
 #[derive(
