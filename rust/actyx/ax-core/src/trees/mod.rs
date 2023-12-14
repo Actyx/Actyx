@@ -1,4 +1,4 @@
-#[cfg(any(test, feature = "arb"))]
+#[cfg(test)]
 mod arb;
 pub mod axtrees;
 // Using some traits or similar the DNF module could be extracted into a separated crate

@@ -13,29 +13,26 @@ keywords = ["distributed", "decentralized", "event-sourcing"]
 categories = ["network-programming"]
 
 [features]
-default = ["arb"]
+default = []
 arb = ["quickcheck"]
 sqlite = ["rusqlite"]
 
 [dependencies]
 ax_macros = { version = "0.1", path = "../ax-macros" }
 
-iso8601-timestamp = "0.2.13"
-
 anyhow = "1.0.52"
 base64 = "0.13.0"
-bytes = { version = "1.1.0", optional = true }
 cbor-data = "0.8.15"
 chrono = "0.4.31"
 derive_more = "0.99.17"
 im = { version = "15.1.0", features = ["serde"] }
 intern-arc = "0.5.0"
+iso8601-timestamp = "0.2.13"
 lazy_static = "1.4.0"
 libipld = { version = "0.14.0", default-features = false, features = [
     "dag-cbor",
     "derive",
 ] }
-multibase = "0.9.1"
 num-traits = "0.2.14"
 once_cell = "1.9.0"
 serde = { version = "1.0.133", features = ["derive", "rc"] }
@@ -44,25 +41,15 @@ serde_json = "1.0.74"
 serde-transcode = "1.1.1"
 unicode-normalization = "0.1.19"
 
-reqwest = { version = "0.11.22", features = [
-    "json",
-    "gzip",
-    "stream",
-    "multipart",
-], optional = true, default-features = false }
-rand = { version = "0.8.4", optional = true }
-url = { version = "2.2.2", optional = true }
-
+# For the `arb` feature
 quickcheck = { version = "1.0.3", optional = true }
+
+# For the `sqlite` feature
 rusqlite = { version = "0.26.3", features = ["bundled"], optional = true }
 
 [dev-dependencies]
-asynchronous-codec = "0.6.0"
 futures-timer = "3.0.2"
 hex = "0.4.3"
-quickcheck = "1.0.3"
-quickcheck_derive = "0.3.0"
-rand = "0.8.4"
-structopt = "0.3.25"
-tokio = { version = "1.15.0", features = ["rt-multi-thread", "macros", "fs"] }
-tokio-util = { version = "0.6.9", features = ["compat"] }
+
+# Duplicated because it's required for tests, but optional for regular use
+quickcheck = { version = "1.0.3" }

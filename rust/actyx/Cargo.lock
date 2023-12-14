@@ -366,7 +366,7 @@ dependencies = [
  "anstyle",
  "bstr",
  "doc-comment",
- "predicates 3.0.4",
+ "predicates",
  "predicates-core",
  "predicates-tree",
  "wait-timeout",
@@ -394,19 +394,6 @@ dependencies = [
  "event-listener-strategy",
  "futures-core",
  "pin-project-lite",
-]
-
-[[package]]
-name = "async-compression"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc2d0cfb2a7388d34f590e76686704c494ed7aaceed62ee1ba35cbf363abc2a5"
-dependencies = [
- "flate2",
- "futures-core",
- "memchr",
- "pin-project-lite",
- "tokio",
 ]
 
 [[package]]
@@ -644,7 +631,7 @@ dependencies = [
  "maplit",
  "once_cell",
  "parking_lot 0.12.1",
- "predicates 3.0.4",
+ "predicates",
  "prettytable-rs",
  "rand 0.7.3",
  "regex",
@@ -708,8 +695,6 @@ dependencies = [
  "derive_more",
  "dirs 4.0.0",
  "ed25519-dalek 1.0.1",
- "env_logger 0.9.3",
- "escargot",
  "ffi-support",
  "fnv",
  "fslock",
@@ -740,7 +725,6 @@ dependencies = [
  "pin-project",
  "pin-project-lite",
  "pin-utils",
- "predicates 2.1.5",
  "pretty_assertions",
  "prometheus",
  "quickcheck",
@@ -820,10 +804,8 @@ name = "ax_types"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "asynchronous-codec",
  "ax_macros",
  "base64 0.13.1",
- "bytes",
  "cbor-data",
  "chrono",
  "derive_more",
@@ -834,23 +816,15 @@ dependencies = [
  "iso8601-timestamp",
  "lazy_static",
  "libipld",
- "multibase",
  "num-traits",
  "once_cell",
  "quickcheck",
- "quickcheck_derive",
- "rand 0.8.5",
- "reqwest",
  "rusqlite",
  "serde",
  "serde-transcode",
  "serde_cbor",
  "serde_json",
- "structopt",
- "tokio",
- "tokio-util 0.6.10",
  "unicode-normalization",
- "url",
 ]
 
 [[package]]
@@ -4462,7 +4436,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
- "zeroize",
 ]
 
 [[package]]
@@ -5005,20 +4978,6 @@ checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 
 [[package]]
 name = "predicates"
-version = "2.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59230a63c37f3e18569bdb90e4a89cbf5bf8b06fea0b84e65ea10cc4df47addd"
-dependencies = [
- "difflib",
- "float-cmp",
- "itertools 0.10.5",
- "normalize-line-endings",
- "predicates-core",
- "regex",
-]
-
-[[package]]
-name = "predicates"
 version = "3.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dfc28575c2e3f19cb3c73b93af36460ae898d426eba6fc15b9bd2a5220758a0"
@@ -5374,17 +5333,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "quickcheck_derive"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "695566b1208e5a3e5a613d3326fcdb78203e1493c81514bfb4f4460ce0694deb"
-dependencies = [
- "proc-macro2",
- "syn 1.0.109",
- "synstructure",
-]
-
-[[package]]
 name = "quickcheck_macros"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5724,7 +5672,6 @@ version = "0.11.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "046cd98826c46c2ac8ddecae268eb5c2e58628688a5fc7a2643704a73faba95b"
 dependencies = [
- "async-compression",
  "base64 0.21.5",
  "bytes",
  "encoding_rs",

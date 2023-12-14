@@ -163,7 +163,6 @@ dependencies = [
  "iso8601-timestamp",
  "lazy_static",
  "libipld",
- "multibase",
  "num-traits",
  "once_cell",
  "quickcheck",

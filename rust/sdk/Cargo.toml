@@ -12,6 +12,9 @@ license = "Apache-2.0"
 keywords = ["distributed", "decentralized", "event-sourcing"]
 categories = ["network-programming"]
 
+[features]
+arb = ["ax_types/arb"]
+
 [dependencies]
 # Actyx related dependencies (for usage and re-export)
 ax_types = { version = "0.1.0", path = "../actyx/ax-types" }
