@@ -2,7 +2,6 @@ pub mod base64_blob;
 pub mod drainer;
 pub mod formats;
 pub mod gen_stream;
-pub mod keepalivestream3;
 pub mod pinned_resource;
 pub mod reentrant_safe_mutex;
 pub mod serde_support;
