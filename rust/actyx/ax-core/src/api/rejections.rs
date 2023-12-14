@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::{runtime::features::FeatureError, util::serde_support::StringSerialized};
+use crate::runtime::features::FeatureError;
 use ax_types::AppId;
 use warp::{filters, http::StatusCode, reject, Rejection, Reply};
 
@@ -104,13 +104,22 @@ impl From<FeatureError> for ApiError {
     }
 }
 
+impl serde::Serialize for ApiError {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self)
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiErrorResponse {
     #[serde(skip)]
     pub status: StatusCode,
     pub code: String,
-    pub message: StringSerialized<ApiError>,
+    pub message: ApiError,
 }
 impl From<ApiError> for ApiErrorResponse {
     fn from(e: ApiError) -> Self {
@@ -139,7 +148,7 @@ impl From<ApiError> for ApiErrorResponse {
         ApiErrorResponse {
             code: code.to_string(),
             status,
-            message: e.into(),
+            message: e,
         }
     }
 }
