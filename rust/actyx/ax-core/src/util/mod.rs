@@ -5,7 +5,6 @@ pub mod gen_stream;
 pub mod immutable_sync;
 pub mod keepalivestream3;
 pub mod pinned_resource;
-pub mod pinned_resource_sync;
 pub mod reentrant_safe_mutex;
 pub mod serde_support;
 pub mod trace_poll;
