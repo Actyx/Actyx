@@ -124,6 +124,7 @@ warp = "0.3.5"
 wsrpc = "0.2.0"
 zeroize = "1.2.0"
 zstd = "0.9.2"
+stacker = "0.1.15"
 
 [dev-dependencies]
 anyhow = { version = "1.0.52", features = ["backtrace"] }
