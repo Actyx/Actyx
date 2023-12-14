@@ -1,4 +1,3 @@
-pub use crate::api::events::service::EventService;
 use crate::util::formats::NodeCycleCount;
 use ax_types::{AppId, Timestamp};
 use serde::{Deserialize, Serialize};
