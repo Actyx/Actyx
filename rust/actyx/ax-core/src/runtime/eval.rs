@@ -22,6 +22,16 @@ use std::{
     sync::Arc,
 };
 
+// eval_from method below can be heavily recursive when AQL
+// with long tag bin-ops chain is supplied.
+// https://github.com/Actyx/Actyx/issues/608
+//
+// see `eval_from` below
+//
+// Also: 200000 is a huge number, each recursion takes 5000-ish, but
+// when traced, println! stops printing at 170000
+const EVAL_REMAINING_STACK_THRESHOLD: usize = 200000;
+
 pub struct RootContext {
     scratch: Mutex<Vec<u8>>,
     store: EventStoreRef,
@@ -145,6 +155,18 @@ impl<'a> Context<'a> {
 
     pub fn eval_from<'b, 'c: 'b>(&'b self, expr: &'c TagExpr) -> BoxFuture<'b, anyhow::Result<Cow<'c, TagExpr>>> {
         async move {
+            // Below block sets a threshold for the remaining stack during
+            // heavily recursive AQL evaluation to avoid crashing the whole
+            // databank process.
+            if let Some(x) = stacker::remaining_stack() {
+                if x < EVAL_REMAINING_STACK_THRESHOLD {
+                    bail!(
+                        "stack overflow guard exceeded, remaining stack below {}",
+                        EVAL_REMAINING_STACK_THRESHOLD
+                    );
+                }
+            }
+
             match expr {
                 TagExpr::Or(x) => {
                     let left = self.eval_from(&x.0).await?;
