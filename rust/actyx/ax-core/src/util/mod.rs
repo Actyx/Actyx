@@ -5,11 +5,8 @@ pub mod gen_stream;
 pub mod pinned_resource;
 pub mod reentrant_safe_mutex;
 pub mod serde_support;
-pub mod value_or_limit;
 pub mod variable;
 pub mod version;
-
-pub use self::value_or_limit::*;
 
 use anyhow::bail;
 use multiaddr::{Multiaddr, Protocol};
