@@ -700,7 +700,6 @@ dependencies = [
  "bytes",
  "cbor-data",
  "cbor-tag-index",
- "cfg-if",
  "chacha20poly1305 0.9.1",
  "chrono",
  "criterion",
@@ -716,7 +715,6 @@ dependencies = [
  "fslock",
  "futures 0.3.29",
  "genawaiter",
- "glob",
  "hex",
  "http",
  "hyper",
@@ -736,7 +734,6 @@ dependencies = [
  "multihash 0.16.3",
  "names",
  "num-bigint",
- "num-traits",
  "once_cell",
  "parking_lot 0.12.1",
  "percent-encoding",
@@ -746,8 +743,6 @@ dependencies = [
  "predicates 2.1.5",
  "pretty_assertions",
  "prometheus",
- "prost 0.9.0",
- "prost-derive 0.9.0",
  "quickcheck",
  "quickcheck_macros",
  "rand 0.7.3",
@@ -759,7 +754,6 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "serde_urlencoded",
- "serde_yaml",
  "sha2 0.9.9",
  "signal-hook",
  "smallvec",
@@ -777,7 +771,6 @@ dependencies = [
  "treediff",
  "trust-dns-resolver",
  "tungstenite 0.16.0",
- "unicode-width",
  "unixfs-v1",
  "url",
  "uuid 0.8.2",
@@ -787,7 +780,6 @@ dependencies = [
  "waker-fn",
  "warp",
  "wsrpc",
- "zeroize",
  "zstd",
 ]
 
@@ -2631,12 +2623,6 @@ name = "gimli"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fb8d784f27acf97159b40fc4db5ecd8aa23b9ad5ef69cdd136d3bc80665f0c0"
-
-[[package]]
-name = "glob"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 
 [[package]]
 name = "gloo-timers"
@@ -5210,16 +5196,6 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "444879275cb4fd84958b1a1d5420d15e6fcf7c235fe47f053c9c2a80aceb6001"
-dependencies = [
- "bytes",
- "prost-derive 0.9.0",
-]
-
-[[package]]
-name = "prost"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71adf41db68aa0daaefc69bb30bcd68ded9b9abaad5d1fbb6304c4fb390e083e"
@@ -5293,19 +5269,6 @@ dependencies = [
  "prost 0.11.9",
  "thiserror",
  "unsigned-varint",
-]
-
-[[package]]
-name = "prost-derive"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9cc1a3263e07e0bf68e96268f37665207b49560d98739662cdfaae215c720fe"
-dependencies = [
- "anyhow",
- "itertools 0.10.5",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
