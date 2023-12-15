@@ -1,0 +1,55 @@
+[package]
+name = "ax_types"
+version = "0.1.0"
+authors = ["Actyx AG <developer@actyx.io>"]
+edition = "2021"
+description = "Core types for use by and with the ax family"
+readme = "README.md"
+documentation = "https://docs.rs/ax_types"
+homepage = "https://developer.actyx.com/"
+repository = "https://github.com/Actyx/Actyx"
+license = "Apache-2.0"
+keywords = ["distributed", "decentralized", "event-sourcing"]
+categories = ["network-programming"]
+
+[features]
+default = []
+arb = ["quickcheck"]
+sqlite = ["rusqlite"]
+
+[dependencies]
+ax_macros = { version = "0.1", path = "../ax-macros" }
+
+anyhow = "1.0.52"
+base64 = "0.13.0"
+cbor-data = "0.8.15"
+chrono = "0.4.31"
+derive_more = "0.99.17"
+im = { version = "15.1.0", features = ["serde"] }
+intern-arc = "0.5.0"
+iso8601-timestamp = "0.2.13"
+lazy_static = "1.4.0"
+libipld = { version = "0.14.0", default-features = false, features = [
+    "dag-cbor",
+    "derive",
+] }
+num-traits = "0.2.14"
+once_cell = "1.9.0"
+serde = { version = "1.0.133", features = ["derive", "rc"] }
+serde_cbor = "0.11.2"
+serde_json = "1.0.74"
+serde-transcode = "1.1.1"
+unicode-normalization = "0.1.19"
+
+# For the `arb` feature
+quickcheck = { version = "1.0.3", optional = true }
+
+# For the `sqlite` feature
+rusqlite = { version = "0.26.3", features = ["bundled"], optional = true }
+
+[dev-dependencies]
+futures-timer = "3.0.2"
+hex = "0.4.3"
+
+# Duplicated because it's required for tests, but optional for regular use
+quickcheck = { version = "1.0.3" }

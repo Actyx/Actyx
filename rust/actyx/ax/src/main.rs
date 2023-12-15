@@ -1,100 +1,69 @@
-mod cmd;
-mod node_connection;
-mod private_key;
+#![doc = include_str!("../README.md")]
+#![doc(html_logo_url = "https://developer.actyx.com/img/logo.svg")]
+#![doc(html_favicon_url = "https://developer.actyx.com/img/favicon.ico")]
 
-use cmd::{
-    apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts,
+mod cmd;
+
+use crate::cmd::{
+    apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, run::Color, settings::SettingsOpts,
     swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
 };
-use std::process::exit;
-use structopt::{
-    clap::{App, AppSettings, ArgMatches, ErrorKind, SubCommand},
-    StructOpt, StructOptInternal,
-};
+use anyhow::{Context, Result};
+use ax_core::node::{init_shutdown_ceremony, shutdown_ceremony, ApplicationState, BindTo, Runtime};
+use clap::{ArgAction, Args, Parser};
+use clap_complete::Shell;
+use cmd::run::RunOpts;
+use std::{future::Future, process::exit};
 
-#[derive(StructOpt, Debug)]
-#[structopt(
-    name = "Actyx CLI",
+#[derive(clap::Parser, Clone, Debug)]
+#[command(
+    name = "ax",
     about = concat!(
-        "\nThe Actyx Command Line Interface (CLI) is a unified tool to manage your Actyx nodes.\n\n",
-        include_str!("../../../../NOTICE")),
-    version = env!("AX_CLI_VERSION"),
+        "\nThe ax CLI is a unified tool to manage your ax nodes.\n\n",
+        include_str!("../NOTICE")),
+    version = ax_core::util::version::VERSION.as_str(),
+    propagate_version = true,
+    disable_help_subcommand = true
 )]
 struct Opt {
-    #[structopt(subcommand)]
+    #[command(subcommand)]
     command: CommandsOpt,
     /// Format output as JSON
-    #[structopt(long, short, global = true)]
+    #[arg(long, short, global = true)]
     json: bool,
-    #[structopt(short, parse(from_occurrences), global = true)]
+    /// Set verbosity
+    #[arg(short, global = true, action = ArgAction::Count)]
     verbosity: u8,
 }
 
-#[derive(Debug)]
+#[derive(clap::Subcommand, Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 enum CommandsOpt {
-    // structopt will use the enum variant name in lowercase as a subcommand
-    Apps(AppsOpts),
-    Settings(SettingsOpts),
-    Swarms(SwarmsOpts),
-    Nodes(NodesOpts),
-    Users(UsersOpts),
-    Internal(InternalOpts),
+    // clap 3 use variant order to order displayed help subcommands
+    Run(RunOpts),
+    #[command(subcommand, arg_required_else_help(true))]
     Events(EventsOpts),
+    #[command(subcommand, arg_required_else_help(true))]
+    Nodes(NodesOpts),
+    #[command(subcommand, arg_required_else_help(true))]
     Topics(TopicsOpts),
-}
-
-impl StructOpt for CommandsOpt {
-    fn clap<'a, 'b>() -> App<'a, 'b> {
-        let app = App::new("Actyx CLI").setting(AppSettings::SubcommandRequiredElseHelp);
-        Self::augment_clap(app)
-    }
-
-    fn from_clap(matches: &ArgMatches<'_>) -> Self {
-        Self::from_subcommand(matches.subcommand()).expect("wat")
-    }
-}
-
-impl StructOptInternal for CommandsOpt {
-    fn augment_clap<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
-        let app = app.subcommands(vec![
-            AppsOpts::augment_clap(SubCommand::with_name("apps")).setting(AppSettings::SubcommandRequiredElseHelp),
-            SettingsOpts::augment_clap(SubCommand::with_name("settings"))
-                .setting(AppSettings::SubcommandRequiredElseHelp),
-            SwarmsOpts::augment_clap(SubCommand::with_name("swarms")).setting(AppSettings::SubcommandRequiredElseHelp),
-            NodesOpts::augment_clap(SubCommand::with_name("nodes")).setting(AppSettings::SubcommandRequiredElseHelp),
-            UsersOpts::augment_clap(SubCommand::with_name("users")).setting(AppSettings::SubcommandRequiredElseHelp),
-            EventsOpts::augment_clap(SubCommand::with_name("events")).setting(AppSettings::SubcommandRequiredElseHelp),
-            TopicsOpts::augment_clap(SubCommand::with_name("topics").setting(AppSettings::SubcommandRequiredElseHelp)),
-        ]);
-        if superpowers() {
-            app.subcommand(
-                InternalOpts::augment_clap(SubCommand::with_name("internal"))
-                    .setting(AppSettings::SubcommandRequiredElseHelp),
-            )
-        } else {
-            app
-        }
-    }
-
-    fn from_subcommand<'a>(sub: (&'a str, Option<&'a ArgMatches<'_>>)) -> Option<Self>
-    where
-        Self: std::marker::Sized,
-    {
-        match sub {
-            ("apps", Some(matches)) => Some(CommandsOpt::Apps(AppsOpts::from_clap(matches))),
-            ("settings", Some(matches)) => Some(CommandsOpt::Settings(SettingsOpts::from_clap(matches))),
-            ("swarms", Some(matches)) => Some(CommandsOpt::Swarms(SwarmsOpts::from_clap(matches))),
-            ("nodes", Some(matches)) => Some(CommandsOpt::Nodes(NodesOpts::from_clap(matches))),
-            ("users", Some(matches)) => Some(CommandsOpt::Users(UsersOpts::from_clap(matches))),
-            ("internal", Some(matches)) if superpowers() => {
-                Some(CommandsOpt::Internal(InternalOpts::from_clap(matches)))
-            }
-            ("events", Some(matches)) => Some(CommandsOpt::Events(EventsOpts::from_clap(matches))),
-            ("topics", Some(matches)) => Some(CommandsOpt::Topics(TopicsOpts::from_clap(matches))),
-            _ => None,
-        }
-    }
+    #[command(subcommand, arg_required_else_help(true))]
+    Swarms(SwarmsOpts),
+    #[command(subcommand, arg_required_else_help(true))]
+    Apps(AppsOpts),
+    #[command(subcommand, arg_required_else_help(true))]
+    Settings(SettingsOpts),
+    #[command(subcommand, arg_required_else_help(true))]
+    Users(UsersOpts),
+    #[command(subcommand, arg_required_else_help(true), hide = !superpowers())]
+    Internal(InternalOpts),
+    /// Generate completion scripts for your shell
+    ///
+    /// For example, on bash use `eval "$(ax complete bash)"` to setup completion.
+    /// On zsh it works analogously, but you need to ensure that `compinit` has been run before.
+    Complete {
+        shell: Shell,
+    },
 }
 
 fn superpowers() -> bool {
@@ -102,37 +71,111 @@ fn superpowers() -> bool {
     var == "zøg" || var == "zoeg"
 }
 
-#[tokio::main(flavor = "multi_thread")]
-async fn main() {
+fn main() -> Result<()> {
     let Opt {
         command,
         json,
         verbosity,
-    } = match Opt::from_args_safe() {
-        Ok(o) => o,
-        Err(e) => match e.kind {
-            ErrorKind::HelpDisplayed => {
-                println!("{}\n", e.message);
-                exit(0)
-            }
-            ErrorKind::VersionDisplayed => {
-                println!();
-                exit(0)
-            }
-            _ => e.exit(),
-        },
-    };
-
-    util::setup_logger_with_level(verbosity);
+    } = Opt::parse();
 
     match command {
-        CommandsOpt::Apps(opts) => cmd::apps::run(opts, json).await,
-        CommandsOpt::Nodes(opts) => cmd::nodes::run(opts, json).await,
-        CommandsOpt::Settings(opts) => cmd::settings::run(opts, json).await,
-        CommandsOpt::Swarms(opts) => cmd::swarms::run(opts, json).await,
-        CommandsOpt::Users(opts) => cmd::users::run(opts, json).await,
-        CommandsOpt::Internal(opts) => cmd::internal::run(opts, json).await,
-        CommandsOpt::Events(opts) => cmd::events::run(opts, json).await,
-        CommandsOpt::Topics(opts) => cmd::topics::run(opts, json).await,
+        CommandsOpt::Run(opts) => run(opts)?,
+        CommandsOpt::Apps(opts) => handle_cmd(cmd::apps::run(opts, json), verbosity),
+        CommandsOpt::Nodes(opts) => handle_cmd(cmd::nodes::run(opts, json), verbosity),
+        CommandsOpt::Settings(opts) => handle_cmd(cmd::settings::run(opts, json), verbosity),
+        CommandsOpt::Swarms(opts) => handle_cmd(cmd::swarms::run(opts, json), verbosity),
+        CommandsOpt::Users(opts) => handle_cmd(cmd::users::run(opts, json), verbosity),
+        CommandsOpt::Internal(opts) => handle_cmd(cmd::internal::run(opts, json), verbosity),
+        CommandsOpt::Events(opts) => handle_cmd(cmd::events::run(opts, json), verbosity),
+        CommandsOpt::Topics(opts) => handle_cmd(cmd::topics::run(opts, json), verbosity),
+        CommandsOpt::Complete { shell } => {
+            let mut cmd = Opt::augment_args(clap::Command::new("ax"));
+            clap_complete::generate(shell, &mut cmd, "ax", &mut std::io::stdout());
+            exit(0);
+        }
     }
+    Ok(())
+}
+
+fn handle_cmd(fut: impl Future<Output = ()>, verbosity: u8) {
+    ax_core::util::setup_logger_with_level(verbosity);
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("failed to build runtime");
+    rt.block_on(fut);
+}
+
+// This method does not belong here, it belongs in ax-core
+// we need to extract this and it's friends
+pub fn run(
+    RunOpts {
+        working_dir,
+        bind_options,
+        random,
+        log_color,
+        log_json,
+    }: RunOpts,
+) -> Result<()> {
+    let is_no_tty = atty::isnt(atty::Stream::Stderr);
+    let log_no_color = match log_color {
+        Some(Color::On) => false,
+        Some(Color::Off) => true,
+        Some(Color::Auto) => is_no_tty,
+        None => false,
+    };
+    let log_as_json = match log_json {
+        Some(Color::On) => true,
+        Some(Color::Off) => false,
+        Some(Color::Auto) => is_no_tty,
+        None => false,
+    };
+
+    let bind_to = if random {
+        BindTo::random()?
+    } else {
+        bind_options.try_into()?
+    };
+
+    let working_dir = if let Some(working_dir) = working_dir {
+        working_dir
+    } else {
+        let cwd = std::env::current_dir().context("getting current working directory")?;
+        let actyx_data = cwd.join("actyx-data");
+        if actyx_data.exists() {
+            eprintln!(
+                concat!(
+                    "Warning: the `actyx-data` directory has been deprecated. ",
+                    "If you want to get rid of this warning, rename `{0}/actyx-data` to `{0}/ax-data`."
+                ),
+                cwd.display()
+            );
+            actyx_data
+        } else {
+            cwd.join("ax-data")
+        }
+    };
+
+    std::fs::create_dir_all(working_dir.clone())
+        .with_context(|| format!("creating working directory `{}`", working_dir.display()))?;
+    // printed by hand since things can fail before logging is set up and we want the user to know this
+    eprintln!("using data directory `{}`", working_dir.display());
+
+    // must be done before starting the application
+    init_shutdown_ceremony();
+
+    if cfg!(target_os = "android") {
+        panic!("Unsupported platform");
+    } else {
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        let runtime = Runtime::Linux;
+        #[cfg(target_os = "windows")]
+        let runtime = Runtime::Windows;
+
+        let app_handle = ApplicationState::spawn(working_dir, runtime, bind_to, log_no_color, log_as_json)?;
+
+        shutdown_ceremony(app_handle)?;
+    }
+
+    Ok(())
 }

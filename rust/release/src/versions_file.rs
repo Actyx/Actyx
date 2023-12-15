@@ -1,37 +1,32 @@
-use crate::changes::Change;
-use crate::products::Product;
-use crate::releases::Release;
-use crate::repo::get_changes_for_product;
-use crate::versions::apply_changes;
-use crate::versions_ignore_file::VersionsIgnoreFile;
+use crate::{
+    changes::Change, products::Product, releases::Release, repo::get_changes_for_product, versions::apply_changes,
+    versions_ignore_file::VersionsIgnoreFile,
+};
 use anyhow::anyhow;
-use chrono::SecondsFormat;
-use chrono::TimeZone;
+use chrono::{SecondsFormat, TimeZone};
 use git2::{Oid, Repository};
 use itertools::Itertools;
-use rayon::iter::IntoParallelRefIterator;
-use rayon::iter::ParallelIterator;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use semver::Version;
 use serde::Serialize;
-use std::cmp::Ordering;
-use std::collections::BTreeMap;
-use std::collections::BinaryHeap;
-use std::fmt;
-use std::io::Write;
-use std::str;
 use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BinaryHeap},
+    fmt,
     fs::File,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Write},
     path::Path,
+    str,
     str::FromStr,
 };
 use tempfile::NamedTempFile;
 
 const HEADER: &str = r#"# Last releases of all Actyx products
 # Each line contains <release> <commit-hash>
-# The machine-readable product names are: actyx, node-manager,
+# The machine-readable product names are: ax, ax_core, actyx, node-manager,
 # cli, pond, ts-sdk, rust-sdk, docs, csharp-sdk"#;
 
+#[derive(Clone)]
 pub struct CalculationResult {
     pub prev_commit: Oid,
     pub prev_version: Version,
@@ -211,7 +206,11 @@ impl VersionsFile {
             let product = current.release.product;
             let repo = Repository::open_from_env()?;
             let ts = repo.find_commit(current.commit)?.time().seconds();
-            let time = chrono::Utc.timestamp(ts, 0).to_rfc3339_opts(SecondsFormat::Secs, true);
+            let time = chrono::Utc
+                .timestamp_opt(ts, 0)
+                .single()
+                .expect("git timestamps should be valid")
+                .to_rfc3339_opts(SecondsFormat::Secs, true);
             if product == previous.release.product {
                 let changes = self.calculate_changes_for_version(&product, &current.release.version, ignore)?;
                 let entry = map.entry(product.to_string()).or_default();

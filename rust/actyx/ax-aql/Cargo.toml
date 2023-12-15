@@ -1,0 +1,31 @@
+[package]
+name = "ax_aql"
+version = "0.1.0"
+authors = ["Actyx AG <developer@actyx.io>"]
+edition = "2021"
+description = "AQL parsing and rendering for ax"
+documentation = "https://docs.rs/ax-aql"
+homepage = "https://developer.actyx.com/"
+repository = "https://github.com/Actyx/Actyx"
+license = "Apache-2.0"
+keywords = ["distributed", "decentralized", "event-sourcing"]
+categories = ["network-programming"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ax_types = { version = "0.1.0", path = "../ax-types" }
+
+anyhow = "1.0.75"
+chrono = "0.4.31"
+derive_more = "0.99.17"
+num-traits = "0.2.17"
+once_cell = "1.18.0"
+pest = "2.1.3"
+pest_derive = "2.1.0"
+serde = { version = "1.0.193", features = ["derive"] }
+tracing = "0.1.40"
+unicode-normalization = "0.1.22"
+
+[dev-dependencies]
+quickcheck = "1.0.3"

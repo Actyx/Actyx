@@ -1,19 +1,15 @@
-use std::time::Duration;
-
-use actyx_sdk::NodeId;
+use super::{Authority, AxCliCommand};
+use crate::cmd::consts::TABLE_FORMAT;
+use ax_core::{
+    node_connection::{connect, mk_swarm, request_single, Task},
+    private_key::{AxPrivateKey, KeyPathWrapper},
+    util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicLsResponse},
+};
+use ax_sdk::types::NodeId;
 use futures::{channel::mpsc, future::join_all, stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
-use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicLsResponse};
-
-use crate::{
-    cmd::consts::TABLE_FORMAT,
-    node_connection::{connect, mk_swarm, request_single, Task},
-    private_key::AxPrivateKey,
-};
-
-use super::{Authority, AxCliCommand, KeyPathWrapper};
+use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "connection")]
@@ -48,7 +44,7 @@ async fn request(timeout: u8, mut conn: mpsc::Sender<Task>, authority: Authority
         // here `ax` is "giving up" and on the previous, the node is actually unreachable
         LsOutput::Error {
             host,
-            error: ActyxOSError::new(util::formats::ActyxOSCode::ERR_NODE_UNREACHABLE, "timeout"),
+            error: ActyxOSError::new(ax_core::util::formats::ActyxOSCode::ERR_NODE_UNREACHABLE, "timeout"),
         }
     }
 }
@@ -77,7 +73,9 @@ impl AxCliCommand for TopicsList {
 
     type Output = Vec<LsOutput>;
 
-    fn run(opts: Self::Opt) -> Box<dyn futures::Stream<Item = util::formats::ActyxOSResult<Self::Output>> + Unpin> {
+    fn run(
+        opts: Self::Opt,
+    ) -> Box<dyn futures::Stream<Item = ax_core::util::formats::ActyxOSResult<Self::Output>> + Unpin> {
         let requests = Box::pin(ls_run(opts));
         Box::new(stream::once(requests))
     }
@@ -105,7 +103,7 @@ impl AxCliCommand for TopicsList {
                     }
                 }
                 LsOutput::Unreachable { host } => {
-                    table.add_row(row!["Actyx was unreachable on host", host]);
+                    table.add_row(row!["AX was unreachable on host", host]);
                 }
                 LsOutput::Unauthorized { host } => {
                     table.add_row(row!["Unauthorized on host", host]);
@@ -120,16 +118,15 @@ impl AxCliCommand for TopicsList {
 }
 
 /// List all topics
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct LsOpts {
-    /// The IP addresses or <host>:<admin port> of the target nodes.
-    #[structopt(name = "NODE", required = true)]
+    /// The IP addresses or `<host>:<admin port>` of the target nodes.
+    #[arg(name = "NODE", required = true)]
     authority: Vec<Authority>,
     /// The private key file to use for authentication.
-    #[structopt(short, long)]
+    #[arg(short, long)]
     identity: Option<KeyPathWrapper>,
     /// Timeout time for the operation (in seconds, with a maximum of 255).
-    #[structopt(short, long, default_value = "5")]
+    #[arg(short, long, default_value = "5")]
     timeout: u8,
 }

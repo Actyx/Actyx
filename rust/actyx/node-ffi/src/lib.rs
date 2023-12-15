@@ -1,10 +1,11 @@
+#![deny(clippy::future_not_send)]
+
+use ax_core::node::{spawn_with_name, ApplicationState, BindTo, NodeError, Runtime, ShutdownReason};
 use crossbeam::channel::bounded;
 use ffi_support::{ErrorCode, ExternError, FfiStr};
 use lazy_static::lazy_static;
-use node::{spawn_with_name, ApplicationState, BindTo, NodeError, Runtime, ShutdownReason};
 use parking_lot::Mutex;
 use std::{convert::TryFrom, os::raw::c_char, sync::Arc};
-use tracing::*;
 
 lazy_static! {
     static ref STATE: Mutex<Option<ApplicationState>> = Mutex::new(None);
@@ -37,7 +38,7 @@ pub extern "C" fn axnode_init(working_dir: FfiStr, callback: Callback, error: &m
                     *state = Some(handle);
                     spawn_with_name("ffi_sink", move || loop {
                         if let Ok(msg) = rx.recv() {
-                            trace!("Sending over ffi: {:?}", msg);
+                            tracing::trace!("Sending over ffi: {:?}", msg);
                             let (code, c_str) = msg.into();
                             callback_holder::send(code, c_str);
                         }

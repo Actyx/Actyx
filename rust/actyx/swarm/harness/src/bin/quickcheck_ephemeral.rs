@@ -1,11 +1,13 @@
 #[cfg(target_os = "linux")]
 fn main() {
-    use actyx_sdk::{
-        language::TagExpr,
-        service::{EventMeta, EventResponse, PublishEvent, QueryResponse},
-        tags, OffsetMap, Payload,
-    };
     use async_std::task::block_on;
+    use ax_sdk::{
+        aql::TagExpr,
+        types::{
+            service::{EventMeta, EventResponse, PublishEvent, QueryResponse},
+            tags, OffsetMap, Payload,
+        },
+    };
     use futures::{future, stream::FuturesUnordered, StreamExt};
     use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
     use std::{

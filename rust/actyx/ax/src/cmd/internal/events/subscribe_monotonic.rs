@@ -1,20 +1,18 @@
-use crate::{
-    cmd::{AxCliCommand, ConsoleOpt},
+use crate::cmd::{AxCliCommand, ConsoleOpt};
+use ax_core::{
     node_connection::{request_events, EventDiagnostic},
+    util::{
+        formats::{events_protocol::EventsRequest, ActyxOSResult},
+        gen_stream::GenStream,
+    },
 };
-use actyx_sdk::{service::SubscribeMonotonicRequest, OffsetMap};
+use ax_sdk::types::{service::SubscribeMonotonicRequest, OffsetMap};
 use futures::{future::ready, Stream, StreamExt};
-use structopt::StructOpt;
-use util::{
-    formats::{events_protocol::EventsRequest, ActyxOSResult},
-    gen_stream::GenStream,
-};
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Parser, Clone, Debug)]
 /// issue a monotonic subscription
 pub struct SubscribeMonotonicOpts {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
     /// event API query
     query: String,

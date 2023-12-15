@@ -1,4 +1,7 @@
-use actyx_sdk::{service::QueryResponse, tags, Ax, AxOpts};
+use ax_sdk::{
+    types::{service::QueryResponse, tags},
+    Ax, AxOpts,
+};
 use futures::stream::StreamExt;
 
 // This example demonstrates how to query events using `with_lower_bound`.
@@ -23,6 +26,8 @@ async fn main() -> anyhow::Result<()> {
             &serde_json::json!({ "temperature": 40 }),
         )?
         .await?;
+    // Print publish response for demonstration purposes
+    println!("{:?}", publish_response);
 
     let mut query_response = service.query("FROM 'sensor:temp-sensor2'").await?;
     let offsets = loop {

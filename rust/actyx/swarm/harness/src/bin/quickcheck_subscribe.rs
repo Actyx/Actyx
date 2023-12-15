@@ -1,18 +1,17 @@
 #[cfg(target_os = "linux")]
 fn main() {
+    use anyhow::Context;
+    use async_std::{future::timeout, task::block_on};
+    use ax_sdk::types::{
+        service::{EventMeta, EventResponse, QueryResponse},
+        tag, OffsetMap, TagSet,
+    };
+    use futures::{stream::FuturesUnordered, StreamExt};
+    use quickcheck::{Gen, QuickCheck, TestResult};
     use std::{
         collections::BTreeMap,
         time::{Duration, Instant},
     };
-
-    use actyx_sdk::{
-        service::{EventMeta, EventResponse, QueryResponse},
-        tag, OffsetMap, TagSet,
-    };
-    use anyhow::Context;
-    use async_std::{future::timeout, task::block_on};
-    use futures::{stream::FuturesUnordered, StreamExt};
-    use quickcheck::{Gen, QuickCheck, TestResult};
     use swarm_cli::Event;
     use swarm_harness::{
         api::Api,
@@ -149,7 +148,7 @@ fn main() {
     QuickCheck::new()
         .gen(Gen::new(30))
         .tests(2)
-        .quickcheck(publish_all_subscribe_all as fn(Vec<Vec<actyx_sdk::TagSet>>) -> TestResult)
+        .quickcheck(publish_all_subscribe_all as fn(Vec<Vec<TagSet>>) -> TestResult)
 }
 
 #[cfg(not(target_os = "linux"))]

@@ -5,9 +5,12 @@ fn main() -> anyhow::Result<()> {
         time::Duration,
     };
 
-    use actyx_sdk::{app_id, language::Query, tags, AppManifest, Timestamp};
     use anyhow::Context;
     use async_std::{future::timeout, task::block_on};
+    use ax_sdk::{
+        aql::Query,
+        types::{app_id, tags, AppManifest, Timestamp},
+    };
     use structopt::StructOpt;
     use swarm_cli::{Command, Event, TimedEvent};
     use swarm_harness::{api::Api, fully_meshed, m, util::format_offsets, HarnessOpts};
@@ -22,12 +25,7 @@ fn main() -> anyhow::Result<()> {
         (_50, _95, _99)
     }
 
-    let app_manifest = AppManifest {
-        app_id: app_id!("com.example.query"),
-        display_name: "Query test".into(),
-        version: "0.1.0".into(),
-        signature: None,
-    };
+    let app_manifest = AppManifest::trial(app_id!("com.example.query"), "Query test".into(), "0.1.0".into()).unwrap();
 
     const REPETITIONS: usize = 1000;
 

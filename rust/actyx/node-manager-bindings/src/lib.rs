@@ -1,13 +1,21 @@
+#![deny(clippy::future_not_send)]
+
 mod consts;
 mod ops;
 mod types;
 mod util;
 
 use crate::util::{create_default_private_key, default_private_key};
-use ::util::{formats::ActyxOSCode, setup_logger};
-use axlib::node_connection::{mk_swarm, Task};
+use ax_core::{
+    node_connection::{mk_swarm, Task},
+    util::{formats::ActyxOSCode, setup_logger},
+};
 use futures::channel::mpsc;
-use neon::prelude::*;
+use neon::{
+    context::{Context, ModuleContext},
+    result::NeonResult,
+    types::Finalize,
+};
 use tokio::runtime::Runtime;
 
 struct Ctx {

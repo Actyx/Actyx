@@ -1,22 +1,20 @@
-use crate::{
-    cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt},
+use crate::cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt};
+use ax_core::{
     node_connection::{request_single, Task},
+    util::formats::{
+        events_protocol::{EventsRequest, EventsResponse},
+        ActyxOSError, ActyxOSResult,
+    },
 };
-use actyx_sdk::service::OffsetsResponse;
+use ax_sdk::types::service::OffsetsResponse;
 use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
 use std::collections::BTreeSet;
-use structopt::StructOpt;
-use util::formats::{
-    events_protocol::{EventsRequest, EventsResponse},
-    ActyxOSError, ActyxOSResult,
-};
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Parser, Clone, Debug)]
 /// obtain currently known offsets and replication targets
 pub struct OffsetsOpts {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 }
 

@@ -1,64 +1,81 @@
 #[cfg(target_os = "linux")]
 mod versions {
-    use actyx_sdk::{
+    use anyhow::Context;
+    use async_std::task::block_on;
+    use ax_sdk::types::{
         service::{EventMeta, EventResponse, QueryResponse},
         StreamId, TagSet,
     };
-    use anyhow::Context;
-    use async_std::task::block_on;
     use escargot::CargoBuild;
     use flate2::read::GzDecoder;
     use futures::{future::ready, StreamExt};
     use netsim_embed::{Ipv4Range, MachineId, Netsim};
-    use serde_json::json;
     use std::{
         collections::{HashMap, HashSet},
+        env::consts::ARCH,
         fs::{create_dir, File},
         path::{Path, PathBuf},
         time::{Duration, Instant},
     };
     use swarm_cli::{Command, Event};
     use swarm_harness::{api::Api, util::app_manifest, MachineExt};
-    use util::formats::os_arch::Arch;
 
     const VERSIONS: [&str; 7] = ["2.0.0", "2.3.0", "2.5.0", "2.8.2", "2.10.0", "2.11.0", "current"];
 
-    fn get_version(tmp: &Path, version: &str) -> anyhow::Result<PathBuf> {
-        if version == "current" {
-            Ok(CargoBuild::new()
-                .manifest_path(concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.toml"))
-                .current_release()
-                .bin("actyx")
-                .run()?
-                .path()
-                .to_owned())
-        } else {
-            let arch = match Arch::current() {
-                Arch::x86_64 => "amd64",
-                Arch::aarch64 => "arm64",
-                Arch::arm => "arm",
-                Arch::armv7 => "armhf",
-                x => panic!("unsupported arch: {}", x),
-            };
-            let name = format!("actyx-{}-linux-{}", version, arch);
-            let url = format!("https://axartifacts.blob.core.windows.net/releases/{}.tar.gz", name);
-            let target = tmp.join(&name);
-            let tgz = tmp.join(format!("{}.tgz", name));
+    enum VersionPathBuf {
+        Ax(PathBuf),    // new `ax run`
+        Actyx(PathBuf), // old `actyx` bin
+    }
 
-            let mut file = File::create(&tgz).context("creating file")?;
-            tracing::info!(url = %&url, tgz = %tgz.display(), "storing");
-            let mut resp = reqwest::blocking::get(url).context("making request")?;
-            let bytes = resp.copy_to(&mut file).context("storing to file")?;
-            drop(file);
-            tracing::info!(tgz = %tgz.display(), "written {} bytes", bytes);
+    impl VersionPathBuf {
+        fn to_command(&self) -> async_process::Command {
+            match self {
+                VersionPathBuf::Ax(path_buf) => {
+                    let mut cmd = async_process::Command::new(path_buf);
+                    cmd.arg("run");
+                    cmd
+                }
+                VersionPathBuf::Actyx(path_buf) => async_process::Command::new(path_buf),
+            }
+        }
+        fn get_version(tmp: &Path, version: &str) -> anyhow::Result<VersionPathBuf> {
+            if version == "current" {
+                Ok(VersionPathBuf::Ax(
+                    CargoBuild::new()
+                        .manifest_path(concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.toml"))
+                        .current_release()
+                        .bin("ax")
+                        .run()?
+                        .path()
+                        .to_owned(),
+                ))
+            } else {
+                let arch = match ARCH {
+                    "x86_64" => "amd64",
+                    "aarch64" => "arm64",
+                    "arm" => "armhf",
+                    _ => unreachable!("unsupported architecture"),
+                };
+                let name = format!("actyx-{}-linux-{}", version, arch);
+                let url = format!("https://axartifacts.blob.core.windows.net/releases/{}.tar.gz", name);
+                let target = tmp.join(&name);
+                let tgz = tmp.join(format!("{}.tgz", name));
 
-            let file = File::open(&tgz).context("opening file")?;
-            let zip = GzDecoder::new(file);
-            let mut archive = tar::Archive::new(zip);
-            create_dir(&target).context("creating version dir")?;
-            archive.unpack(&target)?;
+                let mut file = File::create(&tgz).context("creating file")?;
+                tracing::info!(url = %&url, tgz = %tgz.display(), "storing");
+                let mut resp = reqwest::blocking::get(url).context("making request")?;
+                let bytes = resp.copy_to(&mut file).context("storing to file")?;
+                drop(file);
+                tracing::info!(tgz = %tgz.display(), "written {} bytes", bytes);
 
-            Ok(target.join("actyx"))
+                let file = File::open(&tgz).context("opening file")?;
+                let zip = GzDecoder::new(file);
+                let mut archive = tar::Archive::new(zip);
+                create_dir(&target).context("creating version dir")?;
+                archive.unpack(&target)?;
+
+                Ok(VersionPathBuf::Actyx(target.join("actyx")))
+            }
         }
     }
 
@@ -67,9 +84,7 @@ mod versions {
         tracing::warn!("using network {:?}", sim.network(net).range());
 
         for (idx, version) in VERSIONS.iter().copied().enumerate() {
-            let mut cmd = async_process::Command::new(
-                get_version(tmp.join("bin").as_path(), version).with_context(|| format!("get_version({})", version))?,
-            );
+            let mut cmd = VersionPathBuf::get_version(tmp, version)?.to_command();
             cmd.args([
                 "--working-dir",
                 tmp.join(idx.to_string()).display().to_string().as_str(),
@@ -151,7 +166,7 @@ mod versions {
                 .run(*i, |api| async move {
                     api.execute(|ax| {
                         let tags = TagSet::from_iter([tag.parse().expect("A valid tag")]);
-                        let event = json!("1");
+                        let event = serde_json::json!("1");
                         block_on(ax.publish().event(tags, &event).unwrap())
                     })
                     .await
@@ -254,6 +269,7 @@ fn main() -> anyhow::Result<()> {
     setup_env().context("setting up env")?;
     let tmp_dir = TempDir::new("swarm-versions").context("creating temp_dir")?;
     let tmp = tmp_dir.path();
+
     create_dir(tmp.join("bin")).context("creating ./bin")?;
 
     match async_global_executor::block_on(versions::run(tmp)) {

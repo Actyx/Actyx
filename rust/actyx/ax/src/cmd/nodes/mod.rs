@@ -5,16 +5,12 @@ use crate::cmd::AxCliCommand;
 use futures::Future;
 use inspect::InspectOpts;
 use ls::LsOpts;
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Subcommand, Clone, Debug)]
 /// get information about nodes
 pub enum NodesOpts {
-    #[structopt(no_version)]
     /// Show node info and status
     Ls(LsOpts),
-    #[structopt(no_version)]
     /// Show node details and connections
     Inspect(InspectOpts),
 }

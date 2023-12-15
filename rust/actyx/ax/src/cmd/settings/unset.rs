@@ -1,11 +1,10 @@
-use crate::{
-    cmd::{formats::Result, AxCliCommand, ConsoleOpt},
+use crate::cmd::{AxCliCommand, ConsoleOpt};
+use ax_core::{
     node_connection::{request_single, Task},
+    util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse},
 };
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
-use structopt::StructOpt;
-use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -27,27 +26,26 @@ impl AxCliCommand for SettingsUnset {
 }
 #[derive(Serialize)]
 struct RequestBody {
-    scope: settings::Scope,
+    scope: ax_core::settings::Scope,
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct UnsetOpt {
-    #[structopt(flatten)]
+    #[command(flatten)]
     actual_opts: UnsetSettingsCommand,
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 }
 
-#[derive(StructOpt, Debug, Serialize)]
+#[derive(clap::Parser, Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct UnsetSettingsCommand {
-    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
     /// Scope for which you want to unset the settings; use `/` for the root scope.
-    scope: settings::Scope,
+    #[arg(name = "SCOPE", value_parser = super::parse_scope)]
+    scope: ax_core::settings::Scope,
 }
 
-pub async fn run(opts: UnsetOpt) -> Result<Output> {
+pub async fn run(opts: UnsetOpt) -> ActyxOSResult<Output> {
     let scope = opts.actual_opts.scope.clone();
     let (mut conn, peer) = opts.console_opt.connect().await?;
     request_single(

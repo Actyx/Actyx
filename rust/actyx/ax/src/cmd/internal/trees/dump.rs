@@ -1,4 +1,11 @@
-use actyx_sdk::Payload;
+use ax_core::{
+    trees::{
+        axtrees::{AxKeySeq, AxTrees, Sha256Digest},
+        AxTreeHeader,
+    },
+    util::formats::{ActyxOSResult, ActyxOSResultExt},
+};
+use ax_sdk::types::Payload;
 use banyan::{
     chacha20,
     store::{BranchCache, ReadOnlyStore},
@@ -13,44 +20,37 @@ use libipld::{
     json::DagJsonCodec,
 };
 use std::{convert::TryFrom, io::Cursor, path::PathBuf};
-use structopt::StructOpt;
-use trees::{
-    axtrees::{AxKeySeq, AxTrees, Sha256Digest},
-    AxTreeHeader,
-};
-use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 use super::SqliteStore;
 use crate::cmd::AxCliCommand;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct DumpTreeOpts {
-    #[structopt(long)]
     /// Path to a sqlite blockstore (read-only access!)
+    #[arg(long)]
     block_store: PathBuf,
-    #[structopt(long)]
     /// Index password to use
+    #[arg(long)]
     index_pass: Option<String>,
-    #[structopt(long)]
     /// Value password to use
+    #[arg(long)]
     value_pass: Option<String>,
-    #[structopt(long)]
     /// Dump a tree with a given root. Per default, only the extracted values are
     /// being printed. Set the --with-keys flag to emit those as well.
+    #[arg(long)]
     root: Option<Sha256Digest>,
-    #[structopt(long)]
     /// Dump the raw block data as json
+    #[arg(long)]
     block: Option<Sha256Digest>,
-    #[structopt(long)]
     /// When dumping all values from a tree, also include the keys.
+    #[arg(long)]
     with_keys: bool,
     /// Output dot. Sample usage: `ax _internal trees dump --block-store ..
     /// --dot --root .. | dot -Tpng > out.png`
-    #[structopt(long)]
+    #[arg(long)]
     dot: bool,
     /// Output all values, one per line
-    #[structopt(long)]
+    #[arg(long)]
     values: bool,
 }
 
@@ -120,7 +120,8 @@ impl AxCliCommand for DumpTree {
     type Output = String;
     fn run(opts: DumpTreeOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         Box::new(stream::once(
-            async move { dump(opts).ax_err_ctx(util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "Dump failed") }.boxed(),
+            async move { dump(opts).ax_err_ctx(ax_core::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "Dump failed") }
+                .boxed(),
         ))
     }
 

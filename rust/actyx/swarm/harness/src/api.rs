@@ -1,17 +1,15 @@
 use crate::m;
-use actyx_sdk::{AppManifest, Ax, AxOpts, NodeId, Url};
 use anyhow::{anyhow, Result};
 use async_std::task::block_on;
+use ax_core::util::pinned_resource::PinnedResource;
+use ax_sdk::{
+    types::{AppManifest, NodeId},
+    Ax, AxOpts, Url,
+};
 use futures::channel::oneshot::Canceled;
-use netsim_embed::{Machine, Namespace};
-use netsim_embed::{MachineId, Netsim};
-use std::borrow::Borrow;
-use std::collections::BTreeMap;
-use std::fmt::Display;
-use std::future::Future;
-use std::str::FromStr;
+use netsim_embed::{Machine, MachineId, Namespace, Netsim};
+use std::{borrow::Borrow, collections::BTreeMap, fmt::Display, future::Future, str::FromStr};
 use swarm_cli::{Command, Event};
-use util::pinned_resource::PinnedResource;
 
 pub struct Api {
     machines: BTreeMap<MachineId, ApiClient>,
@@ -100,7 +98,7 @@ impl ApiClient {
         Ok(ApiClient::new(origin, app_manifest, namespace))
     }
 
-    pub async fn offsets(&self) -> Result<actyx_sdk::service::OffsetsResponse> {
+    pub async fn offsets(&self) -> Result<ax_sdk::types::service::OffsetsResponse> {
         self.0.spawn_mut(|c| block_on(c.offsets())).await.unwrap()
     }
 

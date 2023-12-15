@@ -1,18 +1,16 @@
-use crate::{
-    cmd::{formats::Result, AxCliCommand, ConsoleOpt},
+use crate::cmd::{AxCliCommand, ConsoleOpt};
+use ax_core::{
     node_connection::{request_single, Task},
+    settings::Scope,
+    util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse},
 };
 use futures::{stream, Stream, TryFutureExt};
-use settings::Scope;
 use std::str::FromStr;
-use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Parser, Clone, Debug)]
 /// Gets a schema for a given scope.
 pub struct SchemaOpt {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 }
 
@@ -29,7 +27,7 @@ impl AxCliCommand for SettingsSchema {
     }
 }
 
-pub async fn run(opts: SchemaOpt) -> Result<serde_json::Value> {
+pub async fn run(opts: SchemaOpt) -> ActyxOSResult<serde_json::Value> {
     let (mut conn, peer) = opts.console_opt.connect().await?;
     let scope = Scope::from_str("com.actyx").ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "cannot parse scope `/`")?;
     request_single(

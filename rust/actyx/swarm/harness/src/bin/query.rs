@@ -1,13 +1,13 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
-    use actyx_sdk::{
-        service::{PublishEvent, QueryResponse},
-        tags, AppManifest, OffsetMap, Payload,
-    };
     use anyhow::Context;
     use async_std::{
         future::timeout,
         task::{block_on, sleep},
+    };
+    use ax_sdk::types::{
+        service::{PublishEvent, QueryResponse},
+        tags, AppManifest, OffsetMap, Payload,
     };
     use futures::{future, StreamExt};
     use std::{

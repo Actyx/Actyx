@@ -1,16 +1,13 @@
-use std::time::Duration;
-
+use crate::cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand};
+use ax_core::{
+    node_connection::{connect, mk_swarm, request_single, Task},
+    private_key::{AxPrivateKey, KeyPathWrapper},
+    util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicDeleteResponse},
+};
 use futures::{channel::mpsc, future::join_all, stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
-use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicDeleteResponse};
-
-use crate::{
-    cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand, KeyPathWrapper},
-    node_connection::{connect, mk_swarm, request_single, Task},
-    private_key::AxPrivateKey,
-};
+use std::time::Duration;
 
 pub struct TopicsDelete;
 
@@ -62,7 +59,7 @@ async fn request(timeout: u8, mut conn: mpsc::Sender<Task>, authority: Authority
         // here `ax` is "giving up" and on the previous, the node is actually unreachable
         DeleteOutput::Error {
             host,
-            error: ActyxOSError::new(util::formats::ActyxOSCode::ERR_NODE_UNREACHABLE, "timeout"),
+            error: ActyxOSError::new(ax_core::util::formats::ActyxOSCode::ERR_NODE_UNREACHABLE, "timeout"),
         }
     }
 }
@@ -89,7 +86,9 @@ impl AxCliCommand for TopicsDelete {
 
     type Output = Vec<DeleteOutput>;
 
-    fn run(opts: Self::Opt) -> Box<dyn futures::Stream<Item = util::formats::ActyxOSResult<Self::Output>> + Unpin> {
+    fn run(
+        opts: Self::Opt,
+    ) -> Box<dyn futures::Stream<Item = ax_core::util::formats::ActyxOSResult<Self::Output>> + Unpin> {
         let requests = Box::pin(delete_run(opts));
         Box::new(stream::once(requests))
     }
@@ -104,7 +103,7 @@ impl AxCliCommand for TopicsDelete {
                     table.add_row(row![response.node_id, host, if response.deleted { "Y" } else { "N" }]);
                 }
                 DeleteOutput::Unreachable { host } => {
-                    table.add_row(row!["Actyx was unreachable on host", host]);
+                    table.add_row(row!["AX was unreachable on host", host]);
                 }
                 DeleteOutput::Unauthorized { host } => {
                     table.add_row(row!["Unauthorized on host", host]);
@@ -119,19 +118,18 @@ impl AxCliCommand for TopicsDelete {
 }
 
 /// Delete selected topic
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct DeleteOpts {
     /// The topic to delete.
-    #[structopt(required = true)]
+    #[arg(required = true)]
     topic: String,
-    /// The IP addresses or <host>:<admin port> of the target nodes.
-    #[structopt(name = "NODE", required = true)]
+    /// The IP addresses or `<host>:<admin port>` of the target nodes.
+    #[arg(name = "NODE", required = true)]
     authority: Vec<Authority>,
     /// The private key file to use for authentication.
-    #[structopt(short, long)]
+    #[arg(short, long)]
     identity: Option<KeyPathWrapper>,
     /// Timeout time for the operation (in seconds, with a maximum of 255).
-    #[structopt(short, long, default_value = "5")]
+    #[arg(short, long, default_value = "5")]
     timeout: u8,
 }

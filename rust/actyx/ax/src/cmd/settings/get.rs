@@ -1,11 +1,10 @@
-use crate::{
-    cmd::{formats::Result, AxCliCommand, ConsoleOpt},
+use crate::cmd::{AxCliCommand, ConsoleOpt};
+use ax_core::{
     node_connection::{request_single, Task},
+    util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse},
 };
 use futures::{stream, Stream};
 use serde::Serialize;
-use structopt::StructOpt;
-use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
 
 pub struct SettingsGet();
 impl AxCliCommand for SettingsGet {
@@ -19,28 +18,28 @@ impl AxCliCommand for SettingsGet {
         serde_yaml::to_string(&result).unwrap_or_else(|_| "Unkown error converting settings to yaml".into())
     }
 }
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+
+#[derive(clap::Parser, Clone, Debug)]
 /// Gets settings for a specific scope.
 pub struct GetOpt {
-    #[structopt(flatten)]
+    #[command(flatten)]
     actual_opts: GetSettingsCommand,
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 }
 
-#[derive(StructOpt, Debug, Serialize)]
+#[derive(clap::Parser, Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct GetSettingsCommand {
-    #[structopt(long = "no-defaults")]
     /// Only return settings explicitly set by the user and skip default values.
+    #[arg(long = "no-defaults")]
     no_defaults: bool,
-    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
     /// Scope from which you want to get the settings.
-    scope: settings::Scope,
+    #[arg(name = "SCOPE", value_parser = super::parse_scope)]
+    scope: ax_core::settings::Scope,
 }
 
-pub async fn run(opts: GetOpt) -> Result<serde_json::Value> {
+pub async fn run(opts: GetOpt) -> ActyxOSResult<serde_json::Value> {
     let (mut conn, peer) = opts.console_opt.connect().await?;
     request_single(
         &mut conn,

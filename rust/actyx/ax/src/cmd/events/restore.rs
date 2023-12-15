@@ -1,11 +1,18 @@
 use super::dump::Diag;
-use crate::{
-    cmd::{AxCliCommand, ConsoleOpt},
+use crate::cmd::{AxCliCommand, ConsoleOpt};
+use ax_core::{
+    crypto::KeyPair,
     node_connection::request_banyan,
-    private_key::load_dev_cert,
+    private_key::{load_dev_cert, AxPrivateKey},
+    util::{
+        formats::{
+            banyan_protocol::{decode_dump_header, BanyanRequest, BanyanResponse},
+            ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
+        },
+        gen_stream::GenStream,
+    },
 };
 use cbor_data::{Cbor, CborBuilder, Encoder};
-use crypto::KeyPair;
 use futures::Stream;
 use std::{
     fs::File,
@@ -13,37 +20,28 @@ use std::{
     net::TcpStream,
     path::PathBuf,
 };
-use structopt::StructOpt;
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
-use util::{
-    formats::{
-        banyan_protocol::{decode_dump_header, BanyanRequest, BanyanResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult,
-    },
-    gen_stream::GenStream,
-};
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Parser, Clone, Debug)]
 /// restore events from an event dump to a temporary topic
 pub struct RestoreOpts {
-    #[structopt(long, short = "I", value_name = "FILE")]
     /// file to read the dump from
+    #[arg(long, short = 'I', value_name = "FILE")]
     input: Option<PathBuf>,
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
-    #[structopt(long, short)]
     /// suppress progress information on stderr
+    #[arg(long, short)]
     quiet: bool,
-    #[structopt(long, value_name = "FILE")]
     /// load dump via the cloud and store it as the given filename
+    #[arg(long, value_name = "FILE")]
     cloud: Option<PathBuf>,
-    #[structopt(long, value_name = "FILE")]
     /// location to read developer certificate from
+    #[arg(long, value_name = "FILE")]
     cert: Option<PathBuf>,
-    #[structopt(long, value_name = "URL")]
     /// base URL where to find the cloudmirror (only for --cloud)
     /// defaults to wss://cloudmirror.actyx.net/forward
+    #[arg(long, value_name = "URL")]
     url: Option<String>,
 }
 pub const URL: &str = "wss://cloudmirror.actyx.net/forward";
@@ -68,11 +66,11 @@ impl BR for BanyanResponse {
             BanyanResponse::Ok => Ok(()),
             BanyanResponse::Error(e) => Err(ActyxOSError::new(
                 ActyxOSCode::ERR_IO,
-                format!("error from Actyx node: {}", e),
+                format!("error from AX node: {}", e),
             )),
             BanyanResponse::Future => Err(ActyxOSError::new(
                 ActyxOSCode::ERR_IO,
-                "message from Actyx node from the future",
+                "message from AX node from the future",
             )),
         }
     }
@@ -98,13 +96,17 @@ impl AxCliCommand for EventsRestore {
                 Box::new(File::open(input.as_path()).io("opening input dump")?)
             } else if let Some(ref cloud) = opts.cloud {
                 let file = File::create(cloud.as_path()).io("opening cloud dump")?;
-                let cert = load_dev_cert(opts.cert)?;
+                let cert =
+                    load_dev_cert(opts.cert).ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "cannot read dev cert")?;
+                let private_key = cert.private_key().map(ActyxOSResult::Ok).unwrap_or_else(|| {
+                    Ok(AxPrivateKey::from_file(AxPrivateKey::default_user_identity_path()?)?.to_private())
+                })?;
                 let url = opts.url.unwrap_or_else(|| URL.to_owned());
                 diag.log(format!("connecting to {}", url))?;
                 let mut ws = connect(URL).io("opening websocket")?.0;
                 let msg = ws.read_message().io("read token message")?;
                 if let Message::Text(token) = msg {
-                    let signature = KeyPair::from(cert.private_key()).sign(token.as_bytes());
+                    let signature = KeyPair::from(private_key).sign(token.as_bytes());
                     let response = CborBuilder::new().encode_array(|b| {
                         b.encode_bytes(signature);
                         b.encode_str(serde_json::to_string(&cert.manifest_dev_cert()).unwrap());
@@ -159,7 +161,7 @@ impl AxCliCommand for EventsRestore {
                 }
             };
 
-            // keep the bytes in the buffer because the Actyx node will need to read the header as well
+            // keep the bytes in the buffer because the AX node will need to read the header as well
 
             diag.log(format!("sending dump from node {} topic `{}`", node_id, topic))?;
             let topic = format!("dump-{}", timestamp.to_rfc3339()).replace(':', "-");
@@ -186,7 +188,7 @@ impl AxCliCommand for EventsRestore {
             diag.log(format!("in total {} bytes uploaded", count))?;
             request_banyan(&mut conn, peer, BanyanRequest::Finalise(topic.clone())).await?;
             diag.log(format!("topic switched to `{}`", topic))?;
-            diag.log("Actyx node switched into read-only network mode")?;
+            diag.log("AX node switched into read-only network mode")?;
 
             Ok(())
         }))

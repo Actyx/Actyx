@@ -29,6 +29,7 @@ fn main() -> anyhow::Result<()> {
         }
         tracing::info!("fully meshed");
         network.machines_mut()[0].down();
+
         for machine in &mut network.machines_mut()[1..] {
             loop {
                 if let Some(Event::Disconnected(peer)) = timeout(Duration::from_secs(20), machine.recv()).await? {

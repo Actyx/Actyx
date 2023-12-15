@@ -50,9 +50,9 @@ endif
 #############################
 ##### Configuration variables
 #############################
-architectures = aarch64 x86_64 armv7 arm
-unix-bins = actyx ax
-windows-bins = actyx.exe ax.exe actyx-x64.msi
+architectures = aarch64 x86_64 armv7
+unix-bins = ax
+windows-bins = ax.exe actyx-x64.msi
 android-bins = actyx.apk
 
 CARGO_TEST_JOBS ?= 8
@@ -66,13 +66,12 @@ export BUILD_RUST_TOOLCHAIN ?= 1.72.1
 # which the respective images was built. Whenever the build images (inside
 # docker/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := ceba5940e00c13b6e718c457ae6abd94976bc62c
+export LATEST_STABLE_IMAGE_VERSION := 3bfa52039d5cd166e8cd9509d447fea251ab82d1
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
 target-linux-x86_64 = x86_64-unknown-linux-musl
 target-linux-armv7 = armv7-unknown-linux-musleabihf
-target-linux-arm = arm-unknown-linux-musleabi
 target-windows-x86_64 = x86_64-pc-windows-gnu
 target-macos-x86_64 = x86_64-apple-darwin
 target-macos-aarch64 = aarch64-apple-darwin
@@ -81,14 +80,12 @@ target-macos-aarch64 = aarch64-apple-darwin
 target-nonmusl-linux-aarch64 = aarch64-unknown-linux-gnu
 target-nonmusl-linux-x86_64 = x86_64-unknown-linux-gnu
 target-nonmusl-linux-armv7 = armv7-unknown-linux-gnueabihf
-target-nonmusl-linux-arm = arm-unknown-linux-gnueabi
 target-nonmusl-windows-x86_64 = x86_64-pc-windows-gnu
 
 # Mapping from arch to Docker buildx platform
 docker-platform-x86_64 = linux/amd64
 docker-platform-aarch64 = linux/arm64/v8
 docker-platform-armv7 = linux/arm/v7
-docker-platform-arm = linux/arm/v6
 
 # Mapping from os to builder image name
 image-linux = actyx/util:musl-$(TARGET)-$(IMAGE_VERSION)
@@ -98,7 +95,7 @@ image-darwin = ghcr.io/actyx/osxbuilder:445876eadcf144b88ec4893636a80fb5e12301be
 
 # list all os-arch and binary names
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 macos-aarch64
-binaries = ax ax.exe actyx actyx.exe
+binaries = ax ax.exe
 
 # targets for which we need a .so file for android
 android_so_targets = x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
@@ -220,7 +217,6 @@ prepare-docker:
 	docker pull actyx/util:musl-aarch64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/util:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/util:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
-	docker pull actyx/util:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
 	# used to build the node manager for windows on linux
 	docker pull actyx/util:node-manager-win-builder-$(IMAGE_VERSION)
 
@@ -249,23 +245,13 @@ validate: validate-rust validate-os validate-netsim validate-release validate-os
 diagnostics:
 	@echo HOME = $(HOME)
 	@echo USER = $(shell whoami)
-	@echo PATH = $(PATH)
+	@echo PATH = ${PATH}
 	@echo PWD = $(shell pwd)
-
-define mkRustTestRule=
-$(TARGET_NAME): cargo-init make-always
-  $(eval TARGET_PATH:=rust/$(word 3, $(subst -, ,$(TARGET_NAME))))
-	cd $(TARGET_PATH) && $(CARGO) fmt --all -- --check
-	cd $(TARGET_PATH) && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) --all-targets -- -D warnings
-	cd $(TARGET_PATH) && $(CARGO) test --locked --all-features -j $(CARGO_TEST_JOBS)
-endef
-
-$(foreach TARGET_NAME,$(rust-validation),$(eval $(mkRustTestRule)))
 
 .PHONY: validate-os
 # execute fmt check, clippy and tests for rust/actyx
 validate-os: diagnostics
-	cd rust/actyx && $(CARGO) fmt --all -- --check
+	cd rust/actyx && $(CARGO) fmt --all -- --check --config imports_granularity=Crate
 	cd rust/actyx && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) -- -D warnings
 	cd rust/actyx && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 	cd rust/actyx && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
@@ -273,7 +259,7 @@ validate-os: diagnostics
 .PHONY: validate-rust
 # execute fmt check, clippy and tests for rust/actyx
 validate-rust: diagnostics
-	cd rust/sdk && $(CARGO) fmt --all -- --check
+	cd rust/sdk && $(CARGO) fmt --all -- --check --config imports_granularity=Crate
 	cd rust/sdk && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) -- -D warnings
 	cd rust/sdk && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 	cd rust/sdk && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
@@ -281,30 +267,30 @@ validate-rust: diagnostics
 .PHONY: validate-release
 # execute fmt check, clippy and tests for rust/actyx
 validate-release: diagnostics
-	cd rust/release && $(CARGO) fmt --all -- --check
+	cd rust/release && $(CARGO) fmt --all -- --check --config imports_granularity=Crate
 	cd rust/release && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) -- -D warnings
 	cd rust/release && $(CARGO) --locked clippy --no-deps -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 
 validate-netsim: diagnostics
 	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release -j $(CARGO_BUILD_JOBS)
-	rust/actyx/target/release/gossip --n-nodes 8 --enable-fast-path
-	rust/actyx/target/release/gossip --n-nodes 8 --enable-slow-path
-	rust/actyx/target/release/gossip --n-nodes 8 --enable-root-map
-	rust/actyx/target/release/gossip_protocol --n-nodes 8
-	rust/actyx/target/release/root_map --n-nodes 8 --enable-root-map
-	rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
-	rust/actyx/target/release/discovery_multi_net
-	rust/actyx/target/release/discovery_external
-	rust/actyx/target/release/subscribe --n-nodes 8
-	rust/actyx/target/release/query --n-nodes 8
-	rust/actyx/target/release/quickcheck_subscribe
-	rust/actyx/target/release/quickcheck_interleaved
-	rust/actyx/target/release/quickcheck_stress_single_store
-	rust/actyx/target/release/quickcheck_ephemeral
-	rust/actyx/target/release/versions
-        # https://github.com/Actyx/Actyx/issues/160
+	NETSIM_TEST_LOGFILE=gossip-8-fast rust/actyx/target/release/gossip --n-nodes 8 --enable-fast-path
+	NETSIM_TEST_LOGFILE=gossip-8-slow rust/actyx/target/release/gossip --n-nodes 8 --enable-slow-path
+	NETSIM_TEST_LOGFILE=gossip-8-root rust/actyx/target/release/gossip --n-nodes 8 --enable-root-map
+	NETSIM_TEST_LOGFILE=gossip_protocol-8 rust/actyx/target/release/gossip_protocol --n-nodes 8
+	NETSIM_TEST_LOGFILE=rootmap rust/actyx/target/release/root_map --n-nodes 8 --enable-root-map
+	NETSIM_TEST_LOGFILE=discovery rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
+	NETSIM_TEST_LOGFILE=discovery_multi_net rust/actyx/target/release/discovery_multi_net
+	NETSIM_TEST_LOGFILE=discovery_external rust/actyx/target/release/discovery_external
+	NETSIM_TEST_LOGFILE=subscribe rust/actyx/target/release/subscribe --n-nodes 8
+	NETSIM_TEST_LOGFILE=query rust/actyx/target/release/query --n-nodes 8
+	NETSIM_TEST_LOGFILE=quickcheck_subscribe rust/actyx/target/release/quickcheck_subscribe
+	NETSIM_TEST_LOGFILE=quickcheck_interleaved rust/actyx/target/release/quickcheck_interleaved
+	NETSIM_TEST_LOGFILE=quickcheck_stress_single_store rust/actyx/target/release/quickcheck_stress_single_store
+	NETSIM_TEST_LOGFILE=quickcheck_ephemeral rust/actyx/target/release/quickcheck_ephemeral
+	NETSIM_TEST_LOGFILE=versions rust/actyx/target/release/versions
+	# https://github.com/Actyx/Actyx/issues/160
 	# rust/actyx/target/release/health
-	rust/actyx/target/release/read_only
+	NETSIM_TEST_LOGFILE=read_only rust/actyx/target/release/read_only
 
 .PHONY: validate-os-android
 # execute linter for os-android
@@ -372,7 +358,6 @@ node-manager-mac-linux:
 		npm run build && \
 		npm run dist && \
 		npm run artifacts
-
 
 # combines all the .so files to build actyxos on android
 android-libaxosnodeffi: \
@@ -512,7 +497,7 @@ dist/bin/actyx.apk: jvm/os-android/app/build/outputs/bundle/release/app-release.
 	mv -f universal.apk dist/bin/actyx.apk
 
 # Windows MSI build recipe. Requires Docker to work
-dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/actyx.exe make-always
+dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/ax.exe make-always
 	docker run \
 	  -v `pwd`:/src \
 	  -e WIN_CODESIGN_CERTIFICATE \
@@ -573,3 +558,10 @@ docker-build-and-push: assert-clean
 	cd docker/buildrs && bash ./build_and_push.sh
 	cd docker/musl && bash ./build_and_push.sh
 	cd docker/node-manager-win-builder && bash ./build_and_push.sh
+
+# Cargo will complain but formatting will still be done accordingly.
+.PHONY: fmt
+fmt:
+	cd rust/actyx && cargo fmt -- --config imports_granularity=Crate
+	cd rust/sdk && cargo fmt -- --config imports_granularity=Crate
+	cd rust/release && cargo fmt -- --config imports_granularity=Crate

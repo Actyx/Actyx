@@ -1,8 +1,11 @@
-use crate::types::Nothing;
-use crate::util::run_task;
-use axlib::cmd::swarms::keygen::generate_key;
+use crate::{types::Nothing, util::run_task};
+use ax_core::private_key::generate_key;
 use futures::FutureExt;
-use neon::prelude::*;
+use neon::{
+    context::{Context, FunctionContext},
+    result::JsResult,
+    types::JsUndefined,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

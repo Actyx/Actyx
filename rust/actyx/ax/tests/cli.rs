@@ -1,9 +1,8 @@
-use assert_cmd::prelude::*;
+use assert_cmd::{assert::OutputAssertExt, cargo::CommandCargoExt};
+use ax_core::util::version::NodeVersion;
 use maplit::btreemap;
-use predicates::prelude::*;
-use std::collections::HashMap;
-use std::{path::PathBuf, process::Command};
-use util::version::NodeVersion;
+use predicates::{prelude::predicate, str::starts_with};
+use std::{collections::HashMap, path::PathBuf, process::Command};
 
 fn get_commands() -> HashMap<&'static str, Vec<&'static str>> {
     let apps = vec!["sign"];
@@ -26,6 +25,13 @@ fn get_commands() -> HashMap<&'static str, Vec<&'static str>> {
 
 fn cli() -> Command {
     Command::cargo_bin("ax").unwrap()
+}
+#[test]
+fn cli_version() {
+    cli().arg("--version").assert().success().stdout(starts_with(format!(
+        "ax {}\n",
+        ax_core::util::version::VERSION.as_str()
+    )));
 }
 
 #[test]
@@ -102,27 +108,33 @@ fn cli_fail_on_missing_identity() {
 
 #[test]
 fn internal_subcommand() {
-    cli().args(["internal", "help"]).assert().failure();
+    use predicate::str::contains;
+    use predicates::prelude::*;
     cli()
         .env("HERE_BE_DRAGONS", "wrong")
-        .args(["internal", "help"])
         .assert()
-        .failure();
+        .failure()
+        .stderr(contains("internal").not());
+    cli()
+        .args(["internal"])
+        .assert()
+        .failure()
+        .stderr(contains("do not use until instructed by Actyx"));
     cli()
         .env("HERE_BE_DRAGONS", "zøg")
-        .args(["internal", "help"])
         .assert()
-        .success();
+        .failure()
+        .stderr(contains("internal"));
     cli()
         .env("HERE_BE_DRAGONS", "zoeg")
-        .args(["internal", "help"])
         .assert()
-        .success();
+        .failure()
+        .stderr(contains("internal"));
 }
 
 #[test]
 fn version() {
-    let first_line = format!("Actyx CLI {}\n", NodeVersion::get_cli());
+    let first_line = format!("ax {}\n", NodeVersion::get());
     cli().arg("--version").assert().stdout(first_line).success();
 
     #[derive(PartialEq)]
@@ -130,7 +142,6 @@ fn version() {
         Branch,
         Leaf,
     }
-    use predicate::str::starts_with;
     use std::iter::once;
     use Type::*;
 
@@ -162,22 +173,21 @@ fn version() {
         vec!["users", "add-key"] => Leaf,
     };
 
-    let first_line = |sub| format!("ax-{} {}\n", sub, NodeVersion::get_cli());
+    let first_line = |sub| format!("ax-{} {}\n", sub, NodeVersion::get());
+
     for (args, tpe) in commands {
         if tpe == Branch {
             cli()
-                .args(&*args)
+                .args(args.iter().chain(&["--version"]))
                 .env("HERE_BE_DRAGONS", "zøg")
                 .assert()
-                .failure()
-                .stderr(starts_with(&*first_line(args.join("-"))));
+                .success()
+                .stdout(starts_with(&*first_line(args.join("-"))));
         }
-        let name = args.join("-");
         cli()
             .args(&*args.into_iter().chain(once("--help")).collect::<Vec<_>>())
             .env("HERE_BE_DRAGONS", "zøg")
             .assert()
-            .success()
-            .stdout(starts_with(&*first_line(name)));
+            .success();
     }
 }

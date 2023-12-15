@@ -1,28 +1,25 @@
-use std::{convert::TryInto, time::Duration};
-
-use crate::{
-    cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand, KeyPathWrapper},
+use crate::cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand};
+use ax_core::{
     node_connection::{connect, mk_swarm, request_single, Task},
-    private_key::AxPrivateKey,
+    private_key::{AxPrivateKey, KeyPathWrapper},
+    util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesLsResponse},
 };
 use futures::{channel::mpsc, future::join_all, stream, Stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
-use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesLsResponse};
+use std::{convert::TryInto, time::Duration};
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Parser, Clone, Debug)]
 /// show node overview
 pub struct LsOpts {
-    #[structopt(name = "NODE", required = true)]
-    /// the IP address or <host>:<admin port> of the nodes to list.
+    /// the IP address or `<host>:<admin port>` of the nodes to list.
+    #[arg(name = "NODE", required = true)]
     authority: Vec<Authority>,
-    #[structopt(short, long)]
     /// File from which the identity (private key) for authentication is read.
+    #[arg(short, long)]
     identity: Option<KeyPathWrapper>,
-    #[structopt(short, long, default_value = "5")]
     /// maximal wait time (in seconds, max. 255) for establishing a connection to the node
+    #[arg(short, long, default_value = "5")]
     timeout: u8,
 }
 
@@ -65,7 +62,7 @@ fn format_output(output: Vec<Output>) -> String {
                 ]);
             }
             Output::Unreachable { host } => {
-                table.add_row(row!["Actyx was unreachable on host", "", host]);
+                table.add_row(row!["AX was unreachable on host", "", host]);
             }
             Output::Unauthorized { host } => {
                 table.add_row(row!["Unauthorized on host", "", host]);

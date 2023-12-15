@@ -2,12 +2,13 @@
 
 pub mod api;
 
-use actyx_sdk::NodeId;
 use anyhow::{bail, Result};
 use async_std::{future, task};
+use ax_core::swarm::{EphemeralEventsConfig, EventRoute};
+use ax_sdk::types::NodeId;
 use futures::{
-    future::{select, BoxFuture, Either},
-    prelude::*,
+    future::{select, BoxFuture, Either, Future},
+    FutureExt,
 };
 use netsim_embed::{DelayBuffer, Ipv4Range, Machine, Netsim};
 use std::{
@@ -19,7 +20,7 @@ use std::{
     time::{Duration, Instant},
 };
 use structopt::StructOpt;
-use swarm_cli::{multiaddr, Command, Config, EphemeralEventsConfig, Event, EventRoute, Multiaddr, PeerId};
+use swarm_cli::{multiaddr, Command, Config, Event, Multiaddr, PeerId};
 use tempdir::TempDir;
 
 pub mod util;
@@ -102,7 +103,7 @@ impl MultiaddrExt for Multiaddr {
 }
 
 pub fn setup_env() -> Result<()> {
-    ::util::setup_logger();
+    ax_core::util::setup_logger();
     netsim_embed::unshare_user()?;
     Ok(())
 }

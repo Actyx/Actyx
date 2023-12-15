@@ -1,30 +1,31 @@
 [package]
-edition = { workspace = true }
+edition = "2021"
 name = "swarm-cli"
 version = "0.1.0"
 authors = ["Actyx AG"]
 
 [dependencies]
+ax_sdk = { path = "../../../sdk" }
+ax_core = { path = "../../ax-core" }
+
 acto = "0.2.9"
-actyx_sdk = { path = "../../../sdk" }
 anyhow = "1.0.52"
-api = { path = "../../api" }
 async-process = "1.3.0"
-ax-futures-util = { path = "../../ax-futures-util/" }
 cbor-data = "0.8.7"
 chrono = "0.4.19"
 crossbeam = "0.8.1"
-crypto = { path = "../../crypto" }
 futures = { version = "0.3.19", package = "futures" }
 hex = "0.4.3"
-ipfs-embed = { version = "0.26.0", default-features = false, features = ["tokio"] }
+ipfs-embed = { version = "0.26.1", default-features = false, features = [
+  "tokio",
+] }
 libp2p = { version = "0.50.0", default-features = false }
+log-panics = "2.1.0"
 parking_lot = "0.12.1"
 serde_json = "1.0.74"
 structopt = "0.3.25"
-swarm = { path = ".." }
-tokio = { version = "1.15.0", package = "tokio" }
+tokio = { version = "1.34.0", package = "tokio" }
 tracing = "0.1.29"
+tracing-appender = "0.2.2"
+tracing-log = "0.1.2"
 tracing-subscriber = "0.3.5"
-trees = { path = "../../trees" }
-util = { path = "../../util" }

@@ -3,15 +3,11 @@ mod subscribe_monotonic;
 
 use crate::cmd::AxCliCommand;
 use futures::Future;
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Subcommand, Clone, Debug)]
 /// interact with the event API through the admin port
 pub enum EventsOpts {
-    #[structopt(no_version)]
     Subscribe(subscribe::SubscribeOpts),
-    #[structopt(no_version)]
     SubscribeMonotonic(subscribe_monotonic::SubscribeMonotonicOpts),
 }
 

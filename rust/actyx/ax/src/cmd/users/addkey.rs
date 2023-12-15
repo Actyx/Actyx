@@ -1,13 +1,11 @@
-use crate::cmd::KeyPathWrapper;
-use crate::{cmd::AxCliCommand, private_key::AxPrivateKey};
-use futures::{stream, Stream};
-use settings::{Database, Repository, Scope, DB_FILENAME};
-use std::{convert::TryFrom, path::PathBuf, str::FromStr};
-use structopt::StructOpt;
-use util::{
-    ax_bail,
-    formats::{ax_err, ActyxOSCode, ActyxOSError, ActyxOSResult},
+use crate::cmd::AxCliCommand;
+use ax_core::{
+    private_key::{AxPrivateKey, KeyPathWrapper},
+    settings::{Database, Repository, Scope, DB_FILENAME},
+    util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult},
 };
+use futures::{stream, Stream};
+use std::{convert::TryFrom, path::PathBuf, str::FromStr};
 
 fn lock_working_dir(working_dir: impl AsRef<std::path::Path>) -> ActyxOSResult<fslock::LockFile> {
     let path = working_dir.as_ref().join("lockfile");
@@ -20,7 +18,7 @@ fn lock_working_dir(working_dir: impl AsRef<std::path::Path>) -> ActyxOSResult<f
     {
         return Err(ActyxOSError::new(
             ActyxOSCode::ERR_FILE_EXISTS,
-            "Actyx directory is in use, please stop Actyx first!".to_owned(),
+            "AX directory is in use, please stop AX first!".to_owned(),
         ));
     }
     Ok(lf)
@@ -39,10 +37,9 @@ impl AxCliCommand for UsersAddKey {
             let mut path = opts.path.clone();
             path.push(DB_FILENAME);
             if !path.exists() {
-                ax_bail!(
+                return ax_core::util::formats::ax_err(
                     ActyxOSCode::ERR_PATH_INVALID,
-                    "path `{}` does not refer to an Actyx directory",
-                    opts.path.display()
+                    format!("path `{}` does not refer to an AX directory", opts.path.display()),
                 );
             }
 
@@ -71,14 +68,13 @@ impl AxCliCommand for UsersAddKey {
     }
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
-/// add own user key to a given Actyx data directory
+#[derive(clap::Parser, Clone, Debug)]
+/// add own user key to a given AX data directory
 pub struct AddKeyOpts {
-    #[structopt(name = "PATH", required = true)]
     /// Path to the `actyx-data` folder you wish to modify
+    #[arg(name = "PATH", required = true)]
     path: PathBuf,
-    #[structopt(short, long, value_name = "FILE")]
     /// File from which the identity (private key) for authentication is read.
+    #[arg(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     identity: Option<KeyPathWrapper>,
 }

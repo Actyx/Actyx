@@ -1,74 +1,51 @@
-use formats::Result;
-use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
-use serde::Serialize;
-use std::{fmt, net::ToSocketAddrs, path::PathBuf, str::FromStr};
-use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult};
-
-use crate::{
-    node_connection::{connect, mk_swarm, Task},
-    private_key::AxPrivateKey,
-};
-use libp2p::{multiaddr::Protocol, Multiaddr, PeerId};
-
 pub mod apps;
 pub mod events;
-mod formats;
-pub(crate) mod internal;
+pub mod internal;
 pub mod nodes;
+pub mod run;
 pub mod settings;
 pub mod swarms;
 pub mod topics;
 pub mod users;
 
-pub use formats::ActyxCliResult;
+use ax_core::{
+    authority::Authority,
+    node_connection::{connect, mk_swarm, Task},
+    private_key::{AxPrivateKey, KeyPathWrapper},
+    util::formats::{ActyxOSError, ActyxOSResult},
+};
+use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
+use libp2p::PeerId;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
-pub struct Authority {
-    pub original: String,
-    pub addrs: Vec<Multiaddr>,
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
+#[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
+pub enum ActyxCliResult<T> {
+    OK { code: String, result: T },
+    ERROR(ActyxOSError),
 }
-
-impl FromStr for Authority {
-    type Err = ActyxOSError;
-
-    fn from_str(s: &str) -> Result<Self> {
-        let original = s.to_owned();
-        if let Ok(m) = s.parse::<Multiaddr>() {
-            Ok(Self {
-                original,
-                addrs: vec![m],
-            })
-        } else if let Ok(s) = s.to_socket_addrs() {
-            Ok(Self {
-                original,
-                addrs: s
-                    .map(|a| Multiaddr::empty().with(a.ip().into()).with(Protocol::Tcp(a.port())))
-                    .collect(),
-            })
-        } else if let Ok(s) = (s, 4458).to_socket_addrs() {
-            Ok(Self {
-                original,
-                addrs: s
-                    .map(|a| Multiaddr::empty().with(a.ip().into()).with(Protocol::Tcp(a.port())))
-                    .collect(),
-            })
-        } else {
-            Err(ActyxOSError::new(
-                ActyxOSCode::ERR_INVALID_INPUT,
-                format!("cannot interpret {} as address", original),
-            ))
+const OK: &str = "OK";
+impl<T> From<ActyxOSResult<T>> for ActyxCliResult<T> {
+    fn from(res: ActyxOSResult<T>) -> Self {
+        match res {
+            Ok(result) => ActyxCliResult::OK {
+                code: OK.to_owned(),
+                result,
+            },
+            Err(err) => ActyxCliResult::ERROR(err),
         }
     }
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct ConsoleOpt {
-    #[structopt(name = "NODE", required = true)]
-    /// the IP address or <host>:<admin port> of the node to perform the operation on.
+    /// the IP address or `<host>:<admin port>` of the node to perform the operation on.
+    #[arg(name = "NODE", required = true)]
     authority: Authority,
-    #[structopt(short, long, value_name = "FILE")]
     /// File from which the identity (private key) for authentication is read.
+    #[arg(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     identity: Option<KeyPathWrapper>,
 }
 
@@ -80,62 +57,6 @@ impl ConsoleOpt {
         let peer_id = connect(&mut channel, self.authority.clone()).await?;
         Ok((channel, peer_id))
     }
-}
-
-#[derive(Debug)]
-/// Newtype wrapper around a path to key material, to be used with
-/// structopt/clap.
-pub struct KeyPathWrapper(PathBuf);
-
-impl FromStr for KeyPathWrapper {
-    type Err = ActyxOSError;
-    fn from_str(s: &str) -> Result<Self> {
-        Ok(Self(s.into()))
-    }
-}
-
-impl fmt::Display for KeyPathWrapper {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.display())
-    }
-}
-
-impl TryFrom<&Option<KeyPathWrapper>> for AxPrivateKey {
-    type Error = ActyxOSError;
-    fn try_from(k: &Option<KeyPathWrapper>) -> Result<AxPrivateKey> {
-        if let Some(path) = k {
-            AxPrivateKey::from_file(&path.0)
-        } else {
-            let private_key_path = AxPrivateKey::default_user_identity_path()?;
-            AxPrivateKey::from_file(&private_key_path).map_err(move |e| {
-                if e.code() == ActyxOSCode::ERR_PATH_INVALID {
-                    ActyxOSError::new(
-                        ActyxOSCode::ERR_USER_UNAUTHENTICATED,
-                        format!(
-                            "Unable to authenticate with node since no user keys found in \"{}\". \
-                             To create user keys, run ax users keygen.",
-                            private_key_path.display()
-                        ),
-                    )
-                } else {
-                    e
-                }
-            })
-        }
-    }
-}
-
-/// Returns the data directory for Actyx. Does not create the folders!
-/// https://docs.rs/dirs/3.0.1/dirs/fn.config_dir.html
-///
-/// Platform    Value                               Example
-/// Linux       $XDG_CONFIG_HOME or $HOME/.config   /home/alice/.config
-/// macOS       $HOME/Library/Application Support   /Users/Alice/Library/Application Support
-/// Windows     {FOLDERID_RoamingAppData}           C:\Users\Alice\AppData\Roaming
-pub(crate) fn get_data_dir() -> ActyxOSResult<PathBuf> {
-    let data_dir = dirs::config_dir().ok_or_else(|| ActyxOSError::internal("Can't get user's config dir"))?;
-
-    Ok(data_dir.join("actyx"))
 }
 
 pub(crate) mod consts {
@@ -153,7 +74,7 @@ pub(crate) mod consts {
 }
 
 pub trait AxCliCommand {
-    type Opt: StructOpt;
+    type Opt: clap::Parser;
     type Output: Serialize + 'static;
     const WRAP: bool = true;
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin>;

@@ -1,14 +1,12 @@
-use crate::private_key::DEFAULT_PRIVATE_KEY_FILE_NAME;
-use crate::{cmd::AxCliCommand, private_key::AxPrivateKey};
+use crate::cmd::AxCliCommand;
+use ax_core::{
+    private_key::{AxPrivateKey, DEFAULT_PRIVATE_KEY_FILE_NAME},
+    util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+};
 use futures::{stream, Stream};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use structopt::StructOpt;
 use tokio::io::AsyncBufReadExt;
-use util::{
-    ax_bail,
-    formats::{ax_err, ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
-};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -52,10 +50,12 @@ impl AxCliCommand for UsersKeygen {
                 }
             };
             if store_to.exists() {
-                ax_bail!(
-                    util::formats::ActyxOSCode::ERR_FILE_EXISTS,
-                    "File {} already exists in the specified path. Specify a different file name or path.",
-                    store_to.display()
+                return ax_core::util::formats::ax_err(
+                    ax_core::util::formats::ActyxOSCode::ERR_FILE_EXISTS,
+                    format!(
+                        "File {} already exists in the specified path. Specify a different file name or path.",
+                        store_to.display()
+                    ),
                 );
             }
             let (private_key_path, public_key_path) = key.to_file(&store_to)?;
@@ -77,12 +77,11 @@ impl AxCliCommand for UsersKeygen {
         )
     }
 }
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Parser, Clone, Debug)]
 /// generate a user key
 pub struct KeygenOpts {
-    #[structopt(short, long)]
     /// Path in which to save the private key. The public key will be generated in the same
     /// directory with the `.pub` suffix.
+    #[arg(short, long)]
     output: Option<PathBuf>,
 }

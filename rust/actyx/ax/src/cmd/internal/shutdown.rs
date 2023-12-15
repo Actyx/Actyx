@@ -1,16 +1,14 @@
-use crate::{
-    cmd::{AxCliCommand, ConsoleOpt},
+use crate::cmd::{AxCliCommand, ConsoleOpt};
+use ax_core::{
     node_connection::{request, Task},
+    util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest},
 };
 use futures::{stream, FutureExt, Stream};
-use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSResult, AdminRequest};
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Parser, Clone, Debug)]
 /// request the node to shut down
 pub struct ShutdownOpts {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 }
 

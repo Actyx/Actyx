@@ -2,26 +2,17 @@
 # since this is used in build scripts to populate the docker image cache!
 [workspace]
 members = [
-  "api",
   "ax",
-  "ax-futures-util",
-  "certs",
-  "settings",
-  "crypto",
-  "libp2p-streaming-response",
-  "node",
+  "ax-aql",
+  "ax-core",
+  "ax-macros",
+  "ax-types",
   "node-ffi",
   "node-manager-bindings",
-  "runtime",
-  "swarm",
   "swarm/cli",
   "swarm/harness",
-  "swarm/old-formats",
-  "trees",
-  "util",
 ]
 resolver = "2"
-package.edition = "2021"
 
 # This can only be set per workspace. In release, we rely on a setting a custom
 # panic hook (see `node/src/util.rs::init_panic_hook`), which safely brings
@@ -39,6 +30,3 @@ lto = "off"
 [patch.crates-io]
 banyan = { git = "https://github.com/Actyx/banyan", branch = "master" }
 banyan-utils = { git = "https://github.com/Actyx/banyan", branch = "master" }
-# cbor-data = { path = "../../../cbor-data" }
-# ipfs-embed = { path = "../../../ipfs-embed" }
-# libp2p = { path = "../../../rust-libp2p" }

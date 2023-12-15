@@ -29,15 +29,12 @@ impl<T> Opts for Option<T> {
 fn setup() {
     static INIT: Once = Once::new();
     INIT.call_once(|| {
+        // This makes the path consistent, it works since its the same project we're building using escargot
+        let cargo_path = concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml");
         // build needed binaries for quicker execution
-        for bin in &["actyx", "ax"] {
+        for bin in &["ax"] {
             eprintln!("building {}", bin);
-            for msg in CargoBuild::new()
-                .manifest_path("../Cargo.toml")
-                .bin(*bin)
-                .exec()
-                .unwrap()
-            {
+            for msg in CargoBuild::new().manifest_path(cargo_path).bin(*bin).exec().unwrap() {
                 let msg = msg.unwrap();
                 let msg = msg.decode().unwrap();
                 match msg {
@@ -74,24 +71,22 @@ impl std::fmt::Display for Log {
 }
 
 fn run(bin: &str) -> anyhow::Result<Command> {
-    Ok(CargoBuild::new()
-        .manifest_path("../Cargo.toml")
-        .bin(bin)
-        .run()?
-        .command())
+    let cargo_path = concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml");
+    Ok(CargoBuild::new().manifest_path(cargo_path).bin(bin).run()?.command())
 }
 
 fn with_api(
     mut log: impl Write + Clone + Send + 'static,
     f: impl FnOnce(u16, &Path) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    util::setup_logger();
+    ax_core::util::setup_logger();
     setup();
 
     let workdir = tempdir()?;
 
-    let _ = writeln!(log, "running Actyx in {}", std::env::current_dir()?.display());
-    let mut process = run("actyx")?
+    let _ = writeln!(log, "running AX in {}", std::env::current_dir()?.display());
+    let mut process = run("ax")?
+        .args(["run"])
         .current_dir(workdir.path())
         .stderr(Stdio::piped())
         .args(["--bind-api=0", "--bind-admin=0", "--bind-swarm=0"])
@@ -120,10 +115,10 @@ fn with_api(
     for line in &mut lines {
         if let Some((rx, mut process)) = rx.take() {
             // unfortunately escargot doesn’t inform us when building is finished,
-            // so we start the Actyx timeout upon seeing the first line of output
+            // so we start the AX timeout upon seeing the first line of output
             spawn(move || {
                 let _ = rx.recv_timeout(Duration::from_secs(60));
-                eprintln!("killing Actyx");
+                eprintln!("killing AX");
                 let _ = process.kill();
             });
         }
@@ -195,7 +190,7 @@ fn get_offsets(api: u16, identity: &Path) -> anyhow::Result<Value> {
             o("offsets"),
             o("-ji"),
             identity.as_os_str(),
-            o(&format!("localhost:{}", api)),
+            o(&format!("127.0.0.1:{}", api)),
         ])
         .env("RUST_LOG", "debug")
         .output()?;
@@ -227,7 +222,7 @@ fn offsets() -> anyhow::Result<()> {
                 o("offsets"),
                 o("-ji"),
                 identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
             ])
             .env("RUST_LOG", "debug")
             .output()?;
@@ -253,7 +248,7 @@ fn offsets() -> anyhow::Result<()> {
                 o("offsets"),
                 o("-i"),
                 identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
             ])
             .output()?;
         eprintln!(
@@ -282,7 +277,7 @@ fn query() -> anyhow::Result<()> {
                 o("query"),
                 o("-i"),
                 identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
                 o("FROM 'discovery' END"),
             ])
             .output()?;
@@ -313,7 +308,7 @@ fn query() -> anyhow::Result<()> {
                 o("query"),
                 o("-ji"),
                 identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
                 o("FROM 'discovery' END"),
             ])
             .output()?;
@@ -358,7 +353,7 @@ fn bad_query() -> anyhow::Result<()> {
                 o("query"),
                 o("-i"),
                 identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
                 o("FROM [1] END"),
             ])
             .output()?;
@@ -381,7 +376,7 @@ fn bad_query() -> anyhow::Result<()> {
                 o("query"),
                 o("-ji"),
                 identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
                 o("FROM [1] END"),
             ])
             .output()?;
@@ -417,7 +412,7 @@ fn publish() -> anyhow::Result<()> {
                 o("publish"),
                 o("-ji"),
                 identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
                 o(r#"{ "baz":42 }"#),
                 o("-t"),
                 o("foo"),
@@ -451,7 +446,7 @@ fn diagnostics() -> anyhow::Result<()> {
                 o("query"),
                 o("-i"),
                 identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
                 o("FROM 'discovery' SELECT _ - 3"),
             ])
             .output()?;
@@ -481,7 +476,7 @@ fn aggregate() -> anyhow::Result<()> {
                 o("query"),
                 o("-ji"),
                 identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
                 o("FEATURES(zøg aggregate) FROM 'discovery' AGGREGATE SUM(1)"),
             ])
             .output()?;
@@ -518,7 +513,7 @@ fn topic_delete() -> anyhow::Result<()> {
                 identity.as_os_str(),
                 o("/swarm"),
                 o("{\"topic\": \"new_topic\"}"),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
             ])
             .env("RUST_LOG", "debug")
             .output()?;
@@ -531,7 +526,7 @@ fn topic_delete() -> anyhow::Result<()> {
                 o("ls"),
                 o("-ji"),
                 identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
             ])
             .env("RUST_LOG", "debug")
             .output()?;
@@ -553,7 +548,7 @@ fn topic_delete() -> anyhow::Result<()> {
                 o("topics"),
                 o("delete"),
                 o("default-topic"),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
                 o("-ji"),
                 identity.as_os_str(),
             ])
@@ -571,7 +566,7 @@ fn topic_delete() -> anyhow::Result<()> {
                 o("ls"),
                 o("-ji"),
                 identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
             ])
             .env("RUST_LOG", "debug")
             .output()?;
@@ -602,7 +597,7 @@ fn topic_delete_non_existing() -> anyhow::Result<()> {
                 o("topics"),
                 o("delete"),
                 o("non-existing-topic"),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
                 o("-ji"),
                 identity.as_os_str(),
             ])
@@ -634,7 +629,7 @@ fn topic_delete_prefix() -> anyhow::Result<()> {
                 identity.as_os_str(),
                 o("/swarm"),
                 o("{\"topic\": \"t-i\"}"),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
             ])
             .env("RUST_LOG", "debug")
             .output()?;
@@ -649,7 +644,7 @@ fn topic_delete_prefix() -> anyhow::Result<()> {
                 identity.as_os_str(),
                 o("/swarm"),
                 o("{\"topic\": \"t-index\"}"),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
             ])
             .env("RUST_LOG", "debug")
             .output()?;
@@ -662,7 +657,7 @@ fn topic_delete_prefix() -> anyhow::Result<()> {
                 o("ls"),
                 o("-ji"),
                 identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
             ])
             .env("RUST_LOG", "debug")
             .output()?;
@@ -687,7 +682,7 @@ fn topic_delete_prefix() -> anyhow::Result<()> {
                 o("topics"),
                 o("delete"),
                 o("t-i"),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
                 o("-ji"),
                 identity.as_os_str(),
             ])
@@ -705,7 +700,7 @@ fn topic_delete_prefix() -> anyhow::Result<()> {
                 o("ls"),
                 o("-ji"),
                 identity.as_os_str(),
-                o(&format!("localhost:{}", api)),
+                o(&format!("127.0.0.1:{}", api)),
             ])
             .env("RUST_LOG", "debug")
             .output()?;

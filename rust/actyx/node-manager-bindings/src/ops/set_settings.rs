@@ -1,9 +1,15 @@
 use crate::{types::Nothing, util::run_task};
-use axlib::node_connection::{request_single, Task};
+use ax_core::{
+    node_connection::{request_single, Task},
+    util::formats::{AdminRequest, AdminResponse},
+};
 use futures::FutureExt;
-use neon::prelude::*;
+use neon::{
+    context::{Context, FunctionContext},
+    result::JsResult,
+    types::JsUndefined,
+};
 use serde::{Deserialize, Serialize};
-use util::formats::{AdminRequest, AdminResponse};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -27,7 +33,7 @@ pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                         Task::Admin(
                             peer_id,
                             AdminRequest::SettingsSet {
-                                scope: settings::Scope { tokens },
+                                scope: ax_core::settings::Scope { tokens },
                                 json: settings,
                                 ignore_errors: false,
                             },

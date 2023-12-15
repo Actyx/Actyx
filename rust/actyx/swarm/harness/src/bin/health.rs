@@ -10,11 +10,12 @@ fn main() {
     use async_std::future::timeout;
     use libp2p::multiaddr::{Multiaddr, Protocol};
     use netsim_embed::{Ipv4Range, Machine, MachineId, NetworkId};
-    use petgraph::graph::{NodeIndex, UnGraph};
-    use petgraph::visit::EdgeRef;
+    use petgraph::{
+        graph::{NodeIndex, UnGraph},
+        visit::EdgeRef,
+    };
     use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
-    use std::net::Ipv4Addr;
-    use std::time::Duration;
+    use std::{net::Ipv4Addr, time::Duration};
     use swarm_cli::{Command, Config, Event, PeerId};
     use swarm_harness::MultiaddrExt;
 

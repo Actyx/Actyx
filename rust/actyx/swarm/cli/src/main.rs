@@ -1,49 +1,72 @@
 use acto::ActoRef;
-use actyx_sdk::{app_id, service::SwarmState, AppId, Payload};
 use anyhow::Result;
-use api::{formats::Licensing, NodeInfo};
-use ax_futures_util::prelude::AxStreamExt;
+use ax_core::{
+    api::{self, licensing::Licensing, NodeInfo},
+    ax_futures_util::stream::AxStreamExt,
+    crypto::{KeyPair, KeyStore},
+    swarm::{
+        blob_store::BlobStore,
+        event_store_ref::{self, EventStoreHandler, EventStoreRef, EventStoreRequest},
+        BanyanStore, DbPath, GossipMessage, SwarmConfig,
+    },
+    trees::{query::TagExprQuery, AxKey},
+    util::variable::Writer,
+};
+use ax_sdk::types::{app_id, service::SwarmState, AppId, Payload};
 use cbor_data::{
     codec::{CodecError, ReadCbor},
     Cbor,
 };
-use crypto::{KeyPair, KeyStore};
-use futures::{stream::StreamExt, TryStreamExt};
+use futures::{stream::StreamExt, FutureExt, TryStreamExt};
 use ipfs_embed::GossipEvent;
 use libp2p::PeerId;
 use parking_lot::Mutex;
 use std::sync::Arc;
 use structopt::StructOpt;
-use swarm::{
-    blob_store::BlobStore,
-    event_store_ref::{self, EventStoreHandler, EventStoreRef, EventStoreRequest},
-    BanyanStore, DbPath, GossipMessage, SwarmConfig,
-};
 use swarm_cli::{Command, Config, Event};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     runtime::Handle,
     sync::mpsc,
 };
-use trees::{query::TagExprQuery, AxKey};
-use util::variable::Writer;
+use tracing_subscriber::fmt::format::FmtSpan;
+
+fn make_log_filename() -> String {
+    std::env::var("NETSIM_TEST_LOGFILE").unwrap_or("unknown".to_string())
+}
 
 #[tokio::main]
 async fn main() {
-    util::setup_logger();
-    if let Err(err) = run().await {
+    let config = Config::from_args();
+
+    tracing_log::LogTracer::init().ok();
+    // install global collector configured based on RUST_LOG env var.
+
+    let log_filename = make_log_filename();
+    let file_appender =
+        tracing_appender::rolling::minutely("./test-log/netsim/", format!("{}-{}.log", log_filename, config.keypair));
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_span_events(FmtSpan::ENTER | FmtSpan::CLOSE)
+        .with_writer(std::io::stderr)
+        .with_writer(non_blocking)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).ok();
+    log_panics::init();
+
+    if let Err(err) = run(config).await {
         tracing::error!("{}", err);
     }
 }
 
-async fn run() -> Result<()> {
+async fn run(mut config: Config) -> Result<()> {
     let mut stdin = BufReader::new(tokio::io::stdin());
     let mut line = String::with_capacity(4096);
     fn app_id() -> AppId {
         app_id!("com.actyx.swarm-cli")
     }
 
-    let mut config = Config::from_args();
     tracing::info!(
         "mdns: {} fast_path: {} slow_path: {} root_map: {} discovery: {} metrics: {} api: {:?}",
         config.enable_mdns,
@@ -55,8 +78,6 @@ async fn run() -> Result<()> {
         config.enable_api
     );
     let listen_addresses = std::mem::take(&mut config.listen_on);
-    // to be used later
-    let listen_addresses2 = listen_addresses.clone();
     let swarm = if let Some(addr) = config.enable_api {
         let cfg = SwarmConfig::from(config.clone());
         let mut key_store = KeyStore::default();
@@ -74,16 +95,20 @@ async fn run() -> Result<()> {
         let event_store = {
             let store = swarm.clone();
             let (tx, mut rx) = mpsc::channel::<EventStoreRequest>(10);
-            swarm.spawn_task("handler".to_owned(), async move {
-                let mut handler = EventStoreHandler::new(store);
-                let runtime = Handle::current();
-                while let Some(request) = rx.recv().await {
-                    let req = request.to_string();
-                    tracing::debug!("got request {}", req);
-                    handler.handle(request, &runtime);
-                    tracing::debug!("handled request {}", req);
+            swarm.spawn_task(
+                "handler".to_owned(),
+                async move {
+                    let mut handler = EventStoreHandler::new(store);
+                    let runtime = Handle::current();
+                    while let Some(request) = rx.recv().await {
+                        let req = request.to_string();
+                        tracing::debug!("got request {}", req);
+                        handler.handle(request, &runtime);
+                        tracing::debug!("handled request {}", req);
+                    }
                 }
-            });
+                .boxed(),
+            );
             EventStoreRef::new(move |e| tx.try_send(e).map_err(event_store_ref::Error::from))
         };
         let blobs = BlobStore::new(DbPath::Memory)?;
@@ -98,7 +123,8 @@ async fn run() -> Result<()> {
                 Arc::new(Mutex::new(addr.into())),
                 tx,
                 swarm_state,
-            ),
+            )
+            .boxed(),
         );
         swarm
     } else {
@@ -126,19 +152,56 @@ async fn run() -> Result<()> {
     // Poor man's fix for missing ipfs_embed::Event::Connected and
     // ipfs_embed::Event::ConnectionEstablished event from ipfs.swarm_events()
     tokio::spawn(async move {
+        use std::collections::HashSet;
         use tokio::time::{sleep, Duration};
-        let mut connected_peer_ids = std::collections::HashSet::<PeerId>::new();
         let ipfs = ipfs.clone();
-        let listen_addresses = listen_addresses2;
-        while connected_peer_ids.len() < listen_addresses.len() {
-            ipfs.connections().iter().for_each(|connection| {
-                let peer_id = connection.0;
-                let is_connected = ipfs.is_connected(&peer_id);
-                if is_connected && !connected_peer_ids.contains(&peer_id) {
-                    println!("{}", Event::Connected(peer_id));
-                    connected_peer_ids.insert(peer_id);
-                }
+        let mut last_connected = HashSet::<PeerId>::new();
+        loop {
+            let current_connected = ipfs
+                .peers()
+                .into_iter()
+                .filter(|peer| ipfs.is_connected(peer))
+                .collect::<HashSet<PeerId>>();
+
+            let new_connected = &current_connected - &last_connected;
+            let new_disconnected = &last_connected - &current_connected;
+
+            if !new_connected.is_empty() {
+                tracing::info!(
+                    "{} connected to: {}",
+                    ipfs.local_peer_id(),
+                    new_connected
+                        .iter()
+                        .map(|x| format!(" - {}", x))
+                        .collect::<Vec<_>>()
+                        .join(",")
+                );
+            }
+            if !new_disconnected.is_empty() {
+                tracing::info!(
+                    "{} disconnected from: {}",
+                    ipfs.local_peer_id(),
+                    new_disconnected
+                        .iter()
+                        .map(|x| format!(" - {}", x))
+                        .collect::<Vec<_>>()
+                        .join(",")
+                );
+            }
+            if new_connected.is_empty() && new_disconnected.is_empty() {
+                tracing::info!("{} there is no connection status update", ipfs.local_peer_id());
+            }
+
+            new_connected.into_iter().for_each(|peer_id| {
+                println!("{}", Event::Connected(peer_id));
             });
+
+            new_disconnected.into_iter().for_each(|peer_id| {
+                println!("{}", Event::Disconnected(peer_id));
+            });
+
+            last_connected = current_connected;
+
             sleep(Duration::from_millis(1000)).await;
         }
     });
@@ -151,7 +214,6 @@ async fn run() -> Result<()> {
                 ipfs_embed::Event::ExpiredExternalAddr(addr) => Some(Event::ExpiredExternalAddr(addr)),
                 ipfs_embed::Event::Discovered(peer_id) => Some(Event::Discovered(peer_id)),
                 ipfs_embed::Event::Unreachable(peer_id) => Some(Event::Unreachable(peer_id)),
-                ipfs_embed::Event::Connected(peer_id) => Some(Event::Connected(peer_id)),
                 // NOTE: ipfs_embed::Event::Connected is not always emitted
                 // Therefore ipfs_embed::Event::ConnectionEstablished is used as a fallback
                 // See:
@@ -161,12 +223,14 @@ async fn run() -> Result<()> {
                 //      other_established_connection_ids - banned_peers
                 //  - https://docs.rs/crate/libp2p-swarm/0.41.1/source/src/lib.rs#:~:text=let%20non_banned_established
                 //      other_established_connection_ids is the
-                // These connection reroutings are removed and replaced with the
-                // fix written on a separate tokio task above due to incomplete
-                // rerouting that we haven't quite able to pinpoint so that
-                // harness tests sometimes cannot capture some events
-                // ipfs_embed::Event::ConnectionEstablished(peer_id, _) => Some(Event::Connected(peer_id)),
-                // ipfs_embed::Event::Connected(peer_id) => Some(Event::Connected(peer_id)),
+
+                // Better not remove these reroutings of ConnectionEstablished,
+                // Connected, and Disconnected despite having the above
+                // poor-man's fix because some events can arrive but isn't
+                // caught by the above loop because the loop might be too slow
+                // to catch these events
+                ipfs_embed::Event::ConnectionEstablished(peer_id, _) => Some(Event::Connected(peer_id)),
+                ipfs_embed::Event::Connected(peer_id) => Some(Event::Connected(peer_id)),
                 ipfs_embed::Event::Disconnected(peer_id) => Some(Event::Disconnected(peer_id)),
                 ipfs_embed::Event::Subscribed(peer_id, topic) => Some(Event::Subscribed(peer_id, topic)),
                 _ => None,
@@ -189,8 +253,8 @@ async fn run() -> Result<()> {
             }
             Command::SubscribeQuery(q) => {
                 let from = match q.source {
-                    actyx_sdk::language::Source::Events { from, .. } => from,
-                    actyx_sdk::language::Source::Array(_) => unimplemented!(),
+                    ax_sdk::aql::Source::Events { from, .. } => from,
+                    ax_sdk::aql::Source::Array(_) => unimplemented!(),
                 };
                 let tags_query = TagExprQuery::from_expr(&from).unwrap();
                 let this = swarm.clone();

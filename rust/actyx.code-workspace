@@ -7,7 +7,7 @@
       "path": "sdk"
     },
     {
-      "path": "../protocols"
+      "path": "release"
     }
   ],
   "settings": {

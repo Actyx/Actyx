@@ -1,22 +1,24 @@
+mod license;
 mod sign;
 
 use crate::cmd::AxCliCommand;
 use futures::Future;
-use structopt::StructOpt;
 
-pub use sign::{create_signed_app_manifest, SignOpts};
+use license::LicenseOpts;
+use sign::SignOpts;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Subcommand, Clone, Debug)]
 /// manage app manifests
 pub enum AppsOpts {
-    #[structopt(no_version)]
+    /// Create app or node license
+    License(LicenseOpts),
     /// Sign application manifest
     Sign(SignOpts),
 }
 
-pub fn run(opts: AppsOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin> {
+pub(crate) fn run(opts: AppsOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin> {
     match opts {
         AppsOpts::Sign(opt) => sign::AppsSign::output(opt, json),
+        AppsOpts::License(opt) => license::AppsLicense::output(opt, json),
     }
 }

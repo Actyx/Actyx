@@ -1,11 +1,11 @@
-use crate::cmd::formats::Result;
 use crate::cmd::AxCliCommand;
+use ax_core::{
+    private_key::generate_key,
+    util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
+};
 use futures::{stream, Stream, TryFutureExt};
-use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use structopt::StructOpt;
-use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -29,22 +29,16 @@ impl AxCliCommand for SwarmsKeygen {
         }
     }
 }
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+
+#[derive(clap::Parser, Clone, Debug)]
 /// generate swarm key
 pub struct KeygenOpts {
-    #[structopt(short, long, parse(from_os_str))]
-    /// Create file <output> and write the generated key to it.
+    /// Create file `<output>` and write the generated key to it.
+    #[arg(short, long)]
     pub(crate) output: Option<PathBuf>,
 }
 
-pub fn generate_key() -> String {
-    let mut key = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut key);
-    base64::encode(key)
-}
-
-pub fn store_key(key: String, mut path: PathBuf) -> Result<()> {
+pub fn store_key(key: String, mut path: PathBuf) -> ActyxOSResult<()> {
     if path.is_dir() {
         path.push("actyx-swarm.key");
     }
@@ -58,7 +52,7 @@ pub fn store_key(key: String, mut path: PathBuf) -> Result<()> {
     Ok(())
 }
 
-pub async fn run(opt: KeygenOpts) -> Result<Output> {
+pub async fn run(opt: KeygenOpts) -> ActyxOSResult<Output> {
     let key = generate_key();
     if let Some(path) = opt.output.clone() {
         store_key(key.clone(), path)?;
@@ -71,11 +65,12 @@ pub async fn run(opt: KeygenOpts) -> Result<Output> {
 
 #[cfg(test)]
 mod test {
-    use crate::cmd::formats::Result;
-    use crate::cmd::swarms::keygen::{generate_key, run, store_key, KeygenOpts};
+    use ax_core::{private_key::generate_key, util::formats::ActyxOSResult};
+
+    use crate::cmd::swarms::keygen::{run, store_key, KeygenOpts};
 
     #[tokio::test]
-    pub async fn should_store_swarm_key() -> Result<()> {
+    pub async fn should_store_swarm_key() -> ActyxOSResult<()> {
         let key = generate_key();
         assert_eq!(44, key.len());
 

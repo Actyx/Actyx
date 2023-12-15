@@ -1,4 +1,4 @@
-use actyx_sdk::{Ax, AxOpts};
+use ax_sdk::{Ax, AxOpts};
 use futures::StreamExt;
 
 // This example demonstrates how to subscribe to a query.

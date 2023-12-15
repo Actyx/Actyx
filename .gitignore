@@ -16,6 +16,7 @@ secrets.yml
 .ensime*
 /make-always
 actyx-data*/
+ax-data*/
 **/obj
 dotnet/**/bin
 pipeline-artifacts

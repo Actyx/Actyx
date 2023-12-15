@@ -1,9 +1,8 @@
 extern crate derive_more;
 use anyhow::{anyhow, Error};
-use derive_more::{Display, From};
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Display, From)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, derive_more::Display, derive_more::From)]
 pub enum Product {
     #[display(fmt = "actyx")]
     Actyx,
@@ -19,10 +18,14 @@ pub enum Product {
     RustSdk,
     #[display(fmt = "csharp-sdk")]
     CSharpSdk,
+    #[display(fmt = "ax")]
+    Ax,
+    #[display(fmt = "ax_core")]
+    AxCore,
 }
 
 impl Product {
-    pub const ALL: [Product; 7] = [
+    pub const ALL: [Product; 9] = [
         Self::Actyx,
         Self::Cli,
         Self::NodeManager,
@@ -30,6 +33,8 @@ impl Product {
         Self::TsSdk,
         Self::RustSdk,
         Self::CSharpSdk,
+        Self::Ax,
+        Self::AxCore,
     ];
 }
 
@@ -45,6 +50,8 @@ impl FromStr for Product {
             "ts-sdk" => Ok(Product::TsSdk),
             "rust-sdk" => Ok(Product::RustSdk),
             "csharp-sdk" => Ok(Product::CSharpSdk),
+            "ax" => Ok(Product::Ax),
+            "ax_core" => Ok(Product::AxCore),
             _ => Err(anyhow!("unknown product {}", s)),
         }
     }
@@ -54,7 +61,7 @@ mod tests {
     use super::*;
     #[test]
     fn add_to_enum() {
-        assert_eq!(Product::ALL.len(), 7);
+        assert_eq!(Product::ALL.len(), 9);
     }
 
     #[test]
@@ -67,6 +74,8 @@ mod tests {
         assert_eq!(Product::from_str("ts-sdk")?, TsSdk);
         assert_eq!(Product::from_str("rust-sdk")?, RustSdk);
         assert_eq!(Product::from_str("csharp-sdk")?, CSharpSdk);
+        assert_eq!(Product::from_str("ax")?, Ax);
+        assert_eq!(Product::from_str("ax_core")?, AxCore);
         Ok(())
     }
 
@@ -80,5 +89,7 @@ mod tests {
         assert_eq!(format!("{}", TsSdk), "ts-sdk");
         assert_eq!(format!("{}", RustSdk), "rust-sdk");
         assert_eq!(format!("{}", CSharpSdk), "csharp-sdk");
+        assert_eq!(format!("{}", Ax), "ax");
+        assert_eq!(format!("{}", AxCore), "ax_core");
     }
 }

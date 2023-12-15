@@ -1,37 +1,34 @@
-use std::{fs::File, io::Read};
-
-use crate::{
-    cmd::{AxCliCommand, ConsoleOpt},
+use crate::cmd::{AxCliCommand, ConsoleOpt};
+use ax_core::{
     node_connection::Task,
+    util::{
+        formats::{
+            events_protocol::{EventsRequest, EventsResponse},
+            ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
+        },
+        gen_stream::GenStream,
+    },
 };
-use actyx_sdk::{
+use ax_sdk::types::{
     service::{PublishEvent, PublishRequest, PublishResponse},
     Payload, Tag, TagSet,
 };
 use chrono::{DateTime, Utc};
 use futures::{channel::mpsc::channel, future::ready, SinkExt, Stream, StreamExt};
 use genawaiter::sync::Co;
-use structopt::StructOpt;
-use util::{
-    formats::{
-        events_protocol::{EventsRequest, EventsResponse},
-        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
-    },
-    gen_stream::GenStream,
-};
+use std::{fs::File, io::Read};
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Parser, Clone, Debug)]
 /// publish an event
 pub struct PublishOpts {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 
     /// event payload (JSON) or @FILE for reading from a file (@- for stdin)
     payload: String,
 
     /// tag (can be given multiple times)
-    #[structopt(long, short)]
+    #[arg(long, short)]
     tag: Option<Vec<Tag>>,
 }
 
@@ -100,7 +97,7 @@ impl AxCliCommand for EventsPublish {
 
         let mut s = String::new();
         for key in result.data {
-            let ts = DateTime::<Utc>::from(key.timestamp);
+            let ts = DateTime::<Utc>::try_from(key.timestamp).expect("generated timestamp");
             writeln!(&mut s, "published event {}/{} at {}", key.stream, key.offset, ts).unwrap();
         }
         s

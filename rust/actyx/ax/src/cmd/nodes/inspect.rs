@@ -1,24 +1,21 @@
-use std::fmt::Write;
-
-use crate::{
-    cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt},
+use crate::cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt};
+use ax_core::{
     node_connection::{request_single, Task},
+    util::{
+        formats::{ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse},
+        version::NodeVersion,
+    },
 };
-use actyx_sdk::NodeId;
+use ax_sdk::types::NodeId;
 use futures::{stream, FutureExt, Stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
-use structopt::StructOpt;
-use util::{
-    formats::{ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse},
-    version::NodeVersion,
-};
+use std::fmt::Write;
 
-#[derive(StructOpt, Debug)]
-#[structopt(version = env!("AX_CLI_VERSION"))]
+#[derive(clap::Parser, Clone, Debug)]
 /// show node details
 pub struct InspectOpts {
-    #[structopt(flatten)]
+    #[command(flatten)]
     console_opt: ConsoleOpt,
 }
 
