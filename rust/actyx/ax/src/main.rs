@@ -71,8 +71,7 @@ fn superpowers() -> bool {
     var == "zøg" || var == "zoeg"
 }
 
-#[tokio::main(flavor = "multi_thread")]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let Opt {
         command,
         json,
@@ -81,14 +80,14 @@ async fn main() -> Result<()> {
 
     match command {
         CommandsOpt::Run(opts) => run(opts)?,
-        CommandsOpt::Apps(opts) => with_logger(cmd::apps::run(opts, json), verbosity).await,
-        CommandsOpt::Nodes(opts) => with_logger(cmd::nodes::run(opts, json), verbosity).await,
-        CommandsOpt::Settings(opts) => with_logger(cmd::settings::run(opts, json), verbosity).await,
-        CommandsOpt::Swarms(opts) => with_logger(cmd::swarms::run(opts, json), verbosity).await,
-        CommandsOpt::Users(opts) => with_logger(cmd::users::run(opts, json), verbosity).await,
-        CommandsOpt::Internal(opts) => with_logger(cmd::internal::run(opts, json), verbosity).await,
-        CommandsOpt::Events(opts) => with_logger(cmd::events::run(opts, json), verbosity).await,
-        CommandsOpt::Topics(opts) => with_logger(cmd::topics::run(opts, json), verbosity).await,
+        CommandsOpt::Apps(opts) => handle_cmd(cmd::apps::run(opts, json), verbosity),
+        CommandsOpt::Nodes(opts) => handle_cmd(cmd::nodes::run(opts, json), verbosity),
+        CommandsOpt::Settings(opts) => handle_cmd(cmd::settings::run(opts, json), verbosity),
+        CommandsOpt::Swarms(opts) => handle_cmd(cmd::swarms::run(opts, json), verbosity),
+        CommandsOpt::Users(opts) => handle_cmd(cmd::users::run(opts, json), verbosity),
+        CommandsOpt::Internal(opts) => handle_cmd(cmd::internal::run(opts, json), verbosity),
+        CommandsOpt::Events(opts) => handle_cmd(cmd::events::run(opts, json), verbosity),
+        CommandsOpt::Topics(opts) => handle_cmd(cmd::topics::run(opts, json), verbosity),
         CommandsOpt::Complete { shell } => {
             let mut cmd = Opt::augment_args(clap::Command::new("ax"));
             clap_complete::generate(shell, &mut cmd, "ax", &mut std::io::stdout());
@@ -98,9 +97,13 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn with_logger<T>(fut: impl Future<Output = T>, verbosity: u8) -> T {
+fn handle_cmd(fut: impl Future<Output = ()>, verbosity: u8) {
     ax_core::util::setup_logger_with_level(verbosity);
-    fut.await
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("failed to build runtime");
+    rt.block_on(fut);
 }
 
 // This method does not belong here, it belongs in ax-core
