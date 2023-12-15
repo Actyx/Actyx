@@ -18,7 +18,7 @@ fn lock_working_dir(working_dir: impl AsRef<std::path::Path>) -> ActyxOSResult<f
     {
         return Err(ActyxOSError::new(
             ActyxOSCode::ERR_FILE_EXISTS,
-            "Actyx directory is in use, please stop Actyx first!".to_owned(),
+            "AX directory is in use, please stop AX first!".to_owned(),
         ));
     }
     Ok(lf)
@@ -39,7 +39,7 @@ impl AxCliCommand for UsersAddKey {
             if !path.exists() {
                 return ax_core::util::formats::ax_err(
                     ActyxOSCode::ERR_PATH_INVALID,
-                    format!("path `{}` does not refer to an Actyx directory", opts.path.display()),
+                    format!("path `{}` does not refer to an AX directory", opts.path.display()),
                 );
             }
 
@@ -69,7 +69,7 @@ impl AxCliCommand for UsersAddKey {
 }
 
 #[derive(clap::Parser, Clone, Debug)]
-/// add own user key to a given Actyx data directory
+/// add own user key to a given AX data directory
 pub struct AddKeyOpts {
     /// Path to the `actyx-data` folder you wish to modify
     #[arg(name = "PATH", required = true)]

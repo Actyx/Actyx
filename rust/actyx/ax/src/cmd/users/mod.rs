@@ -14,9 +14,9 @@ use pubkey::PubkeyOpts;
 /// manage user keys
 #[derive(clap::Subcommand, Clone, Debug)]
 pub enum UsersOpts {
-    /// Install a user key into /admin/authorizedUsers of a local Actyx node that is not currently running.
+    /// Install a user key into /admin/authorizedUsers of a local AX node that is not currently running.
     AddKey(AddKeyOpts),
-    /// Generate a new user key pair for interacting with an Actyx node.
+    /// Generate a new user key pair for interacting with an AX node.
     Keygen(KeygenOpts),
     /// Show public key corresponding to a private key.
     Pubkey(PubkeyOpts),

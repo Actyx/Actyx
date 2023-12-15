@@ -34,7 +34,7 @@ pub type NodeProcessResult<T> = std::result::Result<T, NodeError>;
 
 #[derive(Error, Debug, Clone)]
 pub enum NodeError {
-    #[error("NODE_STOPPED_BY_NODE\nActyx shut down because Actyx services could not be started. Please contact Actyx support or file a report at https://groups.google.com/a/actyx.io/g/developers. ({component}: {err:#})")]
+    #[error("NODE_STOPPED_BY_NODE\nActyx shut down because AX services could not be started. Please contact Actyx support or file a report at https://groups.google.com/a/actyx.io/g/developers. ({component}: {err:#})")]
     ServicesStartup { component: String, err: Arc<anyhow::Error> },
     #[error("NODE_STOPPED_BY_NODE\nError: internal error. Please contact Actyx support. ({0:#})")]
     InternalError(Arc<anyhow::Error>),
@@ -299,7 +299,7 @@ impl Node {
     }
 
     fn run(mut self) -> NodeProcessResult<()> {
-        tracing::info!("Actyx {} is starting", NodeVersion::get());
+        tracing::info!("AX {} is starting", NodeVersion::get());
 
         let (tx, component_rx) = bounded(256);
         self.register_with_components(tx).internal()?;
@@ -329,7 +329,7 @@ impl Node {
                     if let ComponentState::Started = new_state {
                         let was_present = to_start.remove(&from_component);
                         if was_present && to_start.is_empty() {
-                            tracing::info!(target: "NODE_STARTED_BY_HOST", "Actyx {} is running.", NodeVersion::get());
+                            tracing::info!(target: "NODE_STARTED_BY_HOST", "AX {} is running.", NodeVersion::get());
                         }
                     }
                     if let ComponentState::Errored(e) = new_state {
@@ -343,12 +343,12 @@ impl Node {
         // Log reason for shutdown
         match shutdown_reason {
             ShutdownReason::TriggeredByHost => {
-                info!(target: "NODE_STOPPED_BY_HOST", "Actyx is stopped. \
+                info!(target: "NODE_STOPPED_BY_HOST", "AX is stopped. \
                     The shutdown was either initiated automatically by the host or intentionally by the user. \
                     If you have questions about that behavior, please contact Actyx support or file a report at https://groups.google.com/a/actyx.io/g/developers.");
             }
             ShutdownReason::TriggeredByUser => {
-                info!(target: "NODE_STOPPED_BY_NODEUI", "Actyx is stopped. The shutdown was initiated by the user. \
+                info!(target: "NODE_STOPPED_BY_NODEUI", "AX is stopped. The shutdown was initiated by the user. \
                     If you did not initiate shutdown, please contact Actyx support or file a report at https://groups.google.com/a/actyx.io/g/developers.");
             }
             ShutdownReason::Internal(ref err) => {

@@ -184,7 +184,7 @@ fn render_directory_listing(
         r#"
 <!DOCTYPE html>
 <head>
-<title>Actyx Files: Directory {}</title>
+<title>AX Files: Directory {}</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>

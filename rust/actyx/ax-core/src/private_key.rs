@@ -25,7 +25,7 @@ pub fn generate_key() -> String {
     base64::encode(key)
 }
 
-/// Returns the data directory for Actyx. Does not create the folders!
+/// Returns the data directory for AX. Does not create the folders!
 /// https://docs.rs/dirs/3.0.1/dirs/fn.config_dir.html
 ///
 /// Platform    Value                               Example

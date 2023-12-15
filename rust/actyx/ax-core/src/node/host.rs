@@ -5,7 +5,7 @@ use ax_types::NodeId;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, derive_more::Display)]
-#[display(fmt = "data directory `{}` is locked by another Actyx process", _0)]
+#[display(fmt = "data directory `{}` is locked by another AX process", _0)]
 pub struct WorkdirLocked(String);
 impl std::error::Error for WorkdirLocked {}
 

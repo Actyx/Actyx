@@ -1,4 +1,4 @@
-//! The [`GossipMessage`] protocol between Actyx nodes is encoded using [libipld].
+//! The [`GossipMessage`] protocol between AX nodes is encoded using [libipld].
 //!
 //! [libipld]: https://crates.io/crates/libipld
 use crate::swarm::Block;

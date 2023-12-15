@@ -135,7 +135,7 @@ impl quickcheck::Arbitrary for Timestamp {
 
 /// A logical timestamp taken from a [`Lamport clock`](https://en.wikipedia.org/wiki/Lamport_timestamps)
 ///
-/// The lamport clock in an Actyx system is increased by the Actyx node whenever:
+/// The lamport clock in an AX system is increased by the AX node whenever:
 ///
 /// - an event is emitted
 /// - a heartbeat is received

@@ -46,7 +46,7 @@ use std::{net::ToSocketAddrs, path::PathBuf, str::FromStr, thread};
 use util::init_panic_hook;
 
 // Rust defaults to use the system allocator, which seemed to be the fastest
-// allocator generally available for our use case [0]. For production, the Actyx
+// allocator generally available for our use case [0]. For production, the AX
 // binaries are compiled statically using the musl toolchain. The allocator
 // shipped with musl 0.9.9 performs worse than the system allocator. This is why
 // for musl targets, this falls back to jemalloc.

@@ -84,7 +84,7 @@ fn with_api(
 
     let workdir = tempdir()?;
 
-    let _ = writeln!(log, "running Actyx in {}", std::env::current_dir()?.display());
+    let _ = writeln!(log, "running AX in {}", std::env::current_dir()?.display());
     let mut process = run("ax")?
         .args(["run"])
         .current_dir(workdir.path())
@@ -115,10 +115,10 @@ fn with_api(
     for line in &mut lines {
         if let Some((rx, mut process)) = rx.take() {
             // unfortunately escargot doesn’t inform us when building is finished,
-            // so we start the Actyx timeout upon seeing the first line of output
+            // so we start the AX timeout upon seeing the first line of output
             spawn(move || {
                 let _ = rx.recv_timeout(Duration::from_secs(60));
-                eprintln!("killing Actyx");
+                eprintln!("killing AX");
                 let _ = process.kill();
             });
         }

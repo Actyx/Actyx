@@ -31,7 +31,7 @@ pub(crate) fn find_v1_working_dir(base: impl AsRef<Path>) -> Option<PathBuf> {
         // docker / linux / macos
         _ => base.as_ref().parent().and_then(|parent| {
             // actyxos: ActyxOS on Docker v1
-            // actyxos-data: Default for Actyx on Linux
+            // actyxos-data: Default for AX on Linux
             ["actyxos", "actyxos-data"]
                 .iter()
                 .map(|x| parent.join(x))
@@ -41,7 +41,7 @@ pub(crate) fn find_v1_working_dir(base: impl AsRef<Path>) -> Option<PathBuf> {
 }
 
 /// Find a working directory of an earlier installation (and the path to the
-/// `node.sqlite` database) of Actyx. If the `base` directory is already
+/// `node.sqlite` database) of AX. If the `base` directory is already
 /// populated, it will be returned. Otherwise some legacy locations will be
 /// tried.  The returned working_directory is guaranteed to exist, but the node
 /// db is not.
@@ -71,7 +71,7 @@ fn find_earlier_working_dir(base: impl AsRef<Path>) -> Option<(PathBuf, PathBuf)
     }
 }
 
-/// Migrates the Actyx node if necessary. If the node's version is current, this
+/// Migrates the AX node if necessary. If the node's version is current, this
 /// is a no-op.
 pub fn migrate_if_necessary(working_dir: impl AsRef<Path>) -> anyhow::Result<()> {
     anyhow::ensure!(working_dir.as_ref().exists());
@@ -81,7 +81,7 @@ pub fn migrate_if_necessary(working_dir: impl AsRef<Path>) -> anyhow::Result<()>
         let db_version = get_node_version(&node_db)?;
         match db_version {
             0 | 1 => {
-                anyhow::bail!("Migrating from versions 0.x and 1.x is only possible in Actyx versions up to 2.15.0")
+                anyhow::bail!("Migrating from versions 0.x and 1.x is only possible in AX versions up to 2.15.0")
             }
             2 => {
                 tracing::info!(target:"MIGRATION", "Migrating data from an earlier version (2 to 3) ..");

@@ -1,4 +1,4 @@
-//! Actyx Naming Service
+//! AX Naming Service
 use crate::{
     swarm::BanyanStore,
     trees::{

@@ -15,7 +15,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 // NOTE: we could replace our whole json pointer implementation with a library
 // reducing the code we need to manage and so on
-// however, this code is very pervasive in Actyx
+// however, this code is very pervasive in AX
 // also, existing implementations of json pointer dont seem to have the
 // diffing capability
 #[derive(Ord, Eq, PartialOrd, PartialEq, Clone, Debug)]

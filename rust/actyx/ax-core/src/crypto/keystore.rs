@@ -219,7 +219,7 @@ impl KeyStore {
     }
 
     // dumps are obfuscated with this key (this does not provide much security since the key
-    // can be extracted from Actyx binaries without much hassle, but it does make it a bit
+    // can be extracted from AX binaries without much hassle, but it does make it a bit
     // less obvious to prying eyes)
     pub(crate) const DUMP_KEY: &'static [u8; 32] = b"uqTmyHA4*G!KQQ@77QMu_xhTg@!o*DnP";
     const VERSION_1: u8 = 1;

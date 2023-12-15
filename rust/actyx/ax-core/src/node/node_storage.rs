@@ -9,7 +9,7 @@ use tracing::*;
 
 #[derive(Debug, Clone, Copy, derive_more::Display, derive_more::Error)]
 #[display(
-    fmt = "Attempting to start Actyx v2.9+ with a data directory from Actyx v2.8 or earlier.\n\
+    fmt = "Attempting to start AX v2.9+ with a data directory from AX v2.8 or earlier.\n\
            See the documentation for when and how migration is supported. Meanwhile, you can start from a\n\
            fresh data directory (see also the --working-dir command line option)."
 )]
@@ -17,7 +17,7 @@ pub struct WrongVersionV2_8;
 
 #[derive(Debug, Clone, Copy, derive_more::Display, derive_more::Error)]
 #[display(
-    fmt = "Attempting to start Actyx v2 with a data directory from ActyxOS v1.1, which is currently not supported.\n\
+    fmt = "Attempting to start AX v2 with a data directory from ActyxOS v1.1, which is currently not supported.\n\
            See the documentation for when and how migration is supported. Meanwhile, you can start from a\n\
            fresh data directory (see also the --working-dir command line option)."
 )]
@@ -25,7 +25,7 @@ pub struct WrongVersionV1;
 
 #[derive(Debug, Clone, Copy, derive_more::Display, derive_more::Error)]
 #[display(
-    fmt = "Attempting to start Actyx v2 with a data directory from ActyxOS v1.0, which is currently not supported.\n\
+    fmt = "Attempting to start AX v2 with a data directory from ActyxOS v1.0, which is currently not supported.\n\
            See the documentation for when and how migration is supported. Meanwhile, you can start from a\n\
            fresh data directory (see also the --working-dir command line option)."
 )]
@@ -33,7 +33,7 @@ pub struct WrongVersionV0;
 
 #[derive(Debug, Clone, Copy, derive_more::Display)]
 #[display(
-    fmt = "Attempting to start Actyx v2 with a data directory from a future version (schema ID is {})",
+    fmt = "Attempting to start AX v2 with a data directory from a future version (schema ID is {})",
     _0
 )]
 pub struct WrongVersionFuture(u32);

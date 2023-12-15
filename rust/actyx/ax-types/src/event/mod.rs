@@ -27,7 +27,7 @@ pub use payload::Payload;
 ///
 /// Ordering and equality do not depend on the type of payload: `lamport` and `key.stream`
 /// uniquely identify the event and give rise to a total order (first by Lamport timestamp,
-/// then by stream ID;  an Actyx node   will never use the same Lamport timestamp
+/// then by stream ID;  an AX node   will never use the same Lamport timestamp
 /// more than once).
 ///
 /// The contained Lamport timestamp tracks the causal order of events, which may not

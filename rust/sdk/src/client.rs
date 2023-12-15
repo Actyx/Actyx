@@ -107,7 +107,7 @@ async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) 
     Ok(token.token)
 }
 
-/// The Actyx client.
+/// The AX client.
 #[derive(Clone)]
 pub struct Ax {
     client: Client,
@@ -173,7 +173,7 @@ impl Ax {
         Ok(token)
     }
 
-    /// Perform a request (to Actyx APIs).
+    /// Perform a request (to AX APIs).
     /// If an authorization error (code 401) is returned, it will try to re-authenticate.
     /// If the service is unavailable (code 503), this method will retry to perform the
     /// request up to 10 times with exponentially increasing delay - currently,
@@ -212,7 +212,7 @@ impl Ax {
                     retries -= 1;
                     delay = delay * 2 + std::time::Duration::from_millis(rand::thread_rng().gen_range(10..200));
                     tracing::debug!(
-                        "Actyx Node is overloaded, retrying {} {} with a delay of {:?}",
+                        "AX Node is overloaded, retrying {} {} with a delay of {:?}",
                         method,
                         url,
                         delay
@@ -803,7 +803,7 @@ impl<'a> Query<'a> {
     /// Dual to [`Query::with_upper_bound`], removes the upper bound.
     ///
     /// When no upper bound is provided or is removed using this function
-    /// it will be filled in by Actyx when processing the query, the upper bound
+    /// it will be filled in by AX when processing the query, the upper bound
     /// will then be the currently known offsets (in other words, the "present").
     ///
     /// # Panics
@@ -1354,7 +1354,7 @@ mod tests {
 
     /// The normal [`Ax::new`] connects to a client, the client returned by this
     /// function is a "mock" client instead that allows us to test the builder
-    /// functions without requiring a connection to Actyx
+    /// functions without requiring a connection to AX
     fn new_test_client() -> Ax {
         let opts = AxOpts::default();
         let client = Client::new();

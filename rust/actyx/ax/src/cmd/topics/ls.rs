@@ -103,7 +103,7 @@ impl AxCliCommand for TopicsList {
                     }
                 }
                 LsOutput::Unreachable { host } => {
-                    table.add_row(row!["Actyx was unreachable on host", host]);
+                    table.add_row(row!["AX was unreachable on host", host]);
                 }
                 LsOutput::Unauthorized { host } => {
                     table.add_row(row!["Unauthorized on host", host]);

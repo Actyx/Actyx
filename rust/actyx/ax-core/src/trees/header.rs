@@ -7,7 +7,7 @@ use libipld::{
 };
 use std::io;
 
-/// Actyx tree header.
+/// AX tree header.
 ///
 /// This is v0, which just contains a lamport timestamp. Later there will also be a signature.
 #[derive(Debug, Clone, PartialEq, Eq)]

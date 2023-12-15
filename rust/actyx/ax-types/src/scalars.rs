@@ -70,9 +70,9 @@ impl quickcheck::Arbitrary for AppId {
     }
 }
 
-/// The Actyx node identifier
+/// The AX node identifier
 ///
-/// Each Actyx node has a private key that defines its identity. The corresponding public
+/// Each AX node has a private key that defines its identity. The corresponding public
 /// key uniquely identifies the node but depends on the used crypto scheme. For now, we are
 /// using ed25519.
 ///
@@ -222,7 +222,7 @@ impl quickcheck::Arbitrary for NodeId {
     }
 }
 
-/// The unique identifier of a single event stream emitted by an Actyx node
+/// The unique identifier of a single event stream emitted by an AX node
 ///
 /// The emitting node — identified by its [`NodeId`](struct.NodeId.html) — may emit multiple
 /// streams with different IDs. The emitting node’s ID can be extracted from this stream ID

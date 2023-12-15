@@ -559,11 +559,11 @@ pub async fn request_banyan(task: &mut Sender<Task>, peer_id: PeerId, req: Banya
             BanyanResponse::Ok => Ok(()),
             BanyanResponse::Error(e) => Err(ActyxOSError::new(
                 ActyxOSCode::ERR_IO,
-                format!("error from Actyx node: {}", e),
+                format!("error from AX node: {}", e),
             )),
             BanyanResponse::Future => Err(ActyxOSError::new(
                 ActyxOSCode::ERR_IO,
-                "message from Actyx node from the future",
+                "message from AX node from the future",
             )),
         })
 }

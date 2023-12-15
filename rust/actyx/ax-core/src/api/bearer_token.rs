@@ -12,7 +12,7 @@ pub struct BearerToken {
     pub created: Timestamp,
     /// for whom
     pub app_id: AppId,
-    /// restart cycle count of Actyx node that created it
+    /// restart cycle count of AX node that created it
     pub cycles: NodeCycleCount,
     /// app version
     pub app_version: String,

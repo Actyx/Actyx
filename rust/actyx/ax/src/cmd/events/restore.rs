@@ -66,11 +66,11 @@ impl BR for BanyanResponse {
             BanyanResponse::Ok => Ok(()),
             BanyanResponse::Error(e) => Err(ActyxOSError::new(
                 ActyxOSCode::ERR_IO,
-                format!("error from Actyx node: {}", e),
+                format!("error from AX node: {}", e),
             )),
             BanyanResponse::Future => Err(ActyxOSError::new(
                 ActyxOSCode::ERR_IO,
-                "message from Actyx node from the future",
+                "message from AX node from the future",
             )),
         }
     }
@@ -161,7 +161,7 @@ impl AxCliCommand for EventsRestore {
                 }
             };
 
-            // keep the bytes in the buffer because the Actyx node will need to read the header as well
+            // keep the bytes in the buffer because the AX node will need to read the header as well
 
             diag.log(format!("sending dump from node {} topic `{}`", node_id, topic))?;
             let topic = format!("dump-{}", timestamp.to_rfc3339()).replace(':', "-");
@@ -188,7 +188,7 @@ impl AxCliCommand for EventsRestore {
             diag.log(format!("in total {} bytes uploaded", count))?;
             request_banyan(&mut conn, peer, BanyanRequest::Finalise(topic.clone())).await?;
             diag.log(format!("topic switched to `{}`", topic))?;
-            diag.log("Actyx node switched into read-only network mode")?;
+            diag.log("AX node switched into read-only network mode")?;
 
             Ok(())
         }))

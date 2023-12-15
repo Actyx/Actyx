@@ -3,7 +3,7 @@ use ax_aql::TagExpr;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-// These type definitions need to be kept in sync with the Actyx
+// These type definitions need to be kept in sync with the AX
 // node schema, as found in [0].
 // There is a somewhat simple test case in here to make sure, that
 // it's mostly in sync, but subtle bugs may be introduced by

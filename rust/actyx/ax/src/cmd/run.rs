@@ -46,11 +46,11 @@ pub struct NoColor;
     rename_all = "kebab-case"
 )]
 pub struct RunOpts {
-    /// Path where to store all the data of the Actyx node.
+    /// Path where to store all the data of the AX node.
     #[arg(
         long,
         env = "ACTYX_PATH",
-        long_help = "Path where to store all the data of the Actyx node. \
+        long_help = "Path where to store all the data of the AX node. \
             Defaults to creating <current working dir>/actyx-data"
     )]
     pub working_dir: Option<PathBuf>,

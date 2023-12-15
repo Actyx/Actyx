@@ -29,6 +29,6 @@ pub type AxTree = banyan::Tree<axtrees::AxTrees, ax_types::Payload>;
 pub type AxStreamBuilder = banyan::StreamBuilder<axtrees::AxTrees, ax_types::Payload>;
 /// Type alias for links
 pub type AxLink = axtrees::Sha256Digest;
-/// Actyx event key
+/// AX event key
 pub use axtrees::AxKey;
 use tags::ScopedTag;
