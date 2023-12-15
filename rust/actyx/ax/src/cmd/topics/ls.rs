@@ -120,7 +120,7 @@ impl AxCliCommand for TopicsList {
 /// List all topics
 #[derive(clap::Parser, Clone, Debug)]
 pub struct LsOpts {
-    /// The IP addresses or <host>:<admin port> of the target nodes.
+    /// The IP addresses or `<host>:<admin port>` of the target nodes.
     #[arg(name = "NODE", required = true)]
     authority: Vec<Authority>,
     /// The private key file to use for authentication.

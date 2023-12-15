@@ -123,7 +123,7 @@ pub struct DeleteOpts {
     /// The topic to delete.
     #[arg(required = true)]
     topic: String,
-    /// The IP addresses or <host>:<admin port> of the target nodes.
+    /// The IP addresses or `<host>:<admin port>` of the target nodes.
     #[arg(name = "NODE", required = true)]
     authority: Vec<Authority>,
     /// The private key file to use for authentication.

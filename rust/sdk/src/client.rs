@@ -1089,8 +1089,8 @@ impl<'a> FusedFuture for Subscribe<'a> {
 /// Request builder for monotonic subscriptions.
 ///
 /// Monotonic subscriptions keep track of the highest sort order
-/// ([`LamportTimestamp`](crate::timestamp::LamportTimestamp) and
-/// [`StreamId`](crate::scalars::StreamId)) seen so far, ending the stream with a
+/// ([`LamportTimestamp`](crate::types::LamportTimestamp) and
+/// [`StreamId`](crate::types::StreamId)) seen so far, ending the stream with a
 /// [`SubscribeMonotonicResponse::TimeTravel`](SubscribeMonotonicResponse::TimeTravel)
 /// message if the next event would be out of order.
 ///

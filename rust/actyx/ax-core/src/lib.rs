@@ -1,3 +1,6 @@
+#![doc = include_str!("../README.md")]
+#![doc(html_logo_url = "https://developer.actyx.com/img/logo.svg")]
+#![doc(html_favicon_url = "https://developer.actyx.com/img/favicon.ico")]
 #![deny(clippy::future_not_send)]
 
 pub mod api;

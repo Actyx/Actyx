@@ -1,8 +1,6 @@
-//! Supporting macros for the Actyx SDK
-//!
-//! The macros exported here are in this separate crate due to current restrictions on
-//! proc_macros in Rust. Please see the [Actyx SDK](https://docs.rs/actyx_sdk) for
-//! more information.
+#![doc = include_str!("../README.md")]
+#![doc(html_logo_url = "https://developer.actyx.com/img/logo.svg")]
+#![doc(html_favicon_url = "https://developer.actyx.com/img/favicon.ico")]
 
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};

@@ -35,7 +35,7 @@ pub struct LicenseOpts {
     /// descending order according to the size of the unit, the unit character and
     /// ordering is as follows:
     ///
-    /// [Y]ear, [M]onth, [w]eek, [d]ay, [h]our, [d]ay, [m]inute, [s]econd
+    ///     [Y]ear, [M]onth, [w]eek, [d]ay, [h]our, [d]ay, [m]inute, [s]econd
     ///
     /// Note: Years are considered to be 365 days long and months to be 30 days long.
     ///

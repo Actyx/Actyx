@@ -7,23 +7,21 @@
 //! over a new substream on a connection. `StreamingResponse` is generic over the
 //! actual messages being sent, which are defined in terms of a [`Codec`].
 //! Creating a request/response protocol thus amounts to providing an
-//! implementation of this trait which can then be given to
-//! [`StreamingResponseConfig::new`], and finally to [`StreamingResponse::new`].
+//! implementation of this trait which can then be used with [`StreamingResponse::new`].
 //! Further configuration options are available said config. For convenience, a
 //! default implementation for [`StreamingResponse`] is provided.
 //!
 //! Requests are sent using [`StreamingResponse::request`] and the
-//! responses received as [`StreamingResponseEvent::ResponseReceived`].
+//! responses received as [`Response`].
 //!
-//! Individual responses are sent using [`StreamingResponse::respond`]
-//! upon receiving a [`StreamingResponseEvent::Request`]. The response stream can
-//! be finalized by calling [`StreamingResponse::finish_response`],
+//! Individual responses are sent using [`RequestReceived::channel`]
+//! upon receiving a [`RequestReceived`]. The response stream can
+//! be finalized by calling [`Response::Finished`],
 //! which will result in the emission of an
-//! [`StreamingResponseEvent::ResponseFinished`] on the requester's side. After
+//! [`Response::Finished`] on the requester's side. After
 //! that, the response channel can't be used anymore.
 //!
-//! An ongoing request is cancelled if either the peer disconnects, or a
-//! [`StreamingResponseMessage::CancelRequest`] message is sent.
+//! An ongoing request is cancelled if either the peer disconnects.
 //!
 //! ## Protocol Families
 //!
@@ -39,8 +37,7 @@
 //! timeouts nor signalling of successful commits of outbound messages to the
 //! underlying transport mechanism. Sending requests and/or responses is a
 //! fire-and-forget action. Only if the remote peer is disconnected, consumer
-//! code will be notified through [`CancellationReason::PeerDisconnected`] via
-//! [`StreamingResponseEvent::ResponseFinished`].
+//! code will be notified through [`Response::Error`].
 //! Another notable difference is that this behaviour won't initiate any dialing
 //! attempts, thus this behaviour needs to be wrapped inside another behaviour
 //! providing dialing functionality.
@@ -52,10 +49,7 @@
 //! all subsequent responses, this substream is used. Given the asynchronous
 //! nature of the internals of `libp2p`, smaller response frames might make it to
 //! the recipient earlier than bigger ones. Each response frame includes a
-//! monotonic sequence number, which can be used for ordering purposes. However,
-//! users can also set [`StreamingResponseConfig::ordered_outgoing`] flag, which
-//! will commit individual responses sequentially to the underlying transport
-//! mechanism.
+//! monotonic sequence number, which can be used for ordering purposes.
 
 use crate::libp2p_streaming_response::handler::IntoHandler;
 use derive_more::{Add, Deref, Display, Sub};

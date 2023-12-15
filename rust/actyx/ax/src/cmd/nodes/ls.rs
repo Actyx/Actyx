@@ -12,7 +12,7 @@ use std::{convert::TryInto, time::Duration};
 #[derive(clap::Parser, Clone, Debug)]
 /// show node overview
 pub struct LsOpts {
-    /// the IP address or <host>:<admin port> of the nodes to list.
+    /// the IP address or `<host>:<admin port>` of the nodes to list.
     #[arg(name = "NODE", required = true)]
     authority: Vec<Authority>,
     /// File from which the identity (private key) for authentication is read.

@@ -33,7 +33,7 @@ impl AxCliCommand for SwarmsKeygen {
 #[derive(clap::Parser, Clone, Debug)]
 /// generate swarm key
 pub struct KeygenOpts {
-    /// Create file <output> and write the generated key to it.
+    /// Create file `<output>` and write the generated key to it.
     #[arg(short, long)]
     pub(crate) output: Option<PathBuf>,
 }
