@@ -133,11 +133,25 @@ pub fn run(
     } else {
         bind_options.try_into()?
     };
-    let working_dir = working_dir.ok_or_else(|| anyhow!("empty")).or_else(|_| -> Result<_> {
-        Ok(std::env::current_dir()
-            .context("getting current working directory")?
-            .join("actyx-data"))
-    })?;
+
+    let working_dir = if let Some(working_dir) = working_dir {
+        working_dir
+    } else {
+        let cwd = std::env::current_dir().context("getting current working directory")?;
+        let actyx_data = cwd.join("actyx-data");
+        if actyx_data.exists() {
+            eprintln!(
+                concat!(
+                    "Warning: the `actyx-data` directory has been deprecated. ",
+                    "If you want to get rid of this warning, rename `{0}/actyx-data` to `{0}/ax-data`."
+                ),
+                cwd.display()
+            );
+            actyx_data
+        } else {
+            cwd.join("ax-data")
+        }
+    };
 
     std::fs::create_dir_all(working_dir.clone())
         .with_context(|| format!("creating working directory `{}`", working_dir.display()))?;
