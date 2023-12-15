@@ -8,7 +8,7 @@ use crate::cmd::{
     apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, run::Color, settings::SettingsOpts,
     swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
 };
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use ax_core::node::{init_shutdown_ceremony, shutdown_ceremony, ApplicationState, BindTo, Runtime};
 use clap::{ArgAction, Args, Parser};
 use clap_complete::Shell;
