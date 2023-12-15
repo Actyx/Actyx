@@ -170,6 +170,9 @@ fn setup() -> &'static Binaries {
                     .unwrap_or_else(|| panic!("malformatted `ax-` line in versions"));
                 let version =
                     Version::from_str(&line[3..end]).unwrap_or_else(|_e| panic!("malformed version {}", line));
+                if version == Version::new(2, 17, 0) {
+                    continue;
+                }
                 let path = download("ax", "ax", version, &storage_dir, &mut may_skip_ax);
                 if let Some(path) = path {
                     ax.push((version, path))
