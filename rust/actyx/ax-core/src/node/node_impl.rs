@@ -34,11 +34,11 @@ pub type NodeProcessResult<T> = std::result::Result<T, NodeError>;
 
 #[derive(Error, Debug, Clone)]
 pub enum NodeError {
-    #[error("NODE_STOPPED_BY_NODE\nActyx shut down because AX services could not be started. Please contact Actyx support or file a report at https://groups.google.com/a/actyx.io/g/developers. ({component}: {err:#})")]
+    #[error("NODE_STOPPED_BY_NODE\nAX shut down because AX services could not be started. Please contact Actyx support or file a report at https://groups.google.com/a/actyx.io/g/developers. ({component}: {err:#})")]
     ServicesStartup { component: String, err: Arc<anyhow::Error> },
     #[error("NODE_STOPPED_BY_NODE\nError: internal error. Please contact Actyx support. ({0:#})")]
     InternalError(Arc<anyhow::Error>),
-    #[error("ERR_PORT_COLLISION\nActyx shut down because it could not bind to port {addr}. Please specify a different {component} port. Please refer to https://developer.actyx.com/docs/how-to/troubleshooting/installation-and-startup/#err_port_collision for more information.")]
+    #[error("ERR_PORT_COLLISION\nAX shut down because it could not bind to port {addr}. Please specify a different {component} port. Please refer to https://developer.actyx.com/docs/how-to/troubleshooting/installation-and-startup/#err_port_collision for more information.")]
     PortCollision { component: String, addr: Multiaddr },
 }
 impl From<Arc<anyhow::Error>> for NodeError {
