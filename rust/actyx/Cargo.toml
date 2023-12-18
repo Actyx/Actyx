@@ -29,4 +29,4 @@ lto = "off"
 
 [patch.crates-io]
 # banyan = { git = "https://github.com/Actyx/banyan", branch = "master" }
-banyan-utils = { git = "https://github.com/Actyx/banyan", branch = "master" }
+# banyan-utils = { git = "https://github.com/Actyx/banyan", branch = "master" }

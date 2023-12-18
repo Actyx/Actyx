@@ -22,7 +22,7 @@ anyhow = "1.0.66"
 # Only used by banyan_protocol
 async-trait = "0.1.52"
 backtrace = "0.3.63"
-ax_banyan = "0.18.0"
+banyan = { version = "0.18.0", package = "ax_banyan" }
 base64 = "0.13.0"
 byteorder = { version = "1.4.3", features = ["i128"] }
 bytes = "1.1.0"
