@@ -157,9 +157,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: docker/login-action@v3
+        # with:
+        #   username: genie-in-a-bottle
+        #   password: ${{ secrets.GENIE_GH_TOKEN }}
         with:
-          username: genie-in-a-bottle
-          password: ${{ secrets.GENIE_GH_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Make All MacOS
         run: make all-macos assert-clean
         env:
