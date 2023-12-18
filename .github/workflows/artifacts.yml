@@ -187,6 +187,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          # NOTE(duarte): This shouldn't be needed here but sometimes git acts strange:
+          # - fatal: ambiguous argument 'origin/master': unknown revision or path not in the working tree.
+          # even though this is clearly a normal path and `git rev-parse origin/master`
+          # should work just fine
+          fetch-depth: 0
       - name: Make Docker
         run: |
           MAIN_REPO="Actyx/Actyx"
