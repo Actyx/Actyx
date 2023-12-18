@@ -6,7 +6,7 @@ on:
   pull_request:
   push:
     branches:
-      - 'master'
+      - "master"
 
 env:
   RUST_BACKTRACE: 1
@@ -46,8 +46,7 @@ jobs:
 
     strategy:
       matrix:
-        # NOTE: re-add netsim!
-        product: [os]
+        product: [os, netsim]
       fail-fast: false
 
     steps:
