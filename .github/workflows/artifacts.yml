@@ -286,6 +286,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - uses: docker/login-action@v3
+        with:
+          username: genie-in-a-bottle
+          password: ${{ secrets.GENIE_GH_TOKEN }}
       - name: Setup NVM
         run: curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/v$NVM_VERSION/install.sh" | bash
       - name: Setup Rust
