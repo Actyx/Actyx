@@ -156,6 +156,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: jmg-duarte
+          # At the time of writing (18/12) this token has a 30 day expiration date
+          # this is on purpose, so we replace this with a proper token for genie
+          password: ${{ secrets.GHCR_REGISTRY_TOKEN }}
       - name: Make All MacOS
         run: make all-macos assert-clean
         env:
@@ -180,6 +187,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          # NOTE(duarte): This shouldn't be needed here but sometimes git acts strange:
+          # - fatal: ambiguous argument 'origin/master': unknown revision or path not in the working tree.
+          # even though this is clearly a normal path and `git rev-parse origin/master`
+          # should work just fine
+          fetch-depth: 0
       - name: Make Docker
         run: |
           MAIN_REPO="Actyx/Actyx"
@@ -286,10 +299,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: docker/login-action@v3
-        with:
-          username: genie-in-a-bottle
-          password: ${{ secrets.GENIE_GH_TOKEN }}
       - name: Setup NVM
         run: curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/v$NVM_VERSION/install.sh" | bash
       - name: Setup Rust
