@@ -1,5 +1,5 @@
-[![Latest Version](https://img.shields.io/crates/v/ax_macros_.svg)](https://crates.io/crates/ax_macros_)
-[![Rust Documentation](https://docs.rs/ax_macros_/badge.svg)](https://docs.rs/ax_macros_)
+[![Latest Version](https://img.shields.io/crates/v/ax_macros.svg)](https://crates.io/crates/ax_macros)
+[![Rust Documentation](https://docs.rs/ax_macros/badge.svg)](https://docs.rs/ax_macros)
 
 # <img src="https://developer.actyx.com/img/logo.svg" height="32px"> AX Macros
 
