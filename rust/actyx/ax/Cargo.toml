@@ -48,8 +48,8 @@ libp2p = { version = "0.50.0", default-features = false, features = [
   "tokio",
 ] }
 zstd = "0.9.2"
-banyan = "0.18.0"
-banyan-utils = "0.11.0"
+banyan = { version = "0.18.0", package = "ax_banyan" }
+banyan-utils = { version = "0.11.1", package = "ax_banyan_utils" }
 fslock = "=0.1.6"
 libipld = { version = "0.14.0", features = ["dag-cbor", "derive"] }
 cbor-data = { version = "0.8.15", features = [

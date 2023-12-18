@@ -607,10 +607,10 @@ dependencies = [
  "anyhow",
  "assert_cmd",
  "atty",
+ "ax_banyan",
+ "ax_banyan_utils",
  "ax_core",
  "ax_sdk",
- "banyan",
- "banyan-utils",
  "base64 0.13.1",
  "cbor-data",
  "chrono",
@@ -670,6 +670,68 @@ dependencies = [
 ]
 
 [[package]]
+name = "ax_banyan"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d145fe5764aeb5b2791e8c96418333b3860f4427d5acaf39aeaf64479f14bd7c"
+dependencies = [
+ "anyhow",
+ "cbor-data",
+ "chacha20 0.8.2",
+ "cid",
+ "derive_more",
+ "fnv",
+ "futures 0.3.29",
+ "lazy_static",
+ "libipld",
+ "maplit",
+ "parking_lot 0.12.1",
+ "prometheus",
+ "smallvec",
+ "tracing",
+ "weight-cache",
+ "zstd",
+]
+
+[[package]]
+name = "ax_banyan_utils"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb0c96b4c7956e4d96961210f0712ba4075ce42c24599f9be2be88e63347ffe6"
+dependencies = [
+ "anyhow",
+ "ax_banyan",
+ "base64 0.13.1",
+ "cbor-data",
+ "chacha20 0.8.2",
+ "derive_more",
+ "dot",
+ "env_logger 0.9.3",
+ "futures 0.3.29",
+ "hex",
+ "ipfs-sqlite-block-store",
+ "jemallocator",
+ "libipld",
+ "lru 0.7.8",
+ "maplit",
+ "multihash 0.16.3",
+ "parking_lot 0.12.1",
+ "percent-encoding",
+ "rand 0.8.5",
+ "reduce",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "smol_str",
+ "structopt",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "vec-collections 0.3.6",
+ "zstd",
+]
+
+[[package]]
 name = "ax_core"
 version = "0.2.0"
 dependencies = [
@@ -678,10 +740,10 @@ dependencies = [
  "assert_cmd",
  "async-trait",
  "ax_aql",
+ "ax_banyan",
  "ax_sdk",
  "ax_types",
  "backtrace",
- "banyan",
  "base64 0.13.1",
  "byteorder",
  "bytes",
@@ -837,66 +899,6 @@ dependencies = [
  "miniz_oxide",
  "object",
  "rustc-demangle",
-]
-
-[[package]]
-name = "banyan"
-version = "0.18.0"
-source = "git+https://github.com/Actyx/banyan?branch=master#f5e02d56ece9462614477b99ac8d700397213ff1"
-dependencies = [
- "anyhow",
- "cbor-data",
- "chacha20 0.8.2",
- "cid",
- "derive_more",
- "fnv",
- "futures 0.3.29",
- "lazy_static",
- "libipld",
- "maplit",
- "parking_lot 0.12.1",
- "prometheus",
- "smallvec",
- "tracing",
- "weight-cache",
- "zstd",
-]
-
-[[package]]
-name = "banyan-utils"
-version = "0.11.0"
-source = "git+https://github.com/Actyx/banyan?branch=master#f5e02d56ece9462614477b99ac8d700397213ff1"
-dependencies = [
- "anyhow",
- "banyan",
- "base64 0.13.1",
- "cbor-data",
- "chacha20 0.8.2",
- "derive_more",
- "dot",
- "env_logger 0.9.3",
- "futures 0.3.29",
- "hex",
- "ipfs-sqlite-block-store",
- "jemallocator",
- "libipld",
- "lru 0.7.8",
- "maplit",
- "multihash 0.16.3",
- "parking_lot 0.12.1",
- "percent-encoding",
- "rand 0.8.5",
- "reduce",
- "reqwest",
- "serde",
- "serde_json",
- "smol_str",
- "structopt",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "vec-collections 0.3.6",
- "zstd",
 ]
 
 [[package]]
