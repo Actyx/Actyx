@@ -2,5 +2,9 @@
 # versions, generating change logs, or publishing artifacts.
 # Each line may contain a single commit id (SHA1).
 
+# Test commit that slipped through the cracks, rebasing would be too complicated
+0a4b17245234ec6036e1ee7baf61a17e67929994
+# Fixes made during the move from Actyx to AX
+d154340d0651b0f11c64808ccdbf0c3c7eebd604
 # Version 1.1.5
 1980025440797cec2e286177083f03eb9c44511b
