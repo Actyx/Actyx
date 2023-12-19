@@ -39,6 +39,7 @@ use components::{
 };
 use crossbeam::channel::{bounded, Receiver, Sender};
 use formats::ExternalEvent;
+pub use host::initialize_repository;
 use host::Host;
 use node_impl::{ComponentChannel, NodeProcessResult, NodeWrapper};
 use settings::SettingsRequest;

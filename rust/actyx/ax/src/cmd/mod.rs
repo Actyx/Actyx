@@ -108,3 +108,24 @@ pub trait AxCliCommand {
         }))
     }
 }
+
+pub(crate) fn determine_ax_default_data_dir() -> anyhow::Result<std::path::PathBuf> {
+    use anyhow::Context;
+    let cwd = std::env::current_dir().context("getting current working directory")?;
+
+    Ok({
+        let actyx_data = cwd.join("actyx-data");
+        if actyx_data.exists() {
+            eprintln!(
+                concat!(
+                    "Warning: the `actyx-data` directory has been deprecated. ",
+                    "If you want to get rid of this warning, rename `{0}/actyx-data` to `{0}/ax-data`."
+                ),
+                cwd.display()
+            );
+            actyx_data
+        } else {
+            cwd.join("ax-data")
+        }
+    })
+}

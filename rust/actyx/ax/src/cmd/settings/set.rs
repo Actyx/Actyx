@@ -11,8 +11,8 @@ use tracing::*;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Output {
-    scope: String,
-    settings: serde_json::Value,
+    pub(crate) scope: String,
+    pub(crate) settings: serde_json::Value,
 }
 pub struct SettingsSet();
 impl AxCliCommand for SettingsSet {
@@ -30,7 +30,7 @@ impl AxCliCommand for SettingsSet {
                     result.scope, settings
                 )
             })
-            .unwrap_or_else(|_| "Unknown error translating set settings to yaml".into())
+            .unwrap_or_else(|e| format!("Unknown error converting settings to yaml: {}", e))
     }
 }
 
@@ -44,15 +44,15 @@ pub struct SetOpt {
 
 #[derive(clap::Parser, Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct SetSettingsCommand {
+pub(crate) struct SetSettingsCommand {
     /// Scope for which you want to set the given settings; use `/` for the the root scope.
     #[arg(name = "SCOPE", value_parser = super::parse_scope)]
-    scope: ax_core::settings::Scope,
+    pub(crate) scope: ax_core::settings::Scope,
     /// The value you want to set for the given scope as a YAML or JSON string.
     /// You may also pass in a file using the syntax `@file.yml` or have the
     /// command read from stdin using `@-`.
     #[arg(name = "VALUE")]
-    input: String,
+    pub(crate) input: String,
 }
 
 fn load_yml(input: String) -> ActyxOSResult<serde_yaml::Value> {
@@ -74,16 +74,28 @@ fn load_yml(input: String) -> ActyxOSResult<serde_yaml::Value> {
     .ax_invalid_input()
 }
 
-pub async fn run(opts: SetOpt) -> ActyxOSResult<Output> {
-    let settings = load_yml(opts.actual_opts.input)?;
+pub(crate) fn extract_set_settings_command(
+    opts: SetSettingsCommand,
+) -> ActyxOSResult<(ax_core::settings::Scope, serde_json::Value)> {
+    let scope = opts.scope.clone();
+    let settings = load_yml(opts.input)?;
     info!("Parsed {:?}", settings);
-    let scope = opts.actual_opts.scope.clone();
-    let scope2 = scope.clone();
     let json = serde_json::to_value(settings).ax_err_ctx(
         ax_core::util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
         "cannot parse provided value",
     )?;
-    let (mut conn, peer) = opts.console_opt.connect().await?;
+    Ok((scope, json))
+}
+
+pub async fn run(
+    SetOpt {
+        actual_opts,
+        console_opt,
+    }: SetOpt,
+) -> ActyxOSResult<Output> {
+    let (scope, json) = extract_set_settings_command(actual_opts)?;
+    let scope2 = scope.clone();
+    let (mut conn, peer) = console_opt.connect().await?;
     request_single(
         &mut conn,
         move |tx| {

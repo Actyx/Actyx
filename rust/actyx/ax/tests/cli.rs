@@ -166,6 +166,11 @@ fn version() {
         vec!["settings", "get"] => Leaf,
         vec!["settings", "set"] => Leaf,
         vec!["settings", "unset"] => Leaf,
+        vec!["settings", "local"] => Branch,
+        vec!["settings", "local", "get"] => Leaf,
+        vec!["settings", "local", "set"] => Leaf,
+        vec!["settings", "local", "unset"] => Leaf,
+        vec!["settings", "local", "init"] => Leaf,
         vec!["swarms"] => Branch,
         vec!["swarms", "keygen"] => Leaf,
         vec!["users"] => Branch,
@@ -190,4 +195,83 @@ fn version() {
             .assert()
             .success();
     }
+}
+
+// calls `ax settings local [..args] --working-dir [working_dir]`
+fn call_cli_settings_local<I, S>(working_dir: impl Into<String>, args: I) -> Command
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let args = ["settings", "local"]
+        .into_iter()
+        .map(String::from)
+        .chain(args.into_iter().map(|x| String::from(x.as_ref())))
+        .chain([String::from("--working-dir"), working_dir.into()])
+        .collect::<Vec<_>>();
+
+    let mut proc = cli();
+    proc.args(args);
+    proc
+}
+
+#[test]
+fn cli_settings_local() {
+    let temp_dir = String::from(tempfile::tempdir().unwrap().path().to_str().unwrap());
+
+    // Init
+    {
+        // First --fail-on-existing init to empty dir should success
+        call_cli_settings_local(&temp_dir, ["init", "--fail-on-existing"])
+            .assert()
+            .success();
+        // Second --fail-on-existing init to the same dir should fail
+        call_cli_settings_local(&temp_dir, ["init", "--fail-on-existing"])
+            .assert()
+            .failure();
+        // Without --fail-on-existing, init to the same dir should success
+        call_cli_settings_local(&temp_dir, ["init"]).assert().success();
+    }
+
+    // Get/Set/Unset
+    {
+        // Get should succeed after init
+        call_cli_settings_local(&temp_dir, ["get", "/admin/displayName"])
+            .assert()
+            .success();
+
+        // Test setting new display name
+        let new_display_name = "new_display_name";
+        call_cli_settings_local(&temp_dir, ["set", "/admin/displayName", new_display_name])
+            .assert()
+            .success();
+        call_cli_settings_local(&temp_dir, ["get", "/admin/displayName"])
+            .assert()
+            .stdout(predicate::str::contains(new_display_name))
+            .success();
+
+        // Unsetting resets displayName back to "Default Node"
+        call_cli_settings_local(&temp_dir, ["unset", "/admin/displayName"])
+            .assert()
+            .success();
+        call_cli_settings_local(&temp_dir, ["get", "/admin/displayName"])
+            .assert()
+            .stdout(predicate::str::contains("Default Node"))
+            .success();
+    }
+}
+
+#[test]
+fn cli_settings_local_empty_dir() {
+    let empty_dir = String::from(tempfile::tempdir().unwrap().path().to_str().unwrap());
+    // Get should fail on empty_dir
+    call_cli_settings_local(&empty_dir, ["get", "/admin/displayName"])
+        .assert()
+        .failure();
+    call_cli_settings_local(&empty_dir, ["set", "/admin/displayName", ""])
+        .assert()
+        .failure();
+    call_cli_settings_local(&empty_dir, ["unset", "/admin/displayName"])
+        .assert()
+        .failure();
 }

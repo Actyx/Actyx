@@ -2,7 +2,7 @@ use super::{node_settings::Settings, node_storage::NodeStorage, settings::system
 use crate::{crypto::KeyStoreRef, util::formats::NodeCycleCount};
 use anyhow::{Context, Result};
 use ax_types::NodeId;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, derive_more::Display)]
 #[display(fmt = "data directory `{}` is locked by another AX process", _0)]
@@ -26,18 +26,8 @@ pub fn lock_working_dir(working_dir: impl AsRef<std::path::Path>) -> anyhow::Res
 }
 impl Host {
     pub fn new(base_path: PathBuf) -> Result<Self> {
-        let (settings_db, storage) = if cfg!(test) {
-            (crate::settings::Database::in_memory()?, NodeStorage::in_memory())
-        } else {
-            (
-                crate::settings::Database::new(&base_path)?,
-                NodeStorage::new(base_path.join("node.sqlite")).context("Error opening node.sqlite")?,
-            )
-        };
-        let mut settings_repo = crate::settings::Repository::new(settings_db);
-        // Apply the current schema for com.actyx (it might have changed). If this is
-        // unsuccessful, we panic.
-        apply_system_schema(&mut settings_repo).expect("Error applying system schema com.actyx.");
+        let settings_repo = initialize_repository(&base_path)?;
+        let storage = initialize_node_storage(&base_path)?;
 
         let sys_settings_json = settings_repo
             .get_settings(&system_scope(), false)
@@ -81,6 +71,30 @@ impl Host {
     pub fn get_cycle_count(&self) -> anyhow::Result<NodeCycleCount> {
         self.storage.get_cycle_count()
     }
+}
+
+fn initialize_node_storage(base_path: &Path) -> Result<NodeStorage> {
+    Ok(if cfg!(test) {
+        NodeStorage::in_memory()
+    } else {
+        let node_path = base_path.join("node.sqlite");
+        NodeStorage::new(node_path.clone()).context(format!("Error opening {}", node_path.display()))?
+    })
+}
+
+pub fn initialize_repository(base_path: &Path) -> Result<crate::settings::Repository> {
+    let settings_db = if cfg!(test) {
+        crate::settings::Database::in_memory()?
+    } else {
+        crate::settings::Database::new(base_path)?
+    };
+    let mut settings_repo = crate::settings::Repository::new(settings_db);
+
+    // Apply the current schema for com.actyx (it might have changed). If this is
+    // unsuccessful, we panic.
+    apply_system_schema(&mut settings_repo).expect("Error applying system schema com.actyx.");
+
+    Ok(settings_repo)
 }
 
 /// Set the schema for the ActyxOS system settings.

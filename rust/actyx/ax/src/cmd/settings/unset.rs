@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Output {
-    scope: String,
+    pub(crate) scope: String,
 }
 
 pub struct SettingsUnset();
@@ -39,10 +39,10 @@ pub struct UnsetOpt {
 
 #[derive(clap::Parser, Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct UnsetSettingsCommand {
+pub(crate) struct UnsetSettingsCommand {
     /// Scope for which you want to unset the settings; use `/` for the root scope.
     #[arg(name = "SCOPE", value_parser = super::parse_scope)]
-    scope: ax_core::settings::Scope,
+    pub(crate) scope: ax_core::settings::Scope,
 }
 
 pub async fn run(opts: UnsetOpt) -> ActyxOSResult<Output> {

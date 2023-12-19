@@ -5,8 +5,8 @@
 mod cmd;
 
 use crate::cmd::{
-    apps::AppsOpts, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts, run::Color, settings::SettingsOpts,
-    swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
+    apps::AppsOpts, determine_ax_default_data_dir, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts,
+    run::Color, settings::SettingsOpts, swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
 };
 use anyhow::{Context, Result};
 use ax_core::node::{init_shutdown_ceremony, shutdown_ceremony, ApplicationState, BindTo, Runtime};
@@ -140,20 +140,7 @@ pub fn run(
     let working_dir = if let Some(working_dir) = working_dir {
         working_dir
     } else {
-        let cwd = std::env::current_dir().context("getting current working directory")?;
-        let actyx_data = cwd.join("actyx-data");
-        if actyx_data.exists() {
-            eprintln!(
-                concat!(
-                    "Warning: the `actyx-data` directory has been deprecated. ",
-                    "If you want to get rid of this warning, rename `{0}/actyx-data` to `{0}/ax-data`."
-                ),
-                cwd.display()
-            );
-            actyx_data
-        } else {
-            cwd.join("ax-data")
-        }
+        determine_ax_default_data_dir()?
     };
 
     std::fs::create_dir_all(working_dir.clone())
