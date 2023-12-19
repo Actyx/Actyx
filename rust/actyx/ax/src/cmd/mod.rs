@@ -8,10 +8,12 @@ pub mod swarms;
 pub mod topics;
 pub mod users;
 
+use std::path::PathBuf;
+
 use ax_core::{
     authority::Authority,
     node_connection::{connect, mk_swarm, Task},
-    private_key::{AxPrivateKey, KeyPathWrapper},
+    private_key::AxPrivateKey,
     util::formats::{ActyxOSError, ActyxOSResult},
 };
 use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
@@ -46,12 +48,15 @@ pub struct ConsoleOpt {
     authority: Authority,
     /// File from which the identity (private key) for authentication is read.
     #[arg(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
-    identity: Option<KeyPathWrapper>,
+    identity: Option<PathBuf>,
 }
 
 impl ConsoleOpt {
     pub async fn connect(&self) -> ActyxOSResult<(Sender<Task>, PeerId)> {
-        let key = AxPrivateKey::try_from(&self.identity)?;
+        let key = self
+            .identity
+            .as_ref()
+            .map_or_else(AxPrivateKey::load_from_default_path, AxPrivateKey::from_file)?;
         let (task, mut channel) = mk_swarm(key).await?;
         tokio::spawn(task);
         let peer_id = connect(&mut channel, self.authority.clone()).await?;

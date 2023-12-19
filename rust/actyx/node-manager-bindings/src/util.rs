@@ -13,7 +13,6 @@ use neon::{
     types::{JsBox, JsFunction, JsString},
 };
 use serde::{de::DeserializeOwned, Serialize};
-use std::convert::TryFrom;
 
 pub fn to_stringified<Se: Serialize>(s: Se) -> Result<String> {
     Ok(serde_json::to_string(&s)?)
@@ -27,7 +26,7 @@ pub fn from_stringified<'a, De: DeserializeOwned>(cx: &mut impl Context<'a>, str
 }
 
 pub fn default_private_key() -> ActyxOSResult<AxPrivateKey> {
-    AxPrivateKey::try_from(&None)
+    AxPrivateKey::load_from_default_path()
 }
 
 pub fn create_default_private_key() -> ActyxOSResult<AxPrivateKey> {

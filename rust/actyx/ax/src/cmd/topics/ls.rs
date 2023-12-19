@@ -2,14 +2,14 @@ use super::{Authority, AxCliCommand};
 use crate::cmd::consts::TABLE_FORMAT;
 use ax_core::{
     node_connection::{connect, mk_swarm, request_single, Task},
-    private_key::{AxPrivateKey, KeyPathWrapper},
+    private_key::AxPrivateKey,
     util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicLsResponse},
 };
 use ax_sdk::types::NodeId;
 use futures::{channel::mpsc, future::join_all, stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "connection")]
@@ -51,7 +51,9 @@ async fn request(timeout: u8, mut conn: mpsc::Sender<Task>, authority: Authority
 
 async fn ls_run(opts: LsOpts) -> ActyxOSResult<Vec<LsOutput>> {
     // Get the auth and timeout parameters
-    let identity: AxPrivateKey = (&opts.identity).try_into()?;
+    let identity: AxPrivateKey = opts
+        .identity
+        .map_or_else(AxPrivateKey::load_from_default_path, AxPrivateKey::from_file)?;
     let timeout = opts.timeout;
     // Get a communication channel to the swarm
     let (task, channel) = mk_swarm(identity).await?;
@@ -125,7 +127,7 @@ pub struct LsOpts {
     authority: Vec<Authority>,
     /// The private key file to use for authentication.
     #[arg(short, long)]
-    identity: Option<KeyPathWrapper>,
+    identity: Option<PathBuf>,
     /// Timeout time for the operation (in seconds, with a maximum of 255).
     #[arg(short, long, default_value = "5")]
     timeout: u8,
