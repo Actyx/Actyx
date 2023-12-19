@@ -30,6 +30,11 @@ impl Database {
         Self::initialize(&conn)?;
         Ok(Database { conn })
     }
+    pub fn exists(base_dir: impl AsRef<Path>) -> bool {
+        let flags = OpenFlags::SQLITE_OPEN_READ_ONLY;
+        let res = Connection::open_with_flags(base_dir.as_ref().join(DB_FILENAME), flags);
+        res.is_ok()
+    }
     pub fn from_connection_without_init(conn: Connection) -> Self {
         Self { conn }
     }

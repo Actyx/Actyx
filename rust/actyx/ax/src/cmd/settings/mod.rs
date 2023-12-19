@@ -1,4 +1,5 @@
 mod get;
+mod local;
 mod schema;
 mod set;
 mod unset;
@@ -9,6 +10,7 @@ use crate::cmd::AxCliCommand;
 use ax_core::settings::{Scope, ScopeError};
 use futures::Future;
 use get::GetOpt;
+use local::SettingsLocalOpts;
 use schema::SchemaOpt;
 use set::SetOpt;
 use std::convert::TryFrom;
@@ -25,6 +27,9 @@ pub enum SettingsOpts {
     Get(GetOpt),
     /// Get setting schemas from a node
     Schema(SchemaOpt),
+    /// Locally get/set/unset settings directly to settings.db file inside an ax-data directory
+    #[command(subcommand, arg_required_else_help(true))]
+    Local(SettingsLocalOpts),
 }
 
 pub fn run(opts: SettingsOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin> {
@@ -33,6 +38,7 @@ pub fn run(opts: SettingsOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpi
         SettingsOpts::Get(opt) => get::SettingsGet::output(opt, json),
         SettingsOpts::Schema(opt) => schema::SettingsSchema::output(opt, json),
         SettingsOpts::Unset(opt) => unset::SettingsUnset::output(opt, json),
+        SettingsOpts::Local(opt) => local::run(opt, json),
     }
 }
 

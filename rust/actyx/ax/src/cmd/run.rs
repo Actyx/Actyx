@@ -51,7 +51,7 @@ pub struct RunOpts {
         long,
         env = "ACTYX_PATH",
         long_help = "Path where to store all the data of the AX node. \
-            Defaults to creating <current working dir>/actyx-data"
+            Defaults to creating <current working dir>/ax-data"
     )]
     pub working_dir: Option<PathBuf>,
 

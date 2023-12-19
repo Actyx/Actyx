@@ -15,7 +15,7 @@ impl AxCliCommand for SettingsGet {
         Box::new(stream::once(r))
     }
     fn pretty(result: Self::Output) -> String {
-        serde_yaml::to_string(&result).unwrap_or_else(|_| "Unkown error converting settings to yaml".into())
+        serde_yaml::to_string(&result).unwrap_or_else(|e| format!("Unknown error converting settings to yaml: {}", e))
     }
 }
 
@@ -30,13 +30,13 @@ pub struct GetOpt {
 
 #[derive(clap::Parser, Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct GetSettingsCommand {
+pub(crate) struct GetSettingsCommand {
     /// Only return settings explicitly set by the user and skip default values.
     #[arg(long = "no-defaults")]
-    no_defaults: bool,
+    pub(crate) no_defaults: bool,
     /// Scope from which you want to get the settings.
     #[arg(name = "SCOPE", value_parser = super::parse_scope)]
-    scope: ax_core::settings::Scope,
+    pub(crate) scope: ax_core::settings::Scope,
 }
 
 pub async fn run(opts: GetOpt) -> ActyxOSResult<serde_json::Value> {
