@@ -1,4 +1,4 @@
 /// The databank version.
 ///
 /// This version is kept automatically!
-pub const DATABANK_VERSION: &str = "2.17.0";
+pub const DATABANK_VERSION: &str = "2.17.1";
