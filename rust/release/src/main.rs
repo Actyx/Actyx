@@ -332,7 +332,8 @@ Overview:"#
                                     r#"/// The databank version.
 ///
 /// This version is kept automatically!
-pub const DATABANK_VERSION: &str = "{}";"#,
+pub const DATABANK_VERSION: &str = "{}";
+"#, // extra line required for rustfmt
                                     new_version
                                 ),
                             )?;
