@@ -344,6 +344,8 @@ pub const DATABANK_VERSION: &str = "{}";
                             eprint!("0.3) Writing new version to \"{}\" ... ", ax_core_cargo.display());
                             update_package_version(&ax_core_cargo, &new_version)?;
                             repo.add_file(&ax_core_cargo)?;
+                            update_dependent_version(&ax_cargo, &new_version, "ax_core")?;
+                            repo.add_file(&ax_cargo)?;
                         }
                         // We're not updating TOMLs for anything else
                         _ => (),
@@ -491,6 +493,20 @@ fn update_package_version(path: &PathBuf, version: &Version) -> Result<(), Error
     // Update the value
     cargo_toml["package"]["version"] = toml_edit::value(version.to_string());
     // Write it back
+    std::fs::write(path, cargo_toml.to_string())?;
+    Ok(())
+}
+
+/// Update the version of a dependent.
+///
+/// For example: when updating `ax_core`, we need to update all other packages that
+/// rely on it so that the builds don't fail.
+fn update_dependent_version(path: &PathBuf, version: &Version, package: &str) -> Result<(), Error> {
+    let cargo_toml_contents = std::fs::read_to_string(path)?;
+    let mut cargo_toml = cargo_toml_contents.parse::<Document>()?;
+    // Similar to `update_package_version` but in this case,
+    // we're updating the version of a crate that should depend "on us"
+    cargo_toml["dependencies"][package]["version"] = toml_edit::value(version.to_string());
     std::fs::write(path, cargo_toml.to_string())?;
     Ok(())
 }
