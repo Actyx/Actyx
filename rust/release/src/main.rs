@@ -3,12 +3,12 @@ use chrono::{TimeZone, Utc};
 use clap::Parser;
 use repo::RepoWrapper;
 use semver::Version;
-use std::process::Command;
 use std::{
     env::{self, current_exe},
     fmt::Write,
     fs::OpenOptions,
     path::PathBuf,
+    process::Command,
     sync::atomic::{AtomicBool, Ordering},
 };
 use toml_edit::Document;
