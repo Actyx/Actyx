@@ -3,6 +3,7 @@ use chrono::{TimeZone, Utc};
 use clap::Parser;
 use repo::RepoWrapper;
 use semver::Version;
+use std::process::Command;
 use std::{
     env::{self, current_exe},
     fmt::Write,
@@ -346,6 +347,14 @@ pub const DATABANK_VERSION: &str = "{}";
                             repo.add_file(&ax_core_cargo)?;
                             update_dependent_version(&ax_cargo, &new_version, "ax_core")?;
                             repo.add_file(&ax_cargo)?;
+
+                            // Update the lockfile
+                            Command::new("cargo")
+                                .arg("update")
+                                .output()
+                                .expect("failed to execute `cargo update`");
+                            let lockfile = rust_folder.parent()?.join("Cargo.lock");
+                            repo.add_file(lockfile)?;
                         }
                         // We're not updating TOMLs for anything else
                         _ => (),
