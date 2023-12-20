@@ -342,10 +342,20 @@ pub const DATABANK_VERSION: &str = "{}";
                         }
                         Product::AxCore => {
                             eprint!("0.3) Writing new version to \"{}\" ... ", ax_core_cargo.display());
-                            update_package_version(&ax_core_cargo, &new_version)?;
-                            repo.add_file(&ax_core_cargo)?;
-                            update_dependent_version(&ax_cargo, &new_version, "ax_core")?;
-                            repo.add_file(&ax_cargo)?;
+                            update_package_version(&ax_core_cargo, &new_version).context(format!(
+                                "updating {} to {}",
+                                &ax_core_cargo.display(),
+                                &new_version
+                            ))?;
+                            repo.add_file(&ax_core_cargo)
+                                .context(format!("adding {} to repo", &ax_core_cargo.display()))?;
+                            update_dependent_version(&ax_cargo, &new_version, "ax_core").context(format!(
+                                "updating {} to {}",
+                                &ax_cargo.display(),
+                                &new_version
+                            ))?;
+                            repo.add_file(&ax_cargo)
+                                .context(format!("adding {} to repo", &ax_cargo.display(),))?;
 
                             // Update the lockfile
                             std::process::Command::new("cargo")
