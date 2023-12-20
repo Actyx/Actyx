@@ -19,6 +19,7 @@ use std::{
     cmp::Ordering,
     collections::BTreeMap,
     convert::{TryFrom, TryInto},
+    future,
     sync::Arc,
 };
 
@@ -30,7 +31,11 @@ use std::{
 //
 // Also: 200000 is a huge number, each recursion takes 5000-ish, but
 // when traced, println! stops printing at 170000
-const EVAL_REMAINING_STACK_THRESHOLD: usize = 200000;
+const RED_ZONE: usize = 200000;
+
+// const STACK_ALIGN: usize = 4096;
+const STACK_SIZE: usize = 4096 * 4096;
+const GROW_THRESHOLD: usize = RED_ZONE + 4096;
 
 pub struct RootContext {
     scratch: Mutex<Vec<u8>>,
@@ -159,11 +164,24 @@ impl<'a> Context<'a> {
             // heavily recursive AQL evaluation to avoid crashing the whole
             // databank process.
             if let Some(x) = stacker::remaining_stack() {
-                if x < EVAL_REMAINING_STACK_THRESHOLD {
+                println!("eval_from:remaining stack of - {}", x);
+                if x < RED_ZONE {
                     bail!(
-                        "stack overflow guard exceeded, remaining stack below {}",
-                        EVAL_REMAINING_STACK_THRESHOLD
+                        "eval_from:stack overflow guard exceeded, remaining stack below {}",
+                        RED_ZONE
                     );
+                }
+
+                if x < GROW_THRESHOLD {
+                    println!("eval_from:past grow threshold - {}", x);
+                    let mut basic_future = self.eval_from(expr);
+                    let pollable = future::poll_fn(move |cx| {
+                        stacker::grow(STACK_SIZE, || {
+                            println!("eval_from:polling on grown stack - {}", x);
+                            basic_future.as_mut().poll(cx)
+                        })
+                    });
+                    return pollable.await;
                 }
             }
 
@@ -209,6 +227,28 @@ impl<'a> Context<'a> {
 
     pub fn eval<'c>(&'c self, expr: &'c SimpleExpr) -> BoxFuture<'c, anyhow::Result<Value>> {
         async move {
+            // Below block sets a threshold for the remaining stack during
+            // heavily recursive AQL evaluation to avoid crashing the whole
+            // databank process.
+            if let Some(x) = stacker::remaining_stack() {
+                println!("eval:remaining stack of - {}", x);
+                if x < RED_ZONE {
+                    bail!("eval:stack overflow guard exceeded, remaining stack below {}", RED_ZONE);
+                }
+
+                if x < GROW_THRESHOLD {
+                    println!("eval:past grow threshold - {}", x);
+                    let mut basic_future = self.eval(expr);
+                    let pollable = future::poll_fn(move |cx| {
+                        stacker::grow(STACK_SIZE, || {
+                            println!("eval:polling on grown stack - {}", x);
+                            basic_future.as_mut().poll(cx)
+                        })
+                    });
+                    return pollable.await;
+                }
+            }
+
             match expr {
                 SimpleExpr::Variable(v) => self.lookup(v),
                 SimpleExpr::Indexing(Ind { head, tail }) => {
