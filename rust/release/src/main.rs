@@ -8,7 +8,6 @@ use std::{
     fmt::Write,
     fs::OpenOptions,
     path::PathBuf,
-    process::Command,
     sync::atomic::{AtomicBool, Ordering},
 };
 use toml_edit::Document;
@@ -349,7 +348,7 @@ pub const DATABANK_VERSION: &str = "{}";
                             repo.add_file(&ax_cargo)?;
 
                             // Update the lockfile
-                            Command::new("cargo")
+                            std::process::Command::new("cargo")
                                 .arg("update")
                                 .output()
                                 .expect("failed to execute `cargo update`");
