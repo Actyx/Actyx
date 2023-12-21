@@ -1,6 +1,6 @@
 [package]
 name = "ax"
-version = "2.17.0"
+version = "2.18.0"
 authors = ["Actyx AG <developer@actyx.io>"]
 edition = "2021"
 description = "ax distributed event databank and command line tool"
@@ -14,11 +14,11 @@ categories = ["network-programming"]
 
 [build-dependencies]
 winres = "0.1.12"
-ax_core = { version = "0.2.0", path = "../ax-core" }
+ax_core = { version = "0.3.0", path = "../ax-core" }
 
 [dependencies]
 ax_sdk = { version = "0.2.0", path = "../../sdk" }
-ax_core = { version = "0.2.0", path = "../ax-core" }
+ax_core = { version = "0.3.0", path = "../ax-core" }
 
 # too much features, trim later
 anyhow = "1.0.66"
