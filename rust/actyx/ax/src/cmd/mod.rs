@@ -8,8 +8,6 @@ pub mod swarms;
 pub mod topics;
 pub mod users;
 
-use std::path::PathBuf;
-
 use ax_core::{
     authority::Authority,
     node_connection::{connect, mk_swarm, Task},
@@ -19,6 +17,7 @@ use ax_core::{
 use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
 use libp2p::PeerId;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
@@ -48,15 +47,20 @@ pub struct ConsoleOpt {
     authority: Authority,
     /// File from which the identity (private key) for authentication is read.
     #[arg(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
-    identity: Option<PathBuf>,
+    identity: Option<String>,
+}
+
+pub(crate) fn load_identity(identity: &Option<String>) -> ActyxOSResult<AxPrivateKey> {
+    if let Some(identity) = identity {
+        AxPrivateKey::from_str(identity).or_else(|_| AxPrivateKey::from_file(identity))
+    } else {
+        AxPrivateKey::load_from_default_path()
+    }
 }
 
 impl ConsoleOpt {
     pub async fn connect(&self) -> ActyxOSResult<(Sender<Task>, PeerId)> {
-        let key = self
-            .identity
-            .as_ref()
-            .map_or_else(AxPrivateKey::load_from_default_path, AxPrivateKey::from_file)?;
+        let key = load_identity(&self.identity)?;
         let (task, mut channel) = mk_swarm(key).await?;
         tokio::spawn(task);
         let peer_id = connect(&mut channel, self.authority.clone()).await?;

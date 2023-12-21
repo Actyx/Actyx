@@ -1,6 +1,5 @@
-use crate::cmd::AxCliCommand;
+use crate::cmd::{load_identity, AxCliCommand};
 use ax_core::{
-    private_key::AxPrivateKey,
     settings::{Database, Repository, Scope, DB_FILENAME},
     util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult},
 };
@@ -30,9 +29,7 @@ impl AxCliCommand for UsersAddKey {
     type Output = ();
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let r = Box::pin(async move {
-            let privkey = opts
-                .identity
-                .map_or_else(AxPrivateKey::load_from_default_path, AxPrivateKey::from_file)?;
+            let privkey = load_identity(&opts.identity)?;
             let pubkey = privkey.to_public();
 
             // check that the path makes sense
@@ -78,5 +75,5 @@ pub struct AddKeyOpts {
     path: PathBuf,
     /// File from which the identity (private key) for authentication is read.
     #[arg(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
-    identity: Option<PathBuf>,
+    identity: Option<String>,
 }

@@ -1,13 +1,12 @@
-use crate::cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand};
+use crate::cmd::{consts::TABLE_FORMAT, load_identity, Authority, AxCliCommand};
 use ax_core::{
     node_connection::{connect, mk_swarm, request_single, Task},
-    private_key::AxPrivateKey,
     util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesLsResponse},
 };
 use futures::{channel::mpsc, future::join_all, stream, Stream};
 use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, time::Duration};
+use std::time::Duration;
 
 #[derive(clap::Parser, Clone, Debug)]
 /// show node overview
@@ -17,7 +16,7 @@ pub struct LsOpts {
     authority: Vec<Authority>,
     /// File from which the identity (private key) for authentication is read.
     #[arg(short, long)]
-    identity: Option<PathBuf>,
+    identity: Option<String>,
     /// maximal wait time (in seconds, max. 255) for establishing a connection to the node
     #[arg(short, long, default_value = "5")]
     timeout: u8,
@@ -99,9 +98,7 @@ async fn request(timeout: u8, mut conn: mpsc::Sender<Task>, authority: Authority
 }
 
 async fn run(opts: LsOpts) -> ActyxOSResult<Vec<Output>> {
-    let identity: AxPrivateKey = opts
-        .identity
-        .map_or_else(AxPrivateKey::load_from_default_path, AxPrivateKey::from_file)?;
+    let identity = load_identity(&opts.identity)?;
     let timeout = opts.timeout;
     let (task, channel) = mk_swarm(identity).await?;
     tokio::spawn(task);
