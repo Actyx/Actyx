@@ -205,7 +205,12 @@ fn download(package: &str, bin: &str, version: Version, dst_dir: &Path, may_skip
 
     let resp = reqwest::blocking::get(&url).unwrap_or_else(|e| panic!("making request to {}: {}", url, e));
     if resp.status() == reqwest::StatusCode::NOT_FOUND {
-        panic!("did not find {}", url);
+        if *may_skip {
+            *may_skip = false;
+            return None;
+        } else {
+            panic!("did not find {}", url);
+        }
     }
 
     let gzip = GzDecoder::new(resp);
