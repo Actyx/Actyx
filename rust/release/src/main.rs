@@ -362,11 +362,9 @@ pub const DATABANK_VERSION: &str = "{}";
                                 .arg("update")
                                 .output()
                                 .expect("failed to execute `cargo update`");
-                            let lockfile = rust_folder
-                                .parent()
-                                .ok_or(anyhow!("failed to get the main Actyx directory"))?
-                                .join("Cargo.lock");
-                            repo.add_file(lockfile)?;
+                            let lockfile = rust_folder.join("actyx/Cargo.lock");
+                            repo.add_file(&lockfile)
+                                .context(format!("adding {} to repo", &lockfile.display()))?;
                         }
                         // We're not updating TOMLs for anything else
                         _ => (),
