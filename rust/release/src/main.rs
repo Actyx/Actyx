@@ -352,23 +352,32 @@ pub const DATABANK_VERSION: &str = "{}";
 
                             // Update the ax_core version in ax
                             eprintln!("0.3.2) Updating the ax_core version in \"{}\" ... ", ax_cargo.display());
-                            update_dependent_version(&ax_cargo, &new_version, "ax_core").context(format!(
-                                "updating {} to {}",
-                                &ax_cargo.display(),
-                                &new_version
-                            ))?;
+                            {
+                                let cargo_toml_contents = std::fs::read_to_string(&ax_cargo)?;
+                                let mut cargo_toml = cargo_toml_contents.parse::<Document>()?;
+                                // Similar to `update_package_version` but in this case,
+                                // we're updating the version of a crate that should depend "on us"
+                                cargo_toml["dependencies"]["ax_core"]["version"] =
+                                    toml_edit::value(&new_version.to_string());
+
+                                cargo_toml["build-dependencies"]["ax_core"]["version"] =
+                                    toml_edit::value(&new_version.to_string());
+
+                                std::fs::write(&ax_cargo, cargo_toml.to_string())?;
+                            }
                             repo.add_file(&ax_cargo)
                                 .context(format!("adding {} to repo", &ax_cargo.display()))?;
 
                             // Update the lockfile
                             eprintln!("0.3.3) Updating the lockfile");
                             std::process::Command::new("cargo")
+                                .current_dir(rust_folder.join("actyx/ax"))
                                 .arg("update")
                                 .output()
                                 .expect("failed to execute `cargo update`");
-                            let lockfile = rust_folder.join("Cargo.lock");
-                            repo.add_file(lockfile)
-                                .context(format!("adding {} to repo", &ax_cargo.display()))?;
+                            let lockfile = rust_folder.join("actyx/Cargo.lock");
+                            repo.add_file(&lockfile)
+                                .context(format!("adding {} to repo", &lockfile.display()))?;
                         }
                         // We're not updating TOMLs for anything else
                         _ => (),
@@ -516,20 +525,6 @@ fn update_package_version(path: &PathBuf, version: &Version) -> Result<(), Error
     // Update the value
     cargo_toml["package"]["version"] = toml_edit::value(version.to_string());
     // Write it back
-    std::fs::write(path, cargo_toml.to_string())?;
-    Ok(())
-}
-
-/// Update the version of a dependent.
-///
-/// For example: when updating `ax_core`, we need to update all other packages that
-/// rely on it so that the builds don't fail.
-fn update_dependent_version(path: &PathBuf, version: &Version, package: &str) -> Result<(), Error> {
-    let cargo_toml_contents = std::fs::read_to_string(path)?;
-    let mut cargo_toml = cargo_toml_contents.parse::<Document>()?;
-    // Similar to `update_package_version` but in this case,
-    // we're updating the version of a crate that should depend "on us"
-    cargo_toml["dependencies"][package]["version"] = toml_edit::value(version.to_string());
     std::fs::write(path, cargo_toml.to_string())?;
     Ok(())
 }
