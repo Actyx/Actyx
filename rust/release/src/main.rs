@@ -341,7 +341,7 @@ pub const DATABANK_VERSION: &str = "{}";
                             repo.add_file(&version_rs)?;
                         }
                         Product::AxCore => {
-                            eprint!("0.3) Writing new version to \"{}\" ... ", ax_core_cargo.display());
+                            eprintln!("0.3.1) Writing new version to \"{}\" ... ", ax_core_cargo.display());
                             update_package_version(&ax_core_cargo, &new_version).context(format!(
                                 "updating {} to {}",
                                 &ax_core_cargo.display(),
@@ -349,22 +349,26 @@ pub const DATABANK_VERSION: &str = "{}";
                             ))?;
                             repo.add_file(&ax_core_cargo)
                                 .context(format!("adding {} to repo", &ax_core_cargo.display()))?;
+
+                            // Update the ax_core version in ax
+                            eprintln!("0.3.2) Updating the ax_core version in \"{}\" ... ", ax_cargo.display());
                             update_dependent_version(&ax_cargo, &new_version, "ax_core").context(format!(
                                 "updating {} to {}",
                                 &ax_cargo.display(),
                                 &new_version
                             ))?;
                             repo.add_file(&ax_cargo)
-                                .context(format!("adding {} to repo", &ax_cargo.display(),))?;
+                                .context(format!("adding {} to repo", &ax_cargo.display()))?;
 
                             // Update the lockfile
+                            eprintln!("0.3.3) Updating the lockfile");
                             std::process::Command::new("cargo")
                                 .arg("update")
                                 .output()
                                 .expect("failed to execute `cargo update`");
-                            let lockfile = rust_folder.join("actyx/Cargo.lock");
-                            repo.add_file(&lockfile)
-                                .context(format!("adding {} to repo", &lockfile.display()))?;
+                            let lockfile = rust_folder.join("Cargo.lock");
+                            repo.add_file(lockfile)
+                                .context(format!("adding {} to repo", &ax_cargo.display()))?;
                         }
                         // We're not updating TOMLs for anything else
                         _ => (),
