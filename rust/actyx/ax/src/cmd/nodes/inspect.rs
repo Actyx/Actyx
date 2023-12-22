@@ -1,4 +1,4 @@
-use crate::cmd::{consts::TABLE_FORMAT, AxCliCommand, ConsoleOpt};
+use crate::cmd::{AxCliCommand, ConsoleOpt};
 use ax_core::{
     node_connection::{request_single, Task},
     util::{
@@ -7,8 +7,8 @@ use ax_core::{
     },
 };
 use ax_sdk::types::NodeId;
+use comfy_table::{presets::UTF8_FULL_CONDENSED, Cell, CellAlignment, Table};
 use futures::{stream, FutureExt, Stream};
-use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 
@@ -98,8 +98,9 @@ impl AxCliCommand for NodesInspect {
             writeln!(&mut s, "  none").unwrap();
         } else {
             let mut table = Table::new();
-            table.set_format(*TABLE_FORMAT);
-            table.set_titles(row!["PEERID", "ADDRESS", "DIRECTION", "SINCE"]);
+            table
+                .load_preset(UTF8_FULL_CONDENSED)
+                .set_header(["PEERID", "ADDRESS", "DIRECTION", "SINCE"]);
             for row in &result.connections {
                 let direction = if row.since.is_empty() {
                     ""
@@ -108,23 +109,35 @@ impl AxCliCommand for NodesInspect {
                 } else {
                     "inbound"
                 };
-                table.add_row(row![row.peer_id, row.addr, direction, row.since]);
+                table.add_row([
+                    Cell::new(&row.peer_id),
+                    Cell::new(&row.addr),
+                    Cell::new(direction),
+                    Cell::new(&row.since),
+                ]);
             }
             writeln!(&mut s, "{}", table).unwrap();
         }
 
         let mut failures = Vec::new();
         let mut ping = Table::new();
-        ping.set_format(*TABLE_FORMAT);
-        ping.set_titles(row!["PEERID", "CURRENT", "AVG_3", "AVG_10", "FAILURES", "FAILURE_RATE"]);
+        ping.load_preset(UTF8_FULL_CONDENSED).set_header([
+            "PEERID",
+            "CURRENT",
+            "AVG_3",
+            "AVG_10",
+            "FAILURES",
+            "FAILURE_RATE",
+        ]);
 
         writeln!(&mut s, "KnownPeers (more details with --json):").unwrap();
         if result.known_peers.is_empty() {
             writeln!(&mut s, "  none").unwrap();
         } else {
             let mut table = Table::new();
-            table.set_format(*TABLE_FORMAT);
-            table.set_titles(row!["PEERID", "NAME", "ADDRESS", "SOURCE", "SINCE"]);
+            table
+                .load_preset(UTF8_FULL_CONDENSED)
+                .set_header(["PEERID", "NAME", "ADDRESS", "SOURCE", "SINCE"]);
             for peer in &result.known_peers {
                 for (i, addr) in peer.addrs.iter().enumerate() {
                     let p = if i == 0 { &*peer.peer_id } else { "" };
@@ -136,7 +149,7 @@ impl AxCliCommand for NodesInspect {
                         .unwrap_or_default();
                     let source = peer.addr_source.get(i).map(String::as_str).unwrap_or_default();
                     let since = peer.addr_since.get(i).map(String::as_str).unwrap_or_default();
-                    table.add_row(row![p, n, addr, source, since]);
+                    table.add_row([p, n, addr, source, since]);
                 }
 
                 for f in &peer.failures {
@@ -149,14 +162,13 @@ impl AxCliCommand for NodesInspect {
                 }
 
                 for rtt in &peer.ping_stats {
-                    ping.add_row(row![
-                        r =>
-                        peer.peer_id,
-                        format_micros(rtt.current),
-                        format_micros(rtt.decay_3),
-                        format_micros(rtt.decay_10),
-                        rtt.failures,
-                        format!("{:.4}%", rtt.failure_rate as f64 / 10_000.0)
+                    ping.add_row([
+                        Cell::new(&peer.peer_id).set_alignment(CellAlignment::Right),
+                        Cell::new(format_micros(rtt.current)),
+                        Cell::new(format_micros(rtt.decay_3)),
+                        Cell::new(format_micros(rtt.decay_10)),
+                        Cell::new(rtt.failures),
+                        Cell::new(format!("{:.4}%", rtt.failure_rate as f64 / 10_000.0)),
                     ]);
                 }
             }
@@ -169,10 +181,11 @@ impl AxCliCommand for NodesInspect {
         } else {
             failures.sort();
             let mut table = Table::new();
-            table.set_format(*TABLE_FORMAT);
-            table.set_titles(row!["TIME", "ADDRESS", "PEERID", "MESSAGE"]);
+            table
+                .load_preset(UTF8_FULL_CONDENSED)
+                .set_header(["TIME", "ADDRESS", "PEERID", "MESSAGE"]);
             for f in failures {
-                table.add_row(row![f.0, f.1, f.2, f.3]);
+                table.add_row([f.0, f.1, f.2, f.3]);
             }
             writeln!(&mut s, "{}", table).unwrap();
         }

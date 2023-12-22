@@ -1,12 +1,11 @@
-use super::{Authority, AxCliCommand};
-use crate::cmd::{consts::TABLE_FORMAT, load_identity};
+use crate::cmd::{load_identity, Authority, AxCliCommand};
 use ax_core::{
     node_connection::{connect, mk_swarm, request_single, Task},
     util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicLsResponse},
 };
 use ax_sdk::types::NodeId;
+use comfy_table::{presets::UTF8_FULL_CONDENSED, Cell, Table};
 use futures::{channel::mpsc, future::join_all, stream};
-use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -81,8 +80,9 @@ impl AxCliCommand for TopicsList {
 
     fn pretty(result: Self::Output) -> String {
         let mut table = Table::new();
-        table.set_format(*TABLE_FORMAT);
-        table.set_titles(row!["NODE ID", "HOST", "TOPIC", "SIZE", "ACTIVE"]);
+        table
+            .load_preset(UTF8_FULL_CONDENSED)
+            .set_header(["NODE ID", "HOST", "TOPIC", "SIZE", "ACTIVE"]);
 
         let mut last: Option<NodeId> = None;
         for output in result {
@@ -92,23 +92,38 @@ impl AxCliCommand for TopicsList {
                         let active = if response.active_topic == topic_name { "*" } else { "" };
                         match last {
                             Some(last_node_id) if last_node_id == response.node_id => {
-                                table.add_row(row!["", "", topic_name, topic_size, active]);
+                                table.add_row([
+                                    Cell::new(""),
+                                    Cell::new(""),
+                                    Cell::new(topic_name),
+                                    Cell::new(topic_size),
+                                    Cell::new(active),
+                                ]);
                             }
                             _ => {
-                                table.add_row(row![response.node_id, host, topic_name, topic_size, active]);
+                                table.add_row([
+                                    Cell::new(response.node_id),
+                                    Cell::new(&host),
+                                    Cell::new(topic_name),
+                                    Cell::new(topic_size),
+                                    Cell::new(active),
+                                ]);
                                 last = Some(response.node_id);
                             }
                         }
                     }
                 }
                 LsOutput::Unreachable { host } => {
-                    table.add_row(row!["AX was unreachable on host", host]);
+                    table.add_row([Cell::new("AX was unreachable on host"), Cell::new(host)]);
                 }
                 LsOutput::Unauthorized { host } => {
-                    table.add_row(row!["Unauthorized on host", host]);
+                    table.add_row([Cell::new("Unauthorized on host"), Cell::new(host)]);
                 }
                 LsOutput::Error { host, error } => {
-                    table.add_row(row![format!("Received error \"{}\" from host", error), host]);
+                    table.add_row([
+                        Cell::new(format!("Received error \"{}\" from host", error)),
+                        Cell::new(host),
+                    ]);
                 }
             }
         }
