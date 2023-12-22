@@ -45,7 +45,9 @@ pub struct ConsoleOpt {
     /// the IP address or `<host>:<admin port>` of the node to perform the operation on.
     #[arg(name = "NODE", required = true)]
     authority: Authority,
-    /// File from which the identity (private key) for authentication is read.
+    /// Authentication identity (private key).
+    /// Can be base64 encoded or a path to a file containing the key,
+    /// defaults to `<OS_CONFIG_FOLDER>/keys/id`.
     #[arg(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     identity: Option<String>,
 }

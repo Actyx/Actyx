@@ -14,7 +14,9 @@ pub struct LsOpts {
     /// the IP address or `<host>:<admin port>` of the nodes to list.
     #[arg(name = "NODE", required = true)]
     authority: Vec<Authority>,
-    /// File from which the identity (private key) for authentication is read.
+    /// Authentication identity (private key).
+    /// Can be base64 encoded or a path to a file containing the key,
+    /// defaults to `<OS_CONFIG_FOLDER>/keys/id`.
     #[arg(short, long)]
     identity: Option<String>,
     /// maximal wait time (in seconds, max. 255) for establishing a connection to the node

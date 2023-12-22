@@ -122,7 +122,9 @@ pub struct LsOpts {
     /// The IP addresses or `<host>:<admin port>` of the target nodes.
     #[arg(name = "NODE", required = true)]
     authority: Vec<Authority>,
-    /// The private key file to use for authentication.
+    /// Authentication identity (private key).
+    /// Can be base64 encoded or a path to a file containing the key,
+    /// defaults to `<OS_CONFIG_FOLDER>/keys/id`.
     #[arg(short, long)]
     identity: Option<String>,
     /// Timeout time for the operation (in seconds, with a maximum of 255).

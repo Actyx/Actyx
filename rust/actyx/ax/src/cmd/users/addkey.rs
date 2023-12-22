@@ -73,7 +73,9 @@ pub struct AddKeyOpts {
     /// Path to the `actyx-data` folder you wish to modify
     #[arg(name = "PATH", required = true)]
     path: PathBuf,
-    /// File from which the identity (private key) for authentication is read.
+    /// Authentication identity (private key).
+    /// Can be base64 encoded or a path to a file containing the key,
+    /// defaults to `<OS_CONFIG_FOLDER>/keys/id`.
     #[arg(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     identity: Option<String>,
 }
