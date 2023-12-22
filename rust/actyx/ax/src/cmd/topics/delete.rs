@@ -127,7 +127,7 @@ pub struct DeleteOpts {
     authority: Vec<Authority>,
     /// Authentication identity (private key).
     /// Can be base64 encoded or a path to a file containing the key,
-    /// defaults to `<OS_CONFIG_FOLDER>/keys/id`.
+    /// defaults to `<OS_CONFIG_FOLDER>/key/users/id`.
     #[arg(short, long)]
     identity: Option<String>,
     /// Timeout time for the operation (in seconds, with a maximum of 255).

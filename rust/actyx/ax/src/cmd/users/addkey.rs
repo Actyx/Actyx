@@ -75,7 +75,7 @@ pub struct AddKeyOpts {
     path: PathBuf,
     /// Authentication identity (private key).
     /// Can be base64 encoded or a path to a file containing the key,
-    /// defaults to `<OS_CONFIG_FOLDER>/keys/id`.
+    /// defaults to `<OS_CONFIG_FOLDER>/key/users/id`.
     #[arg(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
     identity: Option<String>,
 }
