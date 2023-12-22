@@ -1,11 +1,11 @@
-use crate::cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand};
+use crate::cmd::{Authority, AxCliCommand};
 use ax_core::{
     node_connection::{connect, mk_swarm, request_single, Task},
     private_key::{AxPrivateKey, KeyPathWrapper},
     util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesLsResponse},
 };
+use comfy_table::{presets::UTF8_FULL_CONDENSED, Cell, Table};
 use futures::{channel::mpsc, future::join_all, stream, Stream};
-use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use std::{convert::TryInto, time::Duration};
 
@@ -47,28 +47,29 @@ pub enum Output {
 }
 fn format_output(output: Vec<Output>) -> String {
     let mut table = Table::new();
-    table.set_format(*TABLE_FORMAT);
-    table.set_titles(row!["NODE ID", "DISPLAY NAME", "HOST", "STARTED", "VERSION"]);
+    table
+        .load_preset(UTF8_FULL_CONDENSED)
+        .set_header(["NODE ID", "DISPLAY NAME", "HOST", "STARTED", "VERSION"]);
 
     for row in output {
         match row {
             Output::Reachable(json) => {
-                table.add_row(row![
-                    json.resp.node_id,
-                    json.resp.display_name,
-                    json.host,
-                    json.resp.started_iso,
-                    json.resp.version
+                table.add_row([
+                    Cell::new(json.resp.node_id),
+                    Cell::new(json.resp.display_name),
+                    Cell::new(json.host),
+                    Cell::new(json.resp.started_iso),
+                    Cell::new(json.resp.version),
                 ]);
             }
             Output::Unreachable { host } => {
-                table.add_row(row!["AX was unreachable on host", "", host]);
+                table.add_row([Cell::new("AX was unreachable on host"), Cell::new(""), Cell::new(host)]);
             }
             Output::Unauthorized { host } => {
-                table.add_row(row!["Unauthorized on host", "", host]);
+                table.add_row([Cell::new("Unauthorized on host"), Cell::new(""), Cell::new(host)]);
             }
             Output::Error { host, error } => {
-                table.add_row(row![format!("{}", error), "", host]);
+                table.add_row([Cell::new(error), Cell::new(""), Cell::new(host)]);
             }
         }
     }
