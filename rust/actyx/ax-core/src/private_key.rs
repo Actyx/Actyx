@@ -107,6 +107,24 @@ impl AxPrivateKey {
         )
     }
 
+    pub fn load_from_default_path() -> ActyxOSResult<Self> {
+        let private_key_path = AxPrivateKey::default_user_identity_path()?;
+        AxPrivateKey::from_file(&private_key_path).map_err(move |e| {
+            if e.code() == ActyxOSCode::ERR_PATH_INVALID {
+                ActyxOSError::new(
+                    ActyxOSCode::ERR_USER_UNAUTHENTICATED,
+                    format!(
+                        "Unable to authenticate with node since no user keys found in \"{}\". \
+                             To create user keys, run ax users keygen.",
+                        private_key_path.display()
+                    ),
+                )
+            } else {
+                e
+            }
+        })
+    }
+
     pub fn to_public(&self) -> PublicKey {
         self.0.into()
     }
@@ -137,6 +155,7 @@ impl AxPrivateKey {
         self.0
     }
 }
+
 impl FromStr for AxPrivateKey {
     type Err = anyhow::Error;
 
@@ -155,54 +174,6 @@ pub fn load_dev_cert(path: Option<PathBuf>) -> ActyxOSResult<DeveloperCertificat
         format!("failed to read developer certificate at {}", path.display()),
     )?;
     serde_json::from_str(&s).ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "reading developer certificate")
-}
-
-#[derive(Debug, Clone)]
-/// Newtype wrapper around a path to key material, to be used with
-/// structopt/clap.
-pub struct KeyPathWrapper(PathBuf);
-
-impl FromStr for KeyPathWrapper {
-    type Err = ActyxOSError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(s.into()))
-    }
-}
-
-impl fmt::Display for KeyPathWrapper {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.display())
-    }
-}
-
-// NOTE(duarte): there has to be a better way of doing this
-impl TryFrom<&Option<KeyPathWrapper>> for AxPrivateKey {
-    type Error = ActyxOSError;
-    fn try_from(k: &Option<KeyPathWrapper>) -> Result<Self, Self::Error> {
-        if let Some(path) = k {
-            path.0
-                .to_str()
-                .and_then(|s| s.parse::<AxPrivateKey>().ok())
-                .ok_or(ActyxOSError::internal("failed to parse private key"))
-                .or_else(|_| AxPrivateKey::from_file(&path.0))
-        } else {
-            let private_key_path = AxPrivateKey::default_user_identity_path()?;
-            AxPrivateKey::from_file(&private_key_path).map_err(move |e| {
-                if e.code() == ActyxOSCode::ERR_PATH_INVALID {
-                    ActyxOSError::new(
-                        ActyxOSCode::ERR_USER_UNAUTHENTICATED,
-                        format!(
-                            "Unable to authenticate with node since no user keys found in \"{}\". \
-                             To create user keys, run ax users keygen.",
-                            private_key_path.display()
-                        ),
-                    )
-                } else {
-                    e
-                }
-            })
-        }
-    }
 }
 
 #[cfg(test)]

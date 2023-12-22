@@ -1,11 +1,10 @@
-use crate::cmd::AxCliCommand;
+use crate::cmd::{load_identity, AxCliCommand};
 use ax_core::{
-    private_key::{AxPrivateKey, KeyPathWrapper},
     settings::{Database, Repository, Scope, DB_FILENAME},
     util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult},
 };
 use futures::{stream, Stream};
-use std::{convert::TryFrom, path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr};
 
 fn lock_working_dir(working_dir: impl AsRef<std::path::Path>) -> ActyxOSResult<fslock::LockFile> {
     let path = working_dir.as_ref().join("lockfile");
@@ -30,7 +29,7 @@ impl AxCliCommand for UsersAddKey {
     type Output = ();
     fn run(opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let r = Box::pin(async move {
-            let privkey = AxPrivateKey::try_from(&opts.identity)?;
+            let privkey = load_identity(&opts.identity)?;
             let pubkey = privkey.to_public();
 
             // check that the path makes sense
@@ -74,7 +73,9 @@ pub struct AddKeyOpts {
     /// Path to the `actyx-data` folder you wish to modify
     #[arg(name = "PATH", required = true)]
     path: PathBuf,
-    /// File from which the identity (private key) for authentication is read.
+    /// Authentication identity (private key).
+    /// Can be base64 encoded or a path to a file containing the key,
+    /// defaults to `<OS_CONFIG_FOLDER>/key/users/id`.
     #[arg(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
-    identity: Option<KeyPathWrapper>,
+    identity: Option<String>,
 }

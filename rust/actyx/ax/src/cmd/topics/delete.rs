@@ -1,7 +1,6 @@
-use crate::cmd::{Authority, AxCliCommand};
+use crate::cmd::{load_identity, Authority, AxCliCommand};
 use ax_core::{
     node_connection::{connect, mk_swarm, request_single, Task},
-    private_key::{AxPrivateKey, KeyPathWrapper},
     util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicDeleteResponse},
 };
 use comfy_table::{presets::UTF8_FULL_CONDENSED, Cell, Table};
@@ -66,7 +65,7 @@ async fn request(timeout: u8, mut conn: mpsc::Sender<Task>, authority: Authority
 
 async fn delete_run(opts: DeleteOpts) -> ActyxOSResult<Vec<DeleteOutput>> {
     // Get the auth and timeout parameters
-    let identity: AxPrivateKey = (&opts.identity).try_into()?;
+    let identity = load_identity(&opts.identity)?;
     let timeout = opts.timeout;
     // Get a communication channel to the swarm
     let (task, channel) = mk_swarm(identity).await?;
@@ -134,9 +133,11 @@ pub struct DeleteOpts {
     /// The IP addresses or `<host>:<admin port>` of the target nodes.
     #[arg(name = "NODE", required = true)]
     authority: Vec<Authority>,
-    /// The private key file to use for authentication.
+    /// Authentication identity (private key).
+    /// Can be base64 encoded or a path to a file containing the key,
+    /// defaults to `<OS_CONFIG_FOLDER>/key/users/id`.
     #[arg(short, long)]
-    identity: Option<KeyPathWrapper>,
+    identity: Option<String>,
     /// Timeout time for the operation (in seconds, with a maximum of 255).
     #[arg(short, long, default_value = "5")]
     timeout: u8,

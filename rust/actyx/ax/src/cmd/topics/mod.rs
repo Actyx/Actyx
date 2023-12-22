@@ -1,14 +1,12 @@
 mod delete;
 mod ls;
 
-use futures::Future;
-
 use self::{
     delete::{DeleteOpts, TopicsDelete},
     ls::{LsOpts, TopicsList},
 };
-
-use super::{Authority, AxCliCommand};
+use super::AxCliCommand;
+use futures::Future;
 
 /// manage topics
 #[derive(clap::Subcommand, Clone, Debug)]

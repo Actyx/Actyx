@@ -11,12 +11,13 @@ pub mod users;
 use ax_core::{
     authority::Authority,
     node_connection::{connect, mk_swarm, Task},
-    private_key::{AxPrivateKey, KeyPathWrapper},
+    private_key::AxPrivateKey,
     util::formats::{ActyxOSError, ActyxOSResult},
 };
 use futures::{channel::mpsc::Sender, future, Future, Stream, StreamExt};
 use libp2p::PeerId;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
@@ -44,14 +45,24 @@ pub struct ConsoleOpt {
     /// the IP address or `<host>:<admin port>` of the node to perform the operation on.
     #[arg(name = "NODE", required = true)]
     authority: Authority,
-    /// File from which the identity (private key) for authentication is read.
+    /// Authentication identity (private key).
+    /// Can be base64 encoded or a path to a file containing the key,
+    /// defaults to `<OS_CONFIG_FOLDER>/key/users/id`.
     #[arg(short, long, value_name = "FILE_OR_KEY", env = "AX_IDENTITY", hide_env_values = true)]
-    identity: Option<KeyPathWrapper>,
+    identity: Option<String>,
+}
+
+pub(crate) fn load_identity(identity: &Option<String>) -> ActyxOSResult<AxPrivateKey> {
+    if let Some(identity) = identity {
+        AxPrivateKey::from_str(identity).or_else(|_| AxPrivateKey::from_file(identity))
+    } else {
+        AxPrivateKey::load_from_default_path()
+    }
 }
 
 impl ConsoleOpt {
     pub async fn connect(&self) -> ActyxOSResult<(Sender<Task>, PeerId)> {
-        let key = AxPrivateKey::try_from(&self.identity)?;
+        let key = load_identity(&self.identity)?;
         let (task, mut channel) = mk_swarm(key).await?;
         tokio::spawn(task);
         let peer_id = connect(&mut channel, self.authority.clone()).await?;
