@@ -4,6 +4,7 @@ const path = require('path')
 const { constants: fsConstants } = require('fs')
 const { COSMOS_RELEASE_PATH, PRODUCTS } = require('./consts')
 const { exec } = require('child_process')
+const semver = require('semver')
 
 const cosmosReleaseAvailable = async () =>
   fs
@@ -106,6 +107,12 @@ const plugin = () => ({
     const history = {}
     for (const product of PRODUCTS) {
       history[product] = h[product]
+    }
+
+    // Filter Ax history
+    // Proper `ax` version starts at 2.18.0
+    if (history.ax) {
+      history.ax = history.ax.filter((item) => semver.satisfies(item.version, '>=2.18.0'))
     }
 
     return { history }
