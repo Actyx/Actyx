@@ -16,7 +16,7 @@ jobs:
     env:
       NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
       NETLIFY_ACCESS_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_TOKEN }}      
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
       AZ_STORAGE_CONNECTION_STRING:  ${{ secrets.AZ_STORAGE_CONNECTION_STRING }}
       AZ_STORAGE_SAS_TOKEN: ${{ secrets.AZ_STORAGE_SAS_TOKEN }}
 
@@ -46,14 +46,14 @@ jobs:
       - name: Build the release program
         run: |
           cargo build --release
-          for p in actyx cli node-manager; do
+          for p in ax node-manager; do
             echo "Version history for $p (incl. this release):"
             ./target/release/cosmos-release versions "$p" --commits
           done
 
       - name: Publish the artifacts
         run: |
-          for p in actyx cli node-manager; do
+          for p in ax node-manager; do
             echo "Publishing $p artifacts:"
             if [[ "${{steps.prepare-publication.outputs.publication_type}}" = prod ]]; then
               RUST_LOG=debug ./target/release/cosmos-release publish "$p"
