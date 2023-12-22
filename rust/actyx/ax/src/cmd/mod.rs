@@ -59,20 +59,6 @@ impl ConsoleOpt {
     }
 }
 
-// pub(crate) mod consts {
-//     use prettytable::format::{FormatBuilder, LinePosition, LineSeparator, TableFormat};
-//     lazy_static::lazy_static! {
-//         pub static ref TABLE_FORMAT: TableFormat = FormatBuilder::new()
-//             .column_separator('│')
-//             .borders('│')
-//             .separators(&[LinePosition::Top], LineSeparator::new('─', '┬', '┌', '┐'))
-//             .separators(&[LinePosition::Title], LineSeparator::new('─', '┼', '├', '┤'))
-//             .separators(&[LinePosition::Bottom], LineSeparator::new('─', '┴', '└', '┘'))
-//             .padding(1, 1)
-//             .build();
-//     }
-// }
-
 pub trait AxCliCommand {
     type Opt: clap::Parser;
     type Output: Serialize + 'static;
