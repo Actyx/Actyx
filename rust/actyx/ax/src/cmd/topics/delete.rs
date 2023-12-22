@@ -1,11 +1,11 @@
-use crate::cmd::{consts::TABLE_FORMAT, Authority, AxCliCommand};
+use crate::cmd::{Authority, AxCliCommand};
 use ax_core::{
     node_connection::{connect, mk_swarm, request_single, Task},
     private_key::{AxPrivateKey, KeyPathWrapper},
     util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, TopicDeleteResponse},
 };
+use comfy_table::{presets::UTF8_FULL_CONDENSED, Cell, Table};
 use futures::{channel::mpsc, future::join_all, stream};
-use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -95,21 +95,29 @@ impl AxCliCommand for TopicsDelete {
 
     fn pretty(result: Self::Output) -> String {
         let mut table = Table::new();
-        table.set_format(*TABLE_FORMAT);
-        table.set_titles(row!["NODE ID", "HOST", "DELETED"]);
+        table
+            .load_preset(UTF8_FULL_CONDENSED)
+            .set_header(["NODE ID", "HOST", "DELETED"]);
         for output in result {
             match output {
                 DeleteOutput::Reachable { host, response } => {
-                    table.add_row(row![response.node_id, host, if response.deleted { "Y" } else { "N" }]);
+                    table.add_row([
+                        Cell::new(response.node_id),
+                        Cell::new(host),
+                        Cell::new(if response.deleted { "Y" } else { "N" }),
+                    ]);
                 }
                 DeleteOutput::Unreachable { host } => {
-                    table.add_row(row!["AX was unreachable on host", host]);
+                    table.add_row([Cell::new("AX was unreachable on host"), Cell::new(host)]);
                 }
                 DeleteOutput::Unauthorized { host } => {
-                    table.add_row(row!["Unauthorized on host", host]);
+                    table.add_row([Cell::new("Unauthorized on host"), Cell::new(host)]);
                 }
                 DeleteOutput::Error { host, error } => {
-                    table.add_row(row![format!("Received error \"{}\" from host", error), host]);
+                    table.add_row([
+                        Cell::new(format!("Received error \"{}\" from host", error)),
+                        Cell::new(host),
+                    ]);
                 }
             }
         }
