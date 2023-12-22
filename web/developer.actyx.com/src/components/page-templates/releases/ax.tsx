@@ -76,7 +76,6 @@ const Page: React.FC<{
     otherVersions: Version[]
   }
 }> = ({ data }) => {
-  console.log(data)
   return <FileBasedPage {...data} product="ax" productDisplayName="Ax" downloads={downloads} />
 }
 
