@@ -444,13 +444,36 @@ fn all_ax() -> anyhow::Result<()> {
 
 #[test]
 fn all_actyx() -> anyhow::Result<()> {
-    let binaries = setup();
+    let Binaries {
+        actyx: actyx_binaries,
+        ax: ax_binaries,
+        cli: _,
+    } = setup();
+
+    let actyx_command_args = actyx_binaries
+        .iter()
+        .map(|(version, pathbuf)| -> (&Version, &PathBuf, Vec<&str>) { (version, pathbuf, vec![]) });
+
+    let ax_run_command_args = ax_binaries
+        .iter()
+        .map(|(version, pathbuf)| -> (&Version, &PathBuf, Vec<&str>) { (version, pathbuf, vec!["run"]) });
+
     let ax = run("ax")?;
-    for (version, actyx) in binaries.actyx.iter().chain(binaries.ax.iter()) {
+
+    for (version, actyx, args) in actyx_command_args.chain(ax_run_command_args) {
         let log = Log::default();
         let use_stdout_before = Version::new(2, 1, 0);
+
+        let mut command = {
+            let mut command = Command::new(actyx);
+            if !args.is_empty() {
+                command.args(args.as_slice());
+            }
+            command
+        };
+
         let result = with_api(
-            &mut Command::new(actyx),
+            &mut command,
             *version < use_stdout_before,
             log.clone(),
             |port, identity| {
