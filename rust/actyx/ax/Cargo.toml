@@ -1,6 +1,6 @@
 [package]
 name = "ax"
-version = "2.18.0"
+version = "2.18.1"
 authors = ["Actyx AG <developer@actyx.io>"]
 edition = "2021"
 description = "ax distributed event databank and command line tool"
