@@ -339,6 +339,17 @@ pub const DATABANK_VERSION: &str = "{}";
                             )?;
                             repo.add_file(&ax_cargo)?;
                             repo.add_file(&version_rs)?;
+
+                            // Update the lockfile
+                            eprintln!("0.2.1) Updating the lockfile");
+                            std::process::Command::new("cargo")
+                                .current_dir(rust_folder.join("actyx/ax"))
+                                .arg("update")
+                                .output()
+                                .expect("failed to execute `cargo update`");
+                            let lockfile = rust_folder.join("actyx/Cargo.lock");
+                            repo.add_file(&lockfile)
+                                .context(format!("adding {} to repo", &lockfile.display()))?;
                         }
                         Product::AxCore => {
                             eprintln!("0.3.1) Writing new version to \"{}\" ... ", ax_core_cargo.display());
