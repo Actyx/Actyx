@@ -46,7 +46,7 @@ jobs:
 
     # We double check here since we can use workflow_dispatch to run it against any branch
     # all other jobs depend on this one, so if we skip this one, all others will be skipped
-    # if: ${{ startsWith(github.ref, 'refs/heads/release') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/release') }}
 
     steps:
       - uses: actions/checkout@v3
