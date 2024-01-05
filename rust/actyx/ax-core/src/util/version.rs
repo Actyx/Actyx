@@ -8,7 +8,9 @@ use std::{
 
 // The hash is provided by GitHub actions, for more information, see:
 // https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
-const GIT_HASH: &str = match option_env!("GIT_HASH") {
+// It should work with workflow_dispatch as well as push and pull_request events
+// https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_dispatch
+const GIT_HASH: &str = match option_env!("GITHUB_HASH") {
     Some(hash) => hash,
     // This is for cargo installations and builds
     None => "cargo",
