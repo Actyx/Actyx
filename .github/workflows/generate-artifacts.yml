@@ -39,10 +39,6 @@ env:
   BASH_ENV: "~/.bashrc"
   NVM_VERSION: 0.39.3
   RUST_VERSION: 1.72.1
-  # The GITHUB_SHA is very unreliable as it requires the workflow to have been been
-  # triggered by a commit-related event (like a PR, or push), this approach allows
-  # hashes to be available for workflow_dispatch events too
-  GIT_HASH: ${{github.sha}}
 
 jobs:
   calculate-actyx-version:
@@ -161,6 +157,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - run: echo "$GITHUB_HASH"
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
