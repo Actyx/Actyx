@@ -10,7 +10,7 @@ use std::{
 // https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
 // It should work with workflow_dispatch as well as push and pull_request events
 // https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_dispatch
-const GIT_HASH: &str = match option_env!("GITHUB_HASH") {
+const GIT_HASH: &str = match option_env!("GITHUB_SHA") {
     Some(hash) => hash,
     // This is for cargo installations and builds
     None => "cargo",

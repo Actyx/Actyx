@@ -157,7 +157,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - run: echo "$GITHUB_HASH"
+      - run: echo "$GITHUB_SHA"
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
