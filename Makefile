@@ -429,7 +429,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  -u builder \
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
-	  -e GITHUB_SHA=$GITHUB_SHA \
+	  -e GITHUB_SHA=$(GITHUB_SHA) \
 	  -v `pwd`:/src \
 	  --rm \
 	  $(DOCKER_FLAGS) \
