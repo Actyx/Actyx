@@ -28,7 +28,7 @@ jobs:
 
     strategy:
       matrix:
-        product: [release-version, release, rust, js, node-manager-bindings]
+        product: [release, rust, js, node-manager-bindings]
       fail-fast: false
 
     steps:
