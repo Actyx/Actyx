@@ -455,7 +455,9 @@ Overview:"#
                     let package_version =
                         Version::from_str(cargo_toml["package"]["version"].to_string().trim_matches('"'))?;
                     if package_version != new_version {
-                        panic!("version mismatch. {product} version is {package_version}, expected {new_version}",);
+                        return Err(anyhow::anyhow!(
+                            "version mismatch. {product} version is {package_version}, expected {new_version}",
+                        ));
                     }
                 }
             }
