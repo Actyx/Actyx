@@ -8,9 +8,9 @@ use std::{
     fmt::Write,
     fs::OpenOptions,
     path::PathBuf,
+    str::FromStr,
     sync::atomic::{AtomicBool, Ordering},
 };
-use toml_edit::Document;
 use versions_file::{VersionLine, VersionsFile};
 use versions_ignore_file::VersionsIgnoreFile;
 
@@ -110,6 +110,8 @@ enum Command {
         #[clap(long)]
         ignore_errors: bool,
     },
+    /// Check if AX and AX-core product's versions match the expected version
+    Check,
 }
 
 fn main() -> Result<(), Error> {
@@ -429,6 +431,31 @@ Overview:"#
                     println!("{}", out);
                     if !needed_write.load(Ordering::Relaxed) {
                         break;
+                    }
+                }
+            }
+        }
+        Command::Check => {
+            for product in [Product::Ax, Product::AxCore] {
+                let cwd = current_exe()?;
+                // We're looking for the `Actyx/rust` folder
+                let rust_folder = cwd
+                    .ancestors()
+                    .nth(4)
+                    .ok_or(anyhow!("failed to get the current directory parent"))?;
+                let cargo_toml_path = rust_folder
+                    .join(PathBuf::from(format!(
+                        "actyx/{}/Cargo.toml",
+                        product.to_string().replace("_", "-"),
+                    )))
+                    .canonicalize()?;
+                let cargo_toml = toml::from_str::<toml::Table>(&std::fs::read_to_string(cargo_toml_path)?)?;
+                let changeset = version_file.calculate_version(&product, &ignores_file)?;
+                if let Some(new_version) = changeset.new_version {
+                    let package_version =
+                        Version::from_str(&cargo_toml["package"]["version"].to_string().trim_matches('"'))?;
+                    if package_version != new_version {
+                        panic!("version mismatch. {product} version is {package_version}, expected {new_version}",);
                     }
                 }
             }
