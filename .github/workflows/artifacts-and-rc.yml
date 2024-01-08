@@ -39,7 +39,7 @@ jobs:
   ensure-success:
     runs-on: ubuntu-latest
     # Either master built "Validate PR" successfully or a workflow_dispatch was launched
-    if: ${{ (github.ref == 'refs/heads/master' && github.event.workflow_run.conclusion == 'success') || github.event.workflow_dispatch }}
+    if: ${{ (github.ref == 'refs/heads/master' && github.event.workflow_run.conclusion == 'success') || github.event_name == 'workflow_dispatch' }}
 
     steps:
       - run: echo "master branch validated successfully"
