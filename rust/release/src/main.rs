@@ -304,97 +304,6 @@ Overview:"#
                 println!("-------------------------\n");
                 println!("Branch to create {}", branch_name);
             } else {
-                // We expect the binary to not have been moved outside of the target folder
-                let cwd = current_exe()?;
-                // We're looking for the `Actyx/rust` folder
-                let rust_folder = cwd
-                    .ancestors()
-                    .nth(4)
-                    .ok_or(anyhow!("failed to get the current directory parent"))?;
-                let ax_cargo = rust_folder.join(PathBuf::from("actyx/ax/Cargo.toml")).canonicalize()?;
-                let ax_core_cargo = rust_folder
-                    .join(PathBuf::from("actyx/ax-core/Cargo.toml"))
-                    .canonicalize()?;
-
-                for (product, v) in new_versions {
-                    let new_version = v.new_version.unwrap();
-                    match product {
-                        Product::Ax => {
-                            eprintln!("0.1) Writing new version to \"{}\" ... ", ax_cargo.display());
-                            update_package_version(&ax_cargo, &new_version)?;
-                            let version_rs = rust_folder
-                                .join(PathBuf::from("actyx/ax-core/src/node/version.rs"))
-                                .canonicalize()?;
-                            eprintln!("0.2) Writing new version to \"{}\" ... ", version_rs.display());
-                            std::fs::write(
-                                &version_rs,
-                                format!(
-                                    r#"/// The databank version.
-///
-/// This version is kept automatically!
-pub const DATABANK_VERSION: &str = "{}";
-"#, // extra line required for rustfmt
-                                    new_version
-                                ),
-                            )?;
-                            repo.add_file(&ax_cargo)?;
-                            repo.add_file(&version_rs)?;
-
-                            // Update the lockfile
-                            eprintln!("0.2.1) Updating the lockfile");
-                            std::process::Command::new("cargo")
-                                .current_dir(rust_folder.join("actyx/ax"))
-                                .arg("update")
-                                .output()
-                                .expect("failed to execute `cargo update`");
-                            let lockfile = rust_folder.join("actyx/Cargo.lock");
-                            repo.add_file(&lockfile)
-                                .context(format!("adding {} to repo", &lockfile.display()))?;
-                        }
-                        Product::AxCore => {
-                            eprintln!("0.3.1) Writing new version to \"{}\" ... ", ax_core_cargo.display());
-                            update_package_version(&ax_core_cargo, &new_version).context(format!(
-                                "updating {} to {}",
-                                &ax_core_cargo.display(),
-                                &new_version
-                            ))?;
-                            repo.add_file(&ax_core_cargo)
-                                .context(format!("adding {} to repo", &ax_core_cargo.display()))?;
-
-                            // Update the ax_core version in ax
-                            eprintln!("0.3.2) Updating the ax_core version in \"{}\" ... ", ax_cargo.display());
-                            {
-                                let cargo_toml_contents = std::fs::read_to_string(&ax_cargo)?;
-                                let mut cargo_toml = cargo_toml_contents.parse::<Document>()?;
-                                // Similar to `update_package_version` but in this case,
-                                // we're updating the version of a crate that should depend "on us"
-                                cargo_toml["dependencies"]["ax_core"]["version"] =
-                                    toml_edit::value(&new_version.to_string());
-
-                                cargo_toml["build-dependencies"]["ax_core"]["version"] =
-                                    toml_edit::value(&new_version.to_string());
-
-                                std::fs::write(&ax_cargo, cargo_toml.to_string())?;
-                            }
-                            repo.add_file(&ax_cargo)
-                                .context(format!("adding {} to repo", &ax_cargo.display()))?;
-
-                            // Update the lockfile
-                            eprintln!("0.3.3) Updating the lockfile");
-                            std::process::Command::new("cargo")
-                                .current_dir(rust_folder.join("actyx/ax"))
-                                .arg("update")
-                                .output()
-                                .expect("failed to execute `cargo update`");
-                            let lockfile = rust_folder.join("actyx/Cargo.lock");
-                            repo.add_file(&lockfile)
-                                .context(format!("adding {} to repo", &lockfile.display()))?;
-                        }
-                        // We're not updating TOMLs for anything else
-                        _ => (),
-                    };
-                }
-
                 eprint!("1) Writing new versions to \"{}\" ... ", input_file.display());
                 version_file.persist(&input_file)?;
                 eprintln!("Done.");
@@ -525,17 +434,5 @@ pub const DATABANK_VERSION: &str = "{}";
             }
         }
     }
-    Ok(())
-}
-
-fn update_package_version(path: &PathBuf, version: &Version) -> Result<(), Error> {
-    // Read the toml
-    let cargo_toml_contents = std::fs::read_to_string(path)?;
-    // Parse it
-    let mut cargo_toml = cargo_toml_contents.parse::<Document>()?;
-    // Update the value
-    cargo_toml["package"]["version"] = toml_edit::value(version.to_string());
-    // Write it back
-    std::fs::write(path, cargo_toml.to_string())?;
     Ok(())
 }
