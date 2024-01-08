@@ -566,3 +566,7 @@ fmt:
 	cd rust/actyx && cargo fmt -- --config imports_granularity=Crate
 	cd rust/sdk && cargo fmt -- --config imports_granularity=Crate
 	cd rust/release && cargo fmt -- --config imports_granularity=Crate
+
+.PHONY: version-check
+version-check:
+	cd rust/release && $(CARGO) run -- check
