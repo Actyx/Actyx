@@ -1,4 +1,4 @@
-use ax_core::{util::version::NodeVersion, DATABANK_VERSION};
+use ax_core::DATABANK_VERSION;
 use winres::WindowsResource;
 
 pub fn add_icon_to_bin_when_building_for_win(icon_path: &str) {
@@ -25,11 +25,5 @@ fn main() {
     {
         panic!("ax version MUST start the ax_core::DATABANK_VERSION");
     }
-
-    // We need to change the version since the Databank version doesn't have a patch
-    let mut node_version = NodeVersion::get();
-    node_version.version = env!("CARGO_PKG_VERSION").to_string();
-    println!("cargo:rustc-env=AX_VERSION={}", node_version);
-
     add_icon_to_bin_when_building_for_win("./assets/actyxcli.ico");
 }

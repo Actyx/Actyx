@@ -9,11 +9,19 @@ use crate::cmd::{
     run::Color, settings::SettingsOpts, swarms::SwarmsOpts, topics::TopicsOpts, users::UsersOpts,
 };
 use anyhow::{Context, Result};
-use ax_core::node::{init_shutdown_ceremony, shutdown_ceremony, ApplicationState, BindTo, Runtime};
+use ax_core::{
+    node::{init_shutdown_ceremony, shutdown_ceremony, ApplicationState, BindTo, Runtime},
+    util::version::NodeVersion,
+    NODE_VERSION,
+};
 use clap::{ArgAction, Args, Parser};
 use clap_complete::Shell;
 use cmd::run::RunOpts;
-use std::{future::Future, process::exit};
+use std::{
+    env::consts::{ARCH, OS},
+    future::Future,
+    process::exit,
+};
 
 #[derive(clap::Parser, Clone, Debug)]
 #[command(
@@ -21,7 +29,7 @@ use std::{future::Future, process::exit};
     about = concat!(
         "\nThe ax CLI is a unified tool to manage your ax nodes.\n\n",
         include_str!("../NOTICE")),
-    version = env!("AX_VERSION"),
+    version = ax_core::util::version::VERSION.as_str(),
     propagate_version = true,
     disable_help_subcommand = true
 )]
@@ -71,7 +79,26 @@ fn superpowers() -> bool {
     var == "zøg" || var == "zoeg"
 }
 
+#[cfg(debug_assertions)]
+const PROFILE: &str = "debug";
+#[cfg(not(debug_assertions))]
+const PROFILE: &str = "release";
+
+const GIT_HASH: &str = match option_env!("GITHUB_SHA") {
+    Some(hash) => hash,
+    // This is for cargo installations and builds
+    None => "cargo",
+};
+
 fn main() -> Result<()> {
+    let version = NodeVersion {
+        profile: PROFILE.to_string(),
+        target: format!("{}-{}", OS, ARCH),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        git_hash: GIT_HASH.to_string(),
+    };
+    NODE_VERSION.set(version).expect("V should be unset at this point");
+
     let Opt {
         command,
         json,

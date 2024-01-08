@@ -19,3 +19,4 @@ pub mod trees;
 pub mod util;
 
 pub use node::version::DATABANK_VERSION;
+pub use util::version::NODE_VERSION;
