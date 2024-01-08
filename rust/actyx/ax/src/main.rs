@@ -21,7 +21,7 @@ use std::{future::Future, process::exit};
     about = concat!(
         "\nThe ax CLI is a unified tool to manage your ax nodes.\n\n",
         include_str!("../NOTICE")),
-    version = ax_core::util::version::VERSION.as_str(),
+    version = env!("AX_VERSION"),
     propagate_version = true,
     disable_help_subcommand = true
 )]
