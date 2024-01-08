@@ -1,4 +1,4 @@
-name: Generate Artifacts for Release Candidate
+name: Generate Artifacts and Release Candidate
 
 # This workflow assumes we are using a single PC for most of the tasks.
 
@@ -33,6 +33,7 @@ on:
       # - https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-excluding-paths
       - ".github/**"
   workflow_dispatch:
+  # This workflow should be triggered by a full run of a PR validation on master
   workflow_run:
     workflows: [Validate PR]
     branches: [master]
