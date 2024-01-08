@@ -174,7 +174,7 @@ endef
 
 $(foreach arch,$(architectures),$(eval $(call mkLinuxRule,$(arch))))
 
-current: dist/bin/current/ax dist/bin/current/actyx
+current: dist/bin/current/ax
 
 all-js: dist/js/sdk
 
@@ -429,6 +429,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  -u builder \
 	  -w /src/rust/actyx \
 	  -e HOME=/home/builder \
+	  -e GITHUB_SHA=$(GITHUB_SHA) \
 	  -v `pwd`:/src \
 	  --rm \
 	  $(DOCKER_FLAGS) \
