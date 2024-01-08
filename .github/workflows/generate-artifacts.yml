@@ -23,8 +23,7 @@ name: Generate Artifacts for Release Candidate
 on:
   push:
     branches:
-      # Only run against RCs
-      - release/*
+      - master
     paths-ignore:
       # Do not run this workflow if the only changes are in the .github directory
       # this should avoid duplicating releases for changes that don't actually belong
@@ -39,10 +38,6 @@ env:
   BASH_ENV: "~/.bashrc"
   NVM_VERSION: 0.39.3
   RUST_VERSION: 1.72.1
-  # The GITHUB_SHA is very unreliable as it requires the workflow to have been been
-  # triggered by a commit-related event (like a PR, or push), this approach allows
-  # hashes to be available for workflow_dispatch events too
-  GIT_HASH: ${{github.sha}}
 
 jobs:
   calculate-actyx-version:
@@ -50,7 +45,7 @@ jobs:
 
     # We double check here since we can use workflow_dispatch to run it against any branch
     # all other jobs depend on this one, so if we skip this one, all others will be skipped
-    if: ${{ startsWith(github.ref, 'refs/heads/release') }}
+    if: ${{ github.ref == 'refs/heads/master' }}
 
     steps:
       - uses: actions/checkout@v3
@@ -62,6 +57,7 @@ jobs:
       - name: Calculate versions
         id: calculate-versions
         working-directory: rust/release/target/release
+        # NOTE(duarte): some of these versions are no longer used
         run: |
           set -e
           echo "ACTYX_VERSION=$(./cosmos-release get-actyx-version ax)" >> "$GITHUB_OUTPUT"
