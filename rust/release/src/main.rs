@@ -446,14 +446,14 @@ Overview:"#
                 let cargo_toml_path = rust_folder
                     .join(PathBuf::from(format!(
                         "actyx/{}/Cargo.toml",
-                        product.to_string().replace("_", "-"),
+                        product.to_string().replace('_', "-"),
                     )))
                     .canonicalize()?;
                 let cargo_toml = toml::from_str::<toml::Table>(&std::fs::read_to_string(cargo_toml_path)?)?;
                 let changeset = version_file.calculate_version(&product, &ignores_file)?;
                 if let Some(new_version) = changeset.new_version {
                     let package_version =
-                        Version::from_str(&cargo_toml["package"]["version"].to_string().trim_matches('"'))?;
+                        Version::from_str(cargo_toml["package"]["version"].to_string().trim_matches('"'))?;
                     if package_version != new_version {
                         panic!("version mismatch. {product} version is {package_version}, expected {new_version}",);
                     }
