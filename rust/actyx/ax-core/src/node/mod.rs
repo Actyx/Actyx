@@ -19,6 +19,7 @@ pub use formats::{node_settings, ShutdownReason};
 #[cfg(not(target_os = "android"))]
 pub use host::lock_working_dir;
 
+use crate::api::EventService;
 use crate::util::formats::LogSeverity;
 
 use crate::{
@@ -67,6 +68,7 @@ pub enum Runtime {
 pub struct ApplicationState {
     pub join_handles: Vec<thread::JoinHandle<()>>,
     pub manager: NodeWrapper,
+    pub event_service: EventService,
     _actors: Actors,
     #[allow(dead_code)]
     #[cfg(not(target_os = "android"))]
@@ -139,6 +141,17 @@ fn spawn(
     let node_id = host.get_or_create_node_id().context("getting node ID")?;
     tracing::debug!("NodeID: {}", node_id);
 
+    let event_service = EventService::new(
+        EventStoreRef::new({
+            let tx = store_tx.clone();
+            move |e| {
+                tx.try_send(ComponentRequest::Individual(StoreRequest::EventsV2(e)))
+                    .map_err(event_store_ref::Error::from)
+            }
+        }),
+        node_id,
+    );
+
     // Runtime specifics
     match runtime {
         Runtime::Android { ffi_sink } => {
@@ -190,6 +203,7 @@ fn spawn(
         swarm_state,
     )
     .context("creating event store")?;
+
     join_handles.push(store.spawn().context("spawning event store")?);
 
     init_panic_hook(node.tx.clone());
@@ -197,6 +211,7 @@ fn spawn(
     Ok(ApplicationState {
         join_handles,
         manager: node,
+        event_service,
         _actors: actors,
         #[cfg(not(target_os = "android"))]
         _lock,
