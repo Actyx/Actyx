@@ -91,7 +91,7 @@ jobs:
           nvm install
           npm ci
           npm run build
-          npm run deploy:draft "Validation pipeline"
+          test -n "$NETLIFY_AUTH_TOKEN" && npm run deploy:draft "Validation pipeline"
           make -C ../.. assert-clean
       - run: make clean
 
