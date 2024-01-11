@@ -34,7 +34,14 @@ For our high-level roadmap please check out [this wiki page](https://github.com/
 
 ## Quick demo
 
-To try it out, clone the repo and start Actyx from within the `rust/actyx` directory (you’ll want to compile with `--release` for more serious testing):
+First, make sure you already have `cmake` and `protobuf-compiler` installed on your machine by running the following commands:
+```sh
+cmake --version
+protoc --version
+```
+If these trigger some errors, you might want to install these dependencies.
+
+Then, to try it out, clone the repo and start Actyx from within the `rust/actyx` directory (you’ll want to compile with `--release` for more serious testing):
 
 ```sh
 cargo run --bin actyx
