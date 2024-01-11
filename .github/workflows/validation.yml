@@ -69,11 +69,6 @@ jobs:
   validate-docs:
     runs-on: [self-hosted, Linux]
 
-    env:
-      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-      NETLIFY_ACCESS_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
-
     steps:
       # Unlimited fetch depth so the release tool works
       # ALL actions using the release tool NEED this
@@ -81,6 +76,10 @@ jobs:
         with:
           fetch-depth: 0
       - name: Validate docs
+        env:
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          NETLIFY_ACCESS_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
         run: |
           set -e
           echo "Building cosmos-release"
@@ -92,7 +91,7 @@ jobs:
           nvm install
           npm ci
           npm run build
-          npm run deploy:draft "Validation pipeline"
+          test -n "$NETLIFY_AUTH_TOKEN" && npm run deploy:draft "Validation pipeline"
           make -C ../.. assert-clean
       - run: make clean
 
