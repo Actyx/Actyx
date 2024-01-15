@@ -28,10 +28,13 @@ fn cli() -> Command {
 }
 #[test]
 fn cli_version() {
-    cli().arg("--version").assert().success().stdout(starts_with(format!(
-        "ax {}\n",
-        ax_core::util::version::VERSION.as_str()
-    )));
+    let mut node_version = NodeVersion::get().clone();
+    node_version.version = env!("CARGO_PKG_VERSION").to_string();
+    cli()
+        .arg("--version")
+        .assert()
+        .success()
+        .stdout(starts_with(format!("ax {}\n", node_version)));
 }
 
 #[test]
@@ -134,7 +137,9 @@ fn internal_subcommand() {
 
 #[test]
 fn version() {
-    let first_line = format!("ax {}\n", NodeVersion::get());
+    let mut node_version = NodeVersion::get().clone();
+    node_version.version = env!("CARGO_PKG_VERSION").to_string();
+    let first_line = format!("ax {}\n", node_version);
     cli().arg("--version").assert().stdout(first_line).success();
 
     #[derive(PartialEq)]
@@ -178,7 +183,7 @@ fn version() {
         vec!["users", "add-key"] => Leaf,
     };
 
-    let first_line = |sub| format!("ax-{} {}\n", sub, NodeVersion::get());
+    let first_line = |sub| format!("ax-{} {}\n", sub, node_version);
 
     for (args, tpe) in commands {
         if tpe == Branch {
