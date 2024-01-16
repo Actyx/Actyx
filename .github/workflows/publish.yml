@@ -85,7 +85,7 @@ jobs:
       - build
 
     steps:
-      - uses: jmg-duarte/discord-workflow-status@83dc78bf9ece4963250e5b73da83c06638c7a3bf
+      - uses: jmg-duarte/discord-workflow-status@0c3c34d89f51c8ff5d8dd9662b8a850579fb00fb
         with:
           # GitHub actions does not allow secrets to be used in `if` clauses
           # hence, instead of using an env variable, checking in the `if` and then
