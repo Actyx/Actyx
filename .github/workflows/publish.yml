@@ -87,12 +87,6 @@ jobs:
     steps:
       - uses: jmg-duarte/discord-workflow-status@0c3c34d89f51c8ff5d8dd9662b8a850579fb00fb
         with:
-          # GitHub actions does not allow secrets to be used in `if` clauses
-          # hence, instead of using an env variable, checking in the `if` and then
-          # using the env variable in parameters, I've updated the discord action to be
-          # "strict" about missing required variables, so they can be used in forks
-          # For more information on the env approach, see the following:
-          # https://stackoverflow.com/a/72926257
           strict: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
           discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}
