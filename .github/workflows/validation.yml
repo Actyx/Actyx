@@ -105,7 +105,14 @@ jobs:
       - validate-docs
 
     steps:
-      - uses: jmg-duarte/discord-workflow-status@5a826a3e649f9d1157507494d35811ec2f84380c
+      - uses: jmg-duarte/discord-workflow-status@83dc78bf9ece4963250e5b73da83c06638c7a3bf
         with:
+          # GitHub actions does not allow secrets to be used in `if` clauses
+          # hence, instead of using an env variable, checking in the `if` and then
+          # using the env variable in parameters, I've updated the discord action to be
+          # "strict" about missing required variables, so they can be used in forks
+          # For more information on the env approach, see the following:
+          # https://stackoverflow.com/a/72926257
+          strict: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
           discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}
