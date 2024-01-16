@@ -212,7 +212,7 @@ impl Node {
                 let resp = crate::util::formats::NodesLsResponse {
                     node_id: self.state.details.node_id,
                     display_name: self.state.details.node_name.to_string(),
-                    version: NodeVersion::get(),
+                    version: NodeVersion::get().clone(),
                     started_unix: self.state.started_at.timestamp(),
                     started_iso: self.state.started_at.to_rfc3339_opts(SecondsFormat::Secs, false),
                 };

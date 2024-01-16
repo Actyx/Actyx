@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     env::consts::{ARCH, OS},
     str::FromStr,
+    sync::OnceLock,
 };
 
 // The hash is provided by GitHub actions, for more information, see:
@@ -24,6 +25,11 @@ const PROFILE: &str = "release";
 lazy_static! {
     pub static ref VERSION: String = NodeVersion::get().to_string();
 }
+
+/// The `OnceLock` allows us to defer evaluating the version to whenever we actually need it, allowing us to modify it in the process.
+///
+/// When used in AX, we use this feature to "monkey-patch" the version to include the AX patch version.
+pub static NODE_VERSION: OnceLock<NodeVersion> = OnceLock::new();
 
 // NOTE: This can be replaced with the `semver` crate
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
@@ -74,13 +80,13 @@ pub struct NodeVersion {
 
 impl NodeVersion {
     /// Returns the current node version, associated with the `DATABANK_VERSION` constant.
-    pub fn get() -> NodeVersion {
-        NodeVersion {
+    pub fn get() -> &'static NodeVersion {
+        NODE_VERSION.get_or_init(|| NodeVersion {
             profile: PROFILE.to_string(),
             target: format!("{}-{}", OS, ARCH),
-            version: DATABANK_VERSION.to_string(),
+            version: format!("{}.0", DATABANK_VERSION),
             git_hash: GIT_HASH.to_string(),
-        }
+        })
     }
 
     pub fn version(&self) -> Option<Version> {
