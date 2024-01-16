@@ -6,7 +6,7 @@ on:
       - master
       - release/*
     paths-ignore:
-      - 'github/**'
+      - "github/**"
   workflow_dispatch:
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
       NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
       NETLIFY_ACCESS_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
-      AZ_STORAGE_CONNECTION_STRING:  ${{ secrets.AZ_STORAGE_CONNECTION_STRING }}
+      AZ_STORAGE_CONNECTION_STRING: ${{ secrets.AZ_STORAGE_CONNECTION_STRING }}
       AZ_STORAGE_SAS_TOKEN: ${{ secrets.AZ_STORAGE_SAS_TOKEN }}
 
     defaults:
@@ -85,7 +85,8 @@ jobs:
       - build
 
     steps:
-      - uses: jmg-duarte/discord-workflow-status@5a826a3e649f9d1157507494d35811ec2f84380c
+      - uses: jmg-duarte/discord-workflow-status@0c3c34d89f51c8ff5d8dd9662b8a850579fb00fb
         with:
+          strict: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
           discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}

@@ -105,7 +105,8 @@ jobs:
       - validate-docs
 
     steps:
-      - uses: jmg-duarte/discord-workflow-status@5a826a3e649f9d1157507494d35811ec2f84380c
+      - uses: jmg-duarte/discord-workflow-status@0c3c34d89f51c8ff5d8dd9662b8a850579fb00fb
         with:
+          strict: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
           discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}
