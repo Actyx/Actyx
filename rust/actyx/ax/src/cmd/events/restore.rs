@@ -1,15 +1,15 @@
 use super::dump::Diag;
-use crate::cmd::{AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{AxCliCommand, ConsoleOpt},
+    gen_stream::GenStream,
+};
 use ax_core::{
     crypto::KeyPair,
     node_connection::request_banyan,
     private_key::{load_dev_cert, AxPrivateKey},
-    util::{
-        formats::{
-            banyan_protocol::{decode_dump_header, BanyanRequest, BanyanResponse},
-            ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
-        },
-        gen_stream::GenStream,
+    util::formats::{
+        banyan_protocol::{decode_dump_header, BanyanRequest, BanyanResponse},
+        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
     },
 };
 use cbor_data::{Cbor, CborBuilder, Encoder};

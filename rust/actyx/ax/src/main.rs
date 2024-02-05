@@ -3,6 +3,7 @@
 #![doc(html_favicon_url = "https://developer.actyx.com/img/favicon.ico")]
 
 mod cmd;
+mod gen_stream;
 
 use crate::cmd::{
     apps::AppsOpts, determine_ax_default_data_dir, events::EventsOpts, internal::InternalOpts, nodes::NodesOpts,
