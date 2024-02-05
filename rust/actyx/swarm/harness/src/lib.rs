@@ -1,5 +1,7 @@
 #![cfg(target_os = "linux")]
 
+mod pinned_resource;
+
 pub mod api;
 
 use anyhow::{bail, Result};

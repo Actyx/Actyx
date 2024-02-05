@@ -1,12 +1,12 @@
-use crate::cmd::{AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{AxCliCommand, ConsoleOpt},
+    gen_stream::GenStream,
+};
 use ax_core::{
     node_connection::Task,
-    util::{
-        formats::{
-            events_protocol::{EventsRequest, EventsResponse},
-            ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
-        },
-        gen_stream::GenStream,
+    util::formats::{
+        events_protocol::{EventsRequest, EventsResponse},
+        ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
     },
 };
 use ax_sdk::types::{

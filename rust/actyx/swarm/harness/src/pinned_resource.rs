@@ -86,7 +86,7 @@ impl<T: 'static> PinnedResource<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::util::pinned_resource::PinnedResource;
+    use crate::pinned_resource::PinnedResource;
     use std::{cell::UnsafeCell, sync::Arc, thread};
 
     // Does nothing, but it can assert that T is Sync, Send and 'static at compile time of the tests

@@ -1,4 +1,7 @@
-use crate::cmd::{AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{AxCliCommand, ConsoleOpt},
+    gen_stream::GenStream,
+};
 use ax_core::{
     node_connection::{request_single, Task},
     util::{
@@ -6,7 +9,6 @@ use ax_core::{
             events_protocol::{EventsRequest, EventsResponse},
             ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse,
         },
-        gen_stream::GenStream,
         version::VERSION,
     },
 };

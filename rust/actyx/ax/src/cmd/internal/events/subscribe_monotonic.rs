@@ -1,10 +1,10 @@
-use crate::cmd::{AxCliCommand, ConsoleOpt};
+use crate::{
+    cmd::{AxCliCommand, ConsoleOpt},
+    gen_stream::GenStream,
+};
 use ax_core::{
     node_connection::{request_events, EventDiagnostic},
-    util::{
-        formats::{events_protocol::EventsRequest, ActyxOSResult},
-        gen_stream::GenStream,
-    },
+    util::formats::{events_protocol::EventsRequest, ActyxOSResult},
 };
 use ax_sdk::types::{service::SubscribeMonotonicRequest, OffsetMap};
 use futures::{future::ready, Stream, StreamExt};
