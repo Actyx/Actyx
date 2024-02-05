@@ -1,7 +1,6 @@
-use crate::m;
+use crate::{m, pinned_resource::PinnedResource};
 use anyhow::{anyhow, Result};
 use async_std::task::block_on;
-use ax_core::util::pinned_resource::PinnedResource;
 use ax_sdk::{
     types::{AppManifest, NodeId},
     Ax, AxOpts, Url,

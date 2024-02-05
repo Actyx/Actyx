@@ -1,5 +1,4 @@
 pub mod formats;
-pub mod pinned_resource;
 pub mod reentrant_safe_mutex;
 pub mod variable;
 pub mod version;
