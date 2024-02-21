@@ -1,13 +1,9 @@
-use super::{NoVal, Rule};
+use super::parser::{NoVal, Rule};
 use crate::language::non_empty::NonEmptyString;
 use anyhow::Result;
-use pest::{
-    error::Error,
-    iterators::{Pair, Pairs},
-};
+use pest::iterators::{Pair, Pairs};
 use std::{convert::TryInto, fmt::Debug, str::FromStr};
 
-pub type R<T> = std::result::Result<T, Error<Rule>>;
 pub type Ps<'a> = Pairs<'a, Rule>;
 pub type P<'a> = Pair<'a, Rule>;
 

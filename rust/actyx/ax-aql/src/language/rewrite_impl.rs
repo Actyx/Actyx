@@ -41,12 +41,24 @@ impl<'a> Query<'a> {
             .iter()
             .map(|op| shed(op.rewrite(surfer), &mut changed))
             .collect();
+        let events = self
+            .events
+            .iter()
+            .map(|(label, (t, tags))| {
+                let tags = tags
+                    .iter()
+                    .map(|tag| shed(tag.rewrite(surfer), &mut changed))
+                    .collect::<Vec<_>>();
+                (label.clone(), (t.clone(), tags))
+            })
+            .collect::<BTreeMap<_, _>>();
         emit(
             || Self {
                 pragmas: self.pragmas.clone(),
                 features: self.features.clone(),
                 source,
                 ops,
+                events: Arc::new(events),
             },
             changed,
             self,
@@ -139,6 +151,23 @@ impl TagAtom {
             | TagAtom::FromLamport(_, _)
             | TagAtom::ToLamport(_, _)
             | TagAtom::AppId(_) => (self.clone(), false),
+        }
+    }
+}
+
+impl SingleTag {
+    pub fn rewrite(&self, surfer: &mut impl Galactus) -> (Self, bool) {
+        match self {
+            SingleTag::Tag(_) => (self.clone(), false),
+            SingleTag::Interpolation(x) => {
+                let mut changed = false;
+                let items = x
+                    .items
+                    .iter()
+                    .map(|expr| shed(expr.rewrite(surfer), &mut changed))
+                    .collect();
+                emit(|| SingleTag::Interpolation(Arr { items }), changed, self)
+            }
         }
     }
 }

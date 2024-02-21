@@ -10,11 +10,13 @@ impl<'a> Query<'a> {
         let features = self.features;
         let source = self.source;
         let ops = self.ops;
+        let events = self.events;
         Query {
             pragmas: Vec::new(),
             features,
             source,
             ops,
+            events,
         }
     }
 
@@ -51,6 +53,7 @@ impl<'de> Deserialize<'de> for StaticQuery {
             features: q.features,
             source: q.source,
             ops: q.ops,
+            events: q.events,
         }))
     }
 }

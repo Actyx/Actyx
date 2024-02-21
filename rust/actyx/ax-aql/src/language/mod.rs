@@ -1,15 +1,29 @@
+macro_rules! unexpected {
+    ($label:ident) => {
+        return Err(anyhow::Error::from(pest::error::Error::new_from_span(
+            pest::error::ErrorVariant::<Rule>::CustomError {
+                message: format!("unexpected token ({}: {}): {:?}", file!(), line!(), $label.as_rule()),
+            },
+            $label.as_span(),
+        )))
+    };
+}
+
 mod non_empty;
+mod parse_utils;
 mod parser;
 mod render;
+mod types;
 
 pub use self::{
     non_empty::NonEmptyVec,
     rewrite_impl::{Galactus, Tactic},
+    types::{Label, Type, TypeAtom},
 };
 
-use self::render::render_tag_expr;
+use self::{non_empty::NonEmptyString, parser::SingleTag, render::render_tag_expr};
 use ax_types::{service::Order, AppId, EventKey, LamportTimestamp, StreamId, Tag, Timestamp};
-use std::{fmt::Display, num::NonZeroU64, ops::Deref, sync::Arc};
+use std::{collections::BTreeMap, fmt::Display, num::NonZeroU64, ops::Deref, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Source {
@@ -36,10 +50,20 @@ pub struct Query<'a> {
     pub features: Vec<String>,
     pub source: Source,
     pub ops: Vec<Operation>,
+    pub events: Arc<BTreeMap<Ident, (Type, Vec<SingleTag>)>>,
 }
 
 mod query_impl;
 mod rewrite_impl;
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+pub struct Ident(NonEmptyString);
+
+impl AsRef<str> for Ident {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Operation {
@@ -454,7 +478,7 @@ mod for_tests {
     use super::{parser::Context, *};
     use once_cell::sync::OnceCell;
     use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
-    use std::{cell::RefCell, convert::TryInto};
+    use std::{cell::RefCell, convert::TryInto, ops::Range};
 
     impl<'a> Query<'a> {
         pub fn new(from: TagExpr) -> Self {
@@ -463,6 +487,7 @@ mod for_tests {
                 features: vec![],
                 source: Source::Events { from, order: None },
                 ops: vec![],
+                events: Arc::new(BTreeMap::new()),
             }
         }
         pub fn push(&mut self, op: Operation) {
@@ -668,6 +693,28 @@ mod for_tests {
         }
     }
 
+    impl Arbitrary for Label {
+        fn arbitrary(g: &mut Gen) -> Self {
+            #[allow(non_snake_case)]
+            fn String(g: &mut Gen) -> Label {
+                Label::String(Arbitrary::arbitrary(g))
+            }
+            #[allow(non_snake_case)]
+            fn Number(g: &mut Gen) -> Label {
+                Label::Number(Arbitrary::arbitrary(g))
+            }
+            let choices = &[String, Number][..];
+            (g.choose(choices).unwrap())(g)
+        }
+
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            match self {
+                Label::String(s) => Box::new(s.shrink().map(Label::String)),
+                Label::Number(n) => Box::new(n.shrink().map(Label::Number)),
+            }
+        }
+    }
+
     impl Arbitrary for FuncCall {
         fn arbitrary(g: &mut Gen) -> Self {
             Self {
@@ -753,6 +800,15 @@ mod for_tests {
         }
     }
 
+    impl Arbitrary for SingleTag {
+        fn arbitrary(g: &mut Gen) -> Self {
+            arb!(SingleTag: g => Tag, Interpolation, ,)
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            shrink!(SingleTag: self => Tag, Interpolation(x,),)
+        }
+    }
+
     impl Arbitrary for TagAtom {
         fn arbitrary(g: &mut Gen) -> Self {
             arb!(TagAtom: g => Tag FromTime(bool) ToTime(bool) FromLamport(bool) ToLamport(bool) AppId, Interpolation, , AllEvents IsLocal)
@@ -768,6 +824,24 @@ mod for_tests {
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             shrink!(TagExpr: self => Atom, And(x, x.0.clone(), x.1.clone()) Or(x, x.0.clone(), x.1.clone()),)
+        }
+    }
+
+    impl Arbitrary for TypeAtom {
+        fn arbitrary(g: &mut Gen) -> Self {
+            arb!(TypeAtom: g => Bool Number String, Tuple Record,, Null Timestamp Universal)
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            shrink!(TypeAtom: self => Bool Number String, Tuple(x,) Record(x,), Null Timestamp Universal)
+        }
+    }
+
+    impl Arbitrary for Type {
+        fn arbitrary(g: &mut Gen) -> Self {
+            arb!(Type: g => Atom, Union Intersection Array Dict,,)
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            shrink!(Type: self => Atom, Union(x, x.0.clone(), x.1.clone()) Intersection(x, x.0.clone(), x.1.clone()) Array(x,(**x).clone()) Dict(x,(**x).clone()),)
         }
     }
 
@@ -812,6 +886,34 @@ mod for_tests {
         }
     }
 
+    fn ident_chars() -> &'static [char] {
+        static CHOICES: OnceCell<Vec<char>> = OnceCell::new();
+        &CHOICES.get_or_init(|| ('a'..='z').chain('A'..='Z').chain('0'..='9').collect())
+    }
+    const MINUSCULE: Range<usize> = 0..26;
+    const MAJUSCULE: Range<usize> = 26..52;
+
+    impl Arbitrary for Ident {
+        fn arbitrary(g: &mut Gen) -> Self {
+            fn minuscule(g: &mut Gen) -> NonEmptyString {
+                let mut s = NonEmptyString::new(*g.choose(&ident_chars()[MINUSCULE]).unwrap());
+                for _ in 0..g.size() {
+                    s.push(*g.choose(&ident_chars()[..]).unwrap());
+                }
+                s
+            }
+            fn majuscule(g: &mut Gen) -> NonEmptyString {
+                let mut s = NonEmptyString::new(*g.choose(&ident_chars()[MAJUSCULE]).unwrap());
+                s.push(*g.choose(&ident_chars()[MINUSCULE]).unwrap());
+                for _ in 0..g.size() {
+                    s.push(*g.choose(&ident_chars()[..]).unwrap());
+                }
+                s
+            }
+            Self((g.choose(&[minuscule, majuscule][..]).unwrap())(g))
+        }
+    }
+
     impl Arbitrary for Query<'static> {
         fn arbitrary(g: &mut Gen) -> Self {
             fn word(g: &mut Gen) -> String {
@@ -822,11 +924,27 @@ mod for_tests {
             }
             let prev = CTX.with(|c| c.replace(Context::Simple { now: Timestamp::now() }));
             let source = Source::arbitrary(g);
+            let depth = DEPTH.with(|d| *d.borrow());
+            let events = if depth == 0 {
+                Vec::<Ident>::arbitrary(g)
+                    .into_iter()
+                    .map(|label| {
+                        let tags = Vec::<SingleTag>::arbitrary(g);
+                        let t = Type::Atom(TypeAtom::Record(
+                            NonEmptyVec::<Label>::arbitrary(g).map(|l| (l.clone(), Type::arbitrary(g))),
+                        ));
+                        (label, (t, tags))
+                    })
+                    .collect()
+            } else {
+                BTreeMap::new()
+            };
             let ret = Self {
                 pragmas: Vec::new(),
                 features: Vec::<bool>::arbitrary(g).into_iter().map(|_| word(g)).collect(),
                 source,
                 ops: Arbitrary::arbitrary(g),
+                events: Arc::new(events),
             };
             CTX.with(|c| c.replace(prev));
             ret
@@ -835,10 +953,20 @@ mod for_tests {
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             let pragmas = self.pragmas.clone();
             let pragmas2 = self.pragmas.clone();
+            let pragmas3 = self.pragmas.clone();
+            let pragmas4 = self.pragmas.clone();
             let features = self.features.clone();
             let features2 = self.features.clone();
+            let features3 = self.features.clone();
             let source = self.source.clone();
+            let source2 = self.source.clone();
+            let source3 = self.source.clone();
             let ops = self.ops.clone();
+            let ops2 = self.ops.clone();
+            let ops3 = self.ops.clone();
+            let events = self.events.clone();
+            let events2 = self.events.clone();
+            let events3 = self.events.clone();
             Box::new(
                 self.ops
                     .shrink()
@@ -847,12 +975,28 @@ mod for_tests {
                         features: features.clone(),
                         source: source.clone(),
                         ops,
+                        events: events.clone(),
                     })
                     .chain(self.source.shrink().map(move |source| Self {
                         pragmas: pragmas2.clone(),
                         features: features2.clone(),
                         source,
                         ops: ops.clone(),
+                        events: events2.clone(),
+                    }))
+                    .chain(self.features.shrink().map(move |features| Self {
+                        pragmas: pragmas3.clone(),
+                        features,
+                        source: source2.clone(),
+                        ops: ops2.clone(),
+                        events: events3.clone(),
+                    }))
+                    .chain(self.events.shrink().map(move |events| Self {
+                        pragmas: pragmas4.clone(),
+                        features: features3.clone(),
+                        source: source3.clone(),
+                        ops: ops3.clone(),
+                        events,
                     })),
             )
         }
@@ -879,7 +1023,7 @@ mod for_tests {
             let s = q.to_string();
             let p = match Query::parse(&s) {
                 Ok(p) => p,
-                Err(e) => return TestResult::error(e.to_string()),
+                Err(e) => return TestResult::error(format!("parse error: {e}\nq={s}")),
             };
             if q == p {
                 TestResult::passed()

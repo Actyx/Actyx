@@ -268,7 +268,107 @@ fn render_tag_atom(w: &mut impl Write, e: &TagAtom) -> Result {
     }
 }
 
+fn render_single_tag(w: &mut impl Write, e: &SingleTag) -> Result {
+    match e {
+        SingleTag::Tag(t) => render_string(w, t.as_ref()),
+        SingleTag::Interpolation(s) => render_interpolation(w, s),
+    }
+}
+
+fn render_label(w: &mut impl Write, l: &Label) -> Result {
+    match l {
+        Label::String(s) => {
+            if is_ident(s) {
+                w.write_str(s)
+            } else {
+                render_string(w, s)
+            }
+        }
+        Label::Number(n) => write!(w, "{n}"),
+    }
+}
+
+fn render_type_atom(w: &mut impl Write, a: &TypeAtom) -> Result {
+    match a {
+        TypeAtom::Null => w.write_str("NULL"),
+        TypeAtom::Bool(Some(b)) => render_bool(b, w),
+        TypeAtom::Bool(None) => w.write_str("BOOLEAN"),
+        TypeAtom::Number(Some(n)) => write!(w, "{n}"),
+        TypeAtom::Number(None) => w.write_str("NUMBER"),
+        TypeAtom::Timestamp => w.write_str("TIMESTAMP"),
+        TypeAtom::String(Some(s)) => render_string(w, s),
+        TypeAtom::String(None) => w.write_str("STRING"),
+        TypeAtom::Tuple(ts) => {
+            w.write_char('[')?;
+            for (i, t) in ts.iter().enumerate() {
+                if i > 0 {
+                    w.write_str(", ")?;
+                }
+                render_type(w, t)?;
+            }
+            w.write_char(']')
+        }
+        TypeAtom::Record(ts) => {
+            w.write_char('{')?;
+            for (i, (l, t)) in ts.iter().enumerate() {
+                if i > 0 {
+                    w.write_str(", ")?;
+                }
+                render_label(w, l)?;
+                w.write_str(": ")?;
+                render_type(w, t)?;
+            }
+            w.write_char('}')
+        }
+        TypeAtom::Universal => w.write_str("UNIVERSAL"),
+    }
+}
+
+fn render_type(w: &mut impl Write, t: &Type) -> Result {
+    match t {
+        Type::Atom(a) => render_type_atom(w, a),
+        Type::Union(u) => {
+            w.write_char('(')?;
+            render_type(w, &u.0)?;
+            w.write_str(" | ")?;
+            render_type(w, &u.1)?;
+            w.write_char(')')
+        }
+        Type::Intersection(i) => {
+            w.write_char('(')?;
+            render_type(w, &i.0)?;
+            w.write_str(" & ")?;
+            render_type(w, &i.1)?;
+            w.write_char(')')
+        }
+        Type::Array(t) => {
+            render_type(w, &t)?;
+            w.write_str("[]")
+        }
+        Type::Dict(t) => {
+            render_type(w, &t)?;
+            w.write_str("{}")
+        }
+    }
+}
+
 pub fn render_query(w: &mut impl Write, e: &Query) -> Result {
+    for (label, (t, tags)) in e.events.iter() {
+        w.write_str("EVENT ")?;
+        w.write_str(label.as_ref())?;
+        w.write_char(' ')?;
+        render_type(w, t)?;
+        if !tags.is_empty() {
+            w.write_str(" TAGGED ")?;
+            for (i, t) in tags.iter().enumerate() {
+                if i > 0 {
+                    w.write_str(", ")?;
+                }
+                render_single_tag(w, t)?;
+            }
+        }
+        w.write_str("\n")?;
+    }
     if !e.features.is_empty() {
         w.write_str("FEATURES(")?;
         for (i, f) in e.features.iter().enumerate() {
