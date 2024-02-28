@@ -8,9 +8,9 @@ use std::{
     sync::Arc,
 };
 
-use super::parse_utils::*;
 use super::{
     non_empty::{NonEmptyString, NonEmptyVec},
+    parse_utils::*,
     types::r_type,
     workflow::r_workflow,
     AggrOp, Arr, FuncCall, Ident, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, Source, SpreadExpr, TagAtom,
