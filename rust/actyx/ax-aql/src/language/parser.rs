@@ -12,6 +12,7 @@ use super::parse_utils::*;
 use super::{
     non_empty::{NonEmptyString, NonEmptyVec},
     types::r_type,
+    workflow::r_workflow,
     AggrOp, Arr, FuncCall, Ident, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, Source, SpreadExpr, TagAtom,
     TagExpr,
 };
@@ -181,6 +182,7 @@ fn r_tag_from_to(p: P, f: FromTo, ctx: Context) -> Result<TagExpr> {
             let mut p = p.inner()?;
             let count = p.natural()?;
             let unit = match p.next().ok_or(NoVal("duration_unit"))?.as_str() {
+                "u" => 1,
                 "s" => 1_000_000,
                 "m" => 60_000_000,
                 "h" => 3_600_000_000,
@@ -346,6 +348,26 @@ fn r_expr_index(p: P, ctx: Context) -> Result<SimpleExpr> {
 
 pub fn r_number(mut p: P) -> Result<Num> {
     p.natural().map(Num::Natural).or_else(|_| p.decimal().map(Num::Decimal))
+}
+
+pub fn r_duration(p: P) -> Result<u64> {
+    let mut p = p.inner()?;
+    let mut micros = 0u64;
+    while let Ok(count) = p.natural() {
+        let unit = match p.next().ok_or(NoVal("duration_unit"))?.as_str() {
+            "u" => 1,
+            "s" => 1_000_000,
+            "m" => 60_000_000,
+            "h" => 3_600_000_000,
+            "D" => 86_400_000_000,
+            "W" => 604_800_000_000,    // seven days
+            "M" => 2_551_442_876_908,  // Y2000 synodic month after Chapront(-Touzé)
+            "Y" => 31_556_925_250_733, // J2000.0 mean tropical year
+            x => bail!("unknown duration_unit {}", x),
+        };
+        micros = micros.saturating_add(count.saturating_mul(unit));
+    }
+    Ok(micros)
 }
 
 fn r_timestamp(p: P) -> Result<Timestamp> {
@@ -515,7 +537,7 @@ fn r_sub_query(p: P, ctx: Context) -> Result<Query<'static>> {
     r_query(p.single()?, ctx)
 }
 
-fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
+pub(crate) fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
     static PRATT: Lazy<PrattParser<Rule>> = Lazy::new(|| {
         PrattParser::new()
             .op(Op::infix(Rule::alternative, Assoc::Left))
@@ -612,6 +634,7 @@ fn r_query<'a>(p: P, ctx: Context) -> Result<Query<'a>> {
         source,
         ops: vec![],
         events: Arc::new(BTreeMap::new()),
+        workflows: Arc::new(BTreeMap::new()),
     };
     for o in p {
         match o.as_rule() {
@@ -629,6 +652,15 @@ fn r_query<'a>(p: P, ctx: Context) -> Result<Query<'a>> {
                 let ident = p.string()?;
                 let expr = r_simple_expr(p.single()?, ctx.simple())?;
                 q.ops.push(Operation::Binding(ident, expr));
+            }
+            Rule::machine => {
+                let mut p = o.inner()?;
+                let name = Ident(p.non_empty_string()?);
+                let _role = p.next().ok_or(NoVal("machine ROLE"))?;
+                let role = Ident(p.non_empty_string()?);
+                let _id = p.next().ok_or(NoVal("machine ID"))?;
+                let id = r_nonempty_string(p.next().ok_or(NoVal("machine id"))?)?;
+                q.ops.push(Operation::Machine(name, role, id));
             }
             _ => unexpected!(o),
         }
@@ -663,6 +695,12 @@ pub(crate) fn query_from_str(s: &str) -> Result<Query<'_>> {
         events.insert(label, (record, tags));
     }
 
+    let mut workflows = BTreeMap::new();
+    while p.peek().map(|p| p.as_rule()) == Some(Rule::workflow) {
+        let wf = r_workflow(p.next().unwrap())?;
+        workflows.insert(wf.name().clone(), wf);
+    }
+
     let mut f = p.next().ok_or(NoVal("main query"))?;
     let features = if f.as_rule() == Rule::features {
         let features = f.inner()?.map(|mut ff| ff.string()).collect::<Result<_>>()?;
@@ -678,6 +716,7 @@ pub(crate) fn query_from_str(s: &str) -> Result<Query<'_>> {
     query.pragmas = pragmas;
     query.features = features;
     query.events = Arc::new(events);
+    query.workflows = Arc::new(workflows);
 
     Ok(query)
 }
@@ -979,7 +1018,7 @@ mod tests {
             parser: Aql,
             input: "FROM 'x' ELECT 'x'",
             rule: Rule::main_query,
-            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::aggregate, Rule::limit, Rule::binding, Rule::and, Rule::or],
+            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::machine, Rule::aggregate, Rule::limit, Rule::binding, Rule::and, Rule::or],
             negatives: vec![],
             pos: 9
         };
@@ -987,7 +1026,7 @@ mod tests {
             parser: Aql,
             input: "FROM 'x' FITTER 'x'",
             rule: Rule::main_query,
-            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::aggregate, Rule::limit, Rule::binding, Rule::and, Rule::or],
+            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::machine, Rule::aggregate, Rule::limit, Rule::binding, Rule::and, Rule::or],
             negatives: vec![],
             pos: 9
         };

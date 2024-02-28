@@ -1,7 +1,7 @@
 use super::{non_empty::NonEmptyString, parse_utils::P, parser::Rule};
 use crate::{
     language::{
-        parse_utils::Ext,
+        parse_utils::{Ext, Spanned},
         parser::{r_bool, r_nonempty_string, r_string, NoVal},
     },
     NonEmptyVec,
@@ -57,15 +57,17 @@ pub fn r_type(p: P) -> anyhow::Result<Type> {
                 Rule::type_string => Type::Atom(TypeAtom::String(None)),
                 Rule::string => Type::Atom(TypeAtom::String(Some(r_string(p)?))),
                 Rule::type_tuple => {
+                    let span = p.as_span();
                     let ts = p
                         .inner()?
                         .filter(|p| p.as_rule() == Rule::r#type)
                         .map(r_type)
                         .collect::<Result<Vec<_>, _>>()?;
-                    Type::Atom(TypeAtom::Tuple(NonEmptyVec::try_from(ts)?))
+                    Type::Atom(TypeAtom::Tuple(NonEmptyVec::try_from(ts).spanned(span)?))
                 }
                 Rule::type_record => {
                     let mut ts = vec![];
+                    let span = p.as_span();
                     let mut p = p
                         .inner()?
                         .filter(|p| !matches!(p.as_rule(), Rule::curlyl | Rule::curlyr | Rule::comma | Rule::colon));
@@ -79,7 +81,7 @@ pub fn r_type(p: P) -> anyhow::Result<Type> {
                         let t = r_type(p.next().ok_or(NoVal("value"))?)?;
                         ts.push((label, t));
                     }
-                    Type::Atom(TypeAtom::Record(NonEmptyVec::try_from(ts)?))
+                    Type::Atom(TypeAtom::Record(NonEmptyVec::try_from(ts).spanned(span)?))
                 }
                 Rule::type_paren => r_type(p.into_inner().nth(1).ok_or(NoVal("nested type"))?)?,
                 Rule::type_universal => Type::Atom(TypeAtom::Universal),

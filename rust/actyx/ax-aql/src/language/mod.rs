@@ -14,6 +14,7 @@ mod parse_utils;
 mod parser;
 mod render;
 mod types;
+mod workflow;
 
 pub use self::{
     non_empty::NonEmptyVec,
@@ -23,7 +24,13 @@ pub use self::{
 
 use self::{non_empty::NonEmptyString, parser::SingleTag, render::render_tag_expr};
 use ax_types::{service::Order, AppId, EventKey, LamportTimestamp, StreamId, Tag, Timestamp};
-use std::{collections::BTreeMap, fmt::Display, num::NonZeroU64, ops::Deref, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    fmt::{self, Display},
+    num::NonZeroU64,
+    ops::Deref,
+    sync::Arc,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Source {
@@ -51,6 +58,7 @@ pub struct Query<'a> {
     pub source: Source,
     pub ops: Vec<Operation>,
     pub events: Arc<BTreeMap<Ident, (Type, Vec<SingleTag>)>>,
+    pub workflows: Arc<BTreeMap<Ident, workflow::Workflow<'a>>>,
 }
 
 mod query_impl;
@@ -58,6 +66,12 @@ mod rewrite_impl;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Ident(NonEmptyString);
+
+impl Display for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_ref())
+    }
+}
 
 impl AsRef<str> for Ident {
     fn as_ref(&self) -> &str {
@@ -72,6 +86,7 @@ pub enum Operation {
     Aggregate(SimpleExpr),
     Limit(NonZeroU64),
     Binding(String, SimpleExpr),
+    Machine(Ident, Ident, NonEmptyString),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -86,7 +101,7 @@ impl Deref for SpreadExpr {
     }
 }
 impl Display for SpreadExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.spread {
             write!(f, "...{}", self.expr)
         } else {
@@ -111,8 +126,8 @@ impl TagExpr {
     }
 }
 
-impl std::fmt::Display for TagExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for TagExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         render_tag_expr(f, self, None)
     }
 }
@@ -138,7 +153,7 @@ pub struct SortKey {
 }
 
 impl Display for SortKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}/{}", u64::from(self.lamport), self.stream)
     }
 }
@@ -401,6 +416,7 @@ impl SimpleExpr {
                             Operation::Aggregate(e) => e.traverse(f),
                             Operation::Limit(_) => {}
                             Operation::Binding(_, e) => e.traverse(f),
+                            Operation::Machine(_, _, _) => {}
                         }
                     }
                 }
@@ -415,8 +431,8 @@ impl SimpleExpr {
     }
 }
 
-impl std::fmt::Display for SimpleExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for SimpleExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         render::render_simple_expr(f, self)
     }
 }
@@ -475,10 +491,14 @@ impl SimpleExpr {
 
 #[cfg(test)]
 mod for_tests {
+    use self::{
+        parse_utils::Span,
+        workflow::{Binding, EventMode, Participant, Workflow, WorkflowStep},
+    };
     use super::{parser::Context, *};
     use once_cell::sync::OnceCell;
     use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
-    use std::{cell::RefCell, convert::TryInto, ops::Range};
+    use std::{cell::RefCell, convert::TryInto, mem::replace, ops::Range};
 
     impl<'a> Query<'a> {
         pub fn new(from: TagExpr) -> Self {
@@ -488,6 +508,7 @@ mod for_tests {
                 source: Source::Events { from, order: None },
                 ops: vec![],
                 events: Arc::new(BTreeMap::new()),
+                workflows: Arc::new(BTreeMap::new()),
             }
         }
         pub fn push(&mut self, op: Operation) {
@@ -526,6 +547,7 @@ mod for_tests {
     thread_local! {
         static DEPTH: RefCell<usize> = RefCell::new(0);
         static CTX: RefCell<Context> = RefCell::new(Context::Simple { now: Timestamp::now() });
+        static SUB: RefCell<bool> = RefCell::new(true);
     }
 
     macro_rules! arb {
@@ -562,7 +584,7 @@ mod for_tests {
             )*
             let depth = DEPTH.with(|d| *d.borrow());
             let ctx = CTX.with(|c| *c.borrow());
-            let choices = if depth > 5 {
+            let choices = if depth > 4 {
                 &[$($n as fn(&mut Gen) -> $T,)* $($e,)* $($($names,)*)?][..]
             } else if ctx.is_aggregate() {
                 &[$($n,)* $($rec,)* $($rec2,)* $($e,)* $($($names,)*)?][..]
@@ -762,13 +784,22 @@ mod for_tests {
                 query.features.clear();
                 SimpleExpr::SubQuery(query)
             }
-            arb!(SimpleExpr: g =>
-                Variable Number String Bool KeyLiteral KeyVar TimeLiteral TimeVar Tags App,
-                Indexing Object Array Cases BinOp Not FuncCall Interpolation,
-                AggrOp{ Context::Simple { now: Timestamp::now() } },
-                Null,
-                SubQuery
-            )
+            if SUB.with(|s| *s.borrow()) {
+                arb!(SimpleExpr: g =>
+                    Variable Number String Bool KeyLiteral KeyVar TimeLiteral TimeVar Tags App,
+                    Indexing Object Array Cases BinOp Not FuncCall Interpolation,
+                    AggrOp{ Context::Simple { now: Timestamp::now() } },
+                    Null,
+                    SubQuery
+                )
+            } else {
+                arb!(SimpleExpr: g =>
+                    Variable Number String Bool KeyLiteral KeyVar TimeLiteral TimeVar Tags App,
+                    Indexing Object Array Cases BinOp Not FuncCall Interpolation,
+                    AggrOp{ Context::Simple { now: Timestamp::now() } },
+                    Null
+                )
+            }
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             shrink!(SimpleExpr: self => Variable Number String Bool KeyLiteral KeyVar TimeLiteral TimeVar Tags App,
@@ -802,7 +833,10 @@ mod for_tests {
 
     impl Arbitrary for SingleTag {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(SingleTag: g => Tag, Interpolation, ,)
+            let sub = SUB.with(|s| replace(&mut *s.borrow_mut(), false));
+            let ret = arb!(SingleTag: g => Tag, Interpolation, ,);
+            SUB.with(|s| *s.borrow_mut() = sub);
+            ret
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             shrink!(SingleTag: self => Tag, Interpolation(x,),)
@@ -851,10 +885,11 @@ mod for_tests {
             fn Binding(g: &mut Gen) -> Operation {
                 Operation::Binding(Var::arbitrary(g).0, SimpleExpr::arbitrary(g))
             }
-            arb!(Operation: g => Filter Select Aggregate{ Context::Aggregate { now: Timestamp::now() } } Limit,,,, Binding)
+            arb!(Operation: g => Filter Select Aggregate{ Context::Aggregate { now: Timestamp::now() } } Limit Machine(Ident)(NonEmptyString),,,, Binding)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             shrink!(Operation: self => Filter Select Aggregate Limit,,,
+                Operation::Machine(..) => quickcheck::empty_shrinker(),
                 Operation::Binding(n, e) => {
                     let n = n.clone();
                     Box::new(e.shrink().map(move |e| Operation::Binding(n.clone(), e)))
@@ -886,6 +921,54 @@ mod for_tests {
         }
     }
 
+    impl Arbitrary for Participant {
+        fn arbitrary(g: &mut Gen) -> Self {
+            (g.choose(&[Participant::Role, Participant::Unique][..]).unwrap())(Ident::arbitrary(g))
+        }
+    }
+
+    impl<T: Arbitrary> Arbitrary for Span<'static, T> {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let span = pest::Span::new("", 0, 0).unwrap();
+            Self::new(span, T::arbitrary(g))
+        }
+
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            let span = self.span();
+            Box::new(self.deref().shrink().map(move |x| Self::new(span, x)))
+        }
+    }
+
+    impl Arbitrary for EventMode {
+        fn arbitrary(g: &mut Gen) -> Self {
+            *g.choose(&[EventMode::Fail, EventMode::Return, EventMode::Normal][..])
+                .unwrap()
+        }
+    }
+
+    impl Arbitrary for Binding {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let sub = SUB.with(|s| replace(&mut *s.borrow_mut(), false));
+            let value = SimpleExpr::arbitrary(g);
+            SUB.with(|s| *s.borrow_mut() = sub);
+            Self {
+                name: Arbitrary::arbitrary(g),
+                role: Arbitrary::arbitrary(g),
+                value,
+            }
+        }
+
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            let name = self.name.clone();
+            let role = self.role.clone();
+            Box::new(self.value.shrink().map(move |value| Self {
+                name: name.clone(),
+                role: role.clone(),
+                value,
+            }))
+        }
+    }
+
     fn ident_chars() -> &'static [char] {
         static CHOICES: OnceCell<Vec<char>> = OnceCell::new();
         &CHOICES.get_or_init(|| ('a'..='z').chain('A'..='Z').chain('0'..='9').collect())
@@ -914,6 +997,153 @@ mod for_tests {
         }
     }
 
+    macro_rules! shrink_struct {
+        ($s:ident; $($n:ident),+; $m:ident) => {
+            $s.$m.shrink().map({
+                $(let $n = $s.$n.clone();)*
+                move |$m| Self { $($n: $n.clone(),)* $m }
+            })
+        };
+        ($($n:ident),+ - $m:ident; $v:ident) => {
+            $m.shrink().map({
+                $(let $n = $n.clone();)*
+                move |$m| Self::$v { $($n: $n.clone(),)* $m }
+            })
+        };
+    }
+
+    impl Arbitrary for WorkflowStep<'static> {
+        fn arbitrary(g: &mut Gen) -> Self {
+            fn event(g: &mut Gen) -> WorkflowStep<'static> {
+                WorkflowStep::Event {
+                    state: Arbitrary::arbitrary(g),
+                    mode: Arbitrary::arbitrary(g),
+                    label: Arbitrary::arbitrary(g),
+                    participant: Arbitrary::arbitrary(g),
+                    binders: Arbitrary::arbitrary(g),
+                }
+            }
+            fn retry(g: &mut Gen) -> WorkflowStep<'static> {
+                WorkflowStep::Retry {
+                    steps: Arbitrary::arbitrary(g),
+                }
+            }
+            fn timeout(g: &mut Gen) -> WorkflowStep<'static> {
+                WorkflowStep::Timeout {
+                    micros: Arbitrary::arbitrary(g),
+                    steps: Arbitrary::arbitrary(g),
+                    mode: Arbitrary::arbitrary(g),
+                    label: Arbitrary::arbitrary(g),
+                    participant: Arbitrary::arbitrary(g),
+                    binders: Arbitrary::arbitrary(g),
+                }
+            }
+            fn parallel(g: &mut Gen) -> WorkflowStep<'static> {
+                WorkflowStep::Parallel {
+                    count: Arbitrary::arbitrary(g),
+                    cases: Arbitrary::arbitrary(g),
+                }
+            }
+            fn call(g: &mut Gen) -> WorkflowStep<'static> {
+                WorkflowStep::Call {
+                    workflow: Arbitrary::arbitrary(g),
+                    args: Arbitrary::arbitrary(g),
+                    cases: Arbitrary::arbitrary(g),
+                }
+            }
+            fn compensate(g: &mut Gen) -> WorkflowStep<'static> {
+                WorkflowStep::Compensate {
+                    body: Arbitrary::arbitrary(g),
+                    with: Arbitrary::arbitrary(g),
+                }
+            }
+            fn choice(g: &mut Gen) -> WorkflowStep<'static> {
+                WorkflowStep::Choice {
+                    cases: Arbitrary::arbitrary(g),
+                }
+            }
+            if DEPTH.with(|d| *d.borrow()) < 2 {
+                DEPTH.with(|d| *d.borrow_mut() += 1);
+                let choices = &[event, retry, timeout, parallel, call, compensate, choice][..];
+                let ret = (g.choose(choices).unwrap())(g);
+                DEPTH.with(|d| *d.borrow_mut() -= 1);
+                ret
+            } else {
+                event(g)
+            }
+        }
+
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            match self {
+                WorkflowStep::Event {
+                    state,
+                    mode,
+                    label,
+                    participant,
+                    binders,
+                } => {
+                    let state = state.clone();
+                    let mode = *mode;
+                    let label = label.clone();
+                    let participant = participant.clone();
+                    let binders = binders.clone();
+                    Box::new(binders.shrink().map(move |binders| Self::Event {
+                        state: state.clone(),
+                        mode,
+                        label: label.clone(),
+                        participant: participant.clone(),
+                        binders,
+                    }))
+                }
+                WorkflowStep::Retry { steps } => Box::new(steps.shrink().map(|steps| Self::Retry { steps })),
+                WorkflowStep::Timeout {
+                    micros,
+                    steps,
+                    mode,
+                    label,
+                    participant,
+                    binders,
+                } => {
+                    let step = shrink_struct!(micros, mode, label, participant, binders - steps; Timeout);
+                    let binder = shrink_struct!(micros, mode, label, participant, steps - binders; Timeout);
+                    Box::new(step.chain(binder))
+                }
+                WorkflowStep::Parallel { count, cases } => {
+                    let count = *count;
+                    let cases = cases.clone();
+                    Box::new(cases.shrink().map(move |cases| Self::Parallel { count, cases }))
+                }
+                WorkflowStep::Call { workflow, args, cases } => {
+                    let arg = shrink_struct!(workflow, cases - args; Call);
+                    let case = shrink_struct!(workflow, args - cases; Call);
+                    Box::new(arg.chain(case))
+                }
+                WorkflowStep::Compensate { body, with } => {
+                    let bod = shrink_struct!(with - body; Compensate);
+                    let wit = shrink_struct!(body - with; Compensate);
+                    Box::new(bod.chain(wit))
+                }
+                WorkflowStep::Choice { cases } => Box::new(cases.shrink().map(|cases| Self::Choice { cases })),
+            }
+        }
+    }
+
+    impl Arbitrary for Workflow<'static> {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                name: Arbitrary::arbitrary(g),
+                args: Arbitrary::arbitrary(g),
+                steps: Arbitrary::arbitrary(g),
+            }
+        }
+
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            let args = shrink_struct!(self; name, steps; args);
+            let steps = shrink_struct!(self; name, args; steps);
+            Box::new(args.chain(steps))
+        }
+    }
+
     impl Arbitrary for Query<'static> {
         fn arbitrary(g: &mut Gen) -> Self {
             fn word(g: &mut Gen) -> String {
@@ -939,66 +1169,33 @@ mod for_tests {
             } else {
                 BTreeMap::new()
             };
+            let workflows = if depth == 0 {
+                Vec::<Workflow>::arbitrary(g)
+                    .into_iter()
+                    .map(|w| (w.name.clone(), w))
+                    .collect()
+            } else {
+                BTreeMap::new()
+            };
             let ret = Self {
                 pragmas: Vec::new(),
                 features: Vec::<bool>::arbitrary(g).into_iter().map(|_| word(g)).collect(),
                 source,
                 ops: Arbitrary::arbitrary(g),
                 events: Arc::new(events),
+                workflows: Arc::new(workflows),
             };
             CTX.with(|c| c.replace(prev));
             ret
         }
 
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            let pragmas = self.pragmas.clone();
-            let pragmas2 = self.pragmas.clone();
-            let pragmas3 = self.pragmas.clone();
-            let pragmas4 = self.pragmas.clone();
-            let features = self.features.clone();
-            let features2 = self.features.clone();
-            let features3 = self.features.clone();
-            let source = self.source.clone();
-            let source2 = self.source.clone();
-            let source3 = self.source.clone();
-            let ops = self.ops.clone();
-            let ops2 = self.ops.clone();
-            let ops3 = self.ops.clone();
-            let events = self.events.clone();
-            let events2 = self.events.clone();
-            let events3 = self.events.clone();
-            Box::new(
-                self.ops
-                    .shrink()
-                    .map(move |ops| Self {
-                        pragmas: pragmas.clone(),
-                        features: features.clone(),
-                        source: source.clone(),
-                        ops,
-                        events: events.clone(),
-                    })
-                    .chain(self.source.shrink().map(move |source| Self {
-                        pragmas: pragmas2.clone(),
-                        features: features2.clone(),
-                        source,
-                        ops: ops.clone(),
-                        events: events2.clone(),
-                    }))
-                    .chain(self.features.shrink().map(move |features| Self {
-                        pragmas: pragmas3.clone(),
-                        features,
-                        source: source2.clone(),
-                        ops: ops2.clone(),
-                        events: events3.clone(),
-                    }))
-                    .chain(self.events.shrink().map(move |events| Self {
-                        pragmas: pragmas4.clone(),
-                        features: features3.clone(),
-                        source: source3.clone(),
-                        ops: ops3.clone(),
-                        events,
-                    })),
-            )
+            let features = shrink_struct!(self; pragmas, source, ops, events, workflows; features);
+            let source = shrink_struct!(self; pragmas, features, ops, events, workflows; source);
+            let ops = shrink_struct!(self; pragmas, features, source, events, workflows; ops);
+            let events = shrink_struct!(self; pragmas, features, source, ops, workflows; events);
+            let workflows = shrink_struct!(self; pragmas, features, source, ops, events; workflows);
+            Box::new(features.chain(source).chain(ops).chain(events).chain(workflows))
         }
     }
 
@@ -1021,6 +1218,12 @@ mod for_tests {
             // as during parsing. Luckily, this test will then prove that our canonicalisation
             // actually works.
             let s = q.to_string();
+            // println!(
+            //     "q={:?}",
+            //     &s[..s.char_indices().nth(50000).map(|x| x.0).unwrap_or(s.len())]
+            // );
+            // let mut buf = String::new();
+            // stdin().read_line(&mut buf).unwrap();
             let p = match Query::parse(&s) {
                 Ok(p) => p,
                 Err(e) => return TestResult::error(format!("parse error: {e}\nq={s}")),
@@ -1036,7 +1239,7 @@ mod for_tests {
             q = q.tests(200);
         }
         q.max_tests(1_000_000)
-            .gen(Gen::new(10))
+            .gen(Gen::new(5))
             .quickcheck(roundtrip_aql as fn(Query<'static>) -> TestResult)
     }
 }

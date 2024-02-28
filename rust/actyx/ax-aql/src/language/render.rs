@@ -1,5 +1,9 @@
 use std::fmt::{Result, Write};
 
+use self::{
+    parse_utils::Span,
+    workflow::{Binding, EventMode, Participant, WorkflowStep},
+};
 use super::*;
 use chrono::{DateTime, Local, SecondsFormat, Utc};
 
@@ -203,6 +207,10 @@ fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
             write!(w, "LET {} := ", n)?;
             render_simple_expr(w, e)
         }
+        Operation::Machine(n, r, id) => {
+            write!(w, "MACHINE {} ROLE {} ID ", n, r)?;
+            render_string(w, id.as_str())
+        }
     }
 }
 
@@ -352,6 +360,160 @@ fn render_type(w: &mut impl Write, t: &Type) -> Result {
     }
 }
 
+macro_rules! render_duration_helper {
+    ($w:ident, $d:ident, $f:literal, $unit:literal) => {
+        let v = $d % $f;
+        $d /= $f;
+        write!($w, concat!("{}", $unit), v)?;
+        if $d == 0 {
+            return Ok(());
+        }
+    };
+}
+
+fn render_duration(w: &mut impl Write, mut d: u64) -> Result {
+    render_duration_helper!(w, d, 1_000_000, "u");
+    render_duration_helper!(w, d, 60, "s");
+    render_duration_helper!(w, d, 60, "m");
+    render_duration_helper!(w, d, 24, "h");
+    render_duration_helper!(w, d, 7, "D");
+    // months/years aren’t multiples of weeks, so stop here
+    write!(w, "{}W", d)?;
+    Ok(())
+}
+
+fn render_binding(w: &mut impl Write, b: &Span<Binding>) -> Result {
+    w.write_char('{')?;
+    w.write_str(b.name.as_ref())?;
+    w.write_str(":")?;
+    w.write_str(b.role.as_ref())?;
+    w.write_str(" <- ")?;
+    render_simple_expr(w, &b.value)?;
+    w.write_char('}')?;
+    Ok(())
+}
+
+fn render_event_step(
+    w: &mut impl Write,
+    mode: &EventMode,
+    label: &Span<Ident>,
+    participant: &Span<Ident>,
+    binders: &Vec<Span<Binding>>,
+) -> Result {
+    match mode {
+        EventMode::Return => w.write_str("RETURN ")?,
+        EventMode::Fail => w.write_str("FAIL ")?,
+        EventMode::Normal => (),
+    }
+    w.write_str(label.as_ref())?;
+    w.write_str(" @ ")?;
+    w.write_str(participant.as_ref())?;
+    for b in binders.iter() {
+        w.write_str(" ")?;
+        render_binding(w, b)?;
+    }
+    Ok(())
+}
+
+fn render_workflow_step(w: &mut impl Write, e: &WorkflowStep) -> Result {
+    match e {
+        WorkflowStep::Event {
+            state,
+            mode,
+            label,
+            participant,
+            binders,
+        } => {
+            if let Some(s) = state {
+                w.write_str(s.as_ref())?;
+                w.write_str(": ")?;
+            }
+            render_event_step(w, mode, label, participant, binders)?;
+        }
+        WorkflowStep::Retry { steps } => {
+            w.write_str("RETRY ")?;
+            render_scope(w, steps)?;
+        }
+        WorkflowStep::Timeout {
+            micros,
+            steps,
+            mode,
+            label,
+            participant,
+            binders,
+        } => {
+            w.write_str("TIMEOUT ")?;
+            render_duration(w, **micros)?;
+            render_scope(w, steps)?;
+            render_event_step(w, mode, label, participant, binders)?;
+        }
+        WorkflowStep::Parallel { count, cases } => {
+            w.write_str("PARALLEL ")?;
+            render_number(w, &Num::Natural(**count))?;
+            w.write_str(" {")?;
+            for steps in cases.iter() {
+                w.write_str(" CASE")?;
+                for step in steps.iter() {
+                    w.write_char(' ')?;
+                    render_workflow_step(w, step)?;
+                }
+            }
+            w.write_str(" }")?;
+        }
+        WorkflowStep::Call { workflow, args, cases } => {
+            w.write_str("MATCH ")?;
+            w.write_str(workflow.as_ref())?;
+            w.write_char('(')?;
+            for (i, arg) in args.iter().enumerate() {
+                if i > 0 {
+                    w.write_str(", ")?;
+                }
+                w.write_str(arg.as_ref())?;
+            }
+            w.write_str(") {")?;
+            for (pred, steps) in cases.iter() {
+                w.write_str(" CASE ")?;
+                w.write_str(pred.as_ref().map(|x| x.as_ref()).unwrap_or("*"))?;
+                w.write_str(" =>")?;
+                for step in steps.iter() {
+                    w.write_char(' ')?;
+                    render_workflow_step(w, step)?;
+                }
+            }
+            w.write_str(" }")?;
+        }
+        WorkflowStep::Compensate { body, with } => {
+            w.write_str("COMPENSATE ")?;
+            render_scope(w, body)?;
+            w.write_str(" WITH ")?;
+            render_scope(w, with)?;
+        }
+        WorkflowStep::Choice { cases } => {
+            w.write_str("CHOICE {")?;
+            for steps in cases.iter() {
+                w.write_str(" CASE")?;
+                for step in steps.iter() {
+                    w.write_char(' ')?;
+                    render_workflow_step(w, step)?;
+                }
+            }
+            w.write_str(" }")?;
+        }
+    }
+    Ok(())
+}
+
+fn render_scope(w: &mut impl Write, e: &[WorkflowStep]) -> Result {
+    w.write_str("{ ")?;
+    for (i, s) in e.iter().enumerate() {
+        if i > 0 {
+            w.write_char(' ')?;
+        }
+        render_workflow_step(w, s)?;
+    }
+    w.write_str(" }")
+}
+
 pub fn render_query(w: &mut impl Write, e: &Query) -> Result {
     for (label, (t, tags)) in e.events.iter() {
         w.write_str("EVENT ")?;
@@ -367,6 +529,29 @@ pub fn render_query(w: &mut impl Write, e: &Query) -> Result {
                 render_single_tag(w, t)?;
             }
         }
+        w.write_str("\n")?;
+    }
+    for wf in e.workflows.values() {
+        w.write_str("WORKFLOW ")?;
+        w.write_str(wf.name.as_ref())?;
+        w.write_char('(')?;
+        for (i, arg) in wf.args.iter().enumerate() {
+            if i > 0 {
+                w.write_str(", ")?;
+            }
+            match &**arg {
+                Participant::Role(r) => {
+                    w.write_str("ROLE ")?;
+                    w.write_str(r.as_ref())?;
+                }
+                Participant::Unique(u) => {
+                    w.write_str("UNIQUE ")?;
+                    w.write_str(u.as_ref())?
+                }
+            }
+        }
+        w.write_str(") ")?;
+        render_scope(w, &wf.steps)?;
         w.write_str("\n")?;
     }
     if !e.features.is_empty() {

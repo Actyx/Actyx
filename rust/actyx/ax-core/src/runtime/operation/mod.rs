@@ -63,6 +63,7 @@ impl From<ax_aql::Operation> for Operation {
             ax_aql::Operation::Aggregate(a) => Self::Aggregate(a),
             ax_aql::Operation::Limit(l) => Self::Limit(l),
             ax_aql::Operation::Binding(n, e) => Self::Binding(n, e),
+            ax_aql::Operation::Machine(_n, _r, _id) => Self::Binding("TODO".to_string(), SimpleExpr::Bool(false)),
         }
     }
 }

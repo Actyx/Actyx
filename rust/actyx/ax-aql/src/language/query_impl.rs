@@ -1,12 +1,17 @@
-use crate::language::{parser::query_from_str, render::render_query, Query, StaticQuery};
+use super::workflow::Workflow;
+use crate::{
+    language::{parser::query_from_str, render::render_query, Query, StaticQuery},
+    Ident,
+};
 use serde::{Deserialize, Serialize};
+use std::{collections::BTreeMap, sync::Arc};
 
 impl<'a> Query<'a> {
     pub fn parse(s: &'a str) -> anyhow::Result<Self> {
         query_from_str(s)
     }
 
-    pub fn forget_pragmas(self) -> Query<'static> {
+    pub fn forget_pragmas_and_workflows(self) -> Query<'static> {
         let features = self.features;
         let source = self.source;
         let ops = self.ops;
@@ -17,18 +22,27 @@ impl<'a> Query<'a> {
             source,
             ops,
             events,
+            workflows: Arc::new(BTreeMap::new()),
         }
     }
 
-    pub fn decompose(self) -> (Query<'static>, Vec<String>, Vec<(&'a str, &'a str)>) {
+    pub fn decompose(
+        self,
+    ) -> (
+        Query<'static>,
+        Vec<String>,
+        Vec<(&'a str, &'a str)>,
+        Arc<BTreeMap<Ident, Workflow<'a>>>,
+    ) {
         let features = self.features;
         let pragmas = self.pragmas;
         let q = Query {
             pragmas: vec![],
             features: vec![],
+            workflows: Arc::new(BTreeMap::new()),
             ..self
         };
-        (q, features, pragmas)
+        (q, features, pragmas, self.workflows)
     }
 }
 
@@ -54,6 +68,7 @@ impl<'de> Deserialize<'de> for StaticQuery {
             source: q.source,
             ops: q.ops,
             events: q.events,
+            workflows: Arc::new(BTreeMap::new()),
         }))
     }
 }
