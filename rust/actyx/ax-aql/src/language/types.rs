@@ -17,6 +17,8 @@ pub enum Type {
     Intersection(Arc<(Type, Type)>),
     Array(Arc<Type>),
     Dict(Arc<Type>),
+    Tuple(NonEmptyVec<Type>),
+    Record(NonEmptyVec<(Label, Type)>),
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -26,8 +28,6 @@ pub enum TypeAtom {
     Number(Option<u64>),
     Timestamp,
     String(Option<String>),
-    Tuple(NonEmptyVec<Type>),
-    Record(NonEmptyVec<(Label, Type)>),
     Universal,
 }
 
@@ -63,7 +63,7 @@ pub fn r_type(p: P) -> anyhow::Result<Type> {
                         .filter(|p| p.as_rule() == Rule::r#type)
                         .map(r_type)
                         .collect::<Result<Vec<_>, _>>()?;
-                    Type::Atom(TypeAtom::Tuple(NonEmptyVec::try_from(ts).spanned(span)?))
+                    Type::Tuple(NonEmptyVec::try_from(ts).spanned(span)?)
                 }
                 Rule::type_record => {
                     let mut ts = vec![];
@@ -81,7 +81,7 @@ pub fn r_type(p: P) -> anyhow::Result<Type> {
                         let t = r_type(p.next().ok_or(NoVal("value"))?)?;
                         ts.push((label, t));
                     }
-                    Type::Atom(TypeAtom::Record(NonEmptyVec::try_from(ts).spanned(span)?))
+                    Type::Record(NonEmptyVec::try_from(ts).spanned(span)?)
                 }
                 Rule::type_paren => r_type(p.into_inner().nth(1).ok_or(NoVal("nested type"))?)?,
                 Rule::type_universal => Type::Atom(TypeAtom::Universal),
