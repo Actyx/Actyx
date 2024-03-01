@@ -228,7 +228,7 @@ fn r_binding(p: P) -> anyhow::Result<Span<Binding>> {
 fn r_timeout(p: P) -> anyhow::Result<WorkflowStep> {
     let mut p = p.into_inner();
     let _timeout = p.next().unwrap();
-    let duration = Span::make(p.next().unwrap(), |p| r_duration(p))?;
+    let duration = Span::make(p.next().unwrap(), r_duration)?;
     let steps = r_scope(p.next().unwrap())?;
     let WorkflowStep::Event {
         state: _,
@@ -279,7 +279,7 @@ fn r_call(p: P) -> anyhow::Result<WorkflowStep> {
         .collect::<Result<Vec<_>, _>>()?;
     let mut cases = vec![];
     let curly = p.next().unwrap();
-    while let Some(p) = p.next() {
+    for p in p {
         if p.as_rule() == Rule::curlyr {
             break;
         }

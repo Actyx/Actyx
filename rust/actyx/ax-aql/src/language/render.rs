@@ -398,7 +398,7 @@ fn render_event_step(
     mode: &EventMode,
     label: &Span<Ident>,
     participant: &Span<Ident>,
-    binders: &Vec<Span<Binding>>,
+    binders: &[Span<Binding>],
 ) -> Result {
     match mode {
         EventMode::Return => w.write_str("RETURN ")?,

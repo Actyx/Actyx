@@ -153,7 +153,7 @@ impl<'a, T: Ord> Ord for Span<'a, T> {
 
 impl<'a, T: Ord> PartialOrd for Span<'a, T> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
@@ -166,6 +166,7 @@ impl<'a, T> Span<'a, T> {
         Ok(Self::new(p.as_span(), f(p)?))
     }
 
+    #[allow(clippy::result_large_err)]
     pub fn err(&self, msg: impl Into<String>) -> Result<(), pest::error::Error<Rule>> {
         Err(pest::error::Error::new_from_span(
             pest::error::ErrorVariant::CustomError { message: msg.into() },
