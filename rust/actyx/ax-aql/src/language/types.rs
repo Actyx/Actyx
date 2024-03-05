@@ -10,7 +10,7 @@ use once_cell::sync::Lazy;
 use pest::pratt_parser::{Assoc, Op, PrattParser};
 use std::sync::Arc;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum Type {
     Atom(TypeAtom),
     Union(Arc<(Type, Type)>),
@@ -21,7 +21,7 @@ pub enum Type {
     Record(NonEmptyVec<(Label, Type)>),
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum TypeAtom {
     Null,
     Bool(Option<bool>),
@@ -31,7 +31,7 @@ pub enum TypeAtom {
     Universal,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum Label {
     String(NonEmptyString),
     Number(u64),
