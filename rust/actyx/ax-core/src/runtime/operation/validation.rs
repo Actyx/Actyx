@@ -1,7 +1,4 @@
-use std::{
-    borrow::{Borrow, Cow},
-    fmt::Display,
-};
+use std::borrow::Cow;
 
 use anyhow::Context;
 use ax_aql::{Label, NonEmptyVec, Type, TypeAtom};
@@ -183,226 +180,19 @@ fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> Result
     }
 }
 
-// Using logic rules and De Morgan laws to rewrite intersections and unions before we reach this method
-// would (probably) allow us to write a better (i.e. simpler) and more performant validator
-fn validate_union(value: &CborValue, ty: &(Type, Type)) -> Result<(), anyhow::Error> {
-    // Since the union operation is commutative, we always evaluate the most specific type first
-    // TODO: add tests
-    match ty.borrow() {
-        // Atom
-        (Type::Atom(left), Type::Atom(right)) => {
-            validate_atom(value, &left).or_else(|err| validate_atom(value, &right).context(err))
-        }
-        (Type::Atom(atom), Type::Union(union)) | (Type::Union(union), Type::Atom(atom)) => {
-            validate_atom(value, &atom).or_else(|err| validate_union(value, union).context(err))
-        }
-        (Type::Atom(atom), Type::Intersection(intersection)) | (Type::Intersection(intersection), Type::Atom(atom)) => {
-            validate_atom(value, &atom).or_else(|err| validate_intersection(value, intersection).context(err))
-        }
-        (Type::Atom(atom), Type::Array(_)) | (Type::Array(_), Type::Atom(atom)) => {
-            validate_atom(value, &atom).or_else(|err| validate_array(value).context(err))
-        }
-        (Type::Atom(atom), Type::Tuple(tuple)) | (Type::Tuple(tuple), Type::Atom(atom)) => {
-            validate_atom(value, atom).or_else(|err| validate_tuple(value, tuple.len()).context(err))
-        }
-        (Type::Atom(atom), Type::Dict(_)) | (Type::Dict(_), Type::Atom(atom)) => {
-            validate_atom(value, &atom).or_else(|err| validate_dict(value).context(err))
-        }
-        (Type::Atom(atom), Type::Record(record)) | (Type::Record(record), Type::Atom(atom)) => {
-            validate_atom(value, atom).or_else(|err| validate_record(value, record).context(err))
-        }
-        (Type::Array(_), Type::Array(_)) => validate_array(value), // TODO: support sub-typing
-        (Type::Array(_), Type::Union(union)) | (Type::Union(union), Type::Array(_)) => {
-            validate_array(value).or_else(|err| validate_union(value, union).context(err))
-        }
-        (Type::Array(_), Type::Intersection(intersection)) | (Type::Intersection(intersection), Type::Array(_)) => {
-            validate_array(value).or_else(|err| validate_intersection(value, intersection).context(err))
-        }
-        (Type::Array(_), Type::Dict(_)) | (Type::Dict(_), Type::Array(_)) => {
-            validate_array(value).or_else(|err| validate_dict(value).context(err))
-        }
-        (Type::Array(_), Type::Record(record)) | (Type::Record(record), Type::Array(_)) => {
-            validate_array(value).or_else(|err| validate_record(value, record).context(err))
-        }
-        (Type::Array(_), Type::Tuple(tuple)) | (Type::Tuple(tuple), Type::Array(_)) => {
-            validate_tuple(value, tuple.len()).or_else(|err| validate_array(value).context(err))
-        }
-        (Type::Dict(_), Type::Dict(_)) => validate_dict(value), // TODO: add sub-typing
-        (Type::Dict(_), Type::Union(union)) | (Type::Union(union), Type::Dict(_)) => {
-            validate_dict(value).or_else(|err| validate_union(value, union).context(err))
-        }
-        (Type::Dict(_), Type::Intersection(intersection)) | (Type::Intersection(intersection), Type::Dict(_)) => {
-            validate_dict(value).or_else(|err| validate_intersection(value, intersection).context(err))
-        }
-        (Type::Dict(_), Type::Tuple(tuple)) | (Type::Tuple(tuple), Type::Dict(_)) => {
-            validate_dict(value).or_else(|err| validate_tuple(value, tuple.len()).context(err))
-        }
-        (Type::Dict(_), Type::Record(record)) | (Type::Record(record), Type::Dict(_)) => {
-            validate_dict(value).or_else(|err| validate_record(value, record).context(err))
-        }
-        (Type::Tuple(left), Type::Tuple(right)) => {
-            // TODO: add further sub-typing
-            validate_tuple(value, left.len()).or_else(|err| validate_tuple(value, right.len()).context(err))
-        }
-        (Type::Tuple(tuple), Type::Union(union)) | (Type::Union(union), Type::Tuple(tuple)) => {
-            validate_tuple(value, tuple.len()).or_else(|err| validate_union(value, union).context(err))
-        }
-        (Type::Tuple(tuple), Type::Intersection(intersection))
-        | (Type::Intersection(intersection), Type::Tuple(tuple)) => {
-            validate_tuple(value, tuple.len()).or_else(|err| validate_intersection(value, intersection).context(err))
-        }
-        (Type::Tuple(tuple), Type::Record(record)) | (Type::Record(record), Type::Tuple(tuple)) => {
-            validate_tuple(value, tuple.len()).or_else(|err| validate_record(value, record).context(err))
-        }
-        (Type::Record(left), Type::Record(right)) => {
-            validate_record(value, left).or_else(|err| validate_record(value, right).context(err))
-        }
-        (Type::Record(record), Type::Union(union)) | (Type::Union(union), Type::Record(record)) => {
-            // This is kind of a bet that the union will be shallower than the record
-            validate_union(value, union).or_else(|err| validate_record(value, record).context(err))
-        }
-        (Type::Record(record), Type::Intersection(intersection))
-        | (Type::Intersection(intersection), Type::Record(record)) => {
-            // This is kind of a bet that the intersection will be shallower than the record
-            validate_intersection(value, intersection).or_else(|err| validate_record(value, record).context(err))
-        }
-        (Type::Union(left), Type::Union(right)) => {
-            validate_union(value, left).or_else(|err| validate_union(value, right).context(err))
-        }
-        (Type::Union(union), Type::Intersection(intersection))
-        | (Type::Intersection(intersection), Type::Union(union)) => {
-            validate_union(value, union).or_else(|err| validate_intersection(value, intersection).context(err))
-        }
-        (Type::Intersection(left), Type::Intersection(right)) => {
-            validate_intersection(value, left).or_else(|err| validate_intersection(value, right).context(err))
-        }
-    }
-}
-
-fn validate_intersection(value: &CborValue, ty: &(Type, Type)) -> Result<(), anyhow::Error> {
-    match ty.borrow() {
-        (Type::Atom(left), Type::Atom(right)) => {
-            intersect_atoms(left, right).and_then(|intersection| validate_atom(value, &intersection))
-        }
-        (Type::Atom(atom), Type::Union(union)) | (Type::Union(union), Type::Atom(atom)) => {
-            validate_atom(value, atom).and_then(|_| validate_union(value, union))
-        }
-        (Type::Atom(atom), Type::Intersection(intersection)) | (Type::Intersection(intersection), Type::Atom(atom)) => {
-            validate_atom(value, atom).and_then(|_| validate_intersection(value, intersection))
-        }
-        (Type::Array(_), Type::Array(_)) => validate_array(value), // TODO: handle subtyping
-        (Type::Array(_), Type::Union(union)) | (Type::Union(union), Type::Array(_)) => {
-            validate_array(value).and_then(|_| validate_union(value, union))
-        }
-        (Type::Array(_), Type::Intersection(intersection)) | (Type::Intersection(intersection), Type::Array(_)) => {
-            validate_array(value).and_then(|_| validate_intersection(value, intersection))
-        }
-        (Type::Dict(_), Type::Dict(_)) => validate_dict(value), // TODO: handle subtyping
-        (Type::Dict(_), Type::Union(union)) | (Type::Union(union), Type::Dict(_)) => {
-            validate_dict(value).and_then(|_| validate_union(value, union))
-        }
-        (Type::Dict(_), Type::Intersection(intersection)) | (Type::Intersection(intersection), Type::Dict(_)) => {
-            validate_dict(value).and_then(|_| validate_intersection(value, intersection))
-        }
-        (Type::Tuple(left), Type::Tuple(right)) => {
-            // TODO: add subtyping
-            if left.len() == right.len() {
-                validate_tuple(value, left.len())
-            } else {
-                Err(anyhow::anyhow!("invalid intersection"))
-            }
-        }
-        (Type::Tuple(tuple), Type::Union(union)) | (Type::Union(union), Type::Tuple(tuple)) => {
-            validate_tuple(value, tuple.len()).and_then(|_| validate_union(value, union))
-        }
-        (Type::Tuple(tuple), Type::Intersection(intersection))
-        | (Type::Intersection(intersection), Type::Tuple(tuple)) => {
-            validate_tuple(value, tuple.len()).and_then(|_| validate_intersection(value, intersection))
-        }
-        (Type::Record(left), Type::Record(right)) => {
-            // TODO: we can intersect the records to get either a single one or an error
-            // such approach should make this more efficient
-            validate_record(value, left).and_then(|_| validate_record(value, right))
-        }
-        (Type::Record(record), Type::Union(union)) | (Type::Union(union), Type::Record(record)) => {
-            validate_record(value, record).and_then(|_| validate_union(value, union))
-        }
-        (Type::Record(record), Type::Intersection(intersection))
-        | (Type::Intersection(intersection), Type::Record(record)) => {
-            validate_record(value, record).and_then(|_| validate_intersection(value, intersection))
-        }
-        (Type::Union(left), Type::Union(right)) => {
-            validate_union(value, left).and_then(|_| validate_union(value, right))
-        }
-        (Type::Intersection(left), Type::Intersection(right)) => {
-            validate_intersection(value, left).and_then(|_| validate_intersection(value, right))
-        }
-        (Type::Union(union), Type::Intersection(intersection))
-        | (Type::Intersection(intersection), Type::Union(union)) => {
-            // Assuming that the intersection will result in an acceptance/rejection "faster"
-            validate_intersection(value, intersection).and_then(|_| validate_union(value, union))
-        }
-        _ => {
-            // All other intersections are invalid!
-            // Theoretically, this should be unreachable as it should be caught earlier by the type checker
-            Err(anyhow::anyhow!("invalid intersection"))
-        }
-    }
-}
-
 fn validate(value: &CborValue, ty: &Type) -> Result<(), anyhow::Error> {
     match ty {
         Type::Atom(atom) => validate_atom(value, atom),
-        Type::Union(union) => validate_union(value, union),
-        Type::Intersection(intersection) => validate_intersection(value, intersection),
         Type::Array(_) => validate_array(value),
         Type::Dict(_) => validate_dict(value),
         Type::Tuple(tuple) => validate_tuple(value, tuple.len()),
         Type::Record(record) => validate_record(value, record),
-    }
-}
-
-/// Intersect refinements. Intersecting two absent refinements or an absent refinement and an existing one is always successful.
-///
-/// For example:
-/// ```text
-/// BOOL & BOOL => BOOL
-/// true & BOOL => true
-/// true & true => true
-/// true & false => !
-/// ```
-fn intersect_refinement<T: Eq + Display + Clone>(
-    left: &Option<T>,
-    right: &Option<T>,
-) -> Result<Option<T>, anyhow::Error> {
-    match (left, right) {
-        (None, None) => Ok(None),
-        (None, Some(r)) => Ok(Some(r.clone())),
-        (Some(l), None) => Ok(Some(l.clone())),
-        (Some(l), Some(r)) => {
-            if l == r {
-                Ok(Some(l.clone()))
-            } else {
-                Err(anyhow::anyhow!("failed to intersect {} and {}", l, r))
-            }
+        // We can make this much more efficient by checking more things beforehand
+        // like intersecting types before decoding anything
+        Type::Union(union) => validate(value, &union.0).or_else(|err| validate(value, &union.1).context(err)),
+        Type::Intersection(intersection) => {
+            validate(value, &intersection.0).and_then(|_| validate(value, &intersection.1))
         }
-    }
-}
-
-// NOTE(duarte): ideally, some of these methods, instead of returning an error, should return a "Never" type
-// that then gets translated to an error, in the most adequate place
-
-/// Intersect atoms. As a rule of thumb, if your atoms are not of the same kind they will not intersect, furthermore,
-/// if both atoms are refinable see [`intersect_refinement`] for more information.
-fn intersect_atoms(left: &TypeAtom, right: &TypeAtom) -> Result<TypeAtom, anyhow::Error> {
-    match (left, right) {
-        (TypeAtom::Bool(l), TypeAtom::Bool(r)) => intersect_refinement(l, r).map(|r| (TypeAtom::Bool(r))),
-        (TypeAtom::String(l), TypeAtom::String(r)) => intersect_refinement(l, r).map(|r| (TypeAtom::String(r))),
-        (TypeAtom::Number(l), TypeAtom::Number(r)) => intersect_refinement(l, r).map(|r| (TypeAtom::Number(r))),
-        // This one also covers Universal & Universal
-        (TypeAtom::Universal, atom) | (atom, TypeAtom::Universal) => Ok(atom.clone()),
-        // TODO(duarte): figure out a better error message
-        (left, right) => Err(anyhow::anyhow!("failed to intersect {:?} and {:?}", left, right)),
     }
 }
 
@@ -410,11 +200,9 @@ fn intersect_atoms(left: &TypeAtom, right: &TypeAtom) -> Result<TypeAtom, anyhow
 mod test {
     use std::sync::Arc;
 
-    use crate::runtime::operation::validation::validate_union;
-
     use super::{
-        validate_array, validate_atom, validate_bool, validate_dict, validate_intersection, validate_null,
-        validate_number, validate_record, validate_string, validate_timestamp, validate_tuple,
+        validate, validate_array, validate_atom, validate_bool, validate_dict, validate_null, validate_number,
+        validate_record, validate_string, validate_timestamp, validate_tuple,
     };
 
     use ax_aql::{Label, Type, TypeAtom};
@@ -636,8 +424,8 @@ mod test {
         let cbor = cbor.decode();
         let left = Type::Atom(TypeAtom::Null);
         let right = Type::Atom(TypeAtom::Timestamp);
-        assert!(validate_union(&cbor, &(left.clone(), right.clone())).is_ok());
-        assert!(validate_union(&cbor, &(right.clone(), left.clone())).is_ok());
+        assert!(validate(&cbor, &Type::Union(Arc::new((left.clone(), right.clone())))).is_ok());
+        assert!(validate(&cbor, &Type::Union(Arc::new((right.clone(), left.clone())))).is_ok());
     }
 
     #[test]
@@ -658,11 +446,11 @@ mod test {
         let cbor = cbor.decode();
 
         // Null | Timestamp
-        assert!(validate_union(&cbor, left.as_ref()).is_err());
+        assert!(validate(&cbor, &Type::Union(left.clone())).is_err());
         // Bool(false) | String("Olá")
-        assert!(validate_union(&cbor, right.as_ref()).is_ok());
+        assert!(validate(&cbor, &Type::Union(right.clone())).is_ok());
         // (Null | Timestamp) | (Bool(false) | String("Olá"))
-        assert!(validate_union(&cbor, &((Type::Union(left), Type::Union(right)))).is_ok());
+        assert!(validate(&cbor, &Type::Union(Arc::new((Type::Union(left), Type::Union(right))))).is_ok());
     }
 
     #[test]
@@ -676,25 +464,23 @@ mod test {
         let first_union = {
             let left = Type::Atom(TypeAtom::Null);
             let right = Type::Atom(TypeAtom::Timestamp);
-            Arc::new((left, right))
+            Type::Union(Arc::new((left, right)))
         };
-        assert!(validate_union(&cbor, first_union.as_ref()).is_ok());
+        assert!(validate(&cbor, &first_union).is_ok());
 
         // Boolean(false) | (Null | Timestamp)
         let second_union = {
             let left = Type::Atom(TypeAtom::Bool(Some(false)));
-            let right = Type::Union(first_union);
-            Arc::new((left, right))
+            Type::Union(Arc::new((left, first_union)))
         };
-        assert!(validate_union(&cbor, second_union.as_ref()).is_ok());
+        assert!(validate(&cbor, &second_union).is_ok());
 
         // String("Olá") | (Boolean(false) | (Null | Timestamp))
         let third_union = {
             let left = Type::Atom(TypeAtom::String(Some("Olá".to_string())));
-            let right = Type::Union(second_union);
-            Arc::new((left, right))
+            Type::Union(Arc::new((left, second_union)))
         };
-        assert!(validate_union(&cbor, third_union.as_ref()).is_ok());
+        assert!(validate(&cbor, &third_union).is_ok());
     }
 
     #[test]
@@ -708,35 +494,35 @@ mod test {
         let first_union = {
             let left = Type::Atom(TypeAtom::Number(Some(10)));
             let right = Type::Atom(TypeAtom::Timestamp);
-            Arc::new((left, right))
+            Type::Union(Arc::new((left, right)))
         };
-        assert!(validate_union(&cbor, first_union.as_ref()).is_err());
+        assert!(validate(&cbor, &first_union).is_err());
 
         // Boolean(false) | (Null | Timestamp)
         let second_union = {
             let left = Type::Atom(TypeAtom::Bool(Some(false)));
-            let right = Type::Union(first_union);
-            Arc::new((left, right))
+            Type::Union(Arc::new((left, first_union)))
         };
-        assert!(validate_union(&cbor, second_union.as_ref()).is_err());
+        assert!(validate(&cbor, &second_union).is_err());
 
         // String("Olá") | (Boolean(false) | (Null | Timestamp))
         let third_union = {
             let left = Type::Atom(TypeAtom::String(Some("Olá".to_string())));
-            let right = Type::Union(second_union);
-            Arc::new((left, right))
+            Type::Union(Arc::new((left, second_union)))
         };
-        assert!(validate_union(&cbor, third_union.as_ref()).is_err());
+        assert!(validate(&cbor, &third_union).is_err());
     }
 
     #[test]
     fn test_validate_intersection() {
         let cbor = CborBuilder::new().encode_i64(10);
         let cbor = cbor.decode();
+
         let left = Type::Atom(TypeAtom::Number(None));
         let right = Type::Atom(TypeAtom::Number(Some(10)));
+        let intersection = Type::Intersection(Arc::new((left, right)));
 
-        assert!(validate_intersection(&cbor, &(left, right)).is_ok());
+        assert!(validate(&cbor, &intersection).is_ok());
     }
 
     #[test]
@@ -762,17 +548,16 @@ mod test {
         let first_intersection = {
             let left = Type::Atom(TypeAtom::Number(Some(10)));
             let right = Type::Atom(TypeAtom::Number(None));
-            Arc::new((left, right))
+            Type::Intersection(Arc::new((left, right)))
         };
-        assert!(validate_intersection(&cbor, first_intersection.as_ref()).is_ok());
+        assert!(validate(&cbor, &first_intersection).is_ok());
 
         // Universal & (Number(10) & Number)
         let second_intersection = {
             let left = Type::Atom(TypeAtom::Universal);
-            let right = Type::Union(first_intersection);
-            Arc::new((left, right))
+            Type::Intersection(Arc::new((left, first_intersection)))
         };
-        assert!(validate_intersection(&cbor, second_intersection.as_ref()).is_ok());
+        assert!(validate(&cbor, &second_intersection).is_ok());
     }
 
     #[test]
@@ -786,23 +571,83 @@ mod test {
         let first_intersection = {
             let left = Type::Atom(TypeAtom::Number(Some(10)));
             let right = Type::Atom(TypeAtom::Number(None));
-            Arc::new((left, right))
+            Type::Intersection(Arc::new((left, right)))
         };
-        assert!(validate_intersection(&cbor, first_intersection.as_ref()).is_ok());
+        assert!(validate(&cbor, &first_intersection).is_ok());
 
         // Universal & (Number(10) & Number)
         let second_intersection = {
             let left = Type::Atom(TypeAtom::Universal);
-            let right = Type::Union(first_intersection);
-            Arc::new((left, right))
+            Type::Intersection(Arc::new((left, first_intersection)))
         };
-        assert!(validate_intersection(&cbor, second_intersection.as_ref()).is_ok());
+        assert!(validate(&cbor, &second_intersection).is_ok());
 
         let third_intersection = {
             let left = Type::Atom(TypeAtom::Null);
-            let right = Type::Union(second_intersection);
-            Arc::new((left, right))
+            Type::Intersection(Arc::new((left, second_intersection)))
         };
-        assert!(validate_intersection(&cbor, third_intersection.as_ref()).is_err());
+        assert!(validate(&cbor, &third_intersection).is_err());
+    }
+
+    #[test]
+    fn test_intersection_of_unions() {
+        let left_union = {
+            let left = Type::Atom(TypeAtom::Number(Some(10)));
+            let right = Type::Atom(TypeAtom::Null);
+            Type::Union(Arc::new((left, right)))
+        };
+
+        let right_union = {
+            let left = Type::Atom(TypeAtom::Number(None));
+            let right = Type::Atom(TypeAtom::Bool(None));
+            Type::Union(Arc::new((left, right)))
+        };
+
+        let intersection = Type::Intersection(Arc::new((left_union, right_union)));
+
+        let cbor = CborBuilder::new().encode_i64(10);
+        let cbor = cbor.decode();
+        assert!(validate(&cbor, &intersection).is_ok());
+
+        let cbor = CborBuilder::new().encode_null();
+        let cbor = cbor.decode();
+        assert!(validate(&cbor, &intersection).is_err());
+
+        let cbor = CborBuilder::new().encode_bool(false);
+        let cbor = cbor.decode();
+        assert!(validate(&cbor, &intersection).is_err());
+    }
+
+    #[test]
+    fn test_union_of_intersections() {
+        let left_intersection = {
+            let left = Type::Atom(TypeAtom::Number(Some(10)));
+            let right = Type::Atom(TypeAtom::Number(None));
+            Type::Intersection(Arc::new((left, right)))
+        };
+
+        let right_intersection = {
+            let left = Type::Atom(TypeAtom::Null);
+            let right = Type::Atom(TypeAtom::Bool(None));
+            Type::Intersection(Arc::new((left, right)))
+        };
+
+        let union = Type::Union(Arc::new((left_intersection, right_intersection)));
+
+        let cbor = CborBuilder::new().encode_i64(10);
+        let cbor = cbor.decode();
+        assert!(validate(&cbor, &union).is_ok());
+
+        let cbor = CborBuilder::new().encode_i64(101);
+        let cbor = cbor.decode();
+        assert!(validate(&cbor, &union).is_err());
+
+        let cbor = CborBuilder::new().encode_null();
+        let cbor = cbor.decode();
+        assert!(validate(&cbor, &union).is_err());
+
+        let cbor = CborBuilder::new().encode_bool(false);
+        let cbor = cbor.decode();
+        assert!(validate(&cbor, &union).is_err());
     }
 }
