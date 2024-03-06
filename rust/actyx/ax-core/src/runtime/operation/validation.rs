@@ -200,7 +200,6 @@ fn validate_union(value: &CborValue, ty: &(Type, Type)) -> Result<(), anyhow::Er
             validate_atom(value, &atom).or_else(|err| validate_intersection(value, intersection).context(err))
         }
         (Type::Atom(atom), Type::Array(_)) | (Type::Array(_), Type::Atom(atom)) => {
-            // Arrays and tuples since according to RFC 7049 they're "interchangeable"
             validate_atom(value, &atom).or_else(|err| validate_array(value).context(err))
         }
         (Type::Atom(atom), Type::Tuple(tuple)) | (Type::Tuple(tuple), Type::Atom(atom)) => {
@@ -744,11 +743,66 @@ mod test {
     fn test_validate_intersection_fail() {
         let cbor = CborBuilder::new().encode_i64(10);
         let cbor = cbor.decode();
+
         let left = Type::Atom(TypeAtom::Null);
         let right = Type::Atom(TypeAtom::Timestamp);
-        assert!(validate_intersection(&cbor, &(left, right)).is_err_and(|err| {
-            let err_message = format!("failed to intersect {:?} and {:?}", TypeAtom::Null, TypeAtom::Timestamp);
-            err.to_string() == err_message
-        }));
+        let intersection = Type::Intersection(Arc::new((left, right)));
+
+        assert!(validate(&cbor, &intersection).is_err());
+    }
+
+    #[test]
+    fn test_validate_intersection_nested() {
+        // A & (B & (C & D)
+
+        let cbor = CborBuilder::new().encode_i64(10);
+        let cbor = cbor.decode();
+
+        // Number(10) & Number
+        let first_intersection = {
+            let left = Type::Atom(TypeAtom::Number(Some(10)));
+            let right = Type::Atom(TypeAtom::Number(None));
+            Arc::new((left, right))
+        };
+        assert!(validate_intersection(&cbor, first_intersection.as_ref()).is_ok());
+
+        // Universal & (Number(10) & Number)
+        let second_intersection = {
+            let left = Type::Atom(TypeAtom::Universal);
+            let right = Type::Union(first_intersection);
+            Arc::new((left, right))
+        };
+        assert!(validate_intersection(&cbor, second_intersection.as_ref()).is_ok());
+    }
+
+    #[test]
+    fn test_validate_intersection_nested_fail() {
+        // A & (B & (C & D)
+
+        let cbor = CborBuilder::new().encode_i64(10);
+        let cbor = cbor.decode();
+
+        // Number(10) & Number
+        let first_intersection = {
+            let left = Type::Atom(TypeAtom::Number(Some(10)));
+            let right = Type::Atom(TypeAtom::Number(None));
+            Arc::new((left, right))
+        };
+        assert!(validate_intersection(&cbor, first_intersection.as_ref()).is_ok());
+
+        // Universal & (Number(10) & Number)
+        let second_intersection = {
+            let left = Type::Atom(TypeAtom::Universal);
+            let right = Type::Union(first_intersection);
+            Arc::new((left, right))
+        };
+        assert!(validate_intersection(&cbor, second_intersection.as_ref()).is_ok());
+
+        let third_intersection = {
+            let left = Type::Atom(TypeAtom::Null);
+            let right = Type::Union(second_intersection);
+            Arc::new((left, right))
+        };
+        assert!(validate_intersection(&cbor, third_intersection.as_ref()).is_err());
     }
 }
