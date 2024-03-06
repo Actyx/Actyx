@@ -863,19 +863,26 @@ mod for_tests {
 
     impl Arbitrary for TypeAtom {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(TypeAtom: g => Bool Number String, Tuple Record,, Null Timestamp Universal)
+            arb!(TypeAtom: g => Bool Number String,,, Null Timestamp Universal)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            shrink!(TypeAtom: self => Bool Number String, Tuple(x,) Record(x,), Null Timestamp Universal)
+            shrink!(TypeAtom: self => Bool Number String,, Null Timestamp Universal)
         }
     }
 
     impl Arbitrary for Type {
         fn arbitrary(g: &mut Gen) -> Self {
-            arb!(Type: g => Atom, Union Intersection Array Dict,,)
+            arb!(Type: g => Atom, Union Intersection Array Dict Tuple Record,,)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            shrink!(Type: self => Atom, Union(x, x.0.clone(), x.1.clone()) Intersection(x, x.0.clone(), x.1.clone()) Array(x,(**x).clone()) Dict(x,(**x).clone()),)
+            shrink!(Type: self => Atom,
+                Union(x, x.0.clone(), x.1.clone())
+                Intersection(x, x.0.clone(), x.1.clone())
+                Array(x,(**x).clone())
+                Dict(x,(**x).clone())
+                Tuple(x,)
+                Record(x,)
+            ,)
         }
     }
 
@@ -1160,9 +1167,8 @@ mod for_tests {
                     .into_iter()
                     .map(|label| {
                         let tags = Vec::<SingleTag>::arbitrary(g);
-                        let t = Type::Atom(TypeAtom::Record(
-                            NonEmptyVec::<Label>::arbitrary(g).map(|l| (l.clone(), Type::arbitrary(g))),
-                        ));
+                        let t =
+                            Type::Record(NonEmptyVec::<Label>::arbitrary(g).map(|l| (l.clone(), Type::arbitrary(g))));
                         (label, (t, tags))
                     })
                     .collect()
