@@ -64,7 +64,7 @@ pub struct Query<'a> {
 mod query_impl;
 mod rewrite_impl;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct Ident(NonEmptyString);
 
 impl Display for Ident {

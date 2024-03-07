@@ -1,10 +1,10 @@
 use super::workflow::Workflow;
 use crate::{
     language::{parser::query_from_str, render::render_query, Query, StaticQuery},
-    Ident,
+    Ident, Type,
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, ops::Deref, sync::Arc};
 
 impl<'a> Query<'a> {
     pub fn parse(s: &'a str) -> anyhow::Result<Self> {
@@ -43,6 +43,18 @@ impl<'a> Query<'a> {
             ..self
         };
         (q, features, pragmas, self.workflows)
+    }
+
+    pub fn get_used_event_types(&'a self) -> impl Iterator<Item = Type> + 'a {
+        self.workflows
+            .iter()
+            .flat_map(|(_, workflow)| workflow.steps.iter().map(|step| step.get_events()))
+            .flatten()
+            // if we just took the idents earlier we could probably replace the vecs in get_events with iterators
+            .map(|events| events.deref().clone())
+            .into_iter()
+            .filter_map(|ident| self.events.get(&ident).map(|(ty, _)| ty))
+            .cloned()
     }
 }
 
