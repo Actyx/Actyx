@@ -2,8 +2,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use std::{
-    cell::RefCell,
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeMap,
     convert::{TryFrom, TryInto},
     str::FromStr,
     sync::Arc,
@@ -17,7 +16,7 @@ use super::{
     AggrOp, Arr, FuncCall, Ident, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, Source, SpreadExpr, TagAtom,
     TagExpr,
 };
-use crate::{SortKey, Type};
+use crate::SortKey;
 use anyhow::{bail, ensure, Result};
 use ax_types::{service::Order, Tag, Timestamp};
 use chrono::{FixedOffset, TimeZone, Timelike, Utc};
@@ -734,47 +733,36 @@ pub(crate) enum QueryWorkflowAnalysisErrorType {
 
 pub(crate) struct QueryWorkflowAnalysis<'a> {
     pub(crate) query: &'a Query<'a>,
-    pub(crate) workflow_tracker: WorkflowTracker<'a>,
 }
 
 impl<'a> QueryWorkflowAnalysis<'a> {
     pub fn from(query: &'a Query) -> Self {
-        Self {
-            query,
-            workflow_tracker: Default::default(),
-        }
+        Self { query }
     }
 
-    pub fn check(&'a self, query: &'a Query) -> Vec<QueryWorkflowAnalysisError> {
-        let mut errors = Vec::new();
-        query
+    pub fn check(&'a self) -> Vec<QueryWorkflowAnalysisError> {
+        self.query
             .workflows
             .iter()
-            .for_each(|(_ident, workflow)| errors.extend(self.check_workflow(workflow)));
-        errors
+            .flat_map(|(_ident, workflow)| self.check_workflow(workflow))
+            .collect()
     }
 
     fn check_workflow(&'a self, workflow: &'a Workflow) -> Vec<QueryWorkflowAnalysisError> {
-        if self.workflow_tracker.contains(workflow) {
-            return Vec::new();
-        }
-        self.workflow_tracker.insert(workflow);
         self.check_steps(&workflow.steps)
     }
 
     fn check_steps(&'a self, steps: &'a NonEmptyVec<WorkflowStep<'a>>) -> Vec<QueryWorkflowAnalysisError> {
-        let mut errors = Vec::new();
-        steps.iter().for_each(|step| errors.extend(self.check_step(step)));
-        errors
+        steps.iter().flat_map(|step| self.check_step(step)).collect()
     }
 
     fn check_step(&'a self, step: &'a WorkflowStep<'a>) -> Vec<QueryWorkflowAnalysisError> {
-        use super::workflow::WorkflowStep::*;
+        use super::workflow::WorkflowStep as W;
 
         match step {
-            Event { label, binders: _, .. } => {
+            W::Event { label, binders: _, .. } => {
                 let mut errors = Vec::new();
-                if !self.query.events.contains_key(&label) {
+                if !self.query.events.contains_key(label) {
                     errors.push(QueryWorkflowAnalysisError {
                         error_type: QueryWorkflowAnalysisErrorType::UndeclaredEvent,
                         span: label.clone(),
@@ -783,52 +771,34 @@ impl<'a> QueryWorkflowAnalysis<'a> {
                 // this part will also handle additional stuffs like type matching in `binders`
                 errors
             }
-            Retry { steps } => self.check_steps(steps),
-            Timeout { steps, .. } => self.check_steps(steps),
-            Parallel { cases, .. } => {
-                let mut errors = Vec::new();
-                cases.iter().for_each(|case| errors.extend(self.check_steps(case)));
-                errors
-            }
-            Call {
+            W::Retry { steps } => self.check_steps(steps),
+            W::Timeout { steps, .. } => self.check_steps(steps),
+            W::Parallel { cases, .. } => cases.iter().flat_map(|case| self.check_steps(case)).collect(),
+            W::Call {
                 workflow: workflow_ident,
-                cases: _,
+                cases,
                 ..
             } => {
-                if let Some(workflow) = self.query.workflows.get(&*workflow_ident) {
-                    self.check_workflow(workflow)
-                } else {
-                    vec![QueryWorkflowAnalysisError {
+                let mut errors = Vec::new();
+                if self.query.workflows.get(workflow_ident).is_none() {
+                    errors.push(QueryWorkflowAnalysisError {
                         error_type: QueryWorkflowAnalysisErrorType::UndeclaredWorkflowCall,
                         span: workflow_ident.clone(),
-                    }]
+                    });
                 }
+
+                errors.extend(cases.iter().flat_map(|(_, steps)| self.check_steps(steps)));
+
+                errors
             }
-            Compensate { body, with } => {
+            W::Compensate { body, with } => {
                 let mut errors = Vec::new();
                 errors.extend(self.check_steps(body));
                 errors.extend(self.check_steps(with));
                 errors
             }
-            Choice { cases } => {
-                let mut errors = Vec::new();
-                cases.iter().for_each(|steps| errors.extend(self.check_steps(steps)));
-                errors
-            }
+            W::Choice { cases } => cases.iter().flat_map(|steps| self.check_steps(steps)).collect(),
         }
-    }
-}
-
-#[derive(Default)]
-pub(crate) struct WorkflowTracker<'a>(pub(crate) RefCell<BTreeSet<&'a Workflow<'a>>>);
-
-impl<'a> WorkflowTracker<'a> {
-    fn contains(&'a self, workflow: &'a Workflow) -> bool {
-        self.0.borrow_mut().contains(workflow)
-    }
-
-    fn insert(&'a self, workflow: &'a Workflow) {
-        self.0.borrow_mut().insert(workflow);
     }
 }
 
