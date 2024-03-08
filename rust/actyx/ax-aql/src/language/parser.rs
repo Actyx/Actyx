@@ -2,7 +2,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     convert::{TryFrom, TryInto},
     str::FromStr,
     sync::Arc,
@@ -12,7 +12,7 @@ use super::{
     non_empty::{NonEmptyString, NonEmptyVec},
     parse_utils::*,
     types::r_type,
-    workflow::{r_workflow, Workflow, WorkflowStep},
+    workflow::{r_workflow, Participant, Workflow, WorkflowStep},
     AggrOp, Arr, FuncCall, Ident, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, Source, SpreadExpr, TagAtom,
     TagExpr,
 };
@@ -722,17 +722,41 @@ pub(crate) fn query_from_str(s: &str) -> Result<Query<'_>> {
 }
 
 pub(crate) struct QueryWorkflowAnalysisError<'a> {
-    pub(crate) span: Span<'a, Ident>,
+    pub(crate) span: pest::Span<'a>,
     pub(crate) error_type: QueryWorkflowAnalysisErrorType,
 }
 
 pub(crate) enum QueryWorkflowAnalysisErrorType {
     UndeclaredEvent,
+    UndeclaredParticipant,
     UndeclaredWorkflowCall,
 }
 
 pub(crate) struct QueryWorkflowAnalysis<'a> {
     pub(crate) query: &'a Query<'a>,
+}
+struct WorkflowAnalysis<'a> {
+    workflow: &'a Workflow<'a>,
+    participants_set: BTreeSet<&'a Ident>,
+}
+
+impl<'a> WorkflowAnalysis<'a> {
+    fn from(workflow: &'a Workflow) -> Self {
+        Self {
+            workflow,
+            participants_set: workflow
+                .args
+                .iter()
+                .map(|x| {
+                    let participant: &Participant = x;
+                    match participant {
+                        Participant::Role(ident) => ident,
+                        Participant::Unique(ident) => ident,
+                    }
+                })
+                .collect(),
+        }
+    }
 }
 
 impl<'a> QueryWorkflowAnalysis<'a> {
@@ -749,31 +773,55 @@ impl<'a> QueryWorkflowAnalysis<'a> {
     }
 
     fn check_workflow(&'a self, workflow: &'a Workflow) -> Vec<QueryWorkflowAnalysisError> {
-        self.check_steps(&workflow.steps)
+        self.check_steps(&WorkflowAnalysis::from(workflow), &workflow.steps)
     }
 
-    fn check_steps(&'a self, steps: &'a NonEmptyVec<WorkflowStep<'a>>) -> Vec<QueryWorkflowAnalysisError> {
-        steps.iter().flat_map(|step| self.check_step(step)).collect()
+    fn check_steps(
+        &'a self,
+        parent_workflow: &WorkflowAnalysis,
+        steps: &'a NonEmptyVec<WorkflowStep<'a>>,
+    ) -> Vec<QueryWorkflowAnalysisError> {
+        steps
+            .iter()
+            .flat_map(|step| self.check_step(parent_workflow, step))
+            .collect()
     }
 
-    fn check_step(&'a self, step: &'a WorkflowStep<'a>) -> Vec<QueryWorkflowAnalysisError> {
+    fn check_step(
+        &'a self,
+        parent_workflow: &WorkflowAnalysis,
+        step: &'a WorkflowStep<'a>,
+    ) -> Vec<QueryWorkflowAnalysisError> {
         use super::workflow::WorkflowStep as W;
 
         match step {
-            W::Event { label, binders: _, .. } => {
+            W::Event { label, binders, .. } => {
                 let mut errors = Vec::new();
                 if !self.query.events.contains_key(label) {
                     errors.push(QueryWorkflowAnalysisError {
                         error_type: QueryWorkflowAnalysisErrorType::UndeclaredEvent,
-                        span: label.clone(),
+                        span: label.span(),
                     });
                 }
+
+                errors.extend(
+                    binders
+                        .iter()
+                        .filter(|binding_span| !parent_workflow.participants_set.contains(binding_span.role()))
+                        .map(|binding_span| QueryWorkflowAnalysisError {
+                            error_type: QueryWorkflowAnalysisErrorType::UndeclaredParticipant,
+                            span: binding_span.span(),
+                        }),
+                );
                 // this part will also handle additional stuffs like type matching in `binders`
                 errors
             }
-            W::Retry { steps } => self.check_steps(steps),
-            W::Timeout { steps, .. } => self.check_steps(steps),
-            W::Parallel { cases, .. } => cases.iter().flat_map(|case| self.check_steps(case)).collect(),
+            W::Retry { steps } => self.check_steps(parent_workflow, steps),
+            W::Timeout { steps, .. } => self.check_steps(parent_workflow, steps),
+            W::Parallel { cases, .. } => cases
+                .iter()
+                .flat_map(|case| self.check_steps(parent_workflow, case))
+                .collect(),
             W::Call {
                 workflow: workflow_ident,
                 cases,
@@ -783,21 +831,26 @@ impl<'a> QueryWorkflowAnalysis<'a> {
                 if self.query.workflows.get(workflow_ident).is_none() {
                     errors.push(QueryWorkflowAnalysisError {
                         error_type: QueryWorkflowAnalysisErrorType::UndeclaredWorkflowCall,
-                        span: workflow_ident.clone(),
+                        span: workflow_ident.span(),
                     });
                 }
 
-                errors.extend(cases.iter().flat_map(|(_, steps)| self.check_steps(steps)));
+                errors.extend(
+                    cases
+                        .iter()
+                        .flat_map(|(_, steps)| self.check_steps(parent_workflow, steps)),
+                );
 
                 errors
             }
-            W::Compensate { body, with } => {
-                let mut errors = Vec::new();
-                errors.extend(self.check_steps(body));
-                errors.extend(self.check_steps(with));
-                errors
-            }
-            W::Choice { cases } => cases.iter().flat_map(|steps| self.check_steps(steps)).collect(),
+            W::Compensate { body, with } => std::iter::empty()
+                .chain(self.check_steps(parent_workflow, body).into_iter())
+                .chain(self.check_steps(parent_workflow, with).into_iter())
+                .collect(),
+            W::Choice { cases } => cases
+                .iter()
+                .flat_map(|steps| self.check_steps(parent_workflow, steps))
+                .collect(),
         }
     }
 }
