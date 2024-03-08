@@ -79,7 +79,11 @@ impl<'a> WorkflowStep<'a> {
         match self {
             WorkflowStep::Event { label, .. } => vec![label.clone()],
             WorkflowStep::Retry { steps } => steps.into_iter().flat_map(|step| step.get_events()).collect(),
-            WorkflowStep::Timeout { steps, .. } => steps.into_iter().flat_map(|step| step.get_events()).collect(),
+            WorkflowStep::Timeout { steps, label, .. } => steps
+                .into_iter()
+                .flat_map(|step| step.get_events())
+                .chain(std::iter::once(label.clone()))
+                .collect(),
             WorkflowStep::Parallel { cases, .. } => cases
                 .into_iter()
                 .flat_map(|case| case.into_iter())

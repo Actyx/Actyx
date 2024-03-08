@@ -1,10 +1,14 @@
-use super::{non_empty::NonEmptyString, parse_utils::P, parser::Rule};
+use super::{
+    non_empty::{NoElements, NonEmptyString},
+    parse_utils::P,
+    parser::Rule,
+};
 use crate::{
     language::{
         parse_utils::{Ext, Spanned},
         parser::{r_bool, r_nonempty_string, r_string, NoVal},
     },
-    NonEmptyVec,
+    Ident, NonEmptyVec,
 };
 use once_cell::sync::Lazy;
 use pest::pratt_parser::{Assoc, Op, PrattParser};
@@ -35,6 +39,20 @@ pub enum TypeAtom {
 pub enum Label {
     String(NonEmptyString),
     Number(u64),
+}
+
+impl From<Ident> for Label {
+    fn from(value: Ident) -> Self {
+        Label::String(value.0)
+    }
+}
+
+impl TryFrom<&str> for Label {
+    type Error = NoElements;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Ok(Self::String(NonEmptyString::try_from(value)?))
+    }
 }
 
 pub fn r_type(p: P) -> anyhow::Result<Type> {
