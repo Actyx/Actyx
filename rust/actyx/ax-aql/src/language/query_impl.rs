@@ -331,47 +331,6 @@ mod tests {
     }
 
     #[test]
-    fn test_used_events_retry_timeout_choice_steps() {
-        let query = Query::parse(
-            "
-            EVENT start   { _: NULL }
-            EVENT pause   { _: NULL }
-            EVENT timeout { _: NULL }
-            EVENT done    { _: NULL }
-
-            WORKFLOW caller (UNIQUE a) {
-                RETRY {
-                    TIMEOUT 1m {
-                        CHOICE {
-                            CASE start @ a
-                            CASE pause @ a
-                        }
-                    } RETURN timeout @ a
-                }
-            }
-
-            FROM allEvents
-            ",
-        )
-        .expect("should be a valid query");
-
-        let map = query.get_used_event_types().collect::<HashMap<_, _>>();
-        assert!(!map.is_empty());
-
-        let start_label = Label::try_from("start").expect("should be a valid label");
-        assert!(map.get(&start_label).is_some());
-
-        let pause_label = Label::try_from("pause").expect("should be a valid label");
-        assert!(map.get(&pause_label).is_some());
-
-        let timeout_label = Label::try_from("timeout").expect("should be a valid label");
-        assert!(map.get(&timeout_label).is_some());
-
-        let done_label = Label::try_from("done").expect("should be a valid label");
-        assert!(map.get(&done_label).is_none());
-    }
-
-    #[test]
     fn test_used_events_retry_timeout_choice_match_parallel_steps() {
         let query = Query::parse(
             "
