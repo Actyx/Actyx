@@ -13,6 +13,7 @@ mod non_empty;
 mod parse_utils;
 mod parser;
 mod render;
+mod type_check;
 mod types;
 mod workflow;
 
