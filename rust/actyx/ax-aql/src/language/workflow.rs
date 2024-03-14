@@ -7,6 +7,7 @@ use crate::language::{
     parser::Rule,
     Ident, NonEmptyVec, SimpleExpr,
 };
+use anyhow::anyhow;
 use ax_types::Timestamp;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -235,6 +236,14 @@ fn r_event(p: P<'_>) -> Result<WorkflowStep<'_>, anyhow::Error> {
     let _at = p.next().unwrap();
     let participant = Span::make(p.next().unwrap(), |mut p| Ok(Ident(p.non_empty_string()?)))?;
     let binders = p.map(r_binding).collect::<Result<Vec<_>, _>>()?;
+    for binding in &binders {
+        if !matches!(binding.value(), SimpleExpr::Indexing(_)) {
+            return Err(anyhow!(
+                "only indexing bindings are allowed, found {:?} instead",
+                binding
+            ));
+        }
+    }
     Ok(WorkflowStep::Event {
         state,
         mode,
@@ -344,5 +353,31 @@ mod tests {
     fn ex1() {
         let q = "WORKFLOW qg9gZK(UNIQUE kCSxum) { MATCH se5Q7Y(dJKW1Y) { CASE * => PARALLEL 15668459163393358498 { CASE exLLu3: ckZo9J @ BjfPBLR } } } FROM allEvents ORDER DESC END";
         Query::parse(q).unwrap();
+    }
+
+    #[test]
+    fn ex2() {
+        let q = "WORKFLOW a(UNIQUE b) {
+            start @ b {t:b <- _.robotId}
+        } FROM allEvents";
+        Query::parse(q).unwrap();
+    }
+
+    #[test]
+    fn ex3() {
+        let q = "WORKFLOW a(UNIQUE b) {
+            start @ b {t:b <- 10}
+        } FROM allEvents";
+        assert!(Query::parse(q).is_err());
+    }
+
+    #[test]
+    #[ignore = "SELF isn't fully supported by the AST yet"]
+    fn ex4() {
+        let q = "WORKFLOW a(UNIQUE b) {
+            start @ b {t:b <- SELF}
+        } FROM allEvents";
+
+        assert!(Query::parse(q).is_ok());
     }
 }
