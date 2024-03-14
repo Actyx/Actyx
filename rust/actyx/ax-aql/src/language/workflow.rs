@@ -237,7 +237,13 @@ fn r_event(p: P<'_>) -> Result<WorkflowStep<'_>, anyhow::Error> {
     let participant = Span::make(p.next().unwrap(), |mut p| Ok(Ident(p.non_empty_string()?)))?;
     let binders = p.map(r_binding).collect::<Result<Vec<_>, _>>()?;
     for binding in &binders {
-        if !matches!(binding.value(), SimpleExpr::Indexing(_)) {
+        if let SimpleExpr::Indexing(index) = binding.value() {
+            if let SimpleExpr::Variable(ref var) = *index.head {
+                if var.0 != "_" {
+                    return Err(anyhow!("indexing bindings can only index `_`"));
+                }
+            }
+        } else {
             return Err(anyhow!(
                 "only indexing bindings are allowed, found {:?} instead",
                 binding
@@ -358,7 +364,7 @@ mod tests {
     #[test]
     fn ex2() {
         let q = "WORKFLOW a(UNIQUE b) {
-            start @ b {t:b <- _.robotId}
+            start @ b { t:b <- _.robotId }
         } FROM allEvents";
         Query::parse(q).unwrap();
     }
@@ -366,7 +372,7 @@ mod tests {
     #[test]
     fn ex3() {
         let q = "WORKFLOW a(UNIQUE b) {
-            start @ b {t:b <- 10}
+            start @ b { t:b <- 10 }
         } FROM allEvents";
         assert!(Query::parse(q).is_err());
     }
@@ -375,9 +381,18 @@ mod tests {
     #[ignore = "SELF isn't fully supported by the AST yet"]
     fn ex4() {
         let q = "WORKFLOW a(UNIQUE b) {
-            start @ b {t:b <- SELF}
+            start @ b { t:b <- SELF }
         } FROM allEvents";
 
         assert!(Query::parse(q).is_ok());
+    }
+
+    #[test]
+    fn ex5() {
+        let q = "WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- t.indexed_value }
+        } FROM allEvents";
+
+        assert!(Query::parse(q).is_err());
     }
 }
