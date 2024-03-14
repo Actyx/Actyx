@@ -79,30 +79,30 @@ impl<'a> WorkflowStep<'a> {
     pub fn get_events(&'a self) -> Vec<Span<'a, Ident>> {
         match self {
             WorkflowStep::Event { label, .. } => vec![label.clone()],
-            WorkflowStep::Retry { steps } => steps.into_iter().flat_map(|step| step.get_events()).collect(),
+            WorkflowStep::Retry { steps } => steps.iter().flat_map(|step| step.get_events()).collect(),
             WorkflowStep::Timeout { steps, label, .. } => steps
-                .into_iter()
+                .iter()
                 .flat_map(|step| step.get_events())
                 .chain(std::iter::once(label.clone()))
                 .collect(),
             WorkflowStep::Parallel { cases, .. } => cases
-                .into_iter()
-                .flat_map(|case| case.into_iter())
+                .iter()
+                .flat_map(|case| case.iter())
                 .flat_map(|step| step.get_events())
                 .collect(),
             WorkflowStep::Call { cases, .. } => cases
-                .into_iter()
-                .flat_map(|(_, steps)| steps.into_iter())
+                .iter()
+                .flat_map(|(_, steps)| steps.iter())
                 .flat_map(|step| step.get_events())
                 .collect(),
             WorkflowStep::Compensate { body, with } => body
-                .into_iter()
+                .iter()
                 .flat_map(|step| step.get_events())
-                .chain(with.into_iter().flat_map(|step| step.get_events()))
+                .chain(with.iter().flat_map(|step| step.get_events()))
                 .collect(),
             WorkflowStep::Choice { cases } => cases
-                .into_iter()
-                .flat_map(|case| case.into_iter())
+                .iter()
+                .flat_map(|case| case.iter())
                 .flat_map(|step| step.get_events())
                 .collect(),
         }

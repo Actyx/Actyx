@@ -52,7 +52,6 @@ impl<'a> Query<'a> {
             .flatten()
             // if we just took the idents earlier we could probably replace the vecs in get_events with iterators
             .map(|events| events.deref().clone())
-            .into_iter()
             .filter_map(|ident| self.events.get(&ident).map(|(ty, _)| (Label::from(ident), ty.clone())))
     }
 }
