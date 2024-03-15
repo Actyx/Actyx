@@ -2,10 +2,13 @@ use super::{
     parse_utils::{Ps, Spanned},
     parser::{r_duration, r_simple_expr},
 };
-use crate::language::{
-    parse_utils::{Ext, Span, P},
-    parser::Rule,
-    Ident, NonEmptyVec, SimpleExpr,
+use crate::{
+    language::{
+        parse_utils::{Ext, Span, P},
+        parser::Rule,
+        Ident, NonEmptyVec, SimpleExpr,
+    },
+    Index,
 };
 use anyhow::anyhow;
 use ax_types::Timestamp;
@@ -238,10 +241,14 @@ fn r_event(p: P<'_>) -> Result<WorkflowStep<'_>, anyhow::Error> {
     let binders = p.map(r_binding).collect::<Result<Vec<_>, _>>()?;
     for binding in &binders {
         if let SimpleExpr::Indexing(index) = binding.value() {
-            if let SimpleExpr::Variable(ref var) = *index.head {
-                if var.0 != "_" {
-                    return Err(anyhow!("indexing bindings can only index `_`"));
+            match *index.head {
+                SimpleExpr::Variable(ref var) if var.0 == "_" => {}
+                _ => {
+                    return Err(anyhow!("indexing bindings can only index the `_` variable"));
                 }
+            }
+            if index.tail.iter().any(|ind| matches!(ind, Index::Expr(_))) {
+                return Err(anyhow!("indexing only supports string or number literals"));
             }
         } else {
             return Err(anyhow!(
@@ -392,6 +399,51 @@ mod tests {
         let q = "WORKFLOW a(UNIQUE b) {
             start @ b { t:b <- t.indexed_value }
         } FROM allEvents";
+
+        assert!(Query::parse(q).is_err());
+    }
+
+    #[test]
+    fn ex6() {
+        let q = r#"WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- _["indexed_value"] }
+        } FROM allEvents"#;
+
+        assert!(Query::parse(q).is_ok());
+    }
+
+    #[test]
+    fn ex7() {
+        let q = r#"WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- _[10] }
+        } FROM allEvents"#;
+
+        assert!(Query::parse(q).is_ok());
+    }
+
+    #[test]
+    fn ex8() {
+        let q = r#"WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- _[10 + 10] }
+        } FROM allEvents"#;
+
+        assert!(Query::parse(q).is_err());
+    }
+
+    #[test]
+    fn ex9() {
+        let q = r#"WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- _[10]["10"] }
+        } FROM allEvents"#;
+
+        assert!(Query::parse(q).is_ok());
+    }
+
+    #[test]
+    fn ex10() {
+        let q = r#"WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- _[10]["10"][19+97] }
+        } FROM allEvents"#;
 
         assert!(Query::parse(q).is_err());
     }
