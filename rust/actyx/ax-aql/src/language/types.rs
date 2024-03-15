@@ -8,7 +8,7 @@ use crate::{
 };
 use once_cell::sync::Lazy;
 use pest::pratt_parser::{Assoc, Op, PrattParser};
-use std::sync::Arc;
+use std::{collections::BTreeSet, sync::Arc};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Type {
@@ -17,6 +17,50 @@ pub enum Type {
     Intersection(Arc<(Type, Type)>),
     Array(Arc<Type>),
     Dict(Arc<Type>),
+}
+
+impl Type {
+    /// Examine hierarchical types of hierarchical unions, flattens it down into
+    /// a unique set, and rebuild them
+    pub(crate) fn collapse_union(&mut self) {
+        match self {
+            Type::Union(x) => {
+                let rebuilt_union =
+                    Type::flatten_union_view(x)
+                        .into_iter()
+                        .rev()
+                        .fold(None, |acc: Option<Type>, ty| match acc {
+                            None => Some(ty.clone()),
+                            Some(member) => Some(Type::Union(Arc::new((member, ty.clone())))),
+                        });
+
+                // NOTE: when bottom type is added, Option can be eliminated from this
+                *self = rebuilt_union.expect("union to reduce its subtypes to zero")
+            }
+            _ => {}
+        };
+    }
+
+    /// Flatten union tree into unique set of types
+    fn flatten_union_view((a, b): &(Type, Type)) -> BTreeSet<&Type> {
+        let mut under_types = BTreeSet::new();
+
+        match a {
+            Type::Union(x) => under_types.append(&mut Type::flatten_union_view(x)),
+            _ => {
+                under_types.insert(a);
+            }
+        };
+
+        match b {
+            Type::Union(x) => under_types.append(&mut Type::flatten_union_view(x)),
+            _ => {
+                under_types.insert(b);
+            }
+        };
+
+        under_types
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
