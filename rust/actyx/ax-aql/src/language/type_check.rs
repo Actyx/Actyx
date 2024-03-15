@@ -183,77 +183,84 @@ impl<'a> QueryTypeCheck<'a> {
 /// Check whether Ind can be used to index a Type
 /// e.g. can _.a.b be used to access Type::Record([("a", Type::Record([("b", Type::String)]))])
 /// Drills down type and Ind.tail recursively at the same time to find a match
-fn drill_down_type_by_index(cur_type: &Type, Ind { head: _, tail, .. }: &Ind) -> Result<Type, ExtraMessage> {
+fn drill_down_type_by_index(cur_type: &Type, ind: &Ind) -> Result<Type, ExtraMessage> {
+    let Ind { head: _, tail, .. } = ind;
+
     fn recurse(cur_type: &Type, index: &[Index]) -> Result<Type, ExtraMessage> {
-        if index.len() < 1 {
-            return Ok(cur_type.to_owned());
-        }
-        let (first, rest) = index.split_at(1);
-        let first = &first[0];
+        let mut cur_type = cur_type;
+        let mut index = index.clone();
 
-        match cur_type {
-            Type::Atom(type_atom) => match type_atom {
-                TypeAtom::Universal => return Ok(Type::Atom(TypeAtom::Universal)),
-                TypeAtom::Tuple(tuple) => match first {
-                    Index::Expr(expr) => recurse_with_calculated_expression(cur_type, expr, rest),
-                    Index::Number(num_index) => tuple.get(*num_index as usize).map_or_else(
-                        || Err(format!("{:?} cannot be accessed by {}", tuple, num_index)),
-                        |ty| recurse(ty, rest),
-                    ),
-                    _ => Err(format!("{:?} cannot be accessed by {:?}", tuple, first)),
+        loop {
+            if index.is_empty() {
+                return Ok(cur_type.to_owned());
+            }
+            let (first, rest) = index.split_at(1);
+            let first = &first[0];
+            index = rest;
+
+            cur_type = match cur_type {
+                Type::Atom(type_atom) => match type_atom {
+                    TypeAtom::Universal => return Ok(Type::Atom(TypeAtom::Universal)),
+                    TypeAtom::Tuple(tuple) => match first {
+                        Index::Expr(expr) => return recurse_with_calculated_expression(cur_type, expr, rest),
+                        Index::Number(num_index) => match tuple.get(*num_index as usize) {
+                            None => return Err(format!("{:?} cannot be accessed by {}", tuple, num_index)),
+                            Some(ty) => ty,
+                        },
+                        _ => return Err(format!("{:?} cannot be accessed by {:?}", tuple, first)),
+                    },
+                    TypeAtom::Record(fields) => {
+                        if let Index::Expr(expr) = first {
+                            return recurse_with_calculated_expression(cur_type, expr, rest);
+                        }
+
+                        let matching_field = fields.iter().find(|(label, _)| match (label, first) {
+                            (Label::String(a), Index::String(b)) => Deref::deref(a) == b,
+                            (Label::Number(a), Index::Number(b)) => a == b,
+                            _ => false,
+                        });
+
+                        match matching_field {
+                            None => return Err(format!("{:?} cannot be accessed by {:?}", type_atom, first)),
+                            Some((_, ty)) => ty,
+                        }
+                    }
+                    _ => return Err(format!("{:?} cannot be accessed by {:?}", type_atom, first)),
                 },
-                TypeAtom::Record(fields) => {
-                    if let Index::Expr(expr) = first {
-                        return recurse_with_calculated_expression(cur_type, expr, rest);
-                    }
+                Type::Dict(ty) => match first {
+                    Index::String(_) => ty,
+                    Index::Expr(expr) => return recurse_with_calculated_expression(cur_type, expr, rest),
+                    _ => return Err(format!("{:?} cannot be accessed by a non-string", cur_type)),
+                },
+                Type::Array(ty) => match first {
+                    Index::Number(_) => ty,
+                    Index::Expr(expr) => return recurse_with_calculated_expression(cur_type, expr, rest),
+                    _ => return Err(format!("{:?} cannot be accessed by a non-number", cur_type)),
+                },
+                Type::Union(ty) => {
+                    let a_result = recurse(&ty.0, index);
+                    let b_result = recurse(&ty.1, index);
 
-                    let matching_field = fields.iter().find(|(label, _)| match (label, first) {
-                        (Label::String(a), Index::String(b)) => Deref::deref(a) == b,
-                        (Label::Number(a), Index::Number(b)) => a == b,
-                        _ => false,
-                    });
-
-                    if let Some((_, ty)) = matching_field {
-                        recurse(ty, rest)
-                    } else {
-                        Err(format!("{:?} cannot be accessed by {:?}", type_atom, first))
-                    }
+                    return match (a_result, b_result) {
+                        (Ok(a), Ok(b)) => {
+                            let mut new_union = Type::Union(Arc::new((a, b)));
+                            new_union.collapse_union();
+                            Ok(new_union)
+                        }
+                        (Ok(_), Err(b)) => Err(b),
+                        (Err(a), Ok(_)) => Err(a),
+                        (Err(a), Err(b)) => Err([a, b]
+                            .into_iter()
+                            .map(|err_msg| format!("- {}", err_msg))
+                            .collect::<Vec<_>>()
+                            .join("\n")),
+                    };
                 }
-                _ => Err(format!("{:?} cannot be accessed by {:?}", type_atom, first)),
-            },
-            Type::Dict(ty) => match first {
-                Index::Expr(expr) => recurse_with_calculated_expression(cur_type, expr, rest),
-                Index::String(_) => recurse(ty, rest),
-                _ => Err(format!("{:?} cannot be accessed by a non-string", cur_type)),
-            },
-            Type::Array(ty) => match first {
-                Index::Expr(expr) => recurse_with_calculated_expression(cur_type, expr, rest),
-                Index::Number(_) => recurse(ty, rest),
-                _ => Err(format!("{:?} cannot be accessed by a non-number", cur_type)),
-            },
-            Type::Union(ty) => {
-                let a_result = recurse(&ty.0, index);
-                let b_result = recurse(&ty.1, index);
-
-                match (a_result, b_result) {
-                    (Ok(a), Ok(b)) => {
-                        let mut new_union = Type::Union(Arc::new((a, b)));
-                        new_union.collapse_union();
-                        Ok(new_union)
-                    }
-                    (Ok(_), Err(b)) => Err(b),
-                    (Err(a), Ok(_)) => Err(a),
-                    (Err(a), Err(b)) => Err([a, b]
-                        .into_iter()
-                        .map(|err_msg| format!("{}", err_msg))
-                        .collect::<Vec<_>>()
-                        .join("\n")),
+                Type::Intersection(_) => {
+                    // NOTE: impossible to drill down on intersection without intersection collapsing mechanism
+                    return Err(format!("{:?} cannot be accessed", cur_type));
                 }
-            }
-            Type::Intersection(_) => {
-                // NOTE: impossible to drill down on intersection without intersection collapsing mechanism
-                Err(format!("{:?} cannot be accessed", cur_type))
-            }
+            };
         }
     }
 
@@ -264,7 +271,7 @@ fn drill_down_type_by_index(cur_type: &Type, Ind { head: _, tail, .. }: &Ind) ->
         rest: &[Index],
     ) -> Result<Type, ExtraMessage> {
         let new_index = match first_expr {
-            SimpleExpr::Number(Num::Natural(x)) => Index::Number(x.clone()),
+            SimpleExpr::Number(Num::Natural(x)) => Index::Number(*x),
             SimpleExpr::String(x) => Index::String(x.clone()),
             // Note: Not sure if rounded Num::Decimal should be regarded as natural or not
             SimpleExpr::Number(Num::Decimal(_))
@@ -303,10 +310,9 @@ fn drill_down_type_by_index(cur_type: &Type, Ind { head: _, tail, .. }: &Ind) ->
                     .collect::<Vec<_>>();
 
                 if !errors.is_empty() {
-                    let mut error_messages = String::new();
-                    errors
+                    let error_messages = errors
                         .into_iter()
-                        .map(|err_msg| format!("{}", err_msg))
+                        .map(|err_msg| format!("- {}", err_msg))
                         .collect::<Vec<_>>()
                         .join("\n");
                     return Err(error_messages.trim().into());
@@ -332,10 +338,33 @@ fn drill_down_type_by_index(cur_type: &Type, Ind { head: _, tail, .. }: &Ind) ->
             }
         };
 
-        recurse(cur_type, [&[new_index], &rest[..]].concat().as_slice())
+        recurse(cur_type, [&[new_index], rest].concat().as_slice())
     }
 
-    recurse(cur_type, tail)
+    let result = recurse(cur_type, tail);
+
+    match result {
+        Ok(mut x) => {
+            x.collapse_union();
+            Ok(x)
+        }
+        Err(x) => {
+            if tail.len() > 1 {
+                // create a root-level error message
+                let root_lv_err = format!("{:?} cannot be accessed by {:?}", cur_type, ind);
+                // append with indented deeper_lv_err
+                let deeper_lv_err = x
+                    .split('\n')
+                    .map(|line| format!("  {:?}", line))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
+                Err([root_lv_err, deeper_lv_err].join("\n"))
+            } else {
+                Err(x)
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -523,15 +552,14 @@ mod tests {
             Ok(Type::Atom(TypeAtom::Bool(Some(false))))
         );
 
-        assert!(
-            drill_down_type_by_index(
-                &record_type,
-                &Ind {
-                    head: SimpleExpr::Variable(Var("_".to_string())).into(),
-                    tail: vec![expr_number_decimal_0].try_into().unwrap(),
-                },
-            ).is_err()
-        );
+        assert!(drill_down_type_by_index(
+            &record_type,
+            &Ind {
+                head: SimpleExpr::Variable(Var("_".to_string())).into(),
+                tail: vec![expr_number_decimal_0].try_into().unwrap(),
+            },
+        )
+        .is_err());
 
         assert_eq!(
             drill_down_type_by_index(

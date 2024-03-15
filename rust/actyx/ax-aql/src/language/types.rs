@@ -23,22 +23,18 @@ impl Type {
     /// Examine hierarchical types of hierarchical unions, flattens it down into
     /// a unique set, and rebuild them
     pub(crate) fn collapse_union(&mut self) {
-        match self {
-            Type::Union(x) => {
-                let rebuilt_union =
-                    Type::flatten_union_view(x)
-                        .into_iter()
-                        .rev()
-                        .fold(None, |acc: Option<Type>, ty| match acc {
-                            None => Some(ty.clone()),
-                            Some(member) => Some(Type::Union(Arc::new((member, ty.clone())))),
-                        });
+        if let Type::Union(x) = self {
+            let rebuilt_union = Type::flatten_union_view(x)
+                .into_iter()
+                .rev()
+                .fold(None, |acc: Option<Type>, ty| match acc {
+                    None => Some(ty.clone()),
+                    Some(member) => Some(Type::Union(Arc::new((member, ty.clone())))),
+                });
 
-                // NOTE: when bottom type is added, Option can be eliminated from this
-                *self = rebuilt_union.expect("impossible for union to reduce its subtypes to zero")
-            }
-            _ => {}
-        };
+            // NOTE: when bottom type is added, Option can be eliminated from this
+            *self = rebuilt_union.expect("impossible for union to reduce its subtypes to zero");
+        }
     }
 
     /// Flatten union tree into unique set of types
