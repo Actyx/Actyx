@@ -119,7 +119,8 @@ jobs:
 
     needs:
       - check-android
-      - validate
+      - validate-os
+      - validate-netsim
       - validate-docs
 
     steps:
