@@ -8,6 +8,11 @@ on:
     branches:
       - "master"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Only cancel for pull requests
+  cancel-in-progress: ${{ github.event_name == 'pull_request'}}
+
 env:
   RUST_BACKTRACE: 1
 
@@ -50,20 +55,33 @@ jobs:
           make validate-os-android assert-clean
       - run: make clean
 
-  validate:
+  validate-os:
+    runs-on: [self-hosted, Linux]
+    needs: check
+
+    steps:
+      - uses: actions/checkout@v3
+      - run: make validate-os assert-clean
+      - run: make clean
+
+  validate-netsim:
     runs-on: [self-hosted, Linux]
     needs: check
     timeout-minutes: 60
 
-    strategy:
-      matrix:
-        product: [os, netsim]
-      fail-fast: false
+    concurrency:
+      # Avoid multiple netsim tests running at the same time
+      # as they nearly block the system and their error rate
+      # is higher when run at the same time
+      # In conjunction with the top `concurrency` this should
+      # stop PRs from running at the same time as a build
+      # for `master`, `release`, etc
+      group: validate-netsim
+      cancel-in-progress: false
 
     steps:
       - uses: actions/checkout@v3
-      - name: Validate ${{matrix.product}}
-        run: make validate-${{matrix.product}} assert-clean
+      - run: make validate-netsim assert-clean
       - run: make clean
 
   validate-docs:
