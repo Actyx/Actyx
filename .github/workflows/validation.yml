@@ -9,9 +9,10 @@ on:
       - "master"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # Only cancel for pull requests
-  cancel-in-progress: ${{ github.event_name == 'pull_request'}}
+  # If there's a PR number, it will result in cancelling the previous build for that PR
+  # this is needed because the PR event triggers on "meta" PR things, like comments but not pushes
+  group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
 
 env:
   RUST_BACKTRACE: 1
