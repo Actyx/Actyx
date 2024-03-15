@@ -166,8 +166,6 @@ jobs:
         with:
           registry: ghcr.io
           username: jmg-duarte
-          # At the time of writing (18/12) this token has a 30 day expiration date
-          # this is on purpose, so we replace this with a proper token for genie
           password: ${{ secrets.GHCR_REGISTRY_TOKEN }}
       - name: Make All MacOS
         run: make all-macos assert-clean
