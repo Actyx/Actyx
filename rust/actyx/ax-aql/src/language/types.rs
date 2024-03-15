@@ -35,7 +35,7 @@ impl Type {
                         });
 
                 // NOTE: when bottom type is added, Option can be eliminated from this
-                *self = rebuilt_union.expect("union to reduce its subtypes to zero")
+                *self = rebuilt_union.expect("impossible for union to reduce its subtypes to zero")
             }
             _ => {}
         };
