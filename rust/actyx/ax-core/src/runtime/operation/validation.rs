@@ -98,7 +98,7 @@ fn validate_string(value: &CborValue, string_refinement: &Option<String>) -> any
 fn validate_array(value: &CborValue, ty: &Type) -> anyhow::Result<()> {
     // NOTE(duarte): this validate is incomplete because we're not supporting subtyping, hence, we're just checking for arrays
     if let Some(values) = value.as_array() {
-        for (i, value) in values.into_iter().enumerate() {
+        for (i, value) in values.iter().enumerate() {
             if let Err(err) = validate(&value.decode(), ty) {
                 return Err(anyhow::anyhow!("type mismatch, element {} is not of type {:?}", i, ty)).context(err);
             }
@@ -140,7 +140,7 @@ fn validate_dict(value: &CborValue, ty: &Type) -> anyhow::Result<()> {
                 ))
                 .context(err);
             }
-            if let Err(err) = validate(&v.decode(), &ty) {
+            if let Err(err) = validate(&v.decode(), ty) {
                 return Err(anyhow::anyhow!(
                     "type mismatch, dict value for key {:?} is not {:?}",
                     decoded_key,
@@ -178,9 +178,7 @@ fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> anyhow
                     let cbor = CborBuilder::new().encode_str(string);
                     let cbor = Cow::Owned(cbor);
                     if let Some(value) = value.get(&cbor) {
-                        if let e @ Err(_) = validate(&value.decode(), ty) {
-                            return e;
-                        }
+                        validate(&value.decode(), ty)?;
                     } else {
                         return Err(anyhow::anyhow!("label {} does not exist in record", string));
                     }
@@ -191,9 +189,7 @@ fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> anyhow
                     let cbor = CborBuilder::new().encode_number(&number);
                     let cbor = Cow::Owned(cbor);
                     if let Some(value) = value.get(&cbor) {
-                        if let e @ Err(_) = validate(&value.decode(), ty) {
-                            return e;
-                        }
+                        validate(&value.decode(), ty)?;
                     } else {
                         return Err(anyhow::anyhow!("label {:?} does not exist in record", number));
                     }
