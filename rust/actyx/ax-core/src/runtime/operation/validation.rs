@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 
 use anyhow::Context;
 use ax_aql::{Label, NonEmptyVec, Type, TypeAtom};
@@ -126,8 +126,29 @@ fn validate_tuple(value: &CborValue, length: usize) -> anyhow::Result<()> {
 }
 
 /// Check if a CBOR value is a dictionary.
-fn validate_dict(value: &CborValue) -> anyhow::Result<()> {
-    if value.as_dict().is_some() {
+fn validate_dict(value: &CborValue, ty: &Type) -> anyhow::Result<()> {
+    let key_type = Type::Union(Arc::new((
+        Type::Atom(TypeAtom::String(None)),
+        Type::Atom(TypeAtom::Number(None)),
+    )));
+    if let Some(dict) = value.as_dict() {
+        for (k, v) in dict {
+            let decoded_key = k.decode();
+            if let Err(err) = validate(&decoded_key, &key_type) {
+                return Err(anyhow::anyhow!(
+                    "type mismatch, dict keys can only be numbers or strings"
+                ))
+                .context(err);
+            }
+            if let Err(err) = validate(&v.decode(), &ty) {
+                return Err(anyhow::anyhow!(
+                    "type mismatch, dict value for key {:?} is not {:?}",
+                    decoded_key,
+                    ty
+                ))
+                .context(err);
+            }
+        }
         Ok(())
     } else {
         Err(anyhow::anyhow!("type mismatch, expected value to be a dictionary"))
@@ -188,8 +209,8 @@ fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> anyhow
 fn validate(value: &CborValue, ty: &Type) -> anyhow::Result<()> {
     match ty {
         Type::Atom(atom) => validate_atom(value, atom),
-        Type::Array(t) => validate_array(value, t),
-        Type::Dict(t) => validate_dict(value),
+        Type::Array(inner_ty) => validate_array(value, inner_ty),
+        Type::Dict(inner_ty) => validate_dict(value, inner_ty),
         Type::Tuple(tuple) => validate_tuple(value, tuple.len()),
         Type::Record(record) => validate_record(value, record),
         // We can make this much more efficient by checking more things beforehand
@@ -378,7 +399,7 @@ mod test {
             builder.with_key("hello", |b| b.encode_str("world"));
         });
         let cbor = cbor.decode();
-        assert!(validate_dict(&cbor).is_ok());
+        assert!(validate_dict(&cbor, &Type::Atom(TypeAtom::String(None))).is_ok());
     }
 
     #[test]
@@ -387,7 +408,25 @@ mod test {
             builder.encode_u64(10).encode_u64(100);
         });
         let cbor = cbor.decode();
-        assert!(validate_dict(&cbor).is_err());
+        assert!(validate_dict(&cbor, &Type::Atom(TypeAtom::String(None))).is_err());
+    }
+
+    #[test]
+    fn test_validate_dict_key_fail() {
+        let cbor = CborBuilder::new().encode_dict(|builder| {
+            builder.with_cbor_key(|b| b.encode_null(), |b| b.encode_str("world"));
+        });
+        let cbor = cbor.decode();
+        assert!(validate_dict(&cbor, &Type::Atom(TypeAtom::String(None))).is_err());
+    }
+
+    #[test]
+    fn test_validate_dict_value_fail() {
+        let cbor = CborBuilder::new().encode_dict(|builder| {
+            builder.with_key("hello", |b| b.encode_u64(1997));
+        });
+        let cbor = cbor.decode();
+        assert!(validate_dict(&cbor, &Type::Atom(TypeAtom::String(None))).is_err());
     }
 
     #[test]
