@@ -137,11 +137,10 @@ mod tests {
         let map = query.get_used_event_types().collect::<HashMap<_, _>>();
         assert!(!map.is_empty());
 
-        let start_label = Label::try_from("start").expect("should be a valid label");
-        assert!(map.get(&start_label).is_some());
-
-        let done_label = Label::try_from("done").expect("should be a valid label");
-        assert!(map.get(&done_label).is_none());
+        assert!([("start", true), ("done", false)]
+            .into_iter()
+            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
+            .all(|(label, exists)| map.contains_key(&label) == exists));
     }
 
     #[test]
@@ -165,11 +164,10 @@ mod tests {
         let map = query.get_used_event_types().collect::<HashMap<_, _>>();
         assert!(!map.is_empty());
 
-        let start_label = Label::try_from("start").expect("should be a valid label");
-        assert!(map.get(&start_label).is_some());
-
-        let done_label = Label::try_from("done").expect("should be a valid label");
-        assert!(map.get(&done_label).is_none());
+        assert!([("start", true), ("done", false)]
+            .into_iter()
+            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
+            .all(|(label, exists)| map.contains_key(&label) == exists));
     }
 
     #[test]
@@ -194,14 +192,10 @@ mod tests {
         let map = query.get_used_event_types().collect::<HashMap<_, _>>();
         assert!(!map.is_empty());
 
-        let start_label = Label::try_from("start").expect("should be a valid label");
-        assert!(map.get(&start_label).is_some());
-
-        let timeout_label = Label::try_from("timeout").expect("should be a valid label");
-        assert!(map.get(&timeout_label).is_some());
-
-        let done_label = Label::try_from("done").expect("should be a valid label");
-        assert!(map.get(&done_label).is_none());
+        assert!([("start", true), ("timeout", true), ("done", false)]
+            .into_iter()
+            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
+            .all(|(label, exists)| map.contains_key(&label) == exists));
     }
 
     #[test]
@@ -225,11 +219,10 @@ mod tests {
         let map = query.get_used_event_types().collect::<HashMap<_, _>>();
         assert!(!map.is_empty());
 
-        let start_label = Label::try_from("start").expect("should be a valid label");
-        assert!(map.get(&start_label).is_some());
-
-        let done_label = Label::try_from("done").expect("should be a valid label");
-        assert!(map.get(&done_label).is_none());
+        assert!([("start", true), ("done", false)]
+            .into_iter()
+            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
+            .all(|(label, exists)| map.contains_key(&label) == exists));
     }
 
     #[test]
@@ -257,11 +250,10 @@ mod tests {
         let map = query.get_used_event_types().collect::<HashMap<_, _>>();
         assert!(!map.is_empty());
 
-        let start_label = Label::try_from("start").expect("should be a valid label");
-        assert!(map.get(&start_label).is_some());
-
-        let done_label = Label::try_from("done").expect("should be a valid label");
-        assert!(map.get(&done_label).is_none());
+        assert!([("start", true), ("done", false)]
+            .into_iter()
+            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
+            .all(|(label, exists)| map.contains_key(&label) == exists));
     }
 
     #[test]
@@ -289,11 +281,10 @@ mod tests {
         let map = query.get_used_event_types().collect::<HashMap<_, _>>();
         assert!(!map.is_empty());
 
-        let start_label = Label::try_from("start").expect("should be a valid label");
-        assert!(map.get(&start_label).is_some());
-
-        let done_label = Label::try_from("done").expect("should be a valid label");
-        assert!(map.get(&done_label).is_none());
+        assert!([("start", true), ("done", false)]
+            .into_iter()
+            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
+            .all(|(label, exists)| map.contains_key(&label) == exists));
     }
 
     #[test]
@@ -319,14 +310,10 @@ mod tests {
         let map = query.get_used_event_types().collect::<HashMap<_, _>>();
         assert!(!map.is_empty());
 
-        let start_label = Label::try_from("start").expect("should be a valid label");
-        assert!(map.get(&start_label).is_some());
-
-        let pause_label = Label::try_from("pause").expect("should be a valid label");
-        assert!(map.get(&pause_label).is_some());
-
-        let done_label = Label::try_from("done").expect("should be a valid label");
-        assert!(map.get(&done_label).is_none());
+        assert!([("start", true), ("pause", true), ("done", false)]
+            .into_iter()
+            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
+            .all(|(label, exists)| map.contains_key(&label) == exists));
     }
 
     #[test]
@@ -365,16 +352,9 @@ mod tests {
         let map = query.get_used_event_types().collect::<HashMap<_, _>>();
         assert!(!map.is_empty());
 
-        let start_label = Label::try_from("start").expect("should be a valid label");
-        assert!(map.get(&start_label).is_some());
-
-        let pause_label = Label::try_from("pause").expect("should be a valid label");
-        assert!(map.get(&pause_label).is_some());
-
-        let timeout_label = Label::try_from("timeout").expect("should be a valid label");
-        assert!(map.get(&timeout_label).is_some());
-
-        let done_label = Label::try_from("done").expect("should be a valid label");
-        assert!(map.get(&done_label).is_none());
+        assert!([("start", true), ("pause", true), ("timeout", true), ("done", false)]
+            .into_iter()
+            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
+            .all(|(label, exists)| map.contains_key(&label) == exists));
     }
 }
