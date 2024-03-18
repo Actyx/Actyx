@@ -96,7 +96,6 @@ fn validate_string(value: &CborValue, string_refinement: &Option<String>) -> any
 
 /// Check if a CBOR value is an array. Can also be used to check for tuples (following RFC 7049).
 fn validate_array(value: &CborValue, ty: &Type) -> anyhow::Result<()> {
-    // NOTE(duarte): this validate is incomplete because we're not supporting subtyping, hence, we're just checking for arrays
     if let Some(values) = value.as_array() {
         for (i, value) in values.iter().enumerate() {
             if let Err(err) = validate(&value.decode(), ty) {
