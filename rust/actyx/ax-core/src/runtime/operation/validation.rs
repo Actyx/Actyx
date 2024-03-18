@@ -8,7 +8,7 @@ use cbor_data::{value::Number, CborBuilder, CborValue, Encoder};
 // in this case, it would be really useful: https://github.com/xd009642/tarpaulin
 
 /// Check if a CBOR value is null.
-fn validate_null(value: &CborValue) -> Result<(), anyhow::Error> {
+fn validate_null(value: &CborValue) -> anyhow::Result<()> {
     if value.is_null() {
         Ok(())
     } else {
@@ -17,7 +17,7 @@ fn validate_null(value: &CborValue) -> Result<(), anyhow::Error> {
 }
 
 /// Check if a CBOR value is a boolean or a boolean refinement (i.e. `true` or `false`).
-fn validate_bool(value: &CborValue, bool_refinement: &Option<bool>) -> Result<(), anyhow::Error> {
+fn validate_bool(value: &CborValue, bool_refinement: &Option<bool>) -> anyhow::Result<()> {
     if let Some(value) = value.as_bool() {
         if let Some(bool_refinement) = bool_refinement {
             if value == *bool_refinement {
@@ -38,7 +38,7 @@ fn validate_bool(value: &CborValue, bool_refinement: &Option<bool>) -> Result<()
 }
 
 /// Check if a CBOR value is an integer or an integer refinement (e.g. `10`).
-fn validate_number(value: &CborValue, number_refinement: &Option<u64>) -> Result<(), anyhow::Error> {
+fn validate_number(value: &CborValue, number_refinement: &Option<u64>) -> anyhow::Result<()> {
     if let Some(Number::Int(value)) = value.as_number() {
         if let Ok(value) = u64::try_from(*value) {
             if let Some(number_refinement) = number_refinement {
@@ -65,7 +65,7 @@ fn validate_number(value: &CborValue, number_refinement: &Option<u64>) -> Result
 }
 
 /// Check if a CBOR value is a timestamp.
-fn validate_timestamp(value: &CborValue) -> Result<(), anyhow::Error> {
+fn validate_timestamp(value: &CborValue) -> anyhow::Result<()> {
     if value.as_timestamp().is_some() {
         Ok(())
     } else {
@@ -74,7 +74,7 @@ fn validate_timestamp(value: &CborValue) -> Result<(), anyhow::Error> {
 }
 
 /// Check if a CBOR value is a string or a string refinement (e.g. "Hello").
-fn validate_string(value: &CborValue, string_refinement: &Option<String>) -> Result<(), anyhow::Error> {
+fn validate_string(value: &CborValue, string_refinement: &Option<String>) -> anyhow::Result<()> {
     if let Some(value) = value.as_str() {
         if let Some(refinement) = string_refinement {
             if value == refinement {
@@ -109,7 +109,7 @@ fn validate_array(value: &CborValue, ty: &Type) -> anyhow::Result<()> {
     }
 }
 
-fn validate_tuple(value: &CborValue, length: usize) -> Result<(), anyhow::Error> {
+fn validate_tuple(value: &CborValue, length: usize) -> anyhow::Result<()> {
     if let Some(array) = value.as_array() {
         if array.len() != length {
             Err(anyhow::anyhow!(
@@ -126,7 +126,7 @@ fn validate_tuple(value: &CborValue, length: usize) -> Result<(), anyhow::Error>
 }
 
 /// Check if a CBOR value is a dictionary.
-fn validate_dict(value: &CborValue) -> Result<(), anyhow::Error> {
+fn validate_dict(value: &CborValue) -> anyhow::Result<()> {
     if value.as_dict().is_some() {
         Ok(())
     } else {
@@ -138,7 +138,7 @@ fn validate_dict(value: &CborValue) -> Result<(), anyhow::Error> {
 // the issue is that a Record can nest arbitrarily deep and may use non-atom types
 // ideally, I would like to _not_ use recursion since we already had the stack issue in other places;
 // so we either ignore records here and handle them somewhere else or we handle them here, some how
-fn validate_atom(value: &CborValue, ty: &TypeAtom) -> Result<(), anyhow::Error> {
+fn validate_atom(value: &CborValue, ty: &TypeAtom) -> anyhow::Result<()> {
     match ty {
         TypeAtom::Null => validate_null(value),
         TypeAtom::Bool(refinement) => validate_bool(value, refinement),
@@ -149,7 +149,7 @@ fn validate_atom(value: &CborValue, ty: &TypeAtom) -> Result<(), anyhow::Error> 
     }
 }
 
-fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> Result<(), anyhow::Error> {
+fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> anyhow::Result<()> {
     if let Some(value) = value.as_dict() {
         for (label, ty) in ty.iter() {
             match label {
@@ -185,11 +185,11 @@ fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> Result
     }
 }
 
-fn validate(value: &CborValue, ty: &Type) -> Result<(), anyhow::Error> {
+fn validate(value: &CborValue, ty: &Type) -> anyhow::Result<()> {
     match ty {
         Type::Atom(atom) => validate_atom(value, atom),
         Type::Array(t) => validate_array(value, t),
-        Type::Dict(_) => validate_dict(value),
+        Type::Dict(t) => validate_dict(value),
         Type::Tuple(tuple) => validate_tuple(value, tuple.len()),
         Type::Record(record) => validate_record(value, record),
         // We can make this much more efficient by checking more things beforehand
