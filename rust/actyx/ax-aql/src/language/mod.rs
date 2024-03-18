@@ -876,7 +876,7 @@ mod for_tests {
             arb!(Type: g => Atom, Union Intersection Array Dict,,)
         }
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-            shrink!(Type: self => Atom, Union(x, x.0.clone(), x.1.clone()) Intersection(x, x.0.clone(), x.1.clone()) Array(x,(**x).clone()) Dict(x,(**x).clone()),)
+            shrink!(Type: self => Atom, Union(x, x.0.clone(), x.1.clone()) Intersection(x, x.0.clone(), x.1.clone()) Array(x,(**x).clone()) Dict(x,(**x).clone()), NoValue)
         }
     }
 

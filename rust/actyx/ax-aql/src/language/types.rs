@@ -12,6 +12,7 @@ use std::{collections::BTreeSet, sync::Arc};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Type {
+    NoValue,
     Atom(TypeAtom),
     Union(Arc<(Type, Type)>),
     Intersection(Arc<(Type, Type)>),

@@ -1,217 +1,48 @@
-use super::workflow::{Participant, Workflow, WorkflowStep};
-use crate::{Ident, Ind, Index, Label, NonEmptyVec, Num, Query, SimpleExpr, Type, TypeAtom};
-use std::{collections::BTreeSet, ops::Deref, sync::Arc};
-pub(crate) struct QueryTypeCheckError<'a> {
-    pub(crate) span: pest::Span<'a>,
-    pub(crate) error_type: QueryTypeCheckErrorType,
-}
+use std::{ops::Deref, sync::Arc};
 
-type ExtraMessage = String;
-pub(crate) enum QueryTypeCheckErrorType {
-    UndeclaredEvent,
-    UndeclaredParticipant,
-    UndeclaredWorkflowCall,
-    InvalidIndex(ExtraMessage),
-}
-struct WorkflowAnalysisResource<'a> {
-    workflow: &'a Workflow<'a>,
-    participants_set: BTreeSet<&'a Ident>,
-}
-
-impl<'a> WorkflowAnalysisResource<'a> {
-    fn from(workflow: &'a Workflow) -> Self {
-        Self {
-            workflow,
-            participants_set: workflow
-                .args
-                .iter()
-                .map(|x| {
-                    let participant: &Participant = x;
-                    match participant {
-                        Participant::Role(ident) => ident,
-                        Participant::Unique(ident) => ident,
-                    }
-                })
-                .collect(),
-        }
-    }
-}
-
-pub(crate) struct QueryTypeCheck<'a> {
-    pub(crate) query: &'a Query<'a>,
-}
-
-impl<'a> QueryTypeCheck<'a> {
-    pub fn from(query: &'a Query) -> Self {
-        Self { query }
-    }
-
-    pub fn check(&'a self) -> Vec<QueryTypeCheckError> {
-        self.query
-            .workflows
-            .iter()
-            .flat_map(|(_ident, workflow)| self.check_workflow(workflow))
-            .collect()
-    }
-
-    fn check_workflow(&'a self, workflow: &'a Workflow) -> Vec<QueryTypeCheckError> {
-        self.check_steps(&WorkflowAnalysisResource::from(workflow), &workflow.steps)
-    }
-
-    fn check_steps(
-        &'a self,
-        parent_workflow: &WorkflowAnalysisResource,
-        steps: &'a NonEmptyVec<WorkflowStep<'a>>,
-    ) -> Vec<QueryTypeCheckError> {
-        steps
-            .iter()
-            .flat_map(|step| self.check_step(parent_workflow, step))
-            .collect()
-    }
-
-    fn check_step(
-        &'a self,
-        parent_workflow: &WorkflowAnalysisResource,
-        step: &'a WorkflowStep<'a>,
-    ) -> Vec<QueryTypeCheckError> {
-        use super::workflow::WorkflowStep as W;
-
-        match step {
-            W::Event { label, binders, .. } => {
-                let mut errors = Vec::new();
-                let matching_event = self.query.events.get(label);
-
-                if matching_event.is_none() {
-                    errors.push(QueryTypeCheckError {
-                        error_type: QueryTypeCheckErrorType::UndeclaredEvent,
-                        span: label.span(),
-                    });
-                }
-
-                if let Some((ev_type, _tag)) = matching_event {
-                    binders.iter().for_each(|binding| {
-                        let value = binding.value();
-
-                        let res: Result<(), ExtraMessage> = match value {
-                            SimpleExpr::Indexing(ind) => drill_down_type_by_index(ev_type, ind).and(Ok(())),
-                            // SimpleExpr::Variable(_) => todo!(),
-                            // SimpleExpr::Number(_) => todo!(),
-                            // SimpleExpr::String(_) => todo!(),
-                            // SimpleExpr::Interpolation(_) => todo!(),
-                            // SimpleExpr::Object(_) => todo!(),
-                            // SimpleExpr::Array(_) => todo!(),
-                            // SimpleExpr::Null => todo!(),
-                            // SimpleExpr::Bool(_) => todo!(),
-                            // SimpleExpr::Cases(_) => todo!(),
-                            // SimpleExpr::BinOp(_) => todo!(),
-                            // SimpleExpr::Not(_) => todo!(),
-                            // SimpleExpr::AggrOp(_) => todo!(),
-                            // SimpleExpr::FuncCall(_) => todo!(),
-                            // SimpleExpr::SubQuery(_) => todo!(),
-                            // SimpleExpr::KeyVar(_) => todo!(),
-                            // SimpleExpr::KeyLiteral(_) => todo!(),
-                            // SimpleExpr::TimeVar(_) => todo!(),
-                            // SimpleExpr::TimeLiteral(_) => todo!(),
-                            // SimpleExpr::Tags(_) => todo!(),
-                            // SimpleExpr::App(_) => todo!(),
-                            _ => Ok(()),
-                        };
-
-                        if let Err(error_message) = res {
-                            errors.push(QueryTypeCheckError {
-                                span: binding.span(),
-                                error_type: QueryTypeCheckErrorType::InvalidIndex(error_message),
-                            })
-                        }
-                    });
-                }
-
-                // Check binders for undeclared participants
-                errors.extend(binders.iter().filter_map(|binding_span| {
-                    if !parent_workflow.participants_set.contains(binding_span.role()) {
-                        Some(QueryTypeCheckError {
-                            error_type: QueryTypeCheckErrorType::UndeclaredParticipant,
-                            span: binding_span.span(),
-                        })
-                    } else {
-                        None
-                    }
-                }));
-
-                // this part will also handle additional stuffs like type matching in `binders`
-                errors
-            }
-            W::Retry { steps } => self.check_steps(parent_workflow, steps),
-            W::Timeout { steps, .. } => self.check_steps(parent_workflow, steps),
-            W::Parallel { cases, .. } => cases
-                .iter()
-                .flat_map(|case| self.check_steps(parent_workflow, case))
-                .collect(),
-            W::Call {
-                workflow: workflow_ident,
-                cases,
-                ..
-            } => {
-                let mut errors = Vec::new();
-                if self.query.workflows.get(workflow_ident).is_none() {
-                    errors.push(QueryTypeCheckError {
-                        error_type: QueryTypeCheckErrorType::UndeclaredWorkflowCall,
-                        span: workflow_ident.span(),
-                    });
-                }
-
-                errors.extend(
-                    cases
-                        .iter()
-                        .flat_map(|(_, steps)| self.check_steps(parent_workflow, steps)),
-                );
-
-                errors
-            }
-            W::Compensate { body, with } => std::iter::empty()
-                .chain(self.check_steps(parent_workflow, body))
-                .chain(self.check_steps(parent_workflow, with))
-                .collect(),
-            W::Choice { cases } => cases
-                .iter()
-                .flat_map(|steps| self.check_steps(parent_workflow, steps))
-                .collect(),
-        }
-    }
-}
+use crate::{Ind, Index, Label, Num, SimpleExpr, Type, TypeAtom};
 
 /// Check whether Ind can be used to index a Type
 /// e.g. can _.a.b be used to access Type::Record([("a", Type::Record([("b", Type::String)]))])
 /// Drills down type and Ind.tail recursively at the same time to find a match
-fn drill_down_type_by_index(cur_type: &Type, ind: &Ind) -> Result<Type, ExtraMessage> {
-    let Ind { head: _, tail, .. } = ind;
+pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result<Type, String> {
+    // Define drill_down definitions
+    // Developer Notes:
+    // catch-all case _ => is avoided to prevent bugs due to missing cases when
+    // a new Type, TypeAtom, or SimpleExpr is introduced
 
-    fn recurse(cur_type: &Type, index: &[Index]) -> Result<Type, ExtraMessage> {
-        let mut cur_type = cur_type;
+    /// Drills down type by an index slice
+    /// Developer Notes:
+    /// this functions operate in 2 modes: a loop and a recursion
+    /// - the loop pop_front the index until the index is empty, which then will return Ok(current_type)
+    /// - in case loop isn't possible, return its recursion.
+    /// - in both cases, this function relies on explicit returns, pay attention to when and where.
+    fn drill_down(current_type: &Type, index: &[Index]) -> Result<Type, String> {
+        let mut cur_type = current_type.clone();
         let mut index = index.clone();
 
         loop {
             if index.is_empty() {
-                return Ok(cur_type.to_owned());
+                return Ok(cur_type);
             }
-            let (first, rest) = index.split_at(1);
-            let first = &first[0];
-            index = rest;
+            let first = &index[0];
+            let rest = &index[1..];
 
-            cur_type = match cur_type {
+            cur_type = match &cur_type {
+                Type::NoValue => return Err(format!("{:?} cannot be accessed.", cur_type)),
                 Type::Atom(type_atom) => match type_atom {
-                    TypeAtom::Universal => return Ok(Type::Atom(TypeAtom::Universal)),
+                    TypeAtom::Universal => return Ok(Type::Union(Arc::from((cur_type, Type::NoValue)))),
                     TypeAtom::Tuple(tuple) => match first {
-                        Index::Expr(expr) => return recurse_with_calculated_expression(cur_type, expr, rest),
+                        Index::Expr(expr) => return drill_down_with_calculated_expressions(&cur_type, expr, rest),
                         Index::Number(num_index) => match tuple.get(*num_index as usize) {
                             None => return Err(format!("{:?} cannot be accessed by {}", tuple, num_index)),
-                            Some(ty) => ty,
+                            Some(ty) => ty.clone(),
                         },
                         _ => return Err(format!("{:?} cannot be accessed by {:?}", tuple, first)),
                     },
                     TypeAtom::Record(fields) => {
                         if let Index::Expr(expr) = first {
-                            return recurse_with_calculated_expression(cur_type, expr, rest);
+                            return drill_down_with_calculated_expressions(&cur_type, expr, rest);
                         }
 
                         let matching_field = fields.iter().find(|(label, _)| match (label, first) {
@@ -221,25 +52,43 @@ fn drill_down_type_by_index(cur_type: &Type, ind: &Ind) -> Result<Type, ExtraMes
                         });
 
                         match matching_field {
-                            None => return Err(format!("{:?} cannot be accessed by {:?}", type_atom, first)),
-                            Some((_, ty)) => ty,
+                            None => return Err(format!("{:?} cannot be accessed by {:?}", cur_type, first)),
+                            Some((_, ty)) => ty.clone(),
                         }
                     }
-                    _ => return Err(format!("{:?} cannot be accessed by {:?}", type_atom, first)),
+                    TypeAtom::Null
+                    | TypeAtom::Bool(_)
+                    | TypeAtom::Number(_)
+                    | TypeAtom::Timestamp
+                    | TypeAtom::String(_) => return Err(format!("{:?} cannot be accessed by {:?}", type_atom, first)),
                 },
                 Type::Dict(ty) => match first {
-                    Index::String(_) => ty,
-                    Index::Expr(expr) => return recurse_with_calculated_expression(cur_type, expr, rest),
-                    _ => return Err(format!("{:?} cannot be accessed by a non-string", cur_type)),
+                    Index::Number(_) => Type::Union(Arc::from((ty.as_ref().clone(), Type::NoValue))),
+                    Index::String(_) => Type::Union(Arc::from((ty.as_ref().clone(), Type::NoValue))),
+                    Index::Expr(expr) => {
+                        return drill_down_with_calculated_expressions(&cur_type, expr, rest)
+                            .map(|ty| Type::Union(Arc::from((ty, Type::NoValue))))
+                            .map(|mut ty| {
+                                ty.collapse_union();
+                                ty
+                            })
+                    }
                 },
                 Type::Array(ty) => match first {
-                    Index::Number(_) => ty,
-                    Index::Expr(expr) => return recurse_with_calculated_expression(cur_type, expr, rest),
-                    _ => return Err(format!("{:?} cannot be accessed by a non-number", cur_type)),
+                    Index::Number(_) => Type::Union(Arc::from((ty.as_ref().clone(), Type::NoValue))),
+                    Index::Expr(expr) => {
+                        return drill_down_with_calculated_expressions(&cur_type, expr, rest)
+                            .map(|ty| Type::Union(Arc::from((ty, Type::NoValue))))
+                            .map(|mut ty| {
+                                ty.collapse_union();
+                                ty
+                            })
+                    }
+                    Index::String(_) => return Err(format!("{:?} cannot be accessed by a non-number", cur_type)),
                 },
                 Type::Union(ty) => {
-                    let a_result = recurse(&ty.0, index);
-                    let b_result = recurse(&ty.1, index);
+                    let a_result = drill_down(&ty.0, index);
+                    let b_result = drill_down(&ty.1, index);
 
                     return match (a_result, b_result) {
                         (Ok(a), Ok(b)) => {
@@ -249,11 +98,15 @@ fn drill_down_type_by_index(cur_type: &Type, ind: &Ind) -> Result<Type, ExtraMes
                         }
                         (Ok(_), Err(b)) => Err(b),
                         (Err(a), Ok(_)) => Err(a),
-                        (Err(a), Err(b)) => Err([a, b]
-                            .into_iter()
-                            .map(|err_msg| format!("- {}", err_msg))
-                            .collect::<Vec<_>>()
-                            .join("\n")),
+                        (Err(a), Err(b)) => {
+                            let joined_error_messages = [a, b]
+                                .into_iter()
+                                .map(|err_msg| format!("- {}", err_msg))
+                                .collect::<Vec<_>>()
+                                .join("\n");
+
+                            Err(joined_error_messages)
+                        }
                     };
                 }
                 Type::Intersection(_) => {
@@ -261,21 +114,27 @@ fn drill_down_type_by_index(cur_type: &Type, ind: &Ind) -> Result<Type, ExtraMes
                     return Err(format!("{:?} cannot be accessed", cur_type));
                 }
             };
+
+            // index pop_front-ting
+            index = rest;
         }
     }
 
-    /// attempt drill down on a type using a calculated expression
-    fn recurse_with_calculated_expression(
+    fn drill_down_with_calculated_expressions(
         cur_type: &Type,
         first_expr: &SimpleExpr,
         rest: &[Index],
-    ) -> Result<Type, ExtraMessage> {
+    ) -> Result<Type, String> {
         let new_index = match first_expr {
             SimpleExpr::Number(Num::Natural(x)) => Index::Number(*x),
             SimpleExpr::String(x) => Index::String(x.clone()),
-            // Note: Not sure if rounded Num::Decimal should be regarded as natural or not
-            SimpleExpr::Number(Num::Decimal(_))
-            | SimpleExpr::Bool(_)
+            SimpleExpr::Number(Num::Decimal(_)) => {
+                return Err(format!(
+                    "{:?} cannot be accessed by {}. Decimal cannot be used for indexing.",
+                    cur_type, first_expr
+                ))
+            }
+            SimpleExpr::Bool(_)
             | SimpleExpr::Object(_)
             | SimpleExpr::Array(_)
             | SimpleExpr::Null
@@ -287,18 +146,24 @@ fn drill_down_type_by_index(cur_type: &Type, ind: &Ind) -> Result<Type, ExtraMes
             | SimpleExpr::Tags(_)
             | SimpleExpr::App(_)
             | SimpleExpr::BinOp(_) => return Err(format!("{:?} cannot be accessed by {}", cur_type, first_expr)),
+            SimpleExpr::Indexing(_) => {
+                // TODO: support
+                return Err(format!(
+                    "{:?} cannot be accessed by {:?}. Indexing by an indexing expression isn't supported yet",
+                    cur_type, first_expr
+                ));
+            }
             SimpleExpr::Variable(_)
-            | SimpleExpr::Indexing(_)
             | SimpleExpr::Interpolation(_)
             | SimpleExpr::AggrOp(_)
             | SimpleExpr::FuncCall(_)
-            | SimpleExpr::SubQuery(_) => return Ok(Type::Atom(TypeAtom::Universal)),
+            | SimpleExpr::SubQuery(_) => return drill_down(&Type::Atom(TypeAtom::Universal), rest),
             SimpleExpr::Cases(c) => {
                 // Case acts similarly to a union because it may results in several types
 
                 let type_results = c
                     .iter()
-                    .map(|(_, then)| recurse_with_calculated_expression(cur_type, then, rest))
+                    .map(|(_, then)| drill_down_with_calculated_expressions(cur_type, then, rest))
                     .collect::<Vec<_>>();
 
                 let errors = type_results
@@ -327,7 +192,7 @@ fn drill_down_type_by_index(cur_type: &Type, ind: &Ind) -> Result<Type, ExtraMes
                     })
                     .fold(None, |acc, item| match acc {
                         None => Some(item),
-                        Some(a) => Some(Type::Union(Arc::new((a, item)))),
+                        Some(prev) => Some(Type::Union(Arc::new((prev, item)))),
                     });
 
                 let mut union =
@@ -338,10 +203,12 @@ fn drill_down_type_by_index(cur_type: &Type, ind: &Ind) -> Result<Type, ExtraMes
             }
         };
 
-        recurse(cur_type, [&[new_index], rest].concat().as_slice())
+        drill_down(cur_type, [&[new_index], rest].concat().as_slice())
     }
 
-    let result = recurse(cur_type, tail);
+    // start drilling_down
+    let Ind { head: _, tail, .. } = ind;
+    let result = drill_down(current_type, tail);
 
     match result {
         Ok(mut x) => {
@@ -351,7 +218,7 @@ fn drill_down_type_by_index(cur_type: &Type, ind: &Ind) -> Result<Type, ExtraMes
         Err(x) => {
             if tail.len() > 1 {
                 // create a root-level error message
-                let root_lv_err = format!("{:?} cannot be accessed by {:?}", cur_type, ind);
+                let root_lv_err = format!("{:?} cannot be accessed by {:?}", current_type, ind);
                 // append with indented deeper_lv_err
                 let deeper_lv_err = x
                     .split('\n')
