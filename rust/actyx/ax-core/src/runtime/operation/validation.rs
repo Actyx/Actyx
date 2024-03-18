@@ -95,9 +95,14 @@ fn validate_string(value: &CborValue, string_refinement: &Option<String>) -> Res
 }
 
 /// Check if a CBOR value is an array. Can also be used to check for tuples (following RFC 7049).
-fn validate_array(value: &CborValue) -> Result<(), anyhow::Error> {
+fn validate_array(value: &CborValue, ty: &Type) -> anyhow::Result<()> {
     // NOTE(duarte): this validate is incomplete because we're not supporting subtyping, hence, we're just checking for arrays
-    if value.as_array().is_some() {
+    if let Some(values) = value.as_array() {
+        for (i, value) in values.into_iter().enumerate() {
+            if let Err(err) = validate(&value.decode(), ty) {
+                return Err(anyhow::anyhow!("type mismatch, element {} is not of type {:?}", i, ty)).context(err);
+            }
+        }
         Ok(())
     } else {
         Err(anyhow::anyhow!("type mismatch, expected value to be an array"))
@@ -183,7 +188,7 @@ fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> Result
 fn validate(value: &CborValue, ty: &Type) -> Result<(), anyhow::Error> {
     match ty {
         Type::Atom(atom) => validate_atom(value, atom),
-        Type::Array(_) => validate_array(value),
+        Type::Array(t) => validate_array(value, t),
         Type::Dict(_) => validate_dict(value),
         Type::Tuple(tuple) => validate_tuple(value, tuple.len()),
         Type::Record(record) => validate_record(value, record),
@@ -321,16 +326,26 @@ mod test {
             builder.encode_u64(10).encode_u64(100);
         });
         let cbor = cbor.decode();
-        assert!(validate_array(&cbor).is_ok());
+        validate_array(&cbor, &Type::Atom(TypeAtom::Number(None))).unwrap();
+        assert!(validate_array(&cbor, &Type::Atom(TypeAtom::Number(None))).is_ok());
     }
 
     #[test]
-    fn test_validate_array_fail() {
+    fn test_validate_array_fail_elements() {
+        let cbor = CborBuilder::new().encode_array(|builder| {
+            builder.encode_str("hello").encode_str("world");
+        });
+        let cbor = cbor.decode();
+        assert!(validate_array(&cbor, &Type::Atom(TypeAtom::Number(None))).is_err());
+    }
+
+    #[test]
+    fn test_validate_array_fail_type() {
         let cbor = CborBuilder::new().encode_dict(|builder| {
             builder.with_key("hello", |b| b.encode_str("world"));
         });
         let cbor = cbor.decode();
-        assert!(validate_array(&cbor).is_err());
+        assert!(validate_array(&cbor, &Type::Atom(TypeAtom::Number(None))).is_err());
     }
 
     #[test]
