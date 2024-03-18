@@ -109,17 +109,26 @@ fn validate_array(value: &CborValue, ty: &Type) -> anyhow::Result<()> {
     }
 }
 
-fn validate_tuple(value: &CborValue, length: usize) -> anyhow::Result<()> {
+fn validate_tuple(value: &CborValue, ty: &NonEmptyVec<Type>) -> anyhow::Result<()> {
     if let Some(array) = value.as_array() {
-        if array.len() != length {
-            Err(anyhow::anyhow!(
+        if array.len() != ty.len() {
+            return Err(anyhow::anyhow!(
                 "type mismatch, expected tuple to have length {} got {} instead",
-                length,
+                ty.len(),
                 array.len()
-            ))
-        } else {
-            Ok(())
+            ));
         }
+        for (i, (value, ty)) in array.iter().zip(ty.iter()).enumerate() {
+            if let Err(err) = validate(&value.decode(), ty) {
+                return Err(anyhow::anyhow!(
+                    "type mismatch, expected element {} of the tuple to be {:?}",
+                    i,
+                    ty
+                ))
+                .context(err);
+            }
+        }
+        Ok(())
     } else {
         Err(anyhow::anyhow!("type mismatch, expected value to be an array"))
     }
@@ -207,7 +216,7 @@ fn validate(value: &CborValue, ty: &Type) -> anyhow::Result<()> {
         Type::Atom(atom) => validate_atom(value, atom),
         Type::Array(inner_ty) => validate_array(value, inner_ty),
         Type::Dict(inner_ty) => validate_dict(value, inner_ty),
-        Type::Tuple(tuple) => validate_tuple(value, tuple.len()),
+        Type::Tuple(tuple) => validate_tuple(value, tuple),
         Type::Record(record) => validate_record(value, record),
         // We can make this much more efficient by checking more things beforehand
         // like intersecting types before decoding anything
@@ -227,7 +236,7 @@ mod test {
         validate_record, validate_string, validate_timestamp, validate_tuple,
     };
 
-    use ax_aql::{Label, Type, TypeAtom};
+    use ax_aql::{Label, NonEmptyVec, Type, TypeAtom};
     use cbor_data::{
         value::{Precision, Timestamp},
         CborBuilder, Encoder,
@@ -371,22 +380,68 @@ mod test {
             builder.encode_u64(10).encode_u64(100);
         });
         let cbor = cbor.decode();
-        assert!(validate_tuple(&cbor, 2).is_ok());
+        assert!(validate_tuple(
+            &cbor,
+            &NonEmptyVec::try_from(vec![
+                Type::Atom(TypeAtom::Number(None)),
+                Type::Atom(TypeAtom::Number(None))
+            ])
+            .expect("a non empty vec")
+        )
+        .is_ok());
     }
 
     #[test]
     fn test_validate_tuple_fail() {
-        let cbor = CborBuilder::new().encode_array(|builder| {
-            builder.encode_u64(10).encode_u64(100);
-        });
-        let cbor = cbor.decode();
-        assert!(validate_tuple(&cbor, 4).is_err());
-
         let cbor = CborBuilder::new().encode_dict(|builder| {
             builder.with_key("hello", |b| b.encode_str("world"));
         });
         let cbor = cbor.decode();
-        assert!(validate_tuple(&cbor, 3).is_err());
+        assert!(validate_tuple(
+            &cbor,
+            &NonEmptyVec::try_from(vec![
+                Type::Atom(TypeAtom::Number(None)),
+                Type::Atom(TypeAtom::Number(None)),
+                Type::Atom(TypeAtom::Number(None)),
+            ])
+            .expect("a non empty vec")
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn test_validate_tuple_length_fail() {
+        let cbor = CborBuilder::new().encode_array(|builder| {
+            builder.encode_u64(10).encode_u64(100);
+        });
+        let cbor = cbor.decode();
+        assert!(validate_tuple(
+            &cbor,
+            &NonEmptyVec::try_from(vec![
+                Type::Atom(TypeAtom::Number(None)),
+                Type::Atom(TypeAtom::Number(None)),
+                Type::Atom(TypeAtom::Number(None)),
+            ])
+            .expect("a non empty vec")
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn test_validate_tuple_type_fail() {
+        let cbor = CborBuilder::new().encode_array(|builder| {
+            builder.encode_u64(10).encode_u64(100);
+        });
+        let cbor = cbor.decode();
+        assert!(validate_tuple(
+            &cbor,
+            &NonEmptyVec::try_from(vec![
+                Type::Atom(TypeAtom::Number(None)),
+                Type::Atom(TypeAtom::String(None)),
+            ])
+            .expect("a non empty vec")
+        )
+        .is_err());
     }
 
     #[test]
