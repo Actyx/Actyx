@@ -1,0 +1,39 @@
+flowchart LR
+    PR([Pull Request])
+    MergeToMaster([Merge to master])
+    MergeToRelease([Merge to release/*])
+    End[End]
+    subgraph "Artifacts"
+        direction LR
+        ArtStart
+        ArtMakeAll[make all artifacts]
+        subgraph "Release"
+            RelCalcVers[calculate versions for products]
+            RelVers[update versions]
+            RelBranch[create RC branch]
+            RelCalcVers-->RelVers-->RelBranch
+        end
+        ArtStart-->ArtMakeAll-->Release
+    end
+    subgraph "Publish"
+        direction LR
+        PublishStart[Start]
+        subgraph "Publish Artifact"
+            direction LR
+            PublishArtParams["for each <u>publisher</u> \nin <u>combine(['ax', 'node-manager'],\nversions,\nOSArch::All)</u>\n"]
+            PublishArtImpl[Move artifact\nfrom <u>Container::Artifacts</u>\nto <u>Container::Release</u>]
+        end
+        PublishDocs[publish docs/website]
+        PublishStart --> PublishArtParams -->|do| PublishArtImpl  --> PublishDocs
+    end
+    PR --> Validate3[[Validate]]
+    MergeToMaster -->|yes| Validate1[[Validate]] --> Publish
+    MergeToMaster -->|yes| Validate2[[Validate]] --> Artifacts
+    MergeToMaster -->|No| End
+    MergeToRelease --> |yes| Publish
+    MergeToRelease --> |No| End
+    Artifacts --> End
+    Publish --> End
+    Validate3--> End
+    
+    
