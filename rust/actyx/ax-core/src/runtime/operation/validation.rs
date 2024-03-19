@@ -423,11 +423,10 @@ mod test {
         assert!(
             validate_tuple(
                 &cbor,
-                &NonEmptyVec::try_from(vec![
+                &[
                     Type::Atom(TypeAtom::Number(None)),
                     Type::Atom(TypeAtom::Number(Some(100)))
-                ])
-                .expect("a non empty vec")
+                ]
             )
             .is_ok(),
             "TUPLE contents are not (NUMBER, NUMBER(100)"
@@ -443,12 +442,11 @@ mod test {
         assert!(
             validate_tuple(
                 &cbor,
-                &NonEmptyVec::try_from(vec![
+                &[
                     Type::Atom(TypeAtom::Number(None)),
                     Type::Atom(TypeAtom::Number(None)),
                     Type::Atom(TypeAtom::Number(None)),
-                ])
-                .expect("a non empty vec")
+                ]
             )
             .is_err(),
             "TUPLE contents are (NUMBER, NUMBER, NUMBER)"
@@ -464,12 +462,11 @@ mod test {
         assert!(
             validate_tuple(
                 &cbor,
-                &NonEmptyVec::try_from(vec![
+                &[
                     Type::Atom(TypeAtom::Number(Some(10))),
                     Type::Atom(TypeAtom::Number(Some(100))),
                     Type::Atom(TypeAtom::Number(None)),
-                ])
-                .expect("a non empty vec")
+                ]
             )
             .is_err(),
             "TUPLE contents are (NUMBER(10), NUMBER(100), NUMBER)"
@@ -485,11 +482,7 @@ mod test {
         assert!(
             validate_tuple(
                 &cbor,
-                &NonEmptyVec::try_from(vec![
-                    Type::Atom(TypeAtom::Number(None)),
-                    Type::Atom(TypeAtom::String(None)),
-                ])
-                .expect("a non empty vec")
+                &[Type::Atom(TypeAtom::Number(None)), Type::Atom(TypeAtom::String(None))]
             )
             .is_err(),
             "TUPLE contents are (NUMBER, STRING)"
