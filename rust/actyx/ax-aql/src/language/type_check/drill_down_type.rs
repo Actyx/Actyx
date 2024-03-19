@@ -18,22 +18,22 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
     /// - in case loop isn't possible, return its recursion.
     /// - in both cases, this function relies on explicit returns, pay attention to when and where.
     fn drill_down(current_type: &Type, index: &[Index]) -> Result<Type, String> {
-        let mut cur_type = current_type.clone();
+        let mut current_type = current_type.clone();
         let mut index = index.clone();
 
         loop {
             if index.is_empty() {
-                return Ok(cur_type);
+                return Ok(current_type);
             }
             let first = &index[0];
             let rest = &index[1..];
 
-            cur_type = match &cur_type {
-                Type::NoValue => return Err(format!("{:?} cannot be accessed.", cur_type)),
+            current_type = match &current_type {
+                Type::NoValue => return Err(format!("{:?} cannot be accessed.", current_type)),
                 Type::Atom(type_atom) => match type_atom {
-                    TypeAtom::Universal => return Ok(Type::Union(Arc::from((cur_type, Type::NoValue)))),
+                    TypeAtom::Universal => return Ok(Type::Union(Arc::from((current_type, Type::NoValue)))),
                     TypeAtom::Tuple(tuple) => match first {
-                        Index::Expr(expr) => return drill_down_with_calculated_expressions(&cur_type, expr, rest),
+                        Index::Expr(expr) => return drill_down_with_calculated_expressions(&current_type, expr, rest),
                         Index::Number(num_index) => match tuple.get(*num_index as usize) {
                             None => return Err(format!("{:?} cannot be accessed by {}", tuple, num_index)),
                             Some(ty) => ty.clone(),
@@ -42,7 +42,7 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
                     },
                     TypeAtom::Record(fields) => {
                         if let Index::Expr(expr) = first {
-                            return drill_down_with_calculated_expressions(&cur_type, expr, rest);
+                            return drill_down_with_calculated_expressions(&current_type, expr, rest);
                         }
 
                         let matching_field = fields.iter().find(|(label, _)| match (label, first) {
@@ -52,7 +52,7 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
                         });
 
                         match matching_field {
-                            None => return Err(format!("{:?} cannot be accessed by {:?}", cur_type, first)),
+                            None => return Err(format!("{:?} cannot be accessed by {:?}", current_type, first)),
                             Some((_, ty)) => ty.clone(),
                         }
                     }
@@ -66,25 +66,19 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
                     Index::Number(_) => Type::Union(Arc::from((ty.as_ref().clone(), Type::NoValue))),
                     Index::String(_) => Type::Union(Arc::from((ty.as_ref().clone(), Type::NoValue))),
                     Index::Expr(expr) => {
-                        return drill_down_with_calculated_expressions(&cur_type, expr, rest)
+                        return drill_down_with_calculated_expressions(&current_type, expr, rest)
                             .map(|ty| Type::Union(Arc::from((ty, Type::NoValue))))
-                            .map(|mut ty| {
-                                ty.collapse_union();
-                                ty
-                            })
+                            .and_then(|ty| ty.collapse().map_err(|e| e.to_string()))
                     }
                 },
                 Type::Array(ty) => match first {
                     Index::Number(_) => Type::Union(Arc::from((ty.as_ref().clone(), Type::NoValue))),
                     Index::Expr(expr) => {
-                        return drill_down_with_calculated_expressions(&cur_type, expr, rest)
+                        return drill_down_with_calculated_expressions(&current_type, expr, rest)
                             .map(|ty| Type::Union(Arc::from((ty, Type::NoValue))))
-                            .map(|mut ty| {
-                                ty.collapse_union();
-                                ty
-                            })
+                            .and_then(|ty| ty.collapse().map_err(|e| e.to_string()))
                     }
-                    Index::String(_) => return Err(format!("{:?} cannot be accessed by a non-number", cur_type)),
+                    Index::String(_) => return Err(format!("{:?} cannot be accessed by a non-number", current_type)),
                 },
                 Type::Union(ty) => {
                     let a_result = drill_down(&ty.0, index);
@@ -92,8 +86,7 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
 
                     return match (a_result, b_result) {
                         (Ok(a), Ok(b)) => {
-                            let mut new_union = Type::Union(Arc::new((a, b)));
-                            new_union.collapse_union();
+                            let new_union = Type::Union(Arc::new((a, b))).collapse().map_err(|e| e.to_string())?;
                             Ok(new_union)
                         }
                         (Ok(_), Err(b)) => Err(b),
@@ -110,18 +103,18 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
                     };
                 }
                 Type::Intersection(_) => {
-                    // NOTE: impossible to drill down on intersection without intersection collapsing mechanism
-                    return Err(format!("{:?} cannot be accessed", cur_type));
+                    let collapsed = current_type.clone().collapse().map_err(|e| e.to_string())?;
+                    return drill_down(&collapsed, index);
                 }
             };
 
-            // index pop_front-ting
+            // index pop_front-ing
             index = rest;
         }
     }
 
     fn drill_down_with_calculated_expressions(
-        cur_type: &Type,
+        current_type: &Type,
         first_expr: &SimpleExpr,
         rest: &[Index],
     ) -> Result<Type, String> {
@@ -131,7 +124,7 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
             SimpleExpr::Number(Num::Decimal(_)) => {
                 return Err(format!(
                     "{:?} cannot be accessed by {}. Decimal cannot be used for indexing.",
-                    cur_type, first_expr
+                    current_type, first_expr
                 ))
             }
             SimpleExpr::Bool(_)
@@ -145,12 +138,12 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
             | SimpleExpr::TimeLiteral(_)
             | SimpleExpr::Tags(_)
             | SimpleExpr::App(_)
-            | SimpleExpr::BinOp(_) => return Err(format!("{:?} cannot be accessed by {}", cur_type, first_expr)),
+            | SimpleExpr::BinOp(_) => return Err(format!("{:?} cannot be accessed by {}", current_type, first_expr)),
             SimpleExpr::Indexing(_) => {
                 // TODO: support
                 return Err(format!(
                     "{:?} cannot be accessed by {:?}. Indexing by an indexing expression isn't supported yet",
-                    cur_type, first_expr
+                    current_type, first_expr
                 ));
             }
             SimpleExpr::Variable(_)
@@ -163,7 +156,7 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
 
                 let type_results = c
                     .iter()
-                    .map(|(_, then)| drill_down_with_calculated_expressions(cur_type, then, rest))
+                    .map(|(_, then)| drill_down_with_calculated_expressions(current_type, then, rest))
                     .collect::<Vec<_>>();
 
                 let errors = type_results
@@ -195,15 +188,16 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
                         Some(prev) => Some(Type::Union(Arc::new((prev, item)))),
                     });
 
-                let mut union =
-                    union.expect("the type_results to be non-empty because it is derived from a non-empty cases");
-                union.collapse_union();
+                let union = union
+                    .expect("the type_results to be non-empty because it is derived from a non-empty cases")
+                    .collapse()
+                    .map_err(|e| e.to_string())?;
 
                 return Ok(union);
             }
         };
 
-        drill_down(cur_type, [&[new_index], rest].concat().as_slice())
+        drill_down(current_type, [&[new_index], rest].concat().as_slice())
     }
 
     // start drilling_down
@@ -211,10 +205,7 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
     let result = drill_down(current_type, tail);
 
     match result {
-        Ok(mut x) => {
-            x.collapse_union();
-            Ok(x)
-        }
+        Ok(x) => Ok(x.collapse().map_err(|e| e.to_string())?),
         Err(x) => {
             if tail.len() > 1 {
                 // create a root-level error message
@@ -251,7 +242,10 @@ mod tests {
                     tail: vec![Index::Number(0_u64)].try_into().unwrap(),
                 },
             ),
-            Ok(Type::Atom(TypeAtom::Number(None)))
+            Ok(Type::Union(Arc::new((
+                Type::Atom(TypeAtom::Number(None)),
+                Type::NoValue
+            ))))
         );
 
         assert!(drill_down_type_by_index(
@@ -274,17 +268,24 @@ mod tests {
                     tail: vec![Index::String(String::from("some_string"))].try_into().unwrap(),
                 },
             ),
-            Ok(Type::Atom(TypeAtom::Number(None)))
+            Ok(Type::Union(Arc::new((
+                Type::Atom(TypeAtom::Number(None)),
+                Type::NoValue
+            ))))
         );
-
-        assert!(drill_down_type_by_index(
-            &Type::Dict(Arc::new(Type::Atom(TypeAtom::Number(None)))),
-            &Ind {
-                head: SimpleExpr::Variable(Var("_".to_string())).into(),
-                tail: vec![Index::Number(0_u64)].try_into().unwrap(),
-            },
-        )
-        .is_err());
+        assert_eq!(
+            drill_down_type_by_index(
+                &Type::Dict(Arc::new(Type::Atom(TypeAtom::Number(None)))),
+                &Ind {
+                    head: SimpleExpr::Variable(Var("_".to_string())).into(),
+                    tail: vec![Index::Number(1)].try_into().unwrap(),
+                },
+            ),
+            Ok(Type::Union(Arc::new((
+                Type::Atom(TypeAtom::Number(None)),
+                Type::NoValue
+            ))))
+        );
     }
 
     #[test]
