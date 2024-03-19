@@ -108,7 +108,7 @@ fn validate_array(value: &CborValue, ty: &Type) -> anyhow::Result<()> {
     }
 }
 
-fn validate_tuple(value: &CborValue, ty: &NonEmptyVec<Type>) -> anyhow::Result<()> {
+fn validate_tuple(value: &CborValue, ty: &[Type]) -> anyhow::Result<()> {
     if let Some(array) = value.as_array() {
         if array.len() != ty.len() {
             return Err(anyhow::anyhow!(
@@ -245,48 +245,57 @@ mod test {
     fn test_validate_null() {
         let cbor = CborBuilder::new().encode_null();
         let cbor = cbor.decode();
-        assert!(validate_null(&cbor).is_ok());
+        assert!(validate_null(&cbor).is_ok(), "value is not NULL");
     }
 
     #[test]
     fn test_validate_null_fail() {
         let cbor = CborBuilder::new().encode_i64(100);
         let cbor = cbor.decode();
-        assert!(validate_null(&cbor).is_err());
+        assert!(validate_null(&cbor).is_err(), "value is NULL");
     }
 
     #[test]
     fn test_validate_bool() {
         let cbor = CborBuilder::new().encode_bool(false);
         let cbor = cbor.decode();
-        assert!(validate_bool(&cbor, &None).is_ok());
-        assert!(validate_bool(&cbor, &Some(false)).is_ok());
-        assert!(validate_bool(&cbor, &Some(true)).is_err());
+        assert!(validate_bool(&cbor, &None).is_ok(), "value is not a BOOLEAN");
+        assert!(
+            validate_bool(&cbor, &Some(false)).is_ok(),
+            "value is not BOOLEAN and FALSE"
+        );
+        assert!(validate_bool(&cbor, &Some(true)).is_err(), "value is BOOLEAN and TRUE");
     }
 
     #[test]
     fn test_validate_bool_fail() {
         let cbor = CborBuilder::new().encode_i64(10);
         let cbor = cbor.decode();
-        assert!(validate_bool(&cbor, &None).is_err());
-        assert!(validate_bool(&cbor, &Some(false)).is_err());
+        assert!(validate_bool(&cbor, &None).is_err(), "value is BOOLEAN");
+        assert!(
+            validate_bool(&cbor, &Some(false)).is_err(),
+            "value is BOOLEAN and FALSE"
+        );
     }
 
     #[test]
     fn test_validate_number() {
         let cbor = CborBuilder::new().encode_i64(10);
         let cbor = cbor.decode();
-        assert!(validate_number(&cbor, &None).is_ok());
-        assert!(validate_number(&cbor, &Some(10)).is_ok());
-        assert!(validate_number(&cbor, &Some(50)).is_err());
+        assert!(validate_number(&cbor, &None).is_ok(), "value is not NUMBER");
+        assert!(validate_number(&cbor, &Some(10)).is_ok(), "value is not NUMBER and 10");
+        assert!(validate_number(&cbor, &Some(50)).is_err(), "value is a NUMBER and 50");
     }
 
     #[test]
     fn test_validate_number_fail() {
         let cbor = CborBuilder::new().encode_f64(0.100);
         let cbor = cbor.decode();
-        assert!(validate_number(&cbor, &None).is_err());
-        assert!(validate_number(&cbor, &Some(100)).is_err());
+        assert!(validate_number(&cbor, &None).is_err(), "value is a NUMBER (u64)");
+        assert!(
+            validate_number(&cbor, &Some(100)).is_err(),
+            "value is a NUMBER (u64) and 100"
+        );
     }
 
     #[test]
@@ -294,55 +303,79 @@ mod test {
         let timestamp = Timestamp::new(876523558, 0, 0);
         let cbor = CborBuilder::new().encode_timestamp(timestamp, Precision::Seconds);
         let cbor = cbor.decode();
-        assert!(validate_timestamp(&cbor).is_ok());
+        assert!(validate_timestamp(&cbor).is_ok(), "value is not a TIMESTAMP");
     }
 
     #[test]
     fn test_validate_timestamp_fail() {
         let cbor = CborBuilder::new().encode_str("value");
         let cbor = cbor.decode();
-        assert!(validate_timestamp(&cbor).is_err());
+        assert!(validate_timestamp(&cbor).is_err(), "value is a TIMESTAMP");
     }
 
     #[test]
     fn test_validate_string() {
         let cbor = CborBuilder::new().encode_str("Olá mundo!");
         let cbor = cbor.decode();
-        assert!(validate_string(&cbor, &None).is_ok());
-        assert!(validate_string(&cbor, &Some("Olá mundo!".to_string())).is_ok());
-        assert!(validate_string(&cbor, &Some("Adeus mundo!".to_string())).is_err());
+        assert!(validate_string(&cbor, &None).is_ok(), "value is not a STRING");
+        assert!(
+            validate_string(&cbor, &Some("Olá mundo!".to_string())).is_ok(),
+            "value is not a STRING and `Olá mundo!`"
+        );
+        assert!(
+            validate_string(&cbor, &Some("Adeus mundo!".to_string())).is_err(),
+            "value is a STRING and `Adeus mundo!`"
+        );
     }
 
     #[test]
     fn test_validate_string_fail() {
         let cbor = CborBuilder::new().encode_i64(64);
         let cbor = cbor.decode();
-        assert!(validate_string(&cbor, &None).is_err());
-        assert!(validate_string(&cbor, &Some("Adeus mundo!".to_string())).is_err());
+        assert!(validate_string(&cbor, &None).is_err(), "value is a STRING");
+        assert!(
+            validate_string(&cbor, &Some("Adeus mundo!".to_string())).is_err(),
+            "value is a STRING and `Adeus mundo!`"
+        );
     }
 
     #[test]
     fn test_validate_universal() {
         let cbor = CborBuilder::new().encode_null();
         let cbor = cbor.decode();
-        assert!(validate_atom(&cbor, &TypeAtom::Universal).is_ok());
+        assert!(
+            validate_atom(&cbor, &TypeAtom::Universal).is_ok(),
+            "value is not compatible with UNIVERSAL"
+        );
 
         let cbor = CborBuilder::new().encode_bool(true);
         let cbor = cbor.decode();
-        assert!(validate_atom(&cbor, &TypeAtom::Universal).is_ok());
+        assert!(
+            validate_atom(&cbor, &TypeAtom::Universal).is_ok(),
+            "value is not compatible with UNIVERSAL"
+        );
 
         let cbor = CborBuilder::new().encode_i64(100);
         let cbor = cbor.decode();
-        assert!(validate_atom(&cbor, &TypeAtom::Universal).is_ok());
+        assert!(
+            validate_atom(&cbor, &TypeAtom::Universal).is_ok(),
+            "value is not compatible with UNIVERSAL"
+        );
 
         let timestamp = Timestamp::new(876523558, 0, 0);
         let cbor = CborBuilder::new().encode_timestamp(timestamp, Precision::Seconds);
         let cbor = cbor.decode();
-        assert!(validate_atom(&cbor, &TypeAtom::Universal).is_ok());
+        assert!(
+            validate_atom(&cbor, &TypeAtom::Universal).is_ok(),
+            "value is not compatible with UNIVERSAL"
+        );
 
         let cbor = CborBuilder::new().encode_str("Hello!");
         let cbor = cbor.decode();
-        assert!(validate_atom(&cbor, &TypeAtom::Universal).is_ok());
+        assert!(
+            validate_atom(&cbor, &TypeAtom::Universal).is_ok(),
+            "value is not compatible with UNIVERSAL"
+        );
     }
 
     #[test]
@@ -351,8 +384,10 @@ mod test {
             builder.encode_u64(10).encode_u64(100);
         });
         let cbor = cbor.decode();
-        validate_array(&cbor, &Type::Atom(TypeAtom::Number(None))).unwrap();
-        assert!(validate_array(&cbor, &Type::Atom(TypeAtom::Number(None))).is_ok());
+        assert!(
+            validate_array(&cbor, &Type::Atom(TypeAtom::Number(None))).is_ok(),
+            "ARRAY contents are not NUMBER"
+        );
     }
 
     #[test]
@@ -361,7 +396,10 @@ mod test {
             builder.encode_str("hello").encode_str("world");
         });
         let cbor = cbor.decode();
-        assert!(validate_array(&cbor, &Type::Atom(TypeAtom::Number(None))).is_err());
+        assert!(
+            validate_array(&cbor, &Type::Atom(TypeAtom::Number(None))).is_err(),
+            "ARRAY contents are NUMBER"
+        );
     }
 
     #[test]
@@ -370,7 +408,10 @@ mod test {
             builder.with_key("hello", |b| b.encode_str("world"));
         });
         let cbor = cbor.decode();
-        assert!(validate_array(&cbor, &Type::Atom(TypeAtom::Number(None))).is_err());
+        assert!(
+            validate_array(&cbor, &Type::Atom(TypeAtom::Number(None))).is_err(),
+            "ARRAY contents are NUMBER"
+        );
     }
 
     #[test]
@@ -379,15 +420,18 @@ mod test {
             builder.encode_u64(10).encode_u64(100);
         });
         let cbor = cbor.decode();
-        assert!(validate_tuple(
-            &cbor,
-            &NonEmptyVec::try_from(vec![
-                Type::Atom(TypeAtom::Number(None)),
-                Type::Atom(TypeAtom::Number(None))
-            ])
-            .expect("a non empty vec")
-        )
-        .is_ok());
+        assert!(
+            validate_tuple(
+                &cbor,
+                &NonEmptyVec::try_from(vec![
+                    Type::Atom(TypeAtom::Number(None)),
+                    Type::Atom(TypeAtom::Number(Some(100)))
+                ])
+                .expect("a non empty vec")
+            )
+            .is_ok(),
+            "TUPLE contents are not (NUMBER, NUMBER(100)"
+        );
     }
 
     #[test]
@@ -396,16 +440,19 @@ mod test {
             builder.with_key("hello", |b| b.encode_str("world"));
         });
         let cbor = cbor.decode();
-        assert!(validate_tuple(
-            &cbor,
-            &NonEmptyVec::try_from(vec![
-                Type::Atom(TypeAtom::Number(None)),
-                Type::Atom(TypeAtom::Number(None)),
-                Type::Atom(TypeAtom::Number(None)),
-            ])
-            .expect("a non empty vec")
-        )
-        .is_err());
+        assert!(
+            validate_tuple(
+                &cbor,
+                &NonEmptyVec::try_from(vec![
+                    Type::Atom(TypeAtom::Number(None)),
+                    Type::Atom(TypeAtom::Number(None)),
+                    Type::Atom(TypeAtom::Number(None)),
+                ])
+                .expect("a non empty vec")
+            )
+            .is_err(),
+            "TUPLE contents are (NUMBER, NUMBER, NUMBER)"
+        );
     }
 
     #[test]
@@ -414,16 +461,19 @@ mod test {
             builder.encode_u64(10).encode_u64(100);
         });
         let cbor = cbor.decode();
-        assert!(validate_tuple(
-            &cbor,
-            &NonEmptyVec::try_from(vec![
-                Type::Atom(TypeAtom::Number(None)),
-                Type::Atom(TypeAtom::Number(None)),
-                Type::Atom(TypeAtom::Number(None)),
-            ])
-            .expect("a non empty vec")
-        )
-        .is_err());
+        assert!(
+            validate_tuple(
+                &cbor,
+                &NonEmptyVec::try_from(vec![
+                    Type::Atom(TypeAtom::Number(Some(10))),
+                    Type::Atom(TypeAtom::Number(Some(100))),
+                    Type::Atom(TypeAtom::Number(None)),
+                ])
+                .expect("a non empty vec")
+            )
+            .is_err(),
+            "TUPLE contents are (NUMBER(10), NUMBER(100), NUMBER)"
+        );
     }
 
     #[test]
@@ -432,15 +482,18 @@ mod test {
             builder.encode_u64(10).encode_u64(100);
         });
         let cbor = cbor.decode();
-        assert!(validate_tuple(
-            &cbor,
-            &NonEmptyVec::try_from(vec![
-                Type::Atom(TypeAtom::Number(None)),
-                Type::Atom(TypeAtom::String(None)),
-            ])
-            .expect("a non empty vec")
-        )
-        .is_err());
+        assert!(
+            validate_tuple(
+                &cbor,
+                &NonEmptyVec::try_from(vec![
+                    Type::Atom(TypeAtom::Number(None)),
+                    Type::Atom(TypeAtom::String(None)),
+                ])
+                .expect("a non empty vec")
+            )
+            .is_err(),
+            "TUPLE contents are (NUMBER, STRING)"
+        );
     }
 
     #[test]
@@ -449,7 +502,10 @@ mod test {
             builder.with_key("hello", |b| b.encode_str("world"));
         });
         let cbor = cbor.decode();
-        assert!(validate_dict(&cbor, &Type::Atom(TypeAtom::String(None))).is_ok());
+        assert!(
+            validate_dict(&cbor, &Type::Atom(TypeAtom::String(None))).is_ok(),
+            "DICT contents are not STRING"
+        );
     }
 
     #[test]
@@ -458,7 +514,10 @@ mod test {
             builder.encode_u64(10).encode_u64(100);
         });
         let cbor = cbor.decode();
-        assert!(validate_dict(&cbor, &Type::Atom(TypeAtom::String(None))).is_err());
+        assert!(
+            validate_dict(&cbor, &Type::Atom(TypeAtom::String(None))).is_err(),
+            "DICT contents are STRING"
+        );
     }
 
     #[test]
@@ -467,7 +526,10 @@ mod test {
             builder.with_cbor_key(|b| b.encode_null(), |b| b.encode_str("world"));
         });
         let cbor = cbor.decode();
-        assert!(validate_dict(&cbor, &Type::Atom(TypeAtom::String(None))).is_err());
+        assert!(
+            validate_dict(&cbor, &Type::Atom(TypeAtom::String(None))).is_err(),
+            "DICT keys and contents are STRING"
+        );
     }
 
     #[test]
@@ -476,7 +538,10 @@ mod test {
             builder.with_key("hello", |b| b.encode_u64(1997));
         });
         let cbor = cbor.decode();
-        assert!(validate_dict(&cbor, &Type::Atom(TypeAtom::String(None))).is_err());
+        assert!(
+            validate_dict(&cbor, &Type::Atom(TypeAtom::String(None))).is_err(),
+            "DICT contents are STRING"
+        );
     }
 
     #[test]
@@ -504,7 +569,7 @@ mod test {
                     vec![
                         (
                             Label::String("x".to_string().try_into().expect("non-empty string")),
-                            Type::Atom(TypeAtom::Number(None)),
+                            Type::Atom(TypeAtom::Number(Some(10))),
                         ),
                         (
                             Label::String("y".to_string().try_into().expect("non-empty string")),
@@ -518,8 +583,30 @@ mod test {
         ]
         .try_into()
         .expect("proper type");
-        validate_record(&cbor, &ty).unwrap();
-        // assert!(validate_record(&cbor, &ty).is_ok());
+
+        assert!(
+            validate_record(&cbor, &ty).is_ok(),
+            r#"RECORD is not {{ "temperature": NUMBER, "coordinates": {{ "x": NUMBER(10), "y": NUMBER }} }}"#
+        );
+    }
+
+    #[test]
+    fn test_validate_record_number_key() {
+        let cbor = CborBuilder::new().encode_dict(|builder| {
+            builder.with_cbor_key(|b| b.encode_i64(10), |b| b.encode_str("value"));
+        });
+        let cbor = cbor.decode();
+        let ty = vec![(
+            Label::Number(10),
+            Type::Atom(TypeAtom::String(Some("value".to_string()))),
+        )]
+        .try_into()
+        .expect("proper type");
+
+        assert!(
+            validate_record(&cbor, &ty).is_ok(),
+            r#"RECORD is not {{ "10": STRING("value") }}"#
+        );
     }
 
     #[test]
@@ -528,8 +615,14 @@ mod test {
         let cbor = cbor.decode();
         let left = Type::Atom(TypeAtom::Null);
         let right = Type::Atom(TypeAtom::Timestamp);
-        assert!(validate(&cbor, &Type::Union(Arc::new((left.clone(), right.clone())))).is_ok());
-        assert!(validate(&cbor, &Type::Union(Arc::new((right.clone(), left.clone())))).is_ok());
+        assert!(
+            validate(&cbor, &Type::Union(Arc::new((left.clone(), right.clone())))).is_ok(),
+            "value is not NULL | TIMESTAMP"
+        );
+        assert!(
+            validate(&cbor, &Type::Union(Arc::new((right.clone(), left.clone())))).is_ok(),
+            "value is not TIMESTAMP | NULL"
+        );
     }
 
     #[test]
@@ -549,72 +642,80 @@ mod test {
         let cbor = CborBuilder::new().encode_str("Olá!");
         let cbor = cbor.decode();
 
-        // Null | Timestamp
-        assert!(validate(&cbor, &Type::Union(left.clone())).is_err());
-        // Bool(false) | String("Olá")
-        assert!(validate(&cbor, &Type::Union(right.clone())).is_ok());
-        // (Null | Timestamp) | (Bool(false) | String("Olá"))
-        assert!(validate(&cbor, &Type::Union(Arc::new((Type::Union(left), Type::Union(right))))).is_ok());
+        assert!(
+            validate(&cbor, &Type::Union(left.clone())).is_err(),
+            "value is NULL | TIMESTAMP"
+        );
+        assert!(
+            validate(&cbor, &Type::Union(right.clone())).is_ok(),
+            r#"value is not BOOL(false) | STRING("Olá")"#
+        );
+        assert!(
+            validate(&cbor, &Type::Union(Arc::new((Type::Union(left), Type::Union(right))))).is_ok(),
+            r#"value is not (NULL | TIMESTAMP) | (BOOL(false) | STRING("Olá"))"#
+        );
     }
 
     #[test]
     fn test_validate_union_nested_leaning() {
-        // A | (B | (C | D)
-
         let cbor = CborBuilder::new().encode_null();
         let cbor = cbor.decode();
 
-        // Null | Timestamp
         let first_union = {
             let left = Type::Atom(TypeAtom::Null);
             let right = Type::Atom(TypeAtom::Timestamp);
             Type::Union(Arc::new((left, right)))
         };
-        assert!(validate(&cbor, &first_union).is_ok());
+        assert!(validate(&cbor, &first_union).is_ok(), "value is not NULL | TIMESTAMP");
 
-        // Boolean(false) | (Null | Timestamp)
         let second_union = {
             let left = Type::Atom(TypeAtom::Bool(Some(false)));
             Type::Union(Arc::new((left, first_union)))
         };
-        assert!(validate(&cbor, &second_union).is_ok());
+        assert!(
+            validate(&cbor, &second_union).is_ok(),
+            "value is not BOOLEAN(false) | (NULL | TIMESTAMP)"
+        );
 
-        // String("Olá") | (Boolean(false) | (Null | Timestamp))
         let third_union = {
             let left = Type::Atom(TypeAtom::String(Some("Olá".to_string())));
             Type::Union(Arc::new((left, second_union)))
         };
-        assert!(validate(&cbor, &third_union).is_ok());
+        assert!(
+            validate(&cbor, &third_union).is_ok(),
+            r#"value is not STRING("Olá") | (BOOLEAN(false) | (NULL | TIMESTAMP))"#
+        );
     }
 
     #[test]
     fn test_validate_union_nested_leaning_fail() {
-        // A | (B | (C | D)
-
         let cbor = CborBuilder::new().encode_null();
         let cbor = cbor.decode();
 
-        // Null | Timestamp
         let first_union = {
             let left = Type::Atom(TypeAtom::Number(Some(10)));
             let right = Type::Atom(TypeAtom::Timestamp);
             Type::Union(Arc::new((left, right)))
         };
-        assert!(validate(&cbor, &first_union).is_err());
+        assert!(validate(&cbor, &first_union).is_err(), "value is NULL | TIMESTAMP");
 
-        // Boolean(false) | (Null | Timestamp)
         let second_union = {
             let left = Type::Atom(TypeAtom::Bool(Some(false)));
             Type::Union(Arc::new((left, first_union)))
         };
-        assert!(validate(&cbor, &second_union).is_err());
+        assert!(
+            validate(&cbor, &second_union).is_err(),
+            "value is BOOLEAN(false) | (NULL | TIMESTAMP)"
+        );
 
-        // String("Olá") | (Boolean(false) | (Null | Timestamp))
         let third_union = {
             let left = Type::Atom(TypeAtom::String(Some("Olá".to_string())));
             Type::Union(Arc::new((left, second_union)))
         };
-        assert!(validate(&cbor, &third_union).is_err());
+        assert!(
+            validate(&cbor, &third_union).is_err(),
+            r#"value is not STRING("Olá") | (BOOLEAN(false) | (NULL | TIMESTAMP))"#
+        );
     }
 
     #[test]
@@ -626,7 +727,10 @@ mod test {
         let right = Type::Atom(TypeAtom::Number(Some(10)));
         let intersection = Type::Intersection(Arc::new((left, right)));
 
-        assert!(validate(&cbor, &intersection).is_ok());
+        assert!(
+            validate(&cbor, &intersection).is_ok(),
+            "value is not NUMBER & NUMBER(10)"
+        );
     }
 
     #[test]
@@ -638,59 +742,69 @@ mod test {
         let right = Type::Atom(TypeAtom::Timestamp);
         let intersection = Type::Intersection(Arc::new((left, right)));
 
-        assert!(validate(&cbor, &intersection).is_err());
+        assert!(
+            validate(&cbor, &intersection).is_err(),
+            "value is NULL & TIMESTAMP (impossible)"
+        );
     }
 
     #[test]
     fn test_validate_intersection_nested() {
-        // A & (B & (C & D)
-
         let cbor = CborBuilder::new().encode_i64(10);
         let cbor = cbor.decode();
 
-        // Number(10) & Number
         let first_intersection = {
             let left = Type::Atom(TypeAtom::Number(Some(10)));
             let right = Type::Atom(TypeAtom::Number(None));
             Type::Intersection(Arc::new((left, right)))
         };
-        assert!(validate(&cbor, &first_intersection).is_ok());
+        assert!(
+            validate(&cbor, &first_intersection).is_ok(),
+            "value is not NUMBER(10) & NUMBER"
+        );
 
-        // Universal & (Number(10) & Number)
         let second_intersection = {
             let left = Type::Atom(TypeAtom::Universal);
             Type::Intersection(Arc::new((left, first_intersection)))
         };
-        assert!(validate(&cbor, &second_intersection).is_ok());
+        assert!(
+            validate(&cbor, &second_intersection).is_ok(),
+            "value is not UNIVERSAL & (NUMBER(10) & NUMBER)"
+        );
     }
 
     #[test]
     fn test_validate_intersection_nested_fail() {
-        // A & (B & (C & D)
-
         let cbor = CborBuilder::new().encode_i64(10);
         let cbor = cbor.decode();
 
-        // Number(10) & Number
         let first_intersection = {
             let left = Type::Atom(TypeAtom::Number(Some(10)));
             let right = Type::Atom(TypeAtom::Number(None));
             Type::Intersection(Arc::new((left, right)))
         };
-        assert!(validate(&cbor, &first_intersection).is_ok());
+        assert!(
+            validate(&cbor, &first_intersection).is_ok(),
+            "value is not NUMBER(10) & NUMBER"
+        );
 
-        // Universal & (Number(10) & Number)
         let second_intersection = {
             let left = Type::Atom(TypeAtom::Universal);
             Type::Intersection(Arc::new((left, first_intersection)))
         };
-        assert!(validate(&cbor, &second_intersection).is_ok());
+        assert!(
+            validate(&cbor, &second_intersection).is_ok(),
+            "value is not UNIVERSAL & (NUMBER(10) & NUMBER)"
+        );
 
         let third_intersection = {
             let left = Type::Atom(TypeAtom::Null);
             Type::Intersection(Arc::new((left, second_intersection)))
         };
-        assert!(validate(&cbor, &third_intersection).is_err());
+        assert!(
+            validate(&cbor, &third_intersection).is_err(),
+            "value is NULL & (UNIVERSAL & (NUMBER(10) & NUMBER)) (impossible)"
+        );
     }
 
     #[test]
@@ -711,15 +825,24 @@ mod test {
 
         let cbor = CborBuilder::new().encode_i64(10);
         let cbor = cbor.decode();
-        assert!(validate(&cbor, &intersection).is_ok());
+        assert!(
+            validate(&cbor, &intersection).is_ok(),
+            "value is not (NUMBER(10) | NULL) & (NUMBER | BOOL)"
+        );
 
         let cbor = CborBuilder::new().encode_null();
         let cbor = cbor.decode();
-        assert!(validate(&cbor, &intersection).is_err());
+        assert!(
+            validate(&cbor, &intersection).is_err(),
+            "value is (NUMBER(10) | NULL) & (NUMBER | BOOL)"
+        );
 
         let cbor = CborBuilder::new().encode_bool(false);
         let cbor = cbor.decode();
-        assert!(validate(&cbor, &intersection).is_err());
+        assert!(
+            validate(&cbor, &intersection).is_err(),
+            "value is (NUMBER(10) | NULL) & (NUMBER | BOOL)"
+        );
     }
 
     #[test]
@@ -740,18 +863,30 @@ mod test {
 
         let cbor = CborBuilder::new().encode_i64(10);
         let cbor = cbor.decode();
-        assert!(validate(&cbor, &union).is_ok());
+        assert!(
+            validate(&cbor, &union).is_ok(),
+            "value is not (NUMBER(10) & NUMBER) | (NULL & BOOL)"
+        );
 
         let cbor = CborBuilder::new().encode_i64(101);
         let cbor = cbor.decode();
-        assert!(validate(&cbor, &union).is_err());
+        assert!(
+            validate(&cbor, &union).is_err(),
+            "value is (NUMBER(10) & NUMBER) | (NULL & BOOL)"
+        );
 
         let cbor = CborBuilder::new().encode_null();
         let cbor = cbor.decode();
-        assert!(validate(&cbor, &union).is_err());
+        assert!(
+            validate(&cbor, &union).is_err(),
+            "value is (NUMBER(10) & NUMBER) | (NULL & BOOL)"
+        );
 
         let cbor = CborBuilder::new().encode_bool(false);
         let cbor = cbor.decode();
-        assert!(validate(&cbor, &union).is_err());
+        assert!(
+            validate(&cbor, &union).is_err(),
+            "value is (NUMBER(10) & NUMBER) | (NULL & BOOL)"
+        );
     }
 }
