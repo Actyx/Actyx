@@ -100,9 +100,13 @@ impl<'a> std::fmt::Display for Query<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::collections::HashSet;
 
     use crate::{Label, Query};
+
+    fn slice_to_labels(s: &[&str]) -> HashSet<Label> {
+        s.iter().map(|s| Label::try_from(*s).unwrap()).collect()
+    }
 
     #[test]
     fn test_used_events_empty() {
@@ -114,8 +118,8 @@ mod tests {
         )
         .expect("should be a valid query");
 
-        let map = query.get_used_event_types().collect::<HashMap<_, _>>();
-        assert!(map.is_empty());
+        let event_types = query.get_used_event_types().collect::<HashSet<_>>();
+        assert!(event_types.is_empty());
     }
 
     #[test]
@@ -134,13 +138,9 @@ mod tests {
         )
         .expect("should be a valid query");
 
-        let map = query.get_used_event_types().collect::<HashMap<_, _>>();
-        assert!(!map.is_empty());
-
-        assert!([("start", true), ("done", false)]
-            .into_iter()
-            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
-            .all(|(label, exists)| map.contains_key(&label) == exists));
+        let labels = query.get_used_event_types().map(|t| t.0).collect::<HashSet<_>>();
+        assert!(!labels.is_empty());
+        assert_eq!(labels, slice_to_labels(&["start"]));
     }
 
     #[test]
@@ -161,13 +161,9 @@ mod tests {
         )
         .expect("should be a valid query");
 
-        let map = query.get_used_event_types().collect::<HashMap<_, _>>();
-        assert!(!map.is_empty());
-
-        assert!([("start", true), ("done", false)]
-            .into_iter()
-            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
-            .all(|(label, exists)| map.contains_key(&label) == exists));
+        let labels = query.get_used_event_types().map(|t| t.0).collect::<HashSet<_>>();
+        assert!(!labels.is_empty());
+        assert_eq!(labels, slice_to_labels(&["start"]));
     }
 
     #[test]
@@ -189,13 +185,9 @@ mod tests {
         )
         .expect("should be a valid query");
 
-        let map = query.get_used_event_types().collect::<HashMap<_, _>>();
-        assert!(!map.is_empty());
-
-        assert!([("start", true), ("timeout", true), ("done", false)]
-            .into_iter()
-            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
-            .all(|(label, exists)| map.contains_key(&label) == exists));
+        let labels = query.get_used_event_types().map(|t| t.0).collect::<HashSet<_>>();
+        assert!(!labels.is_empty());
+        assert_eq!(labels, slice_to_labels(&["start", "timeout"]));
     }
 
     #[test]
@@ -216,13 +208,9 @@ mod tests {
         )
         .expect("should be a valid query");
 
-        let map = query.get_used_event_types().collect::<HashMap<_, _>>();
-        assert!(!map.is_empty());
-
-        assert!([("start", true), ("done", false)]
-            .into_iter()
-            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
-            .all(|(label, exists)| map.contains_key(&label) == exists));
+        let labels = query.get_used_event_types().map(|t| t.0).collect::<HashSet<_>>();
+        assert!(!labels.is_empty());
+        assert_eq!(labels, slice_to_labels(&["start"]));
     }
 
     #[test]
@@ -247,13 +235,9 @@ mod tests {
         )
         .expect("should be a valid query");
 
-        let map = query.get_used_event_types().collect::<HashMap<_, _>>();
-        assert!(!map.is_empty());
-
-        assert!([("start", true), ("done", false)]
-            .into_iter()
-            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
-            .all(|(label, exists)| map.contains_key(&label) == exists));
+        let labels = query.get_used_event_types().map(|t| t.0).collect::<HashSet<_>>();
+        assert!(!labels.is_empty());
+        assert_eq!(labels, slice_to_labels(&["start"]));
     }
 
     #[test]
@@ -278,13 +262,9 @@ mod tests {
         )
         .expect("should be a valid query");
 
-        let map = query.get_used_event_types().collect::<HashMap<_, _>>();
-        assert!(!map.is_empty());
-
-        assert!([("start", true), ("done", false)]
-            .into_iter()
-            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
-            .all(|(label, exists)| map.contains_key(&label) == exists));
+        let labels = query.get_used_event_types().map(|t| t.0).collect::<HashSet<_>>();
+        assert!(!labels.is_empty());
+        assert_eq!(labels, slice_to_labels(&["start"]));
     }
 
     #[test]
@@ -307,13 +287,9 @@ mod tests {
         )
         .expect("should be a valid query");
 
-        let map = query.get_used_event_types().collect::<HashMap<_, _>>();
-        assert!(!map.is_empty());
-
-        assert!([("start", true), ("pause", true), ("done", false)]
-            .into_iter()
-            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
-            .all(|(label, exists)| map.contains_key(&label) == exists));
+        let labels = query.get_used_event_types().map(|t| t.0).collect::<HashSet<_>>();
+        assert!(!labels.is_empty());
+        assert_eq!(labels, slice_to_labels(&["start", "pause"]));
     }
 
     #[test]
@@ -349,12 +325,8 @@ mod tests {
         )
         .expect("should be a valid query");
 
-        let map = query.get_used_event_types().collect::<HashMap<_, _>>();
-        assert!(!map.is_empty());
-
-        assert!([("start", true), ("pause", true), ("timeout", true), ("done", false)]
-            .into_iter()
-            .flat_map(|(label, exists)| Label::try_from(label).map(|label| (label, exists)))
-            .all(|(label, exists)| map.contains_key(&label) == exists));
+        let labels = query.get_used_event_types().map(|t| t.0).collect::<HashSet<_>>();
+        assert!(!labels.is_empty());
+        assert_eq!(labels, slice_to_labels(&["start", "pause", "timeout"]));
     }
 }
