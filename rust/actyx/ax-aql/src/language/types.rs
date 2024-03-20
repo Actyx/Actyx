@@ -38,19 +38,40 @@ impl ToString for CollapseError {
     }
 }
 
+pub enum Hierarchy {
+    Disjointed,
+    Equal,
+    Supertype,
+    Subtype,
+}
+
 impl Type {
-    /// Build union out of DoubleEndedIterator of types
+    /// Build a union out of all types in the iterator argument
     ///
     /// # Panics
     ///
     /// Panics if the iterator does not yield any value!
     pub(crate) fn union(iter: impl DoubleEndedIterator<Item = Type>) -> Type {
         let rebuilt = iter.into_iter().rev().fold(None, |acc, next| match acc {
-            None => Some(next.clone()),
-            Some(prev) => Some(Type::Union(Arc::new((prev, next.clone())))),
+            None => Some(next),
+            Some(prev) => Some(Type::Union(Arc::new((prev, next)))),
         });
 
-        rebuilt.expect("impossible for union to reduce its subtypes to zero")
+        rebuilt.expect("union member is empty")
+    }
+
+    /// Build an intersection out of all types in the iterator argument
+    ///
+    /// # Panics
+    ///
+    /// Panics if the iterator does not yield any value!
+    pub(crate) fn intersection(iter: impl DoubleEndedIterator<Item = Type>) -> Type {
+        let rebuilt = iter.into_iter().rev().fold(None, |acc, next| match acc {
+            None => Some(next),
+            Some(prev) => Some(Type::Intersection(Arc::new((prev, next)))),
+        });
+
+        rebuilt.expect("intersection member is empty")
     }
 
     /// Attempt to apply collapse and sorts to intersections, unions, records
@@ -71,10 +92,7 @@ impl Type {
 
                 match (&a, &b) {
                     // all intersections should have been collapsed
-                    (Type::Intersection(_), _) => Err(CollapseError(vec![
-                        "intersection could not exist after a collapse".into(),
-                    ])),
-                    (_, Type::Intersection(_)) => Err(CollapseError(vec![
+                    (Type::Intersection(_), _) | (_, Type::Intersection(_)) => Err(CollapseError(vec![
                         "intersection could not exist after a collapse".into(),
                     ])),
                     // intersection of records
@@ -127,23 +145,38 @@ impl Type {
                         ))
                         .collapse()?)
                     }
-                    _ => {
-                        if a.is_supertype_of(&b) {
-                            return Ok(b);
+                    _ => match a.hierarchy_towards(&b) {
+                        Hierarchy::Equal => Ok(a),
+                        Hierarchy::Supertype => Ok(b),
+                        Hierarchy::Subtype => Ok(a),
+                        Hierarchy::Disjointed => {
+                            Err(CollapseError(vec![format!("{:?} and {:?} is of different type", a, b)]))
                         }
-
-                        Err(CollapseError(vec![format!("{:?} and {:?} is of different type", a, b)]))
-                    }
+                    },
                 }
             }
             Type::Union(x) => {
-                let flattened_collapsed = Type::flatten_union_collapsing(x.as_ref())?;
-                Ok(Type::union(flattened_collapsed.into_iter()))
+                let mut collapsing = vec![];
+
+                let flattened = Type::flatten_union_collapsing(x.as_ref())?;
+
+                flattened.into_iter().for_each(|new| match collapsing.last_mut() {
+                    None => collapsing.push(new),
+                    Some(last) => {
+                        match new.hierarchy_towards(last) {
+                            Hierarchy::Disjointed => collapsing.push(new), // push
+                            Hierarchy::Supertype => *last = new,           // replace last with supertype
+                            Hierarchy::Subtype | Hierarchy::Equal => {}    // do nothing
+                        }
+                    }
+                });
+
+                Ok(Type::union(collapsing.into_iter()))
             }
             Type::Atom(TypeAtom::Record(fields)) => {
                 let mut errors = vec![];
                 let fields = fields
-                    .into_iter()
+                    .iter()
                     .cloned()
                     .filter_map(|(label, ty)| match ty.collapse() {
                         Ok(ty) => Some((label, ty)),
@@ -166,33 +199,60 @@ impl Type {
         }
     }
 
-    /// Calculate supertype without collapsing
-    fn is_supertype_of(&self, other: &Type) -> bool {
+    fn hierarchy_towards(&self, other: &Type) -> Hierarchy {
+        if self == other {
+            return Hierarchy::Equal;
+        }
+
         match (self, other) {
             (Type::Atom(a), Type::Atom(b)) => match (a, b) {
-                (TypeAtom::Bool(None), TypeAtom::Bool(Some(_))) => true,
-                (TypeAtom::Number(None), TypeAtom::Number(Some(_))) => true,
-                (TypeAtom::String(None), TypeAtom::String(Some(_))) => true,
+                // supertypes
+                (TypeAtom::Bool(None), TypeAtom::Bool(Some(_))) => Hierarchy::Supertype,
+                (TypeAtom::Number(None), TypeAtom::Number(Some(_))) => Hierarchy::Supertype,
+                (TypeAtom::String(None), TypeAtom::String(Some(_))) => Hierarchy::Supertype,
+                // subtypes
+                (TypeAtom::Bool(Some(_)), TypeAtom::Bool(None)) => Hierarchy::Subtype,
+                (TypeAtom::Number(Some(_)), TypeAtom::Number(None)) => Hierarchy::Subtype,
+                (TypeAtom::String(Some(_)), TypeAtom::String(None)) => Hierarchy::Subtype,
                 (TypeAtom::Record(a), TypeAtom::Record(b)) => {
                     let a = a.iter().collect::<BTreeSet<_>>();
                     let b = b.iter().collect::<BTreeSet<_>>();
+                    let intersection = BTreeSet::intersection(&a, &b).cloned().collect::<BTreeSet<_>>();
 
-                    a.intersection(&b).cloned().collect::<BTreeSet<_>>() == b
+                    if intersection == b {
+                        Hierarchy::Supertype
+                    } else if intersection == a {
+                        Hierarchy::Subtype
+                    } else {
+                        Hierarchy::Disjointed
+                    }
                 }
-                (TypeAtom::Universal, _) => true,
-                _ => false,
+                (TypeAtom::Universal, TypeAtom::Universal) => Hierarchy::Equal,
+                (TypeAtom::Universal, _) => Hierarchy::Supertype,
+                _ => Hierarchy::Disjointed,
             },
             (Type::Union(a), Type::Union(b)) => {
                 let a = Type::flatten_union(a.as_ref());
                 let b = Type::flatten_union(b.as_ref());
+                let intersection = BTreeSet::intersection(&a, &b).cloned().collect::<BTreeSet<_>>();
 
-                a.intersection(&b).cloned().collect::<BTreeSet<_>>() == b
+                if intersection == b {
+                    Hierarchy::Supertype
+                } else if intersection == a {
+                    Hierarchy::Subtype
+                } else {
+                    Hierarchy::Disjointed
+                }
             }
-            (Type::Union(union), non_union) => Type::flatten_union(union.as_ref()).contains(non_union),
-            (non_union, Type::Union(union)) => Type::flatten_union(union.as_ref()).contains(non_union),
-            (Type::Array(a), Type::Array(b)) => a.is_supertype_of(b.as_ref()),
-            (Type::Dict(a), Type::Dict(b)) => a.as_ref().is_supertype_of(b.as_ref()),
-            _ => false,
+            (Type::Union(union), non_union) if Type::flatten_union(union.as_ref()).contains(non_union) => {
+                Hierarchy::Supertype
+            }
+            (non_union, Type::Union(union)) if Type::flatten_union(union.as_ref()).contains(non_union) => {
+                Hierarchy::Subtype
+            }
+            (Type::Array(a), Type::Array(b)) => a.hierarchy_towards(b),
+            (Type::Dict(a), Type::Dict(b)) => a.hierarchy_towards(b),
+            _ => Hierarchy::Disjointed,
         }
     }
 
@@ -405,7 +465,28 @@ mod tests {
     }
 
     #[test]
-    fn union_collapse_equality() {
+    fn intersecting_conflicting_records() {
+        let a = Type::Atom(TypeAtom::Record(
+            vec![(
+                Label::String("a".try_into().unwrap()),
+                Type::Atom(TypeAtom::String(None)),
+            )]
+            .try_into()
+            .unwrap(),
+        ));
+        let b = Type::Atom(TypeAtom::Record(
+            vec![(
+                Label::String("a".try_into().unwrap()),
+                Type::Atom(TypeAtom::Number(None)),
+            )]
+            .try_into()
+            .unwrap(),
+        ));
+        assert!(Type::Intersection(Arc::new((a, b))).collapse().is_err());
+    }
+
+    #[test]
+    fn union_collapse_sort() {
         let a = Type::union(
             vec![
                 Type::Atom(TypeAtom::String(None)),
@@ -416,12 +497,17 @@ mod tests {
             .into_iter(),
         );
 
+        // `b` has the same member as `a` but is structured differently
         let b = Type::union(
             vec![
-                Type::Atom(TypeAtom::Timestamp),
-                Type::Atom(TypeAtom::String(Some("asdf".to_string()))),
-                Type::Atom(TypeAtom::Null),
-                Type::Atom(TypeAtom::String(None)),
+                Type::union(
+                    vec![
+                        Type::Atom(TypeAtom::Timestamp),
+                        Type::Atom(TypeAtom::String(Some("asdf".to_string()))),
+                    ]
+                    .into_iter(),
+                ),
+                Type::union(vec![Type::Atom(TypeAtom::Null), Type::Atom(TypeAtom::String(None))].into_iter()),
             ]
             .into_iter(),
         );
@@ -430,5 +516,56 @@ mod tests {
         assert_ne!(a, b);
         // after, it is equal
         assert_eq!(a.collapse().unwrap(), b.collapse().unwrap());
+    }
+
+    #[test]
+    fn union_collapse_singular() {
+        let a = Type::union(
+            vec![
+                Type::Atom(TypeAtom::String(None)),
+                Type::Atom(TypeAtom::String(Some("asdf".to_string()))),
+                Type::Atom(TypeAtom::Null),
+                Type::Atom(TypeAtom::Timestamp),
+            ]
+            .into_iter(),
+        );
+
+        // after, it is equal
+        assert_eq!(
+            Type::union(vec![a.clone(), a.clone()].into_iter()).collapse().unwrap(),
+            a.collapse().unwrap()
+        );
+    }
+
+    #[test]
+    fn intersection_one_and_number() {
+        assert_eq!(
+            Type::intersection(
+                vec![
+                    Type::Atom(TypeAtom::Number(None)),
+                    Type::Atom(TypeAtom::Number(Some(1))),
+                ]
+                .into_iter()
+            )
+            .collapse()
+            .unwrap(),
+            Type::Atom(TypeAtom::Number(Some(1)))
+        );
+    }
+
+    #[test]
+    fn union_one_and_number() {
+        assert_eq!(
+            Type::union(
+                vec![
+                    Type::Atom(TypeAtom::Number(None)),
+                    Type::Atom(TypeAtom::Number(Some(1))),
+                ]
+                .into_iter()
+            )
+            .collapse()
+            .unwrap(),
+            Type::Atom(TypeAtom::Number(None))
+        );
     }
 }
