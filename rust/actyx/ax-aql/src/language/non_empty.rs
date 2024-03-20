@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NonEmptyVec<T>(Arc<[T]>);
 
 impl<T> NonEmptyVec<T> {
@@ -66,7 +66,7 @@ impl<T: quickcheck::Arbitrary + Clone + 'static> quickcheck::Arbitrary for NonEm
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NonEmptyString(String);
 
 #[derive(Debug, Clone)]
@@ -113,6 +113,12 @@ impl Deref for NonEmptyString {
 impl DerefMut for NonEmptyString {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl AsRef<str> for NonEmptyString {
+    fn as_ref(&self) -> &str {
+        self.as_str()
     }
 }
 

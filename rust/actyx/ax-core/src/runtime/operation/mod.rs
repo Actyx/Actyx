@@ -1,3 +1,6 @@
+mod aggregate;
+mod validation;
+
 use crate::runtime::{
     error::{RuntimeError, RuntimeFailure},
     eval::Context,
@@ -7,7 +10,6 @@ use crate::runtime::{
 use ax_aql::{NonEmptyVec, SimpleExpr, SpreadExpr};
 use ax_types::service::Order;
 
-mod aggregate;
 use futures::{future::BoxFuture, FutureExt};
 use std::{future::ready, num::NonZeroU64};
 

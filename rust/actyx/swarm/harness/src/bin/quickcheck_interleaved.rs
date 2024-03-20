@@ -49,6 +49,8 @@ fn main() {
             features: vec![],
             source: Source::Events { from, order: None },
             ops: vec![],
+            events: Default::default(),
+            workflows: Default::default(),
         }
     }
     fn cnt_per_tag(cmds: &[TestCommand]) -> BTreeMap<TagSet, usize> {
