@@ -102,7 +102,7 @@ impl Type {
                         "intersection could not exist after a collapse".into(),
                     ])),
                     // intersection of records
-                    (Type::Atom(TypeAtom::Record(a)), Type::Atom(TypeAtom::Record(b))) => {
+                    (Type::Record(a), Type::Record(b)) => {
                         let mut errors = vec![];
                         let mut conflicts = BTreeMap::<&Label, BTreeSet<Type>>::new();
                         let mut fields = BTreeMap::<&Label, Type>::new();
@@ -141,14 +141,14 @@ impl Type {
                             ));
                         }
 
-                        Ok(Type::Atom(TypeAtom::Record(
+                        Ok(Type::Record(
                             fields
                                 .into_iter()
                                 .map(|(label, ty)| (label.clone(), ty.clone()))
                                 .collect::<Vec<(Label, Type)>>()
                                 .try_into()
                                 .unwrap(),
-                        ))
+                        )
                         .collapse()?)
                     }
                     _ => match a.hierarchy_towards(&b) {
@@ -179,7 +179,7 @@ impl Type {
 
                 Ok(Type::union(collapsing.into_iter()))
             }
-            Type::Atom(TypeAtom::Record(fields)) => {
+            Type::Record(fields) => {
                 let mut errors = vec![];
                 let fields = fields
                     .iter()
@@ -196,9 +196,7 @@ impl Type {
                 if !errors.is_empty() {
                     Err(CollapseError::join(errors))
                 } else {
-                    Ok(Type::Atom(TypeAtom::Record(
-                        fields.into_iter().collect::<Vec<_>>().try_into().unwrap(),
-                    )))
+                    Ok(Type::Record(fields.into_iter().collect::<Vec<_>>().try_into().unwrap()))
                 }
             }
             _ => Ok(self),
@@ -220,23 +218,23 @@ impl Type {
                 (TypeAtom::Bool(Some(_)), TypeAtom::Bool(None)) => Hierarchy::Subtype,
                 (TypeAtom::Number(Some(_)), TypeAtom::Number(None)) => Hierarchy::Subtype,
                 (TypeAtom::String(Some(_)), TypeAtom::String(None)) => Hierarchy::Subtype,
-                (TypeAtom::Record(a), TypeAtom::Record(b)) => {
-                    let a = a.iter().collect::<BTreeSet<_>>();
-                    let b = b.iter().collect::<BTreeSet<_>>();
-                    let intersection = BTreeSet::intersection(&a, &b).cloned().collect::<BTreeSet<_>>();
-
-                    if intersection == b {
-                        Hierarchy::Supertype
-                    } else if intersection == a {
-                        Hierarchy::Subtype
-                    } else {
-                        Hierarchy::Disjointed
-                    }
-                }
                 (TypeAtom::Universal, TypeAtom::Universal) => Hierarchy::Equal,
                 (TypeAtom::Universal, _) => Hierarchy::Supertype,
                 _ => Hierarchy::Disjointed,
             },
+            (Type::Record(a), Type::Record(b)) => {
+                let a = a.iter().collect::<BTreeSet<_>>();
+                let b = b.iter().collect::<BTreeSet<_>>();
+                let intersection = BTreeSet::intersection(&a, &b).cloned().collect::<BTreeSet<_>>();
+
+                if intersection == b {
+                    Hierarchy::Supertype
+                } else if intersection == a {
+                    Hierarchy::Subtype
+                } else {
+                    Hierarchy::Disjointed
+                }
+            }
             (Type::Union(a), Type::Union(b)) => {
                 let a = Type::flatten_union(a.as_ref());
                 let b = Type::flatten_union(b.as_ref());
@@ -298,8 +296,7 @@ impl Type {
             let mut non_unions = vec![];
             let mut unions = vec![];
 
-            under_types_vec
-                .split_off(0)
+            std::mem::take(&mut under_types_vec)
                 .into_iter()
                 .for_each(|item| match item.collapse() {
                     Ok(Type::Union(pair)) => unions.push(pair),
@@ -432,23 +429,23 @@ mod tests {
     use std::sync::Arc;
     #[test]
     fn intersecting_records() {
-        let a = Type::Atom(TypeAtom::Record(
+        let a = Type::Record(
             vec![(
                 Label::String("a".try_into().unwrap()),
                 Type::Atom(TypeAtom::String(None)),
             )]
             .try_into()
             .unwrap(),
-        ));
-        let b = Type::Atom(TypeAtom::Record(
+        );
+        let b = Type::Record(
             vec![(
                 Label::String("b".try_into().unwrap()),
                 Type::Atom(TypeAtom::Number(None)),
             )]
             .try_into()
             .unwrap(),
-        ));
-        let expected = Type::Atom(TypeAtom::Record(
+        );
+        let expected = Type::Record(
             vec![
                 (
                     Label::String("b".try_into().unwrap()),
@@ -461,7 +458,7 @@ mod tests {
             ]
             .try_into()
             .unwrap(),
-        ));
+        );
 
         assert_eq!(
             Type::Intersection(Arc::new((a, b))).collapse(),
@@ -471,35 +468,35 @@ mod tests {
 
     #[test]
     fn intersecting_identical_records() {
-        let a = Type::Atom(TypeAtom::Record(
+        let a = Type::Record(
             vec![(
                 Label::String("a".try_into().unwrap()),
                 Type::Atom(TypeAtom::String(None)),
             )]
             .try_into()
             .unwrap(),
-        ));
+        );
         assert_eq!(Type::Intersection(Arc::new((a.clone(), a.clone()))).collapse(), Ok(a));
     }
 
     #[test]
     fn intersecting_conflicting_records() {
-        let a = Type::Atom(TypeAtom::Record(
+        let a = Type::Record(
             vec![(
                 Label::String("a".try_into().unwrap()),
                 Type::Atom(TypeAtom::String(None)),
             )]
             .try_into()
             .unwrap(),
-        ));
-        let b = Type::Atom(TypeAtom::Record(
+        );
+        let b = Type::Record(
             vec![(
                 Label::String("a".try_into().unwrap()),
                 Type::Atom(TypeAtom::Number(None)),
             )]
             .try_into()
             .unwrap(),
-        ));
+        );
         assert!(Type::Intersection(Arc::new((a, b))).collapse().is_err());
     }
 

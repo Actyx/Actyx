@@ -39,10 +39,6 @@ impl<'a> WorkflowAnalysisResource<'a> {
     }
 }
 
-pub(crate) struct QueryTypeCheck<'a> {
-    pub(crate) query: &'a Query<'a>,
-}
-
 pub(crate) fn check<'a>(query: &Query<'a>) -> Vec<QueryTypeCheckError<'a>> {
     query
         .workflows

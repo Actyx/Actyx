@@ -30,32 +30,32 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
 
             current_type = match &current_type {
                 Type::NoValue => return Err(format!("{:?} cannot be accessed.", current_type)),
+                Type::Tuple(tuple) => match first {
+                    Index::Expr(expr) => return drill_down_with_calculated_expressions(&current_type, expr, rest),
+                    Index::Number(num_index) => match tuple.get(*num_index as usize) {
+                        None => return Err(format!("{:?} cannot be accessed by {}", tuple, num_index)),
+                        Some(ty) => ty.clone(),
+                    },
+                    _ => return Err(format!("{:?} cannot be accessed by {:?}", tuple, first)),
+                },
+                Type::Record(fields) => {
+                    if let Index::Expr(expr) = first {
+                        return drill_down_with_calculated_expressions(&current_type, expr, rest);
+                    }
+
+                    let matching_field = fields.iter().find(|(label, _)| match (label, first) {
+                        (Label::String(a), Index::String(b)) => Deref::deref(a) == b,
+                        (Label::Number(a), Index::Number(b)) => a == b,
+                        _ => false,
+                    });
+
+                    match matching_field {
+                        None => return Err(format!("{:?} cannot be accessed by {:?}", current_type, first)),
+                        Some((_, ty)) => ty.clone(),
+                    }
+                }
                 Type::Atom(type_atom) => match type_atom {
                     TypeAtom::Universal => return Ok(Type::Union(Arc::from((current_type, Type::NoValue)))),
-                    TypeAtom::Tuple(tuple) => match first {
-                        Index::Expr(expr) => return drill_down_with_calculated_expressions(&current_type, expr, rest),
-                        Index::Number(num_index) => match tuple.get(*num_index as usize) {
-                            None => return Err(format!("{:?} cannot be accessed by {}", tuple, num_index)),
-                            Some(ty) => ty.clone(),
-                        },
-                        _ => return Err(format!("{:?} cannot be accessed by {:?}", tuple, first)),
-                    },
-                    TypeAtom::Record(fields) => {
-                        if let Index::Expr(expr) = first {
-                            return drill_down_with_calculated_expressions(&current_type, expr, rest);
-                        }
-
-                        let matching_field = fields.iter().find(|(label, _)| match (label, first) {
-                            (Label::String(a), Index::String(b)) => Deref::deref(a) == b,
-                            (Label::Number(a), Index::Number(b)) => a == b,
-                            _ => false,
-                        });
-
-                        match matching_field {
-                            None => return Err(format!("{:?} cannot be accessed by {:?}", current_type, first)),
-                            Some((_, ty)) => ty.clone(),
-                        }
-                    }
                     TypeAtom::Null
                     | TypeAtom::Bool(_)
                     | TypeAtom::Number(_)
@@ -292,23 +292,21 @@ mod tests {
     fn record() {
         assert_eq!(
             drill_down_type_by_index(
-                &Type::Atom(TypeAtom::Record(
+                &Type::Record(
                     vec![(
                         Label::String("a".try_into().unwrap()),
-                        Type::Atom(TypeAtom::Record(
+                        Type::Record(
                             vec![(
                                 Label::String("b".try_into().unwrap()),
-                                Type::Atom(TypeAtom::Record(
-                                    vec![(Label::Number(1), Type::Atom(TypeAtom::Null))].try_into().unwrap()
-                                ))
+                                Type::Record(vec![(Label::Number(1), Type::Atom(TypeAtom::Null))].try_into().unwrap())
                             )]
                             .try_into()
                             .unwrap()
-                        ))
+                        )
                     )]
                     .try_into()
                     .unwrap()
-                )),
+                ),
                 &Ind {
                     head: SimpleExpr::Variable(Var("_".to_string())).into(),
                     tail: vec![
@@ -326,7 +324,7 @@ mod tests {
 
     #[test]
     fn tuple() {
-        let tuple_type = Type::Atom(TypeAtom::Tuple(
+        let tuple_type = Type::Tuple(
             vec![
                 Type::Atom(TypeAtom::Null),
                 Type::Atom(TypeAtom::String(None)),
@@ -334,7 +332,7 @@ mod tests {
             ]
             .try_into()
             .unwrap(),
-        ));
+        );
 
         assert_eq!(
             drill_down_type_by_index(
@@ -386,7 +384,7 @@ mod tests {
         let expr_string_a = Index::Expr(SimpleExpr::String("a".into()));
         let expr_anyother = Index::Expr(SimpleExpr::Variable(Var("somevar".into())));
 
-        let record_type = Type::Atom(TypeAtom::Record(
+        let record_type = Type::Record(
             vec![
                 (
                     Label::String("a".try_into().unwrap()),
@@ -396,7 +394,7 @@ mod tests {
             ]
             .try_into()
             .unwrap(),
-        ));
+        );
 
         assert_eq!(
             drill_down_type_by_index(
