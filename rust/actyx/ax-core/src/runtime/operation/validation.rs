@@ -2,6 +2,7 @@ use std::{borrow::Cow, sync::Arc};
 
 use ax_aql::{Label, NonEmptyVec, Type, TypeAtom};
 use cbor_data::{value::Number, CborBuilder, CborValue, Encoder};
+use itertools::Itertools;
 
 // NOTE: check tarpaulin for test coverage, its always hard to ensure every path was checked and
 // in this case, it would be really useful: https://github.com/xd009642/tarpaulin
@@ -69,6 +70,60 @@ pub enum TypeMismatchError {
 
     #[error("expected label {expected} to exist in RECORD")]
     RecordLabelMissing { expected: String },
+}
+
+// NOTE: the Debug implementation shows the path as it is stored in memory, meaning it's reversed
+#[derive(Debug, thiserror::Error)]
+pub struct TypeError {
+    error: TypeMismatchError,
+    path: Vec<String>,
+}
+
+impl TypeError {
+    fn with_path(mut self, p: String) -> Self {
+        self.path.push(p);
+        Self {
+            error: self.error,
+            path: self.path,
+        }
+    }
+}
+
+impl std::fmt::Display for TypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.path.is_empty() {
+            write!(f, "{}", self.error)
+        } else {
+            write!(
+                f,
+                "{} while checking path {}",
+                self.error,
+                self.path.iter().rev().join(".")
+            )
+        }
+    }
+}
+
+impl From<TypeMismatchError> for TypeError {
+    fn from(value: TypeMismatchError) -> Self {
+        Self {
+            error: value,
+            path: vec![],
+        }
+    }
+}
+
+trait TypeErrorContext {
+    fn with_path(self, p: String) -> Self;
+}
+
+impl<T> TypeErrorContext for Result<T, TypeError> {
+    fn with_path(self, p: String) -> Self {
+        if let Err(err) = self {
+            return Self::Err(err.with_path(p));
+        }
+        self
+    }
 }
 
 /// Check if a CBOR value is null.
@@ -239,7 +294,7 @@ fn validate_atom(value: &CborValue, ty: &TypeAtom) -> Result<(), TypeMismatchErr
     }
 }
 
-fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> Result<(), TypeMismatchError> {
+fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> Result<(), TypeError> {
     if let Some(value) = value.as_dict() {
         for (label, ty) in ty.iter() {
             match label {
@@ -247,11 +302,12 @@ fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> Result
                     let cbor = CborBuilder::new().encode_str(string);
                     let cbor = Cow::Owned(cbor);
                     if let Some(value) = value.get(&cbor) {
-                        validate(&value.decode(), ty)?;
+                        validate(&value.decode(), ty).with_path(string.to_string())?;
                     } else {
                         return Err(TypeMismatchError::RecordLabelMissing {
                             expected: string.to_string(),
-                        });
+                        }
+                        .into());
                     }
                 }
                 Label::Number(number) => {
@@ -259,34 +315,37 @@ fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> Result
                     let cbor = CborBuilder::new().encode_number(&cbor_number);
                     let cbor = Cow::Owned(cbor);
                     if let Some(value) = value.get(&cbor) {
-                        validate(&value.decode(), ty)?;
+                        validate(&value.decode(), ty).with_path(number.to_string())?;
                     } else {
                         return Err(TypeMismatchError::RecordLabelMissing {
                             expected: number.to_string(),
-                        });
+                        }
+                        .into());
                     }
                 }
             }
         }
         Ok(())
     } else {
-        Err(TypeMismatchError::Record)
+        Err(TypeMismatchError::Record.into())
     }
 }
 
-fn validate(value: &CborValue, ty: &Type) -> Result<(), TypeMismatchError> {
+fn validate(value: &CborValue, ty: &Type) -> Result<(), TypeError> {
     match ty {
-        Type::Atom(atom) => validate_atom(value, atom),
-        Type::Array(inner_ty) => validate_array(value, inner_ty),
-        Type::Dict(inner_ty) => validate_dict(value, inner_ty),
-        Type::Tuple(tuple) => validate_tuple(value, tuple),
-        Type::Record(record) => validate_record(value, record),
+        Type::Atom(atom) => validate_atom(value, atom).map_err(TypeError::from),
+        Type::Array(inner_ty) => validate_array(value, inner_ty).map_err(TypeError::from),
+        Type::Dict(inner_ty) => validate_dict(value, inner_ty).map_err(TypeError::from),
+        Type::Tuple(tuple) => validate_tuple(value, tuple).map_err(TypeError::from),
+        Type::Record(record) => validate_record(value, record).map_err(TypeError::from),
         // We can make this much more efficient by checking more things beforehand
         // like intersecting types before decoding anything
-        Type::Union(union) => validate(value, &union.0).or_else(|_| validate(value, &union.1)),
-        Type::Intersection(intersection) => {
-            validate(value, &intersection.0).and_then(|_| validate(value, &intersection.1))
-        }
+        Type::Union(union) => validate(value, &union.0)
+            .or_else(|_| validate(value, &union.1))
+            .map_err(TypeError::from),
+        Type::Intersection(intersection) => validate(value, &intersection.0)
+            .and_then(|_| validate(value, &intersection.1))
+            .map_err(TypeError::from),
     }
 }
 
