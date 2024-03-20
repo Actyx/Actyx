@@ -2,11 +2,15 @@ use super::{
     parse_utils::{Ps, Spanned},
     parser::{r_duration, r_simple_expr},
 };
-use crate::language::{
-    parse_utils::{Ext, Span, P},
-    parser::Rule,
-    Ident, NonEmptyVec, SimpleExpr,
+use crate::{
+    language::{
+        parse_utils::{Ext, Span, P},
+        parser::Rule,
+        Ident, NonEmptyVec, SimpleExpr,
+    },
+    Index,
 };
+use anyhow::anyhow;
 use ax_types::Timestamp;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -72,6 +76,40 @@ pub enum WorkflowStep<'a> {
     Choice {
         cases: NonEmptyVec<NonEmptyVec<WorkflowStep<'a>>>,
     },
+}
+
+impl<'a> WorkflowStep<'a> {
+    pub fn get_events(&'a self) -> Vec<Span<'a, Ident>> {
+        match self {
+            WorkflowStep::Event { label, .. } => vec![label.clone()],
+            WorkflowStep::Retry { steps } => steps.iter().flat_map(|step| step.get_events()).collect(),
+            WorkflowStep::Timeout { steps, label, .. } => steps
+                .iter()
+                .flat_map(|step| step.get_events())
+                .chain(std::iter::once(label.clone()))
+                .collect(),
+            WorkflowStep::Parallel { cases, .. } => cases
+                .iter()
+                .flat_map(|case| case.iter())
+                .flat_map(|step| step.get_events())
+                .collect(),
+            WorkflowStep::Call { cases, .. } => cases
+                .iter()
+                .flat_map(|(_, steps)| steps.iter())
+                .flat_map(|step| step.get_events())
+                .collect(),
+            WorkflowStep::Compensate { body, with } => body
+                .iter()
+                .flat_map(|step| step.get_events())
+                .chain(with.iter().flat_map(|step| step.get_events()))
+                .collect(),
+            WorkflowStep::Choice { cases } => cases
+                .iter()
+                .flat_map(|case| case.iter())
+                .flat_map(|step| step.get_events())
+                .collect(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -201,6 +239,24 @@ fn r_event(p: P<'_>) -> Result<WorkflowStep<'_>, anyhow::Error> {
     let _at = p.next().unwrap();
     let participant = Span::make(p.next().unwrap(), |mut p| Ok(Ident(p.non_empty_string()?)))?;
     let binders = p.map(r_binding).collect::<Result<Vec<_>, _>>()?;
+    for binding in &binders {
+        if let SimpleExpr::Indexing(index) = binding.value() {
+            match *index.head {
+                SimpleExpr::Variable(ref var) if var.0 == "_" => {}
+                _ => {
+                    return Err(anyhow!("indexing bindings can only index the `_` variable"));
+                }
+            }
+            if index.tail.iter().any(|ind| matches!(ind, Index::Expr(_))) {
+                return Err(anyhow!("indexing only supports string or number literals"));
+            }
+        } else {
+            return Err(anyhow!(
+                "only indexing bindings are allowed, found {:?} instead",
+                binding
+            ));
+        }
+    }
     Ok(WorkflowStep::Event {
         state,
         mode,
@@ -228,7 +284,7 @@ fn r_binding(p: P) -> anyhow::Result<Span<Binding>> {
 fn r_timeout(p: P) -> anyhow::Result<WorkflowStep> {
     let mut p = p.into_inner();
     let _timeout = p.next().unwrap();
-    let duration = Span::make(p.next().unwrap(), |p| r_duration(p))?;
+    let duration = Span::make(p.next().unwrap(), r_duration)?;
     let steps = r_scope(p.next().unwrap())?;
     let WorkflowStep::Event {
         state: _,
@@ -279,7 +335,7 @@ fn r_call(p: P) -> anyhow::Result<WorkflowStep> {
         .collect::<Result<Vec<_>, _>>()?;
     let mut cases = vec![];
     let curly = p.next().unwrap();
-    while let Some(p) = p.next() {
+    for p in p {
         if p.as_rule() == Rule::curlyr {
             break;
         }
@@ -310,5 +366,85 @@ mod tests {
     fn ex1() {
         let q = "WORKFLOW qg9gZK(UNIQUE kCSxum) { MATCH se5Q7Y(dJKW1Y) { CASE * => PARALLEL 15668459163393358498 { CASE exLLu3: ckZo9J @ BjfPBLR } } } FROM allEvents ORDER DESC END";
         Query::parse(q).unwrap();
+    }
+
+    #[test]
+    fn ex2() {
+        let q = "WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- _.robotId }
+        } FROM allEvents";
+        Query::parse(q).unwrap();
+    }
+
+    #[test]
+    fn ex3() {
+        let q = "WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- 10 }
+        } FROM allEvents";
+        assert!(Query::parse(q).is_err());
+    }
+
+    #[test]
+    #[ignore = "SELF isn't fully supported by the AST yet"]
+    fn ex4() {
+        let q = "WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- SELF }
+        } FROM allEvents";
+
+        assert!(Query::parse(q).is_ok());
+    }
+
+    #[test]
+    fn ex5() {
+        let q = "WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- t.indexed_value }
+        } FROM allEvents";
+
+        assert!(Query::parse(q).is_err());
+    }
+
+    #[test]
+    fn ex6() {
+        let q = r#"WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- _["indexed_value"] }
+        } FROM allEvents"#;
+
+        assert!(Query::parse(q).is_ok());
+    }
+
+    #[test]
+    fn ex7() {
+        let q = r#"WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- _[10] }
+        } FROM allEvents"#;
+
+        assert!(Query::parse(q).is_ok());
+    }
+
+    #[test]
+    fn ex8() {
+        let q = r#"WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- _[10 + 10] }
+        } FROM allEvents"#;
+
+        assert!(Query::parse(q).is_err());
+    }
+
+    #[test]
+    fn ex9() {
+        let q = r#"WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- _[10]["10"] }
+        } FROM allEvents"#;
+
+        assert!(Query::parse(q).is_ok());
+    }
+
+    #[test]
+    fn ex10() {
+        let q = r#"WORKFLOW a(UNIQUE b) {
+            start @ b { t:b <- _[10]["10"][19+97] }
+        } FROM allEvents"#;
+
+        assert!(Query::parse(q).is_err());
     }
 }

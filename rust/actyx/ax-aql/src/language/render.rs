@@ -306,28 +306,6 @@ fn render_type_atom(w: &mut impl Write, a: &TypeAtom) -> Result {
         TypeAtom::Timestamp => w.write_str("TIMESTAMP"),
         TypeAtom::String(Some(s)) => render_string(w, s),
         TypeAtom::String(None) => w.write_str("STRING"),
-        TypeAtom::Tuple(ts) => {
-            w.write_char('[')?;
-            for (i, t) in ts.iter().enumerate() {
-                if i > 0 {
-                    w.write_str(", ")?;
-                }
-                render_type(w, t)?;
-            }
-            w.write_char(']')
-        }
-        TypeAtom::Record(ts) => {
-            w.write_char('{')?;
-            for (i, (l, t)) in ts.iter().enumerate() {
-                if i > 0 {
-                    w.write_str(", ")?;
-                }
-                render_label(w, l)?;
-                w.write_str(": ")?;
-                render_type(w, t)?;
-            }
-            w.write_char('}')
-        }
         TypeAtom::Universal => w.write_str("UNIVERSAL"),
     }
 }
@@ -351,12 +329,34 @@ fn render_type(w: &mut impl Write, t: &Type) -> Result {
             w.write_char(')')
         }
         Type::Array(t) => {
-            render_type(w, &t)?;
+            render_type(w, t)?;
             w.write_str("[]")
         }
         Type::Dict(t) => {
-            render_type(w, &t)?;
+            render_type(w, t)?;
             w.write_str("{}")
+        }
+        Type::Tuple(ts) => {
+            w.write_char('[')?;
+            for (i, t) in ts.iter().enumerate() {
+                if i > 0 {
+                    w.write_str(", ")?;
+                }
+                render_type(w, t)?;
+            }
+            w.write_char(']')
+        }
+        Type::Record(ts) => {
+            w.write_char('{')?;
+            for (i, (l, t)) in ts.iter().enumerate() {
+                if i > 0 {
+                    w.write_str(", ")?;
+                }
+                render_label(w, l)?;
+                w.write_str(": ")?;
+                render_type(w, t)?;
+            }
+            w.write_char('}')
         }
     }
 }
@@ -399,7 +399,7 @@ fn render_event_step(
     mode: &EventMode,
     label: &Span<Ident>,
     participant: &Span<Ident>,
-    binders: &Vec<Span<Binding>>,
+    binders: &[Span<Binding>],
 ) -> Result {
     match mode {
         EventMode::Return => w.write_str("RETURN ")?,

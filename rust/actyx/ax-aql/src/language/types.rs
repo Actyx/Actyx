@@ -1,10 +1,14 @@
-use super::{non_empty::NonEmptyString, parse_utils::P, parser::Rule};
+use super::{
+    non_empty::{NoElements, NonEmptyString},
+    parse_utils::P,
+    parser::Rule,
+};
 use crate::{
     language::{
         parse_utils::{Ext, Spanned},
         parser::{r_bool, r_nonempty_string, r_string, NoVal},
     },
-    NonEmptyVec,
+    Ident, NonEmptyVec,
 };
 use once_cell::sync::Lazy;
 use pest::pratt_parser::{Assoc, Op, PrattParser};
@@ -13,7 +17,7 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum Type {
     NoValue,
     Atom(TypeAtom),
@@ -21,6 +25,8 @@ pub enum Type {
     Intersection(Arc<(Type, Type)>),
     Array(Arc<Type>),
     Dict(Arc<Type>),
+    Tuple(NonEmptyVec<Type>),
+    Record(NonEmptyVec<(Label, Type)>),
 }
 
 #[derive(Debug, PartialEq)]
@@ -320,22 +326,34 @@ impl Type {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum TypeAtom {
     Null,
     Bool(Option<bool>),
     Number(Option<u64>),
     Timestamp,
     String(Option<String>),
-    Tuple(NonEmptyVec<Type>),
-    Record(NonEmptyVec<(Label, Type)>),
     Universal,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum Label {
     String(NonEmptyString),
     Number(u64),
+}
+
+impl From<Ident> for Label {
+    fn from(value: Ident) -> Self {
+        Label::String(value.0)
+    }
+}
+
+impl TryFrom<&str> for Label {
+    type Error = NoElements;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Ok(Self::String(NonEmptyString::try_from(value)?))
+    }
 }
 
 pub fn r_type(p: P) -> anyhow::Result<Type> {
@@ -364,7 +382,7 @@ pub fn r_type(p: P) -> anyhow::Result<Type> {
                         .filter(|p| p.as_rule() == Rule::r#type)
                         .map(r_type)
                         .collect::<Result<Vec<_>, _>>()?;
-                    Type::Atom(TypeAtom::Tuple(NonEmptyVec::try_from(ts).spanned(span)?))
+                    Type::Tuple(NonEmptyVec::try_from(ts).spanned(span)?)
                 }
                 Rule::type_record => {
                     let mut ts = vec![];
@@ -382,7 +400,7 @@ pub fn r_type(p: P) -> anyhow::Result<Type> {
                         let t = r_type(p.next().ok_or(NoVal("value"))?)?;
                         ts.push((label, t));
                     }
-                    Type::Atom(TypeAtom::Record(NonEmptyVec::try_from(ts).spanned(span)?))
+                    Type::Record(NonEmptyVec::try_from(ts).spanned(span)?)
                 }
                 Rule::type_paren => r_type(p.into_inner().nth(1).ok_or(NoVal("nested type"))?)?,
                 Rule::type_universal => Type::Atom(TypeAtom::Universal),
