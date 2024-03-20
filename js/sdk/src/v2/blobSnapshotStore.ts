@@ -242,7 +242,7 @@ export class BlobSnapshotStore implements SnapshotStore {
     if (lt(this.currentActyxVersion(), '2.12.0')) return
     try {
       const headers = mkHeaders(this.currentToken())
-      await fetch(`${this.api}/${ENDPOINT}/-/@pond/snap`)
+      await fetch(`${this.api}/${ENDPOINT}/-/@pond/snap`, { method: 'DELETE', headers })
     } catch (e) {
       log.http.error('invalidateAllSnapshots', e)
     }

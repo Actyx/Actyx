@@ -8,6 +8,10 @@
 //! The benefit is structural sharing, i.e. minimal copying, so we need to be
 //! careful to design the API such that this goal is achieved, lest the effort
 //! be for naught.
+use self::{
+    parse_utils::Span,
+    workflow::{Binding, Workflow, WorkflowStep},
+};
 use super::*;
 
 /// Instruct Galactus how to continue
@@ -41,12 +45,153 @@ impl<'a> Query<'a> {
             .iter()
             .map(|op| shed(op.rewrite(surfer), &mut changed))
             .collect();
+        let events = self
+            .events
+            .iter()
+            .map(|(label, (t, tags))| {
+                let tags = tags
+                    .iter()
+                    .map(|tag| shed(tag.rewrite(surfer), &mut changed))
+                    .collect::<Vec<_>>();
+                (label.clone(), (t.clone(), tags))
+            })
+            .collect::<BTreeMap<_, _>>();
+        let workflows = self
+            .workflows
+            .iter()
+            .map(|(name, workflow)| (name.clone(), shed(workflow.rewrite(surfer), &mut changed)))
+            .collect::<BTreeMap<_, _>>();
         emit(
             || Self {
                 pragmas: self.pragmas.clone(),
                 features: self.features.clone(),
                 source,
                 ops,
+                events: Arc::new(events),
+                workflows: Arc::new(workflows),
+            },
+            changed,
+            self,
+        )
+    }
+}
+
+impl<'a> Workflow<'a> {
+    pub fn rewrite(&self, surfer: &mut impl Galactus) -> (Self, bool) {
+        let mut changed = false;
+        let steps = self.steps.map(|step| shed(step.rewrite(surfer), &mut changed));
+        emit(
+            || Workflow {
+                name: self.name.clone(),
+                args: self.args.clone(),
+                steps,
+            },
+            changed,
+            self,
+        )
+    }
+}
+
+impl<'a> WorkflowStep<'a> {
+    pub fn rewrite(&self, surfer: &mut impl Galactus) -> (Self, bool) {
+        match self {
+            WorkflowStep::Event {
+                state,
+                mode,
+                label,
+                participant,
+                binders,
+            } => {
+                let mut changed = false;
+                let binders = binders
+                    .iter()
+                    .map(|b| Span::new(b.span(), shed(b.rewrite(surfer), &mut changed)))
+                    .collect();
+                emit(
+                    || WorkflowStep::Event {
+                        state: state.clone(),
+                        mode: *mode,
+                        label: label.clone(),
+                        participant: participant.clone(),
+                        binders,
+                    },
+                    changed,
+                    self,
+                )
+            }
+            WorkflowStep::Retry { steps } => {
+                let mut changed = false;
+                let steps = steps.map(|step| shed(step.rewrite(surfer), &mut changed));
+                emit(|| WorkflowStep::Retry { steps }, changed, self)
+            }
+            WorkflowStep::Timeout {
+                micros,
+                steps,
+                mode,
+                label,
+                participant,
+                binders,
+            } => {
+                let mut changed = false;
+                let steps = steps.map(|step| shed(step.rewrite(surfer), &mut changed));
+                let binders = binders
+                    .iter()
+                    .map(|b| Span::new(b.span(), shed(b.rewrite(surfer), &mut changed)))
+                    .collect();
+                emit(
+                    || WorkflowStep::Timeout {
+                        micros: *micros,
+                        steps,
+                        mode: *mode,
+                        label: label.clone(),
+                        participant: participant.clone(),
+                        binders,
+                    },
+                    changed,
+                    self,
+                )
+            }
+            WorkflowStep::Parallel { count, cases } => {
+                let mut changed = false;
+                let cases = cases.map(|case| case.map(|step| shed(step.rewrite(surfer), &mut changed)));
+                emit(|| WorkflowStep::Parallel { count: *count, cases }, changed, self)
+            }
+            WorkflowStep::Call { workflow, args, cases } => {
+                let mut changed = false;
+                let cases = cases.map(|case| {
+                    (
+                        case.0.clone(),
+                        case.1.map(|step| shed(step.rewrite(surfer), &mut changed)),
+                    )
+                });
+                let workflow = workflow.clone();
+                let args = args.clone();
+                emit(|| WorkflowStep::Call { workflow, args, cases }, changed, self)
+            }
+            WorkflowStep::Compensate { body, with } => {
+                let mut changed = false;
+                let body = body.map(|step| shed(step.rewrite(surfer), &mut changed));
+                let with = with.map(|step| shed(step.rewrite(surfer), &mut changed));
+                emit(|| WorkflowStep::Compensate { body, with }, changed, self)
+            }
+            WorkflowStep::Choice { cases } => {
+                let mut changed = false;
+                let cases = cases.map(|case| case.map(|step| shed(step.rewrite(surfer), &mut changed)));
+                emit(|| WorkflowStep::Choice { cases }, changed, self)
+            }
+        }
+    }
+}
+
+impl Binding {
+    pub fn rewrite(&self, surfer: &mut impl Galactus) -> (Self, bool) {
+        let mut changed = false;
+        let value = shed(self.value.rewrite(surfer), &mut changed);
+        emit(
+            || Binding {
+                name: self.name.clone(),
+                role: self.role.clone(),
+                value,
             },
             changed,
             self,
@@ -86,6 +231,7 @@ impl Operation {
             Operation::Aggregate(x) => map(x.rewrite(surfer), Operation::Aggregate),
             Operation::Limit(x) => (Operation::Limit(*x), false),
             Operation::Binding(x, y) => map(y.rewrite(surfer), |y| Operation::Binding(x.clone(), y)),
+            Operation::Machine(n, r, id) => (Operation::Machine(n.clone(), r.clone(), id.clone()), false),
         }
     }
 }
@@ -139,6 +285,23 @@ impl TagAtom {
             | TagAtom::FromLamport(_, _)
             | TagAtom::ToLamport(_, _)
             | TagAtom::AppId(_) => (self.clone(), false),
+        }
+    }
+}
+
+impl SingleTag {
+    pub fn rewrite(&self, surfer: &mut impl Galactus) -> (Self, bool) {
+        match self {
+            SingleTag::Tag(_) => (self.clone(), false),
+            SingleTag::Interpolation(x) => {
+                let mut changed = false;
+                let items = x
+                    .items
+                    .iter()
+                    .map(|expr| shed(expr.rewrite(surfer), &mut changed))
+                    .collect();
+                emit(|| SingleTag::Interpolation(Arr { items }), changed, self)
+            }
         }
     }
 }
