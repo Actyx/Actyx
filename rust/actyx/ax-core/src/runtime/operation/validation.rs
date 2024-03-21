@@ -357,7 +357,7 @@ mod test {
     use ax_aql::{Label, Type, TypeAtom};
     use cbor_data::{
         value::{Precision, Timestamp},
-        Cbor, CborBuilder, Encoder, Writer,
+        Cbor, CborBuilder, CborOwned, Encoder, Writer,
     };
 
     #[test]
@@ -881,6 +881,28 @@ mod test {
                 b.write_item(Cbor::checked(&[0xd8u8, 24, 0x5f, 0x41, 0x18, 0x41, 0x2a, 0xff]).unwrap())
             });
         });
+        validate_record(
+            &dict.decode(),
+            &vec![(
+                Label::String("key".to_string().try_into().expect("non-empty string")),
+                Type::Atom(TypeAtom::Number(None)),
+            )]
+            .try_into()
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn test_non_panic() {
+        let dict = CborBuilder::new().encode_dict(|b| {
+            b.with_key("key", |b| {
+                b.write_item(Cbor::checked(&[0xd8u8, 24, 0x5f, 0x41, 0x18, 0x41, 0x2a, 0xff]).unwrap())
+            });
+        });
+
+        let dict = CborOwned::canonical(dict.as_slice()).unwrap();
+
         validate_record(
             &dict.decode(),
             &vec![(
