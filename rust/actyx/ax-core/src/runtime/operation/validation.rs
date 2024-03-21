@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::{borrow::Cow, sync::Arc};
 
 use ax_aql::{Label, NonEmptyVec, Type, TypeAtom};
@@ -357,7 +359,7 @@ mod test {
     use ax_aql::{Label, Type, TypeAtom};
     use cbor_data::{
         value::{Precision, Timestamp},
-        Cbor, CborBuilder, CborOwned, Encoder, Writer,
+        Cbor, CborBuilder, CborOwned, Encoder,
     };
 
     #[test]
@@ -875,12 +877,18 @@ mod test {
     }
 
     #[test]
+    #[should_panic(expected = "cbor is not canonical!")]
     fn test_panic() {
-        let dict = CborBuilder::new().encode_dict(|b| {
-            b.with_key("key", |b| {
-                b.write_item(Cbor::checked(&[0xd8u8, 24, 0x5f, 0x41, 0x18, 0x41, 0x2a, 0xff]).unwrap())
-            });
+        let sane_dict = CborBuilder::new().encode_dict(|b| {
+            b.with_key("key", |b| b.encode_i64(42));
         });
+        let mut insane = vec![0xd8u8, 24, 0x5f];
+        for b in sane_dict.as_slice() {
+            insane.extend([0x41, *b]);
+        }
+        insane.push(255);
+        let dict = Cbor::checked(&insane).unwrap();
+
         validate_record(
             &dict.decode(),
             &vec![(
@@ -895,13 +903,15 @@ mod test {
 
     #[test]
     fn test_non_panic() {
-        let dict = CborBuilder::new().encode_dict(|b| {
-            b.with_key("key", |b| {
-                b.write_item(Cbor::checked(&[0xd8u8, 24, 0x5f, 0x41, 0x18, 0x41, 0x2a, 0xff]).unwrap())
-            });
+        let sane_dict = CborBuilder::new().encode_dict(|b| {
+            b.with_key("key", |b| b.encode_i64(42));
         });
-
-        let dict = CborOwned::canonical(dict.as_slice()).unwrap();
+        let mut insane = vec![0xd8u8, 24, 0x5f];
+        for b in sane_dict.as_slice() {
+            insane.extend([0x41, *b]);
+        }
+        insane.push(255);
+        let dict = CborOwned::canonical(&insane).unwrap();
 
         validate_record(
             &dict.decode(),
