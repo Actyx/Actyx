@@ -1119,9 +1119,9 @@ checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 
 [[package]]
 name = "cbor-data"
-version = "0.8.15"
+version = "0.8.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a1165c64320670370b3d45dbf666b6f815223785f4b2def266fd25ba23458cd"
+checksum = "07680cd3da61de53e862172d28019a24e0bca45cb06ee47285a242219c7266ca"
 dependencies = [
  "base64 0.13.1",
  "cbor-data-derive",

@@ -8,7 +8,7 @@ use itertools::Itertools;
 // in this case, it would be really useful: https://github.com/xd009642/tarpaulin
 
 #[derive(Debug, thiserror::Error)]
-pub enum TypeMismatchError {
+pub enum TypeMismatchError<'a> {
     #[error("expected value to have type NULL")]
     Null,
 
@@ -33,14 +33,14 @@ pub enum TypeMismatchError {
     #[error("expected value to have type STRING")]
     String,
 
-    #[error("expected value to be {expected}, received {received} instead")]
-    StringRefinement { expected: String, received: String },
+    #[error("expected value to be {expected} but received {received} instead")]
+    StringRefinement { expected: &'a str, received: Cow<'a, str> },
 
     #[error("expected value to have type ARRAY")]
     Array,
 
     #[error("expected element {index} of ARRAY to have type {ty:?}")]
-    ArrayElement { index: usize, ty: Type },
+    ArrayElement { index: usize, ty: &'a Type },
 
     #[error("expected value to have type TUPLE")]
     Tuple,
@@ -49,7 +49,7 @@ pub enum TypeMismatchError {
     TupleLength { expected: usize, received: usize },
 
     #[error("expected element {index} of TUPLE to have type {ty:?}")]
-    TupleElement { index: usize, ty: Type },
+    TupleElement { index: usize, ty: &'a Type },
 
     #[error("expected value to have type DICT")]
     Dict,
@@ -57,29 +57,24 @@ pub enum TypeMismatchError {
     #[error("expected DICT keys to have type STRING or NUMBER")]
     DictKeys,
 
-    #[error("expected value for key {key} to have type {ty:?}")]
-    DictValue {
-        // NOTE: the original key is a CborValue that is either a string or a number
-        // I selected to represent this key as a String to simplify the error printing process
-        key: String,
-        ty: Type,
-    },
+    #[error("expected value for key {key:?} to have type {ty:?}")]
+    DictValue { key: String, ty: &'a Type },
 
     #[error("expected value to have type RECORD")]
     Record,
 
-    #[error("expected label {expected} to exist in RECORD")]
-    RecordLabelMissing { expected: String },
+    #[error("expected label {expected:?} to exist in RECORD")]
+    RecordLabelMissing { expected: &'a Label },
 }
 
 // NOTE: the Debug implementation shows the path as it is stored in memory, meaning it's reversed
 #[derive(Debug, thiserror::Error)]
-pub struct TypeError {
-    error: TypeMismatchError,
+pub struct TypeError<'err> {
+    error: TypeMismatchError<'err>,
     path: Vec<String>,
 }
 
-impl TypeError {
+impl<'err> TypeError<'err> {
     fn with_path(mut self, p: String) -> Self {
         self.path.push(p);
         Self {
@@ -89,7 +84,7 @@ impl TypeError {
     }
 }
 
-impl std::fmt::Display for TypeError {
+impl<'err> std::fmt::Display for TypeError<'err> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.path.is_empty() {
             write!(f, "{}", self.error)
@@ -104,8 +99,8 @@ impl std::fmt::Display for TypeError {
     }
 }
 
-impl From<TypeMismatchError> for TypeError {
-    fn from(value: TypeMismatchError) -> Self {
+impl<'err> From<TypeMismatchError<'err>> for TypeError<'err> {
+    fn from(value: TypeMismatchError<'err>) -> Self {
         Self {
             error: value,
             path: vec![],
@@ -117,7 +112,7 @@ trait TypeErrorContext {
     fn with_path(self, p: String) -> Self;
 }
 
-impl<T> TypeErrorContext for Result<T, TypeError> {
+impl<'err, T> TypeErrorContext for Result<T, TypeError<'err>> {
     fn with_path(self, p: String) -> Self {
         if let Err(err) = self {
             return Self::Err(err.with_path(p));
@@ -127,7 +122,7 @@ impl<T> TypeErrorContext for Result<T, TypeError> {
 }
 
 /// Check if a CBOR value is null.
-fn validate_null(value: &CborValue) -> Result<(), TypeMismatchError> {
+fn validate_null<'a, 'err>(value: &CborValue) -> Result<(), TypeMismatchError<'err>> {
     if value.is_null() {
         Ok(())
     } else {
@@ -136,7 +131,7 @@ fn validate_null(value: &CborValue) -> Result<(), TypeMismatchError> {
 }
 
 /// Check if a CBOR value is a boolean or a boolean refinement (i.e. `true` or `false`).
-fn validate_bool(value: &CborValue, bool_refinement: &Option<bool>) -> Result<(), TypeMismatchError> {
+fn validate_bool<'a, 'err>(value: &CborValue, bool_refinement: &Option<bool>) -> Result<(), TypeMismatchError<'err>> {
     if let Some(value) = value.as_bool() {
         if let Some(bool_refinement) = *bool_refinement {
             if value == bool_refinement {
@@ -156,7 +151,10 @@ fn validate_bool(value: &CborValue, bool_refinement: &Option<bool>) -> Result<()
 }
 
 /// Check if a CBOR value is an integer or an integer refinement (e.g. `10`).
-fn validate_number(value: &CborValue, number_refinement: &Option<u64>) -> Result<(), TypeMismatchError> {
+fn validate_number<'a, 'err>(
+    value: &CborValue,
+    number_refinement: &Option<u64>,
+) -> Result<(), TypeMismatchError<'err>> {
     if let Some(Number::Int(value)) = value.as_number() {
         if let Ok(value) = u64::try_from(*value) {
             if let Some(number_refinement) = number_refinement {
@@ -180,7 +178,7 @@ fn validate_number(value: &CborValue, number_refinement: &Option<u64>) -> Result
 }
 
 /// Check if a CBOR value is a timestamp.
-fn validate_timestamp(value: &CborValue) -> Result<(), TypeMismatchError> {
+fn validate_timestamp<'a, 'err>(value: &CborValue) -> Result<(), TypeMismatchError<'err>> {
     if value.as_timestamp().is_some() {
         Ok(())
     } else {
@@ -189,15 +187,18 @@ fn validate_timestamp(value: &CborValue) -> Result<(), TypeMismatchError> {
 }
 
 /// Check if a CBOR value is a string or a string refinement (e.g. "Hello").
-fn validate_string(value: &CborValue, string_refinement: &Option<String>) -> Result<(), TypeMismatchError> {
+fn validate_string<'a, 'err>(
+    value: &'a CborValue<'err>,
+    string_refinement: &'err Option<String>,
+) -> Result<(), TypeMismatchError<'err>> {
     if let Some(value) = value.as_str() {
         if let Some(refinement) = string_refinement {
             if value == refinement {
                 Ok(())
             } else {
                 Err(TypeMismatchError::StringRefinement {
-                    expected: refinement.clone(),
-                    received: value.to_string(),
+                    expected: refinement,
+                    received: value.clone(),
                 })
             }
         } else {
@@ -209,15 +210,12 @@ fn validate_string(value: &CborValue, string_refinement: &Option<String>) -> Res
 }
 
 /// Check if a CBOR value is an array. Can also be used to check for tuples (following RFC 7049).
-fn validate_array(value: &CborValue, ty: &Type) -> Result<(), TypeMismatchError> {
+fn validate_array<'a, 'err>(value: &CborValue<'err>, ty: &'err Type) -> Result<(), TypeMismatchError<'err>> {
     if let Some(values) = value.as_array() {
         for (i, value) in values.iter().enumerate() {
             if validate(&value.decode(), ty).is_err() {
                 // TODO: add support for source and backtrace using the err content
-                return Err(TypeMismatchError::ArrayElement {
-                    index: i,
-                    ty: ty.clone(),
-                });
+                return Err(TypeMismatchError::ArrayElement { index: i, ty });
             }
         }
         Ok(())
@@ -226,7 +224,7 @@ fn validate_array(value: &CborValue, ty: &Type) -> Result<(), TypeMismatchError>
     }
 }
 
-fn validate_tuple(value: &CborValue, ty: &[Type]) -> Result<(), TypeMismatchError> {
+fn validate_tuple<'a, 'err>(value: &'a CborValue<'err>, ty: &'err [Type]) -> Result<(), TypeMismatchError<'err>> {
     if let Some(array) = value.as_array() {
         if array.len() != ty.len() {
             return Err(TypeMismatchError::TupleLength {
@@ -236,10 +234,7 @@ fn validate_tuple(value: &CborValue, ty: &[Type]) -> Result<(), TypeMismatchErro
         }
         for (i, (value, ty)) in array.iter().zip(ty.iter()).enumerate() {
             if validate(&value.decode(), ty).is_err() {
-                return Err(TypeMismatchError::TupleElement {
-                    index: i,
-                    ty: ty.clone(),
-                });
+                return Err(TypeMismatchError::TupleElement { index: i, ty });
             }
         }
         Ok(())
@@ -249,7 +244,7 @@ fn validate_tuple(value: &CborValue, ty: &[Type]) -> Result<(), TypeMismatchErro
 }
 
 /// Check if a CBOR value is a dictionary.
-fn validate_dict(value: &CborValue, ty: &Type) -> Result<(), TypeMismatchError> {
+fn validate_dict<'a, 'err>(value: &'a CborValue<'err>, ty: &'err Type) -> Result<(), TypeMismatchError<'err>> {
     let key_type = Type::Union(Arc::new((
         Type::Atom(TypeAtom::String(None)),
         Type::Atom(TypeAtom::Number(None)),
@@ -260,17 +255,12 @@ fn validate_dict(value: &CborValue, ty: &Type) -> Result<(), TypeMismatchError> 
             if let Err(_) = validate(&decoded_key, &key_type) {
                 return Err(TypeMismatchError::DictKeys);
             }
-            if let Err(_) = validate(&v.decode(), ty) {
-                let key = {
-                    if let Some(key) = decoded_key.clone().to_str() {
-                        key.to_string()
-                    } else if let Some(Number::Int(key)) = decoded_key.to_number() {
-                        key.to_string()
-                    } else {
-                        unreachable!("this error should have been caught earlier")
-                    }
-                };
-                return Err(TypeMismatchError::DictValue { key, ty: ty.clone() });
+            let decoded_value = v.decode();
+            if let Err(_) = validate(&decoded_value, ty) {
+                return Err(TypeMismatchError::DictValue {
+                    key: format!("{:?}", decoded_value),
+                    ty,
+                });
             }
         }
         Ok(())
@@ -283,7 +273,7 @@ fn validate_dict(value: &CborValue, ty: &Type) -> Result<(), TypeMismatchError> 
 // the issue is that a Record can nest arbitrarily deep and may use non-atom types
 // ideally, I would like to _not_ use recursion since we already had the stack issue in other places;
 // so we either ignore records here and handle them somewhere else or we handle them here, some how
-fn validate_atom(value: &CborValue, ty: &TypeAtom) -> Result<(), TypeMismatchError> {
+fn validate_atom<'a, 'err>(value: &'a CborValue<'err>, ty: &'err TypeAtom) -> Result<(), TypeMismatchError<'err>> {
     match ty {
         TypeAtom::Null => validate_null(value),
         TypeAtom::Bool(refinement) => validate_bool(value, refinement),
@@ -294,33 +284,37 @@ fn validate_atom(value: &CborValue, ty: &TypeAtom) -> Result<(), TypeMismatchErr
     }
 }
 
-fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> Result<(), TypeError> {
+fn validate_record<'a, 'err>(
+    value: &'a CborValue<'err>,
+    ty: &'err NonEmptyVec<(Label, Type)>,
+) -> Result<(), TypeError<'err>> {
     if let Some(value) = value.as_dict() {
         for (label, ty) in ty.iter() {
             match label {
                 Label::String(string) => {
                     let cbor = CborBuilder::new().encode_str(string);
-                    let cbor = Cow::Owned(cbor);
-                    if let Some(value) = value.get(&cbor) {
-                        validate(&value.decode(), ty).with_path(string.to_string())?;
-                    } else {
-                        return Err(TypeMismatchError::RecordLabelMissing {
-                            expected: string.to_string(),
+                    if let Some(value) = value.get(&*cbor) {
+                        match value {
+                            Cow::Borrowed(value) => {
+                                validate(&value.decode(), ty).with_path(string.to_string())?;
+                            }
+                            Cow::Owned(_) => panic!("cbor is not canonical!"),
                         }
-                        .into());
+                    } else {
+                        return Err(TypeMismatchError::RecordLabelMissing { expected: label }.into());
                     }
                 }
                 Label::Number(number) => {
-                    let cbor_number = Number::Int(i128::from(*number));
-                    let cbor = CborBuilder::new().encode_number(&cbor_number);
-                    let cbor = Cow::Owned(cbor);
-                    if let Some(value) = value.get(&cbor) {
-                        validate(&value.decode(), ty).with_path(number.to_string())?;
-                    } else {
-                        return Err(TypeMismatchError::RecordLabelMissing {
-                            expected: number.to_string(),
+                    let cbor = CborBuilder::new().encode_number(&Number::Int(i128::from(*number)));
+                    if let Some(value) = value.get(&*cbor) {
+                        match value {
+                            Cow::Borrowed(value) => {
+                                validate(&value.decode(), ty).with_path(number.to_string())?;
+                            }
+                            Cow::Owned(_) => panic!("cbor is not canonical!"),
                         }
-                        .into());
+                    } else {
+                        return Err(TypeMismatchError::RecordLabelMissing { expected: label }.into());
                     }
                 }
             }
@@ -331,7 +325,9 @@ fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> Result
     }
 }
 
-fn validate(value: &CborValue, ty: &Type) -> Result<(), TypeError> {
+/// # Panics
+/// If [`cbor_data::CborOwned::canonical`] was not called, this function _may_ panic.
+fn validate<'a, 'err>(value: &'a CborValue<'err>, ty: &'err Type) -> Result<(), TypeError<'err>> {
     match ty {
         Type::Atom(atom) => validate_atom(value, atom).map_err(TypeError::from),
         Type::Array(inner_ty) => validate_array(value, inner_ty).map_err(TypeError::from),
@@ -361,7 +357,7 @@ mod test {
     use ax_aql::{Label, Type, TypeAtom};
     use cbor_data::{
         value::{Precision, Timestamp},
-        CborBuilder, Encoder,
+        Cbor, CborBuilder, Encoder, Writer,
     };
 
     #[test]
@@ -876,5 +872,24 @@ mod test {
         let cbor = CborBuilder::new().encode_bool(false);
         let cbor = cbor.decode();
         validate(&cbor, &union).unwrap_err();
+    }
+
+    #[test]
+    fn test_panic() {
+        let dict = CborBuilder::new().encode_dict(|b| {
+            b.with_key("key", |b| {
+                b.write_item(Cbor::checked(&[0xd8u8, 24, 0x5f, 0x41, 0x18, 0x41, 0x2a, 0xff]).unwrap())
+            });
+        });
+        validate_record(
+            &dict.decode(),
+            &vec![(
+                Label::String("key".to_string().try_into().expect("non-empty string")),
+                Type::Atom(TypeAtom::Number(None)),
+            )]
+            .try_into()
+            .unwrap(),
+        )
+        .unwrap();
     }
 }
