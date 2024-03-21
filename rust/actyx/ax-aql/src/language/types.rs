@@ -19,6 +19,10 @@ use std::{
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum Type {
+    /// The bottom type | the impossible type. equivalent to union of no types.
+    /// When this type arises, evaluation must not happen i.e. AQL execution must stop at type-checking
+    Never(Vec<String>),
+    /// Indicates that there is a lack of value
     NoValue,
     Atom(TypeAtom),
     Union(Arc<(Type, Type)>),
@@ -29,19 +33,33 @@ pub enum Type {
     Record(NonEmptyVec<(Label, Type)>),
 }
 
-#[derive(Debug, PartialEq)]
-pub(crate) struct CollapseError(Vec<String>);
-
-impl CollapseError {
-    fn join(errs: Vec<CollapseError>) -> CollapseError {
-        CollapseError(errs.into_iter().flat_map(|x| x.0).collect())
-    }
+enum Spread<T> {
+    Many(Vec<T>),
+    One(T),
 }
 
-impl ToString for CollapseError {
-    fn to_string(&self) -> String {
-        self.0.clone().join(". ")
+fn spread<T>(vec: Vec<T>, spreader: impl Fn(&T) -> Spread<T>) -> Vec<T> {
+    let mut spread = vec;
+
+    loop {
+        let mut something_is_spread_this_round = false;
+
+        std::mem::take(&mut spread)
+            .into_iter()
+            .for_each(|item| match spreader(&item) {
+                Spread::Many(v) => {
+                    something_is_spread_this_round = true;
+                    spread.extend(v);
+                }
+                Spread::One(x) => spread.push(x),
+            });
+
+        if !something_is_spread_this_round {
+            break;
+        }
     }
+
+    spread
 }
 
 pub enum Hierarchy {
@@ -52,18 +70,34 @@ pub enum Hierarchy {
 }
 
 impl Type {
+    pub(crate) fn never(
+        iter: impl IntoIterator<Item = Type, IntoIter = impl DoubleEndedIterator<Item = Type>>,
+    ) -> Type {
+        Type::Never(
+            iter.into_iter()
+                .filter_map(|x| match x {
+                    Type::Never(x) => Some(x),
+                    _ => None,
+                })
+                .flatten()
+                .collect(),
+        )
+    }
+
     /// Build a union out of all types in the iterator argument
     ///
     /// # Panics
     ///
     /// Panics if the iterator does not yield any value!
-    pub(crate) fn union(iter: impl DoubleEndedIterator<Item = Type>) -> Type {
+    pub(crate) fn union(
+        iter: impl IntoIterator<Item = Type, IntoIter = impl DoubleEndedIterator<Item = Type>>,
+    ) -> Type {
         let rebuilt = iter.into_iter().rev().fold(None, |acc, next| match acc {
             None => Some(next),
             Some(prev) => Some(Type::Union(Arc::new((prev, next)))),
         });
 
-        rebuilt.expect("union member is empty")
+        rebuilt.unwrap_or(Type::Never(vec!["empty union".to_string()]))
     }
 
     /// Build an intersection out of all types in the iterator argument
@@ -71,77 +105,85 @@ impl Type {
     /// # Panics
     ///
     /// Panics if the iterator does not yield any value!
-    pub(crate) fn intersection(iter: impl DoubleEndedIterator<Item = Type>) -> Type {
+    pub(crate) fn intersection(
+        iter: impl IntoIterator<Item = Type, IntoIter = impl DoubleEndedIterator<Item = Type>>,
+    ) -> Type {
         let rebuilt = iter.into_iter().rev().fold(None, |acc, next| match acc {
             None => Some(next),
             Some(prev) => Some(Type::Intersection(Arc::new((prev, next)))),
         });
 
-        rebuilt.expect("intersection member is empty")
+        rebuilt.unwrap_or(Type::Never(vec!["empty intersection".to_string()]))
     }
 
     /// Attempt to apply collapse and sorts to intersections, unions, records
-    pub(crate) fn collapse(self) -> Result<Type, CollapseError> {
+    pub(crate) fn collapse(self) -> Type {
         match self {
             Type::Intersection(intersection) => {
                 let (a, b) = intersection.as_ref();
-                let (a, b) = match (a.clone().collapse(), b.clone().collapse()) {
-                    (Ok(a), Ok(b)) => (a, b),
-                    (Err(a), Err(b)) => return Err(CollapseError::join(vec![a, b])),
-                    (Ok(_), Err(b)) => return Err(b),
-                    (Err(a), Ok(_)) => return Err(a),
-                };
+                let (a, b) = (a.clone().collapse(), b.clone().collapse());
 
                 if a == b {
-                    return Ok(a);
+                    return a.clone();
+                }
+
+                fn distribute_and_unify<'a>(
+                    set_a: impl IntoIterator<Item = &'a Type>,
+                    set_b: impl IntoIterator<Item = &'a Type>,
+                ) -> Type {
+                    let set_a = set_a
+                        .into_iter()
+                        .cloned()
+                        .map(|x: Type| x.collapse())
+                        .collect::<Vec<Type>>();
+
+                    let set_b = set_b
+                        .into_iter()
+                        .cloned()
+                        .map(|x: Type| x.collapse())
+                        .collect::<Vec<Type>>();
+
+                    let permutations = set_a.iter().flat_map(|a| {
+                        set_b
+                            .iter()
+                            .map(|b| Type::intersection([a.clone(), b.clone()]).collapse())
+                    });
+
+                    Type::union(permutations).collapse()
                 }
 
                 match (&a, &b) {
-                    // all intersections should have been collapsed
-                    (Type::Intersection(_), _) | (_, Type::Intersection(_)) => Err(CollapseError(vec![
-                        "intersection could not exist after a collapse".into(),
-                    ])),
+                    // there should not be intersections of intersections after a and b is collapsed
+                    (Type::Intersection(_), _) | (_, Type::Intersection(_)) => {
+                        Type::Never(vec!["intersection could not exist after a collapse".into()])
+                    }
+                    (Type::Union(union_a), Type::Union(union_b)) => {
+                        let (a1, a2) = union_a.as_ref();
+                        let (b1, b2) = union_b.as_ref();
+                        distribute_and_unify([a1, a2], [b1, b2])
+                    }
+                    (Type::Union(union), x) => {
+                        let (a, b) = union.as_ref();
+                        distribute_and_unify([a, b], [x])
+                    }
+                    (x, Type::Union(union)) => {
+                        let (a, b) = union.as_ref();
+                        distribute_and_unify([a, b], [x])
+                    }
                     // intersection of records
                     (Type::Record(a), Type::Record(b)) => {
-                        let mut errors = vec![];
-                        let mut conflicts = BTreeMap::<&Label, BTreeSet<Type>>::new();
                         let mut fields = BTreeMap::<&Label, Type>::new();
-                        a.iter()
-                            .chain(b.iter())
-                            .for_each(|(label, ty)| match ty.clone().collapse() {
-                                Ok(ty) => {
-                                    if !errors.is_empty() {
-                                        return;
-                                    }
 
-                                    if let Some(ejected) = fields.insert(label, ty.clone()) {
-                                        if ty != ejected {
-                                            conflicts
-                                                .entry(label)
-                                                .and_modify(|set| {
-                                                    set.insert(ty.clone());
-                                                })
-                                                .or_insert(BTreeSet::from([ejected, ty]));
-                                        }
-                                    }
+                        a.iter().chain(b.iter()).for_each(|(label, ty)| {
+                            match fields.get(&label) {
+                                None => fields.insert(label, ty.clone().collapse().clone()),
+                                Some(old) => {
+                                    fields.insert(label, Type::intersection([ty.clone(), old.clone()]).collapse())
                                 }
-                                Err(err) => errors.push(err),
-                            });
+                            };
+                        });
 
-                        if !errors.is_empty() {
-                            return Err(CollapseError::join(errors));
-                        }
-
-                        if !conflicts.is_empty() {
-                            return Err(CollapseError(
-                                conflicts
-                                    .into_iter()
-                                    .map(|(label, tys)| format!("conflicting types for label {:?}: {:?}", label, tys))
-                                    .collect(),
-                            ));
-                        }
-
-                        Ok(Type::Record(
+                        Type::Record(
                             fields
                                 .into_iter()
                                 .map(|(label, ty)| (label.clone(), ty.clone()))
@@ -149,14 +191,14 @@ impl Type {
                                 .try_into()
                                 .unwrap(),
                         )
-                        .collapse()?)
+                        .collapse()
                     }
-                    _ => match a.hierarchy_towards(&b) {
-                        Hierarchy::Equal => Ok(a),
-                        Hierarchy::Supertype => Ok(b),
-                        Hierarchy::Subtype => Ok(a),
+                    _ => match &a.hierarchy_towards(&b) {
+                        Hierarchy::Equal => a,
+                        Hierarchy::Supertype => b,
+                        Hierarchy::Subtype => a,
                         Hierarchy::Disjointed => {
-                            Err(CollapseError(vec![format!("{:?} and {:?} is of different type", a, b)]))
+                            Type::Never(vec![format!("{:?} and {:?} cannot be intersected", a, b)])
                         }
                     },
                 }
@@ -164,42 +206,43 @@ impl Type {
             Type::Union(x) => {
                 let mut collapsing = vec![];
 
-                let flattened = Type::flatten_union_collapsing(x.as_ref())?;
-
-                flattened.into_iter().for_each(|new| match collapsing.last_mut() {
-                    None => collapsing.push(new),
-                    Some(last) => {
-                        match new.hierarchy_towards(last) {
-                            Hierarchy::Disjointed => collapsing.push(new), // push
-                            Hierarchy::Supertype => *last = new,           // replace last with supertype
-                            Hierarchy::Subtype | Hierarchy::Equal => {}    // do nothing
+                Type::spread_union_collapsing(x.as_ref())
+                    .into_iter()
+                    .for_each(|new| match collapsing.last_mut() {
+                        None => collapsing.push(new),
+                        Some(last) => {
+                            match new.hierarchy_towards(last) {
+                                Hierarchy::Disjointed => collapsing.push(new), // push
+                                Hierarchy::Supertype => *last = new,           // replace last with supertype
+                                Hierarchy::Subtype | Hierarchy::Equal => {}    // do nothing
+                            }
                         }
-                    }
-                });
+                    });
 
-                Ok(Type::union(collapsing.into_iter()))
+                Type::union(collapsing)
             }
             Type::Record(fields) => {
-                let mut errors = vec![];
                 let fields = fields
                     .iter()
                     .cloned()
-                    .filter_map(|(label, ty)| match ty.collapse() {
-                        Ok(ty) => Some((label, ty)),
-                        Err(err) => {
-                            errors.push(err);
-                            None
-                        }
-                    })
-                    .collect::<BTreeMap<_, _>>();
+                    .map(|(label, ty)| (label, ty.collapse()))
+                    .collect::<BTreeMap<_, _>>(); // collecting into btreemap sorts the fields
 
-                if !errors.is_empty() {
-                    Err(CollapseError::join(errors))
+                let never_fields = fields
+                    .iter()
+                    .filter_map(|(_label, ty)| match ty {
+                        Type::Never(_) => Some(ty.clone()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+
+                if !never_fields.is_empty() {
+                    Type::never(never_fields)
                 } else {
-                    Ok(Type::Record(fields.into_iter().collect::<Vec<_>>().try_into().unwrap()))
+                    Type::Record(fields.into_iter().collect::<Vec<_>>().try_into().unwrap())
                 }
             }
-            _ => Ok(self),
+            _ => self,
         }
     }
 
@@ -208,7 +251,39 @@ impl Type {
             return Hierarchy::Equal;
         }
 
+        fn compare_unions(a: &BTreeSet<&Type>, b: &BTreeSet<&Type>) -> Hierarchy {
+            let mut a_has_supertype = BTreeSet::<&Type>::new();
+            let mut b_has_supertype = BTreeSet::<&Type>::new();
+            let mut registered_equal = BTreeSet::<&Type>::new();
+
+            a.iter().for_each(|a_member| {
+                b.iter().for_each(|b_member| {
+                    match a_member.hierarchy_towards(b_member) {
+                        Hierarchy::Supertype => b_has_supertype.insert(b_member),
+                        Hierarchy::Subtype => a_has_supertype.insert(a_member),
+                        Hierarchy::Equal => registered_equal.insert(a_member),
+                        Hierarchy::Disjointed => false,
+                    };
+                })
+            });
+
+            if registered_equal.len() == a.len() && registered_equal.len() == b.len() {
+                Hierarchy::Equal
+            } else if a_has_supertype.len() == a.len() && b_has_supertype.is_empty() {
+                Hierarchy::Subtype
+            } else if b_has_supertype.len() == b.len() && a_has_supertype.is_empty() {
+                Hierarchy::Supertype
+            } else {
+                Hierarchy::Disjointed
+            }
+        }
+
         match (self, other) {
+            (_, Type::Never(_)) => Hierarchy::Supertype,
+            (Type::Never(_), _) => Hierarchy::Subtype,
+            (Type::Atom(TypeAtom::Universal), Type::Atom(TypeAtom::Universal)) => Hierarchy::Equal,
+            (Type::Atom(TypeAtom::Universal), _) => Hierarchy::Supertype,
+            (_, Type::Atom(TypeAtom::Universal)) => Hierarchy::Subtype,
             (Type::Atom(a), Type::Atom(b)) => match (a, b) {
                 // supertypes
                 (TypeAtom::Bool(None), TypeAtom::Bool(Some(_))) => Hierarchy::Supertype,
@@ -218,8 +293,6 @@ impl Type {
                 (TypeAtom::Bool(Some(_)), TypeAtom::Bool(None)) => Hierarchy::Subtype,
                 (TypeAtom::Number(Some(_)), TypeAtom::Number(None)) => Hierarchy::Subtype,
                 (TypeAtom::String(Some(_)), TypeAtom::String(None)) => Hierarchy::Subtype,
-                (TypeAtom::Universal, TypeAtom::Universal) => Hierarchy::Equal,
-                (TypeAtom::Universal, _) => Hierarchy::Supertype,
                 _ => Hierarchy::Disjointed,
             },
             (Type::Record(a), Type::Record(b)) => {
@@ -236,90 +309,40 @@ impl Type {
                 }
             }
             (Type::Union(a), Type::Union(b)) => {
-                let a = Type::flatten_union(a.as_ref());
-                let b = Type::flatten_union(b.as_ref());
-                let intersection = BTreeSet::intersection(&a, &b).cloned().collect::<BTreeSet<_>>();
-
-                if intersection == b {
-                    Hierarchy::Supertype
-                } else if intersection == a {
-                    Hierarchy::Subtype
-                } else {
-                    Hierarchy::Disjointed
-                }
+                compare_unions(&Type::spread_union(a.as_ref()), &Type::spread_union(b.as_ref()))
             }
-            (Type::Union(union), non_union) if Type::flatten_union(union.as_ref()).contains(non_union) => {
-                Hierarchy::Supertype
-            }
-            (non_union, Type::Union(union)) if Type::flatten_union(union.as_ref()).contains(non_union) => {
-                Hierarchy::Subtype
-            }
+            (Type::Union(a), b) => compare_unions(&Type::spread_union(a.as_ref()), &BTreeSet::from([b])),
+            (a, Type::Union(b)) => compare_unions(&BTreeSet::from([a]), &Type::spread_union(b.as_ref())),
             (Type::Array(a), Type::Array(b)) => a.hierarchy_towards(b),
             (Type::Dict(a), Type::Dict(b)) => a.hierarchy_towards(b),
             _ => Hierarchy::Disjointed,
         }
     }
 
-    /// Flatten union tree into a set of type references without collapsing
-    fn flatten_union((a, b): &(Type, Type)) -> BTreeSet<&Type> {
-        let mut under_types_vec = vec![a, b];
-
-        loop {
-            let mut non_unions = vec![];
-            let mut unions = vec![];
-
-            under_types_vec.split_off(0).into_iter().for_each(|ty| match ty {
-                Type::Union(pair) => unions.push(pair),
-                _ => non_unions.push(ty),
-            });
-            std::mem::swap(&mut under_types_vec, &mut non_unions);
-
-            if unions.is_empty() {
-                break;
+    /// Spread union tree into a set of type references without collapsing
+    fn spread_union((a, b): &(Type, Type)) -> BTreeSet<&Type> {
+        let spread = spread(vec![a, b], |x| match x {
+            Type::Union(union) => {
+                let (a, b) = union.as_ref();
+                Spread::Many(vec![a, b])
             }
+            x => Spread::One(x),
+        });
 
-            under_types_vec.extend(unions.into_iter().flat_map(|x| {
-                let (a, b) = x.as_ref();
-                [a, b]
-            }));
-        }
-
-        under_types_vec.into_iter().collect()
+        spread.into_iter().collect()
     }
 
-    /// Flatten union tree into a set of types with collapsing
-    fn flatten_union_collapsing((a, b): &(Type, Type)) -> Result<BTreeSet<Type>, CollapseError> {
-        let mut under_types_vec = vec![a.clone(), b.clone()];
-        let mut collapse_errors = vec![];
-
-        loop {
-            let mut non_unions = vec![];
-            let mut unions = vec![];
-
-            std::mem::take(&mut under_types_vec)
-                .into_iter()
-                .for_each(|item| match item.collapse() {
-                    Ok(Type::Union(pair)) => unions.push(pair),
-                    Ok(ty) => non_unions.push(ty),
-                    Err(err) => collapse_errors.push(err),
-                });
-            std::mem::swap(&mut under_types_vec, &mut non_unions);
-
-            if !collapse_errors.is_empty() {
-                return Err(CollapseError::join(collapse_errors));
+    /// Spread union tree into a set of types with collapsing
+    fn spread_union_collapsing((a, b): &(Type, Type)) -> BTreeSet<Type> {
+        let spread = spread(vec![a.clone(), b.clone()], |x| match x.clone().collapse() {
+            Type::Union(union) => {
+                let (a, b) = union.as_ref();
+                Spread::Many(vec![a.clone(), b.clone()])
             }
+            x => Spread::One(x),
+        });
 
-            if unions.is_empty() {
-                break;
-            }
-
-            under_types_vec.extend(unions.into_iter().flat_map(|x| {
-                let (a, b) = x.as_ref();
-                [a.clone(), b.clone()]
-            }));
-        }
-
-        Ok(under_types_vec.into_iter().collect())
+        spread.into_iter().collect()
     }
 }
 
@@ -426,7 +449,6 @@ pub fn r_type(p: P) -> anyhow::Result<Type> {
 #[cfg(test)]
 mod tests {
     use crate::{Label, Type, TypeAtom};
-    use std::sync::Arc;
     #[test]
     fn intersecting_records() {
         let a = Type::Record(
@@ -460,10 +482,7 @@ mod tests {
             .unwrap(),
         );
 
-        assert_eq!(
-            Type::Intersection(Arc::new((a, b))).collapse(),
-            Ok(expected.collapse().expect("should not err"))
-        );
+        assert_eq!(Type::intersection([a, b]).collapse(), expected.collapse());
     }
 
     #[test]
@@ -476,7 +495,7 @@ mod tests {
             .try_into()
             .unwrap(),
         );
-        assert_eq!(Type::Intersection(Arc::new((a.clone(), a.clone()))).collapse(), Ok(a));
+        assert_eq!(Type::intersection([a.clone(), a.clone()]).collapse(), a.collapse());
     }
 
     #[test]
@@ -497,58 +516,99 @@ mod tests {
             .try_into()
             .unwrap(),
         );
-        assert!(Type::Intersection(Arc::new((a, b))).collapse().is_err());
+
+        let res = Type::intersection([a, b]).collapse();
+
+        assert!(
+            matches!(res, Type::Never(_)),
+            "res is not Type::Never, but is {:?}",
+            res
+        );
+    }
+
+    #[test]
+    fn intersection_of_unions() {
+        let union_1 = Type::union([Type::Atom(TypeAtom::Number(Some(1)))]).collapse();
+        let union_2 = Type::union([
+            Type::Atom(TypeAtom::Number(None)),
+            Type::Atom(TypeAtom::Number(Some(1))),
+        ])
+        .collapse();
+
+        assert_eq!(Type::intersection([union_1.clone(), union_2]).collapse(), union_1);
+    }
+
+    #[test]
+    fn intersection_of_criss_crossing_unions() {
+        let a = Type::union([
+            Type::Atom(TypeAtom::Number(None)),
+            Type::Atom(TypeAtom::String(Some("a".into()))),
+        ]);
+
+        let b = Type::union([
+            Type::Atom(TypeAtom::Number(Some(18))),
+            Type::Atom(TypeAtom::String(None)),
+        ]);
+
+        let c = Type::union([
+            Type::Atom(TypeAtom::Number(Some(18))),
+            Type::Atom(TypeAtom::String(None)),
+            Type::Atom(TypeAtom::Null),
+        ]);
+
+        let result = Type::union([
+            Type::Atom(TypeAtom::String(Some("a".to_string()))),
+            Type::Atom(TypeAtom::Number(Some(18))),
+        ])
+        .collapse();
+
+        //   a & (b & c)
+        // = a & b // because b is subtype of c
+        // = "a" | 18
+
+        assert_eq!(
+            Type::intersection([a, Type::intersection([b, c]),]).collapse(),
+            result.collapse()
+        );
     }
 
     #[test]
     fn union_collapse_sort() {
-        let a = Type::union(
-            vec![
-                Type::Atom(TypeAtom::String(None)),
-                Type::Atom(TypeAtom::String(Some("asdf".to_string()))),
-                Type::Atom(TypeAtom::Null),
-                Type::Atom(TypeAtom::Timestamp),
-            ]
-            .into_iter(),
-        );
+        let a = Type::union([
+            Type::Atom(TypeAtom::String(None)),
+            Type::Atom(TypeAtom::String(Some("asdf".to_string()))),
+            Type::Atom(TypeAtom::Null),
+            Type::Atom(TypeAtom::Timestamp),
+        ]);
 
         // `b` has the same member as `a` but is structured differently
-        let b = Type::union(
-            vec![
-                Type::union(
-                    vec![
-                        Type::Atom(TypeAtom::Timestamp),
-                        Type::Atom(TypeAtom::String(Some("asdf".to_string()))),
-                    ]
-                    .into_iter(),
-                ),
-                Type::union(vec![Type::Atom(TypeAtom::Null), Type::Atom(TypeAtom::String(None))].into_iter()),
-            ]
-            .into_iter(),
-        );
+        let b = Type::union([
+            Type::union([
+                Type::Atom(TypeAtom::Timestamp),
+                Type::Atom(TypeAtom::String(Some("asdf".to_string()))),
+            ]),
+            Type::union([Type::Atom(TypeAtom::Null), Type::Atom(TypeAtom::String(None))]),
+        ]);
 
         // before collapse it isn't equal
         assert_ne!(a, b);
         // after, it is equal
-        assert_eq!(a.collapse().unwrap(), b.collapse().unwrap());
+        assert_eq!(a.collapse(), b.collapse());
     }
 
     #[test]
     fn union_collapse_singular() {
-        let a = Type::union(
-            vec![
-                Type::Atom(TypeAtom::String(None)),
-                Type::Atom(TypeAtom::String(Some("asdf".to_string()))),
-                Type::Atom(TypeAtom::Null),
-                Type::Atom(TypeAtom::Timestamp),
-            ]
-            .into_iter(),
-        );
+        let a = Type::union([
+            Type::Atom(TypeAtom::String(None)),
+            Type::Atom(TypeAtom::String(Some("asdf".to_string()))),
+            Type::Atom(TypeAtom::Null),
+            Type::Atom(TypeAtom::Timestamp),
+        ]);
 
         // after, it is equal
         assert_eq!(
-            Type::union(vec![a.clone(), a.clone()].into_iter()).collapse().unwrap(),
-            a.collapse().unwrap()
+            Type::union(vec![a.clone(), a.clone()].into_iter()).collapse(),
+            a.collapse()
         );
     }
 
@@ -556,14 +616,13 @@ mod tests {
     fn intersection_one_and_number() {
         assert_eq!(
             Type::intersection(
-                vec![
+                [
                     Type::Atom(TypeAtom::Number(None)),
                     Type::Atom(TypeAtom::Number(Some(1))),
                 ]
                 .into_iter()
             )
-            .collapse()
-            .unwrap(),
+            .collapse(),
             Type::Atom(TypeAtom::Number(Some(1)))
         );
     }
@@ -572,14 +631,13 @@ mod tests {
     fn union_one_and_number() {
         assert_eq!(
             Type::union(
-                vec![
+                [
                     Type::Atom(TypeAtom::Number(None)),
                     Type::Atom(TypeAtom::Number(Some(1))),
                 ]
                 .into_iter()
             )
-            .collapse()
-            .unwrap(),
+            .collapse(),
             Type::Atom(TypeAtom::Number(None))
         );
     }

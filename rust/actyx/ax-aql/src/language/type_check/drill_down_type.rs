@@ -29,6 +29,7 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
             let rest = &index[1..];
 
             current_type = match &current_type {
+                Type::Never(x) => return Err(format!("Never type cannot be accessed. Reason for never: {:?}", x)),
                 Type::NoValue => return Err(format!("{:?} cannot be accessed.", current_type)),
                 Type::Tuple(tuple) => match first {
                     Index::Expr(expr) => return drill_down_with_calculated_expressions(&current_type, expr, rest),
@@ -67,16 +68,14 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
                     Index::String(_) => Type::Union(Arc::from((ty.as_ref().clone(), Type::NoValue))),
                     Index::Expr(expr) => {
                         return drill_down_with_calculated_expressions(&current_type, expr, rest)
-                            .map(|ty| Type::Union(Arc::from((ty, Type::NoValue))))
-                            .and_then(|ty| ty.collapse().map_err(|e| e.to_string()))
+                            .map(|ty| Type::union([ty, Type::NoValue]).collapse())
                     }
                 },
                 Type::Array(ty) => match first {
                     Index::Number(_) => Type::Union(Arc::from((ty.as_ref().clone(), Type::NoValue))),
                     Index::Expr(expr) => {
                         return drill_down_with_calculated_expressions(&current_type, expr, rest)
-                            .map(|ty| Type::Union(Arc::from((ty, Type::NoValue))))
-                            .and_then(|ty| ty.collapse().map_err(|e| e.to_string()))
+                            .map(|ty| Type::union([ty, Type::NoValue]).collapse())
                     }
                     Index::String(_) => return Err(format!("{:?} cannot be accessed by a non-number", current_type)),
                 },
@@ -85,10 +84,7 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
                     let b_result = drill_down(&ty.1, index);
 
                     return match (a_result, b_result) {
-                        (Ok(a), Ok(b)) => {
-                            let new_union = Type::Union(Arc::new((a, b))).collapse().map_err(|e| e.to_string())?;
-                            Ok(new_union)
-                        }
+                        (Ok(a), Ok(b)) => Ok(Type::union([a, b]).collapse()),
                         (Ok(_), Err(b)) => Err(b),
                         (Err(a), Ok(_)) => Err(a),
                         (Err(a), Err(b)) => {
@@ -103,8 +99,7 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
                     };
                 }
                 Type::Intersection(_) => {
-                    let collapsed = current_type.clone().collapse().map_err(|e| e.to_string())?;
-                    return drill_down(&collapsed, index);
+                    return drill_down(&current_type.clone().collapse(), index);
                 }
             };
 
@@ -190,8 +185,7 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
 
                 let union = union
                     .expect("the type_results to be non-empty because it is derived from a non-empty cases")
-                    .collapse()
-                    .map_err(|e| e.to_string())?;
+                    .collapse();
 
                 return Ok(union);
             }
@@ -205,7 +199,7 @@ pub(crate) fn drill_down_type_by_index(current_type: &Type, ind: &Ind) -> Result
     let result = drill_down(current_type, tail);
 
     match result {
-        Ok(x) => Ok(x.collapse().map_err(|e| e.to_string())?),
+        Ok(x) => Ok(x.collapse()),
         Err(x) => {
             if tail.len() > 1 {
                 // create a root-level error message

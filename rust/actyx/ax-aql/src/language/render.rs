@@ -312,6 +312,7 @@ fn render_type_atom(w: &mut impl Write, a: &TypeAtom) -> Result {
 
 fn render_type(w: &mut impl Write, t: &Type) -> Result {
     match t {
+        Type::Never(_) => w.write_str("NEVER"),
         Type::NoValue => w.write_str("NO_VALUE"),
         Type::Atom(a) => render_type_atom(w, a),
         Type::Union(u) => {
