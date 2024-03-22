@@ -189,8 +189,8 @@ fn validate_timestamp<'a, 'err>(value: &CborValue) -> Result<(), TypeMismatchErr
 }
 
 /// Check if a CBOR value is a string or a string refinement (e.g. "Hello").
-fn validate_string<'a, 'err>(
-    value: &'a CborValue<'err>,
+fn validate_string<'err>(
+    value: &CborValue<'err>,
     string_refinement: &'err Option<String>,
 ) -> Result<(), TypeMismatchError<'err>> {
     if let Some(value) = value.as_str() {
@@ -226,7 +226,7 @@ fn validate_array<'a, 'err>(value: &CborValue<'err>, ty: &'err Type) -> Result<(
     }
 }
 
-fn validate_tuple<'a, 'err>(value: &'a CborValue<'err>, ty: &'err [Type]) -> Result<(), TypeMismatchError<'err>> {
+fn validate_tuple<'err>(value: &CborValue<'err>, ty: &'err [Type]) -> Result<(), TypeMismatchError<'err>> {
     if let Some(array) = value.as_array() {
         if array.len() != ty.len() {
             return Err(TypeMismatchError::TupleLength {
@@ -246,7 +246,7 @@ fn validate_tuple<'a, 'err>(value: &'a CborValue<'err>, ty: &'err [Type]) -> Res
 }
 
 /// Check if a CBOR value is a dictionary.
-fn validate_dict<'a, 'err>(value: &'a CborValue<'err>, ty: &'err Type) -> Result<(), TypeMismatchError<'err>> {
+fn validate_dict<'err>(value: &CborValue<'err>, ty: &'err Type) -> Result<(), TypeMismatchError<'err>> {
     let key_type = Type::Union(Arc::new((
         Type::Atom(TypeAtom::String(None)),
         Type::Atom(TypeAtom::Number(None)),
@@ -254,11 +254,11 @@ fn validate_dict<'a, 'err>(value: &'a CborValue<'err>, ty: &'err Type) -> Result
     if let Some(dict) = value.as_dict() {
         for (k, v) in dict {
             let decoded_key = k.decode();
-            if let Err(_) = validate(&decoded_key, &key_type) {
+            if validate(&decoded_key, &key_type).is_err() {
                 return Err(TypeMismatchError::DictKeys);
             }
             let decoded_value = v.decode();
-            if let Err(_) = validate(&decoded_value, ty) {
+            if validate(&decoded_value, ty).is_err() {
                 return Err(TypeMismatchError::DictValue {
                     key: format!("{:?}", decoded_value),
                     ty,
@@ -275,7 +275,7 @@ fn validate_dict<'a, 'err>(value: &'a CborValue<'err>, ty: &'err Type) -> Result
 // the issue is that a Record can nest arbitrarily deep and may use non-atom types
 // ideally, I would like to _not_ use recursion since we already had the stack issue in other places;
 // so we either ignore records here and handle them somewhere else or we handle them here, some how
-fn validate_atom<'a, 'err>(value: &'a CborValue<'err>, ty: &'err TypeAtom) -> Result<(), TypeMismatchError<'err>> {
+fn validate_atom<'err>(value: &CborValue<'err>, ty: &'err TypeAtom) -> Result<(), TypeMismatchError<'err>> {
     match ty {
         TypeAtom::Null => validate_null(value),
         TypeAtom::Bool(refinement) => validate_bool(value, refinement),
@@ -286,8 +286,8 @@ fn validate_atom<'a, 'err>(value: &'a CborValue<'err>, ty: &'err TypeAtom) -> Re
     }
 }
 
-fn validate_record<'a, 'err>(
-    value: &'a CborValue<'err>,
+fn validate_record<'err>(
+    value: &CborValue<'err>,
     ty: &'err NonEmptyVec<(Label, Type)>,
 ) -> Result<(), TypeError<'err>> {
     if let Some(value) = value.as_dict() {
@@ -329,7 +329,7 @@ fn validate_record<'a, 'err>(
 
 /// # Panics
 /// If [`cbor_data::CborOwned::canonical`] was not called, this function _may_ panic.
-fn validate<'a, 'err>(value: &'a CborValue<'err>, ty: &'err Type) -> Result<(), TypeError<'err>> {
+fn validate<'err>(value: &CborValue<'err>, ty: &'err Type) -> Result<(), TypeError<'err>> {
     match ty {
         Type::Atom(atom) => validate_atom(value, atom).map_err(TypeError::from),
         Type::Array(inner_ty) => validate_array(value, inner_ty).map_err(TypeError::from),
