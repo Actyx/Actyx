@@ -286,10 +286,7 @@ fn validate_atom<'err>(value: &CborValue<'err>, ty: &'err TypeAtom) -> Result<()
     }
 }
 
-fn validate_record<'err>(
-    value: &CborValue<'err>,
-    ty: &'err NonEmptyVec<(Label, Type)>,
-) -> Result<(), TypeError<'err>> {
+fn validate_record<'err>(value: &CborValue<'err>, ty: &'err NonEmptyVec<(Label, Type)>) -> Result<(), TypeError<'err>> {
     if let Some(value) = value.as_dict() {
         for (label, ty) in ty.iter() {
             match label {
