@@ -978,7 +978,7 @@ mod for_tests {
 
     fn ident_chars() -> &'static [char] {
         static CHOICES: OnceCell<Vec<char>> = OnceCell::new();
-        &CHOICES.get_or_init(|| ('a'..='z').chain('A'..='Z').chain('0'..='9').collect())
+        CHOICES.get_or_init(|| ('a'..='z').chain('A'..='Z').chain('0'..='9').collect())
     }
     const MINUSCULE: Range<usize> = 0..26;
     const MAJUSCULE: Range<usize> = 26..52;
@@ -988,7 +988,7 @@ mod for_tests {
             fn minuscule(g: &mut Gen) -> NonEmptyString {
                 let mut s = NonEmptyString::new(*g.choose(&ident_chars()[MINUSCULE]).unwrap());
                 for _ in 0..g.size() {
-                    s.push(*g.choose(&ident_chars()[..]).unwrap());
+                    s.push(*g.choose(ident_chars()).unwrap());
                 }
                 s
             }
@@ -996,7 +996,7 @@ mod for_tests {
                 let mut s = NonEmptyString::new(*g.choose(&ident_chars()[MAJUSCULE]).unwrap());
                 s.push(*g.choose(&ident_chars()[MINUSCULE]).unwrap());
                 for _ in 0..g.size() {
-                    s.push(*g.choose(&ident_chars()[..]).unwrap());
+                    s.push(*g.choose(ident_chars()).unwrap());
                 }
                 s
             }
