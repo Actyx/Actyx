@@ -124,7 +124,7 @@ impl<'err, T> TypeErrorContext for Result<T, TypeError<'err>> {
 }
 
 /// Check if a CBOR value is null.
-fn validate_null<'a, 'err>(value: &CborValue) -> Result<(), TypeMismatchError<'err>> {
+fn validate_null<'err>(value: &CborValue) -> Result<(), TypeMismatchError<'err>> {
     if value.is_null() {
         Ok(())
     } else {
@@ -133,7 +133,7 @@ fn validate_null<'a, 'err>(value: &CborValue) -> Result<(), TypeMismatchError<'e
 }
 
 /// Check if a CBOR value is a boolean or a boolean refinement (i.e. `true` or `false`).
-fn validate_bool<'a, 'err>(value: &CborValue, bool_refinement: &Option<bool>) -> Result<(), TypeMismatchError<'err>> {
+fn validate_bool<'err>(value: &CborValue, bool_refinement: &Option<bool>) -> Result<(), TypeMismatchError<'err>> {
     if let Some(value) = value.as_bool() {
         if let Some(bool_refinement) = *bool_refinement {
             if value == bool_refinement {
@@ -153,10 +153,7 @@ fn validate_bool<'a, 'err>(value: &CborValue, bool_refinement: &Option<bool>) ->
 }
 
 /// Check if a CBOR value is an integer or an integer refinement (e.g. `10`).
-fn validate_number<'a, 'err>(
-    value: &CborValue,
-    number_refinement: &Option<u64>,
-) -> Result<(), TypeMismatchError<'err>> {
+fn validate_number<'err>(value: &CborValue, number_refinement: &Option<u64>) -> Result<(), TypeMismatchError<'err>> {
     if let Some(Number::Int(value)) = value.as_number() {
         if let Ok(value) = u64::try_from(*value) {
             if let Some(number_refinement) = number_refinement {
@@ -180,7 +177,7 @@ fn validate_number<'a, 'err>(
 }
 
 /// Check if a CBOR value is a timestamp.
-fn validate_timestamp<'a, 'err>(value: &CborValue) -> Result<(), TypeMismatchError<'err>> {
+fn validate_timestamp<'err>(value: &CborValue) -> Result<(), TypeMismatchError<'err>> {
     if value.as_timestamp().is_some() {
         Ok(())
     } else {
@@ -212,7 +209,7 @@ fn validate_string<'err>(
 }
 
 /// Check if a CBOR value is an array. Can also be used to check for tuples (following RFC 7049).
-fn validate_array<'a, 'err>(value: &CborValue<'err>, ty: &'err Type) -> Result<(), TypeMismatchError<'err>> {
+fn validate_array<'err>(value: &CborValue<'err>, ty: &'err Type) -> Result<(), TypeMismatchError<'err>> {
     if let Some(values) = value.as_array() {
         for (i, value) in values.iter().enumerate() {
             if validate(&value.decode(), ty).is_err() {
