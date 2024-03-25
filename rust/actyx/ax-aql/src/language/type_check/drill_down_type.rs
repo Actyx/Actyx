@@ -316,9 +316,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn tuple() {
-        let tuple_type = Type::Tuple(
+    fn tuple_sample() -> Type {
+        Type::Tuple(
             vec![
                 Type::Atom(TypeAtom::Null),
                 Type::Atom(TypeAtom::String(None)),
@@ -326,7 +325,12 @@ mod tests {
             ]
             .try_into()
             .unwrap(),
-        );
+        )
+    }
+
+    #[test]
+    fn tuple() {
+        let tuple_type = tuple_sample();
 
         assert_eq!(
             drill_down_type_by_index(
@@ -360,9 +364,12 @@ mod tests {
             ),
             Ok(Type::Atom(TypeAtom::Number(None)))
         );
+    }
 
+    #[test]
+    fn tuple_invalid_index() {
         assert!(drill_down_type_by_index(
-            &tuple_type,
+            &tuple_sample(),
             &Ind {
                 head: SimpleExpr::Variable(Var("_".to_string())).into(),
                 tail: vec![Index::Number(3)].try_into().unwrap(),
@@ -371,14 +378,8 @@ mod tests {
         .is_err());
     }
 
-    #[test]
-    fn expr_as_index() {
-        let expr_number_natural_0 = Index::Expr(SimpleExpr::Number(Num::Natural(0)));
-        let expr_number_decimal_0 = Index::Expr(SimpleExpr::Number(Num::Decimal(0.0)));
-        let expr_string_a = Index::Expr(SimpleExpr::String("a".into()));
-        let expr_anyother = Index::Expr(SimpleExpr::Variable(Var("somevar".into())));
-
-        let record_type = Type::Record(
+    fn expr_as_index_record_sample() -> Type {
+        Type::Record(
             vec![
                 (
                     Label::String("a".try_into().unwrap()),
@@ -388,11 +389,15 @@ mod tests {
             ]
             .try_into()
             .unwrap(),
-        );
+        )
+    }
 
+    #[test]
+    fn expr_natural_number_as_index() {
+        let expr_number_natural_0 = Index::Expr(SimpleExpr::Number(Num::Natural(0)));
         assert_eq!(
             drill_down_type_by_index(
-                &record_type,
+                &expr_as_index_record_sample(),
                 &Ind {
                     head: SimpleExpr::Variable(Var("_".to_string())).into(),
                     tail: vec![expr_number_natural_0].try_into().unwrap(),
@@ -400,10 +405,27 @@ mod tests {
             ),
             Ok(Type::Atom(TypeAtom::Bool(Some(true))))
         );
+    }
 
+    #[test]
+    fn expr_decimal_number_as_index_is_invalid() {
+        let expr_number_decimal_0 = Index::Expr(SimpleExpr::Number(Num::Decimal(0.0)));
+        assert!(drill_down_type_by_index(
+            &expr_as_index_record_sample(),
+            &Ind {
+                head: SimpleExpr::Variable(Var("_".to_string())).into(),
+                tail: vec![expr_number_decimal_0].try_into().unwrap(),
+            },
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn expr_string_as_index() {
+        let expr_string_a = Index::Expr(SimpleExpr::String("a".into()));
         assert_eq!(
             drill_down_type_by_index(
-                &record_type,
+                &expr_as_index_record_sample(),
                 &Ind {
                     head: SimpleExpr::Variable(Var("_".to_string())).into(),
                     tail: vec![expr_string_a].try_into().unwrap(),
@@ -411,19 +433,14 @@ mod tests {
             ),
             Ok(Type::Atom(TypeAtom::Bool(Some(false))))
         );
+    }
 
-        assert!(drill_down_type_by_index(
-            &record_type,
-            &Ind {
-                head: SimpleExpr::Variable(Var("_".to_string())).into(),
-                tail: vec![expr_number_decimal_0].try_into().unwrap(),
-            },
-        )
-        .is_err());
-
+    #[test]
+    fn expr_var_as_index() {
+        let expr_anyother = Index::Expr(SimpleExpr::Variable(Var("somevar".into())));
         assert_eq!(
             drill_down_type_by_index(
-                &record_type,
+                &expr_as_index_record_sample(),
                 &Ind {
                     head: SimpleExpr::Variable(Var("_".to_string())).into(),
                     tail: vec![expr_anyother].try_into().unwrap(),

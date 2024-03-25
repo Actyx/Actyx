@@ -33,35 +33,7 @@ pub enum Type {
     Record(NonEmptyVec<(Label, Type)>),
 }
 
-enum Spread<T> {
-    Many(Vec<T>),
-    One(T),
-}
-
-fn spread<T>(vec: Vec<T>, spreader: impl Fn(&T) -> Spread<T>) -> Vec<T> {
-    let mut spread = vec;
-
-    loop {
-        let mut something_is_spread_this_round = false;
-
-        std::mem::take(&mut spread)
-            .into_iter()
-            .for_each(|item| match spreader(&item) {
-                Spread::Many(v) => {
-                    something_is_spread_this_round = true;
-                    spread.extend(v);
-                }
-                Spread::One(x) => spread.push(x),
-            });
-
-        if !something_is_spread_this_round {
-            break;
-        }
-    }
-
-    spread
-}
-
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Hierarchy {
     Disjointed,
     Equal,
@@ -193,6 +165,16 @@ impl Type {
                         )
                         .collapse()
                     }
+                    (Type::Dict(a), Type::Dict(b)) => Type::Dict(
+                        Type::intersection([a.as_ref().clone(), b.as_ref().clone()])
+                            .collapse()
+                            .into(),
+                    ),
+                    (Type::Array(a), Type::Array(b)) => Type::Array(
+                        Type::intersection([a.as_ref().clone(), b.as_ref().clone()])
+                            .collapse()
+                            .into(),
+                    ),
                     _ => match &a.hierarchy_towards(&b) {
                         Hierarchy::Equal => a,
                         Hierarchy::Supertype => b,
@@ -211,10 +193,15 @@ impl Type {
                     .for_each(|new| match collapsing.last_mut() {
                         None => collapsing.push(new),
                         Some(last) => {
-                            match new.hierarchy_towards(last) {
-                                Hierarchy::Disjointed => collapsing.push(new), // push
-                                Hierarchy::Supertype => *last = new,           // replace last with supertype
-                                Hierarchy::Subtype | Hierarchy::Equal => {}    // do nothing
+                            match (&new, &last) {
+                                // Array and Dictionaries are not merged
+                                (Type::Array(_), Type::Array(_)) => collapsing.push(new),
+                                (Type::Dict(_), Type::Dict(_)) => collapsing.push(new),
+                                _ => match new.hierarchy_towards(last) {
+                                    Hierarchy::Disjointed => collapsing.push(new), // push
+                                    Hierarchy::Supertype => *last = new,           // replace last with supertype
+                                    Hierarchy::Subtype | Hierarchy::Equal => {}    // do nothing
+                                },
                             }
                         }
                     });
@@ -242,10 +229,29 @@ impl Type {
                     Type::Record(fields.into_iter().collect::<Vec<_>>().try_into().unwrap())
                 }
             }
-            _ => self,
+            Type::Never(_) | Type::NoValue | Type::Atom(_) => self,
+            Type::Array(x) => Type::Array(x.as_ref().clone().collapse().into()),
+            Type::Dict(x) => Type::Dict(x.as_ref().clone().collapse().into()),
+            Type::Tuple(tuple) => Type::Tuple(
+                tuple
+                    .iter()
+                    .map(|x| x.clone().collapse())
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .expect("should return non-empty vec"),
+            ),
         }
     }
 
+    /// Determine the hierarchy of a type toward another
+    /// # Caveat
+    /// Collapse must be done before calculating the hierarchy, especially on
+    /// intersections or aggregates that contains intersections.
+    ///
+    /// Hierarchy of intersections will always return `Hierarchy::Disjointed`
+    /// because this function must not produce new type.
+    ///
+    /// Collapsing may occasionally accelerate calculation e.g. equal records wil instantly be detected without any complex calculations
     fn hierarchy_towards(&self, other: &Type) -> Hierarchy {
         if self == other {
             return Hierarchy::Equal;
@@ -296,13 +302,29 @@ impl Type {
                 _ => Hierarchy::Disjointed,
             },
             (Type::Record(a), Type::Record(b)) => {
-                let a = a.iter().collect::<BTreeSet<_>>();
-                let b = b.iter().collect::<BTreeSet<_>>();
-                let intersection = BTreeSet::intersection(&a, &b).cloned().collect::<BTreeSet<_>>();
+                let same_field_relationships = a
+                    .iter()
+                    .flat_map(|a| {
+                        b.iter().filter_map(|b| match a.0 == b.0 {
+                            true => Some(a.1.hierarchy_towards(&b.1)),
+                            false => None,
+                        })
+                    })
+                    .collect::<BTreeSet<Hierarchy>>();
+                let a = a.iter().map(|(label, _)| label).collect::<BTreeSet<_>>();
+                let b = b.iter().map(|(label, _)| label).collect::<BTreeSet<_>>();
 
-                if intersection == b {
+                let same_fields = BTreeSet::intersection(&a, &b).cloned().collect::<BTreeSet<_>>();
+
+                let has_disjointed = same_field_relationships.contains(&Hierarchy::Disjointed);
+                let has_subtype = same_field_relationships.contains(&Hierarchy::Subtype);
+                let has_supertype = same_field_relationships.contains(&Hierarchy::Supertype);
+
+                if same_fields == b && same_fields == a && !has_disjointed && !has_supertype && !has_subtype {
+                    Hierarchy::Equal
+                } else if same_fields == a && !has_disjointed && !has_subtype {
                     Hierarchy::Supertype
-                } else if intersection == a {
+                } else if same_fields == b && !has_disjointed && !has_supertype {
                     Hierarchy::Subtype
                 } else {
                     Hierarchy::Disjointed
@@ -315,6 +337,8 @@ impl Type {
             (a, Type::Union(b)) => compare_unions(&BTreeSet::from([a]), &Type::spread_union(b.as_ref())),
             (Type::Array(a), Type::Array(b)) => a.hierarchy_towards(b),
             (Type::Dict(a), Type::Dict(b)) => a.hierarchy_towards(b),
+            // We don't that here! Intersection comparison needs collapsing and this function should be as cheap as possible
+            // (Type::Intersection, _) | (_, Type::Intersection) => {},
             _ => Hierarchy::Disjointed,
         }
     }
@@ -446,8 +470,41 @@ pub fn r_type(p: P) -> anyhow::Result<Type> {
         .parse(p.into_inner())
 }
 
+enum Spread<T> {
+    Many(Vec<T>),
+    One(T),
+}
+
+/// Iterates over a vec and attempt to spread the items inside the definition of
+/// which item is spreadable and how it is spread is user-defined by injecting a
+/// closure `spreader` that returns `Spread` enum. The iterations are repeated until there is no more `Spread::Many` returned in one iterations.
+fn spread<T>(vec: Vec<T>, spreader: impl Fn(&T) -> Spread<T>) -> Vec<T> {
+    let mut spread = vec;
+
+    loop {
+        let mut something_is_spread_this_round = false;
+
+        std::mem::take(&mut spread)
+            .into_iter()
+            .for_each(|item| match spreader(&item) {
+                Spread::Many(v) => {
+                    something_is_spread_this_round = true;
+                    spread.extend(v);
+                }
+                Spread::One(x) => spread.push(x),
+            });
+
+        if !something_is_spread_this_round {
+            break;
+        }
+    }
+
+    spread
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{Label, Type, TypeAtom};
     #[test]
     fn intersecting_records() {
@@ -640,5 +697,111 @@ mod tests {
             .collapse(),
             Type::Atom(TypeAtom::Number(None))
         );
+    }
+
+    #[test]
+    fn intersection_of_dict() {
+        assert_eq!(
+            Type::intersection(
+                [
+                    Type::Dict(Type::Atom(TypeAtom::Number(None)).into()),
+                    Type::Dict(Type::Atom(TypeAtom::Number(Some(1))).into()),
+                ]
+                .into_iter()
+            )
+            .collapse(),
+            Type::Dict(Type::Atom(TypeAtom::Number(Some(1))).into())
+        );
+    }
+
+    #[test]
+    fn intersection_of_array() {
+        assert_eq!(
+            Type::intersection(
+                [
+                    Type::Array(Type::Atom(TypeAtom::Number(None)).into()),
+                    Type::Array(Type::Atom(TypeAtom::Number(Some(1))).into()),
+                ]
+                .into_iter()
+            )
+            .collapse(),
+            Type::Array(Type::Atom(TypeAtom::Number(Some(1))).into())
+        );
+    }
+
+    #[test]
+    fn union_of_dict() {
+        let union = Type::union(
+            [
+                Type::Dict(Type::Atom(TypeAtom::Number(None)).into()),
+                Type::Dict(Type::Atom(TypeAtom::Number(Some(1))).into()),
+            ]
+            .into_iter(),
+        )
+        .collapse();
+        assert!(
+            matches!(union, Type::Union(_)),
+            "unions of dictionaries shouldn't collapse despite their content hierarchy"
+        );
+    }
+
+    #[test]
+    fn union_of_array() {
+        let union = Type::union(
+            [
+                Type::Array(Type::Atom(TypeAtom::Number(None)).into()),
+                Type::Array(Type::Atom(TypeAtom::Number(Some(1))).into()),
+            ]
+            .into_iter(),
+        );
+        assert!(
+            matches!(union, Type::Union(_)),
+            "unions of array shouldn't collapse despite their content hierarchy"
+        );
+    }
+
+    #[test]
+    fn hierarchy_of_records_supertype() {
+        // { a: { a: 1 } } is subtype of { a: { a: number, b: "someliteral"} }
+        let record_a = Type::Record(
+            vec![(
+                Label::String("a".try_into().unwrap()),
+                Type::Record(
+                    vec![(
+                        Label::String("a".try_into().unwrap()),
+                        Type::Atom(TypeAtom::Number(None)),
+                    )]
+                    .try_into()
+                    .unwrap(),
+                ),
+            )]
+            .try_into()
+            .unwrap(),
+        )
+        .collapse();
+        let record_b = Type::Record(
+            vec![(
+                Label::String("a".try_into().unwrap()),
+                Type::Record(
+                    vec![
+                        (
+                            Label::String("a".try_into().unwrap()),
+                            Type::Atom(TypeAtom::Number(Some(1))),
+                        ),
+                        (
+                            Label::String("b".try_into().unwrap()),
+                            Type::Atom(TypeAtom::String(Some("literal".to_string()))),
+                        ),
+                    ]
+                    .try_into()
+                    .unwrap(),
+                ),
+            )]
+            .try_into()
+            .unwrap(),
+        )
+        .collapse();
+        assert_eq!(record_a.hierarchy_towards(&record_b), Hierarchy::Supertype);
+        assert_eq!(record_b.hierarchy_towards(&record_a), Hierarchy::Subtype);
     }
 }
