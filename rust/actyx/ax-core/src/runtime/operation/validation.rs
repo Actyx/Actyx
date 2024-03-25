@@ -210,8 +210,18 @@ fn validate_record(value: &CborValue, ty: &NonEmptyVec<(Label, Type)>) -> anyhow
     }
 }
 
+fn validate_no_value(value: &CborValue) -> anyhow::Result<()> {
+    if value.is_undefined() {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!("expected a NO_VALUE"))
+    }
+}
+
 fn validate(value: &CborValue, ty: &Type) -> anyhow::Result<()> {
     match ty {
+        Type::Never(_) => Err(anyhow::anyhow!("never is impossible")),
+        Type::NoValue => validate_no_value(value),
         Type::Atom(atom) => validate_atom(value, atom),
         Type::Array(inner_ty) => validate_array(value, inner_ty),
         Type::Dict(inner_ty) => validate_dict(value, inner_ty),
