@@ -94,7 +94,8 @@
     "systemic-ts-utils": "^0.2.5",
     "uuid": "^8.3.2",
     "vaettir-react": "^0.1.7",
-    "webpack": "^4.0.0"
+    "webpack": "^4.0.0",
+    "whatwg-url": "^14.0.0"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.3.2",
@@ -105,6 +106,7 @@
     "@types/react-dom": "^17.0.3",
     "@types/react-select": "^4.0.17",
     "@types/uuid": "^8.3.0",
+    "@types/whatwg-url": "^11.0.4",
     "@typescript-eslint/eslint-plugin": "^4.22.0",
     "@typescript-eslint/parser": "^4.22.0",
     "app-data-folder": "^1.0.0",

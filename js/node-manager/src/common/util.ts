@@ -2,6 +2,8 @@ import reporter from 'io-ts-reporters'
 import { Errors } from 'io-ts'
 import { left } from 'fp-ts/lib/Either'
 import { Multiaddr } from 'multiaddr'
+import whatwgurl from 'whatwg-url'
+
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 export const zip = <A, B>(as: A[], bs: B[]): [A, B][] => as.map((a, i) => [a, bs[i]])
 
@@ -48,7 +50,23 @@ export const isValidMultiAddrWithPeerId = (str: string): boolean => {
   }
 }
 
-export const nodeAddrValid = (addr: string) =>
-  !!/^((?:(?:(?:[a-zA-z-]+):\/{1,3})?(?:[a-zA-Z0-9])(?:[a-zA-Z0-9\-.]){1,61}(?:\.[a-zA-Z]{2,})+|\[(?:(?:(?:[a-fA-F0-9]){1,4})(?::(?:[a-fA-F0-9]){1,4}){7}|::1|::)\]|(?:(?:[0-9]{1,3})(?:\.[0-9]{1,3}){3}))(?::[0-9]{1,5})?)$|(localhost(?::[0-9]{1,5})?)$/.exec(
-    addr,
-  )
+/**
+ * accepts valid hostname:port
+ */
+export const nodeAddrValid = (addr: string) => {
+  // https://url.spec.whatwg.org/#authority-state
+  const record = whatwgurl.basicURLParse(addr, { stateOverride: 'authority' })
+  if (!record) return false
+  // to check if more than hostname:port is supplied
+  // e.g. added username, password, path, schema + colon, slash, @, etc
+  const reserialized = record.host + (record.port ? `:${record.port}` : '')
+  if (addr !== reserialized) return false
+  // now we can assume that `reserialized` is hostname:port
+  try {
+    // use url to catch invalid hostnames such as 1.1.1.1.1
+    new URL(`http://${reserialized}`)
+    return true
+  } catch {
+    return false
+  }
+}
