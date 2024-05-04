@@ -157,7 +157,7 @@ const Screen: React.FC<{}> = () => {
   }
 
   return (
-    <Layout title="Swarm Settings" flex>
+    <Layout title="Swarm Settings" subtitle="Update swarm settings on added nodes" flex>
       <div>
         <input
           type="text"
