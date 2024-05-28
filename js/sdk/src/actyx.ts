@@ -123,18 +123,43 @@ export const Actyx = {
     const nodeId = await v2getNodeId(opts)
     log.actyx.debug('NodeId call returned:', nodeId)
 
-    if (!nodeId) {
-      // Try connecting to v1 if we failed to retrieve a v2 node id
-      // (Note that if the port is completely unreachable, v2getNodeId will throw an exception and we don’t get here.)
-      log.actyx.debug('NodeId was null, trying to reach V1 backend...')
-      return createV1(opts)
+    const previousInstanceCount = actyxInstanceRegister.count(manifest, opts)
+    if (previousInstanceCount > 0) {
+      console.warn(
+        new Error(
+          `Multiple connections to Actyx with these parameters are detected! manifest: ${JSON.stringify(
+            manifest,
+          )} opts: ${JSON.stringify(opts)}`,
+        ),
+      )
     }
 
-    log.actyx.debug(
-      'Detected V2 is running, trying to authorize with manifest',
-      JSON.stringify(manifest),
-    )
-    return createV2(manifest, opts, nodeId)
+    // Create actyx instance
+    const actyx = await (() => {
+      if (!nodeId) {
+        // Try connecting to v1 if we failed to retrieve a v2 node id
+        // (Note that if the port is completely unreachable, v2getNodeId will throw an exception and we don’t get here.)
+        log.actyx.debug('NodeId was null, trying to reach V1 backend...')
+        return createV1(opts)
+      }
+
+      log.actyx.debug(
+        'Detected V2 is running, trying to authorize with manifest',
+        JSON.stringify(manifest),
+      )
+      return createV2(manifest, opts, nodeId)
+    })()
+
+    // Patch dispose
+    const oldDispose = actyx.dispose
+    actyx.dispose = () => {
+      actyxInstanceRegister.subOne(manifest, opts)
+      const result = oldDispose()
+      return result
+    }
+    actyxInstanceRegister.addOne(manifest, opts)
+
+    return actyx
   },
 
   /**
@@ -163,3 +188,60 @@ export const Actyx = {
     }
   },
 }
+
+/**
+ * "Reference counter" for living Actyx
+ */
+const actyxInstanceRegister = (() => {
+  type AppId = AppManifest['appId']
+  type Version = AppManifest['version']
+  type Signature = AppManifest['signature']
+  type ActyxHost = ActyxOpts['actyxHost']
+  type ActyxPort = ActyxOpts['actyxPort']
+  type Param = [AppId, Version, Signature, ActyxHost, ActyxPort]
+
+  const register: Map<Param, number> = new Map()
+
+  const toParam = (manifest: AppManifest, opts: ActyxOpts): Param => [
+    manifest.appId,
+    manifest.version,
+    manifest.signature,
+    opts.actyxHost,
+    opts.actyxPort,
+  ]
+
+  const paramEq = (paramA: Param, paramB: Param) => {
+    for (let i = 0; i < Math.max(paramA.length, paramB.length); i++) {
+      if (paramA[i] !== paramB[i]) {
+        return false
+      }
+    }
+    return true
+  }
+
+  const findEntry = (manifest: AppManifest, opts: ActyxOpts) => {
+    const entries = Array.from(register.entries())
+    const param = toParam(manifest, opts)
+    const matchingEntry = entries.find((x) => {
+      return paramEq(x[0], param)
+    })
+    if (!matchingEntry) {
+      return [param, 0] as const
+    }
+    return matchingEntry
+  }
+
+  const addOne = (manifest: AppManifest, opts: ActyxOpts) => {
+    const [param, refcount] = findEntry(manifest, opts)
+    register.set(param, refcount + 1)
+  }
+
+  const count = (manifest: AppManifest, opts: ActyxOpts) => findEntry(manifest, opts)[1]
+
+  const subOne = (manifest: AppManifest, opts: ActyxOpts) => {
+    const [param, refcount] = findEntry(manifest, opts)
+    register.set(param, refcount - 1)
+  }
+
+  return { addOne, count, subOne }
+})()
