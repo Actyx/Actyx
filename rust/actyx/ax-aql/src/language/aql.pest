@@ -1,4 +1,4 @@
-main_query = { SOI ~ pragma* ~ features? ~ query ~ EOI }
+main_query = { SOI ~ pragma* ~ event* ~ workflow* ~ features? ~ query ~ EOI }
 main_tag_expr = { SOI ~ tag_expr ~ EOI }
 main_simple_expr = { SOI ~ simple_expr ~ EOI }
 main_ident = @{ SOI ~ ident ~ EOI }
@@ -7,23 +7,68 @@ main_timestamp = @{ SOI ~ isodate ~ EOI }
 
 // pragmas
 pragma = ${ "PRAGMA" ~ WHITE_SPACE+ ~ feature_word ~ ( !NEWLINE ~ WHITE_SPACE )* ~ ( pragma_multi | pragma_single ) }
-pragma_multi = _{ NEWLINE ~ pragma_multi_text ~ NEWLINE ~ "ENDPRAGMA" ~ NEWLINE }
-pragma_multi_text = ${ ( !( NEWLINE ~ "ENDPRAGMA" ~ NEWLINE ) ~ ANY )* }
+pragma_multi = _{ NEWLINE ~ pragma_multi_text ~ NEWLINE ~ pragma_end ~ NEWLINE }
+pragma_multi_text = ${ ( !( NEWLINE ~ pragma_end ~ NEWLINE ) ~ ANY )* }
+pragma_end = { "ENDPRAGMA" }
 pragma_single = _{ ":=" ~ ( !NEWLINE ~ WHITE_SPACE )* ~ pragma_single_text ~ NEWLINE }
 pragma_single_text = ${ ( !NEWLINE ~ ANY )* }
+
+features = { "FEATURES(" ~ feature_word* ~ ")" }
+feature_word = @{ ( ASCII_ALPHANUMERIC | "ø" )+ }
+
+// types
+type = { type_atom ~ type_post* ~ ( type_infix ~ type_atom ~ type_post* )* }
+type_null = { "NULL" }
+type_bool = { "BOOLEAN" }
+type_number = { "NUMBER" }
+type_timestamp = { "TIMESTAMP" }
+type_string = { "STRING" }
+type_universal = { "UNIVERSAL" }
+type_tuple = { brackl ~ type ~ ( comma ~ type )* ~ brackr }
+type_record = { curlyl ~ ( ( natural | ident | nonempty_string ) ~ colon ~ type ~ comma? )+ ~ curlyr }
+type_paren = { parenl ~ type ~ parenr }
+type_atom = _{ type_null | type_bool | bool | type_number | natural | type_timestamp | type_string | string
+  | type_tuple | type_record | type_paren | type_universal }
+type_array = { "[]" }
+type_dict = { "{}" }
+type_post = _{ type_array | type_dict }
+type_union = { "|" }
+type_intersection = { "&" }
+type_infix = _{ type_union | type_intersection }
+
+// events
+event = { "EVENT" ~ ident ~ event_type ~ tagged? }
+event_type = { type_record } // needed for parser code structure
+tagged = { "TAGGED" ~ tag ~ ( comma ~ tag )* }
+
+// workflows
+workflow = { "WORKFLOW" ~ ident ~ parenl ~ wf_arg ~ ( comma ~ wf_arg )* ~ parenr ~ wf_scope }
+wf_arg = { ( role | unique ) ~ ident }
+wf_scope = { curlyl ~ wf_step+ ~ curlyr }
+wf_step = _{ wf_event | wf_retry | wf_timeout | wf_parallel | wf_call | wf_compensate | wf_choice }
+wf_event = { ( wf_state ~ colon )? ~ ( fail | return )? ~ ident ~ at ~ ident ~ wf_binder* }
+wf_state = { ident }
+wf_binder = { curlyl ~ ident ~ colon ~ ident ~ arrowl ~ simple_expr ~ curlyr }
+wf_retry = { retry ~ wf_scope }
+wf_timeout = { timeout ~ duration ~ wf_scope ~ wf_event }
+wf_parallel = { parallel ~ natural? ~ wf_cases }
+wf_call = { match ~ ident ~ parenl ~ ident ~ ( comma ~ ident )* ~ parenr ~ curlyl ~ wf_match* ~ curlyr }
+wf_match = { case ~ ( ident | star ) ~ dblarrowr ~ wf_step+ }
+wf_compensate = { compensate ~ wf_scope ~ with ~ wf_scope }
+wf_choice = { choice ~ wf_cases }
+wf_cases = _{ curlyl ~ ( case ~ wf_step+ )+ ~ curlyr }
 
 // queries
 query = { "FROM" ~ ( tag_expr ~ query_order? | array ) ~ query_op* ~ "END"? }
 query_order = { "ORDER" ~ order }
 order = { "ASC" | "DESC" | "STREAM" }
-query_op = _{ filter | select | aggregate | limit | binding }
+query_op = _{ filter | select | aggregate | limit | binding | machine }
 filter = { "FILTER" ~ simple_expr }
 select = { "SELECT" ~ spread? ~ simple_expr ~ ( "," ~ spread? ~ simple_expr )* }
+machine = { "MACHINE" ~ ident ~ role ~ ident ~ id ~ nonempty_string }
 aggregate = { "AGGREGATE" ~ simple_expr }
 limit = { "LIMIT" ~ positive }
 binding = { "LET" ~ ident ~ ":=" ~ simple_expr }
-features = { "FEATURES(" ~ feature_word* ~ ")" }
-feature_word = @{ ( ASCII_ALPHANUMERIC | "ø" )+ }
 
 // strings
 single_quoted = @{ "'" ~ ( !"'" ~ ANY | "''" )+ ~ "'" }
@@ -71,8 +116,9 @@ nanosecond = { ( '0'..'9'{9} ) }
 isodate = ${ year ~ "-" ~ month ~ "-" ~ day ~ ("T" ~ hour ~ ":" ~ minute ~ (":" ~ second ~ ("." ~ (nanosecond|microsecond|millisecond))?)?)? ~ ( "Z" | sign ~ hour ~ ":" ~ minute ) }
 
 // some duration ago
+duration = ${ natural ~ duration_unit ~ ( WHITE_SPACE* ~ natural ~ duration_unit )* }
 duration_ago = ${ natural ~ duration_unit ~ WHITE_SPACE ~ "ago" }
-duration_unit = { "Y" | "M" | "W" | "D" | "h" | "m" | "s" }
+duration_unit = { "Y" | "M" | "W" | "D" | "h" | "m" | "s" | "u" }
 
 // metadata
 meta_key = { "KEY(" ~ ( ident | event_key ) ~ ")" }
@@ -134,6 +180,37 @@ eq = { "=" }
 ne = { "!=" | "≠" }
 alternative = { "??" }
 spread = { "..." }
+
+// syntax elements
+at = { "@" }
+star = { "*" }
+colon = { ":" }
+comma = { "," }
+parenl = { "(" }
+parenr = { ")" }
+curlyl = { "{" }
+curlyr = { "}" }
+brackl = { "[" }
+brackr = { "]" }
+arrowl = { "<-" | "←" }
+arrowr = { "->" | "→" }
+dblarrowl = { "<=" | "⇐" | "⟸" }
+dblarrowr = { "=>" | "⇒" | "⟹" }
+
+case = { "CASE" }
+choice = { "CHOICE" }
+compensate = { "COMPENSATE" }
+fail = { "FAIL" }
+id = { "ID" }
+match = { "MATCH" }
+parallel = { "PARALLEL" }
+retry = { "RETRY" }
+return = { "RETURN" }
+role = { "ROLE" }
+SELF = { "SELF" }
+timeout = { "TIMEOUT" }
+unique = { "UNIQUE" }
+with = { "WITH" }
 
 WHITESPACE = _{ WHITE_SPACE }
 COMMENT = _{ "--" ~ ( !("\n"|"\r") ~ ANY )* }

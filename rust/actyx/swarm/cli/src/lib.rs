@@ -194,7 +194,7 @@ impl std::str::FromStr for Command {
                 let addr: Multiaddr = parts.next().unwrap().parse()?;
                 Self::AddAddress(peer, addr)
             }
-            Some(">query") => Self::SubscribeQuery(Query::parse(s.split_at(7).1)?.forget_pragmas()),
+            Some(">query") => Self::SubscribeQuery(Query::parse(s.split_at(7).1)?.forget_pragmas_and_workflows()),
             Some(">append") => {
                 let events = serde_json::from_str(s.split_at(8).1).unwrap();
                 Self::Append(events)

@@ -150,7 +150,7 @@ SELECT _.cid"#,
                             now.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
                         ))
                         .expect("valid query")
-                        .forget_pragmas(),
+                        .forget_pragmas_and_workflows(),
                     ))
                     .await
                 {

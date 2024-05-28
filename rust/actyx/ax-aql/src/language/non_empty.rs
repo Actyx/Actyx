@@ -1,7 +1,11 @@
 #![allow(dead_code)]
-use std::{convert::TryFrom, ops::Deref, sync::Arc};
+use std::{
+    convert::TryFrom,
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NonEmptyVec<T>(Arc<[T]>);
 
 impl<T> NonEmptyVec<T> {
@@ -62,7 +66,7 @@ impl<T: quickcheck::Arbitrary + Clone + 'static> quickcheck::Arbitrary for NonEm
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NonEmptyString(String);
 
 #[derive(Debug, Clone)]
@@ -99,14 +103,29 @@ impl TryFrom<&str> for NonEmptyString {
 }
 
 impl Deref for NonEmptyString {
-    type Target = str;
+    type Target = String;
 
     fn deref(&self) -> &Self::Target {
-        self.0.as_str()
+        &self.0
+    }
+}
+
+impl DerefMut for NonEmptyString {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl AsRef<str> for NonEmptyString {
+    fn as_ref(&self) -> &str {
+        self.as_str()
     }
 }
 
 impl NonEmptyString {
+    pub fn new(c: char) -> Self {
+        Self(c.to_string())
+    }
     pub fn into_inner(self) -> String {
         self.0
     }

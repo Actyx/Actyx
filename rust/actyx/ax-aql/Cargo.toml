@@ -28,4 +28,5 @@ tracing = "0.1.40"
 unicode-normalization = "0.1.22"
 
 [dev-dependencies]
+ax_types = { version = "0.1.0", path = "../ax-types", features = ["arb"] }
 quickcheck = "1.0.3"

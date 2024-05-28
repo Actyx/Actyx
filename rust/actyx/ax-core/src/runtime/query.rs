@@ -42,7 +42,7 @@ impl Query {
             }
         }
 
-        let (q, features, pragmas) = q.decompose();
+        let (q, features, pragmas, _workflows) = q.decompose();
         let q = q.rewrite(&mut Q(app_id)).0;
         let stages = q.ops.into_iter().map(Operation::from).collect();
         (
