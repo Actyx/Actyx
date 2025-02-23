@@ -58,7 +58,8 @@ struct Behaviour {
 }
 
 #[derive(Debug, From)]
-#[allow(clippy::large_enum_variant)]
+// there is no actual dead code, Rust 1.85 just got so stupid that it falsely flags this
+#[allow(clippy::large_enum_variant, dead_code)]
 enum OutEvent {
     Admin(RequestReceived<AdminProtocol>),
     Events(RequestReceived<EventsProtocol>),
