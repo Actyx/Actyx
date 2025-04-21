@@ -12,6 +12,9 @@ import {
   takeWhile,
   throwError,
   catchError,
+  retryWhen,
+  take,
+  interval,
 } from '../../node_modules/rxjs'
 import * as t from 'io-ts'
 import { unreachable } from '../util'
@@ -201,8 +204,23 @@ export class MultiplexedWebsocket<Res extends { requestId: number; type: Respons
           switch (msg.type) {
             case ResponseMessageType.Next:
               return single(<Res & { type: ResponseMessageType.Next }>msg)
-            case ResponseMessageType.Error:
+            case ResponseMessageType.Error: {
+              const myMsg = msg as Res & { kind: { type: string; value: string } }
+              if (typeof myMsg.kind === 'object' && myMsg.kind !== null) {
+                const { type, value } = myMsg.kind
+                if (
+                  type === 'serviceError' &&
+                  value === 'Channel towards event store is overloaded.'
+                ) {
+                  log.ws.info('retrying request for service', serviceId, 'due to rate limit')
+                  return interval(100).pipe(
+                    take(1),
+                    mergeMap(() => this.request(serviceId, payload)),
+                  )
+                }
+              }
               return throwError(() => msg)
+            }
             default:
               unreachable()
           }
