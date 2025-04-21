@@ -161,7 +161,7 @@ impl AxCliCommand for NodesInspect {
                     ));
                 }
 
-                for rtt in &peer.ping_stats {
+                if let Some(rtt) = &peer.ping_stats {
                     ping.add_row([
                         Cell::new(&peer.peer_id).set_alignment(CellAlignment::Right),
                         Cell::new(format_micros(rtt.current)),

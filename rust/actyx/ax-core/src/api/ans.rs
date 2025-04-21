@@ -40,6 +40,7 @@ pub enum NameRecordEvent {
 #[derive(Debug, Clone, Copy)]
 pub struct NameRecord {
     pub cid: Cid,
+    #[allow(dead_code)]
     pub level: PersistenceLevel,
     pub public: bool,
 }
