@@ -2,14 +2,19 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use std::{
+    collections::BTreeMap,
     convert::{TryFrom, TryInto},
     str::FromStr,
     sync::Arc,
 };
 
 use super::{
-    non_empty::NonEmptyVec, AggrOp, Arr, FuncCall, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, Source,
-    SpreadExpr, TagAtom, TagExpr,
+    non_empty::{NonEmptyString, NonEmptyVec},
+    parse_utils::*,
+    types::r_type,
+    workflow::r_workflow,
+    AggrOp, Arr, FuncCall, Ident, Ind, Index, Num, Obj, Operation, Query, SimpleExpr, Source, SpreadExpr, TagAtom,
+    TagExpr,
 };
 use crate::SortKey;
 use anyhow::{bail, ensure, Result};
@@ -21,10 +26,9 @@ use pest::{
     Parser,
 };
 use unicode_normalization::UnicodeNormalization;
-use utils::*;
 
 #[derive(Debug, Clone)]
-pub struct NoVal(&'static str);
+pub struct NoVal(pub &'static str);
 impl std::fmt::Display for NoVal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "no value was present for {}", self.0)
@@ -35,8 +39,6 @@ impl std::error::Error for NoVal {}
 #[derive(pest_derive::Parser)]
 #[grammar = "language/aql.pest"]
 struct Aql;
-
-mod utils;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Context {
@@ -79,26 +81,37 @@ pub enum ContextError {
     CurrentValueInAggregate,
 }
 
-fn r_tag(p: P, ctx: Context) -> Result<TagExpr> {
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+pub enum SingleTag {
+    Tag(Tag),
+    Interpolation(Arr<SimpleExpr>),
+}
+
+impl From<SingleTag> for TagExpr {
+    fn from(value: SingleTag) -> Self {
+        match value {
+            SingleTag::Tag(tag) => TagExpr::Atom(TagAtom::Tag(tag)),
+            SingleTag::Interpolation(arr) => TagExpr::Atom(TagAtom::Interpolation(arr)),
+        }
+    }
+}
+
+pub(crate) fn r_tag(p: P, ctx: Context) -> Result<SingleTag> {
     let tag = p.single()?;
-    match tag.as_rule() {
+    Ok(match tag.as_rule() {
         Rule::nonempty_string => {
             let quoted = tag.single()?;
             let s = quoted.as_str();
             let s = &s[1..s.len() - 1];
             match quoted.as_rule() {
-                Rule::single_quoted => Ok(TagExpr::Atom(TagAtom::Tag(Tag::from_str(
-                    s.replace("''", "'").as_ref(),
-                )?))),
-                Rule::double_quoted => Ok(TagExpr::Atom(TagAtom::Tag(Tag::from_str(
-                    s.replace("\"\"", "\"").as_ref(),
-                )?))),
-                x => bail!("unexpected token: {:?}", x),
+                Rule::single_quoted => SingleTag::Tag(Tag::from_str(s.replace("''", "'").as_ref())?),
+                Rule::double_quoted => SingleTag::Tag(Tag::from_str(s.replace("\"\"", "\"").as_ref())?),
+                _ => unexpected!(quoted),
             }
         }
-        Rule::interpolation => Ok(TagExpr::Atom(TagAtom::Interpolation(r_interpolation(tag, ctx)?))),
-        x => bail!("unexpected token: {:?}", x),
-    }
+        Rule::interpolation => SingleTag::Interpolation(r_interpolation(tag, ctx)?),
+        _ => unexpected!(tag),
+    })
 }
 
 fn r_interpolation(p: P, ctx: Context) -> Result<Arr<SimpleExpr>> {
@@ -126,7 +139,7 @@ fn r_interpolation(p: P, ctx: Context) -> Result<Arr<SimpleExpr>> {
                         .ok_or_else(|| anyhow::anyhow!("invalid unicode scalar value `{}`", e.as_str()))?;
                     buffer.push(c);
                 }
-                x => bail!("unexpected token: {:?}", x),
+                _ => unexpected!(e),
             }
             pos = brace + 1 + expr_len + 1;
         } else {
@@ -169,6 +182,7 @@ fn r_tag_from_to(p: P, f: FromTo, ctx: Context) -> Result<TagExpr> {
             let mut p = p.inner()?;
             let count = p.natural()?;
             let unit = match p.next().ok_or(NoVal("duration_unit"))?.as_str() {
+                "u" => 1,
                 "s" => 1_000_000,
                 "m" => 60_000_000,
                 "h" => 3_600_000_000,
@@ -185,7 +199,7 @@ fn r_tag_from_to(p: P, f: FromTo, ctx: Context) -> Result<TagExpr> {
                 FromTo::To(incl) => Atom(ToTime(ts, incl)),
             }
         }
-        x => bail!("unexpected token: {:?}", x),
+        _ => unexpected!(p),
     })
 }
 
@@ -195,7 +209,7 @@ fn r_tag_comp(p: P) -> Result<FromTo> {
         Rule::le => FromTo::To(true),
         Rule::gt => FromTo::From(false),
         Rule::ge => FromTo::From(true),
-        x => bail!("unexpected token: {:?}", x),
+        _ => unexpected!(p),
     })
 }
 
@@ -211,7 +225,7 @@ fn r_tag_expr(p: P, ctx: Context) -> Result<TagExpr> {
     PRATT
         .map_primary(|p| {
             Ok(match p.as_rule() {
-                Rule::tag => r_tag(p, ctx)?,
+                Rule::tag => TagExpr::from(r_tag(p, ctx)?),
                 Rule::tag_expr => r_tag_expr(p, ctx)?,
                 Rule::all_events => Atom(AllEvents),
                 Rule::is_local => Atom(IsLocal),
@@ -228,14 +242,14 @@ fn r_tag_expr(p: P, ctx: Context) -> Result<TagExpr> {
                     let from_to = r_tag_comp(p.next().ok_or(NoVal("tag_time first"))?)?;
                     r_tag_from_to(p.next().ok_or(NoVal("tag_time second"))?, from_to, ctx)?
                 }
-                x => bail!("unexpected token: {:?}", x),
+                _ => unexpected!(p),
             })
         })
         .map_infix(|lhs, op, rhs| {
             Ok(match op.as_rule() {
                 Rule::and => lhs?.and(rhs?),
                 Rule::or => lhs?.or(rhs?),
-                x => bail!("unexpected token: {:?}", x),
+                _ => unexpected!(op),
             })
         })
         .parse(p.inner()?)
@@ -250,25 +264,27 @@ fn r_order(p: P) -> Result<Order> {
             "STREAM" => Ok(Order::StreamAsc),
             x => bail!("unexpected order: {:?}", x),
         },
-        x => bail!("unexpected token: {:?}", x),
+        _ => unexpected!(p),
     }
 }
 
-fn r_string(p: P) -> Result<String> {
+pub fn r_nonempty_string(p: P) -> Result<NonEmptyString> {
+    let p = p.single()?;
+    let s = p.as_str();
+    let s = &s[1..s.len() - 1];
+    Ok(match p.as_rule() {
+        Rule::single_quoted => s.replace("''", "'").try_into()?,
+        Rule::double_quoted => s.replace("\"\"", "\"").try_into()?,
+        _ => unexpected!(p),
+    })
+}
+
+pub fn r_string(p: P) -> Result<String> {
     let p = p.single()?;
     Ok(match p.as_rule() {
-        Rule::nonempty_string => {
-            let p = p.single()?;
-            let s = p.as_str();
-            let s = &s[1..s.len() - 1];
-            match p.as_rule() {
-                Rule::single_quoted => s.replace("''", "'"),
-                Rule::double_quoted => s.replace("\"\"", "\""),
-                x => bail!("unexpected token: {:?}", x),
-            }
-        }
+        Rule::nonempty_string => r_nonempty_string(p)?.into_inner(),
         Rule::empty_string => String::new(),
-        x => bail!("unexpected token: {:?}", x),
+        _ => unexpected!(p),
     })
 }
 
@@ -294,7 +310,7 @@ fn r_var_index(p: P, ctx: Context) -> Result<SimpleExpr> {
             Rule::natural => tail.push(Index::Number(i.natural()?)),
             Rule::string => tail.push(Index::String(r_string(i)?)),
             Rule::simple_expr => tail.push(Index::Expr(r_simple_expr(i, ctx)?)),
-            x => bail!("unexpected token: {:?}", x),
+            _ => unexpected!(i),
         }
     }
     Ok(if tail.is_empty() {
@@ -317,7 +333,7 @@ fn r_expr_index(p: P, ctx: Context) -> Result<SimpleExpr> {
             Rule::natural => tail.push(Index::Number(i.natural()?)),
             Rule::string => tail.push(Index::String(r_string(i)?)),
             Rule::simple_expr => tail.push(Index::Expr(r_simple_expr(i, ctx)?)),
-            x => bail!("unexpected token: {:?}", x),
+            _ => unexpected!(i),
         }
     }
     Ok(if tail.is_empty() {
@@ -330,8 +346,28 @@ fn r_expr_index(p: P, ctx: Context) -> Result<SimpleExpr> {
     })
 }
 
-fn r_number(mut p: P) -> Result<Num> {
+pub fn r_number(mut p: P) -> Result<Num> {
     p.natural().map(Num::Natural).or_else(|_| p.decimal().map(Num::Decimal))
+}
+
+pub fn r_duration(p: P) -> Result<u64> {
+    let mut p = p.inner()?;
+    let mut micros = 0u64;
+    while let Ok(count) = p.natural() {
+        let unit = match p.next().ok_or(NoVal("duration_unit"))?.as_str() {
+            "u" => 1,
+            "s" => 1_000_000,
+            "m" => 60_000_000,
+            "h" => 3_600_000_000,
+            "D" => 86_400_000_000,
+            "W" => 604_800_000_000,    // seven days
+            "M" => 2_551_442_876_908,  // Y2000 synodic month after Chapront(-Touzé)
+            "Y" => 31_556_925_250_733, // J2000.0 mean tropical year
+            x => bail!("unknown duration_unit {}", x),
+        };
+        micros = micros.saturating_add(count.saturating_mul(unit));
+    }
+    Ok(micros)
 }
 
 fn r_timestamp(p: P) -> Result<Timestamp> {
@@ -354,7 +390,10 @@ fn r_timestamp(p: P) -> Result<Timestamp> {
             Some(Rule::microsecond) => p.parse_or_default::<u32>()? * 1_000,
             Some(Rule::nanosecond) => p.parse_or_default::<u32>()?,
             Some(Rule::sign) | None => 0,
-            x => bail!("unexpected token: {:?}", x),
+            _ => {
+                let p = p.peek().unwrap();
+                unexpected!(p)
+            }
         }
     }
     if let Some(sign) = p.next() {
@@ -394,7 +433,7 @@ fn r_object(p: P, ctx: Context) -> Result<Obj> {
                 Rule::natural => Index::Number(i.natural()?),
                 Rule::string => Index::String(r_string(i)?),
                 Rule::simple_expr => Index::Expr(r_simple_expr(i, ctx)?),
-                x => bail!("unexpected token: {:?}", x),
+                _ => unexpected!(i),
             }
         };
         let value = r_simple_expr(p.next().ok_or(NoVal("value"))?, ctx)?;
@@ -416,13 +455,13 @@ fn r_array(p: P, ctx: Context) -> Result<Arr<SpreadExpr>> {
                 expr: r_simple_expr(candidate, ctx)?,
                 spread: false,
             }),
-            x => bail!("unexpected token: {:?}", x),
+            _ => unexpected!(candidate),
         }
     }
     Ok(Arr { items: items.into() })
 }
 
-fn r_bool(p: P) -> bool {
+pub fn r_bool(p: P) -> bool {
     p.as_str() == "TRUE"
 }
 
@@ -447,7 +486,7 @@ fn r_aggr(p: P, ctx: Context) -> Result<SimpleExpr> {
         Rule::aggr_max => SimpleExpr::AggrOp(Arc::new((AggrOp::Max, r_simple_expr(p.single()?, ctx.simple())?))),
         Rule::aggr_first => SimpleExpr::AggrOp(Arc::new((AggrOp::First, r_simple_expr(p.single()?, ctx.simple())?))),
         Rule::aggr_last => SimpleExpr::AggrOp(Arc::new((AggrOp::Last, r_simple_expr(p.single()?, ctx.simple())?))),
-        x => bail!("unexpected token: {:?}", x),
+        _ => unexpected!(p),
     })
 }
 
@@ -481,7 +520,7 @@ fn r_meta_key(p: P, ctx: Context) -> Result<SimpleExpr> {
             let stream = p.parse_or_default()?;
             Ok(SimpleExpr::KeyLiteral(SortKey { lamport, stream }))
         }
-        x => bail!("unexpected token: {:?}", x),
+        _ => unexpected!(p),
     }
 }
 
@@ -490,15 +529,15 @@ fn r_meta_time(p: P, ctx: Context) -> Result<SimpleExpr> {
     match p.as_rule() {
         Rule::ident => Ok(SimpleExpr::TimeVar(r_var(p, ctx)?)),
         Rule::isodate => Ok(SimpleExpr::TimeLiteral(r_timestamp(p)?)),
-        x => bail!("unexpected token: {:?}", x),
+        _ => unexpected!(p),
     }
 }
 
 fn r_sub_query(p: P, ctx: Context) -> Result<Query<'static>> {
-    r_query(Vec::new(), Vec::new(), p.single()?, ctx)
+    r_query(p.single()?, ctx)
 }
 
-fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
+pub(crate) fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
     static PRATT: Lazy<PrattParser<Rule>> = Lazy::new(|| {
         PrattParser::new()
             .op(Op::infix(Rule::alternative, Assoc::Left))
@@ -538,13 +577,13 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
                 Rule::meta_time => r_meta_time(p, ctx)?,
                 Rule::meta_tags => SimpleExpr::Tags(r_var(p.single()?, ctx)?),
                 Rule::meta_app => SimpleExpr::App(r_var(p.single()?, ctx)?),
-                x => bail!("unexpected token: {:?}", x),
+                _ => unexpected!(p),
             })
         })
         .map_prefix(|op, rhs| {
             Ok(match op.as_rule() {
                 Rule::not => SimpleExpr::Not(rhs?.into()),
-                x => bail!("unexpected token: {:?}", x),
+                _ => unexpected!(op),
             })
         })
         .map_infix(|lhs, op, rhs| {
@@ -565,15 +604,16 @@ fn r_simple_expr(p: P, ctx: Context) -> Result<SimpleExpr> {
                 Rule::eq => lhs?.eq(rhs?),
                 Rule::ne => lhs?.ne(rhs?),
                 Rule::alternative => lhs?.alt(rhs?),
-                x => bail!("unexpected token: {:?}", x),
+                _ => unexpected!(op),
             })
         })
         .parse(p.inner()?)
 }
 
-fn r_query<'a>(pragmas: Vec<(&'a str, &'a str)>, features: Vec<String>, p: P, ctx: Context) -> Result<Query<'a>> {
+fn r_query<'a>(p: P, ctx: Context) -> Result<Query<'a>> {
     let mut p = p.inner()?;
-    let source = match p.peek().unwrap().as_rule() {
+    let pp = p.peek().unwrap();
+    let source = match pp.as_rule() {
         Rule::tag_expr => {
             let from = r_tag_expr(p.next().ok_or(NoVal("tag expression"))?, ctx.simple())?;
             let mut order = None;
@@ -586,13 +626,15 @@ fn r_query<'a>(pragmas: Vec<(&'a str, &'a str)>, features: Vec<String>, p: P, ct
             Source::Events { from, order }
         }
         Rule::array => Source::Array(r_array(p.next().unwrap(), ctx)?),
-        x => bail!("unexpected token: {:?}", x),
+        _ => unexpected!(pp),
     };
     let mut q = Query {
-        pragmas,
-        features,
+        pragmas: vec![],
+        features: vec![],
         source,
         ops: vec![],
+        events: Arc::new(BTreeMap::new()),
+        workflows: Arc::new(BTreeMap::new()),
     };
     for o in p {
         match o.as_rule() {
@@ -611,7 +653,16 @@ fn r_query<'a>(pragmas: Vec<(&'a str, &'a str)>, features: Vec<String>, p: P, ct
                 let expr = r_simple_expr(p.single()?, ctx.simple())?;
                 q.ops.push(Operation::Binding(ident, expr));
             }
-            x => bail!("unexpected token: {:?}", x),
+            Rule::machine => {
+                let mut p = o.inner()?;
+                let name = Ident(p.non_empty_string()?);
+                let _role = p.next().ok_or(NoVal("machine ROLE"))?;
+                let role = Ident(p.non_empty_string()?);
+                let _id = p.next().ok_or(NoVal("machine ID"))?;
+                let id = r_nonempty_string(p.next().ok_or(NoVal("machine id"))?)?;
+                q.ops.push(Operation::Machine(name, role, id));
+            }
+            _ => unexpected!(o),
         }
     }
     Ok(q)
@@ -620,10 +671,36 @@ fn r_query<'a>(pragmas: Vec<(&'a str, &'a str)>, features: Vec<String>, p: P, ct
 pub(crate) fn query_from_str(s: &str) -> Result<Query<'_>> {
     let p = Aql::parse(Rule::main_query, s)?.single()?;
     let mut p = p.inner()?;
+
     let mut pragmas = Vec::new();
     while p.peek().map(|p| p.as_rule()) == Some(Rule::pragma) {
         pragmas.push(r_pragma(p.next().unwrap())?);
     }
+
+    let mut events = BTreeMap::new();
+    while p.peek().map(|p| p.as_rule()) == Some(Rule::event) {
+        let mut p = p.next().unwrap().inner()?;
+        let label = Ident(p.non_empty_string()?);
+        let record = r_type(p.next().ok_or(NoVal("event record"))?)?;
+        let tags = p
+            .next()
+            .map(|p| {
+                p.into_inner()
+                    .filter(|p| p.as_rule() == Rule::tag)
+                    .map(|p| r_tag(p, Context::Simple { now: Timestamp::now() }))
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .transpose()?
+            .unwrap_or_default();
+        events.insert(label, (record, tags));
+    }
+
+    let mut workflows = BTreeMap::new();
+    while p.peek().map(|p| p.as_rule()) == Some(Rule::workflow) {
+        let wf = r_workflow(p.next().unwrap())?;
+        workflows.insert(wf.name().clone(), wf);
+    }
+
     let mut f = p.next().ok_or(NoVal("main query"))?;
     let features = if f.as_rule() == Rule::features {
         let features = f.inner()?.map(|mut ff| ff.string()).collect::<Result<_>>()?;
@@ -632,8 +709,16 @@ pub(crate) fn query_from_str(s: &str) -> Result<Query<'_>> {
     } else {
         vec![]
     };
+
     let now = Timestamp::now();
-    r_query(pragmas, features, f, Context::Simple { now })
+    let mut query = r_query(f, Context::Simple { now })?;
+
+    query.pragmas = pragmas;
+    query.features = features;
+    query.events = Arc::new(events);
+    query.workflows = Arc::new(workflows);
+
+    Ok(query)
 }
 
 impl TryFrom<(Timestamp, &str)> for TagExpr {
@@ -713,12 +798,12 @@ mod tests {
         let p = Aql::parse(Rule::tag, "'hello''s revenge'")?;
         assert_eq!(
             r_tag(p.single()?, Context::Simple { now: Timestamp::now() })?,
-            TagExpr::Atom(TagAtom::Tag(tag!("hello's revenge")))
+            SingleTag::Tag(tag!("hello's revenge"))
         );
         let p = Aql::parse(Rule::tag, "\"hello\"\"s revenge\"")?;
         assert_eq!(
             r_tag(p.single()?, Context::Simple { now: Timestamp::now() })?,
-            TagExpr::Atom(TagAtom::Tag(tag!("hello\"s revenge")))
+            SingleTag::Tag(tag!("hello\"s revenge"))
         );
         Ok(())
     }
@@ -933,7 +1018,7 @@ mod tests {
             parser: Aql,
             input: "FROM 'x' ELECT 'x'",
             rule: Rule::main_query,
-            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::aggregate, Rule::limit, Rule::binding, Rule::and, Rule::or],
+            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::machine, Rule::aggregate, Rule::limit, Rule::binding, Rule::and, Rule::or],
             negatives: vec![],
             pos: 9
         };
@@ -941,7 +1026,7 @@ mod tests {
             parser: Aql,
             input: "FROM 'x' FITTER 'x'",
             rule: Rule::main_query,
-            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::aggregate, Rule::limit, Rule::binding, Rule::and, Rule::or],
+            positives: vec![Rule::EOI, Rule::query_order, Rule::filter, Rule::select, Rule::machine, Rule::aggregate, Rule::limit, Rule::binding, Rule::and, Rule::or],
             negatives: vec![],
             pos: 9
         };

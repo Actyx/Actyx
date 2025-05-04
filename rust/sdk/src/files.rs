@@ -29,7 +29,7 @@ use ax_aql::{Query, StaticQuery};
 ///     now.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 /// );
 /// let request = PrefetchRequest {
-///     query: Query::parse(&*query).unwrap().forget_pragmas(),
+///     query: Query::parse(&*query).unwrap().forget_pragmas_and_workflows(),
 ///     duration: Duration::from_secs(60 * 60 * 12),
 /// };
 /// ```

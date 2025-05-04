@@ -1,13 +1,17 @@
-use super::{NoVal, Rule};
+use super::parser::{NoVal, Rule};
 use crate::language::non_empty::NonEmptyString;
 use anyhow::Result;
 use pest::{
-    error::Error,
+    error::ErrorVariant,
     iterators::{Pair, Pairs},
 };
-use std::{convert::TryInto, fmt::Debug, str::FromStr};
+use std::{
+    convert::TryInto,
+    fmt::Debug,
+    ops::{Deref, DerefMut},
+    str::FromStr,
+};
 
-pub type R<T> = std::result::Result<T, Error<Rule>>;
 pub type Ps<'a> = Pairs<'a, Rule>;
 pub type P<'a> = Pair<'a, Rule>;
 
@@ -111,5 +115,80 @@ impl<'a> Ext<'a> for P<'a> {
         T::Err: Send + Sync + 'static,
     {
         Ok(self.as_str().parse::<T>()?)
+    }
+}
+
+pub trait Spanned {
+    type Ret;
+    fn spanned(self, span: pest::Span) -> Self::Ret;
+}
+
+impl<T, E: ToString> Spanned for Result<T, E> {
+    type Ret = Result<T, pest::error::Error<Rule>>;
+    fn spanned(self, span: pest::Span) -> Self::Ret {
+        self.map_err(|e| {
+            let e = ErrorVariant::CustomError { message: e.to_string() };
+            pest::error::Error::new_from_span(e, span)
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq)]
+pub struct Span<'a, T> {
+    span: pest::Span<'a>,
+    value: T,
+}
+
+impl<'a, T: PartialEq> PartialEq for Span<'a, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl<'a, T: Ord> Ord for Span<'a, T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.value.cmp(&other.value)
+    }
+}
+
+impl<'a, T: Ord> PartialOrd for Span<'a, T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<'a, T> Span<'a, T> {
+    pub fn new(span: pest::Span<'a>, value: T) -> Self {
+        Self { span, value }
+    }
+
+    pub fn make(p: P<'a>, f: impl FnOnce(P<'a>) -> Result<T>) -> Result<Self> {
+        Ok(Self::new(p.as_span(), f(p)?))
+    }
+
+    #[allow(clippy::result_large_err)]
+    pub fn err(&self, msg: impl Into<String>) -> Result<(), pest::error::Error<Rule>> {
+        Err(pest::error::Error::new_from_span(
+            pest::error::ErrorVariant::CustomError { message: msg.into() },
+            self.span,
+        ))
+    }
+
+    pub fn span(&self) -> pest::Span<'a> {
+        self.span
+    }
+}
+
+impl<'a, T> Deref for Span<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<'a, T> DerefMut for Span<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.value
     }
 }

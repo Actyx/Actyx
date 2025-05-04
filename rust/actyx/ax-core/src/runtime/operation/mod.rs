@@ -1,3 +1,6 @@
+mod aggregate;
+mod validation;
+
 use crate::runtime::{
     error::{RuntimeError, RuntimeFailure},
     eval::Context,
@@ -7,7 +10,6 @@ use crate::runtime::{
 use ax_aql::{NonEmptyVec, SimpleExpr, SpreadExpr};
 use ax_types::service::Order;
 
-mod aggregate;
 use futures::{future::BoxFuture, FutureExt};
 use std::{future::ready, num::NonZeroU64};
 
@@ -63,6 +65,7 @@ impl From<ax_aql::Operation> for Operation {
             ax_aql::Operation::Aggregate(a) => Self::Aggregate(a),
             ax_aql::Operation::Limit(l) => Self::Limit(l),
             ax_aql::Operation::Binding(n, e) => Self::Binding(n, e),
+            ax_aql::Operation::Machine(_n, _r, _id) => Self::Binding("TODO".to_string(), SimpleExpr::Bool(false)),
         }
     }
 }
