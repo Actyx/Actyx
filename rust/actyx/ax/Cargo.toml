@@ -18,7 +18,7 @@ ax_core = { version = "0.3.1", path = "../ax-core" }
 
 [dependencies]
 ax_sdk = { version = "0.2.0", path = "../../sdk" }
-ax_core = { version = "0.3.1", path = "../ax-core" }
+ax_core = { version = "0.3.2", path = "../ax-core" }
 
 # too much features, trim later
 anyhow = "1.0.66"

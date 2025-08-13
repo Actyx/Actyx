@@ -727,7 +727,7 @@ dependencies = [
 
 [[package]]
 name = "ax_core"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "acto",
  "anyhow",
