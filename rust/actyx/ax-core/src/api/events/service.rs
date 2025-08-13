@@ -484,7 +484,11 @@ impl EventService {
             }
         }
 
+        let query_str = request.query;
         let gen = Gen::new(move |co: Co<SubscribeMonotonicResponse>| async move {
+            scopeguard::defer!({
+                tracing::debug!("subscribe_monotonic stream dropped for query {}", query_str);
+            });
             let cx = cx.child();
             while let Some(ev) = bounded.next().await {
                 let ev = match ev {
