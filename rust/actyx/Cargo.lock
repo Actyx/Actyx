@@ -789,6 +789,7 @@ dependencies = [
  "regex",
  "reqwest",
  "rusqlite",
+ "scopeguard",
  "serde",
  "serde_cbor",
  "serde_json",
