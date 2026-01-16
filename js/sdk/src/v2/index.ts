@@ -20,8 +20,8 @@ export const makeWsMultiplexerV2 = async (
   token: string,
   manifest: AppManifest,
 ): Promise<[MultiplexedWebsocket, [string, string]]> => {
-  const apiLocation = getApiLocation(config.actyxHost, config.actyxPort)
-  const wsUrl = (tok: string) => `ws://${apiLocation}/events?${tok}`
+  const apiLocation = getApiLocation(config)
+  const wsUrl = (tok: string) => `${apiLocation.replace('http', 'ws')}/events?${tok}`
   const wsConfig = mkConfig(wsUrl(token))
   const getVersion = async (token: string) => (await getInfo(config)(token, -1)).semVer()
   const version = await getVersion(token)

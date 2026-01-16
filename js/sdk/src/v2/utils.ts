@@ -16,19 +16,36 @@ import { isNode } from '../util'
 export const GlobalInternalSymbol: unique symbol = Symbol('GlobalInternalSymbol')
 export type GlobalInternalSymbol = typeof GlobalInternalSymbol
 
-const defaultApiLocation = (isNode && process.env.AX_STORE_URI) || 'localhost:4454/api/v2'
+const defaultScheme = `${
+  (typeof window !== 'undefined' && window.location?.protocol) ||
+  (typeof self !== 'undefined' && self.location?.protocol) ||
+  'http:'
+}//`
+const defaultApiLocation =
+  (isNode && process.env.AX_STORE_URI && defaultScheme + process.env.AX_STORE_URI) ||
+  'http://localhost:4454/api/v2'
 
-export const getApiLocation = (host?: string, port?: number) => {
-  if (host || port) {
-    return (host || 'localhost') + ':' + (port || 4454) + '/api/v2'
+export const getApiLocation = (config: ActyxOpts) => {
+  if (config.actyxBaseUrl) {
+    return config.actyxBaseUrl
+  }
+
+  if (config.actyxHost || config.actyxPort) {
+    return (
+      defaultScheme +
+      (config.actyxHost || 'localhost') +
+      ':' +
+      (config.actyxPort || 4454) +
+      '/api/v2'
+    )
   }
 
   return defaultApiLocation
 }
 
 export const getToken = async (opts: ActyxOpts, manifest: AppManifest): Promise<string> => {
-  const apiLocation = getApiLocation(opts.actyxHost, opts.actyxPort)
-  const authUrl = 'http://' + apiLocation + '/auth'
+  const apiLocation = getApiLocation(opts)
+  const authUrl = apiLocation + '/auth'
 
   const res = await fetch(authUrl, {
     method: 'post',
@@ -57,7 +74,7 @@ export const getToken = async (opts: ActyxOpts, manifest: AppManifest): Promise<
 
 export const checkToken = async (opts: ActyxOpts, token: string): Promise<boolean> => {
   log.actyx.debug('checking token')
-  const apiLocation = getApiLocation(opts.actyxHost, opts.actyxPort)
+  const apiLocation = getApiLocation(opts)
   const url = 'http://' + apiLocation + '/events/offsets'
 
   const res = await fetch(url, {
@@ -80,7 +97,7 @@ export const checkToken = async (opts: ActyxOpts, token: string): Promise<boolea
 }
 
 export const v2getNodeId = async (config: ActyxOpts): Promise<string | null> => {
-  const path = `http://${getApiLocation(config.actyxHost, config.actyxPort)}/node/id`
+  const path = `${getApiLocation(config)}/node/id`
   return await fetch(path)
     .then((resp) => {
       // null indicates the endpoint was reachable but did not react with OK response -> probably V1.
@@ -136,7 +153,7 @@ export const v2WaitForSwarmSync = async (
   token: string,
   getOffsets: () => Promise<OffsetsResponse>,
 ): Promise<void> => {
-  const uri = `http://${getApiLocation(config.actyxHost, config.actyxPort)}/node/info`
+  const uri = `${getApiLocation(config)}/node/info`
   const getInfo: () => Promise<NodeInfo> = () =>
     fetch(uri, {
       method: 'get',

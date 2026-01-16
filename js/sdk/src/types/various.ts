@@ -368,6 +368,9 @@ export type ActyxOpts = {
   /** API port of the Actyx service. Defaults to 4454. */
   actyxPort?: number
 
+  /** baseUrl superseeds actyxHost and actyxPort */
+  actyxBaseUrl?: string
+
   /** Hook, when the connection to the store is closed */
   onConnectionLost?: () => void
 
