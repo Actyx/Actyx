@@ -8,7 +8,7 @@ use ax_core::{
     node_connection::request_banyan,
     private_key::{load_dev_cert, AxPrivateKey},
     util::formats::{
-        banyan_protocol::{decode_dump_header, BanyanRequest, BanyanResponse},
+        banyan_protocol::{decode_dump_header, BanyanRequest},
         ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt,
     },
 };
@@ -54,25 +54,6 @@ impl<T, E: std::fmt::Display> IO for Result<T, E> {
     type Out = T;
     fn io(self, ctx: impl AsRef<str>) -> ActyxOSResult<Self::Out> {
         self.map_err(|e| ActyxOSError::new(ActyxOSCode::ERR_IO, format!("{}: {}", ctx.as_ref(), e)))
-    }
-}
-
-trait BR {
-    fn br(self) -> ActyxOSResult<()>;
-}
-impl BR for BanyanResponse {
-    fn br(self) -> ActyxOSResult<()> {
-        match self {
-            BanyanResponse::Ok => Ok(()),
-            BanyanResponse::Error(e) => Err(ActyxOSError::new(
-                ActyxOSCode::ERR_IO,
-                format!("error from AX node: {}", e),
-            )),
-            BanyanResponse::Future => Err(ActyxOSError::new(
-                ActyxOSCode::ERR_IO,
-                "message from AX node from the future",
-            )),
-        }
     }
 }
 

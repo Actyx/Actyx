@@ -24,10 +24,6 @@ impl AxCliCommand for SettingsUnset {
         format!("Successfully unset settings at {}.", result.scope)
     }
 }
-#[derive(Serialize)]
-struct RequestBody {
-    scope: ax_core::settings::Scope,
-}
 
 #[derive(clap::Parser, Clone, Debug)]
 pub struct UnsetOpt {

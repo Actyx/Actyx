@@ -310,7 +310,6 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
             let output_arch = match os_arch.arch {
                 Arch::x86_64 => "amd64",
                 Arch::aarch64 => "arm64",
-                Arch::armv7 => "armhf",
                 Arch::arm => "arm",
                 _ => unreachable!(),
             };
@@ -359,7 +358,6 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
             let output_arch = match os_arch.arch {
                 Arch::x86_64 => "amd64",
                 Arch::aarch64 => "arm64",
-                Arch::armv7 => "armhf",
                 Arch::arm => "arm",
                 _ => unreachable!(),
             };
@@ -469,7 +467,6 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
             let output_arch = match os_arch.arch {
                 Arch::x86_64 => "amd64",
                 Arch::aarch64 => "arm64",
-                Arch::armv7 => "armhf",
                 Arch::arm => panic!("arm is not supported for the ax binary"),
                 _ => unreachable!(),
             };

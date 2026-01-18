@@ -7,8 +7,12 @@ use crate::{
 };
 use ax_aql::TagExpr;
 use ax_types::{AppId, Event, OffsetMap, Payload, TagSet};
-use futures::{Future, Stream, StreamExt};
+use futures::{
+    future::{select, Either},
+    Future, Stream, StreamExt,
+};
 use parking_lot::Mutex;
+use scopeguard::ScopeGuard;
 use std::{
     collections::BTreeMap,
     future::ready,
@@ -297,6 +301,7 @@ impl EventStoreHandler {
         let (start, started) = oneshot::channel();
         let handle = runtime.spawn(async move {
             tracing::trace!("stream {} initiated", id);
+            let state = scopeguard::guard(state, |_| tracing::trace!("stream {} dropped", id));
             match f().await {
                 Ok(mut s) => {
                     tracing::trace!("stream {} starting", id);
@@ -308,9 +313,10 @@ impl EventStoreHandler {
                     } else {
                         false
                     }; // lock is dropped here
-                    tracing::trace!("stream {} started {}", id, doit);
                     if doit && reply.send(Ok(rx)).is_ok() {
-                        while let Some(event) = s.next().await {
+                        tracing::trace!("stream {} started {}", id, doit);
+                        tokio::pin!(let closed = tx.closed(););
+                        while let Either::Right((Some(event), _)) = select(&mut closed, s.next()).await {
                             tracing::trace!("stream {} got {}/{}", id, event.key.lamport, event.key.stream);
                             match tx.try_reserve() {
                                 Ok(sender) => {
@@ -333,6 +339,8 @@ impl EventStoreHandler {
                             }
                         }
                         tracing::trace!("stream {} ended", id);
+                    } else {
+                        tracing::trace!("stream {} not started", id);
                     }
                 }
                 Err(e) => {
@@ -340,6 +348,7 @@ impl EventStoreHandler {
                 }
             }
             // need to drop the other stream sender to end the stream
+            let state = ScopeGuard::into_inner(state);
             state.stream.lock().remove(&id);
         });
         self.state.stream.lock().insert(id, (handle, None));

@@ -28,7 +28,6 @@ const HEADER: &str = r#"# Last releases of all Actyx products
 
 #[derive(Clone)]
 pub struct CalculationResult {
-    pub prev_commit: Oid,
     pub prev_version: Version,
     pub new_version: Option<Version>,
     pub changes: Vec<(String, Change)>,
@@ -174,7 +173,6 @@ impl VersionsFile {
         let new_version = apply_changes(product, &last_version, &just_changes);
 
         Ok(CalculationResult {
-            prev_commit: last_hash,
             new_version: if last_version == new_version {
                 None
             } else {

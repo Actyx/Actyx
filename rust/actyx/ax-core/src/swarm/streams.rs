@@ -134,7 +134,7 @@ impl<'a> DerefMut for OwnStreamGuard<'a> {
 
 #[derive(Debug, Default)]
 pub struct RemoteNodeInner {
-    pub last_seen: Variable<(LamportTimestamp, Offset)>,
+    pub _last_seen: Variable<(LamportTimestamp, Offset)>,
     pub streams: FnvHashMap<StreamNr, Arc<ReplicatedStream>>,
 }
 

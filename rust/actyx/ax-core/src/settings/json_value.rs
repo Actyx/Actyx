@@ -1,6 +1,5 @@
-use crate::settings::{json_differ::JsonDiffer, scope::Scope};
+use crate::settings::scope::Scope;
 use serde_json::json;
-use std::collections::BTreeSet;
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum Error {
@@ -14,7 +13,8 @@ type Result<T> = std::result::Result<T, Error>;
 
 pub trait JsonValue {
     /// Given two JSON objects, will return a set of changed scopes.
-    fn diff(&self, right: &Self) -> BTreeSet<Scope>;
+    #[cfg(test)]
+    fn diff(&self, right: &Self) -> std::collections::BTreeSet<Scope>;
 
     /// Removes the value at `scope`.
     fn remove_at(&self, scope: &Scope) -> serde_json::Value;
@@ -105,8 +105,9 @@ fn update_at(obj: &mut serde_json::Value, scope: &Scope, value: serde_json::Valu
 }
 
 impl JsonValue for serde_json::Value {
-    fn diff(&self, right: &Self) -> BTreeSet<Scope> {
-        let mut differ = JsonDiffer::new();
+    #[cfg(test)]
+    fn diff(&self, right: &Self) -> std::collections::BTreeSet<Scope> {
+        let mut differ = crate::settings::json_differ::JsonDiffer::new();
         treediff::diff(self, right, &mut differ);
         differ.changed_scopes
     }

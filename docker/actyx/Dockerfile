@@ -1,18 +1,18 @@
 ARG CROSSVER=0.2.5
 
 # Poor man's mapping from buildx arch scheme to cargo
-FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/aarch64-unknown-linux-musl:${CROSSVER} AS build-linux-arm64
+FROM --platform=linux/amd64 ghcr.io/cross-rs/aarch64-unknown-linux-musl:${CROSSVER} AS build-linux-arm64
 ENV CARGO_BUILD_TARGET=aarch64-unknown-linux-musl
-FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/x86_64-unknown-linux-musl:${CROSSVER} AS build-linux-amd64
+FROM --platform=linux/amd64 ghcr.io/cross-rs/x86_64-unknown-linux-musl:${CROSSVER} AS build-linux-amd64
 ENV CARGO_BUILD_TARGET=x86_64-unknown-linux-musl
-FROM --platform=$BUILDPLATFORM ghcr.io/cross-rs/armv7-unknown-linux-musleabihf:${CROSSVER} AS build-linux-armv7
+FROM --platform=linux/amd64 ghcr.io/cross-rs/armv7-unknown-linux-musleabihf:${CROSSVER} AS build-linux-armv7
 ENV CARGO_BUILD_TARGET=armv7-unknown-linux-musleabihf
 
 # actual build image
-FROM --platform=$BUILDPLATFORM build-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} AS crossbuild
+FROM --platform=linux/amd64 build-${TARGETOS}-${TARGETARCH}${TARGETVARIANT} AS crossbuild
 ENV CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
-ARG RUSTVER=1.72.1
+ARG RUSTVER=1.85.0
 ARG ACTYX_VERSION=2.0.0_dev-unknown
 ENV ACTYX_VERSION=${ACTYX_VERSION}
 ARG CARGO_BUILD_ARGS
@@ -27,7 +27,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- \
 RUN apt update && apt install -y protobuf-compiler
 
 # actual building
-FROM --platform=$BUILDPLATFORM crossbuild AS build
+FROM --platform=linux/amd64 crossbuild AS build
 
 # all dependencies needed for building
 COPY rust rust
@@ -47,7 +47,7 @@ RUN addgroup -g 1000 -S actyx && \
 
 COPY --from=build --chown=1000:1000 /usr/local/cargo/bin/ax /usr/bin/ax
 
-CMD ["ax", "run" "--working-dir", "/data/actyx-data", "--bind-admin", "0.0.0.0:4458", "--bind-api", "0.0.0.0:4454", "--bind-swarm", "0.0.0.0:4001"]
+CMD ["ax", "run", "--working-dir", "/data/actyx-data", "--bind-admin", "0.0.0.0:4458", "--bind-api", "0.0.0.0:4454", "--bind-swarm", "0.0.0.0:4001"]
 
 ARG GIT_COMMIT
 

@@ -155,7 +155,9 @@ impl From<ApiError> for ApiErrorResponse {
 
 /// Internal rejection used for testing purposes
 #[derive(Debug)]
+#[cfg(test)]
 pub(crate) struct Crash;
+#[cfg(test)]
 impl reject::Reject for Crash {}
 
 pub fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {

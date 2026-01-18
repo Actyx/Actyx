@@ -411,13 +411,9 @@ impl NodeWrapper {
 mod test {
     use super::*;
     use crate::{
-        node::{
-            components::Component,
-            node_settings::{EventRouting, Route, Settings},
-        },
+        node::node_settings::{EventRouting, Route},
         util::formats::NodeName,
     };
-    use anyhow::Result;
     use ax_aql::TagExpr;
     use futures::executor::block_on;
     use serde_json::json;
@@ -662,33 +658,6 @@ mod test {
             }],
         };
         assert_eq!(node.state.settings.event_routing, expected_event_routing);
-    }
-
-    struct DummyComponent {
-        node_rx: Receiver<ComponentRequest<()>>,
-    }
-    impl Component<(), ()> for DummyComponent {
-        fn get_type() -> &'static str {
-            "test"
-        }
-        fn get_rx(&self) -> &Receiver<ComponentRequest<()>> {
-            &self.node_rx
-        }
-        fn handle_request(&mut self, _: ()) -> Result<()> {
-            Ok(())
-        }
-        fn extract_settings(&self, _: Settings) -> Result<()> {
-            Ok(())
-        }
-        fn set_up(&mut self, _: ()) -> bool {
-            true
-        }
-        fn start(&mut self, _: Sender<anyhow::Result<()>>) -> Result<()> {
-            Ok(())
-        }
-        fn stop(&mut self) -> Result<()> {
-            Ok(())
-        }
     }
 
     #[test]

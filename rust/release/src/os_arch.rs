@@ -74,12 +74,11 @@ macro_rules!  string_enum {
 
 string_enum! {
     pub enum Arch {
-        #[cfg(AX_ARCH = "i686")] x86,
-        #[cfg(AX_ARCH = "x86_64")] x86_64,
-        #[cfg(AX_ARCH = "aarch64")] aarch64,
-        #[cfg(AX_ARCH = "android")] android,
-        #[cfg(AX_ARCH = "arm")] arm,
-        #[cfg(AX_ARCH = "armv7")] armv7,
+        #[cfg(target_arch = "x86")] x86,
+        #[cfg(target_arch = "x86_64")] x86_64,
+        #[cfg(target_arch = "aarch64")] aarch64,
+        #[cfg(target_os = "android")] android,
+        #[cfg(target_arch = "arm")] arm,
     }
     "Unsupported architecture"
 }

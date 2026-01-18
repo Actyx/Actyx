@@ -1,3 +1,5 @@
+#![allow(dependency_on_unit_never_type_fallback)]
+
 use ax_types::{AppId, LamportTimestamp, TagSet, Timestamp};
 use banyan::{
     index::{CompactSeq, Summarizable},
@@ -143,7 +145,7 @@ impl Encode<DagCborCodec> for AxKeySeq {
 
 impl Decode<DagCborCodec> for AxKeySeq {
     fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
-        let t: AxKeySeqIo = Decode::decode(c, r)?;
+        let t = AxKeySeqIo::decode(c, r)?;
         t.try_into()
     }
 }
@@ -433,7 +435,7 @@ impl Encode<DagCborCodec> for AxSummarySeq {
 
 impl Decode<DagCborCodec> for AxSummarySeq {
     fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
-        let t: AxSummarySeqIo = Decode::decode(c, r)?;
+        let t = AxSummarySeqIo::decode(c, r)?;
         t.try_into()
     }
 }
