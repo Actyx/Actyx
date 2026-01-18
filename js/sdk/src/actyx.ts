@@ -79,7 +79,7 @@ const createV2 = async (manifest: AppManifest, opts: ActyxOpts, nodeId: string):
   const [ws, tok] = await makeWsMultiplexerV2(opts, token, manifest)
   const eventStore = new WebsocketEventStoreV2(ws, AppId.of(manifest.appId), () => tok[1])
   const snapshotStore = new BlobSnapshotStore(
-    'http://' + getApiLocation(opts.actyxHost, opts.actyxPort),
+    getApiLocation(opts),
     () => tok[0],
     () => tok[1],
     100_000_000,

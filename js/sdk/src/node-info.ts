@@ -11,7 +11,7 @@ let lastInfoTime = 0
 let lastInfo: NodeInfo | null = null
 
 export const getInfo = (config: ActyxOpts) => {
-  const uri = `http://${getApiLocation(config.actyxHost, config.actyxPort)}/node/info`
+  const uri = `${getApiLocation(config)}/node/info`
   return async (token: string, maxAgeMillis: number): Promise<NodeInfo> => {
     if (Date.now() - maxAgeMillis <= lastInfoTime) {
       return lastInfo || invalidNodeInfo
