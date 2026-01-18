@@ -42,6 +42,7 @@ export const ActyxEvent: {
 export type ActyxOpts = {
     actyxHost?: string;
     actyxPort?: number;
+    actyxBaseUrl?: string;
     onConnectionLost?: () => void;
     onConnectionEstablished?: () => void;
 };
